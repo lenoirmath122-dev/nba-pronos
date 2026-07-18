@@ -1,0 +1,74 @@
+Je travaille sur un projet appelé **NBA Pronos**.
+
+## Organisation générale du travail
+
+Le cadrage produit, fonctionnel et méthodologique se fait dans **Microsoft Copilot**.
+
+Toute la partie développement, base de données, implémentation Next.js/Supabase, SQL, RLS, architecture technique détaillée et génération de code se fera ensuite dans **Claude**, via un **Claude Project** dédié.
+
+Donc dans cette conversation, je veux poursuivre le **cadrage**, pas coder.
+
+Ne commence pas à produire de code, de SQL, de schéma Supabase complet ou d’architecture technique détaillée tant que le cadrage fonctionnel n’est pas terminé.
+
+---
+
+## Documents de référence déjà produits
+
+Plusieurs fichiers `.md` et `.xlsx` existent déjà et servent de référence.
+
+Les fichiers importants sont notamment :
+
+- `nba_pronos_resume_cadrage_valide.md`
+- `nba_pronos_decisions_0_2_1_acces_roles.md`
+- `nba_pronos_decisions_0_2_2_bracket_initial.md`
+- `nba_pronos_plan_cadrage_titres.md`
+- `nba_pronos_plan_cadrage_detaille.md`
+- `arbitrages_0_2_3_pronostics_matchs_nba_pronos.xlsx`
+
+Les fichiers `.md` contiennent les décisions déjà validées.  
+Il ne faut pas les réécrire intégralement dans la conversation, sauf si je le demande.
+
+Utilise-les comme **source de vérité** pour comprendre :
+
+- la vision produit ;
+- ce qui a déjà été validé ;
+- ce qui reste à traiter ;
+- l’ordre de cadrage prévu.
+
+---
+
+## But de la reprise
+
+Je veux reprendre le cadrage exactement là où il s’est arrêté.
+
+Le projet est une application web privée de pronostics entre amis sur les **playoffs NBA**.
+
+La stack cible prévue pour la vraie V1 est :
+
+- Next.js ;
+- Supabase ;
+- Supabase Auth ;
+- PostgreSQL ;
+- RLS ;
+- Vercel ;
+- GitHub → Vercel ;
+- Vercel Cron Jobs ;
+- API NBA externe à terme.
+
+Mais attention :
+
+- le cadrage se fait ici dans Copilot ;
+- le développement se fera plus tard dans Claude Project ;
+- avant la vraie V1, on prévoit un **prototype jetable** ;
+- le prototype utilisera une **simulation d’API NBA**, pas une API réelle.
+
+---
+
+## État actuel du cadrage
+
+Les sections suivantes sont déjà validées :
+
+```text
+0.1 — Vision produit générale
+0.2.1 — Accès, inscription et rôles
+0.2.2 — Bracket initial

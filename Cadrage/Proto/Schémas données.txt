@@ -1,0 +1,461 @@
+-- ============================================================================
+-- NBA PRONOS — SCHÉMA DE DONNÉES — PROTOTYPE JETABLE
+-- ============================================================================
+-- Phase   : Prototype jetable (Next.js + Supabase allégé)
+-- RLS     : VOLONTAIREMENT ABSENTE à ce stade (cf. 0.2.10 — stack allégée).
+--           Ne pas ajouter de policies ici. La V1 reprendra ce schéma (avec
+--           adaptations) et y ajoutera les RLS complètes.
+-- Source  : nba_pronos_SYNTHESE_CLAUDE_PROJECT_1_3.md (référence principale)
+--           + fichiers decisions_0.2.x (pour le détail des règles).
+--
+-- Convention : identifiants de code en anglais, commentaires en français.
+-- Les libellés d'énumération sont traduits depuis le vocabulaire fonctionnel
+-- français ; la correspondance est indiquée à chaque fois.
+--
+-- ATTENTION — points à valider avec le porteur du produit avant d'aller plus
+-- loin (voir message d'accompagnement) :
+--   1. Le moteur de simulation (seed + curseur) matérialise ses résultats
+--      dans les tables `series` / `matches` ci-dessous (pas de table dédiée
+--      séparée) — hypothèse d'architecture à confirmer.
+--   2. Le comportement du scoring bracket en cas de série ANNULÉE reste un
+--      point fonctionnel OUVERT (0.2.5 / 0.2.7 / 0.2.8) : le statut existe
+--      dans le schéma, mais la logique de recalcul associée n'est PAS
+--      implémentée ici et ne doit pas être décidée silencieusement.
+-- ============================================================================
+
+create extension if not exists pgcrypto;
+
+-- ============================================================================
+-- 1. TYPES ÉNUMÉRÉS
+-- ============================================================================
+
+-- Rôles applicatifs (0.2.1) — PLAYER + ADMIN uniquement, pas de rôle "visiteur"
+-- stocké en base (visiteur = non connecté, géré côté application).
+create type user_role as enum ('PLAYER', 'ADMIN');
+
+-- Statuts joueur (0.2.1 / 0.2.7) — PENDING définitivement écarté.
+create type user_status as enum ('ACTIVE', 'DISABLED');
+
+-- Profils de faux joueurs scriptés — PROTOTYPE UNIQUEMENT (0.2.5 / 0.2.10).
+-- Correspondance : ALL_ROUNDER=complet, BETTOR=parieur, REGULAR=régulier,
+-- VISIONARY=visionnaire, CASUAL=casual.
+create type bot_profile as enum ('ALL_ROUNDER', 'BETTOR', 'REGULAR', 'VISIONARY', 'CASUAL');
+
+-- Conférences NBA.
+create type conference as enum ('EAST', 'WEST');
+
+-- Tours du bracket (0.2.2 / 0.2.5) — 8 / 4 / 2 / 1 séries.
+create type playoff_round as enum ('ROUND_1', 'CONF_SEMIS', 'CONF_FINALS', 'NBA_FINALS');
+
+-- Formats de score de série — saisie exclusivement par boutons (0.2.2).
+create type series_format as enum ('4-0', '4-1', '4-2', '4-3');
+
+-- Statut officiel d'une série (0.2.7 / 0.2.8).
+-- Correspondance : SCHEDULED=à venir/programmée (ajout technique, absent du
+-- cahier des charges strict mais nécessaire avant "en cours").
+create type series_status as enum ('SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'POSTPONED', 'CANCELLED');
+
+-- Statut officiel d'un match (0.2.7 / 0.2.8).
+create type match_status as enum ('SCHEDULED', 'IN_PROGRESS', 'FINISHED', 'POSTPONED', 'CANCELLED');
+
+-- Cycle de vie d'un prono match (0.2.3) — 3 états stricts du fonctionnel.
+-- Correspondance : DRAFT=brouillon, VALIDATED=validé, LOCKED=verrouillé.
+-- La nuance "auto-validé vs validé volontairement" est portée par le flag
+-- is_auto_validated, pas par un état distinct.
+create type match_prediction_status as enum ('DRAFT', 'VALIDATED', 'LOCKED');
+
+-- Portée d'un pari personnalisé (0.2.4).
+create type bet_scope as enum ('SERIES', 'MATCH');
+
+-- Cycle de vie d'un pari personnalisé (0.2.4).
+-- Correspondance : DRAFT=brouillon, SUBMITTED=soumis, VALIDATED=validé,
+-- REJECTED=refusé, WON=gagné, LOST=perdu, CANCELLED=annulé.
+create type bet_status as enum ('DRAFT', 'SUBMITTED', 'VALIDATED', 'REJECTED', 'WON', 'LOST', 'CANCELLED');
+
+-- Requête de correction joueur → admin (0.2.7).
+-- Correspondance : PENDING=en_attente, PROCESSED=traitée, REJECTED=refusée.
+create type correction_request_status as enum ('PENDING', 'PROCESSED', 'REJECTED');
+
+-- Cible d'une requête de correction.
+create type correction_target_type as enum ('MATCH_PREDICTION', 'BET');
+
+-- Type d'entité pour le mapping id interne / id source (0.2.8).
+create type mapping_entity_type as enum ('TEAM', 'SERIES', 'MATCH');
+
+-- Statut du rapprochement id interne / id source (0.2.8) — "suggestion" tant
+-- que non confirmé par un admin.
+create type mapping_status as enum ('PENDING', 'CONFIRMED');
+
+-- Mode d'avancement du temps simulé (0.2.8 / 0.2.10) — prototype uniquement.
+create type simulation_mode as enum ('MANUAL', 'AUTO');
+
+-- Granularité d'un "cran" de simulation (0.2.8 / 0.2.10).
+create type simulation_granularity as enum ('MATCH', 'DAY', 'SERIES');
+
+-- ============================================================================
+-- 2. CONFIGURATION DE LA COMPÉTITION (singleton)
+-- ============================================================================
+-- Une seule ligne : une seule compétition à la fois (10-30 joueurs entre amis).
+create table competition_settings (
+  id uuid primary key default gen_random_uuid(),
+  -- Code compétition unique et partagé, régénérable par l'admin (synthèse §3).
+  competition_code text not null unique,
+  -- Deadline du bracket = heure du 1er match des playoffs (0.2.2).
+  -- Nulle tant que les 8 séries du 1er tour ne sont pas officiellement connues.
+  bracket_deadline timestamptz,
+  current_round playoff_round,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- État de la simulation d'API — PROTOTYPE UNIQUEMENT (0.2.8 / 0.2.10).
+-- Disparaît en V1 (remplacé par la vraie API + Vercel Cron).
+create table simulation_state (
+  id uuid primary key default gen_random_uuid(),
+  seed text not null,
+  -- "Où en est-on dans les playoffs simulés" (curseur temporel).
+  cursor_at timestamptz not null default now(),
+  mode simulation_mode not null default 'MANUAL',
+  granularity simulation_granularity not null default 'DAY',
+  is_auto_running boolean not null default false,
+  updated_at timestamptz not null default now()
+);
+
+-- ============================================================================
+-- 3. UTILISATEURS (0.2.1 / 0.2.7)
+-- ============================================================================
+create table users (
+  id uuid primary key default gen_random_uuid(),
+  pseudo text not null unique,
+  -- Email toujours privé, jamais exposé publiquement (0.2.1 / 0.2.6).
+  email text not null unique,
+  avatar_url text,
+  favorite_team_id uuid, -- FK vers teams, ajoutée après création de teams
+  bio text,
+  role user_role not null default 'PLAYER',
+  status user_status not null default 'ACTIVE',
+  -- Profil de faux joueur scripté — NULL pour un vrai joueur. Prototype only.
+  bot_profile bot_profile,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- ============================================================================
+-- 4. ÉQUIPES, SÉRIES, MATCHS (référentiel de jeu)
+-- ============================================================================
+create table teams (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  abbreviation text not null,
+  conference conference not null,
+  logo_url text, -- fallback abréviation si absent (0.2.9)
+  created_at timestamptz not null default now()
+);
+
+alter table users
+  add constraint users_favorite_team_fk
+  foreign key (favorite_team_id) references teams(id);
+
+create table series (
+  id uuid primary key default gen_random_uuid(),
+  round playoff_round not null,
+  -- NULL uniquement pour NBA_FINALS (les 2 conférences s'affrontent).
+  conference conference,
+  -- Position d'affichage stable (groupement par conférence, 0.2.9).
+  slot_index int not null,
+  team1_id uuid references teams(id),
+  team2_id uuid references teams(id),
+  official_status series_status not null default 'SCHEDULED',
+  official_winner_team_id uuid references teams(id),
+  official_score_format series_format,
+  -- Structure de l'arbre : vers quelle série du tour suivant ce vainqueur
+  -- avance, et dans quel "slot" (1 ou 2). Permet le pré-remplissage
+  -- automatique des tours suivants (0.2.9). NULL pour NBA_FINALS.
+  next_series_id uuid references series(id),
+  next_series_slot smallint check (next_series_slot in (1, 2)),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table matches (
+  id uuid primary key default gen_random_uuid(),
+  series_id uuid not null references series(id),
+  game_number smallint not null check (game_number between 1 and 7),
+  -- NULL tant que la date n'est pas confirmée (0.2.3 : matchs "bien identifiés"
+  -- uniquement affichés dans la fenêtre de saisie).
+  scheduled_at timestamptz,
+  status match_status not null default 'SCHEDULED',
+  home_team_id uuid references teams(id),
+  away_team_id uuid references teams(id),
+  home_score int,
+  away_score int,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (series_id, game_number)
+);
+
+create index idx_matches_scheduled_at on matches (scheduled_at);
+create index idx_matches_series_id on matches (series_id);
+
+-- ============================================================================
+-- 5. MAPPING IDS INTERNES ↔ SOURCE (0.2.8)
+-- ============================================================================
+-- Principe : le reste de l'app ne travaille QUE sur les ids internes.
+-- Au proto, source_type = 'SIMULATION'. En V1, source_type = nom du
+-- fournisseur d'API choisi en spec technique.
+-- Rapprochement auto = suggestion ; tant que non confirmé par un admin,
+-- l'entité reste PENDING (aucun scoring/verrouillage ne doit s'appuyer dessus
+-- — règle à faire respecter côté application).
+create table entity_mappings (
+  id uuid primary key default gen_random_uuid(),
+  entity_type mapping_entity_type not null,
+  internal_id uuid not null, -- référence teams.id / series.id / matches.id selon entity_type
+  source_type text not null,
+  source_ref text not null,
+  status mapping_status not null default 'PENDING',
+  confirmed_by_admin_id uuid references users(id),
+  confirmed_at timestamptz,
+  created_at timestamptz not null default now(),
+  unique (entity_type, internal_id, source_type)
+);
+
+-- ============================================================================
+-- 6. BRACKET INITIAL (0.2.2 / 0.2.5 / 0.2.6)
+-- ============================================================================
+-- Un "bracket" par joueur : validation VOLONTAIRE globale (pas match par
+-- match, contrairement aux pronos). Reste modifiable jusqu'à la deadline
+-- MÊME après ce clic (règle spécifique au bracket, 0.2.2 §3).
+create table brackets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null unique references users(id),
+  is_validated boolean not null default false, -- clic volontaire "Valider"
+  validated_at timestamptz,
+  is_auto_validated boolean not null default false, -- rempli mais non cliqué à la deadline
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- Une ligne par série pronostiquée (15 par joueur).
+create table bracket_picks (
+  id uuid primary key default gen_random_uuid(),
+  bracket_id uuid not null references brackets(id),
+  series_id uuid not null references series(id),
+  predicted_winner_team_id uuid references teams(id),
+  predicted_score_format series_format,
+  -- NOTE : l'app doit vérifier que predicted_winner_team_id correspond bien
+  -- à series.team1_id ou series.team2_id (non exprimable en CHECK simple).
+
+  -- Scoring — 3 composantes indépendantes et cumulables (0.2.5 §7),
+  -- renseignées uniquement par le moteur de recalcul idempotent.
+  is_winner_correct boolean,
+  is_score_exact boolean,
+  is_matchup_correct boolean, -- "affiche" : 2 bonnes équipes, indépendant du vainqueur
+  winner_points int,
+  exact_score_points int,
+  matchup_points int,
+  points_awarded int generated always as (
+    coalesce(winner_points, 0) + coalesce(exact_score_points, 0) + coalesce(matchup_points, 0)
+  ) stored,
+  scored_at timestamptz,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (bracket_id, series_id)
+);
+
+-- ============================================================================
+-- 7. PRONOSTICS MATCH PAR MATCH (0.2.3 / 0.2.5)
+-- ============================================================================
+create table match_predictions (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  match_id uuid not null references matches(id),
+  predicted_winner_team_id uuid references teams(id),
+  -- Écart entier ≥ 1, borné 1-50 (garde-fou de saisie, synthèse §5).
+  predicted_margin int check (predicted_margin between 1 and 50),
+  status match_prediction_status not null default 'DRAFT',
+  is_auto_validated boolean not null default false,
+  validated_at timestamptz,
+
+  -- Correction admin exceptionnelle (0.2.3 §7) — sur requête uniquement,
+  -- jamais d'initiative spontanée, toujours marquée publiquement.
+  is_admin_corrected boolean not null default false,
+  corrected_by_admin_id uuid references users(id),
+  correction_request_id uuid, -- FK ajoutée après création de correction_requests
+  correction_reason text,
+
+  -- Scoring (0.2.5 §2), renseigné par le recalcul idempotent.
+  is_winner_correct boolean,
+  margin_diff int, -- |écart pronostiqué - écart réel|
+  points_awarded int,
+  scored_at timestamptz,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, match_id)
+);
+
+create index idx_match_predictions_user on match_predictions (user_id);
+create index idx_match_predictions_match on match_predictions (match_id);
+
+-- ============================================================================
+-- 8. PARIS PERSONNALISÉS (0.2.4 / 0.2.5)
+-- ============================================================================
+create table bets (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references users(id),
+  scope bet_scope not null,
+  series_id uuid not null references series(id),
+  -- NULL si scope = SERIES, obligatoire si scope = MATCH.
+  match_id uuid references matches(id),
+  description text not null,
+  proposed_difficulty smallint not null check (proposed_difficulty between 1 and 5),
+  -- Niveau VALIDÉ par l'admin = celui qui fait foi pour le scoring (0.2.4 §7).
+  validated_difficulty smallint check (validated_difficulty between 1 and 5),
+  status bet_status not null default 'DRAFT',
+  is_auto_validated boolean not null default false, -- soumis non revu à la deadline (0.2.4 §5)
+
+  submitted_at timestamptz,
+  validated_at timestamptz,
+  resolved_at timestamptz,
+  validated_by_admin_id uuid references users(id),
+  resolved_by_admin_id uuid references users(id),
+  refusal_reason text,
+  resolution_reason text,
+
+  points_awarded int, -- barème linéaire 5/10/15/20/25 (0.2.5 §8), jamais négatif
+  scored_at timestamptz,
+
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+
+  constraint bet_match_scope_check check (
+    (scope = 'MATCH' and match_id is not null) or
+    (scope = 'SERIES' and match_id is null)
+  )
+);
+
+create index idx_bets_user on bets (user_id);
+create index idx_bets_series on bets (series_id);
+
+-- Quotas (0.2.4 §2) — best-effort en base, la nuance temporelle
+-- ("REFUSÉ avant deadline libère le slot") doit être complétée en application :
+-- 1 pari SÉRIE actif (hors refusé/annulé) par joueur et par série.
+create unique index uniq_active_series_bet
+  on bets (user_id, series_id)
+  where scope = 'SERIES' and status not in ('REJECTED', 'CANCELLED');
+
+-- 1 pari MATCH actif (hors refusé) par match visé.
+create unique index uniq_active_match_bet
+  on bets (user_id, match_id)
+  where scope = 'MATCH' and status <> 'REJECTED';
+
+-- NOTE : la règle "3 paris MATCH max par joueur et par série, sur 3 matchs
+-- différents" nécessite un comptage (COUNT) — à appliquer côté application
+-- (server action) ou via trigger, pas exprimable en contrainte simple.
+
+-- ============================================================================
+-- 9. REQUÊTES DE CORRECTION JOUEUR → ADMIN (0.2.3 §7 / 0.2.7 §6)
+-- ============================================================================
+create table correction_requests (
+  id uuid primary key default gen_random_uuid(),
+  requester_user_id uuid not null references users(id),
+  target_type correction_target_type not null,
+  target_match_prediction_id uuid references match_predictions(id),
+  target_bet_id uuid references bets(id),
+  justification text not null,
+  status correction_request_status not null default 'PENDING',
+  admin_reason text, -- obligatoire si REJECTED
+  handled_by_admin_id uuid references users(id), -- jamais l'auteur si celui-ci est admin
+  created_at timestamptz not null default now(),
+  handled_at timestamptz,
+
+  constraint correction_target_consistency check (
+    (target_type = 'MATCH_PREDICTION' and target_match_prediction_id is not null and target_bet_id is null) or
+    (target_type = 'BET' and target_bet_id is not null and target_match_prediction_id is null)
+  )
+);
+
+alter table match_predictions
+  add constraint match_predictions_correction_request_fk
+  foreign key (correction_request_id) references correction_requests(id);
+
+-- ============================================================================
+-- 10. JOURNALISATION (0.2.1 / 0.2.7) — log interne, JAMAIS public
+-- ============================================================================
+-- À ne pas confondre avec le "marquage public de transparence" (ex. prono
+-- corrigé par admin X sur requête de Y), qui est un attribut porté par
+-- l'objet lui-même (is_admin_corrected + correction_reason sur
+-- match_predictions), pas par cette table.
+create table audit_logs (
+  id uuid primary key default gen_random_uuid(),
+  actor_user_id uuid references users(id), -- nullable si action système/simulation
+  action text not null,
+  target_type text not null,
+  target_id uuid,
+  reason text,
+  before_value jsonb,
+  after_value jsonb,
+  created_at timestamptz not null default now()
+);
+
+create index idx_audit_logs_target on audit_logs (target_type, target_id);
+
+-- ============================================================================
+-- 11. CLASSEMENT — VUES CALCULÉES (0.2.5 / 0.2.6)
+-- ============================================================================
+-- Le classement n'est PAS stocké : il est recalculé à la demande à partir des
+-- colonnes points_awarded ci-dessus, elles-mêmes réécrites de façon
+-- idempotente par le moteur de recalcul (0.2.7 §7). Ceci garantit qu'un même
+-- état de données produit toujours le même classement, sans double comptage.
+
+create view user_scores as
+select
+  u.id as user_id,
+  coalesce(m.matches_points, 0) as matches_points,
+  coalesce(b.bracket_points, 0) as bracket_points,
+  coalesce(p.bets_points, 0) as bets_points,
+  coalesce(m.matches_points, 0) + coalesce(b.bracket_points, 0) + coalesce(p.bets_points, 0) as total_points,
+  -- Départage (0.2.6 §3) :
+  coalesce(m.correct_match_winners, 0) as correct_match_winners, -- critère #2
+  coalesce(m.exact_margins, 0) as exact_margins                  -- critère #3
+from users u
+left join (
+  select
+    user_id,
+    sum(points_awarded) as matches_points,
+    count(*) filter (where is_winner_correct) as correct_match_winners,
+    count(*) filter (where margin_diff = 0) as exact_margins
+  from match_predictions
+  group by user_id
+) m on m.user_id = u.id
+left join (
+  select br.user_id, sum(bp.points_awarded) as bracket_points
+  from brackets br
+  join bracket_picks bp on bp.bracket_id = br.id
+  group by br.user_id
+) b on b.user_id = u.id
+left join (
+  select user_id, sum(points_awarded) as bets_points
+  from bets
+  group by user_id
+) p on p.user_id = u.id;
+
+-- Forme récente : fenêtre glissante de 7 jours, toutes sources confondues
+-- (0.2.6 §5 / 0.2.9 §6). Fenêtre exacte paramétrable via l'intervalle ci-dessous.
+create view user_recent_form as
+select user_id, sum(points_awarded) as recent_form_points
+from (
+  select user_id, points_awarded, scored_at from match_predictions
+  union all
+  select br.user_id, bp.points_awarded, bp.scored_at
+  from bracket_picks bp join brackets br on br.id = bp.bracket_id
+  union all
+  select user_id, points_awarded, scored_at from bets
+) all_scores
+where scored_at >= now() - interval '7 days'
+group by user_id;
+
+-- ============================================================================
+-- FIN DU SCHÉMA PROTOTYPE — PAS DE RLS, PAS DE POLICIES.
+-- ============================================================================

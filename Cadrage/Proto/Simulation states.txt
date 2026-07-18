@@ -1,0 +1,12 @@
+-- ============================================================================
+-- NBA PRONOS — INITIALISATION DE L'ÉTAT DE SIMULATION
+-- ============================================================================
+-- Rejouable sans risque : n'insère une ligne QUE si la table est encore vide
+-- (simulation_state est un singleton, une seule ligne pour toute la compét).
+-- ============================================================================
+
+insert into simulation_state (seed, mode, granularity)
+select 'nba-pronos-seed-1', 'MANUAL', 'DAY'
+where not exists (select 1 from simulation_state);
+
+-- ============================================================================

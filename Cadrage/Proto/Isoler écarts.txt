@@ -1,0 +1,70 @@
+-- ============================================================================
+-- MIGRATION — exposer le bonus d'écart séparément (classement)
+-- Aucune règle de scoring modifiée : on isole un total déjà existant.
+-- À exécuter APRÈS reset_simulation.sql.
+-- ============================================================================
+
+-- 1. On supprime d'abord les vues qui dépendent de la colonne à modifier
+drop view if exists user_recent_form;
+drop view if exists user_scores;
+
+-- 2. On retire l'ancienne colonne points_awarded (simple int, pas générée)
+alter table match_predictions drop column points_awarded;
+
+-- 3. On ajoute les deux composantes, comme pour bracket_picks
+alter table match_predictions add column winner_points int;
+alter table match_predictions add column margin_bonus_points int;
+
+-- 4. On recrée points_awarded comme colonne GENERATED (jamais désynchronisée)
+alter table match_predictions
+  add column points_awarded int generated always as (
+    coalesce(winner_points, 0) + coalesce(margin_bonus_points, 0)
+  ) stored;
+
+-- 5. On recrée la vue du classement, avec le nouveau sous-total
+create view user_scores as
+select
+  u.id as user_id,
+  coalesce(m.matches_points, 0) as matches_points,
+  coalesce(m.margin_bonus_points, 0) as margin_bonus_points, -- NOUVEAU
+  coalesce(b.bracket_points, 0) as bracket_points,
+  coalesce(p.bets_points, 0) as bets_points,
+  coalesce(m.matches_points, 0) + coalesce(b.bracket_points, 0) + coalesce(p.bets_points, 0) as total_points,
+  coalesce(m.correct_match_winners, 0) as correct_match_winners,
+  coalesce(m.exact_margins, 0) as exact_margins
+from users u
+left join (
+  select
+    user_id,
+    sum(points_awarded) as matches_points,
+    sum(margin_bonus_points) as margin_bonus_points, -- NOUVEAU
+    count(*) filter (where is_winner_correct) as correct_match_winners,
+    count(*) filter (where margin_diff = 0) as exact_margins
+  from match_predictions
+  group by user_id
+) m on m.user_id = u.id
+left join (
+  select br.user_id, sum(bp.points_awarded) as bracket_points
+  from brackets br
+  join bracket_picks bp on bp.bracket_id = br.id
+  group by br.user_id
+) b on b.user_id = u.id
+left join (
+  select user_id, sum(points_awarded) as bets_points
+  from bets
+  group by user_id
+) p on p.user_id = u.id;
+
+-- 6. On recrée user_recent_form à l'identique (inchangée)
+create view user_recent_form as
+select user_id, sum(points_awarded) as recent_form_points
+from (
+  select user_id, points_awarded, scored_at from match_predictions
+  union all
+  select br.user_id, bp.points_awarded, bp.scored_at
+  from bracket_picks bp join brackets br on br.id = bp.bracket_id
+  union all
+  select user_id, points_awarded, scored_at from bets
+) all_scores
+where scored_at >= now() - interval '7 days'
+group by user_id;

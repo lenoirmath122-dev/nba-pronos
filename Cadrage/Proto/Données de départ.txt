@@ -1,0 +1,127 @@
+-- ============================================================================
+-- NBA PRONOS — DONNÉES DE DÉPART (SEED) — PROTOTYPE
+-- ============================================================================
+-- À exécuter après schema_prototype.sql, dans le SQL Editor de Supabase.
+-- Version corrigée : rejouable sans risque (ON CONFLICT DO NOTHING), et les
+-- liens entre séries (next_series_id) sont posés APRÈS création de toutes
+-- les séries, pour éviter l'erreur de clé étrangère.
+--
+-- ⚠️ Personnalise AVANT de lancer : remplace 'TonPseudo' et l'email de ton
+-- compte admin un peu plus bas (section 4).
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- 1. ÉQUIPES (16 qualifiées, 8 par conférence)
+-- ----------------------------------------------------------------------------
+insert into teams (id, name, abbreviation, conference) values
+  ('11111111-1111-1111-1111-000000000001', 'Celtics',       'BOS', 'EAST'),
+  ('11111111-1111-1111-1111-000000000002', 'Cavaliers',     'CLE', 'EAST'),
+  ('11111111-1111-1111-1111-000000000003', 'Knicks',        'NYK', 'EAST'),
+  ('11111111-1111-1111-1111-000000000004', 'Bucks',         'MIL', 'EAST'),
+  ('11111111-1111-1111-1111-000000000005', '76ers',         'PHI', 'EAST'),
+  ('11111111-1111-1111-1111-000000000006', 'Pacers',        'IND', 'EAST'),
+  ('11111111-1111-1111-1111-000000000007', 'Magic',         'ORL', 'EAST'),
+  ('11111111-1111-1111-1111-000000000008', 'Heat',          'MIA', 'EAST'),
+  ('11111111-1111-1111-1111-000000000009', 'Nuggets',       'DEN', 'WEST'),
+  ('11111111-1111-1111-1111-000000000010', 'Thunder',       'OKC', 'WEST'),
+  ('11111111-1111-1111-1111-000000000011', 'Timberwolves',  'MIN', 'WEST'),
+  ('11111111-1111-1111-1111-000000000012', 'Clippers',      'LAC', 'WEST'),
+  ('11111111-1111-1111-1111-000000000013', 'Mavericks',     'DAL', 'WEST'),
+  ('11111111-1111-1111-1111-000000000014', 'Suns',          'PHX', 'WEST'),
+  ('11111111-1111-1111-1111-000000000015', 'Pelicans',      'NOP', 'WEST'),
+  ('11111111-1111-1111-1111-000000000016', 'Lakers',        'LAL', 'WEST')
+on conflict (id) do nothing;
+
+-- ----------------------------------------------------------------------------
+-- 2. SÉRIES — ÉTAPE A : création des 15 séries, SANS les liens next_series_id
+-- ----------------------------------------------------------------------------
+-- 1er tour, Est (séries 01-04)
+insert into series (id, round, conference, slot_index, team1_id, team2_id, official_status) values
+  ('22222222-2222-2222-2222-000000000001', 'ROUND_1', 'EAST', 1,
+    '11111111-1111-1111-1111-000000000001', '11111111-1111-1111-1111-000000000008', 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000002', 'ROUND_1', 'EAST', 2,
+    '11111111-1111-1111-1111-000000000004', '11111111-1111-1111-1111-000000000005', 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000003', 'ROUND_1', 'EAST', 3,
+    '11111111-1111-1111-1111-000000000003', '11111111-1111-1111-1111-000000000006', 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000004', 'ROUND_1', 'EAST', 4,
+    '11111111-1111-1111-1111-000000000002', '11111111-1111-1111-1111-000000000007', 'SCHEDULED')
+on conflict (id) do nothing;
+
+-- 1er tour, Ouest (séries 05-08)
+insert into series (id, round, conference, slot_index, team1_id, team2_id, official_status) values
+  ('22222222-2222-2222-2222-000000000005', 'ROUND_1', 'WEST', 1,
+    '11111111-1111-1111-1111-000000000009', '11111111-1111-1111-1111-000000000016', 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000006', 'ROUND_1', 'WEST', 2,
+    '11111111-1111-1111-1111-000000000012', '11111111-1111-1111-1111-000000000013', 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000007', 'ROUND_1', 'WEST', 3,
+    '11111111-1111-1111-1111-000000000011', '11111111-1111-1111-1111-000000000014', 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000008', 'ROUND_1', 'WEST', 4,
+    '11111111-1111-1111-1111-000000000010', '11111111-1111-1111-1111-000000000015', 'SCHEDULED')
+on conflict (id) do nothing;
+
+-- Demi-finales de conférence (séries 09-12) — équipes en attente
+insert into series (id, round, conference, slot_index, official_status) values
+  ('22222222-2222-2222-2222-000000000009', 'CONF_SEMIS', 'EAST', 1, 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000010', 'CONF_SEMIS', 'EAST', 2, 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000011', 'CONF_SEMIS', 'WEST', 1, 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000012', 'CONF_SEMIS', 'WEST', 2, 'SCHEDULED')
+on conflict (id) do nothing;
+
+-- Finales de conférence (séries 13-14)
+insert into series (id, round, conference, slot_index, official_status) values
+  ('22222222-2222-2222-2222-000000000013', 'CONF_FINALS', 'EAST', 1, 'SCHEDULED'),
+  ('22222222-2222-2222-2222-000000000014', 'CONF_FINALS', 'WEST', 1, 'SCHEDULED')
+on conflict (id) do nothing;
+
+-- Finale NBA (série 15) — pas de conférence, pas de série suivante
+insert into series (id, round, conference, slot_index, official_status) values
+  ('22222222-2222-2222-2222-000000000015', 'NBA_FINALS', null, 1, 'SCHEDULED')
+on conflict (id) do nothing;
+
+-- ----------------------------------------------------------------------------
+-- 2bis. SÉRIES — ÉTAPE B : maintenant que les 15 lignes existent, on pose
+-- les liens vers le tour suivant (next_series_id / next_series_slot).
+-- ----------------------------------------------------------------------------
+update series set next_series_id = '22222222-2222-2222-2222-000000000009', next_series_slot = 1 where id = '22222222-2222-2222-2222-000000000001';
+update series set next_series_id = '22222222-2222-2222-2222-000000000009', next_series_slot = 2 where id = '22222222-2222-2222-2222-000000000002';
+update series set next_series_id = '22222222-2222-2222-2222-000000000010', next_series_slot = 1 where id = '22222222-2222-2222-2222-000000000003';
+update series set next_series_id = '22222222-2222-2222-2222-000000000010', next_series_slot = 2 where id = '22222222-2222-2222-2222-000000000004';
+update series set next_series_id = '22222222-2222-2222-2222-000000000011', next_series_slot = 1 where id = '22222222-2222-2222-2222-000000000005';
+update series set next_series_id = '22222222-2222-2222-2222-000000000011', next_series_slot = 2 where id = '22222222-2222-2222-2222-000000000006';
+update series set next_series_id = '22222222-2222-2222-2222-000000000012', next_series_slot = 1 where id = '22222222-2222-2222-2222-000000000007';
+update series set next_series_id = '22222222-2222-2222-2222-000000000012', next_series_slot = 2 where id = '22222222-2222-2222-2222-000000000008';
+update series set next_series_id = '22222222-2222-2222-2222-000000000013', next_series_slot = 1 where id = '22222222-2222-2222-2222-000000000009';
+update series set next_series_id = '22222222-2222-2222-2222-000000000013', next_series_slot = 2 where id = '22222222-2222-2222-2222-000000000010';
+update series set next_series_id = '22222222-2222-2222-2222-000000000014', next_series_slot = 1 where id = '22222222-2222-2222-2222-000000000011';
+update series set next_series_id = '22222222-2222-2222-2222-000000000014', next_series_slot = 2 where id = '22222222-2222-2222-2222-000000000012';
+update series set next_series_id = '22222222-2222-2222-2222-000000000015', next_series_slot = 1 where id = '22222222-2222-2222-2222-000000000013';
+update series set next_series_id = '22222222-2222-2222-2222-000000000015', next_series_slot = 2 where id = '22222222-2222-2222-2222-000000000014';
+
+-- ----------------------------------------------------------------------------
+-- 3. CONFIGURATION DE LA COMPÉTITION (1 seule ligne)
+-- ----------------------------------------------------------------------------
+insert into competition_settings (competition_code, current_round) values
+  ('PRONOS2026', 'ROUND_1')
+on conflict (competition_code) do nothing;
+
+-- ----------------------------------------------------------------------------
+-- 4. TON COMPTE ADMIN — PERSONNALISE CETTE LIGNE AVANT DE LANCER
+-- ----------------------------------------------------------------------------
+insert into users (pseudo, email, role, status) values
+  ('Mathieu', 'lenoir.math122@gmail.com', 'ADMIN', 'ACTIVE')
+on conflict (pseudo) do nothing;
+
+-- ----------------------------------------------------------------------------
+-- 5. LES 5 FAUX JOUEURS SCRIPTÉS (0.2.5 / 0.2.10)
+-- ----------------------------------------------------------------------------
+insert into users (pseudo, email, role, status, bot_profile) values
+  ('Bot_Complet',     'bot-complet@nba-pronos.local',     'PLAYER', 'ACTIVE', 'ALL_ROUNDER'),
+  ('Bot_Parieur',     'bot-parieur@nba-pronos.local',     'PLAYER', 'ACTIVE', 'BETTOR'),
+  ('Bot_Regulier',    'bot-regulier@nba-pronos.local',    'PLAYER', 'ACTIVE', 'REGULAR'),
+  ('Bot_Visionnaire', 'bot-visionnaire@nba-pronos.local', 'PLAYER', 'ACTIVE', 'VISIONARY'),
+  ('Bot_Casual',      'bot-casual@nba-pronos.local',      'PLAYER', 'ACTIVE', 'CASUAL')
+on conflict (pseudo) do nothing;
+
+-- ============================================================================
+-- FIN DU SEED.
+-- ============================================================================
