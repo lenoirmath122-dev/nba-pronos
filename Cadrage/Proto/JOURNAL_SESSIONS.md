@@ -386,3 +386,80 @@ Documentation mise à jour en conséquence : `SPEC_TECHNIQUE_V0.1.md`
 policies restent entièrement à écrire).
 
 Aucun code touché cette session — travail exclusivement décisionnel/doc.
+
+---
+
+## Session du 18/07/2026 (dépôt neuf + T1/T2/T3 + migrations 1-4)
+
+Bascule effective de la phase de cadrage vers la V1 elle-même. Dépôt Git NEUF
+et projet Supabase NEUF créés (sortie de OneDrive, projet local désormais
+`C:\dev\nba-pronos`), conformément à D1 (session du 17/07/2026, 4e de la
+journée) — le prototype (`nba-pronos-proto`) reste intact et inchangé, en
+simple référence.
+
+**Spécifications techniques V1 rédigées et VALIDÉES par l'utilisateur**, dans
+`Cadrage/V1/` :
+- **T1** — `SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md` (modèle de données complet).
+- **T2** — `SPEC_TECHNIQUE_AUTH_V0.1.md` (authentification, code compétition,
+  pont auth.users → public.users).
+- **T3** — `SPEC_TECHNIQUE_RLS_V0.1.md` (Row Level Security complète).
+
+**4 migrations** écrites à partir de T1/T2/T3, chacune montrée intégralement
+et confirmée par l'utilisateur avant `db push` (workflow déjà acté,
+reconduit sans exception), appliquées avec succès :
+
+1. `20260718090000_initial_schema.sql` (commit `3e0315c`) — schéma initial
+   complet : types énumérés, tables (`teams`, `users`, `competitions`,
+   `series`, `matches`, `entity_mappings`, `brackets`, `bracket_picks`,
+   `match_predictions`, `bets`, `correction_requests`, `audit_logs`,
+   `sync_logs`, `competition_archives`), vues de classement `user_scores` /
+   `user_recent_form` en `security_invoker = true` — transcription fidèle de
+   T1.
+2. `20260718100000_auth_join_code_and_profile.sql` (commit `aaceff3`) — code
+   compétition (`join_code` sur `competitions`), fonction
+   `verify_join_code()`, trigger `handle_new_user` (pont auth.users →
+   public.users, École A retenue en T2).
+3. `20260718110000_rls.sql` (commit `aaf5b4e`) — RLS complète : fonctions
+   `SECURITY DEFINER` (`is_admin`, `is_active`, `match_is_locked`,
+   `has_committed_prediction`, `bracket_deadline_passed`, `bet_is_public`,
+   `bet_deadline_open`) ; RLS activée sur les 15 tables publiques ; policies
+   de lecture/écriture ; triggers d'invariants (`enforce_users_invariants`,
+   `enforce_match_prediction_transitions`, `enforce_bet_transitions`,
+   `enforce_prediction_correction`).
+4. `20260718120000_fix_users_trigger_system_context.sql` (commit `5e7a820`)
+   — correctif de `enforce_users_invariants()` : un contexte système (SQL
+   Editor super-utilisateur, `service_role`, seed de migration) n'a pas de
+   session utilisateur, donc `auth.uid()` y est NULL et `is_admin()` y vaut
+   faux — le trigger bloquait alors TOUTE modification de `role`/`status`,
+   ce qui aurait empêché le seed du 1er admin (A4). Bug trouvé pendant le
+   test RLS (plan T3 §7), pas anticipé à l'écriture de la migration #3.
+   Correction : `auth.uid() IS NULL` laisse désormais passer sans garde
+   (aucun trou ouvert, la RLS bloque déjà toute écriture anon/non
+   authentifiée sur `users`) — seules les vraies sessions utilisateur
+   restent bridées.
+
+**RLS vérifiée de bout en bout** via le plan de test de T3 §7 (anon, joueur
+A, joueur B, admin) : lectures publiques correctes, règle « valider = voir »
+sur les pronos match respectée, verrouillage à l'heure du match respecté,
+écritures illégales (hors propriétaire, hors deadline, hors admin) toutes
+refusées. Tout conforme au comportement attendu.
+
+**Décisions actées notables**, au fil de l'implémentation et dans le respect
+des arbitrages déjà tranchés (D2/D4/D5, sessions du 17/07/2026) :
+- `competition_id` dénormalisé sur les tables opérationnelles
+  (`series`/`matches`/`brackets`/`bracket_picks`/`match_predictions`/`bets`),
+  avec cohérence garantie par des **FK composites**
+  (`unique (id, competition_id)` côté parent, FK `(fk_id, competition_id)`
+  côté enfant) plutôt que par un simple contrôle applicatif — conforme D2.
+- `join_code` **sorti de `competitions` vers une nouvelle table
+  `competition_secrets`** (secret admin-only, lu uniquement par
+  `verify_join_code()` en `SECURITY DEFINER`, jamais exposé par une policy
+  `SELECT`) : corrigé dès la migration #3, avant toute mise en production.
+- Vues de classement `user_scores`/`user_recent_form` confirmées en
+  `security_invoker = true`, une ligne par **(compétition, joueur)** — jamais
+  de total toutes compétitions confondues — conforme D4/D5.
+
+**État en fin de session** : socle de données V1 (schéma + auth + RLS) posé
+et vérifié. Voir `ETAT_ACTUEL.md` pour l'état détaillé et les prochaines
+étapes (T4-T8) ; `GAPS_OUVERTS.md` mis à jour (RLS retirée des points
+ouverts, points ouverts pour les phases suivantes précisés).

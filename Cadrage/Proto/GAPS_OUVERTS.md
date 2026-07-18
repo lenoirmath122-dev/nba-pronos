@@ -14,28 +14,39 @@
   Jugé hors scope pour un prototype jetable — pas de correction prévue sauf
   gêne concrète en usage.
 
-## Reporté explicitement en V1 (hors périmètre prototype, ne pas implémenter maintenant)
+## Ouvert pour les phases suivantes de la V1 (T4-T8)
 
-- **RLS complètes** (remplacent l'absence actuelle de sécurité DB) :
-  périmètre V1 déjà connu. Les **4 arbitrages fondateurs sont désormais
-  tranchés** (session du 17/07/2026, voir `JOURNAL_SESSIONS.md`) : (A) toutes
-  les lectures passent par la session utilisateur, `service_role` réservé à
-  la synchro/au seed ; (B) la règle temporelle « public après deadline » vit
-  dans les policies SQL, pas dans le code applicatif ; (C) détection admin
-  via `is_admin()` SECURITY DEFINER STABLE lisant `users.role` ; (D) `users`
-  reprend l'id de `auth.users` comme PK, `is_primary_human` disparaît en V1.
-  Ce point reste néanmoins OUVERT tant que la spec n'est pas validée : les
-  policies SQL elles-mêmes restent ENTIÈREMENT à écrire (contrairement à
-  l'API NBA réelle et au mécanisme de cron/synchro, qui vivaient dans le même
-  point et ont depuis été tranchés, voir `nba_pronos_PREP_SPEC_TECHNIQUE_V1.md`
-  bloc A6/A8). La session du 17/07/2026 (4e de la journée) a ajouté **deux
-  arbitrages de conception** aux 4 ci-dessus, toujours sans écrire aucune
-  policy SQL : les vues de classement en `security_invoker = true` (elles ne
-  contournent JAMAIS la RLS des tables sous-jacentes) et, en conséquence, la
-  suppression de la colonne `email` de `public.users` (la RLS filtre des
-  lignes, pas des colonnes ; l'email vit dans `auth.users`). Détail et
-  motifs : `SPEC_TECHNIQUE_V0.1.md` §7, D4/D5. Le point reste OUVERT : c'est
-  toujours le seul chantier technique entièrement à écrire du projet.
+> La RLS (précédemment listée ici comme « reportée en V1 ») est FAITE et
+> TESTÉE de bout en bout depuis la session du 18/07/2026 (migrations #3/#4,
+> plan de test T3 §7) — retirée des points ouverts. Voir `JOURNAL_SESSIONS.md`
+> et `ETAT_ACTUEL.md`.
+
+- **Déclenchement exact du recalcul auto** (couture T4/T5) : la chaîne est
+  actée au niveau fonctionnel — synchro → un résultat a-t-il changé ? oui →
+  recalcul déclenché (idempotent), non → aucun recalcul
+  (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §10.6) — mais le déclencheur
+  technique précis (appelé depuis la route de synchro T4 ? un trigger DB ?
+  une queue ?) n'est pas encore tranché, renvoyé à l'écriture de T4/T5.
+- **Pré-remplissage IA gagné/perdu des paris** (reporté, non bloquant V1) :
+  évolution envisagée pour suggérer gagné/perdu à partir des données du
+  match (réaliste pour les paris déductibles de scores/box scores, inopérant
+  pour les paris flous/subjectifs), l'IA ne restant qu'une aide, jamais
+  l'autorité finale (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §6.7/§10.7).
+  Faisabilité et périmètre exact toujours renvoyés à la spec technique — non
+  traité par T1/T2/T3.
+- **Affichage des joueurs absents / paris annulés** (UX, 0.2.9) : au
+  classement, les joueurs inactifs doivent être conservés avec les absents
+  en compteur (noms au clic) ; un pari ANNULÉ/neutralisé doit s'afficher
+  barré + grisé, visuellement distinct d'un « perdu », dans la liste (pas de
+  section séparée) — décidé fonctionnellement
+  (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §7) mais aucun écran ne
+  l'implémente encore, renvoyé à T6.
+- **Barème stable pour un futur classement all-time** (backlog) : un
+  classement all-time toutes compétitions confondues nécessite que le
+  barème de scoring reste identique d'une compétition à l'autre, sinon il
+  doit être construit d'une manière qui neutralise les changements de
+  barème (ex. rang/points relatifs plutôt que total brut). Pas tranché,
+  juste à ne pas oublier en conception si le barème change (`BACKLOG_V1.md`).
 
 ## Interprétations d'implémentation actées (pas des gaps — à connaître, et à
 ## reporter dans `decisions_0.2.x` si l'utilisateur le souhaite un jour)
