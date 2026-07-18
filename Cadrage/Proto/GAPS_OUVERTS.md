@@ -14,19 +14,42 @@
   Jugé hors scope pour un prototype jetable — pas de correction prévue sauf
   gêne concrète en usage.
 
-## Ouvert pour les phases suivantes de la V1 (T4-T8)
+## Ouvert pour les phases suivantes de la V1 (T5-T8)
 
 > La RLS (précédemment listée ici comme « reportée en V1 ») est FAITE et
 > TESTÉE de bout en bout depuis la session du 18/07/2026 (migrations #3/#4,
 > plan de test T3 §7) — retirée des points ouverts. Voir `JOURNAL_SESSIONS.md`
 > et `ETAT_ACTUEL.md`.
 
+> Le choix du fournisseur d'API NBA (Highlightly, tranché dès la session du
+> 17/07/2026) et le mécanisme de synchro (architecture complète, T4, session
+> du 18/07/2026 suite) sont désormais FAITS et VALIDÉS. L'attache match → série
+> (branche A vs B), seule réserve empirique restante à la validation de T4, est
+> également tranchée par le repérage API du même jour : BRANCHE B retenue.
+> Aucun de ces points n'apparaît donc plus ci-dessous. Voir
+> `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` et `JOURNAL_SESSIONS.md`.
+
+- **Moteur de scoring** (T5, à spécifier) : portage du moteur de scoring du
+  prototype (barèmes Playoffs + Cup), idempotent, consommant le signal de
+  recalcul fourni par T4 (`SPEC_TECHNIQUE_SYNCHRO_V0.1.md` §8). Rien n'est
+  encore écrit.
 - **Déclenchement exact du recalcul auto** (couture T4/T5) : la chaîne est
   actée au niveau fonctionnel — synchro → un résultat a-t-il changé ? oui →
   recalcul déclenché (idempotent), non → aucun recalcul
-  (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §10.6) — mais le déclencheur
-  technique précis (appelé depuis la route de synchro T4 ? un trigger DB ?
-  une queue ?) n'est pas encore tranché, renvoyé à l'écriture de T4/T5.
+  (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §10.6). T4 a précisé l'appel direct
+  de la fonction de recalcul depuis `lib/sync`, mais la forme exacte de cette
+  fonction (signature, granularité) reste à finaliser à l'écriture de T5.
+- **Comportement du bracket en cas de série annulée** (A2, à traiter en T5) :
+  la neutralisation d'une série (0 point pour tous les joueurs,
+  `nba_pronos_PREP_SPEC_TECHNIQUE_V1.md` A2) est actée fonctionnellement mais
+  son impact sur le moteur de scoring/bracket n'est pas encore spécifié
+  techniquement — renvoyé à T5.
+- **Écrans et server actions** (T6) : arborescence `app/`, routes, server
+  actions, implémentation de la synchro spécifiée par T4 (client, lib/sync,
+  routes), souscription Realtime — rien n'est encore écrit.
+- **Design system** (T7) : design tokens (palette, typo, espacements,
+  composants) — direction déjà close (0.2.9 §2), livrable
+  `SPEC_DESIGN_SYSTEM_V0.1.md` à écrire juste avant le 1er écran joueur.
 - **Pré-remplissage IA gagné/perdu des paris** (reporté, non bloquant V1) :
   évolution envisagée pour suggérer gagné/perdu à partir des données du
   match (réaliste pour les paris déductibles de scores/box scores, inopérant

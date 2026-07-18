@@ -463,3 +463,59 @@ des arbitrages déjà tranchés (D2/D4/D5, sessions du 17/07/2026) :
 et vérifié. Voir `ETAT_ACTUEL.md` pour l'état détaillé et les prochaines
 étapes (T4-T8) ; `GAPS_OUVERTS.md` mis à jour (RLS retirée des points
 ouverts, points ouverts pour les phases suivantes précisés).
+
+---
+
+## Session du 18/07/2026 (suite — T4 : spec technique synchro API)
+
+Suite directe de la session précédente. Objectif : produire la spec technique
+T4 (synchro avec l'API NBA réelle), conformément à l'ordre acté dans
+`SPEC_TECHNIQUE_V0.1.md`.
+
+**Spec T4 rédigée et VALIDÉE par l'utilisateur**, dans `Cadrage/V1/` :
+- **T4** — `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (synchro API Highlightly).
+
+Fournisseur retenu : Highlightly, accès **direct** (pas RapidAPI). Règles
+client actées : `timezone=America/New_York` sur tout appel daté (la réponse
+garde `date` en UTC) ; score = **somme du tableau par quart-temps** (jamais une
+valeur unique lue directement).
+
+**Architecture actée** : `lib/nba/client.ts` (C-1) seul module autorisé à
+appeler l'API ; `lib/sync/*` (C-2) seul écrivain des tables de jeu
+(teams/series/matches) ; routes `/api/sync/*` + `/api/heartbeat` en
+`service_role` (contournent volontairement la RLS, réservé à la synchro) ;
+planificateur externe gratuit (cron-job.org / GitHub Actions) appelant ces
+routes en HTTP — pas de Cron Vercel (Hobby = 1×/jour max, insuffisant) ;
+Supabase Realtime pour l'affichage live des scores (respecte nativement la
+RLS, pas de polling).
+
+**Repérage API effectué (1 requête, sur la source réelle)** : sondage de
+`GET /matches` sur une date de playoffs passée — le payload d'un match ne
+contient **aucun id de série/tour/game number exploitable**. **BRANCHE B
+retenue** : la structure des séries reste créée par l'admin (écran
+`admin/competitions/new`, 8 affiches du 1er tour), les matchs synchronisés y
+sont rattachés par **heuristique** (paire d'équipes non ordonnée + tour +
+fenêtre de dates), confirmée par l'admin — rien de PENDING n'entre dans le
+scoring ou le verrouillage (0.2.8 §5, règle de sûreté déjà actée).
+
+**Trouvailles client complémentaires du même repérage** : la réponse de l'API
+est enveloppée dans un champ `"data"` ; `/matches?date` renvoie **toutes les
+ligues confondues**, pas seulement la NBA — filtre `league="NBA"`
+**obligatoire** côté client, sinon des matchs d'autres ligues (ex. NCAA)
+seraient ingérés par erreur ; le statut d'un match se lit dans
+`state.description`, pas un champ plat dédié.
+
+**Aucune migration produite par T4** — les tables nécessaires existent déjà
+depuis T1. L'implémentation (client, `lib/sync`, routes) est prévue **après
+T5** (scoring), une fois le moteur de recalcul disponible pour la couture.
+
+**Note sécurité** : la clé API Highlightly a transité en clair pendant cette
+session de test — **nouvel incident, distinct de celui déjà régénéré lors de
+la session du 17/07/2026** (test technique initial). Action utilisateur : à
+régénérer côté Highlightly.
+
+**État en fin de session** : T4 validé et figé, aucune réserve restante (le
+repérage §5.1 a tranché la branche B). Voir `ETAT_ACTUEL.md` pour l'état
+détaillé et la prochaine étape (T5, scoring) ; `GAPS_OUVERTS.md` mis à jour
+(choix fournisseur/synchro et attache match→série retirés des points ouverts,
+traités par T4).

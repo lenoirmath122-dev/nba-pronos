@@ -5,10 +5,10 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 18/07/2026 — socle V1 (schéma + auth +
-> RLS) posé et vérifié de bout en bout. Ce fichier ne décrit plus l'état du
-> prototype (`nba-pronos-proto`, dépôt séparé, intact en référence, D1) mais
-> celui du dépôt V1 (`nba-pronos`).
+> Dernière mise à jour : session du 18/07/2026 (suite) — spec T4 (synchro API)
+> produite et validée. Ce fichier ne décrit plus l'état du prototype
+> (`nba-pronos-proto`, dépôt séparé, intact en référence, D1) mais celui du
+> dépôt V1 (`nba-pronos`).
 
 ---
 
@@ -29,25 +29,44 @@ RLS         : ACTIVE sur les 15 tables publiques, testée de bout en bout (T3).
 ## 2. Avancement
 
 ```text
-Phase V1 — socle de données posé : modèle de données + authentification + RLS
-en place et vérifiés. AUCUN écran, AUCUNE route applicative, AUCUN moteur de
-synchro ni de scoring n'existe encore dans ce dépôt — seul le scaffold
-Next.js par défaut (créé par `create-next-app`) est présent dans `app/`.
+Phase V1 — socle de données posé (modèle + auth + RLS) ; couche de synchro
+API SPÉCIFIÉE mais PAS ENCORE CODÉE. AUCUN écran, AUCUNE route applicative,
+AUCUN moteur de synchro ni de scoring n'existe encore dans ce dépôt — seul le
+scaffold Next.js par défaut (créé par `create-next-app`) est présent dans
+`app/`. Le client API (lib/nba/client.ts), lib/sync/* et les routes
+/api/sync/*+/api/heartbeat restent À ÉCRIRE, prévu après T5 (voir T4 ci-dessous).
 
 Spécifications techniques V1 produites et VALIDÉES, dans `Cadrage/V1/` :
   T1 — SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md
   T2 — SPEC_TECHNIQUE_AUTH_V0.1.md
   T3 — SPEC_TECHNIQUE_RLS_V0.1.md
+  T4 — SPEC_TECHNIQUE_SYNCHRO_V0.1.md (synchro API Highlightly)
 
 4 migrations écrites à partir de T1/T2/T3, appliquées et testées (détail §3).
+T4 ne produit aucune migration (tables déjà posées par T1).
 
-Prochaines étapes (ordre acté dans SPEC_TECHNIQUE_V0.1.md, aucune commencée) :
-  T4 — Synchro API (client Highlightly, routes de synchro, heartbeat,
-       mapping, sync_logs).
+Décisions synchro actées par T4 (implémentation à venir, après T5) :
+  - Secret partagé : routes /api/sync/* et /api/heartbeat authentifiées par
+    Bearer + variable d'env SYNC_SECRET.
+  - Logos d'équipes téléchargés au sync /teams et hébergés dans un bucket
+    Supabase Storage dédié (public en lecture) — pas de hotlink externe.
+  - 30 mappings TEAM confirmés automatiquement (référentiel NBA déterministe),
+    aucune revue admin nécessaire.
+  - Horizon de la synchro /schedule : 4 jours (3 j de fenêtre de pronos + 1 j
+    de marge).
+  - Signal de recalcul : appel direct de la fonction de recalcul depuis
+    lib/sync (transactionnel) ; forme exacte de la fonction laissée à T5.
+  - Attache match → série : BRANCHE B (API match-centrique, aucun id de série
+    exploitable) — structure des séries créée par l'admin, matchs rattachés
+    par heuristique (paire d'équipes + tour + fenêtre de dates), confirmés par
+    l'admin.
+
+Prochaines étapes (ordre acté dans SPEC_TECHNIQUE_V0.1.md) :
   T5 — Moteur de scoring (portage du moteur du prototype, idempotent,
-       barèmes Playoffs + Cup).
+       barèmes Playoffs + Cup). PROCHAINE ÉTAPE.
   T6 — Architecture Next.js (arborescence app/, routes, server actions,
-       Realtime) — 1er écran/route applicatif du projet.
+       Realtime) + implémentation de la synchro spécifiée par T4 — 1er
+       écran/route applicatif du projet.
   T7 — Design system (design tokens), juste avant le 1er écran joueur.
   T8 — Déploiement (Vercel, variables d'env, secrets, planificateur externe).
 ```
@@ -97,7 +116,7 @@ app/page.tsx, app/globals.css, public/, config Next/TS/ESLint standard).
 
 Cadrage/
   V1/     — specs techniques V1 validées : T1 (modèle de données), T2 (auth),
-            T3 (RLS). T4-T8 restent à écrire (voir §2).
+            T3 (RLS), T4 (synchro API). T5-T8 restent à écrire (voir §2).
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + tout le cadrage fonctionnel hérité du
             prototype (synthèse, decisions_0.2.x, BACKLOG_V1.md,
@@ -109,8 +128,9 @@ supabase/
   migrations/  — 4 migrations versionnées, voir §3.
   config.toml  — supabase link vers le projet Supabase NEUF de la V1.
 
-Aucun dossier lib/ ni aucune route applicative au-delà du scaffold — c'est
-l'objet de T4-T6.
+Aucun dossier lib/ ni aucune route applicative au-delà du scaffold — la
+synchro (client, lib/sync, routes) est spécifiée par T4 mais son code arrive
+avec T6, après le moteur de scoring T5.
 ```
 
 ## 5. Conventions de travail — l'essentiel (détail complet dans JOURNAL_SESSIONS.md)
