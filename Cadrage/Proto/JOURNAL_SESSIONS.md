@@ -577,3 +577,222 @@ depuis T1.
 l'état détaillé et la prochaine étape (T6, écrans + server actions) ;
 `GAPS_OUVERTS.md` mis à jour (les 3 points renvoyés à T5 retirés des points
 ouverts).
+
+---
+
+## Session du 19/07/2026 (suite — T6a : squelette Next.js)
+
+Suite directe de la session T5. Objectif : produire T6a, première des trois
+sous-specs actées pour découper T6 (architecture Next.js) — arbre `app/`,
+route groups, stratégie de données, frontière d'écriture.
+
+**Spec T6a rédigée et VALIDÉE par l'utilisateur**, dans `Cadrage/V1/` :
+- **T6a** — `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md` (arbre, route
+  groups, données).
+
+**Découpage de T6 acté** : T6a (squelette : arbre, route groups, stratégie
+de données, frontière d'écriture) ; T6b (server actions joueur + garde-fou
+C2, puis actions admin) ; T6c (Realtime + rendu des états actés). T7 (design
+system) reste après, juste avant le 1er écran joueur (déjà acté le
+17/07/2026).
+
+**Stratégie de données actée (reco 1)** : chaque écran est un composant
+SERVEUR qui lit via la session utilisateur — la RLS (T3) est seule arbitre
+de ce qui arrive au composant, qui ne choisit que la MISE EN FORME. Realtime
+en surcouche uniquement (état local client, jamais de `revalidatePath`
+déclenché par un événement Realtime). Trois clients Supabase distincts
+(navigateur / serveur en session / serveur privilégié `service_role`), le
+client privilégié isolé dans un module `server-only` (garde de build
+empêchant toute fuite de `service_role` côté navigateur).
+
+**Frontière d'écriture actée (Option A, reco 2)** : trois catégories — A)
+écriture joueur sur ses propres données (server action en session, RLS
+garde-fou) ; B) écriture admin-système (recompute, résolution de série) via
+server action qui re-vérifie `is_admin()` puis appelle un module privilégié ;
+C) écriture système externe (synchro, heartbeat) via routes `/api/sync/*` +
+secret (T4, inchangé). `writeSeriesOutcome` confirmé point d'écriture unique
+de `series.official_*` (C-2/T5 §12), appelé aussi bien par la synchro (T4)
+que par une résolution admin (catégorie B).
+
+**Décision actée à la validation (T6a §8)** : classement et bracket global
+public/connecté partagent UN SEUL module de lecture et UN SEUL composant de
+rendu ; les `page.tsx` de `(public)` et `(app)` ne sont que des enveloppes
+fines sous leur layout — aucune duplication, aucune divergence possible
+entre vue visiteur et vue joueur (seule la RLS change le contenu).
+
+**Aucune migration produite par T6a** — squelette applicatif seul, code
+écrit après feu vert.
+
+**État en fin de session** : T6a validé et figé. Prochaine étape : T6b
+(corps des server actions).
+
+---
+
+## Session du 19/07/2026 (suite — T6b : couche d'écriture)
+
+Suite directe. Objectif : T6b, deuxième sous-spec de T6 — server actions
+joueur (catégorie A) + garde-fou anti-perte de saisie C2, puis actions admin
+(catégorie B) et journalisation.
+
+**Spec T6b rédigée et VALIDÉE par l'utilisateur**, dans `Cadrage/V1/` :
+- **T6b** — `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` (server actions,
+  C2, admin, audit).
+
+**`sealDeadlines` acté (décision d'entrée)** : l'auto-validation
+(bracket/prono/pari) ne peut pas rester un calcul paresseux — deux
+mécanismes déjà figés (visibilité T3, scoring T5) lisent le STATUT STOCKÉ,
+pas `now()`. Solution : un scellage explicite, idempotent,
+`lib/sync/sealDeadlines.ts`, exécuté en tête du job de résultats existant
+(`/api/sync/results`, T4) — zéro infra supplémentaire, zéro quota API
+consommé (lecture DB seule). Scellages prono/pari qualifiés de PORTEURS
+(statut requis pour visibilité + scoring) ; scellage bracket qualifié de
+COSMÉTIQUE (le bracket est déjà gardé par le temps et par la présence d'un
+pick, `is_auto_validated` n'y est qu'un libellé de traçabilité).
+
+**Server actions joueur (catégorie A)** posées pour les 4 familles
+d'écriture (pronos match, bracket, paris, requêtes de correction), toutes en
+session utilisateur, RLS garde-fou, aucun DELETE joueur (rétention D2).
+
+**Garde-fou C2 étendu** : en plus de `beforeunload` (déjà géré au
+prototype), interception de la navigation INTERNE à l'app (App Router) tant
+que la saisie est « sale » — nouveauté par rapport au prototype.
+
+**Actions admin (catégorie B)** posées pour les 3 files (validation/
+résolution paris, requêtes de correction), la gestion des joueurs, la
+résolution/override de série (A2), le bouton « Recalculer », et la création
+de compétition — chacune re-vérifiant `is_admin()` côté serveur et
+journalisée dans `audit_logs` (helper transverse commun).
+
+**2 décisions actées à la validation (T6b §9)** :
+1. **Remontée vers T3** — la garde `not is_validated` est retirée de la
+   policy d'UPDATE de `brackets`/`bracket_picks` (elle contredisait 0.2.2
+   §3, « modifiable jusqu'à la deadline même après validation »). Vérifié
+   dans `supabase/migrations/20260718110000_rls.sql` (lignes 213-219) : la
+   policy actuelle ne porte déjà aucune garde `is_validated` — le correctif
+   est déjà en place, rien à rejouer.
+2. **`LOCKED`** (pronos match) confirmé état IMPLICITE (calculé via
+   `match_is_locked`), jamais écrit ; `VALIDATED` reste le seul état
+   terminal stocké.
+
+**Aucune migration propre à T6b** — le seul SQL concerné (policy bracket,
+point 1 ci-dessus) est déjà porté par la migration #3 existante.
+
+**État en fin de session** : T6b validé et figé. Prochaine étape : T6c
+(Realtime + rendu).
+
+---
+
+## Session du 19/07/2026 (suite — T6c : Realtime + rendu des états actés)
+
+Suite directe. Objectif : T6c, troisième et dernière sous-spec de T6 —
+souscriptions Supabase Realtime en surcouche du SSR et rendu de tous les
+états déjà actés mais encore non rendus (A1, paris annulés, marquage de
+correction, absents/inactifs, barre « toi », bracket, classement, live,
+dialogue C2, états vides).
+
+**Spec T6c rédigée et VALIDÉE par l'utilisateur**, dans `Cadrage/V1/` :
+- **T6c** — `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_c.md` (Realtime, rendu).
+
+**Périmètre Realtime scopé** : souscriptions sur `matches` et `series`
+uniquement (score/statut/agrégat officiel) — PAS sur `match_predictions`/
+`bets`/`brackets`/`bracket_picks`/`user_scores`. La révélation des pronos
+d'autrui et les mouvements de classement suivent donc le rythme du rendu
+serveur (navigation, `revalidatePath` ciblé), jamais un poussé en direct.
+
+**Convention d'affichage A1 précisée à 3 cas** (déclinaison du pivot NULL/0
+de T5 §12.3 au grain cellule) : ABSENCE (« - », aucune ligne de
+participation), SCORÉ-ZÉRO (« 0 », ligne scorée à zéro), EN ATTENTE
+(marqueur neutre, ligne existante mais pas encore scorée) — les trois se
+somment à 0 au total, la distinction ne vit qu'au détail.
+
+**Rendu des états déjà actés fonctionnellement mais jamais implémentés** :
+paris annulés (barré + grisé + « neutralisé », visuellement distinct d'un
+perdu, dans la liste) ; marquage public de correction (« corrigé par X sur
+requête de Y », attribut de ligne, distinct du log d'audit privé) ; joueurs
+absents (compteur neutre + liste nominative au clic) ; joueur inactif
+(grisé + tag, conservé au classement) ; barre « toi » collante (active
+seulement au-delà de 20 joueurs classés) ; bascule bracket résumé/arbre
+(mobile = invitation à tourner l'écran, aucune rotation forcée par API) ;
+classement (puces de tri, Total et rang toujours sur Total, lignes
+dépliables).
+
+**2 décisions actées à la validation (T6c §14)** :
+1. **Révélation des pronos NON temps réel** (option a) — le scope Realtime
+   reste `matches`/`series` ; étendre à `match_predictions` (option b) est
+   explicitement écartée pour la V1, réserve documentée si un besoin réel
+   émerge.
+2. **`series` confirmé utile dans la publication Realtime** — resserrement
+   de l'option « si utile » laissée ouverte par T4 §9 (drill-down série +
+   résumé bracket live en dépendent), pas une réouverture ; à refléter dans
+   l'activation DB au déploiement (T8), aucune migration T6c.
+
+**Aucune migration produite par T6c.**
+
+**État en fin de session** : T6 est désormais COMPLET (T6a + T6b + T6c, les
+3 validées et figées). Prochaine étape : T7 (design system), dernière spec
+avant le 1er écran joueur codé.
+
+---
+
+## Session du 19/07/2026 (suite — T7 : design system)
+
+Suite directe, dernière spec technique de la série T1→T7. Objectif : T7,
+design tokens (palette, typo, espacements, composants) — direction visuelle
+déjà close (0.2.9 §2), acté le 17/07/2026 comme livrable juste avant le 1er
+écran joueur.
+
+**Spec T7 rédigée et VALIDÉE par l'utilisateur**, dans `Cadrage/V1/` :
+- **T7** — `SPEC_DESIGN_SYSTEM_V0_1.md` (design tokens + règles d'usage).
+
+**Principes actés** : token-first (aucun littéral en dur dans les écrans) ;
+thème = jeu de tokens (DARK par défaut, CLAIR un simple override de la même
+couche sémantique, jamais lu de couleur brute par un écran) ; deux registres
+d'énergie ARÈNE (carte de match, bracket, champion, live) et LECTURE
+(classement, admin) ; séparation stricte primitifs/sémantiques ; mobile
+d'abord ; accessibilité WCAG AA non négociable.
+
+**Contenu posé** : palette complète (primitifs + tokens sémantiques
+dark/clair) ; typographie (une seule famille, chiffres tabulaires pour tout
+ce qui est comparé en colonne) ; échelle d'espacement/rayons/élévation
+(registre arène plus élevé que le registre lecture) ; tokens du flash B7
+(couleur, durée ~1.2s, easing, désactivé sous `prefers-reduced-motion` —
+comportement figé par T6c, seule l'apparence est nouvelle ici) ; badges EN
+DIRECT et correction admin ; puces de tri du classement ; états spéciaux
+(pari annulé, joueur inactif, marqueur « en attente ») ; pastille de logo +
+fallback abréviation ; règles d'accessibilité et de responsive (cibles
+tactiles ≥44px, focus clavier visible).
+
+**3 décisions actées à la validation (T7 §14)** :
+1. **Accent arène = orange broadcast** (`--c-orange-500`), retenu « pour le
+   moment » — réversible sans refonte car confiné à la couche de tokens
+   sémantiques.
+2. **Typographie** : une famille unique open-source à chiffres tabulaires,
+   auto-hébergée (extension du principe B4 « pas de hotlink externe » déjà
+   appliqué aux logos) — pas de 2e fichier de police en V1.
+3. **Pastille de logo neutre CONSTANTE** hors thème
+   (`--color-logo-pastille`, identique dark/clair) — seule exception
+   assumée au mécanisme d'override de thème, pour garantir la lisibilité
+   des logos dans les deux modes.
+
+**Aucune migration produite par T7** — aucun écran, aucun composant, aucune
+CSS de production : ce sont des jetons et leurs règles.
+
+**Note de synchronisation documentaire.** T6a, T6b, T6c et T7 avaient été
+rédigées et validées au fil de cette même journée mais leurs fichiers
+n'avaient pas encore été committés (même situation que T4 lors de la session
+précédente) — rattrapé dans le même commit que cette resynchronisation de
+`ETAT_ACTUEL.md`/`GAPS_OUVERTS.md`/`JOURNAL_SESSIONS.md`. Les frontières
+entre les 4 sous-sessions ci-dessus sont reconstruites depuis l'horodatage
+de rédaction des fichiers (11h42 → 15h45 le 19/07/2026), pas depuis
+`git log` (aucun commit n'existait encore pour ces fichiers) — à traiter
+comme approximatives, dans le même esprit que les sessions antérieures au
+16/07/2026 reconstruites a posteriori.
+
+**État en fin de session** : la série de specs techniques **T1 → T7 est
+entièrement bouclée et validée**. Aucun code applicatif n'existe encore dans
+le dépôt au-delà du scaffold `create-next-app` — toute l'implémentation
+(synchro T4, scoring T5, écrans/server actions/Realtime T6, tokens T7) reste
+à écrire. Prochaine étape : le 1er écran joueur codé (post-T7, B9/0.2.9 §2).
+Voir `ETAT_ACTUEL.md` pour l'état détaillé ; `GAPS_OUVERTS.md` mis à jour
+(gaps T6/T7 retirés — désormais couverts par les specs — remplacés par la
+phase de CODE post-T7 et par T8/déploiement).

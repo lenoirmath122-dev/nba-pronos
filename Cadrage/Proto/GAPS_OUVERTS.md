@@ -14,7 +14,7 @@
   Jugé hors scope pour un prototype jetable — pas de correction prévue sauf
   gêne concrète en usage.
 
-## Ouvert pour les phases suivantes de la V1 (T5-T8)
+## Ouvert pour les phases suivantes de la V1 (implémentation + T8)
 
 > La RLS (précédemment listée ici comme « reportée en V1 ») est FAITE et
 > TESTÉE de bout en bout depuis la session du 18/07/2026 (migrations #3/#4,
@@ -37,26 +37,39 @@
 > plus ci-dessous. Voir `SPEC_TECHNIQUE_SCORING_V0_1.md` et
 > `JOURNAL_SESSIONS.md`.
 
-- **Écrans et server actions** (T6) : arborescence `app/`, routes, server
-  actions, implémentation de la synchro spécifiée par T4 (client, lib/sync,
-  routes), souscription Realtime — rien n'est encore écrit.
-- **Design system** (T7) : design tokens (palette, typo, espacements,
-  composants) — direction déjà close (0.2.9 §2), livrable
-  `SPEC_DESIGN_SYSTEM_V0.1.md` à écrire juste avant le 1er écran joueur.
+> Les specs **T6** (T6a/T6b/T6c — arbre `app/` + route groups, server
+> actions joueur/admin + garde-fou C2, Realtime + rendu des états actés) et
+> **T7** (design system) sont désormais FAITES et VALIDÉES (session du
+> 19/07/2026) : la série de specs techniques **T1 → T7 est entièrement
+> bouclée**. Le rendu des états UX déjà actés fonctionnellement (paris
+> annulés barrés/grisés, joueurs absents en compteur, marquage public de
+> correction, joueur inactif conservé) est désormais entièrement SPÉCIFIÉ
+> par T6c/T7 — le point ouvert n'est plus « spécifier » mais « coder » (voir
+> le point d'implémentation ci-dessous). Voir
+> `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md` /
+> `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` /
+> `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_c.md` / `SPEC_DESIGN_SYSTEM_V0_1.md`
+> et `JOURNAL_SESSIONS.md`.
+
+- **Implémentation code de la V1** (post-T7, PROCHAINE ÉTAPE) : aucun écran,
+  aucune server action, aucun moteur de synchro/scoring, aucun token CSS
+  n'existe encore dans le dépôt au-delà du scaffold `create-next-app` — tout
+  reste À CODER à partir des specs T1-T7 désormais validées (arbre `app/`
+  et frontière d'écriture T6a, corps des server actions + `sealDeadlines` +
+  actions admin T6b, Realtime + rendu des états — dont paris annulés,
+  joueurs absents, marquage de correction — T6c, tokens visuels T7).
+  Prochaine étape concrète : le 1er écran joueur codé.
+- **T8 — Déploiement** : configuration du planificateur externe gratuit
+  (cron-job.org / GitHub Actions — fréquences des jobs `/api/sync/*` et
+  `/api/heartbeat`), variables d'env et secrets côté Vercel — pas encore
+  traité.
 - **Pré-remplissage IA gagné/perdu des paris** (reporté, non bloquant V1) :
   évolution envisagée pour suggérer gagné/perdu à partir des données du
   match (réaliste pour les paris déductibles de scores/box scores, inopérant
   pour les paris flous/subjectifs), l'IA ne restant qu'une aide, jamais
   l'autorité finale (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §6.7/§10.7).
   Faisabilité et périmètre exact toujours renvoyés à la spec technique — non
-  traité par T1/T2/T3.
-- **Affichage des joueurs absents / paris annulés** (UX, 0.2.9) : au
-  classement, les joueurs inactifs doivent être conservés avec les absents
-  en compteur (noms au clic) ; un pari ANNULÉ/neutralisé doit s'afficher
-  barré + grisé, visuellement distinct d'un « perdu », dans la liste (pas de
-  section séparée) — décidé fonctionnellement
-  (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §7) mais aucun écran ne
-  l'implémente encore, renvoyé à T6.
+  traité par T1/T2/T3, ni par T6/T7 (hors périmètre, aucune mention).
 - **Barème stable pour un futur classement all-time** (backlog) : un
   classement all-time toutes compétitions confondues nécessite que le
   barème de scoring reste identique d'une compétition à l'autre, sinon il
