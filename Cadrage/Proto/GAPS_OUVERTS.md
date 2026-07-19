@@ -29,21 +29,14 @@
 > Aucun de ces points n'apparaît donc plus ci-dessous. Voir
 > `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` et `JOURNAL_SESSIONS.md`.
 
-- **Moteur de scoring** (T5, à spécifier) : portage du moteur de scoring du
-  prototype (barèmes Playoffs + Cup), idempotent, consommant le signal de
-  recalcul fourni par T4 (`SPEC_TECHNIQUE_SYNCHRO_V0.1.md` §8). Rien n'est
-  encore écrit.
-- **Déclenchement exact du recalcul auto** (couture T4/T5) : la chaîne est
-  actée au niveau fonctionnel — synchro → un résultat a-t-il changé ? oui →
-  recalcul déclenché (idempotent), non → aucun recalcul
-  (`nba_pronos_SPEC_FONCTIONNELLE_V0_2.md` §10.6). T4 a précisé l'appel direct
-  de la fonction de recalcul depuis `lib/sync`, mais la forme exacte de cette
-  fonction (signature, granularité) reste à finaliser à l'écriture de T5.
-- **Comportement du bracket en cas de série annulée** (A2, à traiter en T5) :
-  la neutralisation d'une série (0 point pour tous les joueurs,
-  `nba_pronos_PREP_SPEC_TECHNIQUE_V1.md` A2) est actée fonctionnellement mais
-  son impact sur le moteur de scoring/bracket n'est pas encore spécifié
-  techniquement — renvoyé à T5.
+> Le moteur de scoring (T5, session du 19/07/2026) est désormais FAIT et
+> VALIDÉ : dérivation de l'agrégat de série, barèmes Playoffs + NBA Cup,
+> neutralisation A2, et déclencheurs de recalcul (`recomputeMatch` /
+> `recomputeSeries` / `recomputeBet` / `recomputeCompetition`, T5 §10.1)
+> actés avec la couture T4. Les 3 points renvoyés à T5 n'apparaissent donc
+> plus ci-dessous. Voir `SPEC_TECHNIQUE_SCORING_V0_1.md` et
+> `JOURNAL_SESSIONS.md`.
+
 - **Écrans et server actions** (T6) : arborescence `app/`, routes, server
   actions, implémentation de la synchro spécifiée par T4 (client, lib/sync,
   routes), souscription Realtime — rien n'est encore écrit.

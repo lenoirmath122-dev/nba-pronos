@@ -5,7 +5,7 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 18/07/2026 (suite) — spec T4 (synchro API)
+> Dernière mise à jour : session du 19/07/2026 — spec T5 (moteur de scoring)
 > produite et validée. Ce fichier ne décrit plus l'état du prototype
 > (`nba-pronos-proto`, dépôt séparé, intact en référence, D1) mais celui du
 > dépôt V1 (`nba-pronos`).
@@ -30,22 +30,25 @@ RLS         : ACTIVE sur les 15 tables publiques, testée de bout en bout (T3).
 
 ```text
 Phase V1 — socle de données posé (modèle + auth + RLS) ; couche de synchro
-API SPÉCIFIÉE mais PAS ENCORE CODÉE. AUCUN écran, AUCUNE route applicative,
-AUCUN moteur de synchro ni de scoring n'existe encore dans ce dépôt — seul le
-scaffold Next.js par défaut (créé par `create-next-app`) est présent dans
-`app/`. Le client API (lib/nba/client.ts), lib/sync/* et les routes
-/api/sync/*+/api/heartbeat restent À ÉCRIRE, prévu après T5 (voir T4 ci-dessous).
+API et moteur de scoring SPÉCIFIÉS mais PAS ENCORE CODÉS. AUCUN écran, AUCUNE
+route applicative, AUCUN moteur de synchro ni de scoring n'existe encore dans
+ce dépôt — seul le scaffold Next.js par défaut (créé par `create-next-app`)
+est présent dans `app/`. Le client API (lib/nba/client.ts), lib/sync/*,
+lib/scoring/* et les routes /api/sync/*+/api/heartbeat restent À ÉCRIRE,
+prévu en T6 (voir T4/T5 ci-dessous).
 
 Spécifications techniques V1 produites et VALIDÉES, dans `Cadrage/V1/` :
   T1 — SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md
   T2 — SPEC_TECHNIQUE_AUTH_V0.1.md
   T3 — SPEC_TECHNIQUE_RLS_V0.1.md
   T4 — SPEC_TECHNIQUE_SYNCHRO_V0.1.md (synchro API Highlightly)
+  T5 — SPEC_TECHNIQUE_SCORING_V0_1.md (moteur de scoring, barèmes Playoffs +
+       NBA Cup)
 
 4 migrations écrites à partir de T1/T2/T3, appliquées et testées (détail §3).
-T4 ne produit aucune migration (tables déjà posées par T1).
+T4 et T5 ne produisent aucune migration (tables et colonnes déjà posées par T1).
 
-Décisions synchro actées par T4 (implémentation à venir, après T5) :
+Décisions synchro actées par T4 (implémentation à venir, en T6) :
   - Secret partagé : routes /api/sync/* et /api/heartbeat authentifiées par
     Bearer + variable d'env SYNC_SECRET.
   - Logos d'équipes téléchargés au sync /teams et hébergés dans un bucket
@@ -54,19 +57,35 @@ Décisions synchro actées par T4 (implémentation à venir, après T5) :
     aucune revue admin nécessaire.
   - Horizon de la synchro /schedule : 4 jours (3 j de fenêtre de pronos + 1 j
     de marge).
-  - Signal de recalcul : appel direct de la fonction de recalcul depuis
-    lib/sync (transactionnel) ; forme exacte de la fonction laissée à T5.
+  - Signal de recalcul : appel direct de recomputeMatch depuis lib/sync
+    (transactionnel) — granularité finalisée par T5 (recomputeMatch /
+    recomputeSeries / recomputeBet / recomputeCompetition, T5 §10.1).
   - Attache match → série : BRANCHE B (API match-centrique, aucun id de série
     exploitable) — structure des séries créée par l'admin, matchs rattachés
     par heuristique (paire d'équipes + tour + fenêtre de dates), confirmés par
     l'admin.
 
+Décisions scoring actées par T5 (implémentation à venir, en T6) :
+  - Moteur pur (lib/scoring/engine.ts, aucune I/O) : dérivation de l'agrégat
+    de série depuis ses matchs, barème MATCH (10 + bonus d'écart), barème
+    BRACKET Playoffs (vainqueur/score exact/affiche) et NBA Cup (vainqueur/
+    affiche), barème PARIS linéaire (5/10/15/20/25) résolu par l'admin.
+  - Neutralisation A2 (série annulée) : 0 pour tous sur la série elle-même,
+    cascade naturelle sur les tours dépendants (affiche aval EN ATTENTE tant
+    que l'admin n'a pas résolu la série amont, jamais un faux 0).
+  - `writeSeriesOutcome` (lib/sync) devient le point d'écriture UNIQUE de
+    series.official_* (C-2 intact) — appelé aussi bien par la synchro (T4)
+    que par les actions admin de résolution de série (T6, A2).
+    L'orchestration de scoring (lib/scoring/recompute.ts) n'écrit que les
+    colonnes de scoring des tables de prédiction.
+  - Convention actée NULL (en attente) vs 0 (scoré-zéro/neutralisé) — pivot
+    de l'affichage A1, renvoyé à T6.
+
 Prochaines étapes (ordre acté dans SPEC_TECHNIQUE_V0.1.md) :
-  T5 — Moteur de scoring (portage du moteur du prototype, idempotent,
-       barèmes Playoffs + Cup). PROCHAINE ÉTAPE.
   T6 — Architecture Next.js (arborescence app/, routes, server actions,
-       Realtime) + implémentation de la synchro spécifiée par T4 — 1er
-       écran/route applicatif du projet.
+       Realtime) + implémentation de la synchro spécifiée par T4 et du
+       moteur de scoring spécifié par T5 — 1er écran/route applicatif du
+       projet. PROCHAINE ÉTAPE.
   T7 — Design system (design tokens), juste avant le 1er écran joueur.
   T8 — Déploiement (Vercel, variables d'env, secrets, planificateur externe).
 ```
@@ -116,7 +135,8 @@ app/page.tsx, app/globals.css, public/, config Next/TS/ESLint standard).
 
 Cadrage/
   V1/     — specs techniques V1 validées : T1 (modèle de données), T2 (auth),
-            T3 (RLS), T4 (synchro API). T5-T8 restent à écrire (voir §2).
+            T3 (RLS), T4 (synchro API), T5 (scoring). T6-T8 restent à écrire
+            (voir §2).
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + tout le cadrage fonctionnel hérité du
             prototype (synthèse, decisions_0.2.x, BACKLOG_V1.md,
@@ -129,8 +149,8 @@ supabase/
   config.toml  — supabase link vers le projet Supabase NEUF de la V1.
 
 Aucun dossier lib/ ni aucune route applicative au-delà du scaffold — la
-synchro (client, lib/sync, routes) est spécifiée par T4 mais son code arrive
-avec T6, après le moteur de scoring T5.
+synchro (client, lib/sync, routes) et le moteur de scoring (lib/scoring) sont
+spécifiés par T4/T5 mais leur code arrive avec T6.
 ```
 
 ## 5. Conventions de travail — l'essentiel (détail complet dans JOURNAL_SESSIONS.md)

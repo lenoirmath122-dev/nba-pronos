@@ -519,3 +519,61 @@ repérage §5.1 a tranché la branche B). Voir `ETAT_ACTUEL.md` pour l'état
 détaillé et la prochaine étape (T5, scoring) ; `GAPS_OUVERTS.md` mis à jour
 (choix fournisseur/synchro et attache match→série retirés des points ouverts,
 traités par T4).
+
+---
+
+## Session du 19/07/2026 (T5 : spec technique scoring)
+
+Suite directe de la session précédente. Objectif : produire la spec technique
+T5 (moteur de scoring), conformément à l'ordre acté dans
+`SPEC_TECHNIQUE_V0.1.md`.
+
+**Spec T5 rédigée et VALIDÉE par l'utilisateur**, dans `Cadrage/V1/` :
+- **T5** — `SPEC_TECHNIQUE_SCORING_V0_1.md` (moteur de scoring, barèmes
+  Playoffs + NBA Cup).
+
+**Moteur pur acté** (`lib/scoring/engine.ts`, aucune I/O) : dérivation de
+l'agrégat de série depuis ses matchs (best-of-7 Playoffs / série dégénérée à
+1 match Cup) ; barème MATCH identique Playoffs/Cup (vainqueur 10 + bonus
+d'écart 0-5) ; barème BRACKET Playoffs (vainqueur/score exact/affiche,
+finale parfaite 340 points) et NBA Cup (vainqueur/affiche, pas de score
+exact, bracket parfait 385 points) ; barème PARIS linéaire (5/10/15/20/25)
+résolu manuellement par l'admin. Idempotence garantie (P5, colonnes
+réécrites en entier à chaque passe) et aucun point négatif (P6).
+
+**Neutralisation A2** (série annulée) traitée en cascade naturelle : la
+série annulée elle-même passe à 0 pour tous (sans pénalité) ; sur les tours
+dépendants, le moteur ne score que contre des données officielles présentes
+— tant que l'admin n'a pas résolu la série amont, l'affiche aval reste EN
+ATTENTE (NULL) et non un faux 0, sans logique de cascade spéciale à écrire.
+
+**Déclencheurs de recalcul actés** (`lib/scoring/recompute.ts`, T5 §10.1) :
+granularité `recomputeMatch` / `recomputeSeries` / `recomputeBet` /
+`recomputeCompetition`, couturée avec T4 (`/api/sync/results` appelle
+directement `recomputeMatch` dans la même transaction sur un résultat
+changé).
+
+**4 décisions actées à la validation (T5 §12)** :
+1. **§12.1** — `series.official_*` reste écrit uniquement par
+   `lib/sync.writeSeriesOutcome` (C-2 intact) ; l'orchestration T5 n'écrit
+   que les colonnes de scoring des tables de prédiction
+   (`bracket_picks`/`match_predictions`/`bets`), jamais `series`.
+2. **§12.2** — la résolution admin d'une série (A2 : `CANCELLED`, ou
+   désignation manuelle de l'équipe qui avance) passe par ce même
+   `writeSeriesOutcome`, pas d'exception à C-2 ; toujours journalisée
+   (0.2.7).
+3. **§12.3** — convention actée NULL (non scoré / en attente) vs 0
+   (scoré-zéro ou neutralisé) : aucun impact sur les totaux (coalesce à 0),
+   mais pivot de l'affichage A1 renvoyé à T6.
+4. **§12.4** — contrat T6 : l'auto-validation d'un pari pose
+   `validated_difficulty = proposed_difficulty` ; le moteur lit
+   `validated_difficulty` sans retomber sur `proposed_difficulty`, un `WON`
+   sans `validated_difficulty` étant une anomalie journalisée.
+
+**Aucune migration produite par T5** — les colonnes de scoring existent déjà
+depuis T1.
+
+**État en fin de session** : T5 validé et figé. Voir `ETAT_ACTUEL.md` pour
+l'état détaillé et la prochaine étape (T6, écrans + server actions) ;
+`GAPS_OUVERTS.md` mis à jour (les 3 points renvoyés à T5 retirés des points
+ouverts).
