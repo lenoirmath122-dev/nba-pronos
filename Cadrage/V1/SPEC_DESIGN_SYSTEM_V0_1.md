@@ -289,6 +289,10 @@ carte par défaut = `--space-4` ; gouttière de liste = `--space-3`.
 --radius-full  50%    (pastille de logo, point « live »)
 ```
 
+> **Amendement §15.2 (20/07/2026)** : ces valeurs sont **remplacées** par le
+> barème « niveau C / net » — voir §15.2. `--radius-full` est **inchangé**
+> (pastille de logo, avatars, point live — contrainte actée §14.3).
+
 ### 5.3 Élévation (le contraste d'énergie arène/lecture, P-DS3)
 
 ```text
@@ -608,6 +612,9 @@ vis-à-vis des 30 franchises** (les couleurs d'équipe vivent dans les logos sur
 pastille, pas dans le chrome). Alternatives écartées pour l'instant : bleu
 électrique, duo orange + or (l'or reste réservé au champion, §3 R-COL5).
 
+> **Amendement §15.1 (20/07/2026)** : la réserve « pour le moment / réversible »
+> ci-dessus est **levée**. L'accent orange est désormais **figé**. Voir §15.1.
+
 ### 14.2 Typographie : famille unique, chiffres tabulaires, auto-hébergée — *acté*
 
 **Acté.** Une **seule famille** open-source à chiffres tabulaires ; le contraste
@@ -632,3 +639,78 @@ en clair »).
 décision produit ou technique actée rouverte. On peut enchaîner sur le premier écran
 joueur codé (post-T7, B9 / 0.2.9 §2), qui consommera exclusivement les tokens
 sémantiques définis ici.
+
+---
+
+## 15. Amendement V0.2 — passe maquettes design (20/07/2026)
+
+> T7 a été éprouvée sur des écrans réels (maquettes HTML jetables, hors dépôt de
+> production — voir `JOURNAL_DESIGN_passe_maquettes.md`, source de cette section).
+> Ce qui suit **amende** des valeurs de token et **clôt** un point resté ouvert à
+> la validation de T7 (§14). Aucune décision produit ou technique déjà actée
+> n'est rouverte : ce sont uniquement des arbitrages de valeurs visuelles, du
+> même ordre que ceux de §14. **Aucun code de tokens n'existe encore dans le
+> dépôt** (aucun fichier CSS/tokens trouvé) — cette section reste donc de la
+> **documentation seule**, à répercuter au moment d'écrire le premier fichier de
+> tokens de production.
+
+### 15.1 Accent orange — figé (lève la réserve de §14.1)
+
+**Acté.** La réserve « retenue pour le moment, réversible » de §14.1 est
+**levée** : l'accent `--color-accent` (orange broadcast, `#FF6A2B` dark /
+`#E2551F` clair) est désormais **figé** pour la V1. **Pas de sur-accent** :
+aucune deuxième teinte d'accent n'est introduite à côté de l'orange (l'or reste
+réservé au champion, R-COL5 ; le bleu-froid de tendance §15.4 n'est PAS un
+accent, voir plus bas).
+
+### 15.2 Rayons — barème « niveau C / net »
+
+**Acté.** Remplace les valeurs de §5.2 :
+
+```text
+--radius-lg    4px    (cartes de match / bracket — registre arène)
+--radius-md    3px    (cartes de lecture, champs)
+--radius-sm    2px    (tags, badges — valeur générale)
+Puces (tri du classement / chips)  4px
+Badges (EN DIRECT, correction)     3px
+```
+
+**Inchangé** : `--radius-full` (cercle plein) reste sur la pastille de logo,
+les avatars et le point live — contrainte actée §14.3, non rouverte.
+`--radius-pill` (puces de tri, badge EN DIRECT en forme de pastille) n'est pas
+concerné par ce barème : ce sont des formes en cercle/pilule, pas des coins
+arrondis « nets ».
+
+### 15.3 Biseau — écarté
+
+**Tranché.** L'option « biseau » (chanfrein sur les moments forts — carte de
+match, bracket, champion) a été essayée sur les maquettes et **n'est pas
+retenue**. Consigné ici pour qu'elle ne resurgisse pas comme point ouvert :
+l'élévation (§5.3) et le rayon (§15.2) restent les seuls leviers de relief du
+registre arène.
+
+### 15.4 Token de tendance « forme » — `--color-trend`
+
+**Ajouté.** Nouveau token sémantique pour l'affichage de la « forme récente »
+(0.2.6 §5 / 0.2.9 §6) quand elle est rendue par une couleur (ex. flèche/liseré
+de tendance) :
+
+```text
+--color-trend  = #9FC6E0   (bleu-froid neutre)
+```
+
+**Règle d'usage (R-COL7, nouvelle)** : `--color-trend` est **strictement
+réservé** à la tendance de forme. Le vert (`--color-win`) et le rouge
+(`--color-loss`) restent **réservés aux résultats** (gagné/perdu, R-COL1) : la
+forme récente ne doit **jamais** les employer, même en teinte atténuée — évite
+toute confusion visuelle entre « a bien pronostiqué récemment » et « a
+gagné/perdu ». Aucune valeur dark/clair distincte n'est spécifiée par cette
+passe (une seule valeur donnée) ; la vérification de contraste AA sur les deux
+fonds (§11.1) reste à faire au moment de l'intégration réelle, comme pour tout
+autre couple texte/fond.
+
+---
+
+**Amendement V0.2 acté (20/07/2026).** Statut de T7 inchangé (VALIDÉE et
+figée, §14) ; les valeurs ci-dessus sont la référence à jour pour §5.2/§14.1 et
+s'appliquent au premier fichier de tokens de production qui sera écrit.

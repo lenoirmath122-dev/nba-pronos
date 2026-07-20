@@ -5,11 +5,14 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 19/07/2026 — specs T6a/T6b/T6c
-> (architecture Next.js) et T7 (design system) produites et validées. La
-> série de specs techniques **T1 → T7 est désormais entièrement bouclée**.
-> Ce fichier ne décrit plus l'état du prototype (`nba-pronos-proto`, dépôt
-> séparé, intact en référence, D1) mais celui du dépôt V1 (`nba-pronos`).
+> Dernière mise à jour : session du 19/07/2026 (suite) — démarrage réel du CODE,
+> post-T7. La série de specs T1 → T7 reste entièrement bouclée et validée
+> (inchangée depuis la mise à jour précédente). Premier code applicatif écrit :
+> les 3 clients Supabase, le proxy (garde d'authentification), et l'auth
+> fonctionnelle (login + signup), vérifiés en conditions réelles (build +
+> serveur dev). Un bug de conception a été trouvé dans T6a §3 au premier
+> contact avec le code réel (conflit de route `/leaderboard`) et corrigé avec
+> l'utilisateur — détail en §2 et dans `JOURNAL_SESSIONS.md`.
 
 ---
 
@@ -17,127 +20,116 @@
 
 ```text
 Stack       : Next.js 16.2.10 (Turbopack, App Router, TypeScript) + Supabase
-              (Postgres).
+              (Postgres). Next.js 16 a des ruptures par rapport aux
+              conventions plus anciennes (AGENTS.md) — vérifié dans
+              node_modules/next/dist/docs/ avant chaque brique de code
+              nouvelle (ex. middleware.ts renommé proxy.ts, cookies()
+              asynchrone).
 Dépôt local : C:\dev\nba-pronos (sorti de OneDrive) — dépôt Git NEUF, projet
               Supabase NEUF (D1, session du 17/07/2026), distinct du
               prototype (`nba-pronos-proto`), qui reste intact et inchangé en
               référence.
 Auth        : Supabase Auth (email + mot de passe), pont École A vers
-              public.users via trigger SQL (T2) — voir §3.
+              public.users via trigger SQL (T2) — voir §3. Flux d'inscription
+              + connexion désormais CODÉS et vérifiés (§2).
 RLS         : ACTIVE sur les 15 tables publiques, testée de bout en bout (T3).
 ```
 
 ## 2. Avancement
 
 ```text
-Phase V1 — LA SÉRIE COMPLÈTE DE SPECS TECHNIQUES T1 → T7 EST VALIDÉE. Le
-socle de données (modèle + auth + RLS) est posé ET codé (§3). Tout le reste
-— synchro API, moteur de scoring, écrans, server actions, Realtime, design
-tokens — est intégralement SPÉCIFIÉ mais PAS ENCORE CODÉ. AUCUN écran, AUCUNE
-route applicative au-delà du scaffold Next.js par défaut n'existe encore
-dans ce dépôt.
+Phase V1 — la série de specs techniques T1 → T7 est VALIDÉE (inchangée cette
+session, hormis un correctif de forme sur T6a — voir plus bas). Le socle de
+données (modèle + auth + RLS) est posé et codé (§3). L'IMPLÉMENTATION DES
+ÉCRANS A COMMENCÉ (§2.1) : plomberie Supabase + auth fonctionnelle en place et
+vérifiées ; aucun écran joueur (Accueil, Jouer, Classement, Profil, Admin)
+n'existe encore.
+```
 
-Spécifications techniques V1 produites et VALIDÉES, dans `Cadrage/V1/` :
-  T1  — SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md
-  T2  — SPEC_TECHNIQUE_AUTH_V0.1.md
-  T3  — SPEC_TECHNIQUE_RLS_V0.1.md
-  T4  — SPEC_TECHNIQUE_SYNCHRO_V0.1.md (synchro API Highlightly)
-  T5  — SPEC_TECHNIQUE_SCORING_V0_1.md (moteur de scoring, barèmes Playoffs +
-        NBA Cup)
-  T6a — SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md (arbre app/, route
-        groups, stratégie de données, frontière d'écriture)
-  T6b — SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md (sealDeadlines, server
-        actions joueur + garde-fou C2, actions admin, audit_logs)
-  T6c — SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_c.md (Realtime en surcouche +
-        rendu de tous les états actés)
-  T7  — SPEC_DESIGN_SYSTEM_V0_1.md (design tokens : palette, typo,
-        espacements, composants)
+**Passe design maquettes (session du 20/07/2026)** : T7 a été éprouvée sur des
+écrans réels via des maquettes HTML jetables, hors dépôt de production.
+Journal dédié : `Cadrage/V1/JOURNAL_DESIGN_passe_maquettes.md`. Cette passe a
+produit un **amendement V0.2** de `SPEC_DESIGN_SYSTEM_V0_1.md` (§15 : accent
+figé, barème de rayons « niveau C / net », biseau écarté, nouveau token
+`--color-trend`) — amendements **en attente d'application au code** : aucun
+token de production n'existe encore, aucun écran n'a été codé ou modifié par
+cette passe. Le seul code applicatif reste celui décrit ci-dessous
+(inchangé). Le prochain écran codé (§2.3) devra partir des tokens amendés.
 
-4 migrations écrites à partir de T1/T2/T3, appliquées et testées (détail §3).
-T4, T5, T6a, T6b, T6c et T7 ne produisent AUCUNE migration (tables, colonnes
-et policies déjà posées par T1/T3 ; le seul correctif de policy évoqué par
-T6b §9.1 — bracket éditable même validé — est déjà porté par la migration #3
-existante, vérifié).
+### 2.1 Ce qui est CODÉ et VÉRIFIÉ cette session
 
-Décisions synchro actées par T4 (implémentation à venir) :
-  - Secret partagé : routes /api/sync/* et /api/heartbeat authentifiées par
-    Bearer + variable d'env SYNC_SECRET.
-  - Logos d'équipes téléchargés au sync /teams et hébergés dans un bucket
-    Supabase Storage dédié (public en lecture) — pas de hotlink externe.
-  - 30 mappings TEAM confirmés automatiquement, aucune revue admin nécessaire.
-  - Horizon de la synchro /schedule : 4 jours (3 j de fenêtre de pronos + 1 j
-    de marge).
-  - Signal de recalcul : appel direct de recomputeMatch depuis lib/sync
-    (transactionnel), après sealDeadlines (T6b §2, voir ci-dessous).
-  - Attache match → série : BRANCHE B — structure créée par l'admin, matchs
-    rattachés par heuristique (paire d'équipes + tour + fenêtre de dates),
-    confirmés par l'admin.
-  - Publication Realtime : matches ET series (resserré par T6c §14.2, voir
-    ci-dessous) — activation DB à faire au déploiement (T8).
+```text
+.env.local (hors dépôt, déjà couvert par .gitignore) : URL + anon key +
+  service_role key du projet Supabase V1 (saisies par l'utilisateur
+  directement dans l'éditeur, jamais collées dans le chat) ; SYNC_SECRET
+  généré côté Claude (crypto.randomBytes(32), 64 caractères hex).
 
-Décisions scoring actées par T5 (implémentation à venir) :
-  - Moteur pur (lib/scoring/engine.ts, aucune I/O) : dérivation de l'agrégat
-    de série depuis ses matchs, barème MATCH (10 + bonus d'écart), barème
-    BRACKET Playoffs (vainqueur/score exact/affiche) et NBA Cup (vainqueur/
-    affiche), barème PARIS linéaire (5/10/15/20/25) résolu par l'admin.
-  - Neutralisation A2 (série annulée) : 0 pour tous sur la série elle-même,
-    cascade naturelle sur les tours dépendants.
-  - `writeSeriesOutcome` (lib/sync) = point d'écriture UNIQUE de
-    series.official_* (C-2 intact) — appelé par la synchro (T4) et par les
-    actions admin de résolution de série (T6b §5.5, A2).
-  - Convention actée NULL (en attente) vs 0 (scoré-zéro/neutralisé) —
-    déclinée en rendu à 3 cas par T6c §3 (« - » / « 0 » / « en attente »).
+Paquets installés : @supabase/ssr, @supabase/supabase-js, server-only.
 
-Décisions architecture Next.js actées par T6a/T6b/T6c (implémentation à venir) :
-  - Stratégie de données : chaque écran = composant SERVEUR lisant via la
-    session utilisateur ; la RLS (T3) est seule autorité de ce qui est reçu,
-    le composant ne choisit que la mise en forme. Realtime en pure surcouche
-    de l'état local client (jamais de revalidatePath déclenché par Realtime).
-  - 3 clients Supabase (browser / server-session / privilégié service_role,
-    ce dernier isolé dans un module server-only) — matérialisation de P2.
-  - 3 route groups : (public) nav réduite, (app) 4 onglets (session requise),
-    (admin) hub (session + is_admin()). Classement et bracket global
-    partagent un seul module de lecture + un seul composant de rendu entre
-    (public) et (app) (T6a §8) — aucune duplication.
-  - Frontière d'écriture Option A : catégorie A = server action joueur en
-    session (RLS garde-fou) ; catégorie B = server action admin-système
-    (re-vérifie is_admin(), appelle un module privilégié pour
-    recompute/writeSeriesOutcome) ; catégorie C = routes /api/sync/*
-    inchangées (T4).
-  - `sealDeadlines` (T6b §2) : scellage de deadline idempotent, exécuté en
-    tête de /api/sync/results, sans coût API — condition d'entrée du
-    scoring/de la visibilité pour les brouillons complets jamais basculés.
-  - Garde-fou C2 étendu à la navigation interne App Router (en plus de
-    beforeunload).
-  - `LOCKED` (pronos match) confirmé état implicite, jamais écrit.
-  - Realtime scopé à matches/series uniquement (pas match_predictions/bets/
-    brackets/user_scores) — la révélation des pronos d'autrui suit le rendu
-    serveur, jamais un poussé en direct (T6c §14.1, acté).
-  - Rendu de tous les états UX déjà actés fonctionnellement mais jamais
-    implémentés : convention A1 à 3 cas, paris annulés barrés/grisés,
-    marquage public de correction, joueurs absents/inactifs, barre « toi »
-    (>20 joueurs), bascule bracket résumé/arbre, tendances %/brut par série,
-    classement (puces de tri, Total et rang toujours sur Total).
+lib/supabase/{browser,server,service}.ts (T6a §2.4) : les 3 clients —
+  getBrowserClient (anon, navigateur), getServerClient (anon + JWT cookies,
+  ASYNC — correctif post-validation, cookies() est asynchrone en Next.js
+  15/16), getServiceClient (service_role, module server-only, garde de build
+  contre toute fuite côté navigateur).
 
-Décisions design system actées par T7 (implémentation à venir) :
-  - Token-first, DARK par défaut, CLAIR = override de la même couche
-    sémantique, deux registres d'énergie (ARÈNE / LECTURE).
-  - Accent = orange broadcast (réversible, confiné aux tokens sémantiques).
-  - Typographie : une seule famille open-source à chiffres tabulaires,
-    auto-hébergée (extension de B4 « pas de hotlink »).
-  - Pastille de logo neutre CONSTANTE hors thème (seule exception à
-    l'override de thème).
-  - Palette, typo, espacements/rayons/élévation, tokens du flash B7, badges,
-    puces de tri, états spéciaux, accessibilité (WCAG AA, cibles ≥44px)
-    entièrement posés.
+proxy.ts (racine du repo) : garde d'AUTHENTIFICATION (T6a §4.1) — zones
+  protégées /home, /play, /profile (app), /admin (admin) → redirigées vers
+  /login sans session ; /login et /signup → redirigées vers /home AVEC
+  session. Utilise supabase.auth.getUser() (revalidé serveur, pas
+  getSession()). Nommé proxy.ts et pas middleware.ts : renommage Next.js 16
+  (AGENTS.md), comportement strictement identique.
 
-Prochaine étape (ordre acté dans SPEC_TECHNIQUE_V0.1.md, désormais post-cadrage) :
-  IMPLÉMENTATION — le 1er écran joueur codé (post-T7, B9/0.2.9 §2), qui
-    consommera l'arbre/les server actions/le Realtime de T6a/T6b/T6c et les
-    tokens visuels de T7. C'est le premier code applicatif du projet
-    au-delà du socle de données (§3). PROCHAINE ÉTAPE.
-  T8 — Déploiement (Vercel, variables d'env, secrets, configuration du
-    planificateur externe pour /api/sync/* et /api/heartbeat).
+lib/auth/actions.ts + components/auth/{LoginForm,SignupForm}.tsx +
+  app/(public)/{layout,login/page,signup/page}.tsx : flux complet de
+  connexion et d'inscription (T2 §4) — vérif serveur du code compétition
+  (verify_join_code RPC) puis du pseudo libre AVANT tout signUp, création de
+  session, redirection /home. Formulaires minimalistes (pas encore les
+  tokens visuels T7 — aucun écran n'est encore stylé selon le design system).
+
+Vérifié en conditions réelles (build de prod + serveur dev, requêtes HTTP
+  réelles) : /login et /signup rendent 200 avec les bons champs de
+  formulaire ; /home, /play, /admin redirigent 307 vers /login sans session
+  (garde proxy fonctionnelle) ; les assets statiques (favicon, etc.) ne sont
+  pas bloqués par le matcher du proxy. `tsc --noEmit` et `eslint .` propres,
+  `next build` réussi.
+
+Pas encore vérifié : le flux d'inscription/connexion RÉEL contre la base
+  Supabase (code compétition existant, création de compte bout en bout) —
+  aucune compétition n'existe encore en base (§3), donc verify_join_code
+  renverrait NULL pour l'instant. À tester dès qu'une compétition + son
+  join_code existeront.
+```
+
+### 2.2 Correctif de conception trouvé et tranché cette session (T6a §3)
+
+```text
+L'arbre app/ validé par T6a plaçait leaderboard/page.tsx (et bracket/page.tsx)
+à la fois dans (public)/ et dans (app)/ — les route groups étant invisibles
+dans l'URL, les deux fichiers auraient résolu la MÊME route /leaderboard :
+erreur de build Next.js documentée (« Conflicting paths »), jamais testée
+avant le codage puisque T6a n'avait produit aucun code. Tranché avec
+l'utilisateur (AskUserQuestion) : route physique UNIQUE, hors des deux route
+groups (app/leaderboard/page.tsx, app/bracket/page.tsx — PAS ENCORE CODÉES),
+qui choisira elle-même la nav (réduite vs 4 onglets) selon la présence d'une
+session. Aucune règle de lecture/RLS/rendu déjà actée n'est modifiée.
+SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md corrigé en conséquence (§3, §3.2,
+§4.1, §7 — correctifs marqués explicitement « post-validation »). 2 autres
+correctifs mineurs du même ordre : middleware.ts → proxy.ts (Next.js 16),
+getServerClient() rendu async (cookies() asynchrone).
+```
+
+### 2.3 Prochaine étape
+
+```text
+IMPLÉMENTATION — l'écran Accueil (app/(app)/home/page.tsx, 0.2.9 §3 : bloc
+  « À traiter » trié par urgence + « Ça vient de tomber ») : le premier VRAI
+  écran joueur, celui visé depuis le départ par « 1er écran joueur codé »
+  (post-T7, B9/0.2.9 §2). Nécessite au passage app/(app)/layout.tsx (nav 4
+  onglets, T6a §3.1).
+Ensuite, dans l'ordre déjà acté : app/leaderboard + app/bracket (route
+  unique corrigée §2.2), puis le reste du hub Jouer (matchs, bracket
+  personnel, paris, mes pronos), puis les écrans admin, puis T8
+  (déploiement).
 ```
 
 ## 3. État actuel de la base de données
@@ -176,22 +168,45 @@ sur les pronos match, verrouillage à l'heure du match, écritures illégales
 toutes refusées. Tout conforme.
 
 Base VIDE de données opérationnelles (aucune compétition, aucun utilisateur
-créé) — normal, aucun écran d'inscription ni d'administration n'existe
-encore.
+créé) — normal, aucun écran d'inscription ni d'administration n'existait
+avant cette session ; l'inscription est maintenant CODÉE (§2.1) mais ne peut
+pas encore être testée bout en bout faute de compétition existante.
 ```
 
 ## 4. Fichiers du projet — carte rapide
 
 ```text
-Scaffold par défaut de `create-next-app`, non modifié depuis (app/layout.tsx,
-app/page.tsx, app/globals.css, public/, config Next/TS/ESLint standard).
+app/
+  layout.tsx, globals.css, favicon.ico, page.tsx — scaffold create-next-app,
+    non modifiés (page.tsx reste la page par défaut, hors périmètre de cette
+    session).
+  (public)/
+    layout.tsx        — nav réduite (Classement · Bracket · Se connecter).
+    login/page.tsx     — connexion, CODÉ + vérifié.
+    signup/page.tsx    — inscription, CODÉ + vérifié.
+    reset-password/    — dossier créé, PAGE PAS ENCORE ÉCRITE (T2 §8).
+  (app)/ et (admin)/   — PAS ENCORE CRÉÉS (prochaine étape : (app)/home, §2.3).
+
+proxy.ts               — garde d'authentification (T6a §4.1, corrigé §2.2). CODÉ.
+
+lib/
+  supabase/{browser,server,service}.ts — les 3 clients (T6a §2.4). CODÉ.
+  auth/actions.ts                      — login/signup/logout (T2 §4). CODÉ.
+  queries/, scoring/, sync/            — PAS ENCORE CRÉÉS.
+
+components/
+  auth/{LoginForm,SignupForm}.tsx — formulaires minimalistes, PAS ENCORE
+    stylés selon T7 (aucun token visuel appliqué nulle part dans le code
+    pour l'instant).
 
 Cadrage/
   V1/     — specs techniques V1 validées : T1 (modèle de données), T2 (auth),
             T3 (RLS), T4 (synchro API), T5 (scoring), T6a/T6b/T6c
-            (architecture Next.js : arbre, écritures, Realtime/rendu), T7
-            (design system). Série T1→T7 complète, plus rien à écrire côté
-            cadrage technique avant le codage des écrans.
+            (architecture Next.js : arbre, écritures, Realtime/rendu — T6a
+            corrigée cette session, §2.2), T7 (design system). Série T1→T7
+            complète, plus rien à écrire côté cadrage technique avant le
+            codage des écrans (les correctifs de §2.2 sont des corrections de
+            forme post-validation, pas une réouverture de décisions de fond).
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + tout le cadrage fonctionnel hérité du
             prototype (synthèse, decisions_0.2.x, BACKLOG_V1.md,
@@ -202,12 +217,6 @@ Cadrage/
 supabase/
   migrations/  — 4 migrations versionnées, voir §3.
   config.toml  — supabase link vers le projet Supabase NEUF de la V1.
-
-Aucun dossier lib/ ni aucune route applicative au-delà du scaffold — la
-synchro (client, lib/sync dont sealDeadlines), le moteur de scoring
-(lib/scoring), l'arbre app/ (route groups, server actions), le Realtime et
-les design tokens sont désormais tous SPÉCIFIÉS (T4/T5/T6a/T6b/T6c/T7) mais
-leur code reste entièrement à écrire.
 ```
 
 ## 5. Conventions de travail — l'essentiel (détail complet dans JOURNAL_SESSIONS.md)
@@ -229,8 +238,16 @@ leur code reste entièrement à écrire.
 - Une spec technique validée doit être committée AU MOMENT de sa validation,
   pas seulement écrite sur disque — un oubli s'est produit deux fois (T4,
   puis T6a/T6b/T6c/T7) et rattrapé lors d'une resynchronisation de suivi
-  ultérieure ; à surveiller pour les prochaines specs (aucune n'est prévue
-  après T7, mais la vigilance vaut aussi pour les commits de CODE à venir).
+  ultérieure ; vaut aussi pour les commits de CODE désormais en cours — à
+  vérifier avant de considérer une session terminée.
+- Clés/secrets API : jamais collés en clair dans le chat (2 incidents avant
+  cette session, cf. JOURNAL_SESSIONS.md 17/07 et 18/07) — l'utilisateur les
+  saisit directement dans les fichiers (.env.local) via l'éditeur ; suivi
+  cette session sans incident.
+- Avant d'écrire du code Next.js, vérifier node_modules/next/dist/docs/ pour
+  les ruptures de convention propres à cette version (AGENTS.md) — a permis
+  de détecter le renommage middleware→proxy et l'asynchronicité de cookies()
+  avant qu'ils ne cassent le build, plutôt qu'après.
 ```
 
 ## 6. Config à faire au déploiement — pas encore faite
@@ -259,6 +276,22 @@ leur code reste entièrement à écrire.
   anon/non authentifiées en amont) — sinon des opérations légitimes
   d'administration système (comme le seed du 1er admin) sont bloquées à
   tort. Trouvé en jouant le plan de test RLS T3 §7 (migration #4).
+
+- Next.js 16 renomme middleware.ts en proxy.ts (export nommé `proxy` au lieu
+  de `middleware`) — comportement identique, mais un fichier middleware.ts
+  serait aujourd'hui silencieusement ignoré (pas d'erreur, juste aucune
+  garde appliquée). Toujours vérifier node_modules/next/dist/docs/ avant
+  d'écrire un fichier dont le nom fait partie des conventions Next.js.
+
+- cookies() de next/headers est asynchrone depuis Next.js 15/16 : toute
+  fonction qui l'utilise (dont getServerClient()) doit être async, contraire
+  à une signature synchrone qui semblerait naturelle en lisant seulement T6a.
+
+- Route groups Next.js : deux fichiers page.tsx dans des groupes différents
+  qui résolvent à la MÊME URL (ex. (public)/leaderboard et (app)/leaderboard)
+  font planter le build (« Conflicting paths »). Un arbre de routes avec
+  route groups doit être vérifié URL par URL, pas juste par chemin de
+  fichier — piège trouvé dans T6a §3, corrigé (§2.2 ci-dessus).
 
 Pièges génériques du prototype (Postgres/Git/PowerShell, toujours valables en
 principe) non recopiés ici pour éviter la duplication — voir l'historique du

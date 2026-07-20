@@ -1,4 +1,9 @@
-# Journal des sessions — NBA Pronos (prototype)
+# Journal des sessions — NBA Pronos
+
+> Couvre le prototype ET la V1 (bascule au commit `3e0315c`, session du
+> 18/07/2026) — un seul journal continu, pas un fichier par phase (acté
+> 19/07/2026 : on continue avec les 3 fichiers actifs plutôt que d'ouvrir un
+> journal dédié à l'implémentation).
 
 > Append-only. Chaque session ajoute une entrée à la fin, les entrées
 > précédentes ne sont jamais réécrites. Le détail fichier-par-fichier vit dans
@@ -796,3 +801,126 @@ le dépôt au-delà du scaffold `create-next-app` — toute l'implémentation
 Voir `ETAT_ACTUEL.md` pour l'état détaillé ; `GAPS_OUVERTS.md` mis à jour
 (gaps T6/T7 retirés — désormais couverts par les specs — remplacés par la
 phase de CODE post-T7 et par T8/déploiement).
+
+---
+
+## Session du 19/07/2026 (suite — démarrage de l'implémentation post-T7)
+
+Suite directe. Objectif : premier code applicatif du projet, conformément à
+la prochaine étape actée (1er écran joueur, post-T7).
+
+**`.env.local` créé** (hors dépôt, déjà couvert par `.gitignore`) : URL +
+`anon key` + `service_role key` du projet Supabase V1 (remplies par
+l'utilisateur directement dans l'éditeur, pas collées dans le chat — leçon
+retenue des 2 incidents de clé API précédents, cf. sessions du 17/07/2026 et
+18/07/2026) ; `SYNC_SECRET` généré côté Claude (`crypto.randomBytes(32)`,
+64 caractères hex).
+
+**Paquets installés** : `@supabase/ssr`, `@supabase/supabase-js`,
+`server-only`.
+
+**3 clients Supabase créés** (`lib/supabase/{browser,server,service}.ts`,
+T6a §2.4) : `getBrowserClient` (anon, navigateur), `getServerClient` (anon +
+JWT cookies, session utilisateur), `getServiceClient` (`service_role`,
+module `server-only`).
+
+**Bug de conception trouvé dans T6a §3 avant d'écrire la moindre route,
+corrigé avec l'utilisateur** : l'arbre validé plaçait `leaderboard/page.tsx`
+et `bracket/page.tsx` à la fois dans `(public)/` et dans `(app)/`. Comme les
+route groups n'apparaissent pas dans l'URL, les deux fichiers auraient
+résolu la **même route `/leaderboard`** — erreur de build Next.js
+documentée (« Conflicting paths », jamais testée avant le codage puisque
+T6a n'avait produit aucun code). **Corrigé** : route physique **unique**,
+hors des deux groupes (`app/leaderboard/page.tsx`, `app/bracket/page.tsx`),
+qui choisit elle-même la nav (réduite vs 4 onglets) selon la présence d'une
+session — aucune règle de lecture/RLS/rendu déjà actée n'est touchée, seul
+l'emplacement physique des 2 fichiers change. `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md`
+mis à jour en conséquence (§3, §3.2, §7 — correctifs marqués explicitement
+« post-validation », pas une réouverture des décisions de fond).
+
+**2 autres correctifs post-validation, mineurs, mêmes principes** (AGENTS.md :
+cette version de Next.js a des ruptures par rapport aux conventions connues,
+vérifiées dans `node_modules/next/dist/docs/` avant d'écrire du code) :
+- `middleware.ts` renommé `proxy.ts` en Next.js 16 (export nommé `proxy` au
+  lieu de `middleware`) — comportement strictement identique, seul le nom
+  change. T6a §4.1 mis à jour.
+- `cookies()` de `next/headers` est asynchrone depuis Next.js 15/16 → la
+  signature de `getServerClient()` posée par T6a §2.4 (synchrone) est
+  corrigée en `async`.
+
+**Prochaine étape immédiate** : `proxy.ts` (racine du repo) puis les pages
+`(public)/login` et `(public)/signup` (T2) — indispensables avant de pouvoir
+tester le moindre écran `(app)`.
+
+Aucune régression sur les décisions fonctionnelles ou de sécurité déjà
+actées — uniquement des corrections de forme découvertes au premier contact
+avec le code réel.
+
+---
+
+## Session du 20/07/2026 (passe design maquettes V1)
+
+Objectif : éprouver **T7** (design system) sur des écrans réels via des
+maquettes HTML jetables (hors dépôt de production, pas intégrées), avant de
+coder le 1er écran joueur. Session exclusivement décisionnelle/documentaire
+côté cadrage (aucun écran de production codé, aucune CSS de production
+écrite) — voir consolidation ci-dessous.
+
+**Écrans maquettés** : Classement (cartes mobile + tableau desktop), Matchs
+(cartes + vue repliée), Raccourci pari depuis la carte de match, Nouveau
+pari, Accueil, Bracket (Cup). Détail écran par écran, retours et retours des
+potes (à venir) : `Cadrage/V1/JOURNAL_DESIGN_passe_maquettes.md` — nouveau
+fichier, **source de cette consolidation**.
+
+**Décisions actées cette passe** (consolidées dans les fichiers de cadrage
+concernés, détail dans les diffs de la session) :
+- Amendement design system T7 → V0.2 (`SPEC_DESIGN_SYSTEM_V0_1.md` §15) :
+  accent orange **figé** (réserve « réversible » de §14.1 levée) ; barème de
+  rayons « niveau C / net » (`--radius-lg` 4px / `--radius-md` 3px /
+  `--radius-sm` 2px / puces 4px / badges 3px, `--radius-full` inchangé) ;
+  option biseau **écartée** ; nouveau token `--color-trend` (bleu-froid
+  neutre `#9FC6E0`) pour la tendance de forme, jamais vert/rouge (réservés
+  aux résultats).
+- Raccourci pari depuis la carte de match (`nba_pronos_decisions_0_2_9_ux_ui.md`
+  §12) : point d'entrée secondaire « Proposer un pari sur ce match »,
+  additif au hub Jouer (structure inchangée), distinct du CTA « Valider le
+  prono ».
+- Quota des paris personnalisés en NBA Cup précisé
+  (`nba_pronos_decisions_nba_cup_mecanique_scoring.md` §6) : 1 pari par
+  match, pas de cap « par série » (aucune série en Cup), jusqu'à 7 paris sur
+  la phase finale — note de contexte ajoutée en miroir dans
+  `nba_pronos_decisions_0_2_4_paris_personnalises.md` §2 pour éviter toute
+  lecture erronée du cap Playoffs (« 3 par série ») comme applicable en Cup.
+- Clarification (sans modification de règle) : la colonne « Bracket » du
+  classement (0.2.6 §5) vaut **aussi** pour la Cup — elle pointe sur le
+  **mini-bracket** de phase finale (`nba_cup_mecanique_scoring.md` §2-4).
+  Pas de renommage.
+
+**Points laissés ouverts par cette passe** (non tranchés, consignés dans
+`GAPS_OUVERTS.md`) : réconciliation des couleurs de statut de prono (0.2.9
+§4 vs réservation vert/or de T7 — proposée, non validée) ; forme de saisie
+de l'écart (stepper seul vs stepper + pavé numérique) ; vue par défaut de
+l'écran Matchs replié ; détail UI de l'indicateur binaire du raccourci pari ;
+gains des paris par niveau et forme de progression ; wording/placement du
+marqueur « corrigé » au classement ; séparateur visuel du Total (tableau
+desktop) ; vue B « arbre » du bracket en plein écran paysage.
+
+**Correction d'un point de contexte** : à toutes fins utiles, les **RLS** et
+l'ensemble des **specs techniques T1 → T7** étaient déjà **faites et
+validées** avant cette passe design (RLS active et testée de bout en bout
+depuis la session du 18/07/2026, T7 validée le 19/07/2026 — voir les entrées
+de journal correspondantes ci-dessus et `ETAT_ACTUEL.md`) — au cas où une
+note de cadrage antérieure périmée laisserait penser le contraire, ce n'est
+plus le cas depuis ces sessions.
+
+**Aucun code de production touché cette session** : les fichiers HTML de
+maquette sont des références visuelles jetables, non intégrées au dépôt
+applicatif ; T7 reste au statut « aucun token de production écrit », les
+valeurs ci-dessus s'appliquent au premier fichier de tokens qui sera créé.
+
+**État en fin de session** : cadrage fonctionnel et design toujours cohérents
+avec T1→T7 ; amendements consolidés dans les fichiers de décision concernés
+(diffs listés ci-dessus) ; `GAPS_OUVERTS.md` et `ETAT_ACTUEL.md` mis à jour en
+conséquence. Prochaine étape inchangée : l'écran Accueil codé (post-T7,
+`ETAT_ACTUEL.md` §2.3), qui intégrera les tokens amendés en §15 du design
+system.

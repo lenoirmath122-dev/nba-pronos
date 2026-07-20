@@ -373,3 +373,31 @@ Puis viendront les livrables consolidés :
 ```text
 Spec fonctionnelle V0.1 · Liste des points ouverts · Synthèse pour Claude Project.
 ```
+
+---
+
+## 12. Amendement — passe maquettes design (20/07/2026)
+
+> Source : `JOURNAL_DESIGN_passe_maquettes.md` §2. Amende §4 (cartes de match)
+> et §3 (hub Jouer) sans les rouvrir : ajout d'un point d'entrée, aucune
+> décision de navigation ou de workflow déjà actée n'est modifiée.
+
+Décision actée — raccourci pari depuis la carte de match :
+
+```text
+Depuis la carte de match (écran « Matchs »), un point d'entrée SECONDAIRE
+« Proposer un pari sur ce match » est ajouté.
+```
+
+Précisions :
+
+- **additif** au hub Jouer (Matchs · Bracket · Paris · Mes pronos, §3) — la
+  structure du hub **ne change pas**, l'écran « Paris » demeure l'écran de
+  gestion complet des paris personnalisés ; ce raccourci n'en est qu'un accès
+  rapide contextualisé sur un match précis ;
+- reste **visuellement distinct** du CTA « Valider le prono » de la carte
+  (§4) : ce sont deux objets différents (prono vainqueur + écart d'un côté,
+  pari personnalisé proposé de l'autre) et ne doivent pas être confondables
+  d'un coup d'œil ;
+- l'indicateur exact affiché sur ce raccourci (ex. compteur de slots restants)
+  reste un point ouvert — voir `GAPS_OUVERTS.md`.

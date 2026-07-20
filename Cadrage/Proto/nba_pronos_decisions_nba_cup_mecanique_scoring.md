@@ -115,6 +115,21 @@ Niveaux et barème inchangés (0.2.5 §8) :
 Pari perdu = 0, jamais de points négatifs — règle intangible du projet.
 ```
 
+**Amendement (20/07/2026, passe maquettes design)** — précision de quota,
+restée implicite ci-dessus :
+
+```text
+En NBA Cup : 1 pari personnalisé par match, par joueur.
+Pas de cap « par série » : aucune série n'existe dans la Cup (§2), donc le
+quota « par série » de 0.2.4 §2 (1 pari SÉRIE + 3 paris MATCH) ne s'applique
+PAS tel quel — seul le scope MATCH existe (déjà acté ci-dessus), et son
+quota se lit MATCH PAR MATCH, pas agrégé par série dégénérée.
+
+Conséquence : jusqu'à 1 pari personnalisé sur CHACUN des 7 matchs de la
+phase finale (4 quarts + 2 demies + 1 finale) — soit jusqu'à 7 paris au
+total sur toute la Cup, contre 3 par série en Playoffs.
+```
+
 ---
 
 ## 7. Résumé court

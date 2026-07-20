@@ -1,4 +1,4 @@
-# Gaps ouverts — NBA Pronos (prototype)
+# Gaps ouverts — NBA Pronos
 
 > Liste vivante. Un point retiré = un point traité (voir JOURNAL_SESSIONS.md
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
@@ -51,14 +51,16 @@
 > `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_c.md` / `SPEC_DESIGN_SYSTEM_V0_1.md`
 > et `JOURNAL_SESSIONS.md`.
 
-- **Implémentation code de la V1** (post-T7, PROCHAINE ÉTAPE) : aucun écran,
-  aucune server action, aucun moteur de synchro/scoring, aucun token CSS
-  n'existe encore dans le dépôt au-delà du scaffold `create-next-app` — tout
-  reste À CODER à partir des specs T1-T7 désormais validées (arbre `app/`
-  et frontière d'écriture T6a, corps des server actions + `sealDeadlines` +
-  actions admin T6b, Realtime + rendu des états — dont paris annulés,
-  joueurs absents, marquage de correction — T6c, tokens visuels T7).
-  Prochaine étape concrète : le 1er écran joueur codé.
+- **Implémentation code de la V1** (post-T7, EN COURS depuis la session du
+  19/07/2026 suite) : plomberie Supabase (3 clients T6a §2.4), garde
+  d'authentification (`proxy.ts`, T6a §4.1) et flux complet
+  login/signup (T2 §4) sont CODÉS et vérifiés (build + serveur dev). Encore
+  À CODER : tout écran joueur (Accueil, hub Jouer, classement/bracket
+  partagés, admin), les server actions au-delà de l'auth (T6b), le moteur de
+  synchro/scoring (T4/T5), le Realtime + rendu des états (T6c), les tokens
+  visuels (T7 — aucun écran n'est encore stylé selon le design system).
+  Prochaine étape concrète : l'écran Accueil (`app/(app)/home`, 0.2.9 §3),
+  le premier vrai écran joueur. Détail dans `ETAT_ACTUEL.md` §2.
 - **T8 — Déploiement** : configuration du planificateur externe gratuit
   (cron-job.org / GitHub Actions — fréquences des jobs `/api/sync/*` et
   `/api/heartbeat`), variables d'env et secrets côté Vercel — pas encore
@@ -76,6 +78,30 @@
   doit être construit d'une manière qui neutralise les changements de
   barème (ex. rang/points relatifs plutôt que total brut). Pas tranché,
   juste à ne pas oublier en conception si le barème change (`BACKLOG_V1.md`).
+
+## Points ouverts issus de la passe design maquettes (T7 sur écrans réels,
+## session du 20/07/2026 — voir `Cadrage/V1/JOURNAL_DESIGN_passe_maquettes.md`
+## et `JOURNAL_SESSIONS.md`)
+
+- **Couleurs de statut de prono** à réconcilier : 0.2.9 §4 avait validé
+  validé/prêt/incomplet/à faire en vert/ambre/gris/bleu, or T7 réserve
+  **vert = gagné** et **or = champion** (résultats de jeu, non des statuts de
+  saisie). Une réconciliation est **proposée** (statuts de prono recolorés
+  hors vert/ambre) mais **non validée** — à trancher avant de coder l'écran
+  Matchs.
+- **Saisie de l'écart** (0.2.3 §3) : stepper `−/+` seul, ou stepper **+
+  saisie libre au pavé numérique** ?
+- **Écran Matchs replié (accordéon)** : vue par défaut, ou bascule
+  compacte/détaillée au choix du joueur ?
+- **Entrée pari sur la carte de match** (0.2.9 §12) : l'indicateur passe de
+  `x/3` à **binaire** (cohérent avec 1 pari/match en NBA Cup) — détail exact
+  du rendu UI à acter.
+- **Gains des paris par niveau** + forme de progression (linéaire vs
+  « jackpot ») : point ouvert de 0.2.5, toujours pas tranché.
+- **Marqueur « corrigé »** au classement : wording exact + placement.
+- **Séparateur visuel du Total** (tableau classement desktop) : à trancher.
+- **Vue B « arbre » du bracket en plein écran paysage** (0.2.9 §5/§10) :
+  comportement exact toujours à faire.
 
 ## Interprétations d'implémentation actées (pas des gaps — à connaître, et à
 ## reporter dans `decisions_0.2.x` si l'utilisateur le souhaite un jour)
