@@ -709,8 +709,136 @@ passe (une seule valeur donnée) ; la vérification de contraste AA sur les deux
 fonds (§11.1) reste à faire au moment de l'intégration réelle, comme pour tout
 autre couple texte/fond.
 
+### 15.5 — Statuts de prono : rampe d'engagement neutre *(clôt la collision 0.2.9 §4 ↔ T7)*
+
+**Acté.** Les statuts de prono (`à faire` / `incomplet` / `prêt` / `validé`)
+sont des états de **progression**, pas des résultats : ils sont recolorés
+**hors vert et hors or**. Encodage principal par **poids de remplissage +
+icône** (esprit R-COL3, « la forme résout la collision ») ; **seul `validé`
+porte une teinte**, l'**accent** (valider = action accomplie, R-COL4).
+
+Traitement (via tokens existants, aucune couleur nouvelle) :
+
+```text
+à faire    contour POINTILLÉ 1px var(--border-strong) · texte var(--text-muted) · fond transparent · icône cercle vide
+incomplet  contour PLEIN 1px var(--border-subtle)     · texte var(--text-muted) · fond transparent · icône demi-cercle
+prêt       fond var(--surface-raised) + ANNEAU accent 1px var(--accent-line) · texte var(--text-secondary) · icône flèche
+           (l'accent n'est ici qu'un FILET, pas un aplat — R-COL4)
+validé     fond var(--accent-soft) + liseré var(--accent-line) · texte var(--accent-rest) · coche ✓
+```
+
+**R-COL8 (nouvelle)** : les statuts de prono n'emploient ni `--color-win`, ni
+`--color-loss`, ni `--color-champion`. Seul `validé` prend une teinte
+(l'accent). Les jetons `--color-status-*` introduits pour cette rampe **ne
+rouvrent pas §15.1** (« pas de sur-accent ») : c'est une famille sémantique
+distincte, comme win/loss/champion/trend (§15.4).
+
+**Corollaire** : tout **avertissement ou état neutre** (ex. bandeau « brouillon
+partiel = absence = 0 pt ») n'emprunte **pas** l'or (réservé champion, R-COL5)
+→ fond `var(--surface-inset)`, bordure `var(--border-subtle)`, icône en
+`var(--accent-rest)`.
+
+> Alternative documentée (non retenue) : teinte dédiée `prêt` en indigo
+> `#7C83E8` (famille inutilisée, ≠ trend `#9FC6E0` §15.4, ≠ accent), à
+> ressortir seulement si la distinction `prêt`/`incomplet` manque de
+> lisibilité sur mobile. La **variante neutre ci-dessus est le choix acté**
+> de cette passe.
+
+### 15.6 — Voie A : dark raffiné *(valeurs de tokens, rien de figé rouvert)*
+
+**Acté.** Le rendu « moins brut » vient de valeurs de surfaces/bordures/
+élévation, **pas** d'un adoucissement des rayons (nets conservés, §15.2).
+Valeurs de référence — thème **DARK** :
+
+```text
+Surfaces      --surface-base   #0E1118   (base réchauffée, décollée du quasi-noir)
+              --surface-raised #161B25   (carte de lecture, plate)
+              --surface-inset  #10141C   (champs, valeurs, bandeaux neutres)
+              --arena-top      #1C2432 / --arena-bot #171D28   (dégradé carte arène, éclairée du haut)
+Bordures      --border-hair    rgba(255,255,255,.06)   (filet à peine visible)
+(voile blanc) --border-subtle  rgba(255,255,255,.09)
+              --border-strong  rgba(255,255,255,.15)
+              --edge-lit       rgba(255,255,255,.10)   (bord supérieur lumineux des cartes arène)
+Texte         --text-primary   #F2F5FA
+              --text-secondary #B7C0CE   (un cran plus clair/chaud qu'avant)
+              --text-muted     #7C8798
+Accent        --accent         #FF6A2B   (pic, INCHANGÉ §15.1)
+              --accent-rest    #FF8A54   (accent « au repos » — MÊME famille, PAS un 2e accent)
+              --accent-soft    color-mix(in srgb, var(--accent) 16%, transparent)
+              --accent-line    color-mix(in srgb, var(--accent) 55%, transparent)
+Élévation     --shadow-raised  0 1px 2px rgba(0,0,0,.35)
+              --shadow-arena   0 10px 28px rgba(0,0,0,.45)
+```
+
+Thème **CLAIR** (override, P-DS2) :
+
+```text
+--surface-base #F4F6FA · --surface-raised #FFFFFF · --surface-inset #EEF1F7 · --arena-top/-bot #FFFFFF
+--border-hair rgba(16,20,29,.06) · --border-subtle rgba(16,20,29,.10) · --border-strong rgba(16,20,29,.16) · --edge-lit rgba(16,20,29,.05)
+--text-primary #10141D · --text-secondary #3A4557 · --text-muted #5E6B7D
+--accent #E2551F · --accent-rest #C0450F · --on-accent #FFFFFF · --accent-soft 12% · --accent-line 45%
+--win #1E9E58 · --loss #C7443F
+--shadow-raised 0 1px 2px rgba(16,20,29,.08) · --shadow-arena 0 8px 22px rgba(16,20,29,.12)
+```
+
+**Gradients de profondeur (parcimonieux, réservés aux moments forts —
+P-DS3 / R-ELV1)** :
+- fond d'application : voile d'accent radial très ténu en haut
+  (`rgba(255,106,43,.055)`) + dégradé vertical léger (`#12161F → base →
+  #0B0E14`) ;
+- carte **arène** (moment actif) : dégradé `linear-gradient(180deg,
+  var(--arena-top), var(--arena-bot))` + bord supérieur `var(--edge-lit)` +
+  `--shadow-arena`. Les cartes de lecture restent plates (`--shadow-raised`).
+
+> ⚠️ à confirmer : les noms de token ci-dessus (§15.5–§15.6 : `--surface-*`,
+> `--border-*`, `--text-*`, `--accent-*`, `--shadow-*`…) reprennent la
+> nomenclature courte des maquettes HTML de cette passe, pas le préfixe par
+> famille imposé par P-DS7 (`--color-surface-*`, `--color-border-*`,
+> `--color-text-*`…). Cette section documente les **valeurs et règles**
+> actées ; la réconciliation des **noms** avec P-DS7 (probablement un simple
+> renommage `--x` → `--color-x`) reste à faire explicitement au moment
+> d'écrire le premier fichier de tokens de production, pas ici.
+
+### 15.7 — Bandeau de section « parquet » *(élément NET-NEW, non spécifié en T7)*
+
+**Acté (nouveau).** Le titre de section peut être posé sur un **bandeau
+texturé** de type parquet NBA (registre broadcast/arène).
+
+```text
+--hero-image   url(<asset interne>)   ← une seule variable ; changer la photo = éditer cette ligne, rien d'autre
+```
+
+Traitement à conserver quel que soit l'asset : image en `cover`, **foncée +
+désaturée** (`filter: saturate(.85) brightness(.82)` → texture, pas photo
+criarde), **voile dégradé** vers le bas (`linear-gradient(180deg,
+rgba(11,14,20,.12), rgba(11,14,20,.52), rgba(11,14,20,.92))`), **ombre
+portée** sur le titre (`text-shadow: 0 2px 12px rgba(0,0,0,.65)`).
+
+**Constante hors thème** : la bande reste **SOMBRE dans dark ET clair** (même
+principe que la pastille de logo, §14.3) ; seul le **corps** de l'écran
+bascule. Les textes du bandeau (titre, sous-titre) sont donc figés en clair,
+indépendants des tokens de thème.
+
+**Exigences d'asset (B4)** : image **licenciée ou possédée**, **sans
+watermark**, **hébergée en interne** (pas de hotlink externe). Point focal
+réglable via `background-position`. Le base64 présent dans les maquettes est
+un **placeholder de visualisation** — ne pas l'introduire dans le dépôt.
+
+### 15.8 — Saisie du vainqueur : tap direct sur l'équipe
+
+**Acté.** Le vainqueur se choisit en **tapant l'équipe** (logo/nom) plutôt que
+via des boutons segmentés séparés : l'affrontement **devient** le sélecteur.
+État sélectionné = anneau d'accent autour de la pastille + fond
+`var(--accent-soft)` + coche, l'autre équipe estompée. Cohérent avec le geste
+**déjà en place sur `ecran-bracket`** (`.pick.sel`). Sémantique
+`radiogroup`/`radio`, cible tactile ≥ 44px (§11.3).
+
+> Ne change **aucune règle produit** : le prono reste **vainqueur + écart**
+> (0.2.3). Seule la **modalité de saisie** du vainqueur évolue.
+
 ---
 
-**Amendement V0.2 acté (20/07/2026).** Statut de T7 inchangé (VALIDÉE et
-figée, §14) ; les valeurs ci-dessus sont la référence à jour pour §5.2/§14.1 et
-s'appliquent au premier fichier de tokens de production qui sera écrit.
+**Amendement V0.2 acté (20/07/2026, complété §15.5–§15.8).** Statut de T7
+inchangé (VALIDÉE et figée, §14) ; les valeurs ci-dessus sont la référence à
+jour pour §5.2/§14.1 et s'appliquent au premier fichier de tokens de
+production qui sera écrit.
