@@ -33,7 +33,7 @@
 1. Stratégie de données : rendu serveur, RLS seule autorité, Realtime en surcouche → §2
 2. Les 3 clients Supabase (browser / server-session / privilégié)                  → §2.4
 3. Route groups & arbre app/ mappés aux écrans 0.2.9                               → §3
-4. Protection des routes (middleware, gardes de zone, DISABLED)                     → §4
+4. Protection des routes (proxy, gardes de zone, DISABLED)                          → §4
 5. Frontière d'écriture (Option A) : joueur / admin-système / système-externe       → §5
 6. writeSeriesOutcome : point d'écriture unique de series.official_* (C-2/T5 §12)   → §5.2
 7. Ce que T6a ne dit pas (→ T6b, T6c)                                              → §6
@@ -116,7 +116,9 @@ export function getBrowserClient(): SupabaseClient;
 // 2. Serveur en SESSION UTILISATEUR (composants serveur + server actions joueur/
 //    admin non privilégiées) : clé anon + JWT lu des cookies. La RLS s'applique.
 //    → createServerClient (@supabase/ssr), lié aux cookies de la requête
-export function getServerClient(): SupabaseClient;
+//    Correctif post-validation : `cookies()` est asynchrone depuis Next.js 15/16
+//    (AGENTS.md) → signature ASYNC, pas synchrone comme écrit initialement.
+export async function getServerClient(): Promise<SupabaseClient>;
 
 // 3. Serveur PRIVILÉGIÉ (service_role, CONTOURNE la RLS). Réservé à :
 //    - les routes /api/sync/* et /api/heartbeat (planificateur externe, T4) ;
@@ -146,18 +148,33 @@ Trois **route groups** (parenthèses → n'affectent pas l'URL), chacun avec son
 
 Arbre (les écrans viennent de 0.2.9 ; les libellés d'URL sont en anglais — P11) :
 
+> **Correctif post-validation (session du 19/07/2026, implémentation)** : l'arbre
+> original plaçait `leaderboard/page.tsx` (et `bracket/page.tsx`) à la fois dans
+> `(public)/` et dans `(app)/`. Les route groups étant invisibles dans l'URL, les
+> deux fichiers auraient résolu la **même route `/leaderboard`** — erreur de build
+> Next.js documentée (« Conflicting paths », route-groups.md), jamais testée avant
+> le codage puisque T6a n'avait produit aucun code. Corrigé en **route physique
+> unique, hors des deux groupes** (`app/leaderboard/page.tsx`, `app/bracket/page.tsx`)
+> — la nav (réduite vs 4 onglets) est choisie côté serveur selon la présence d'une
+> session, à l'intérieur de cette route unique. Aucune règle de lecture/RLS/rendu
+> déjà actée n'est modifiée par ce correctif : seul l'emplacement physique de 2
+> fichiers change, conformément à l'esprit déjà posé par §3.2 (un seul module de
+> lecture + un seul composant de rendu, pas de duplication) — poussé jusqu'à une
+> seule route au lieu de deux enveloppes.
+
 ```text
 app/
 ├─ layout.tsx                      # racine : thème (0.2.9 §2, DARK défaut), providers
-├─ middleware.ts                   # (à la racine du repo) session + gardes (§4)
+├─ proxy.ts                        # (à la racine du repo) session + gardes (§4) — AGENTS.md :
+│                                  # middleware.ts renommé proxy.ts en Next.js 16 (export `proxy`)
+├─ leaderboard/page.tsx            # classement, PUBLIC + connecté, route UNIQUE — voir §3.2 (corrigé)
+├─ bracket/page.tsx                # bracket global, PUBLIC + connecté, route UNIQUE — voir §3.2 (corrigé)
 │
 ├─ (public)/
 │   ├─ layout.tsx                  # nav réduite (Classement · Bracket · Se connecter)
 │   ├─ login/page.tsx              # connexion (T2)
 │   ├─ signup/page.tsx             # inscription pseudo+email+password+code (T2 §4)
-│   ├─ reset-password/page.tsx     # reset Supabase standard (T2 §8)
-│   ├─ leaderboard/page.tsx        # classement public (lecture seule) — voir §3.2
-│   └─ bracket/page.tsx            # bracket global public (après deadline) — §3.2
+│   └─ reset-password/page.tsx     # reset Supabase standard (T2 §8)
 │
 ├─ (app)/
 │   ├─ layout.tsx                  # nav 4 onglets ; garde session (§4)
@@ -165,10 +182,9 @@ app/
 │   ├─ play/
 │   │   ├─ page.tsx                # hub Jouer (pastilles « à faire » par univers)
 │   │   ├─ matches/page.tsx        # fenêtre 3 j, saisie vainqueur+écart, « Tout valider »
-│   │   ├─ bracket/page.tsx        # remplissage tour par tour + consultation
+│   │   ├─ bracket/page.tsx        # remplissage tour par tour + consultation (le MIEN, distinct du global)
 │   │   ├─ bets/page.tsx           # création de pari + « Mes paris » (annulés barrés → T6c)
 │   │   └─ my-predictions/page.tsx # « Mes pronos » : historique + en cours/verrouillés
-│   ├─ leaderboard/page.tsx        # classement (vue connectée) — §3.2
 │   └─ profile/page.tsx            # profil, préférences, thème, lien Admin si ADMIN
 │
 ├─ (admin)/
@@ -208,20 +224,23 @@ app/
 ### 3.2 Écrans publics vs connectés partagés (classement, bracket)
 
 Le classement et le bracket global existent **pour le visiteur et pour le joueur**,
-avec la **même donnée filtrée par la RLS** mais un **layout différent** (nav réduite
-vs 4 onglets). Pour éviter toute divergence :
+avec la **même donnée filtrée par la RLS** mais une **nav différente** (réduite vs
+4 onglets). Pour éviter toute divergence :
 
 ```text
 - La LECTURE vit dans un module partagé (ex. lib/queries/leaderboard.ts,
-  lib/queries/bracketOverview.ts), appelé des deux côtés avec getServerClient()
+  lib/queries/bracketOverview.ts), appelé avec getServerClient()
   (la RLS applique la session : un visiteur voit le public, un joueur voit en plus
   ses propres lignes / le drill-down autorisé).
 - Le RENDU vit dans un composant présentiel partagé (ex. components/leaderboard/*,
   components/bracket/*).
-- Les fichiers page.tsx de (public) et (app) sont des ENVELOPPES FINES qui
-  composent le même module + le même composant, sous leur layout respectif.
-=> Une seule logique de lecture et de rendu, deux points d'entrée. Pas de duplication
-   de règle, pas de risque que public et connecté divergent.
+- app/leaderboard/page.tsx et app/bracket/page.tsx sont une ROUTE PHYSIQUE UNIQUE
+  (corrigée §3, hors des deux route groups — deux fichiers y résolvant la même URL
+  auraient été une erreur de build Next.js) : ce sont des ENVELOPPES FINES qui
+  composent le même module + le même composant, et choisissent elles-mêmes la nav
+  à rendre (réduite ou 4 onglets) selon la présence d'une session.
+=> Une seule logique de lecture, de rendu ET de route. Pas de duplication de règle,
+   pas de risque que public et connecté divergent.
 ```
 
 > Le seuil « tendances en % au-delà de 10 brackets, nombre brut en dessous » (0.2.6
@@ -232,21 +251,26 @@ vs 4 onglets). Pour éviter toute divergence :
 
 ## 4. Protection des routes
 
-### 4.1 `middleware.ts` (racine)
+### 4.1 `proxy.ts` (racine)
+
+> **Correctif post-validation** : Next.js 16 déprécie `middleware.ts` au profit de
+> `proxy.ts` (export nommé `proxy`, comportement identique — AGENTS.md). Rôle et
+> logique ci-dessous inchangés, seul le nom de fichier/export diffère de T6a
+> originale.
 
 ```text
-Rôle (minimal, P1 : la RLS reste l'autorité — le middleware ne fait que router) :
+Rôle (minimal, P1 : la RLS reste l'autorité — le proxy ne fait que router) :
 1. Rafraîchir la session Supabase (lecture/rotation des cookies via @supabase/ssr).
 2. Rediriger selon la ZONE demandée :
    - route (app)/* ou (admin)/* SANS session → redirection vers /login.
    - route (public)/login|signup SI session déjà ouverte → redirection vers /home.
 3. Il NE lit PAS le rôle pour (admin) (cf. §4.2) : la garde de rôle est côté
-   layout/serveur, pas dans le middleware (is_admin() est une fonction DB, T3).
+   layout/serveur, pas dans le proxy (is_admin() est une fonction DB, T3).
 ```
 
-> Le middleware garde l'**authentification** (a-t-on une session ?), pas
+> Le proxy garde l'**authentification** (a-t-on une session ?), pas
 > l'**autorisation fine** (rôle/statut), qui reste en base (RLS + `is_admin()`).
-> Un contournement du middleware ne donne accès à **aucune donnée** : la RLS bloque.
+> Un contournement du proxy ne donne accès à **aucune donnée** : la RLS bloque.
 
 ### 4.2 Garde de zone `(admin)`
 
@@ -371,7 +395,7 @@ STRUCTURE & PROTECTION
 2.  Joueur connecté sur (admin)/* → redirigé vers /home (pas de fuite d'écran).
 3.  Admin sur (admin)/* → accès au hub.
 4.  Joueur connecté sur (public)/login → redirigé vers /home.
-5.  Visiteur sur (public)/leaderboard et /bracket → rendu public correct (données
+5.  Visiteur sur /leaderboard et /bracket (route unique, corrigée §3) → rendu public correct (données
     filtrées par la RLS : aucun brouillon d'autrui, aucun bracket avant deadline).
 
 STRATÉGIE DE DONNÉES

@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# maquettes design (hors dépôt — JOURNAL_DESIGN_passe_maquettes.md §3)
+/Cadrage/DA/
+Cadrage/V1/ecran-matchs-voieA.html
