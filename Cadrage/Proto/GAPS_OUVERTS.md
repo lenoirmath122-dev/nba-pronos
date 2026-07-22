@@ -53,14 +53,25 @@
 
 - **Implémentation code de la V1** (post-T7, EN COURS depuis la session du
   19/07/2026 suite) : plomberie Supabase (3 clients T6a §2.4), garde
-  d'authentification (`proxy.ts`, T6a §4.1) et flux complet
-  login/signup (T2 §4) sont CODÉS et vérifiés (build + serveur dev). Encore
-  À CODER : tout écran joueur (Accueil, hub Jouer, classement/bracket
-  partagés, admin), les server actions au-delà de l'auth (T6b), le moteur de
-  synchro/scoring (T4/T5), le Realtime + rendu des états (T6c), les tokens
-  visuels (T7 — aucun écran n'est encore stylé selon le design system).
-  Prochaine étape concrète : l'écran Accueil (`app/(app)/home`, 0.2.9 §3),
-  le premier vrai écran joueur. Détail dans `ETAT_ACTUEL.md` §2.
+  d'authentification (`proxy.ts`, T6a §4.1), flux complet login/signup
+  (T2 §4), et désormais **l'écran Accueil complet** (`app/(app)/layout.tsx`
+  4 onglets, `app/(app)/home/page.tsx`, `lib/queries/home.ts`,
+  `components/home/*`, session du 21/07/2026 suite) sont CODÉS et vérifiés
+  (`tsc`/`eslint`/`next build` propres). C'est le **premier écran stylé aux
+  tokens** de `app/tokens.css` — le styling n'est donc plus un point ouvert
+  en soi, mais un travail à **reconduire** écran par écran. Encore À CODER :
+  hub Jouer (matchs/bracket/paris/mes pronos), classement + bracket
+  partagés, écrans admin, les server actions au-delà de l'auth (T6b), le
+  moteur de synchro/scoring (T4/T5), le Realtime + rendu des états (T6c).
+  Prochaine étape concrète : classement + bracket partagés (`app/leaderboard`,
+  `app/bracket`, T6a §3.2). Détail dans `ETAT_ACTUEL.md` §2.
+- **Petits points d'intégration des tokens** (ouverts par la consolidation du
+  21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
+  `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
+  vérifier à l'usage réel) ; `@font-face` Inter **auto-hébergée** pas encore
+  ajoutée (l'asset n'est pas fourni, `--font-ui` retombe sur `system-ui`) ;
+  asset réel du bandeau parquet (`public/brand/hero-parquet.webp`) pas encore
+  déposé (à la charge de l'utilisateur, acté 21/07/2026).
 - **T8 — Déploiement** : configuration du planificateur externe gratuit
   (cron-job.org / GitHub Actions — fréquences des jobs `/api/sync/*` et
   `/api/heartbeat`), variables d'env et secrets côté Vercel — pas encore
@@ -116,3 +127,22 @@
 - Révélation d'un prono dès `VALIDATED`, peu importe volontaire ou
   auto-validé — simplification assumée par rapport à 0.2.3 §5 (distinction
   jamais observable en pratique).
+- **Écran Accueil (session du 21/07/2026, `lib/queries/home.ts`)** :
+  - Item « À traiter » du bracket : si `competitions.bracket_deadline` est
+    NULL (deadline pas encore connue), l'item **n'apparaît pas** (rien à
+    compter à rebours). Pas tranché par la spec produit, à confirmer si ce
+    cas se présente réellement en usage (aucune compétition en base pour
+    l'instant, §3 `ETAT_ACTUEL.md`).
+  - Feed « Ça vient de tomber », item « Pari statué par l'admin » : la spec
+    citait la colonne `resolved_at` mais illustrait le rendu par le texte
+    « validé / ajusté » (qui décrit en réalité `validated_at`, un workflow
+    différent). Tranché AVEC l'utilisateur (AskUserQuestion, 21/07/2026) :
+    lecture littérale de la colonne citée → l'item correspond aux paris
+    ANNULÉS (`CANCELLED`), libellé rendu « Neutralisé ». Voir
+    `ETAT_ACTUEL.md` §7 et `JOURNAL_SESSIONS.md`.
+  - Bloc « À traiter (paris) » : la spec ne détaille pas la mécanique de
+    « slot à reproposer » côté requête. Interprété comme les paris
+    `REJECTED` dont la deadline (`bet_deadline_open`, calcul reproduit en
+    TypeScript, pas d'appel RPC) n'est pas encore passée — lecture directe
+    de 0.2.4 §6 (« refusé avant deadline → slot libéré »), pas une
+    invention. Paris `DRAFT` (brouillons) inclus de la même façon.

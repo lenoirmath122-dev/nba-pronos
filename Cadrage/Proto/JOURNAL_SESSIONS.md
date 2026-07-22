@@ -918,9 +918,183 @@ maquette sont des références visuelles jetables, non intégrées au dépôt
 applicatif ; T7 reste au statut « aucun token de production écrit », les
 valeurs ci-dessus s'appliquent au premier fichier de tokens qui sera créé.
 
-**État en fin de session** : cadrage fonctionnel et design toujours cohérents
-avec T1→T7 ; amendements consolidés dans les fichiers de décision concernés
-(diffs listés ci-dessus) ; `GAPS_OUVERTS.md` et `ETAT_ACTUEL.md` mis à jour en
-conséquence. Prochaine étape inchangée : l'écran Accueil codé (post-T7,
-`ETAT_ACTUEL.md` §2.3), qui intégrera les tokens amendés en §15 du design
-system.
+---
+
+## Session du 21/07/2026 (consolidation design — logos, icônes de nav, bandeau)
+
+Reprise du design après la passe maquettes du 20/07/2026 : direction
+« décision de consolidation » plutôt que ré-ouverture — objectif de figer les
+derniers points mécaniques avant d'écrire le fichier de tokens de production.
+
+**Logos de franchise → SVG bundlés dans le dépôt** (amende
+`SPEC_TECHNIQUE_SYNCHRO_V0.1.md` §4, note d'amendement datée ajoutée sans
+supprimer le texte acté d'origine) : un SVG par franchise dans
+`public/logos/teams/`, nommé `teams.abbreviation` (MAJUSCULES), devient la
+**source unique** de l'affichage. Abandon du couple téléchargement au sync +
+bucket Supabase Storage : `/api/sync/teams` n'implémente pas cette étape ;
+`teams.logo_url` reste en base (commentaire de colonne mis à jour dans
+`SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md`) mais n'est plus lu pour l'affichage
+(fallback théorique) ; fallback réel = abréviation en texte. Motif : 30
+franchises stables, rendu net, pas de round-trip bucket — le *sourcing des
+logos* était un point d'itération ouvert de la synthèse, pas une décision
+figée qu'on rouvre.
+
+**Refus de la watermark sur le bandeau + convention d'asset** : le bandeau de
+section « parquet » (§15.7) doit utiliser une image **licenciée ou possédée**,
+**sans watermark**, hébergée en interne — jamais le base64 des maquettes de
+visualisation. Convention posée : `public/brand/hero-parquet.webp` (câblé par
+le futur token unique `--hero-image`), placeholder de dev nommé `*.dev.*`
+ignoré par git.
+
+**Icônes de nav custom** créées dans `components/icons/nav-icons.tsx` —
+variante B « nette » retenue (trait 1.8, coins droits, cohérente avec les
+rayons « niveau C » de T7) : maison (Accueil), ballon (Jouer), podium
+(Classement — volontairement pas un trophée, pour ne pas entrer en collision
+avec la réservation or/champion), silhouette (Profil). Composants server par
+défaut, `currentColor` piloté par le parent, décoratifs (`aria-hidden`) sauf
+`aria-label` explicite.
+
+**Suivi mis à jour en miroir** : `JOURNAL_DESIGN_passe_maquettes.md` (§1 et
+§3), `ETAT_ACTUEL.md` régénéré en entier.
+
+**Points de forme restant à valider avant la consolidation** (fichier de
+tokens de production, prochaine session) : nommage `P-DS7` (ou autre) des
+tokens, structure du thème (clair/sombre — variables CSS vs objet JS), et
+emplacement du fichier (`app/tokens.css` ou autre). Rien de ceci n'est encore
+tranché.
+
+### Suite de la même session — consolidation des tokens de production
+
+Les 3 points de forme laissés ouverts ci-dessus ont été tranchés à l'écran
+avec l'utilisateur, puis appliqués dans la foulée :
+
+- **Nommage** : convention **P-DS7** (préfixe par famille — `--color-*`,
+  `--font-*`, `--space-*`, `--radius-*`, `--elevation-*`, `--motion-*`),
+  conforme au principe déjà posé par `SPEC_DESIGN_SYSTEM_V0_1.md` §2.
+- **Structure du thème** : **variables CSS**, dark posé sur `:root` (défaut,
+  P-DS2) et clair en **override** `[data-theme="light"]` — pas d'objet JS, pas
+  de bascule câblée (la bascule elle-même reste un lot séparé).
+- **Emplacement du fichier** : `app/tokens.css`, importé en tête de
+  `app/globals.css` (`@import "./tokens.css";`, juste après `@import
+  "tailwindcss";`).
+
+**Fichier de tokens de production écrit et validé à l'écran** :
+`app/tokens.css` implémente la couche primitifs (`--c-*`, jamais lue par un
+écran, P-DS5) puis la couche sémantique (`--color-*` et consorts) pour les
+deux thèmes, en réconciliant les noms courts des maquettes de la passe du
+20/07 avec P-DS7 (`--surface-*` → `--color-surface-*`, `--shadow-*` →
+`--elevation-*`, etc. — table consignée en §15.9 de
+`SPEC_DESIGN_SYSTEM_V0_1.md`). Là où l'amendement V0.2 (§15 : rayons « niveau
+C », surfaces/bordures/texte/accent/élévation « Voie A », tendance
+`--color-trend`) redonnait une valeur différente de §3/§5 d'origine, c'est
+la valeur V0.2 qui a été retenue. Aucun `@font-face` ajouté (Inter pas encore
+auto-hébergée, fallback `system-ui`), aucun asset binaire ajouté
+(`--hero-image` pointe vers un asset pas encore fourni, comportement
+attendu).
+
+**Suivi mis à jour en miroir (2e passe)** : note d'amendement §15.9 ajoutée à
+`SPEC_DESIGN_SYSTEM_V0_1.md`, `JOURNAL_DESIGN_passe_maquettes.md` (section
+« Consolidation des tokens »), `GAPS_OUVERTS.md` (point d'implémentation T7 +
+petits points d'intégration restants), `ETAT_ACTUEL.md` régénéré en entier.
+
+**État en fin de sous-session (tokens)** : cadrage fonctionnel et design
+toujours cohérents avec T1→T7 ; amendements consolidés dans les fichiers de
+décision concernés (diffs listés ci-dessus) ; `GAPS_OUVERTS.md` et
+`ETAT_ACTUEL.md` mis à jour en conséquence. Le fichier de tokens de
+production existe désormais et est importé par `globals.css` ; aucun écran
+n'est encore stylé avec. Rappel laissé à l'utilisateur : rien n'est committé
+automatiquement, y compris ce lot de tokens — à committer manuellement une
+fois vérifié.
+
+### Suite de la même session — écran Accueil : layout 4 onglets + Accueil (T6a §3.1 / SPEC_ECRAN_ACCUEIL_V0.1)
+
+Spec produit `SPEC_ECRAN_ACCUEIL_V0.1.md` (`Cadrage/V1/Spec visuelle/`,
+statut **close**, aucun point produit ouvert §10) appliquée telle quelle,
+sans rediscussion. Six décisions actées à sa rédaction, reprises telles
+quelles au code : **pas de mouvement de rang en V1** (slot `rankMovement`
+réservé, toujours `null`) ; **compte à rebours à bascule automatique sous
+1h** (composant client autonome, §4.1) ; **feed 48h / 5 items** (constantes
+nommées) ; **joueur non participant = même écran** que participant (remplir
+un champ vaut inscription, sauf le bracket qui a sa propre deadline unique) ;
+**libellés d'états vides fixés** (§8) ; **libellé bracket différencié**
+Playoffs (« · N séries ») vs NBA Cup (« · N matchs de phase finale »).
+
+**Layout 4 onglets** (`app/(app)/layout.tsx`) : garde de session (`redirect
+/login`) en défense en profondeur du proxy, rend `<TabBar/>`
+(`components/nav/TabBar.tsx`, seul autre `"use client"` de l'écran en dehors
+de `Countdown`, justifié par l'état "onglet actif" = chemin courant via
+`usePathname()`, autorisé explicitement par la spec §1). Câble pour la
+première fois les icônes de nav et les tokens de production sur un vrai
+écran.
+
+**Lecture** (`lib/queries/home.ts`, `getHomeData()`) : un seul module, RLS
+seule autorité (`getServerClient()`), types `HomeHeader`/`TodoItem`/
+`FeedItem`/`HomeData` figés à l'identique du contrat de spec. Aucune
+migration nécessaire ; noms de colonnes et valeurs de statut lus dans le
+schéma réel (migrations #1/#3), pas devinés — voir le détail des déductions
+dans `ETAT_ACTUEL.md` §7 et `GAPS_OUVERTS.md`.
+
+**Ambiguïté de spec trouvée et tranchée AVEC l'utilisateur** (pas en
+silence, conforme à la méthode habituelle) : §6 de la spec nomme la colonne
+`bets.resolved_at` comme source de l'item de feed « Pari statué par
+l'admin », mais illustre son rendu par le texte « validé / ajusté », qui
+correspond en réalité au workflow de VALIDATION (`validated_at`), une
+colonne et une transition différentes. Question posée via
+`AskUserQuestion` avec une recommandation motivée ; réponse utilisateur
+orientée produit (le feed doit surtout remonter les paris gagnés et les
+écarts exacts) qui ne contredisait pas la lecture recommandée. Tranché :
+lecture littérale de la colonne citée dans le tableau (`resolved_at`) →
+l'item correspond aux paris **ANNULÉS** (`CANCELLED`), cohérent avec la
+règle « neutralisé, jamais rouge » déjà actée ailleurs et non-rouvrable
+(0.2.4 §4, 0.2.9 §7, T6c §4). Libellé rendu : « Neutralisé » (pas « validé /
+ajusté »).
+
+**Countdown.tsx** : seule feuille "use client" de `home/`. Bascule libellé
+large (>1h, figé) / décompte vivant (≤1h, mm:ss, `tabular-nums`) /
+verrouillé (=0, action désactivée sur place, pas de `revalidatePath`).
+Aucun décalage d'hydratation POSSIBLE (pas seulement évité) : l'état est
+`null` jusqu'au montage (aucun `Date.now()` lu pendant le rendu), la vraie
+valeur n'arrive que par `useEffect` — premier rendu serveur et premier
+rendu client pré-hydratation sont donc textuellement identiques par
+construction. Ré-arme lui-même son minuteur pour la bascule automatique
+sous 1h (délai calculé jusqu'au franchissement du seuil, plafonné à 60s en
+mode large, 1s en mode vivant).
+
+**Composants présentationnels** (`components/home/*`, tous serveur sauf
+Countdown) : `HomeHeader`, `TodoList`/`TodoRow` (bloc joueur ET bloc admin,
+distingués par `item.kind`, teinte `--color-trend` + tag « admin » pour ce
+dernier), `Feed`/`FeedRow` (pari annulé = barré + grisé + neutre, jamais
+rouge — T6c §4), `EmptyState` (libellés en props, fournis par `page.tsx`).
+Aucune valeur visuelle en dur : CSS Modules colocalisés par composant,
+lisant exclusivement les tokens sémantiques de `app/tokens.css` — nouvelle
+convention de style posée par ce lot (n'existait pas encore dans le dépôt,
+les écrans auth restant en Tailwind non stylé T7).
+
+**`app/(app)/home/page.tsx`** : compose en-tête → À traiter (+ bloc admin
+si non vide) → Ça vient de tomber ; état vide global si
+`competitionId === null` — c'est le rendu actuellement observable, la base
+étant toujours vide (§3 `ETAT_ACTUEL.md`).
+
+**Stubs de routes** (pour que les 4 onglets ne 404 pas, non stylés, hors
+périmètre de ce lot) : `app/(app)/play/page.tsx`, `app/(app)/profile/
+page.tsx`, `app/leaderboard/page.tsx` (route physique unique hors route
+groups, cohérente avec le correctif T6a §3.2 de la session du 19/07 —
+§2.2 `ETAT_ACTUEL.md`).
+
+**Vérifications finales** : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` tous propres. Pas de Realtime sur cet écran (l'Accueil est
+un digest, spec §9 — hors périmètre assumé). Pas de nouvelle dépendance.
+Jamais `service_role` dans une lecture d'écran.
+
+**Suivi mis à jour en miroir** : `GAPS_OUVERTS.md` (implémentation Accueil
+sortie de « à coder », interprétations d'implémentation ajoutées),
+`ETAT_ACTUEL.md` régénéré en entier.
+
+**État en fin de session** : premier écran joueur codé ET stylé aux tokens
+de production. `Cadrage/V1/Spec visuelle/SPEC_ECRAN_ACCUEIL_V0.1.md`
+entièrement appliquée. Rien n'est committé automatiquement — rappel laissé
+à l'utilisateur (commande de commit unique proposée en fin de tâche pour le
+lot Accueil : layout 4 onglets, `lib/queries/home.ts`, `components/home/*`,
+`components/nav/TabBar.tsx`, stubs de route). Prochaine étape : classement +
+bracket partagés (`app/leaderboard`, `app/bracket`, T6a §3.2), premiers
+écrans à réutiliser le patron CSS Modules + tokens posé ici.

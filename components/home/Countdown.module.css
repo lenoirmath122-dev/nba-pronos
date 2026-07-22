@@ -1,0 +1,37 @@
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--tap-target-min);
+  text-decoration: none;
+  color: inherit;
+  border-radius: var(--radius-md);
+}
+
+.row:hover,
+.row:focus-visible {
+  background: var(--color-surface-inset);
+}
+
+.row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.rowDisabled {
+  composes: row;
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.badge {
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  min-width: 3.5em;
+  text-align: right;
+}

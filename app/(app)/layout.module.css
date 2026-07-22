@@ -1,0 +1,17 @@
+/* Coquille de la zone joueur (app) : fond/texte pilotés par les tokens,
+   quel que soit ce que définit globals.css par ailleurs. */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+}
+
+.content {
+  flex: 1;
+  /* Espace pour ne pas passer sous la barre de nav fixe en bas. */
+  padding-bottom: calc(var(--tap-target-min) + var(--space-4));
+}
