@@ -1,0 +1,22 @@
+/* Coquille des écrans partagés visiteur/connecté (T6a §3.2/§8.1) : mêmes
+   tokens que (app)/layout.module.css pour la variante connectée, mêmes
+   tokens que PublicNav pour la variante visiteur. */
+
+.shell {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+}
+
+.content {
+  flex: 1;
+  /* Espace pour ne pas passer sous la barre de nav fixe en bas. */
+  padding-bottom: calc(var(--tap-target-min) + var(--space-4));
+}
+
+.contentPublic {
+  flex: 1;
+}

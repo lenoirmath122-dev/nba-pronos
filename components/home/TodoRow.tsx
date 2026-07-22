@@ -1,5 +1,5 @@
 import type { TodoItem } from "@/lib/queries/home";
-import { Countdown } from "./Countdown";
+import { Countdown } from "@/components/ui/Countdown";
 import styles from "./TodoRow.module.css";
 
 // Un item du bloc « À traiter » (§4). Le tri, les libellés et la condition

@@ -1,0 +1,171 @@
+.wrapper {
+  border-bottom: 1px solid var(--color-border-hair);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--tap-target-min);
+  background: none;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.row:hover,
+.row:focus-visible {
+  background: var(--color-surface-inset);
+}
+
+.row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Inactif : grisé, reste classé (§8) — jamais rouge, jamais masqué. */
+.rowInactive {
+  opacity: var(--opacity-inactive);
+}
+
+.colRank {
+  flex: 0 0 2.25rem;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.colPlayer {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.pseudo {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.inactiveTag {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-2);
+  line-height: 1.6;
+}
+
+/* Marqueur « corrigé » (§7) : badge discret sans texte, accolé au pseudo,
+   jamais dans la colonne Total. Teinte --color-trend, registre admin. */
+.correctionBadge {
+  flex-shrink: 0;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-badge);
+  background: var(--color-trend);
+}
+
+.colTotal {
+  flex: 0 0 3.5rem;
+  text-align: right;
+  padding-right: var(--space-3);
+  border-right: 1px solid var(--color-border-subtle);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-size: var(--font-size-sm);
+  /* Permanent, structurel, JAMAIS coloré (§4.1) : graisse seule. */
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.totalBand {
+  background: var(--color-accent-soft);
+}
+
+.colDetail {
+  flex: 0 0 3.75rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 767px) {
+  .colDetail:not(.colActive) {
+    display: none;
+  }
+}
+
+/* Colonne active : bande + valeur en accent (§4.1). */
+.colActive {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+  background: var(--color-accent-soft);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1;
+}
+
+/* Ligne dépliée (§6) : sous-totaux publics + « dont Écarts » + correction. */
+.detail {
+  padding: var(--space-1) var(--space-4) var(--space-4) calc(2.25rem + var(--space-3) + var(--space-4));
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.subtotals {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+
+.subtotal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.subtotalLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.subtotalValue {
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.exactMargins {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Correction en clair : wording impératif « sur requête » (§7). */
+.correctionLine {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  color: var(--color-trend);
+}

@@ -1,0 +1,92 @@
+/* Carte résumé d'une série (§10.1 vue A / §11 vue B). Composant présentiel
+   SANS "use client" : rendu exclusivement par SeriesDrillDown (client), qui
+   porte l'interaction — même mécanisme que RotateInvite (§3). */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--tap-target-min);
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.card:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.cardOpen {
+  border-color: var(--color-accent-line);
+}
+
+.cardDisabled {
+  cursor: default;
+}
+
+.conference {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.matchup {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.teams {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.team {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Résultat gagné = vert, UNIQUEMENT (§17) — jamais de rouge pour l'équipe battue. */
+.teamWinner {
+  composes: team;
+  color: var(--color-win);
+  font-weight: var(--font-weight-semibold);
+}
+
+/* Champion déduit du bracket entier (finale) : or, réservé à ce cas (§17). */
+.teamChampion {
+  composes: team;
+  color: var(--color-champion);
+  font-weight: var(--font-weight-semibold);
+}
+
+.versus {
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.championTag {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-champion);
+}
+
+.filled {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}

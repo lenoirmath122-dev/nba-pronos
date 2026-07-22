@@ -1,0 +1,109 @@
+/* Vue A : sections par tour, liste verticale, expansion inline (§11). */
+.roundsA {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.roundSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.roundLabel {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.nodeList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-4);
+}
+
+.inlineDetail {
+  padding: var(--space-3);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-md);
+}
+
+/* Vue B : poster à géométrie fixe, défilement horizontal, une colonne par
+   tour (§10.1) — zoom natif (pincer), aucun bouton +/- maison. */
+.roundsB {
+  display: flex;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  overflow-x: auto;
+  height: 100%;
+}
+
+.treeColumn {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  min-width: 13rem;
+  flex-shrink: 0;
+}
+
+/* Feuille par le bas (§11) : l'arbre (poster) ne bouge jamais, le détail
+   arrive en overlay superposé. */
+.sheetBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 20;
+}
+
+.sheet {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 21;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--color-surface-raised);
+  border-top: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--elevation-arena);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sheetTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.sheetClose {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-target-min);
+  min-height: var(--tap-target-min);
+  background: none;
+  border: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+}
+
+.sheetClose:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

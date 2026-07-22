@@ -1098,3 +1098,113 @@ lot Accueil : layout 4 onglets, `lib/queries/home.ts`, `components/home/*`,
 `components/nav/TabBar.tsx`, stubs de route). Prochaine étape : classement +
 bracket partagés (`app/leaderboard`, `app/bracket`, T6a §3.2), premiers
 écrans à réutiliser le patron CSS Modules + tokens posé ici.
+
+---
+
+## Session du 22/07/2026 (Classement + Bracket : écrans partagés visiteur/joueur)
+
+Suite directe. Spec produit `SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md`
+(`Cadrage/V1/Spec visuelle/`, statut **complète**, aucun point produit
+ouvert §18, 11 décisions actées à sa rédaction le jour même — récapitulatif
+§19) appliquée telle quelle, sans rediscussion.
+
+**Constat de départ** : le prompt de session signalait un stub
+`app/(app)/leaderboard/` en conflit avec `app/leaderboard/page.tsx`. Vérifié
+en tout premier : ce stub n'existait pas — le correctif de routage (T6a
+§3.2, session du 19/07/2026) avait déjà été appliqué en amont, seul
+`app/leaderboard/page.tsx` (route physique unique, hors route groups)
+existait, en stub minimal. Rien à supprimer ; juste confirmé avant de
+coder, conformément à la méthode habituelle (vérifier plutôt que supposer).
+
+**Countdown déplacé** : `components/home/Countdown.tsx` (+ `.module.css`)
+→ `components/ui/Countdown.tsx`, désormais partagé Accueil + Bracket avant
+deadline (spec §1). Comportement strictement inchangé ; seul import mis à
+jour (`components/home/TodoRow.tsx`).
+
+**Nav des routes partagées câblée** (T6a §3.2/§8.1, pas explicitement
+détaillé par le prompt mais prescrit par l'archi validée) : ces deux pages
+vivent hors `(public)`/`(app)`, donc hors de leurs layouts et de leur nav.
+Ajouté `components/nav/PublicNav.tsx` (nav réduite, extraite de l'inline
+Tailwind de `(public)/layout.tsx` et re-stylée aux tokens — elle ne l'était
+pas encore) et `components/nav/ScreenShell.tsx` (choisit TabBar 4 onglets ou
+PublicNav selon la présence d'une session, lue une fois par chaque page).
+`(public)/layout.tsx` réutilise désormais `PublicNav` (plus de duplication
+de balisage).
+
+**`lib/queries/leaderboard.ts`** : types figés recopiés à l'identique
+(§15.1). Lit `user_scores`/`user_recent_form` (vues `security_invoker`,
+donc RLS des tables sous-jacentes déjà appliquée — « jamais joué » absent
+par construction, sans avoir à le filtrer). Rang calculé sur Total,
+départage 1.Total/2.bons vainqueurs/3.écarts exacts/4.bracket (même ordre
+que `lib/queries/home.ts`), ex-aequo 1,2,2,4 implémenté par comparaison de
+la clé de départage complète entre lignes consécutives d'un tableau déjà
+trié. `adminCorrectionsCount` agrégé sur `match_predictions` ET `bets`
+(`is_admin_corrected = true`), par joueur.
+
+**`lib/queries/bracket.ts`** : types figés recopiés à l'identique (§15.2).
+**Confidentialité pré-deadline implémentée en ne lançant même pas les
+requêtes `bracket_picks`/`brackets`** tant que `isDeadlinePassed` est faux
+(pas un `if` de rendu — la RLS bloquerait de toute façon ces tables avant
+`bracket_deadline_passed()`, mais le code ne s'y fie pas seul). Seuil de
+tendance `≥ 11` calculé par série (dénominateur = brackets effectivement
+remplis sur CETTE série). `isStructureKnown` dérivé de `series.length > 0`
+(même heuristique que `getBracketTodo` de l'écran Accueil pour la Cup avant
+qualification). 3 interprétations documentées dans `GAPS_OUVERTS.md`
+(non tranchées par la spec, pas des inventions de données) : sémantique de
+`filledCount`/`totalCount` (progression du tournoi, pas d'un bracket
+individuel — le contrat n'a pas de `userId`), absence du score de série
+réel dans le contrat `BracketNode` (vainqueur seul affiché), et le
+libellé « or = champion » réservé strictement à la finale (vainqueur de
+série normale rendu en vert, jamais en or).
+
+**Composants** — feuilles client EXACTEMENT celles listées par la spec §3
+(+ le cas conditionnel `RotateInvite` tranché en NON-client, comme
+autorisé) : `components/ui/Countdown.tsx` (inchangé), `components/
+leaderboard/{LeaderboardRow,StickyMeBar}.tsx`, `components/bracket/
+{SeriesDrillDown,TreeView}.tsx`. `components/bracket/RotateInvite.tsx` et
+`components/bracket/NodeCard.tsx` sont des composants SANS "use client"
+rendus exclusivement par un parent client (même mécanisme) — zéro
+sixième feuille.
+
+**Puces de tri** (`?tri=`) et **bascule vue arbre** (`?arbre=1`) : paramètres
+d'URL lus par les `page.tsx` serveur, puces en `<Link>`. Rotation
+automatique de la vue B implémentée en écoutant UNIQUEMENT l'événement
+`matchMedia("(orientation: landscape)").addEventListener("change", ...)`,
+jamais l'état constaté au montage (sinon tout visiteur desktop atterrirait
+dans l'arbre). Historique : entrée par rotation → `router.replace`, entrée
+par bouton/« voir quand même » → `router.push` ; sortie automatique
+(rotation → portrait) seulement si l'entrée était elle-même par rotation,
+via une `ref` (pas un state, pour éviter une fermeture périmée dans le
+listener). « Voir quand même » mémorisé en `sessionStorage`, lu uniquement
+dans les gestionnaires d'événements (jamais pendant le rendu, donc aucune
+garde SSR nécessaire au-delà de ça).
+
+**Vérifications finales** : `npx tsc --noEmit`, `npx eslint .` (1 warning
+de directive `eslint-disable` inutile trouvé et retiré),
+`npx next build` tous propres — **aucun conflit de route** (`/leaderboard`
+et `/bracket` résolvent chacun à une seule route dynamique). Testé en
+conditions réelles sur le serveur dev déjà lancé par l'utilisateur (port
+3001, non redémarré) : `/leaderboard` et `/bracket` rendent 200, affichent
+« Aucune compétition en cours » (base toujours vide, comportement attendu),
+nav réduite confirmée pour un visiteur anonyme (`Se connecter` présent,
+pas la barre 4 onglets) ; `/home` et `/login` non régressés par le
+déplacement de `Countdown` et la refonte de `(public)/layout.tsx`.
+
+Confirmé dans le résumé de fin de tâche : confidentialité pré-deadline
+gérée dans la requête (pas au rendu) ; feuilles client limitées aux 4
+fichiers listés (+ Countdown déjà existant) ; aucune valeur visuelle en
+dur ; vert/rouge réservés au résultat, or réservé au champion de la
+finale ; rang calculé sur Total quelle que soit la puce ; aucun `if (role)`
+de sécurité (la nav visiteur/connecté est un choix d'affichage, la RLS
+reste seule autorité de contenu).
+
+**Suivi mis à jour en miroir** : `GAPS_OUVERTS.md` (3 points fermés —
+marqueur corrigé, séparateur du Total, vue B arbre — remplacés par les
+interprétations d'implémentation ci-dessus), `ETAT_ACTUEL.md` régénéré en
+entier.
+
+**État en fin de session** : Classement et Bracket codés et stylés aux
+tokens, aucune Realtime sur ces deux écrans (hors périmètre §18, comme
+l'Accueil). Rien n'est committé automatiquement. Prochaine étape : hub
+Jouer (`app/(app)/play/*` — matchs, bracket personnel/remplissage, paris,
+mes pronos).

@@ -1,0 +1,51 @@
+/* Nav réduite du visiteur (0.2.9 §3, T6a §3.1) : Classement · Bracket · Se
+   connecter. Partagée entre (public)/layout.tsx et les enveloppes fines
+   /leaderboard, /bracket (T6a §3.2/§8.1 — la nav est choisie par la route,
+   pas dupliquée). */
+
+.bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.brand {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target-min);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+}
+
+.link:hover,
+.link:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.linkCta {
+  composes: link;
+  color: var(--color-accent);
+}

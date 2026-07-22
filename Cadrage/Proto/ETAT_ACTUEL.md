@@ -5,13 +5,12 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 21/07/2026 (suite — premier écran joueur
-> codé). Trois lots enchaînés dans la même session : consolidation design
-> (icônes de nav, logos, bandeau) → consolidation des tokens de production
-> (`app/tokens.css`) → **implémentation de l'écran Accueil** (`app/(app)/home`,
-> layout 4 onglets, `lib/queries/home.ts`, `components/home/*`). C'est le
-> **premier écran joueur codé et stylé aux tokens** de la V1 — détail en §2.4.
-> Base toujours vide (aucune compétition créée) → l'Accueil s'affiche
+> Dernière mise à jour : session du 22/07/2026 (Classement + Bracket, écrans
+> partagés visiteur/joueur). Suite directe du lot Accueil (21/07/2026) :
+> mêmes conventions (composants serveur par défaut, CSS Modules + tokens,
+> RLS seule autorité de lecture) reconduites sur deux nouveaux écrans, plus
+> une bascule bracket vue A/vue B (résumé ↔ arbre plein viewport). Base
+> toujours vide (aucune compétition créée) → les deux écrans s'affichent
 > actuellement en **état vide global** (« Aucune compétition en cours ») :
 > c'est le rendu correct pour cet état, pas un bug.
 
@@ -25,7 +24,7 @@ Stack       : Next.js 16.2.10 (Turbopack, App Router, TypeScript) + Supabase
               conventions plus anciennes (AGENTS.md) — vérifié dans
               node_modules/next/dist/docs/ avant chaque brique de code
               nouvelle (ex. middleware.ts renommé proxy.ts, cookies()
-              asynchrone).
+              asynchrone, searchParams désormais une Promise).
 Dépôt local : C:\dev\nba-pronos (sorti de OneDrive) — dépôt Git NEUF, projet
               Supabase NEUF (D1, session du 17/07/2026), distinct du
               prototype (`nba-pronos-proto`), qui reste intact et inchangé en
@@ -34,12 +33,19 @@ Auth        : Supabase Auth (email + mot de passe), pont École A vers
               public.users via trigger SQL (T2) — voir §3. Flux d'inscription
               + connexion CODÉS et vérifiés (§2.1).
 RLS         : ACTIVE sur les 15 tables publiques, testée de bout en bout (T3).
+              Consommée directement par les écrans de lecture (Accueil,
+              Classement, Bracket) via les vues `security_invoker`
+              `user_scores`/`user_recent_form` : la confidentialité
+              pré-deadline du bracket et la visibilité « valider = voir »
+              des pronos/paris viennent de la RLS elle-même, pas d'un filtre
+              applicatif (§2.5).
 Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
               exclusivement les tokens sémantiques de `app/tokens.css` (aucune
               valeur en dur) — convention posée par l'écran Accueil (§2.4),
-              à reconduire sur les écrans suivants. Tailwind (présent au
-              projet) reste utilisé tel quel pour les écrans PAS ENCORE
-              stylés selon T7 (login/signup, non retouchés).
+              reconduite sur Classement/Bracket (§2.5) et sur la nav partagée
+              (`components/nav/{PublicNav,ScreenShell}.tsx`, §2.5). Tailwind
+              (présent au projet) reste utilisé tel quel pour les écrans PAS
+              ENCORE stylés selon T7 (login/signup, non retouchés).
 ```
 
 ## 2. Avancement
@@ -47,10 +53,10 @@ Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
 ```text
 Phase V1 — la série de specs techniques T1 → T7 est VALIDÉE. Le socle de
 données (modèle + auth + RLS) est posé et codé (§3). L'IMPLÉMENTATION DES
-ÉCRANS EST EN COURS (§2.1/§2.4) : plomberie Supabase + auth fonctionnelle,
-ET DÉSORMAIS le premier écran joueur (Accueil) sont codés et vérifiés.
-Restent à coder : hub Jouer (matchs/bracket/paris/mes pronos), classement +
-bracket partagés, écrans admin.
+ÉCRANS EST EN COURS : plomberie Supabase + auth fonctionnelle, l'écran
+Accueil, ET DÉSORMAIS les écrans partagés Classement et Bracket sont codés
+et vérifiés. Restent à coder : hub Jouer (matchs/bracket personnel/paris/
+mes pronos), écrans admin.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -62,7 +68,8 @@ bracket partagés, écrans admin.
   généré côté Claude (crypto.randomBytes(32), 64 caractères hex).
 
 Paquets installés : @supabase/ssr, @supabase/supabase-js, server-only.
-AUCUNE nouvelle dépendance ajoutée depuis (écran Accueil compris, §2.4).
+AUCUNE nouvelle dépendance ajoutée depuis (écrans Accueil et
+Classement/Bracket compris, §2.4/§2.5).
 
 lib/supabase/{browser,server,service}.ts (T6a §2.4) : les 3 clients —
   getBrowserClient (anon, navigateur), getServerClient (anon + JWT cookies,
@@ -75,27 +82,36 @@ proxy.ts (racine du repo) : garde d'AUTHENTIFICATION (T6a §4.1) — zones
   /login sans session ; /login et /signup → redirigées vers /home AVEC
   session. Utilise supabase.auth.getUser() (revalidé serveur, pas
   getSession()). Nommé proxy.ts et pas middleware.ts : renommage Next.js 16
-  (AGENTS.md), comportement strictement identique.
+  (AGENTS.md), comportement strictement identique. Ne garde PAS
+  /leaderboard ni /bracket (routes physiques hors des groupes (public)/(app),
+  T6a §3.2/§8.1) — ces deux écrans lisent la session eux-mêmes (§2.5) pour
+  choisir leur nav, jamais pour filtrer leurs données (la RLS s'en charge).
 
 lib/auth/actions.ts + components/auth/{LoginForm,SignupForm}.tsx +
   app/(public)/{layout,login/page,signup/page}.tsx : flux complet de
   connexion et d'inscription (T2 §4) — vérif serveur du code compétition
   (verify_join_code RPC) puis du pseudo libre AVANT tout signUp, création de
   session, redirection /home. Formulaires minimalistes (pas encore les
-  tokens visuels T7 — non retouchés par le lot Accueil, §2.4).
+  tokens visuels T7 — non retouchés par les lots Accueil/Classement/Bracket).
+  `app/(public)/layout.tsx` rend désormais `<PublicNav/>` (§2.5) au lieu
+  d'un bloc de nav inline en Tailwind.
 
-Vérifié en conditions réelles (build de prod + serveur dev, requêtes HTTP
-  réelles) : /login et /signup rendent 200 avec les bons champs de
-  formulaire ; /home, /play, /admin redirigent 307 vers /login sans session
-  (garde proxy fonctionnelle) ; les assets statiques (favicon, etc.) ne sont
-  pas bloqués par le matcher du proxy. `tsc --noEmit` et `eslint .` propres,
-  `next build` réussi.
+Vérifié en conditions réelles (build de prod + serveur dev déjà lancé par
+  l'utilisateur, requêtes HTTP réelles) : /login et /signup rendent 200 avec
+  les bons champs de formulaire ; /home, /play, /admin redirigent 307 vers
+  /login sans session (garde proxy fonctionnelle) ; /leaderboard et /bracket
+  rendent 200 pour un visiteur anonyme, affichent la nav réduite (« Se
+  connecter » présent, pas la barre 4 onglets) et l'état vide global (base
+  sans compétition) ; les assets statiques (favicon, etc.) ne sont pas
+  bloqués par le matcher du proxy. `tsc --noEmit` et `eslint .` propres,
+  `next build` réussi, aucun conflit de route.
 
 Pas encore vérifié : le flux d'inscription/connexion RÉEL contre la base
-  Supabase (code compétition existant, création de compte bout en bout) —
-  aucune compétition n'existe encore en base (§3), donc verify_join_code
-  renverrait NULL pour l'instant. À tester dès qu'une compétition + son
-  join_code existeront.
+  Supabase (code compétition existant, création de compte bout en bout), et
+  le rendu de tous les écrans de lecture (Accueil/Classement/Bracket) AVEC
+  une compétition ACTIVE réelle et des joueurs — aucune compétition n'existe
+  encore en base (§3). À tester dès qu'une compétition + des données de test
+  existeront.
 ```
 
 ### 2.2 Correctif de conception trouvé et tranché (T6a §3, session du 19/07/2026)
@@ -107,13 +123,11 @@ dans l'URL, les deux fichiers auraient résolu la MÊME route /leaderboard :
 erreur de build Next.js documentée (« Conflicting paths »), jamais testée
 avant le codage puisque T6a n'avait produit aucun code. Tranché avec
 l'utilisateur (AskUserQuestion) : route physique UNIQUE, hors des deux route
-groups (app/leaderboard/page.tsx, app/bracket/page.tsx). app/leaderboard/
-page.tsx est désormais CRÉÉE (stub, §2.4) ; app/bracket/page.tsx reste à
-créer (pas un onglet de nav, non nécessaire pour éviter un 404 sur la barre).
-SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md corrigé en conséquence (§3, §3.2,
-§4.1, §7 — correctifs marqués explicitement « post-validation »). 2 autres
-correctifs mineurs du même ordre : middleware.ts → proxy.ts (Next.js 16),
-getServerClient() rendu async (cookies() asynchrone).
+groups (app/leaderboard/page.tsx, app/bracket/page.tsx) — les DEUX fichiers
+sont désormais CRÉÉS et codés (§2.5). SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md
+corrigé en conséquence (§3, §3.2, §4.1, §7 — correctifs marqués explicitement
+« post-validation »). 2 autres correctifs mineurs du même ordre : middleware.ts
+→ proxy.ts (Next.js 16), getServerClient() rendu async (cookies() asynchrone).
 ```
 
 ### 2.3 Consolidation design + tokens (session du 20-21/07/2026, inchangé depuis)
@@ -128,74 +142,127 @@ Consolidation (21/07/2026, avant le lot Accueil) :
   l'utilisateur, pas par Claude). Fallback réel = abréviation en texte.
 - Icônes de nav CRÉÉES (components/icons/nav-icons.tsx, variante B « nette » :
   HomeIcon/PlayIcon/RankingIcon/ProfileIcon, currentColor, server component) —
-  CÂBLÉES pour la première fois par le lot Accueil (§2.4, components/nav/TabBar.tsx).
+  câblées par le lot Accueil (components/nav/TabBar.tsx), toujours utilisées
+  telles quelles par Classement/Bracket (même TabBar, §2.5).
 - app/tokens.css ÉCRIT (premier fichier de tokens de production, P-DS7, dark
   sur :root + override [data-theme="light"]), importé par app/globals.css —
-  CONSOMMÉ pour la première fois par le lot Accueil (§2.4).
+  consommé par l'écran Accueil puis par Classement/Bracket et la nav
+  partagée (§2.5).
 - public/brand/ : convention posée pour hero-parquet.webp, aucun binaire
-  ajouté (pas utilisé par l'écran Accueil).
+  ajouté (pas utilisé par les écrans codés à ce jour).
 ```
 
-### 2.4 Écran Accueil — CODÉ cette session (21/07/2026, nouveau)
+### 2.4 Écran Accueil (session du 21/07/2026, inchangé depuis)
 
 ```text
 Périmètre : app/(app)/layout.tsx (nav 4 onglets + garde session) et
 app/(app)/home/page.tsx (SPEC_ECRAN_ACCUEIL_V0.1.md, Cadrage/V1/Spec visuelle/).
 Premier écran joueur qui coud ensemble données + layout + tokens de
-production — voir aussi §7 (pièges/déductions de cette session).
+production.
 
-Fichiers créés :
-- app/(app)/layout.tsx + layout.module.css : garde de session (redirect
-  /login), coquille de page (fond/texte pilotés par les tokens quel que
-  soit globals.css), rend <TabBar/>.
-- components/nav/TabBar.tsx ("use client", + TabBar.module.css) : barre 4
-  onglets Accueil/Jouer/Classement/Profil, onglet actif via usePathname()
-  (--color-accent + pastille --color-accent-soft), inactif --color-text-muted,
-  icônes en currentColor (aucune couleur passée en prop), cible tactile
-  --tap-target-min. SEULE raison d'un "use client" en dehors de Countdown
-  (état "onglet actif" = chemin courant, autorisé explicitly par la spec §1).
-- lib/queries/home.ts : getHomeData() — toute la lecture de l'écran via
-  getServerClient() (RLS seule autorité). Types figés HomeHeader/TodoItem/
-  FeedItem/HomeData conformes au contrat de la spec §7. Constantes
-  FEED_WINDOW_HOURS=48, FEED_MAX_ITEMS=5.
-- components/home/Countdown.tsx ("use client", + .module.css) : SEULE
-  feuille client de l'écran home/. Bascule libellé large (>1h, figé) /
-  décompte vivant (≤1h, mm:ss) / verrouillé (=0, action désactivée sur
-  place). Aucun Date.now() pendant le rendu initial (état null jusqu'au
-  montage) → zéro décalage d'hydratation possible par construction. Ré-arme
-  son propre minuteur (bascule automatique sous 1h), jamais de
-  revalidatePath.
-- components/home/{HomeHeader,TodoList,TodoRow,Feed,FeedRow,EmptyState}.tsx
-  (+ .module.css chacun) : composants serveur, purement présentationnels
-  (props uniquement, aucun accès donnée).
-- app/(app)/home/page.tsx + page.module.css : compose en-tête → À traiter
-  (+ bloc admin si non vide) → Ça vient de tomber ; état vide global si
-  competitionId === null.
-- Stubs minimaux (pour que les 4 onglets ne 404 pas, PAS stylés, lot
-  suivant) : app/(app)/play/page.tsx, app/(app)/profile/page.tsx,
-  app/leaderboard/page.tsx (route physique unique, hors route groups —
-  cohérent avec §2.2 ; pas de nav dupliquée à ce stade, lot Classement).
+Fichiers : app/(app)/layout.tsx + layout.module.css ; components/nav/
+TabBar.tsx ("use client", seule raison hors Countdown : état "onglet actif")
++ TabBar.module.css ; lib/queries/home.ts (getHomeData(), types HomeHeader/
+TodoItem/FeedItem/HomeData) ; components/home/{HomeHeader,TodoList,TodoRow,
+Feed,FeedRow,EmptyState}.tsx (+ .module.css chacun, tous serveur) ;
+app/(app)/home/page.tsx + page.module.css.
 
-Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres
-(build de prod réussi, /home et /play et /profile en rendu dynamique —
-attendu, dépendent de la session ; /leaderboard statique pour l'instant,
-stub sans lecture).
+Countdown : à l'origine components/home/Countdown.tsx, DÉPLACÉ cette
+session (22/07/2026) vers components/ui/Countdown.tsx — désormais partagé
+Accueil + Bracket avant deadline (§2.5). Comportement strictement inchangé,
+seul l'import de components/home/TodoRow.tsx a été mis à jour.
 
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres.
 Non testé en conditions réelles (base vide, §3) : le rendu avec une
-compétition ACTIVE réelle (en-tête chiffré, items « À traiter », feed) — à
-vérifier dès qu'une compétition + des données de test existeront. Le rendu
-actuellement observable est l'état vide global, correct pour une base sans
-compétition.
+compétition ACTIVE réelle (en-tête chiffré, items « À traiter », feed).
 ```
 
-### 2.5 Prochaine étape
+### 2.5 Écrans Classement + Bracket — CODÉS cette session (22/07/2026, nouveau)
 
 ```text
-Dans l'ordre déjà acté : app/leaderboard (classement, lecture+rendu partagés
-visiteur/joueur, T6a §3.2) puis app/bracket (bracket global), puis le reste
-du hub Jouer (matchs, bracket personnel, paris, mes pronos, stylés aux
-tokens sur le même patron que l'écran Accueil), puis les écrans admin, puis
-T8 (déploiement).
+Périmètre : SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md (Cadrage/V1/Spec visuelle/,
+statut close, aucun point produit ouvert §18, 11 décisions actées le jour
+même de sa rédaction — §19 de la spec) appliquée telle quelle. Écrans
+PARTAGÉS visiteur/joueur connecté : même lecture, même rendu, seule la RLS
+filtre le contenu — jamais un `if (role)` dans le code des écrans.
+
+Nav des routes partagées (T6a §3.2/§8.1) : /leaderboard et /bracket vivent
+hors des groupes (public)/(app), donc hors de leurs layouts. NOUVEAU :
+- components/nav/PublicNav.tsx (+ .module.css) : nav réduite (Classement,
+  Bracket, « Se connecter »), extraite de l'inline Tailwind de
+  app/(public)/layout.tsx (qui l'utilise désormais aussi) et re-stylée aux
+  tokens (elle ne l'était pas).
+- components/nav/ScreenShell.tsx (+ .module.css) : rend TabBar (4 onglets)
+  si une session existe, PublicNav sinon — un seul appel `auth.getUser()`
+  par page, décision affichée seulement (jamais de filtrage de données ici).
+
+lib/queries/leaderboard.ts : getLeaderboard(sortKey), types SortKey/
+LeaderboardRow/LeaderboardData figés à l'identique de la spec §15.1. Lit
+`user_scores`/`user_recent_form` (vues security_invoker — la RLS des tables
+sous-jacentes s'applique donc déjà : « jamais joué » absent par
+construction, sans filtre applicatif). Rang TOUJOURS calculé sur Total,
+départage 1.Total/2.bons vainqueurs de match/3.écarts exacts/4.points
+bracket (même ordre que lib/queries/home.ts), ex-aequo 1,2,2,4.
+`adminCorrectionsCount` agrégé sur match_predictions ET bets
+(`is_admin_corrected = true`), par joueur et par compétition.
+
+lib/queries/bracket.ts : getBracket(), types SeriesPickGroup/BracketNode/
+BracketRound/BracketData figés à l'identique de la spec §15.2.
+CONFIDENTIALITÉ PRÉ-DEADLINE : les requêtes bracket_picks/brackets ne sont
+même pas lancées tant que isDeadlinePassed est faux (pas un `if` de rendu —
+la RLS bloquerait de toute façon ces tables avant bracket_deadline_passed(),
+le code ne s'y fie pas seul). Seuil de tendance ≥ 11 calculé PAR SÉRIE.
+isStructureKnown dérivé de `series.length > 0` (même heuristique que
+getBracketTodo de l'Accueil pour la Cup avant qualification des 8).
+3 interprétations documentées dans GAPS_OUVERTS.md (non tranchées par la
+spec, aucune donnée inventée) : sémantique de filledCount/totalCount
+(progression du TOURNOI puisque le contrat n'a pas de userId), absence du
+score de série réel dans BracketNode (vainqueur seul affiché, le type fixé
+par la spec ne porte pas ce champ), « or = champion » réservé strictement à
+la finale (vainqueur de série normale rendu en vert, jamais en or).
+
+Composants — feuilles client EXACTEMENT celles listées par la spec §3 :
+components/ui/Countdown.tsx (déplacé, inchangé) ; components/leaderboard/
+{LeaderboardRow,StickyMeBar}.tsx ; components/bracket/{SeriesDrillDown,
+TreeView}.tsx. components/bracket/{RotateInvite,NodeCard}.tsx sont SANS
+"use client" (rendus exclusivement par un parent client, même mécanisme) —
+zéro sixième feuille. Tout le reste (SortChips, LeaderboardTable,
+ProgressBar, SeriesGroups, BracketSummary, les 2 page.tsx) est serveur.
+
+Puces de tri (`?tri=`) et bascule vue arbre (`?arbre=1`) : paramètres d'URL
+lus par les page.tsx serveur, puces en <Link>. Rotation automatique de la
+vue B (TreeView) : SEULEMENT sur l'événement
+matchMedia("(orientation: landscape)").addEventListener("change", ...),
+jamais sur l'état constaté au montage. Historique : entrée par rotation →
+router.replace, entrée par bouton/« voir quand même » → router.push ;
+sortie automatique seulement si l'entrée était elle-même par rotation
+(trackée via une ref, pas un state, pour éviter une fermeture périmée dans
+le listener). « Voir quand même » mémorisé en sessionStorage, lu uniquement
+dans des gestionnaires d'événements (jamais pendant le rendu).
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres,
+AUCUN conflit de route (/leaderboard et /bracket résolvent chacun à une
+seule route dynamique). Testé en conditions réelles sur le serveur dev déjà
+lancé par l'utilisateur (port 3001, non redémarré par Claude) : les deux
+routes rendent 200, affichent l'état vide global (base sans compétition,
+comportement attendu), nav réduite confirmée pour un visiteur anonyme ;
+/home et /login non régressés par le déplacement de Countdown et la refonte
+de (public)/layout.tsx.
+
+Non testé en conditions réelles (base vide, §3) : le rendu du tableau de
+classement rempli, des deux vues du bracket (résumé/arbre) et du drill-down
+nominatif avec des joueurs et des picks réels — à vérifier dès qu'une
+compétition + des données de test existeront.
+```
+
+### 2.6 Prochaine étape
+
+```text
+Dans l'ordre déjà acté : hub Jouer (app/(app)/play/*) — matchs (fenêtre 3
+jours, saisie vainqueur+écart), bracket personnel (remplissage tour par
+tour, distinct du bracket global déjà codé), paris personnalisés, « Mes
+pronos » — stylés aux tokens sur le même patron que les écrans déjà codés.
+Puis les écrans admin, puis T8 (déploiement).
 ```
 
 ## 3. État actuel de la base de données
@@ -223,14 +290,34 @@ application) :
    laissé passer sans garde.
 
 RLS vérifiée de bout en bout via le plan de test T3 §7. Tout conforme.
+Consommée directement (sans contournement) par les écrans Accueil,
+Classement et Bracket via getServerClient() (§2.4/§2.5) : `user_scores`/
+`user_recent_form` en security_invoker, `bracket_picks`/`brackets` gardés
+par bracket_deadline_passed().
 
 Base VIDE de données opérationnelles (aucune compétition, aucun utilisateur
-créé) — l'écran Accueil (§2.4) n'a donc encore été observé qu'en état vide
-global ; c'est le rendu correct pour cet état, pas un signe d'anomalie.
+créé) — les trois écrans de lecture codés à ce jour (Accueil, Classement,
+Bracket) n'ont donc encore été observés qu'en état vide global ; c'est le
+rendu correct pour cet état, pas un signe d'anomalie.
 
-Aucune migration touchée cette session (21/07/2026, lot Accueil compris) :
-aucun nom de colonne ni valeur de statut inventé — tout lu dans le schéma
-réel (détail des déductions faites en §7).
+Aucune migration touchée cette session (22/07/2026, lot Classement/Bracket
+compris) : aucun nom de colonne ni valeur de statut inventé — tout lu dans
+le schéma réel. Colonnes/vues consommées par les nouvelles requêtes :
+`competitions(id, name, type, status, bracket_deadline)`,
+`user_scores(user_id, total_points, matches_points, bracket_points,
+bets_points, correct_match_winners, exact_margins)`,
+`user_recent_form(user_id, recent_form_points)`,
+`users(id, pseudo, status)`, `match_predictions(user_id, is_admin_corrected)`,
+`bets(user_id, is_admin_corrected)` pour le classement ;
+`series(id, round, conference, slot_index, team1_id, team2_id,
+official_winner_team_id)`, `teams(id, name, abbreviation)`,
+`matches(series_id, scheduled_at)`, `bracket_picks(series_id, bracket_id,
+predicted_winner_team_id, predicted_score_format)`,
+`brackets(id, user_id)` pour le bracket. Valeurs de statut lues :
+`competitions.status = 'ACTIVE'`, `users.status = 'DISABLED'`,
+`competitions.type IN ('PLAYOFFS','NBA_CUP')`,
+`series.round IN ('ROUND_1','CONF_SEMIS','CONF_FINALS','NBA_FINALS',
+'CUP_QUARTERS','CUP_SEMIS','CUP_FINAL')`.
 ```
 
 ## 4. Fichiers du projet — carte rapide
@@ -238,20 +325,22 @@ réel (détail des déductions faites en §7).
 ```text
 app/
   layout.tsx, favicon.ico, page.tsx — scaffold create-next-app, non modifiés.
-  tokens.css — tokens de production (P-DS7), CONSOMMÉ par l'écran Accueil.
+  tokens.css — tokens de production (P-DS7), CONSOMMÉ par tous les écrans codés.
   globals.css — @import "./tokens.css" en tête ; contenu existant inchangé.
   (public)/
-    layout.tsx, login/page.tsx, signup/page.tsx — CODÉS (T2 §4), pas encore
-      stylés selon T7 (non retouchés par le lot Accueil).
+    layout.tsx — CODÉ (T2 §4), rend désormais <PublicNav/> (NOUVEAU, §2.5).
+    login/page.tsx, signup/page.tsx — CODÉS, pas encore stylés selon T7.
     reset-password/ — dossier créé, PAGE PAS ENCORE ÉCRITE (T2 §8).
-  (app)/                — NOUVEAU (session du 21/07/2026).
+  (app)/
     layout.tsx + layout.module.css — garde session + nav 4 onglets. CODÉ.
     home/
       page.tsx + page.module.css — écran Accueil. CODÉ.
-    play/page.tsx         — stub « à venir », PAS stylé.
+    play/page.tsx         — stub « à venir », PAS stylé. Prochaine étape.
     profile/page.tsx      — stub « à venir », PAS stylé.
-  leaderboard/page.tsx  — NOUVEAU. Route physique unique hors route groups
-    (§2.2). Stub « à venir », PAS stylé, pas de nav dupliquée (lot suivant).
+  leaderboard/page.tsx  — Classement. Route physique unique hors route
+    groups (§2.2). CODÉ cette session (§2.5) : lecture + rendu complets.
+  bracket/page.tsx      — Bracket (vue globale). NOUVEAU. Route physique
+    unique hors route groups. CODÉ cette session (§2.5).
   (admin)/               — PAS ENCORE CRÉÉ.
 
 proxy.ts               — garde d'authentification (T6a §4.1, corrigé §2.2). CODÉ.
@@ -260,24 +349,54 @@ lib/
   supabase/{browser,server,service}.ts — les 3 clients (T6a §2.4). CODÉ.
   auth/actions.ts                      — login/signup/logout (T2 §4). CODÉ.
   queries/
-    home.ts — NOUVEAU (session du 21/07/2026). getHomeData() + types
-      HomeHeader/TodoItem/FeedItem/HomeData. CODÉ.
+    home.ts        — getHomeData() + types HomeHeader/TodoItem/FeedItem/
+      HomeData. CODÉ.
+    leaderboard.ts — NOUVEAU (22/07/2026). getLeaderboard() + types
+      SortKey/LeaderboardRow/LeaderboardData. CODÉ.
+    bracket.ts     — NOUVEAU (22/07/2026). getBracket() + types
+      SeriesPickGroup/BracketNode/BracketRound/BracketData. CODÉ.
   scoring/, sync/ — PAS ENCORE CRÉÉS.
 
 components/
   auth/{LoginForm,SignupForm}.tsx — pas encore stylés selon T7.
-  icons/nav-icons.tsx — 4 icônes de nav (T7), CÂBLÉES pour la première fois
-    par components/nav/TabBar.tsx cette session.
+  icons/nav-icons.tsx — 4 icônes de nav (T7), câblées par TabBar.
+  ui/
+    Countdown.tsx (+ .module.css) — DÉPLACÉ depuis components/home/ cette
+      session (22/07/2026), désormais partagé Accueil + Bracket. Seule
+      feuille "use client" en dehors des 4 listées ci-dessous, comportement
+      inchangé.
   nav/
-    TabBar.tsx + TabBar.module.css — NOUVEAU. Barre 4 onglets, "use client"
-      (état "onglet actif" uniquement). CODÉ.
-  home/ — NOUVEAU (session du 21/07/2026), tous CODÉS :
-    Countdown.tsx (+ .module.css)     — SEULE feuille "use client" de home/.
+    TabBar.tsx + TabBar.module.css — barre 4 onglets, "use client" (état
+      "onglet actif" uniquement). CODÉ (session du 21/07/2026).
+    PublicNav.tsx + .module.css — NOUVEAU (22/07/2026). Nav réduite
+      (visiteur), serveur, partagée (public)/layout.tsx + ScreenShell.
+    ScreenShell.tsx + .module.css — NOUVEAU (22/07/2026). Choisit TabBar ou
+      PublicNav selon la session, pour /leaderboard et /bracket.
+  home/ — tous CODÉS (session du 21/07/2026) :
     HomeHeader.tsx (+ .module.css)    — en-tête rang/points.
     TodoList.tsx / TodoRow.tsx (+ .module.css chacun) — bloc « À traiter »
       (et « À traiter (admin) », même composants, item.kind distingue).
     Feed.tsx / FeedRow.tsx (+ .module.css chacun) — bloc « Ça vient de tomber ».
-    EmptyState.tsx (+ .module.css)    — états vides génériques (libellés en props).
+    EmptyState.tsx (+ .module.css)    — état vide générique, réutilisé tel
+      quel par Classement et Bracket (§2.5).
+  leaderboard/ — NOUVEAU (22/07/2026), tous CODÉS :
+    SortChips.tsx (+ .module.css)       — puces de tri, <Link> serveur.
+    LeaderboardTable.tsx (+ .module.css) — en-tête + composition des lignes.
+    LeaderboardRow.tsx (+ .module.css)  — "use client" : expansion/repli.
+    StickyMeBar.tsx (+ .module.css)     — "use client" : IntersectionObserver.
+  bracket/ — NOUVEAU (22/07/2026), tous CODÉS :
+    ProgressBar.tsx (+ .module.css)    — progression X/15 ou X/7.
+    NodeCard.tsx (+ .module.css)       — carte résumé d'une série, SANS
+      "use client" (rendue par SeriesDrillDown).
+    SeriesGroups.tsx (+ .module.css)   — contenu du drill-down (groupes de
+      picks), SANS "use client".
+    SeriesDrillDown.tsx (+ .module.css) — "use client" : accordéon (vue A) /
+      feuille par le bas (vue B), une série ouverte à la fois.
+    RotateInvite.tsx (+ .module.css)   — invitation à tourner, SANS
+      "use client" (rendue par TreeView).
+    TreeView.tsx (+ .module.css)       — "use client" : déclencheur plein
+      écran, overlay vue B, écoute de rotation.
+    BracketSummary.tsx (+ .module.css) — vue A « résumé par tour », serveur.
 
 public/
   logos/teams/, brand/ — arborescence posée (session du 21/07/2026), fichiers
@@ -285,14 +404,16 @@ public/
 
 Cadrage/
   V1/     — specs techniques V1 validées (T1→T7) + Spec visuelle/
-            SPEC_ECRAN_ACCUEIL_V0_1.md (close, appliquée cette session).
+            SPEC_ECRAN_ACCUEIL_V0_1.md et
+            SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md (close, appliquée cette
+            session).
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + cadrage fonctionnel hérité du prototype.
   OLD/    — cadrage antérieur, non consulté activement.
 
 supabase/
   migrations/  — 4 migrations versionnées, voir §3. Aucune ajoutée cette
-    session (aucune migration nécessaire pour l'écran Accueil).
+    session (aucune migration nécessaire pour Classement/Bracket).
   config.toml  — supabase link vers le projet Supabase NEUF de la V1.
 ```
 
@@ -327,13 +448,19 @@ supabase/
 - Écrans de lecture (Accueil et suivants) : AUCUNE valeur visuelle en dur
   (couleur/rayon/espacement/typo/ombre) — uniquement via les tokens de
   app/tokens.css, via CSS Modules colocalisés par composant (acté au lot
-  Accueil, §1/§2.4). Composants serveur par défaut ; un "use client" doit
-  être justifié explicitement (interaction ou horloge locale uniquement).
+  Accueil, reconduit sur Classement/Bracket). Composants serveur par défaut ;
+  un "use client" doit être justifié explicitement (interaction, horloge
+  locale, ou écoute d'un événement navigateur — jamais un fetch de données).
 - Noms de colonnes/valeurs de statut absents d'une spec produit : LIRE le
   schéma réel (migrations/RLS) avant d'écrire la moindre requête, jamais
   deviner. En cas d'ambiguïté réelle entre deux lectures possibles d'une
   spec (ex. libellé vs colonne citée), s'arrêter et demander plutôt que
   choisir en silence (cf. §7, décision du feed « pari statué »).
+- Quand une spec/archi déjà validée (ex. T6a) impose une contrainte que le
+  prompt de session ne détaille pas explicitement (ex. « la page choisit sa
+  nav selon la session »), l'appliquer directement plutôt que la considérer
+  hors périmètre — ce n'est pas une nouvelle décision produit, juste
+  l'exécution d'une décision déjà actée (cf. §2.5, ScreenShell/PublicNav).
 ```
 
 ## 6. Config à faire au déploiement — pas encore faite
@@ -368,7 +495,10 @@ supabase/
   avant d'écrire un fichier dont le nom fait partie des conventions Next.js.
 
 - cookies() de next/headers est asynchrone depuis Next.js 15/16 : toute
-  fonction qui l'utilise (dont getServerClient()) doit être async.
+  fonction qui l'utilise (dont getServerClient()) doit être async. Idem
+  pour `searchParams` dans les pages (désormais une Promise, confirmé dans
+  node_modules/next/dist/docs/ à l'écriture de app/leaderboard/page.tsx et
+  app/bracket/page.tsx cette session).
 
 - Route groups Next.js : deux fichiers page.tsx dans des groupes différents
   qui résolvent à la MÊME URL font planter le build (« Conflicting paths »).
@@ -403,6 +533,18 @@ supabase/
   « neutralisé, jamais rouge » déjà actée ailleurs (0.2.4 §4, 0.2.9 §7,
   T6c §4). Libellé rendu : « Neutralisé » (pas « validé/ajusté », qui ne
   correspond à aucun état atteint par cette colonne).
+
+- Rotation d'écran ET routage client (TreeView.tsx, session du 22/07/2026) :
+  un listener sur `matchMedia("(orientation: landscape)").matches` lu au
+  montage (plutôt qu'un événement `change`) aurait fait atterrir tout
+  visiteur mobile CHARGEANT LA PAGE en paysage directement dans la vue
+  arbre, y compris un premier chargement fortuit — contraire à la spec
+  (vue A = défaut). Résolu en n'agissant JAMAIS sur l'état constaté,
+  seulement sur l'événement de changement. Deuxième piège lié : utiliser un
+  `useState` pour savoir si l'entrée en vue B venait d'une rotation aurait
+  capturé une valeur périmée dans le gestionnaire d'événement (fermeture au
+  moment du montage de l'effet) — remplacé par une `ref`, lue à l'exécution
+  du handler plutôt qu'à sa création.
 
 Pièges génériques du prototype (Postgres/Git/PowerShell, toujours valables en
 principe) non recopiés ici pour éviter la duplication — voir l'historique du

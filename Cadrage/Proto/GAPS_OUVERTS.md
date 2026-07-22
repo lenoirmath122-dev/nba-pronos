@@ -54,17 +54,15 @@
 - **Implémentation code de la V1** (post-T7, EN COURS depuis la session du
   19/07/2026 suite) : plomberie Supabase (3 clients T6a §2.4), garde
   d'authentification (`proxy.ts`, T6a §4.1), flux complet login/signup
-  (T2 §4), et désormais **l'écran Accueil complet** (`app/(app)/layout.tsx`
-  4 onglets, `app/(app)/home/page.tsx`, `lib/queries/home.ts`,
-  `components/home/*`, session du 21/07/2026 suite) sont CODÉS et vérifiés
-  (`tsc`/`eslint`/`next build` propres). C'est le **premier écran stylé aux
-  tokens** de `app/tokens.css` — le styling n'est donc plus un point ouvert
-  en soi, mais un travail à **reconduire** écran par écran. Encore À CODER :
-  hub Jouer (matchs/bracket/paris/mes pronos), classement + bracket
-  partagés, écrans admin, les server actions au-delà de l'auth (T6b), le
-  moteur de synchro/scoring (T4/T5), le Realtime + rendu des états (T6c).
-  Prochaine étape concrète : classement + bracket partagés (`app/leaderboard`,
-  `app/bracket`, T6a §3.2). Détail dans `ETAT_ACTUEL.md` §2.
+  (T2 §4), l'écran Accueil complet (session du 21/07/2026 suite), et
+  désormais **les écrans Classement et Bracket partagés**
+  (`app/leaderboard`, `app/bracket`, `lib/queries/{leaderboard,bracket}.ts`,
+  `components/{leaderboard,bracket}/*`, session du 22/07/2026) sont CODÉS et
+  vérifiés (`tsc`/`eslint`/`next build` propres). Encore À CODER : hub Jouer
+  (matchs/bracket personnel/paris/mes pronos), écrans admin, les server
+  actions au-delà de l'auth (T6b), le moteur de synchro/scoring (T4/T5), le
+  Realtime + rendu des états (T6c). Prochaine étape concrète : hub Jouer
+  (`app/(app)/play/*`). Détail dans `ETAT_ACTUEL.md` §2.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
@@ -109,10 +107,6 @@
   du rendu UI à acter.
 - **Gains des paris par niveau** + forme de progression (linéaire vs
   « jackpot ») : point ouvert de 0.2.5, toujours pas tranché.
-- **Marqueur « corrigé »** au classement : wording exact + placement.
-- **Séparateur visuel du Total** (tableau classement desktop) : à trancher.
-- **Vue B « arbre » du bracket en plein écran paysage** (0.2.9 §5/§10) :
-  comportement exact toujours à faire.
 
 ## Interprétations d'implémentation actées (pas des gaps — à connaître, et à
 ## reporter dans `decisions_0.2.x` si l'utilisateur le souhaite un jour)
@@ -146,3 +140,33 @@
     TypeScript, pas d'appel RPC) n'est pas encore passée — lecture directe
     de 0.2.4 §6 (« refusé avant deadline → slot libéré »), pas une
     invention. Paris `DRAFT` (brouillons) inclus de la même façon.
+- **Écrans Classement/Bracket (session du 22/07/2026,
+  `lib/queries/{leaderboard,bracket}.ts`)** :
+  - Nav des routes physiques uniques `/leaderboard` et `/bracket` (hors
+    route groups, T6a §3.2/§8.1) : la spec produit ne détaillait pas
+    l'implémentation, seule l'archi T6a la prescrivait (« la page choisit
+    elle-même sa nav selon la session »). Ajouté `components/nav/
+    ScreenShell.tsx` (choix TabBar/nav réduite) + `components/nav/
+    PublicNav.tsx` (extrait de `(public)/layout.tsx`, désormais partagé,
+    stylé aux tokens — il ne l'était pas). Décision structurelle appliquée
+    directement (déjà actée par T6a, pas une nouvelle règle produit).
+  - `filledCount`/`totalCount` de `BracketData` (« progression X/15 ou
+    X/7 ») : le contrat de type n'a pas de `userId`, donc pas de notion de
+    « mon bracket rempli à X/15 ». Interprété comme la progression du
+    TOURNOI (nombre de séries dont le résultat officiel est déjà connu),
+    cohérent avec « vue A résumé... état réel de chaque série ». À
+    confirmer si une autre lecture était voulue.
+  - Le contrat `BracketNode` (spec §15.2, recopié à l'identique) n'expose
+    pas le score de série RÉEL (`series.official_score_format`) — seulement
+    `actualWinnerAbbreviation`. La carte de série (vue A/B) affiche donc le
+    vainqueur seul, jamais le score exact de la série, y compris en
+    Playoffs. Pas un oubli de code : le type imposé par la spec ne porte
+    pas ce champ. À rouvrir si le score de série réel doit être affiché.
+  - « Or = champion » (§17) appliqué STRICTEMENT à la finale (NBA_FINALS /
+    CUP_FINAL) : le vainqueur d'une série normale (tour 1, demies, etc.)
+    est rendu en vert (résultat gagné), jamais en or — lecture littérale de
+    « champion déduit du bracket », pas une extension à chaque série.
+  - Libellés de tour (« 1er tour », « Demi-finales de conférence », etc.) et
+    nom de compétition générique (« Playoffs » / « NBA Cup », faute de
+    `competitionName` dans `BracketData`) : texte de rendu choisi par
+    l'implémentation, pas fourni par la spec ni par le schéma.
