@@ -205,7 +205,8 @@ create table teams (
   name text not null,
   abbreviation text not null,
   conference conference not null,
-  logo_url text,                    -- URL native Highlightly (B4) ; fallback abréviation en UI
+  logo_url text,                    -- conservée, mais non lue pour l'affichage depuis l'amendement 21/07/2026
+                                     -- (logos SVG en dépôt, public/logos/teams/ — voir SYNCHRO §4) ; fallback théorique seulement
   created_at timestamptz not null default now(),
   -- Durcissement acté (18/07/2026) : les 30 abréviations NBA sont uniques ;
   -- empêche un doublon d'équipe en cas de synchro fautive du référentiel (D6).

@@ -1,0 +1,280 @@
+/* ============================================================================
+   NBA Pronos — app/tokens.css
+   ----------------------------------------------------------------------------
+   Source de vérité : SPEC_DESIGN_SYSTEM_V0.1 (T7) + amendement V0.2 (§15).
+   Là où V0.2 (§15.2 rayons, §15.4 tendance, §15.6 surfaces/bordures/texte/
+   accent/élévation) diffère des valeurs d'origine (§3/§5), c'est V0.2 qui prime.
+
+   Principes appliqués :
+   - P-DS7 : chaque token est préfixé par famille (--color-*, --font-*, --space-*,
+     --radius-*, --elevation-*, --motion-*).
+   - P-DS5 : deux couches. PRIMITIFS (--c-*) = palette brute, JAMAIS lue par un
+     écran. SÉMANTIQUES (--color-*) = ce que les écrans lisent.
+   - P-DS2 : le DARK est le défaut (sur :root). Le CLAIR n'override QUE la couche
+     sémantique de couleur/élévation (mêmes clés, valeurs différentes), via
+     [data-theme="light"]. La bascule (toggle + persistance) est un lot séparé.
+
+   Correspondance noms courts des maquettes -> P-DS7 :
+     --surface-*  -> --color-surface-*        --accent      -> --color-accent
+     --border-*   -> --color-border-*         --accent-rest -> --color-accent-rest
+     --text-*     -> --color-text-*           --accent-soft -> --color-accent-soft
+     --shadow-*   -> --elevation-*            --accent-line -> --color-accent-line
+     --arena-top/-bot -> --color-surface-arena-top/-bottom
+     --edge-lit   -> --color-edge-lit         --hero-image  -> --hero-image (inchangé)
+
+   À CONFIRMER / À VÉRIFIER (signalés inline par « TODO ») :
+   - valeurs « dérivées » là où l'amendement ne restitue pas un token d'origine
+     (surface-overlay, surface-arena solide de repli, glow clair) ;
+   - contraste AA de --color-trend sur fond CLAIR (une seule valeur donnée, §15.4) ;
+   - @font-face Inter auto-hébergée (à ajouter quand l'asset arrive — pas de hotlink) ;
+   - --hero-image pointe vers un asset non encore fourni (voir public/brand/README).
+   ========================================================================== */
+
+
+/* ==========================================================================
+   COUCHE 1 — PRIMITIFS (palette brute, hors thème, jamais lue par un écran)
+   ========================================================================== */
+:root {
+  /* Neutres bleu-nuit d'arène (§3.1) */
+  --c-navy-950: #0B0E14;  --c-navy-900: #10141D;  --c-navy-800: #141924;
+  --c-navy-700: #1E2531;  --c-navy-600: #2A3341;  --c-navy-500: #3A4557;
+  --c-slate-400: #5E6B7D; --c-slate-300: #8793A4; --c-slate-200: #A8B2C1;
+  --c-slate-100: #CBD3DE; --c-white-050: #F2F5FA; --c-white-000: #FFFFFF;
+
+  /* Neutres raffinés — amendement V0.2 §15.6 (dark « Voie A ») */
+  --c-navy-ink:      #0E1118; /* base d'app réchauffée */
+  --c-navy-raised:   #161B25; /* carte de lecture */
+  --c-navy-inset:    #10141C; /* champs, valeurs, bandeaux neutres */
+  --c-navy-arena-t:  #1C2432; /* haut du dégradé arène */
+  --c-navy-arena-b:  #171D28; /* bas du dégradé arène */
+  --c-slate-250:     #B7C0CE; /* texte secondaire raffiné */
+  --c-slate-450:     #7C8798; /* texte muted raffiné */
+
+  /* Accent broadcast (§3.1 / §14.1 — figé §15.1) */
+  --c-orange-600: #E2551F;  --c-orange-500: #FF6A2B;  --c-orange-400: #FF8A54;
+  --c-orange-800: #C0450F;  /* accent « pressed »/rest clair (§3.3/§15.6) */
+
+  /* Champion / mise en avant rare */
+  --c-gold-500: #F5C451;  --c-gold-400: #FFD777;  --c-gold-700: #C9971F; /* or clair */
+
+  /* Sémantiques de jeu */
+  --c-green-500: #2FBF71;  --c-green-600: #1E9E58; /* gagné dark / clair */
+  --c-red-500:   #E5484D;  --c-red-600:   #C7443F; /* perdu dark / clair */
+  --c-red-live:  #FF2D4B;  --c-blue-300:  #6FA8FF;
+  --c-trend:     #9FC6E0;  /* bleu-froid neutre (§15.4) */
+}
+
+
+/* ==========================================================================
+   COUCHE 2 — SÉMANTIQUES : thème DARK (défaut)
+   ========================================================================== */
+:root {
+  /* --- Surfaces (§15.6) --- */
+  --color-surface-base:          var(--c-navy-ink);
+  --color-surface-raised:        var(--c-navy-raised);
+  --color-surface-inset:         var(--c-navy-inset);
+  --color-surface-arena-top:     var(--c-navy-arena-t);
+  --color-surface-arena-bottom:  var(--c-navy-arena-b);
+  --color-surface-arena:         var(--c-navy-arena-t); /* TODO repli solide (dérivé) */
+  --color-surface-overlay:       var(--c-navy-raised);  /* TODO modale/popover (dérivé) */
+
+  /* --- Bordures : voile blanc (§15.6) --- */
+  --color-border-hair:    rgba(255, 255, 255, 0.06);
+  --color-border-subtle:  rgba(255, 255, 255, 0.09);
+  --color-border-strong:  rgba(255, 255, 255, 0.15);
+  --color-edge-lit:       rgba(255, 255, 255, 0.10); /* bord supérieur lumineux carte arène */
+
+  /* --- Texte (§15.6) --- */
+  --color-text-primary:    var(--c-white-050);
+  --color-text-secondary:  var(--c-slate-250);
+  --color-text-muted:      var(--c-slate-450);
+  --color-text-on-accent:  var(--c-navy-950); /* texte posé SUR l'accent (§3.2) */
+
+  /* --- Accent (§15.1 / §15.6) --- */
+  --color-accent:          var(--c-orange-500);
+  --color-accent-hover:    var(--c-orange-400);
+  --color-accent-pressed:  var(--c-orange-600);
+  --color-accent-rest:     var(--c-orange-400); /* accent « au repos » — MÊME famille, pas un 2e accent */
+  --color-accent-soft:     color-mix(in srgb, var(--color-accent) 16%, transparent);
+  --color-accent-line:     color-mix(in srgb, var(--color-accent) 55%, transparent);
+
+  /* --- Champion (§3 / R-COL5) --- */
+  --color-champion:        var(--c-gold-500);
+
+  /* --- Sémantiques de jeu (§3.2 / §3.4) --- */
+  --color-win:          var(--c-green-500);
+  --color-loss:         var(--c-red-500);
+  --color-live:         var(--c-red-live);
+  --color-pending:      var(--c-slate-300); /* « en attente », neutre (A1) */
+  --color-neutralized:  var(--c-slate-400); /* « neutralisé » — JAMAIS rouge (R-COL2) */
+  --color-trend:        var(--c-trend);     /* tendance de forme — JAMAIS win/loss (R-COL7) */
+
+  /* --- Élévation (§5.3 / §15.6) --- */
+  --elevation-flat:    none;                               /* écrans de lecture */
+  --elevation-raised:  0 1px 2px rgba(0, 0, 0, 0.35);      /* carte de lecture */
+  --elevation-arena:   0 10px 28px rgba(0, 0, 0, 0.45);    /* carte de match / bracket */
+  --elevation-glow:    0 0 0 1px var(--color-accent-soft), 0 6px 24px rgba(255, 106, 43, 0.18);
+
+  /* --- Gradients de profondeur (parcimonie — P-DS3 / R-ELV1, §15.6) --- */
+  --gradient-arena: linear-gradient(180deg, var(--color-surface-arena-top), var(--color-surface-arena-bottom));
+  --gradient-app:
+    radial-gradient(120% 60% at 50% 0%, rgba(255, 106, 43, 0.055), transparent 60%),
+    linear-gradient(180deg, #12161F, var(--color-surface-base) 40%, #0B0E14);
+
+
+  /* ========================================================================
+     CONSTANTES HORS THÈME (identiques dark ET clair — pas d'override)
+     ======================================================================== */
+
+  /* Pastille de logo — constante (§10.1 / §14.3) */
+  --color-logo-pastille: #EDF1F7;
+
+  /* Opacités d'état (§9.4) */
+  --opacity-cancelled:      0.55; /* pari annulé/neutralisé (barré + grisé) */
+  --opacity-inactive:       0.60; /* ligne joueur inactif */
+  --opacity-disabled-ctrl:  0.40; /* contrôle désactivé */
+
+
+  /* ========================================================================
+     TYPOGRAPHIE (§4) — indépendant du thème
+     ======================================================================== */
+  /* Famille unique, auto-hébergée (§14.2). @font-face Inter à ajouter à
+     l'intégration de l'asset — pas de hotlink externe. */
+  --font-ui:       "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display:  var(--font-ui); /* même famille, contraste par graisse/letter-spacing */
+  --font-numeric:  var(--font-ui); /* à utiliser AVEC font-variant-numeric: tabular-nums (R-TYP1) */
+
+  --font-size-xs:    0.75rem;   /* 12px */
+  --font-size-sm:    0.875rem;  /* 14px */
+  --font-size-base:  1rem;      /* 16px */
+  --font-size-md:    1.125rem;  /* 18px */
+  --font-size-lg:    1.25rem;   /* 20px */
+  --font-size-xl:    1.5rem;    /* 24px */
+  --font-size-2xl:   2rem;      /* 32px */
+  --font-size-3xl:   2.5rem;    /* 40px */
+
+  --font-weight-regular:   400;
+  --font-weight-medium:    500;
+  --font-weight-semibold:  600;
+  --font-weight-bold:      700;
+
+  --line-height-tight:   1.15; /* chiffres arène, titres */
+  --line-height-normal:  1.45; /* corps, lecture */
+
+
+  /* ========================================================================
+     ESPACEMENT (§5.1, base 4px) — indépendant du thème
+     ======================================================================== */
+  --space-1: 0.25rem;  --space-2: 0.5rem;  --space-3: 0.75rem;  --space-4: 1rem;
+  --space-5: 1.5rem;   --space-6: 2rem;    --space-7: 3rem;     --space-8: 4rem;
+
+
+  /* ========================================================================
+     RAYONS — barème « niveau C / net » (§15.2, remplace §5.2)
+     ======================================================================== */
+  --radius-sm:    2px;    /* tags, badges (valeur générale) */
+  --radius-md:    3px;    /* cartes de lecture, champs */
+  --radius-lg:    4px;    /* cartes de match / bracket (registre arène) */
+  --radius-chip:  4px;    /* puces de tri du classement */
+  --radius-badge: 3px;    /* badges (EN DIRECT, correction) */
+  --radius-pill:  999px;  /* formes pilule (puces/badge en pastille) — hors barème net */
+  --radius-full:  50%;    /* pastille de logo, avatar, point live (inchangé §14.3) */
+
+
+  /* ========================================================================
+     MOTION (§6) — indépendant du thème
+     ======================================================================== */
+  --motion-flash-color:     var(--color-accent-soft);       /* flash B7 « donnée changée » */
+  --motion-flash-duration:  1200ms;
+  --motion-flash-easing:    cubic-bezier(0.2, 0, 0, 1);     /* ease-out : pic immédiat, retour doux */
+  --motion-pulse-duration:  1500ms;                          /* pulse du point live (dérivé §7.1) */
+
+
+  /* ========================================================================
+     ACCESSIBILITÉ & RESPONSIVE (§11) — indépendant du thème
+     ======================================================================== */
+  --tap-target-min: 44px; /* cible tactile minimale (§11.3) */
+  --focus-ring: 0 0 0 2px var(--color-surface-base), 0 0 0 4px var(--color-accent);
+
+  /* Points de rupture — RÉFÉRENCE seulement : une media query ne lit pas var(),
+     elle utilise les px littéraux. Ici pour documentation (§11.2). */
+  --breakpoint-sm: 640px;  --breakpoint-md: 768px;  --breakpoint-lg: 1024px;
+
+
+  /* ========================================================================
+     BANDEAU « parquet » (§15.7) — une seule variable à éditer pour changer l'asset
+     ======================================================================== */
+  /* TODO asset réel (licencié/possédé, sans watermark, interne). Placeholder de
+     dev = *.dev.* ignoré par git (voir public/brand/README.md). Le bandeau reste
+     SOMBRE dans les deux thèmes (constante hors thème, §15.7) — donc pas d'override. */
+  --hero-image: url("/brand/hero-parquet.webp");
+}
+
+
+/* ==========================================================================
+   COUCHE 2 — OVERRIDE : thème CLAIR ([data-theme="light"])
+   N'override QUE les tokens de couleur/élévation/gradient qui changent.
+   ========================================================================== */
+[data-theme="light"] {
+  /* Surfaces (§3.3 / §15.6) */
+  --color-surface-base:          #F4F6FA;
+  --color-surface-raised:        var(--c-white-000);
+  --color-surface-inset:         #EEF1F7;
+  --color-surface-arena-top:     var(--c-white-000);
+  --color-surface-arena-bottom:  var(--c-white-000); /* arène plate en clair : énergie = accent + élévation */
+  --color-surface-arena:         var(--c-white-000);
+  --color-surface-overlay:       var(--c-white-000);
+
+  /* Bordures : voile sombre (§15.6) */
+  --color-border-hair:    rgba(16, 20, 29, 0.06);
+  --color-border-subtle:  rgba(16, 20, 29, 0.10);
+  --color-border-strong:  rgba(16, 20, 29, 0.16);
+  --color-edge-lit:       rgba(16, 20, 29, 0.05);
+
+  /* Texte (§3.3 / §15.6) */
+  --color-text-primary:    var(--c-navy-900);
+  --color-text-secondary:  #3A4557;
+  --color-text-muted:      var(--c-slate-400);
+  --color-text-on-accent:  var(--c-white-000);
+
+  /* Accent — assombri d'un cran pour le contraste sur clair (§3.3 / §11.1 / §15.6) */
+  --color-accent:          var(--c-orange-600);
+  --color-accent-hover:    var(--c-orange-500);
+  --color-accent-pressed:  var(--c-orange-800);
+  --color-accent-rest:     var(--c-orange-800);
+  --color-accent-soft:     color-mix(in srgb, var(--color-accent) 12%, transparent);
+  --color-accent-line:     color-mix(in srgb, var(--color-accent) 45%, transparent);
+
+  /* Champion (§3.3) */
+  --color-champion:        var(--c-gold-700);
+
+  /* Sémantiques de jeu (§3.3 / §15.6) */
+  --color-win:          var(--c-green-600);
+  --color-loss:         var(--c-red-600);
+  --color-live:         var(--c-red-live);   /* inchangé */
+  --color-pending:      var(--c-slate-400);
+  --color-neutralized:  var(--c-slate-400);
+  --color-trend:        var(--c-trend);       /* TODO vérifier contraste AA sur fond clair (§15.4) */
+
+  /* Élévation réduite en clair (§5.3 / §15.6) */
+  --elevation-raised:  0 1px 2px rgba(16, 20, 29, 0.08);
+  --elevation-arena:   0 8px 22px rgba(16, 20, 29, 0.12);
+  --elevation-glow:    0 0 0 1px var(--color-accent-soft), 0 6px 22px rgba(226, 85, 31, 0.14); /* TODO (dérivé) */
+
+  /* Gradients — quasi plats en clair (dérivé §15.6) */
+  --gradient-arena: linear-gradient(180deg, var(--color-surface-arena-top), var(--color-surface-arena-bottom));
+  --gradient-app:   linear-gradient(180deg, var(--c-white-000), var(--color-surface-base) 45%); /* TODO (dérivé) */
+}
+
+
+/* ==========================================================================
+   PREFERS-REDUCED-MOTION (R-MOT1 / R-MOT2, close T6c)
+   Neutralise les durées au niveau token. Les composants doivent AUSSI ne jouer
+   aucune keyframe (remplacement de valeur nu, jamais de fondu accéléré).
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --motion-flash-duration: 0ms;
+    --motion-pulse-duration: 0ms;
+  }
+}

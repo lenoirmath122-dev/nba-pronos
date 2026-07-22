@@ -842,3 +842,44 @@ via des boutons segmentés séparés : l'affrontement **devient** le sélecteur.
 inchangé (VALIDÉE et figée, §14) ; les valeurs ci-dessus sont la référence à
 jour pour §5.2/§14.1 et s'appliquent au premier fichier de tokens de
 production qui sera écrit.
+
+### 15.9 — Amendement : premier fichier de tokens de production (21/07/2026)
+
+**Acté.** Le premier fichier de tokens de production, **`app/tokens.css`**,
+existe désormais dans le dépôt (importé par `app/globals.css`) et implémente
+§3/§5/§15 avec le nommage **P-DS7** (préfixe par famille, `--color-*` /
+`--font-*` / `--space-*` / `--radius-*` / `--elevation-*` / `--motion-*`) :
+dark sur `:root` (défaut), clair en override `[data-theme="light"]` (P-DS2).
+La réconciliation des noms courts des maquettes → P-DS7 signalée en réserve
+au §15.6 est **faite** :
+
+```text
+--surface-*  -> --color-surface-*        --accent      -> --color-accent
+--border-*   -> --color-border-*         --accent-rest -> --color-accent-rest
+--text-*     -> --color-text-*           --accent-soft -> --color-accent-soft
+--shadow-*   -> --elevation-*            --accent-line -> --color-accent-line
+--arena-top/-bot -> --color-surface-arena-top/-bottom
+--edge-lit   -> --color-edge-lit         --hero-image  -> --hero-image (inchangé)
+```
+
+**Valeurs dérivées actées** faute de restitution explicite par l'amendement
+(consignées inline en commentaire `TODO` dans le fichier) :
+- `--color-surface-overlay` = `--color-surface-raised` (modale/popover, dark
+  et clair) ;
+- `--color-surface-arena` (repli solide, hors dégradé) = haut du dégradé
+  arène (`--color-surface-arena-top`) ;
+- `--elevation-glow` en thème clair (non donné par §15.6, dérivé de la même
+  formule que le glow dark, ajusté à l'accent clair) ;
+- `--gradient-app` en thème clair (quasi plat, dérivé de §15.6).
+
+**Vérifications d'intégration restantes** (non bloquantes pour T7, à faire à
+l'usage réel) :
+- contraste AA de `--color-trend` sur fond **clair** (une seule valeur
+  donnée, §15.4) ;
+- `@font-face` Inter auto-hébergée : pas encore ajoutée (l'asset n'est pas
+  encore fourni) — `--font-ui` retombe sur `system-ui` en attendant ;
+- `--hero-image` pointe vers `/brand/hero-parquet.webp`, un asset non encore
+  fourni (voir `public/brand/README`).
+
+Aucun écran n'est stylé à ce stade : cette passe pose uniquement la couche de
+tokens.

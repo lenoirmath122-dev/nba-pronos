@@ -147,6 +147,18 @@ Le référentiel est **global et persistant** : il ne fait pas partie du cycle d
 vie d'une compétition, ne subit aucun wipe (rétention D2), et sert de cible aux
 FK `favorite_team_id`, `team1_id`, etc.
 
+> **Amendement 21/07/2026 (logos)** — le paragraphe « Logos » ci-dessus (téléchargement
+> + bucket Supabase Storage + `teams.logo_url` → URL interne) est **remplacé** par des
+> **SVG bundlés** dans `public/logos/teams/` (un fichier par franchise, nommé
+> `teams.abbreviation` en MAJUSCULES), qui deviennent la **source unique** de
+> l'affichage. `/api/sync/teams` **n'implémente pas** l'étape de téléchargement des
+> logos ; `teams.logo_url` reste en base (upsert inchangé) mais **n'est pas lu** pour
+> l'affichage (fallback théorique seulement — fallback réel = abréviation en texte).
+> Motif : 30 franchises stables, rendu net, pas de round-trip bucket. Le *sourcing des
+> logos* était explicitement un point d'itération ouvert de la synthèse — ce n'est donc
+> pas une réouverture d'une décision figée. Le texte original du paragraphe « Logos »
+> est conservé ci-dessus pour traçabilité ; c'est cet amendement qui prévaut.
+
 ---
 
 ## 5. Séries & matchs — le point délicat (repérage empirique en attente)
@@ -356,6 +368,12 @@ SÉCURITÉ / ROBUSTESSE
 
 3. [LOGOS] Téléchargés au sync /teams, hébergés dans un bucket Supabase Storage
    (public en lecture), teams.logo_url → URL interne (B4, pas de hotlink). ACTÉ.
+   > **Amendement 21/07/2026** : mécanique remplacée par des **SVG bundlés** dans
+   > `public/logos/teams/` (clé = `teams.abbreviation`), source unique d'affichage ;
+   > l'étape de téléchargement de `/api/sync/teams` n'est pas implémentée ;
+   > `teams.logo_url` reste en base mais n'est pas lu pour l'affichage (fallback
+   > théorique seulement). Voir détail §4. N'amende pas le reste du point 3 (bucket
+   > non créé, décision devenue sans objet pour les logos).
 
 4. [ÉQUIPES] 30 mappings TEAM confirmés automatiquement (référentiel NBA
    déterministe), pas de revue admin. ACTÉ.
