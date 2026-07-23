@@ -52,21 +52,20 @@
 > et `JOURNAL_SESSIONS.md`.
 
 - **Implémentation code de la V1** (post-T7, EN COURS depuis la session du
-  19/07/2026 suite) : plomberie Supabase (3 clients T6a §2.4), garde
-  d'authentification (`proxy.ts`, T6a §4.1), flux complet login/signup
-  (T2 §4), l'écran Accueil complet (session du 21/07/2026 suite), et
-  désormais **les écrans Classement et Bracket partagés**
-  (`app/leaderboard`, `app/bracket`, `lib/queries/{leaderboard,bracket}.ts`,
-  `components/{leaderboard,bracket}/*`, session du 22/07/2026) sont CODÉS et
-  vérifiés (`tsc`/`eslint`/`next build` propres). L'écran **Matchs** a
-  désormais une spec produit CLOSE (`SPEC_ECRAN_MATCHS_V0_1.md`,
-  `Cadrage/V1/Spec visuelle/`, session du 23/07/2026, 16 décisions
-  récapitulées §19) — pas encore codé. Prochaine étape concrète : **coder
-  l'écran Matchs** (`app/(app)/play/matches/`), un écran à la fois plutôt
-  que le hub Jouer en bloc. Restent à coder après lui : « Mes pronos »,
-  « Paris », « Bracket personnel », les écrans admin, les server actions
-  au-delà de l'auth (T6b), le moteur de synchro/scoring (T4/T5), le
-  Realtime + rendu des états (T6c). Détail dans `ETAT_ACTUEL.md` §2.
+  19/07/2026 suite) : plomberie Supabase, garde d'authentification, flux
+  login/signup, l'écran Accueil, les écrans partagés Classement/Bracket, et
+  désormais **l'écran Matchs** (`app/(app)/play/matches/`,
+  `lib/queries/matches.ts`, `lib/actions/matches.ts`,
+  `lib/hooks/useUnsavedGuard.tsx`, `components/matches/*`, session du
+  23/07/2026, premier écran qui ÉCRIT) sont CODÉS et vérifiés
+  (`tsc`/`eslint`/`next build` propres, testés avec un vrai jeu de données de
+  test). Prochaine étape concrète : **« Mes pronos »** (ancré sur les
+  matchs, pas les pronos — contrainte transmise ci-dessous ; porte le live,
+  absent de l'écran Matchs). Restent à coder après lui : « Paris » (fixera
+  la destination du raccourci pari, ci-dessous), « Bracket personnel », les
+  écrans admin, le moteur de synchro/scoring (T4/T5), le Realtime + rendu
+  des états au-delà de ce qui existe déjà (T6c). Détail dans
+  `ETAT_ACTUEL.md` §2.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
@@ -77,7 +76,11 @@
 - **T8 — Déploiement** : configuration du planificateur externe gratuit
   (cron-job.org / GitHub Actions — fréquences des jobs `/api/sync/*` et
   `/api/heartbeat`), variables d'env et secrets côté Vercel — pas encore
-  traité.
+  traité. S'y ajoute désormais : **effacer le jeu de données de test**
+  (`ETAT_ACTUEL.md` §2.6/§6) avant tout lancement réel — compétition
+  « Playoffs NBA (test) » + son contenu, et les 7 comptes
+  `seed-*@nba-pronos.test` via `auth.admin.deleteUser`. Aucun script de
+  nettoyage écrit à ce jour (le seed n'est pas idempotent).
 - **Pré-remplissage IA gagné/perdu des paris** (reporté, non bloquant V1) :
   évolution envisagée pour suggérer gagné/perdu à partir des données du
   match (réaliste pour les paris déductibles de scores/box scores, inopérant
@@ -94,8 +97,18 @@
 - **Destination du raccourci pari** (`SPEC_ECRAN_MATCHS_V0_1.md` §18.3) : la
   route de création d'un pari contextualisé sur un match
   (`/play/bets/new?matchId=…` est l'hypothèse naturelle) n'est figée ni par
-  0.2.9 §12 ni par T6a. À trancher au lot « Paris » ; d'ici là le raccourci
-  pointe vers une cible provisoire.
+  0.2.9 §12 ni par T6a. Codé (`components/matches/BetShortcut.tsx`) pointant
+  provisoirement vers `/play` (le hub existant, pas une 404) en attendant
+  que le lot « Paris » fixe la vraie route.
+- **Règle « pari REJECTED avant/après sa deadline »** (0.2.4 §6, rencontrée en
+  codant l'écran Matchs, `lib/queries/matches.ts`) : aucune colonne
+  `rejected_at` n'existe (`bets`), et `rejectBet` n'est pas encore codé (lot
+  « Paris ») — la distinction avant/après n'est donc pas calculable
+  aujourd'hui. Tranché AVEC l'utilisateur : un pari `REJECTED` est TOUJOURS
+  considéré libéré (cas normal, `sealDeadlines` auto-valide tout `SUBMITTED`
+  restant à la deadline — un rejet après coup est un cas limite hors
+  fonctionnement normal). À rouvrir au lot « Paris » si une vraie colonne
+  `rejected_at` est ajoutée à ce moment-là.
 - **Deux contraintes transmises au lot « Mes pronos »** (à appliquer, pas à
   rediscuter) : l'écran doit être ancré sur les **matchs** et non sur les
   pronos — tout match verrouillé y apparaît même sans aucune ligne
@@ -186,3 +199,20 @@
   - « accéder à un match oublié » = **consulter** + déposer une **requête de
     correction** (0.2.3 §7), **jamais** une réouverture de la saisie (le
     verrouillage au coup d'envoi reste irréversible, 0.2.3 §4).
+- **Écran Matchs — implémentation (session du 23/07/2026,
+  `lib/queries/matches.ts`, `components/matches/*`)** :
+  - regroupement par jour (« Ce soir »/« Demain »/« Samedi 25 ») en fuseau
+    **Europe/Paris**, explicite — aucune convention de fuseau n'existait
+    ailleurs dans le code, le fuseau machine du serveur pouvant être UTC en
+    hébergement ;
+  - « pavé numérique » de saisie de l'écart (§6) = `<input type="number"
+    inputMode="numeric">`, qui déclenche le clavier numérique natif du
+    système sur mobile — pas de grille de touches custom construite ;
+  - badge « corrigé par un admin » : le contrat de types figé (§13,
+    `OtherPrediction.isAdminCorrected: boolean`) ne porte ni le nom de
+    l'admin ni celui du requérant (que la prose §8 mentionne littéralement,
+    « saisi/corrigé par X sur requête de Y ») — le type fait autorité,
+    rendu générique sans nom ;
+  - statuts de prono (§4) et rappel « ✓ LAL −8 » : rendus en CSS pur (tokens
+    de bordure/fond) + caractères (✓, →), aucune icône SVG créée — la spec
+    elle-même écrit le rappel en toutes lettres avec un caractère ✓.

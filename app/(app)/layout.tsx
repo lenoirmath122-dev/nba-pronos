@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { TabBar } from "@/components/nav/TabBar";
+import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
 import styles from "./layout.module.css";
 
 // Zone joueur connecté (T6a §3.1) : garde de session + nav 4 onglets.
@@ -21,8 +22,10 @@ export default async function AppLayout({
 
   return (
     <div className={styles.shell}>
-      <main className={styles.content}>{children}</main>
-      <TabBar />
+      <UnsavedGuardProvider>
+        <main className={styles.content}>{children}</main>
+        <TabBar />
+      </UnsavedGuardProvider>
     </div>
   );
 }

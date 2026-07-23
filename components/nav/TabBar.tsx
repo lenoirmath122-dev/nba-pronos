@@ -8,6 +8,7 @@ import {
   RankingIcon,
   ProfileIcon,
 } from "@/components/icons/nav-icons";
+import { useGuardedNavigation } from "@/lib/hooks/useUnsavedGuard";
 import styles from "./TabBar.module.css";
 
 // Barre 4 onglets (Accueil · Jouer · Classement · Profil), T6a §3.1 /
@@ -22,6 +23,10 @@ const TABS = [
 
 export function TabBar() {
   const pathname = usePathname();
+  // Intercepte le changement d'onglet pendant une saisie non enregistrée
+  // (C2, écrans pronos/paris/bracket personnel) — inerte tant qu'aucun écran
+  // ne déclare de saisie sale (lib/hooks/useUnsavedGuard.tsx).
+  const guardNavigation = useGuardedNavigation();
 
   return (
     <nav className={styles.bar} aria-label="Navigation principale">
@@ -33,6 +38,7 @@ export function TabBar() {
             href={href}
             className={active ? styles.tabActive : styles.tab}
             aria-current={active ? "page" : undefined}
+            onNavigate={(event) => guardNavigation(event, href)}
           >
             <span className={active ? styles.iconWrapActive : styles.iconWrap}>
               <Icon size={24} />

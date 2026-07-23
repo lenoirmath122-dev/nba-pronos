@@ -1,0 +1,121 @@
+.row {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.header {
+  display: grid;
+  grid-template-columns: 1fr auto auto auto;
+  align-items: center;
+  gap: var(--space-3);
+  width: 100%;
+  min-height: var(--tap-target-min);
+  padding: var(--space-3) var(--space-4);
+  background: none;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  color: var(--color-text-primary);
+}
+
+.header:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.teams {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0;
+}
+
+.time {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.lock {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-height: 1em;
+}
+
+/* --- Statuts de prono (§4) : rampe NEUTRE, ni vert, ni or, ni rouge --- */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  padding: 0 var(--space-2);
+  min-height: calc(var(--tap-target-min) * 0.55);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.status::before {
+  content: "";
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: var(--radius-full);
+}
+
+.statusTodo {
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border-subtle);
+}
+.statusTodo::before {
+  background: transparent;
+  border: 1px solid var(--color-text-muted);
+}
+
+.statusIncomplete {
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+}
+.statusIncomplete::before {
+  background: linear-gradient(90deg, var(--color-text-secondary) 50%, transparent 50%);
+  border: 1px solid var(--color-text-secondary);
+}
+
+.statusReady {
+  color: var(--color-text-primary);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-accent);
+}
+.statusReady::before {
+  background: var(--color-accent);
+}
+
+.statusValidated {
+  color: var(--color-text-primary);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-line);
+}
+.statusValidated::before {
+  background: var(--color-accent);
+}
+
+/* Pas de transition animée ici : les seules durées définies par les tokens
+   (--motion-flash-*, --motion-pulse-*) sont pour la donnée qui change et le
+   point live — les réutiliser pour un chevron donnerait une bascule à
+   contretemps. Rotation instantanée plutôt qu'une durée inventée. */
+.chevron,
+.chevronOpen {
+  color: var(--color-text-muted);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}

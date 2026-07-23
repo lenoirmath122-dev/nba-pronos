@@ -1208,3 +1208,155 @@ tokens, aucune Realtime sur ces deux écrans (hors périmètre §18, comme
 l'Accueil). Rien n'est committé automatiquement. Prochaine étape : hub
 Jouer (`app/(app)/play/*` — matchs, bracket personnel/remplissage, paris,
 mes pronos).
+
+---
+
+## Session du 23/07/2026 (données de test, correctif RLS Classement, écran Matchs)
+
+Quatre temps dans la même journée : vérification de l'état du dépôt (rien
+d'inattendu — le lot du 22/07 était déjà committé, contrairement à
+l'hypothèse de départ), correctif post-validation T6b §3.1 déjà appliqué
+(vérifié avant de le refaire — rien à faire), un jeu de données de test, et
+l'écran Matchs.
+
+**Jeu de données de test** (`scripts/seed-playoffs-test-data.mjs`). Constat :
+les 3 écrans de lecture codés n'avaient jamais été observés qu'en état vide
+global — aucune preuve que le rendu « rempli » fonctionne. Décision de
+méthode discutée AVEC l'utilisateur avant d'écrire quoi que ce soit :
+migration SQL ou script séparé ? Tranché pour un script HORS
+`supabase/migrations/`, pour deux raisons vérifiées, pas supposées : (a)
+`public.users` est alimentée par un trigger depuis `auth.users`, pas par un
+INSERT direct — la création de comptes de test passe forcément par l'API
+Admin (`auth.admin.createUser`), non exprimable en SQL portable ; (b) ce
+dépôt n'a qu'un seul projet Supabase lié, un jeu de données jetable ne doit
+pas vivre dans l'historique de migrations rejouable. Contenu : 30 équipes
+NBA, 1 compétition Playoffs de TEST (bracket complet 15 séries, 8 réelles au
+1er tour), 9 matchs, 7 comptes couvrant les cas produit (brouillon
+complet/partiel — ce dernier étant exactement le cas que permet le correctif
+T6b §3.1 —, validé, corrigé par un admin avec le workflow rejoué en entier
+donc le trigger `enforce_prediction_correction` réellement exercé, joueur
+désactivé conservé, joueur n'ayant jamais joué). Aucun résultat ni score nulle
+part — ce serait la sortie du moteur T5/de la synchro T4, ni l'un ni l'autre
+codé. Appliqué après montre du contenu intégral et accord explicite,
+`npx supabase db push` bloqué une première fois par le classificateur de
+permissions d'auto mode, relancé après autorisation explicite.
+
+**Correctif RLS — visibilité universelle du Classement** (migration #5,
+demandé explicitement par l'utilisateur après avoir testé avec le jeu de
+données : « il faut que le classement soit visible tout le temps, par
+n'importe qui »). Cause trouvée en testant, pas en lisant la spec : un
+joueur normal ne voyait que lui-même au Classement, un admin voyait tout —
+`user_scores`/`user_recent_form` étaient en `security_invoker=true` (D4/T3
+§7), qui garantissait la VALEUR juste mais pas le ROSTER complet avant tout
+verrouillage de match. Corrigé en passant les deux vues en
+`security_invoker=false` (leur propriétaire contourne déjà la RLS des
+tables qu'il possède, aucune `FORCE ROW LEVEL SECURITY` posée) — elles ne
+renvoient que des agrégats, aucune ligne individuelle, la confidentialité
+par match/pari/pick reste entièrement inchangée. `admin_corrections_count`
+intégré à `user_scores` au passage (2 requêtes séparées en moins dans
+`lib/queries/leaderboard.ts`). Documenté comme correctif post-validation
+dans `SPEC_TECHNIQUE_RLS_V0.1.md` §11, même traitement que les correctifs
+déjà tracés sur T6a/T6b.
+
+**Écran Matchs** (`SPEC_ECRAN_MATCHS_V0_1.md`, close, 16 décisions §19).
+Lecture complète de la spec, des conventions Next.js 16 (rien de nouveau —
+le patron `useActionState`/Server Actions de `lib/auth/actions.ts`
+convenait déjà, mais Next.js documente aussi officiellement le blocage de
+navigation via `onNavigate` sur `<Link>`, utilisé pour C2), du schéma et du
+code existant AVANT d'écrire une ligne — comme pour les lots précédents.
+
+Deux points bloquants trouvés et tranchés AVEC l'utilisateur avant de coder
+(pas de décision seule) :
+- le compteur « X/N ont pronostiqué » (§8, censé être visible EN PERMANENCE)
+  a le MÊME défaut que le Classement avant correctif, mais PAR MATCH — un
+  `count()` en session joueur sous-compte tant que l'appelant n'a pas
+  lui-même validé sur CE match précis. Corrigé par une nouvelle fonction
+  `SECURITY DEFINER` dédiée (migration #6,
+  `count_committed_predictions(p_match)`, même principe que
+  `has_committed_prediction()` déjà en base) — ne renvoie qu'un entier,
+  jamais une ligne ;
+- la règle « pari REJECTED avant/après sa deadline » (0.2.4 §6, raccourci
+  pari §10) n'est pas calculable : aucune colonne `rejected_at` en base, et
+  `rejectBet` n'existe pas encore (lot « Paris »). Tranché : toujours
+  considéré libéré (cas normal — `sealDeadlines` auto-valide tout
+  `SUBMITTED` restant à la deadline, un rejet après coup est un cas limite
+  hors fonctionnement normal).
+
+Une troisième décision d'architecture demandée en cours de route : étendre
+le garde-fou C2 (`lib/hooks/useUnsavedGuard.tsx`, transverse — premier des
+trois écrans à saisie perdable) à `components/nav/TabBar.tsx` (fichier
+PARTAGÉ par tous les écrans) pour intercepter aussi un clic d'onglet pendant
+une saisie en cours, pas seulement la fermeture d'onglet et les liens
+internes à l'écran Matchs. Accepté par l'utilisateur avant modification.
+Piège trouvé en le câblant : `TabBar` est AUSSI rendu par
+`components/nav/ScreenShell.tsx` (Classement, Bracket — hors de
+`app/(app)/layout.tsx`, donc sans le nouveau `UnsavedGuardProvider`) —
+`useGuardedNavigation()` se dégrade en no-op si le contexte est absent
+plutôt que de lever, sinon ces deux écrans auraient cassé pour un visiteur
+connecté. Trouvé en traçant les usages AVANT de tester, pas en cassant puis
+réparant.
+
+Trois feuilles client exactement (`MatchRow`, `PredictionForm`,
+`ValidateAllBanner`), le reste sans `"use client"` propre (rendu par un
+parent client, même mécanisme que `NodeCard`/`SeriesGroups` du bracket).
+Confidentialité dans la requête, pas le rendu : même patron que
+`getBracket()`, `others`/`absentees` vides côté serveur tant que
+`isRevealed` est faux — qui se simplifie ici à `isAdmin OR VALIDATED`
+puisque cet écran ne montre structurellement jamais un match verrouillé.
+Stepper d'écart : case vide au départ, jamais de pré-remplissage, `−`
+inactif tant que vide, pavé numérique implémenté via un `<input
+type="number" inputMode="numeric">` (clavier système, pas une grille
+maison). Fenêtre filtrée sur `scheduled_at`, jamais sur `status`.
+Regroupement par jour en fuseau Europe/Paris, choix explicite documenté
+(aucune convention de fuseau n'existait ailleurs dans le code).
+
+Deux pièges techniques trouvés en cours de route, hors du périmètre produit :
+- ESLint `react-hooks/set-state-in-effect` refuse un `setState` directement
+  au premier niveau d'un `useEffect` — y compris pour relire l'horloge
+  seulement après montage (patron déjà utilisé par `Countdown.tsx`, qui y
+  échappait parce que son `setState` vit dans une fonction nommée `tick`
+  appelée depuis l'effet). Résolu en enveloppant chaque `setState` d'effet
+  dans une petite fonction nommée ;
+- en testant les mécaniques d'écriture (upsert partiel, RLS post-validation)
+  directement en session réelle (pas de navigateur disponible pour cliquer
+  les vrais boutons), une tentative de ré-écriture d'un prono déjà
+  `VALIDATED` a semblé « acceptée » (`error: null`) — en réalité 0 ligne
+  affectée (RLS `mp_update_self` qui exige `status='DRAFT'`, un `UPDATE`
+  matchant 0 ligne n'est PAS une erreur PostgREST). Revérifié avec
+  `.select()` + comptage : bien 0 ligne, la garde fonctionne. Leçon
+  générale : ne jamais conclure d'un test RLS sur la seule absence
+  d'erreur.
+
+**Vérifications finales** : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` tous propres, aucun conflit de route. Testé avec de VRAIES
+sessions authentifiées, cookies SSR générés via `@supabase/ssr` (le même
+paquet que l'app, pas des cookies reconstruits à la main) faute de
+navigateur disponible : fenêtre 3 jours correcte (5 matchs sur 9, le
+`scheduled_at` NULL et les 3 hors fenêtre absents), regroupement par jour
+correct, 4 statuts observés sur des joueurs réels différents, brouillon
+partiel confirmé persistant après relecture, confidentialité confirmée des
+deux côtés (Amine92 : seulement ses 3 matchs révélés, rien qui fuite sur les
+2 autres ; Sofia_Admin : tout révélé), bandeau « Tout valider » apparaît
+uniquement quand `readyCount > 0` (Chloe_B), `/home`/`/leaderboard`/`/bracket`
+non régressés par l'extension de `TabBar`/`layout.tsx`. Non testé : le clic
+réel sur les boutons et le dialogue C2 dans un vrai navigateur (aucun outil
+de navigateur disponible cette session) — laissé explicitement comme limite,
+pas caché.
+
+**Suivi mis à jour en miroir** : `GAPS_OUVERTS.md` (Matchs sorti de « spec
+close, pas codé », interprétations d'implémentation ajoutées, destination du
+raccourci pari et règle REJECTED précisées, nettoyage du jeu de test ajouté
+au périmètre T8), `ETAT_ACTUEL.md` régénéré en entier,
+`SPEC_TECHNIQUE_RLS_V0.1.md` complétée §11.
+
+**État en fin de session** : Accueil, Classement, Bracket et Matchs — les
+quatre premiers écrans du hub joueur — sont codés, stylés aux tokens, et
+pour la première fois testés avec un vrai jeu de données plutôt qu'en état
+vide global. Deux correctifs RLS post-validation (migrations #5 et #6), tous
+deux documentés et tous deux trouvés en testant réellement, pas en relisant
+le code. Rien n'est committé automatiquement, sauf le correctif RLS du
+Classement (migration #5 + code + doc), committé par Claude à la demande
+explicite de l'utilisateur après un « ok go » — écart ponctuel à la
+convention « l'utilisateur committe lui-même », signalé comme tel sur le
+moment. Prochaine étape : « Mes pronos » (ancré sur les matchs, porte le
+live), puis Paris, puis Bracket personnel.

@@ -1,0 +1,67 @@
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: var(--tap-target-min);
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  cursor: pointer;
+}
+
+.btn:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.value {
+  min-width: calc(var(--tap-target-min) * 1.4);
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  cursor: pointer;
+}
+
+.value:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.valueText {
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.input {
+  min-width: calc(var(--tap-target-min) * 1.4);
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-md);
+  text-align: center;
+}
+
+.input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

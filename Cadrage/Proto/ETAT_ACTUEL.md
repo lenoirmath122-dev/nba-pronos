@@ -5,14 +5,14 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 22/07/2026 (Classement + Bracket, écrans
-> partagés visiteur/joueur). Suite directe du lot Accueil (21/07/2026) :
-> mêmes conventions (composants serveur par défaut, CSS Modules + tokens,
-> RLS seule autorité de lecture) reconduites sur deux nouveaux écrans, plus
-> une bascule bracket vue A/vue B (résumé ↔ arbre plein viewport). Base
-> toujours vide (aucune compétition créée) → les deux écrans s'affichent
-> actuellement en **état vide global** (« Aucune compétition en cours ») :
-> c'est le rendu correct pour cet état, pas un bug.
+> Dernière mise à jour : session du 23/07/2026. Trois lots dans l'ordre : (1)
+> un jeu de données de TEST (seed, script hors migrations) pour enfin observer
+> les écrans avec du contenu réel ; (2) un correctif RLS trouvé en testant
+> avec ces données — le Classement était quasi vide pour un joueur normal
+> avant tout verrouillage de match ; (3) l'écran **Matchs** codé et testé
+> avec ce même jeu de données. Base Supabase : une compétition Playoffs de
+> TEST existe désormais (§2.6), à distinguer d'une vraie compétition —
+> jetable, à effacer avant tout lancement réel (§6).
 
 ---
 
@@ -24,26 +24,31 @@ Stack       : Next.js 16.2.10 (Turbopack, App Router, TypeScript) + Supabase
               conventions plus anciennes (AGENTS.md) — vérifié dans
               node_modules/next/dist/docs/ avant chaque brique de code
               nouvelle (ex. middleware.ts renommé proxy.ts, cookies()
-              asynchrone, searchParams désormais une Promise).
+              asynchrone, searchParams désormais une Promise, onNavigate sur
+              <Link> pour bloquer une navigation interne — §2.8).
 Dépôt local : C:\dev\nba-pronos (sorti de OneDrive) — dépôt Git NEUF, projet
               Supabase NEUF (D1, session du 17/07/2026), distinct du
               prototype (`nba-pronos-proto`), qui reste intact et inchangé en
               référence.
 Auth        : Supabase Auth (email + mot de passe), pont École A vers
               public.users via trigger SQL (T2) — voir §3. Flux d'inscription
-              + connexion CODÉS et vérifiés (§2.1).
+              + connexion CODÉS et vérifiés (§2.1). Comptes de TEST créés via
+              l'API Admin (auth.admin.createUser), seule voie propre puisque
+              public.users n'accepte aucun INSERT direct (§2.6).
 RLS         : ACTIVE sur les 15 tables publiques, testée de bout en bout (T3).
               Consommée directement par les écrans de lecture (Accueil,
-              Classement, Bracket) via les vues `security_invoker`
-              `user_scores`/`user_recent_form` : la confidentialité
-              pré-deadline du bracket et la visibilité « valider = voir »
-              des pronos/paris viennent de la RLS elle-même, pas d'un filtre
-              applicatif (§2.5).
+              Classement, Bracket, Matchs) via getServerClient() — JAMAIS
+              service_role. Deux vues (`user_scores`/`user_recent_form`) et
+              une fonction (`count_committed_predictions`) sont volontairement
+              en dehors du régime « invoker » (§2.7/§2.8) : elles n'exposent
+              QUE des agrégats (points, compteurs), jamais une ligne
+              individuelle — la confidentialité par match/pari/pick, elle,
+              reste entièrement portée par la RLS des tables sources,
+              inchangée.
 Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
               exclusivement les tokens sémantiques de `app/tokens.css` (aucune
-              valeur en dur) — convention posée par l'écran Accueil (§2.4),
-              reconduite sur Classement/Bracket (§2.5) et sur la nav partagée
-              (`components/nav/{PublicNav,ScreenShell}.tsx`, §2.5). Tailwind
+              valeur en dur) — convention posée par l'écran Accueil,
+              reconduite sur Classement/Bracket puis Matchs (§2.8). Tailwind
               (présent au projet) reste utilisé tel quel pour les écrans PAS
               ENCORE stylés selon T7 (login/signup, non retouchés).
 ```
@@ -52,11 +57,11 @@ Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
 
 ```text
 Phase V1 — la série de specs techniques T1 → T7 est VALIDÉE. Le socle de
-données (modèle + auth + RLS) est posé et codé (§3). L'IMPLÉMENTATION DES
-ÉCRANS EST EN COURS : plomberie Supabase + auth fonctionnelle, l'écran
-Accueil, ET DÉSORMAIS les écrans partagés Classement et Bracket sont codés
-et vérifiés. Restent à coder : hub Jouer (matchs/bracket personnel/paris/
-mes pronos), écrans admin.
+données (modèle + auth + RLS) est posé et codé (§3). CODÉS ET VÉRIFIÉS avec
+un vrai jeu de données : Accueil, Classement, Bracket, et désormais Matchs
+(§2.8) — les quatre premiers écrans du hub joueur. Restent à coder : « Mes
+pronos », Paris, Bracket personnel (mêmes conventions, un écran à la fois),
+puis les écrans admin.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -68,14 +73,16 @@ mes pronos), écrans admin.
   généré côté Claude (crypto.randomBytes(32), 64 caractères hex).
 
 Paquets installés : @supabase/ssr, @supabase/supabase-js, server-only.
-AUCUNE nouvelle dépendance ajoutée depuis (écrans Accueil et
-Classement/Bracket compris, §2.4/§2.5).
+AUCUNE nouvelle dépendance ajoutée depuis (écrans Accueil, Classement/
+Bracket, Matchs compris, §2.4/§2.5/§2.8) — le seed (§2.6) et les scripts de
+vérification jetables utilisent les mêmes paquets, rien de plus.
 
 lib/supabase/{browser,server,service}.ts (T6a §2.4) : les 3 clients —
   getBrowserClient (anon, navigateur), getServerClient (anon + JWT cookies,
   ASYNC — correctif post-validation, cookies() est asynchrone en Next.js
   15/16), getServiceClient (service_role, module server-only, garde de build
-  contre toute fuite côté navigateur).
+  contre toute fuite côté navigateur). getServiceClient n'est utilisé QUE par
+  le script de seed (§2.6) — jamais par un écran ni une server action.
 
 proxy.ts (racine du repo) : garde d'AUTHENTIFICATION (T6a §4.1) — zones
   protégées /home, /play, /profile (app), /admin (admin) → redirigées vers
@@ -84,50 +91,25 @@ proxy.ts (racine du repo) : garde d'AUTHENTIFICATION (T6a §4.1) — zones
   getSession()). Nommé proxy.ts et pas middleware.ts : renommage Next.js 16
   (AGENTS.md), comportement strictement identique. Ne garde PAS
   /leaderboard ni /bracket (routes physiques hors des groupes (public)/(app),
-  T6a §3.2/§8.1) — ces deux écrans lisent la session eux-mêmes (§2.5) pour
-  choisir leur nav, jamais pour filtrer leurs données (la RLS s'en charge).
+  T6a §3.2/§8.1) — ces deux écrans lisent la session eux-mêmes pour choisir
+  leur nav, jamais pour filtrer leurs données (la RLS s'en charge).
 
 lib/auth/actions.ts + components/auth/{LoginForm,SignupForm}.tsx +
   app/(public)/{layout,login/page,signup/page}.tsx : flux complet de
-  connexion et d'inscription (T2 §4) — vérif serveur du code compétition
-  (verify_join_code RPC) puis du pseudo libre AVANT tout signUp, création de
-  session, redirection /home. Formulaires minimalistes (pas encore les
-  tokens visuels T7 — non retouchés par les lots Accueil/Classement/Bracket).
-  `app/(public)/layout.tsx` rend désormais `<PublicNav/>` (§2.5) au lieu
-  d'un bloc de nav inline en Tailwind.
-
-Vérifié en conditions réelles (build de prod + serveur dev déjà lancé par
-  l'utilisateur, requêtes HTTP réelles) : /login et /signup rendent 200 avec
-  les bons champs de formulaire ; /home, /play, /admin redirigent 307 vers
-  /login sans session (garde proxy fonctionnelle) ; /leaderboard et /bracket
-  rendent 200 pour un visiteur anonyme, affichent la nav réduite (« Se
-  connecter » présent, pas la barre 4 onglets) et l'état vide global (base
-  sans compétition) ; les assets statiques (favicon, etc.) ne sont pas
-  bloqués par le matcher du proxy. `tsc --noEmit` et `eslint .` propres,
-  `next build` réussi, aucun conflit de route.
-
-Pas encore vérifié : le flux d'inscription/connexion RÉEL contre la base
-  Supabase (code compétition existant, création de compte bout en bout), et
-  le rendu de tous les écrans de lecture (Accueil/Classement/Bracket) AVEC
-  une compétition ACTIVE réelle et des joueurs — aucune compétition n'existe
-  encore en base (§3). À tester dès qu'une compétition + des données de test
-  existeront.
+  connexion et d'inscription (T2 §4). Formulaires minimalistes (pas encore
+  les tokens visuels T7 — non retouchés).
 ```
 
 ### 2.2 Correctif de conception trouvé et tranché (T6a §3, session du 19/07/2026)
 
 ```text
 L'arbre app/ validé par T6a plaçait leaderboard/page.tsx (et bracket/page.tsx)
-à la fois dans (public)/ et dans (app)/ — les route groups étant invisibles
-dans l'URL, les deux fichiers auraient résolu la MÊME route /leaderboard :
-erreur de build Next.js documentée (« Conflicting paths »), jamais testée
-avant le codage puisque T6a n'avait produit aucun code. Tranché avec
-l'utilisateur (AskUserQuestion) : route physique UNIQUE, hors des deux route
-groups (app/leaderboard/page.tsx, app/bracket/page.tsx) — les DEUX fichiers
-sont désormais CRÉÉS et codés (§2.5). SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md
-corrigé en conséquence (§3, §3.2, §4.1, §7 — correctifs marqués explicitement
-« post-validation »). 2 autres correctifs mineurs du même ordre : middleware.ts
-→ proxy.ts (Next.js 16), getServerClient() rendu async (cookies() asynchrone).
+à la fois dans (public)/ et dans (app)/ — conflit de route Next.js. Tranché :
+route physique UNIQUE, hors des deux route groups (app/leaderboard/page.tsx,
+app/bracket/page.tsx). SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md corrigé en
+conséquence, correctifs marqués explicitement « post-validation ». 2 autres
+correctifs mineurs du même ordre : middleware.ts → proxy.ts (Next.js 16),
+getServerClient() rendu async (cookies() asynchrone).
 ```
 
 ### 2.3 Consolidation design + tokens (session du 20-21/07/2026, inchangé depuis)
@@ -140,14 +122,11 @@ rayons « niveau C / net », nouveau token --color-trend).
 Consolidation (21/07/2026, avant le lot Accueil) :
 - Logos de franchise → SVG bundlés dans public/logos/teams/ (déposés par
   l'utilisateur, pas par Claude). Fallback réel = abréviation en texte.
-- Icônes de nav CRÉÉES (components/icons/nav-icons.tsx, variante B « nette » :
-  HomeIcon/PlayIcon/RankingIcon/ProfileIcon, currentColor, server component) —
-  câblées par le lot Accueil (components/nav/TabBar.tsx), toujours utilisées
-  telles quelles par Classement/Bracket (même TabBar, §2.5).
-- app/tokens.css ÉCRIT (premier fichier de tokens de production, P-DS7, dark
-  sur :root + override [data-theme="light"]), importé par app/globals.css —
-  consommé par l'écran Accueil puis par Classement/Bracket et la nav
-  partagée (§2.5).
+- Icônes de nav CRÉÉES (components/icons/nav-icons.tsx), câblées par
+  components/nav/TabBar.tsx, toujours utilisées telles quelles depuis.
+- app/tokens.css ÉCRIT (P-DS7, dark sur :root + override [data-theme="light"]),
+  importé par app/globals.css — consommé par tous les écrans codés depuis
+  (Accueil, Classement, Bracket, Matchs).
 - public/brand/ : convention posée pour hero-parquet.webp, aucun binaire
   ajouté (pas utilisé par les écrans codés à ce jour).
 ```
@@ -157,167 +136,286 @@ Consolidation (21/07/2026, avant le lot Accueil) :
 ```text
 Périmètre : app/(app)/layout.tsx (nav 4 onglets + garde session) et
 app/(app)/home/page.tsx (SPEC_ECRAN_ACCUEIL_V0.1.md, Cadrage/V1/Spec visuelle/).
-Premier écran joueur qui coud ensemble données + layout + tokens de
-production.
 
-Fichiers : app/(app)/layout.tsx + layout.module.css ; components/nav/
-TabBar.tsx ("use client", seule raison hors Countdown : état "onglet actif")
-+ TabBar.module.css ; lib/queries/home.ts (getHomeData(), types HomeHeader/
-TodoItem/FeedItem/HomeData) ; components/home/{HomeHeader,TodoList,TodoRow,
-Feed,FeedRow,EmptyState}.tsx (+ .module.css chacun, tous serveur) ;
-app/(app)/home/page.tsx + page.module.css.
+Fichiers : app/(app)/layout.tsx + layout.module.css (étendu §2.8) ;
+components/nav/TabBar.tsx (+ .module.css, étendu §2.8) ; lib/queries/home.ts
+(getHomeData(), types HomeHeader/TodoItem/FeedItem/HomeData) ;
+components/home/{HomeHeader,TodoList,TodoRow,Feed,FeedRow,EmptyState}.tsx
+(+ .module.css chacun, tous serveur) ; app/(app)/home/page.tsx + page.module.css.
 
-Countdown : à l'origine components/home/Countdown.tsx, DÉPLACÉ cette
-session (22/07/2026) vers components/ui/Countdown.tsx — désormais partagé
-Accueil + Bracket avant deadline (§2.5). Comportement strictement inchangé,
-seul l'import de components/home/TodoRow.tsx a été mis à jour.
+Countdown : components/ui/Countdown.tsx (déplacé depuis components/home/ le
+22/07/2026), partagé Accueil + Bracket avant deadline.
 
-Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres.
-Non testé en conditions réelles (base vide, §3) : le rendu avec une
-compétition ACTIVE réelle (en-tête chiffré, items « À traiter », feed).
+Vérifié en conditions réelles avec le jeu de données de test (§2.6, session
+du 23/07/2026) : en-tête chiffré, items « À traiter » et feed rendus
+correctement pour un joueur réel — non testé auparavant (base vide).
 ```
 
-### 2.5 Écrans Classement + Bracket — CODÉS cette session (22/07/2026, nouveau)
+### 2.5 Écrans Classement + Bracket (session du 22/07/2026, inchangé depuis le codage)
 
 ```text
-Périmètre : SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md (Cadrage/V1/Spec visuelle/,
-statut close, aucun point produit ouvert §18, 11 décisions actées le jour
-même de sa rédaction — §19 de la spec) appliquée telle quelle. Écrans
-PARTAGÉS visiteur/joueur connecté : même lecture, même rendu, seule la RLS
-filtre le contenu — jamais un `if (role)` dans le code des écrans.
+Périmètre : SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md (close, 11 décisions actées
+§19) appliquée telle quelle. Écrans PARTAGÉS visiteur/joueur connecté : même
+lecture, même rendu, seule la RLS filtre le contenu.
 
 Nav des routes partagées (T6a §3.2/§8.1) : /leaderboard et /bracket vivent
-hors des groupes (public)/(app), donc hors de leurs layouts. NOUVEAU :
-- components/nav/PublicNav.tsx (+ .module.css) : nav réduite (Classement,
-  Bracket, « Se connecter »), extraite de l'inline Tailwind de
-  app/(public)/layout.tsx (qui l'utilise désormais aussi) et re-stylée aux
-  tokens (elle ne l'était pas).
-- components/nav/ScreenShell.tsx (+ .module.css) : rend TabBar (4 onglets)
-  si une session existe, PublicNav sinon — un seul appel `auth.getUser()`
-  par page, décision affichée seulement (jamais de filtrage de données ici).
+hors des groupes (public)/(app). components/nav/PublicNav.tsx (nav réduite,
+visiteur) + components/nav/ScreenShell.tsx (choisit TabBar ou PublicNav selon
+la session) — TabBar étendu §2.8, sans effet ici tant que rien ne déclare de
+saisie sale (ces deux écrans n'écrivent rien).
 
-lib/queries/leaderboard.ts : getLeaderboard(sortKey), types SortKey/
-LeaderboardRow/LeaderboardData figés à l'identique de la spec §15.1. Lit
-`user_scores`/`user_recent_form` (vues security_invoker — la RLS des tables
-sous-jacentes s'applique donc déjà : « jamais joué » absent par
-construction, sans filtre applicatif). Rang TOUJOURS calculé sur Total,
-départage 1.Total/2.bons vainqueurs de match/3.écarts exacts/4.points
-bracket (même ordre que lib/queries/home.ts), ex-aequo 1,2,2,4.
-`adminCorrectionsCount` agrégé sur match_predictions ET bets
-(`is_admin_corrected = true`), par joueur et par compétition.
+lib/queries/leaderboard.ts : getLeaderboard(sortKey), types figés à
+l'identique de la spec §15.1. Lit `user_scores`/`user_recent_form` — CORRIGÉ
+en security_invoker=false le 23/07/2026 (§2.7), plus lu comme avant.
+`adminCorrectionsCount` désormais directement porté par `user_scores`
+(colonne `admin_corrections_count`, migration #5) — les 2 requêtes séparées
+sur match_predictions/bets qui existaient ont disparu.
 
-lib/queries/bracket.ts : getBracket(), types SeriesPickGroup/BracketNode/
-BracketRound/BracketData figés à l'identique de la spec §15.2.
-CONFIDENTIALITÉ PRÉ-DEADLINE : les requêtes bracket_picks/brackets ne sont
-même pas lancées tant que isDeadlinePassed est faux (pas un `if` de rendu —
-la RLS bloquerait de toute façon ces tables avant bracket_deadline_passed(),
-le code ne s'y fie pas seul). Seuil de tendance ≥ 11 calculé PAR SÉRIE.
-isStructureKnown dérivé de `series.length > 0` (même heuristique que
-getBracketTodo de l'Accueil pour la Cup avant qualification des 8).
-3 interprétations documentées dans GAPS_OUVERTS.md (non tranchées par la
-spec, aucune donnée inventée) : sémantique de filledCount/totalCount
-(progression du TOURNOI puisque le contrat n'a pas de userId), absence du
-score de série réel dans BracketNode (vainqueur seul affiché, le type fixé
-par la spec ne porte pas ce champ), « or = champion » réservé strictement à
-la finale (vainqueur de série normale rendu en vert, jamais en or).
+lib/queries/bracket.ts : getBracket(), types figés à l'identique de la spec
+§15.2. CONFIDENTIALITÉ PRÉ-DEADLINE : bracket_picks/brackets pas interrogées
+tant que isDeadlinePassed est faux — patron repris tel quel pour l'écran
+Matchs (§2.8, others/absentees).
 
 Composants — feuilles client EXACTEMENT celles listées par la spec §3 :
-components/ui/Countdown.tsx (déplacé, inchangé) ; components/leaderboard/
-{LeaderboardRow,StickyMeBar}.tsx ; components/bracket/{SeriesDrillDown,
-TreeView}.tsx. components/bracket/{RotateInvite,NodeCard}.tsx sont SANS
-"use client" (rendus exclusivement par un parent client, même mécanisme) —
-zéro sixième feuille. Tout le reste (SortChips, LeaderboardTable,
-ProgressBar, SeriesGroups, BracketSummary, les 2 page.tsx) est serveur.
+components/ui/Countdown.tsx ; components/leaderboard/{LeaderboardRow,
+StickyMeBar}.tsx ; components/bracket/{SeriesDrillDown,TreeView}.tsx. Le
+reste (SortChips, LeaderboardTable, ProgressBar, SeriesGroups, NodeCard,
+RotateInvite, BracketSummary, les 2 page.tsx) est serveur.
 
-Puces de tri (`?tri=`) et bascule vue arbre (`?arbre=1`) : paramètres d'URL
-lus par les page.tsx serveur, puces en <Link>. Rotation automatique de la
-vue B (TreeView) : SEULEMENT sur l'événement
-matchMedia("(orientation: landscape)").addEventListener("change", ...),
-jamais sur l'état constaté au montage. Historique : entrée par rotation →
-router.replace, entrée par bouton/« voir quand même » → router.push ;
-sortie automatique seulement si l'entrée était elle-même par rotation
-(trackée via une ref, pas un state, pour éviter une fermeture périmée dans
-le listener). « Voir quand même » mémorisé en sessionStorage, lu uniquement
-dans des gestionnaires d'événements (jamais pendant le rendu).
-
-Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres,
-AUCUN conflit de route (/leaderboard et /bracket résolvent chacun à une
-seule route dynamique). Testé en conditions réelles sur le serveur dev déjà
-lancé par l'utilisateur (port 3001, non redémarré par Claude) : les deux
-routes rendent 200, affichent l'état vide global (base sans compétition,
-comportement attendu), nav réduite confirmée pour un visiteur anonyme ;
-/home et /login non régressés par le déplacement de Countdown et la refonte
-de (public)/layout.tsx.
-
-Non testé en conditions réelles (base vide, §3) : le rendu du tableau de
-classement rempli, des deux vues du bracket (résumé/arbre) et du drill-down
-nominatif avec des joueurs et des picks réels — à vérifier dès qu'une
-compétition + des données de test existeront.
+Vérifié en conditions réelles avec le jeu de données de test (§2.6, session
+du 23/07/2026) : tableau de classement rempli (6 joueurs, avant ET après le
+correctif §2.7), les deux vues du bracket, drill-down nominatif avec picks
+réels, bascule pré/post-deadline (bracket_deadline temporairement avancée
+puis restaurée pour observer les deux états) — non testé auparavant (base
+vide).
 ```
 
-### 2.6 Prochaine étape
+### 2.6 Jeu de données de TEST (seed, session du 23/07/2026, nouveau)
 
 ```text
-Dans l'ordre déjà acté : hub Jouer (app/(app)/play/*) — matchs (fenêtre 3
-jours, saisie vainqueur+écart), bracket personnel (remplissage tour par
-tour, distinct du bracket global déjà codé), paris personnalisés, « Mes
-pronos » — stylés aux tokens sur le même patron que les écrans déjà codés.
-Puis les écrans admin, puis T8 (déploiement).
+Constat de départ : les 3 écrans de lecture codés n'avaient jamais été
+observés qu'en état vide global — aucune preuve que le rendu « rempli »
+fonctionne. Script `scripts/seed-playoffs-test-data.mjs`, HORS
+supabase/migrations/ (décision explicite, deux raisons) :
+(a) la création de comptes passe par l'API Admin Supabase
+    (auth.admin.createUser), non exprimable en SQL portable — public.users
+    est alimentée par un TRIGGER depuis auth.users, pas par un INSERT direct ;
+(b) ce dépôt n'a qu'UN SEUL projet Supabase lié (`npx supabase db push`
+    cible potentiellement la future prod) — un jeu de données jetable ne doit
+    pas vivre dans l'historique de migrations rejouable.
+
+Contenu : 30 équipes NBA (référentiel complet) ; 1 compétition PLAYOFFS
+ACTIVE de TEST (« Playoffs NBA (test) ») ; bracket complet 15 séries (8
+réelles au 1er tour, squelette non résolu pour la suite — aucun résultat
+officiel nulle part, aucun score, RIEN qui relève du moteur de scoring T5 ou
+de la synchro T4, non codés) ; 9 matchs de 1er tour (fenêtre 3 jours +
+au-delà + un `scheduled_at` NULL) ; 7 comptes de test (`seed-*@nba-pronos.test`,
+mot de passe posé ponctuellement pour vérification, jamais commité) dont
+Sofia_Admin (promue ADMIN après coup, service_role + migration #4), Marco_D
+(désactivé APRÈS son prono validé, teste la conservation au classement),
+Tariq_M (aucune participation, teste l'absence « jamais joué »). États
+couverts : brouillon complet/partiel (le cas exact du correctif T6b §3.1),
+prono validé, prono corrigé par un admin (workflow complet rejoué : requête
+PENDING → correction → PROCESSED, trigger enforce_prediction_correction
+réellement exercé), pari CANCELLED/REJECTED/DRAFT.
+
+Découverte en testant (pas en lisant la spec) : le Classement était quasi
+vide pour un joueur normal — corrigé en §2.7, le MÊME défaut existait sur le
+compteur X/N de l'écran Matchs, anticipé cette fois AVANT de coder (§2.8).
+
+Réversibilité : script non idempotent (garde anti double-exécution), aucun
+script de nettoyage écrit à ce jour — à faire avant tout lancement réel
+(§6). Les comptes de test ont un mot de passe temporaire posé à la demande
+pour vérification manuelle (jamais affiché dans le chat qu'à titre de
+test jetable) ; supprimer via auth.admin.deleteUser le moment venu, pas par
+un simple DELETE SQL.
+```
+
+### 2.7 Correctif RLS — visibilité universelle du Classement (migration #5, 23/07/2026)
+
+```text
+Trouvé en testant le Classement avec le jeu de données de test (§2.6) : un
+joueur normal n'y voyait QUE lui-même, alors qu'un admin voyait les 6
+joueurs. Cause : `user_scores`/`user_recent_form` étaient en
+security_invoker=true (D4/T3 §7) — l'agrégation hérite donc de la RLS des
+tables sources, qui ne révèle la ligne d'un AUTRE joueur qu'après
+verrouillage du match ou commitment mutuel sur ce MÊME match (« valider =
+voir », par match). L'invariant D4/C-5 garantissait que la VALEUR affichée
+est toujours juste, pas que le ROSTER complet apparaisse avant tout
+verrouillage.
+
+Décision (demandée explicitement par l'utilisateur, pas trouvée seule) : le
+Classement doit être visible de tous, tout le temps, indépendamment de la
+confidentialité par match/pari/pick — qui reste, elle, INCHANGÉE. Mécanisme :
+`user_scores`/`user_recent_form` passent en security_invoker=false
+(migration #5, `supabase/migrations/20260723130000_leaderboard_universal_
+visibility.sql`) — leur propriétaire contourne déjà la RLS des tables qu'il
+possède (pas de FORCE ROW LEVEL SECURITY), une vue non-invoker en hérite,
+quel que soit l'appelant. Les deux vues ne renvoient que des agrégats
+(points, compteurs), jamais une ligne individuelle — aucune fuite de détail.
+`admin_corrections_count` intégré à `user_scores` au passage (§2.5).
+
+Documenté comme correctif post-validation dans
+`Cadrage/V1/SPEC_TECHNIQUE_RLS_V0.1.md` §11 (même traitement que les
+correctifs T6a/T6b déjà tracés).
+```
+
+### 2.8 Écran Matchs — CODÉ cette session (23/07/2026, nouveau)
+
+```text
+Périmètre : SPEC_ECRAN_MATCHS_V0_1.md (Cadrage/V1/Spec visuelle/, close, 16
+décisions actées §19) appliquée telle quelle. Quatrième écran du hub Jouer,
+premier écran qui ÉCRIT (brouillon, validation irréversible, garde C2).
+
+Fichiers nouveaux : app/(app)/play/matches/page.tsx (+ .module.css) ;
+lib/queries/matches.ts (getMatches(), types figés à l'identique de la spec
+§13) ; lib/actions/matches.ts (saveMatchPredictionDraft/
+validateMatchPrediction/validateAllCompleteMatchPredictions, T6b §3.1
+corrigé §18.1 — les 2 champs sont optionnels) ; lib/hooks/useUnsavedGuard.tsx
+(garde C2, TRANSVERSE — voir plus bas) ; components/matches/* (8 fichiers).
+
+Fenêtre : `scheduled_at IS NOT NULL AND scheduled_at > now() AND <= now() +
+3 jours`, JAMAIS sur `matches.status` (§2/§18.2 — le planificateur, 30-60
+min, laisserait un match commencé en SCHEDULED près d'une heure). Groupement
+par jour en fuseau Europe/Paris (aucune convention de fuseau n'existait
+ailleurs dans le code — choix explicite et documenté, pas deviné : le fuseau
+machine du serveur peut être UTC en hébergement).
+
+Trois feuilles client EXACTEMENT (MatchRow, PredictionForm,
+ValidateAllBanner) ; TeamPicker/MarginStepper/RevealPanel/BetShortcut/
+MatchDayGroup SANS "use client" propre (rendus par un parent client, même
+mécanisme que NodeCard/SeriesGroups du bracket — MarginStepper et RevealPanel
+portent quand même leur propre useState local, ce que permet ce mécanisme).
+
+Deux points BLOQUANTS trouvés et tranchés AVEC l'utilisateur avant de coder
+(pas en silence) :
+- Compteur « X/N ont pronostiqué » (§8) : même défaut que §2.7, mais PAR
+  MATCH — un simple count() en session joueur sous-compte tant que
+  l'appelant n'a pas lui-même validé sur CE match précis. Corrigé par une
+  fonction SECURITY DEFINER dédiée (migration #6,
+  `count_committed_predictions(p_match)`, même principe que
+  `has_committed_prediction()` déjà en base) — ne renvoie qu'un entier.
+- Raccourci pari (§10), règle « REJECTED avant/après sa deadline » :
+  aucune colonne ne capture le moment d'un rejet (pas de `rejected_at`, et
+  `rejectBet` n'existe pas encore, lot « Paris »). Tranché : un pari REJECTED
+  est TOUJOURS considéré libéré (cas normal — sealDeadlines auto-valide tout
+  SUBMITTED à la deadline, donc un rejet après coup est un cas limite hors
+  fonctionnement normal). Documenté dans le code, pas deviné en silence.
+
+Confidentialité — même patron que getBracket() : `others`/`absentees` sont
+VIDES côté serveur tant que `isRevealed` est faux (la requête n'est pas
+lancée). Sur cet écran, `isRevealed` se simplifie à `isAdmin OR statut ===
+VALIDATED` — le verrouillage temporel (autre branche RLS) ne peut
+structurellement jamais se produire ICI (l'écran ne montre que des matchs à
+venir, jamais verrouillés, §2/§18.2).
+
+Garde C2 (`lib/hooks/useUnsavedGuard.tsx`, extension acceptée avec
+l'utilisateur AVANT de coder, pas décidée seule) : Context + Provider,
+drapeau `dirty` AGRÉGÉ au niveau de l'écran (plusieurs MatchRow peuvent être
+ouvertes et sales simultanément, §3/§12). Utilise `onNavigate` sur <Link>
+(API officielle Next.js 16, pas un hack) pour intercepter une navigation
+interne. Étend DEUX fichiers partagés par tous les écrans, changement inerte
+tant que rien ne déclare de saisie sale :
+- components/nav/TabBar.tsx : `onNavigate` sur les 4 onglets.
+- app/(app)/layout.tsx : monte `UnsavedGuardProvider` autour de {children} +
+  <TabBar/>.
+ATTENTION trouvée en cours de route : TabBar est AUSSI rendu par ScreenShell
+(/leaderboard, /bracket — hors de app/(app)/layout.tsx, donc sans provider).
+`useGuardedNavigation()` se dégrade en no-op si le contexte est absent,
+plutôt que de lever une erreur — sinon ces deux écrans auraient cassé pour
+un visiteur connecté. Vérifié après coup : /home, /leaderboard, /bracket
+répondent toujours 200 avec du contenu réel (pas de page d'erreur).
+
+Interprétations d'implémentation (pas des choix produit — la spec ne
+précisait pas l'exact mécanisme) :
+- Stepper d'écart : le « pavé numérique » (§6) est un `<input type="number"
+  inputMode="numeric">` — déclenche le clavier numérique natif du système
+  sur mobile, pas une grille de touches maison.
+- Statuts de prono (§4) : rendus en CSS pur (bordures/fonds tokens), coche
+  ✓ et flèche → en caractères, aucune icône SVG créée — la spec elle-même
+  écrit « ✓ LAL −8 » en toutes lettres.
+- Badge « corrigé par un admin » : le contrat de types figé (§13) ne porte
+  qu'un booléen `isAdminCorrected` (pas de nom d'admin ni de requérant, que
+  la prose §8 mentionne) — le type fait autorité, badge générique.
+- Destination du raccourci pari (§10, non fixée par la spec, §18.3) :
+  pointe vers `/play` (hub existant) en attendant que `/play/bets/new`
+  existe.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres,
+aucun conflit de route. Testé en conditions réelles avec de VRAIES sessions
+authentifiées (cookies SSR générés via @supabase/ssr — pas de navigateur
+disponible, donc pas de clic réel sur les boutons ; les mécaniques d'écriture
+— upsert partiel, RLS post-validation — ont été rejouées directement en
+session RLS réelle, hors des boutons de l'UI, résultat identique) : fenêtre
+3 jours correcte (5 des 9 matchs, le NULL et les 3 hors fenêtre absents) ;
+regroupement par jour correct (« Demain », « Samedi 25 », « Dimanche 26 ») ;
+4 statuts distincts observés (à faire / incomplet / prêt / validé) sur des
+joueurs réels différents ; brouillon partiel confirmé persistant (le cas
+T6b §3.1) ; confidentialité confirmée des deux côtés (Amine92 : 3 matchs
+révélés seulement, absents corrects, aucune fuite sur les 2 non révélés ;
+Sofia_Admin : tout révélé) ; bandeau « Tout valider » apparaît bien
+uniquement quand readyCount > 0 (Chloe_B) ; RLS confirmée bloquant une
+ré-écriture après validation (0 ligne affectée — piège trouvé en testant,
+voir §7) ; /home, /leaderboard, /bracket non régressés.
+
+Non testé : le clic réel sur les boutons « Enregistrer »/« Valider »/« Tout
+valider » et le dialogue C2 dans un vrai navigateur (aucun outil de
+navigateur disponible cette session) — à faire manuellement, mot de passe de
+test disponible sur demande pour les comptes seed-*.
+```
+
+### 2.9 Prochaine étape
+
+```text
+Dans l'ordre déjà acté : « Mes pronos » (ancré sur les MATCHS, pas sur les
+pronos — contrainte transmise §17/§18.2 de la spec Matchs ; porte le live,
+badge EN DIRECT + souscription Realtime `matches`, absent de l'écran
+Matchs) ; puis Paris (fixera la destination du raccourci, §18.3) ; puis
+Bracket personnel. Même conventions reconduites (composants serveur par
+défaut, CSS Modules + tokens, RLS/fonctions dédiées comme seule autorité de
+lecture). Puis les écrans admin, puis T8 (déploiement — §6 à faire avant,
+dont l'effacement du jeu de données de test).
 ```
 
 ## 3. État actuel de la base de données
 
 ```text
-4 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
+6 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
 chacune montrée intégralement et confirmée par l'utilisateur avant
 application) :
 
-1. 20260718090000_initial_schema.sql — schéma complet : types énumérés,
-   teams/users/competitions/series/matches/entity_mappings/brackets/
-   bracket_picks/match_predictions/bets/correction_requests/audit_logs/
-   sync_logs/competition_archives, + vues user_scores/user_recent_form
-   (security_invoker = true, une ligne par compétition/joueur).
-2. 20260718100000_auth_join_code_and_profile.sql — code compétition
-   (join_code), fonction verify_join_code(), trigger handle_new_user (pont
-   auth.users -> public.users, École A).
-3. 20260718110000_rls.sql — join_code sorti vers competition_secrets (secret
-   admin-only) ; fonctions SECURITY DEFINER (is_admin, is_active,
-   match_is_locked, has_committed_prediction, bracket_deadline_passed,
-   bet_is_public, bet_deadline_open) ; RLS activée sur les 15 tables
-   publiques ; policies SELECT/INSERT/UPDATE ; triggers d'invariants.
-4. 20260718120000_fix_users_trigger_system_context.sql — correctif de
-   enforce_users_invariants() : contexte système (auth.uid() NULL) désormais
-   laissé passer sans garde.
+1. 20260718090000_initial_schema.sql — schéma complet.
+2. 20260718100000_auth_join_code_and_profile.sql — code compétition,
+   verify_join_code(), trigger handle_new_user.
+3. 20260718110000_rls.sql — competition_secrets, fonctions SECURITY DEFINER,
+   RLS activée + policies, triggers d'invariants.
+4. 20260718120000_fix_users_trigger_system_context.sql — correctif contexte
+   système (auth.uid() NULL laissé passer).
+5. 20260723130000_leaderboard_universal_visibility.sql — user_scores/
+   user_recent_form en security_invoker=false + admin_corrections_count
+   intégré à user_scores (§2.7).
+6. 20260724090000_match_predictions_committed_count.sql —
+   count_committed_predictions(p_match), SECURITY DEFINER, un entier
+   uniquement (§2.8).
 
-RLS vérifiée de bout en bout via le plan de test T3 §7. Tout conforme.
-Consommée directement (sans contournement) par les écrans Accueil,
-Classement et Bracket via getServerClient() (§2.4/§2.5) : `user_scores`/
-`user_recent_form` en security_invoker, `bracket_picks`/`brackets` gardés
-par bracket_deadline_passed().
+RLS vérifiée de bout en bout via le plan de test T3 §7, puis re-testée avec
+un vrai jeu de données (§2.6) — un piège trouvé à cette occasion (§7).
+Consommée directement (sans service_role) par tous les écrans joueur via
+getServerClient().
 
-Base VIDE de données opérationnelles (aucune compétition, aucun utilisateur
-créé) — les trois écrans de lecture codés à ce jour (Accueil, Classement,
-Bracket) n'ont donc encore été observés qu'en état vide global ; c'est le
-rendu correct pour cet état, pas un signe d'anomalie.
+Données : compétition Playoffs de TEST active (§2.6) — 30 équipes, 15
+séries, 9 matchs, 7 comptes. JETABLE, pas une vraie compétition — à
+distinguer et à effacer avant tout lancement réel (§6). Avant ce lot, la
+base était entièrement vide de données opérationnelles.
 
-Aucune migration touchée cette session (22/07/2026, lot Classement/Bracket
-compris) : aucun nom de colonne ni valeur de statut inventé — tout lu dans
-le schéma réel. Colonnes/vues consommées par les nouvelles requêtes :
-`competitions(id, name, type, status, bracket_deadline)`,
-`user_scores(user_id, total_points, matches_points, bracket_points,
-bets_points, correct_match_winners, exact_margins)`,
-`user_recent_form(user_id, recent_form_points)`,
-`users(id, pseudo, status)`, `match_predictions(user_id, is_admin_corrected)`,
-`bets(user_id, is_admin_corrected)` pour le classement ;
-`series(id, round, conference, slot_index, team1_id, team2_id,
-official_winner_team_id)`, `teams(id, name, abbreviation)`,
-`matches(series_id, scheduled_at)`, `bracket_picks(series_id, bracket_id,
-predicted_winner_team_id, predicted_score_format)`,
-`brackets(id, user_id)` pour le bracket. Valeurs de statut lues :
-`competitions.status = 'ACTIVE'`, `users.status = 'DISABLED'`,
-`competitions.type IN ('PLAYOFFS','NBA_CUP')`,
-`series.round IN ('ROUND_1','CONF_SEMIS','CONF_FINALS','NBA_FINALS',
-'CUP_QUARTERS','CUP_SEMIS','CUP_FINAL')`.
+Colonnes/fonctions supplémentaires consommées par le lot Matchs (aucun nom
+deviné, tout relu dans le schéma réel) : `matches(id, competition_id,
+series_id, game_number, scheduled_at, home_team_id, away_team_id)`,
+`match_predictions(user_id, match_id, competition_id,
+predicted_winner_team_id, predicted_margin, status, is_admin_corrected)`,
+`bets(user_id, match_id, series_id, scope, status)`,
+`count_committed_predictions(uuid) returns int`, `is_admin() returns
+boolean` (RPC déjà existante, réutilisée telle quelle).
 ```
 
 ## 4. Fichiers du projet — carte rapide
@@ -325,95 +423,94 @@ predicted_winner_team_id, predicted_score_format)`,
 ```text
 app/
   layout.tsx, favicon.ico, page.tsx — scaffold create-next-app, non modifiés.
-  tokens.css — tokens de production (P-DS7), CONSOMMÉ par tous les écrans codés.
-  globals.css — @import "./tokens.css" en tête ; contenu existant inchangé.
-  (public)/
-    layout.tsx — CODÉ (T2 §4), rend désormais <PublicNav/> (NOUVEAU, §2.5).
-    login/page.tsx, signup/page.tsx — CODÉS, pas encore stylés selon T7.
-    reset-password/ — dossier créé, PAGE PAS ENCORE ÉCRITE (T2 §8).
+  tokens.css, globals.css — inchangés depuis §2.3.
+  (public)/ — inchangé depuis §2.1 (login/signup pas encore stylés T7).
   (app)/
-    layout.tsx + layout.module.css — garde session + nav 4 onglets. CODÉ.
-    home/
-      page.tsx + page.module.css — écran Accueil. CODÉ.
-    play/page.tsx         — stub « à venir », PAS stylé. Prochaine étape.
-    profile/page.tsx      — stub « à venir », PAS stylé.
-  leaderboard/page.tsx  — Classement. Route physique unique hors route
-    groups (§2.2). CODÉ cette session (§2.5) : lecture + rendu complets.
-  bracket/page.tsx      — Bracket (vue globale). NOUVEAU. Route physique
-    unique hors route groups. CODÉ cette session (§2.5).
+    layout.tsx + layout.module.css — garde session + nav 4 onglets + monte
+      désormais UnsavedGuardProvider (§2.8). MODIFIÉ cette session.
+    home/page.tsx + page.module.css — écran Accueil. CODÉ.
+    play/
+      page.tsx         — stub « à venir », PAS stylé (hub, pas un écran).
+      matches/
+        page.tsx + page.module.css — écran Matchs. NOUVEAU (§2.8).
+    profile/page.tsx  — stub « à venir », PAS stylé.
+  leaderboard/page.tsx  — Classement. CODÉ (§2.5), lib mise à jour §2.7.
+  bracket/page.tsx      — Bracket. CODÉ (§2.5).
   (admin)/               — PAS ENCORE CRÉÉ.
 
-proxy.ts               — garde d'authentification (T6a §4.1, corrigé §2.2). CODÉ.
+proxy.ts               — garde d'authentification (T6a §4.1). CODÉ.
 
 lib/
-  supabase/{browser,server,service}.ts — les 3 clients (T6a §2.4). CODÉ.
-  auth/actions.ts                      — login/signup/logout (T2 §4). CODÉ.
+  supabase/{browser,server,service}.ts — les 3 clients. CODÉ.
+  auth/actions.ts                      — login/signup/logout. CODÉ.
+  actions/
+    matches.ts — NOUVEAU (§2.8). saveMatchPredictionDraft/
+      validateMatchPrediction/validateAllCompleteMatchPredictions + type
+      ActionResult (nouveau, local à ce fichier — pas encore partagé).
+  hooks/
+    useUnsavedGuard.tsx (+ .module.css) — NOUVEAU (§2.8). Garde C2
+      TRANSVERSE : UnsavedGuardProvider, useUnsavedGuard(key),
+      useGuardedNavigation(). Extension nécessaire de components/nav/TabBar.tsx
+      et app/(app)/layout.tsx (voir §2.8).
   queries/
-    home.ts        — getHomeData() + types HomeHeader/TodoItem/FeedItem/
-      HomeData. CODÉ.
-    leaderboard.ts — NOUVEAU (22/07/2026). getLeaderboard() + types
-      SortKey/LeaderboardRow/LeaderboardData. CODÉ.
-    bracket.ts     — NOUVEAU (22/07/2026). getBracket() + types
-      SeriesPickGroup/BracketNode/BracketRound/BracketData. CODÉ.
+    home.ts        — getHomeData(). CODÉ.
+    leaderboard.ts — getLeaderboard(). CODÉ §2.5, MODIFIÉ §2.7 (lit
+      admin_corrections_count depuis user_scores, 2 requêtes en moins).
+    bracket.ts     — getBracket(). CODÉ.
+    matches.ts     — NOUVEAU (§2.8). getMatches() + types figés MatchCard/
+      MatchDay/MatchesData/TeamRef/OtherPrediction/BetSlotIndicator/
+      PredictionViewStatus (spec §13, recopiés à l'identique).
   scoring/, sync/ — PAS ENCORE CRÉÉS.
 
 components/
   auth/{LoginForm,SignupForm}.tsx — pas encore stylés selon T7.
-  icons/nav-icons.tsx — 4 icônes de nav (T7), câblées par TabBar.
-  ui/
-    Countdown.tsx (+ .module.css) — DÉPLACÉ depuis components/home/ cette
-      session (22/07/2026), désormais partagé Accueil + Bracket. Seule
-      feuille "use client" en dehors des 4 listées ci-dessous, comportement
-      inchangé.
+  icons/nav-icons.tsx — 4 icônes de nav.
+  ui/Countdown.tsx (+ .module.css) — partagé Accueil + Bracket.
   nav/
-    TabBar.tsx + TabBar.module.css — barre 4 onglets, "use client" (état
-      "onglet actif" uniquement). CODÉ (session du 21/07/2026).
-    PublicNav.tsx + .module.css — NOUVEAU (22/07/2026). Nav réduite
-      (visiteur), serveur, partagée (public)/layout.tsx + ScreenShell.
-    ScreenShell.tsx + .module.css — NOUVEAU (22/07/2026). Choisit TabBar ou
-      PublicNav selon la session, pour /leaderboard et /bracket.
-  home/ — tous CODÉS (session du 21/07/2026) :
-    HomeHeader.tsx (+ .module.css)    — en-tête rang/points.
-    TodoList.tsx / TodoRow.tsx (+ .module.css chacun) — bloc « À traiter »
-      (et « À traiter (admin) », même composants, item.kind distingue).
-    Feed.tsx / FeedRow.tsx (+ .module.css chacun) — bloc « Ça vient de tomber ».
-    EmptyState.tsx (+ .module.css)    — état vide générique, réutilisé tel
-      quel par Classement et Bracket (§2.5).
-  leaderboard/ — NOUVEAU (22/07/2026), tous CODÉS :
-    SortChips.tsx (+ .module.css)       — puces de tri, <Link> serveur.
-    LeaderboardTable.tsx (+ .module.css) — en-tête + composition des lignes.
-    LeaderboardRow.tsx (+ .module.css)  — "use client" : expansion/repli.
-    StickyMeBar.tsx (+ .module.css)     — "use client" : IntersectionObserver.
-  bracket/ — NOUVEAU (22/07/2026), tous CODÉS :
-    ProgressBar.tsx (+ .module.css)    — progression X/15 ou X/7.
-    NodeCard.tsx (+ .module.css)       — carte résumé d'une série, SANS
-      "use client" (rendue par SeriesDrillDown).
-    SeriesGroups.tsx (+ .module.css)   — contenu du drill-down (groupes de
-      picks), SANS "use client".
-    SeriesDrillDown.tsx (+ .module.css) — "use client" : accordéon (vue A) /
-      feuille par le bas (vue B), une série ouverte à la fois.
-    RotateInvite.tsx (+ .module.css)   — invitation à tourner, SANS
-      "use client" (rendue par TreeView).
-    TreeView.tsx (+ .module.css)       — "use client" : déclencheur plein
-      écran, overlay vue B, écoute de rotation.
-    BracketSummary.tsx (+ .module.css) — vue A « résumé par tour », serveur.
+    TabBar.tsx + .module.css — MODIFIÉ cette session (§2.8) : onNavigate
+      (useGuardedNavigation) sur les 4 onglets, inerte par défaut.
+    PublicNav.tsx / ScreenShell.tsx (+ .module.css chacun) — inchangés.
+  home/ — inchangé depuis §2.4 (EmptyState réutilisé par Classement,
+    Bracket ET Matchs).
+  leaderboard/ — inchangé depuis §2.5.
+  bracket/ — inchangé depuis §2.5.
+  matches/ — NOUVEAU (§2.8), 8 fichiers + leurs .module.css :
+    MatchDayGroup.tsx        — serveur, regroupement par jour.
+    MatchRow.tsx              — "use client" (1/3) : ouverture de la ligne,
+      repère de verrouillage (statique au montage) + décompte animé (ligne
+      dépliée seulement).
+    PredictionForm.tsx        — "use client" (2/3) : saisie, drapeau C2,
+      2 CTA, dialogue de validation (distinct du dialogue C2).
+    TeamPicker.tsx             — sans "use client", tap direct sur l'équipe.
+    MarginStepper.tsx          — sans "use client" (porte son propre
+      useState local — permis, transitivement bundlé client).
+    RevealPanel.tsx            — sans "use client" : compteur X/N toujours
+      affiché, contenu seulement si isRevealed.
+    BetShortcut.tsx            — sans "use client", raccourci pari.
+    ValidateAllBanner.tsx      — "use client" (3/3) : bandeau + confirmation
+      « Tout valider », état local (pas remonté à la page serveur).
 
 public/
-  logos/teams/, brand/ — arborescence posée (session du 21/07/2026), fichiers
-    binaires réels toujours à la charge de l'utilisateur.
+  logos/teams/, brand/ — arborescence posée, fichiers binaires réels
+    toujours à la charge de l'utilisateur.
+
+scripts/
+  seed-playoffs-test-data.mjs — NOUVEAU (§2.6). Script de seed, HORS
+    migrations, usage : `node --env-file=.env.local scripts/
+    seed-playoffs-test-data.mjs`. Non idempotent, pas de script de nettoyage
+    écrit à ce jour.
 
 Cadrage/
   V1/     — specs techniques V1 validées (T1→T7) + Spec visuelle/
-            SPEC_ECRAN_ACCUEIL_V0_1.md et
-            SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md (close, appliquée cette
-            session).
+            SPEC_ECRAN_ACCUEIL, SPEC_ECRAN_CLASSEMENT_BRACKET,
+            SPEC_ECRAN_MATCHS (close, appliquée cette session, §2.8).
+            SPEC_TECHNIQUE_RLS_V0.1.md complétée §11 (correctif §2.7).
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + cadrage fonctionnel hérité du prototype.
   OLD/    — cadrage antérieur, non consulté activement.
 
 supabase/
-  migrations/  — 4 migrations versionnées, voir §3. Aucune ajoutée cette
-    session (aucune migration nécessaire pour Classement/Bracket).
+  migrations/  — 6 migrations versionnées, voir §3.
   config.toml  — supabase link vers le projet Supabase NEUF de la V1.
 ```
 
@@ -427,40 +524,38 @@ supabase/
   nommage `<timestamp>_nom.sql`) + `npx supabase db push`, jamais par un
   copier-coller manuel dans l'éditeur SQL Supabase. Toujours montrer le
   contenu intégral de la migration et attendre une confirmation EXPLICITE
-  avant `db push`.
+  avant `db push` — y compris pour une fonction SECURITY DEFINER minuscule
+  (§2.8), pas seulement pour un chantier RLS complet.
 - Toute validation serveur doit recalculer ses propres garde-fous depuis la
   base, jamais supposer que l'affichage client correspond aux données
-  officielles (leçon du prototype, reconduite en V1).
+  officielles.
 - Fichiers de suivi (dont celui-ci) : toujours régénérés en entier au moment
   où on les met à jour, jamais résumés/coupés silencieusement.
-- Une spec technique validée doit être committée AU MOMENT de sa validation,
-  pas seulement écrite sur disque. Vaut aussi pour le CODE : Claude ne
-  committe jamais automatiquement (l'utilisateur committe lui-même, une
-  commande à la fois), mais rappelle explicitement en fin de session la
-  commande à lancer.
-- Clés/secrets API : jamais collés en clair dans le chat — l'utilisateur les
-  saisit directement dans les fichiers (.env.local) via l'éditeur.
+- Claude ne committe jamais automatiquement (sauf accord explicite ponctuel,
+  §7 JOURNAL_SESSIONS) — l'utilisateur committe lui-même, une commande à la
+  fois, rappelée en fin de session.
+- Clés/secrets API : jamais collés en clair dans le chat. Un mot de passe de
+  test posé sur un compte JETABLE (seed-*@nba-pronos.test) n'est pas un
+  secret de production — nuance à garder (§2.6).
 - Avant d'écrire du code Next.js, vérifier node_modules/next/dist/docs/ pour
-  les ruptures de convention propres à cette version (AGENTS.md).
-- Aucun asset binaire (logo, image de maquette) n'est ajouté par Claude au
-  dépôt : seule l'arborescence (dossiers, .gitkeep, README de convention) est
-  créée ; l'utilisateur dépose lui-même les fichiers réels.
-- Écrans de lecture (Accueil et suivants) : AUCUNE valeur visuelle en dur
-  (couleur/rayon/espacement/typo/ombre) — uniquement via les tokens de
-  app/tokens.css, via CSS Modules colocalisés par composant (acté au lot
-  Accueil, reconduit sur Classement/Bracket). Composants serveur par défaut ;
-  un "use client" doit être justifié explicitement (interaction, horloge
-  locale, ou écoute d'un événement navigateur — jamais un fetch de données).
+  les ruptures de convention propres à cette version.
+- Aucun asset binaire n'est ajouté par Claude au dépôt.
+- Écrans de lecture ET d'écriture : AUCUNE valeur visuelle en dur — tokens
+  de app/tokens.css uniquement, via CSS Modules colocalisés. Composants
+  serveur par défaut ; un "use client" doit être justifié explicitement — un
+  fetch de données n'est jamais une justification (reconduit sur Matchs,
+  §2.8, malgré la tentation d'un composant client par bloc).
 - Noms de colonnes/valeurs de statut absents d'une spec produit : LIRE le
-  schéma réel (migrations/RLS) avant d'écrire la moindre requête, jamais
-  deviner. En cas d'ambiguïté réelle entre deux lectures possibles d'une
-  spec (ex. libellé vs colonne citée), s'arrêter et demander plutôt que
-  choisir en silence (cf. §7, décision du feed « pari statué »).
-- Quand une spec/archi déjà validée (ex. T6a) impose une contrainte que le
-  prompt de session ne détaille pas explicitement (ex. « la page choisit sa
-  nav selon la session »), l'appliquer directement plutôt que la considérer
-  hors périmètre — ce n'est pas une nouvelle décision produit, juste
-  l'exécution d'une décision déjà actée (cf. §2.5, ScreenShell/PublicNav).
+  schéma réel avant d'écrire la moindre requête, jamais deviner.
+- En cas d'ambiguïté réelle (spec contradictoire, RLS qui ne couvre pas un
+  cas d'usage qu'un TEST révèle) : s'ARRÊTER et demander plutôt que choisir
+  en silence — même en plein codage, même si ça veut dire poser une
+  question avant d'écrire la ligne suivante (§2.8, 2 points bloquants
+  tranchés avant de coder).
+- Un jeu de données de TEST révèle des défauts qu'une lecture de spec seule
+  ne révèle pas (§2.6/§2.7/§2.8) : tester avec de vraies données, pas
+  seulement `tsc`/`eslint`/`next build`, fait partie du travail — pas une
+  option en fin de lot.
 ```
 
 ## 6. Config à faire au déploiement — pas encore faite
@@ -468,17 +563,23 @@ supabase/
 ```text
 - Dashboard Supabase : désactiver « Confirm email » (accès immédiat au
   compte après inscription, C4 — rappel laissé dans la migration #2).
-- Écrire la migration de seed du 1er admin (A4), une fois le 1er pseudo réel
-  connu (update users set role='ADMIN' where pseudo=... — désormais possible
-  sans blocage grâce à la migration #4).
+- Écrire la migration de seed du 1er admin RÉEL (A4), une fois le 1er
+  pseudo réel connu — DISTINCT du compte Sofia_Admin du jeu de test (§2.6),
+  qui n'est qu'un admin de test jetable.
+- EFFACER le jeu de données de test (§2.6) avant tout lancement réel :
+  compétition « Playoffs NBA (test) » + ses séries/matchs/pronos/paris (DELETE
+  SQL, en respectant l'ordre des FK composites — séries du 1er tour avant les
+  tours suivants), et les 7 comptes seed-*@nba-pronos.test via
+  auth.admin.deleteUser (jamais un DELETE direct sur auth.users). Aucun
+  script de nettoyage écrit à ce jour — à faire avant cette étape.
 - Activer la publication Realtime côté base sur matches ET series (T4 §9,
-  resserré par T6c §14.2).
+  resserré par T6c §14.2) — nécessaire pour « Mes pronos » (§2.9), pas pour
+  Matchs (aucun live ici, §2.8/§18.2 de sa spec).
 - Configurer le planificateur externe gratuit (cron-job.org / GitHub
   Actions) pour appeler /api/sync/teams, /api/sync/schedule,
   /api/sync/results et /api/heartbeat aux fréquences actées par T4/T8.
 - Déposer les vrais fichiers : les 30 SVG de public/logos/teams/ (nommés par
-  abréviation) et l'image réelle de public/brand/hero-parquet.webp — tous
-  deux à la charge de l'utilisateur, pas de Claude.
+  abréviation) et l'image réelle de public/brand/hero-parquet.webp.
 ```
 
 ## 7. Pièges techniques déjà rencontrés (V1)
@@ -489,62 +590,84 @@ supabase/
   doit explicitement laisser passer ce cas. Trouvé au test RLS T3 §7
   (migration #4).
 
-- Next.js 16 renomme middleware.ts en proxy.ts (export nommé `proxy`) —
-  comportement identique, mais middleware.ts serait aujourd'hui
-  silencieusement ignoré. Toujours vérifier node_modules/next/dist/docs/
-  avant d'écrire un fichier dont le nom fait partie des conventions Next.js.
+- Next.js 16 renomme middleware.ts en proxy.ts (export nommé `proxy`).
+  Toujours vérifier node_modules/next/dist/docs/ avant d'écrire un fichier
+  dont le nom fait partie des conventions Next.js.
 
 - cookies() de next/headers est asynchrone depuis Next.js 15/16 : toute
-  fonction qui l'utilise (dont getServerClient()) doit être async. Idem
-  pour `searchParams` dans les pages (désormais une Promise, confirmé dans
-  node_modules/next/dist/docs/ à l'écriture de app/leaderboard/page.tsx et
-  app/bracket/page.tsx cette session).
+  fonction qui l'utilise doit être async. Idem pour `searchParams`.
 
 - Route groups Next.js : deux fichiers page.tsx dans des groupes différents
   qui résolvent à la MÊME URL font planter le build (« Conflicting paths »).
-  Corrigé §2.2.
 
-- Compte à rebours hydraté (Countdown.tsx, session du 21/07/2026) : un
-  composant "use client" est quand même rendu côté SERVEUR pour le HTML
-  initial (SSR), puis réexécuté côté client à l'hydratation — appeler
-  Date.now() directement dans le corps du rendu produirait donc deux valeurs
-  différentes (heure serveur vs heure client, écart réseau) et un décalage
-  d'hydratation, surtout visible en mode « décompte vivant » (secondes).
-  Résolu en ne lisant JAMAIS l'horloge pendant le rendu : l'état est `null`
-  jusqu'au montage, la vraie valeur n'arrive que via un effet (`useEffect`) —
-  premier rendu serveur et premier rendu client sont donc TEXTUELLEMENT
-  identiques par construction, pas seulement « proches ».
+- Compte à rebours hydraté (Countdown.tsx, session du 21/07/2026, reconduit
+  sur MatchRow §2.8) : ne JAMAIS lire l'horloge pendant le rendu (état
+  `null` jusqu'au montage, vraie valeur via useEffect) — sinon décalage
+  d'hydratation serveur/client.
+
+- ESLint `react-hooks/set-state-in-effect` (trouvé en écrivant MatchRow,
+  session du 23/07/2026) : un appel `setState(...)` DIRECTEMENT dans le
+  corps d'un `useEffect` (même dans un simple `if`) est une ERREUR de lint,
+  y compris pour le patron « lire l'horloge seulement après montage » déjà
+  utilisé par Countdown.tsx. Countdown.tsx y échappait car son setState vit
+  dans une fonction NOMMÉE (`tick`) appelée depuis l'effet, pas au premier
+  niveau du corps de l'effet — la règle ne remonte pas dans les fonctions
+  imbriquées. Solution reconduite partout : envelopper tout setState d'effet
+  dans une petite fonction nommée, même pour un calcul qui ne s'exécute
+  qu'une fois.
+
+- RLS qui bloque une écriture ne renvoie PAS toujours une erreur PostgREST
+  (trouvé en testant les mécaniques d'écriture de l'écran Matchs, session du
+  23/07/2026) : un `UPDATE` dont la clause `USING` de la policy ne matche
+  AUCUNE ligne (ex. tentative de modifier un prono déjà `VALIDATED`, policy
+  `mp_update_self` qui exige `status='DRAFT'`) réussit silencieusement avec
+  ZÉRO ligne affectée — `error` reste `null`. Un test qui ne vérifie que
+  `error` peut donc croire à tort qu'une écriture interdite est passée.
+  Toujours vérifier le nombre de lignes réellement affectées (`.select()` +
+  compter, ou `count: 'exact'`), jamais seulement l'absence d'erreur.
+
+- Agrégat RLS confidentiel par construction (Classement §2.7, compteur X/N
+  de l'écran Matchs §2.8) : une vue/fonction en `security_invoker` (ou un
+  simple `count()` en session joueur) hérite silencieusement de la RLS des
+  tables sources, MÊME quand l'intention produit est un chiffre PUBLIC
+  (rang, total, "X ont pronostiqué"). Symptôme : correct pour un admin (qui
+  contourne la RLS), sous-compté pour un joueur normal — invisible sans un
+  VRAI jeu de données multi-joueurs, indétectable en lisant juste le code ou
+  la spec. Solution reconduite deux fois : une fonction/vue SECURITY
+  DEFINER dédiée qui n'expose QUE l'agrégat (jamais les lignes sources) —
+  jamais désactiver la RLS des tables elles-mêmes.
+
+- Next.js 16 documente officiellement le blocage de navigation interne via
+  la prop `onNavigate` de `<Link>` + un contexte React partagé (pas un hack
+  ad hoc) — utilisé pour la garde C2 (§2.8). Piège trouvé en le câblant : un
+  composant partagé par PLUSIEURS points de montage (TabBar, rendu à la fois
+  sous app/(app)/layout.tsx ET sous ScreenShell) peut se retrouver SANS le
+  contexte selon la route — le hook consommateur doit se dégrader en no-op,
+  jamais lever, sous peine de casser les écrans qui n'ont pas ce contexte.
 
 - Déduction de schéma — deadline du bracket absente : `competitions.
-  bracket_deadline` est nullable (date pas encore connue). Aucune règle
-  produit ne précise ce cas pour l'item « À traiter » du bracket : décision
-  d'implémentation prise (pas dans une spec) — tant que bracket_deadline est
-  NULL, l'item bracket n'apparaît PAS (rien à compter à rebours). À
-  confirmer si ce cas se présente réellement en usage (item ouvert dans
+  bracket_deadline` est nullable. Tant que NULL, l'item bracket de l'Accueil
+  n'apparaît pas. Décision d'implémentation, pas une spec (item ouvert dans
   GAPS_OUVERTS.md).
 
-- Ambiguïté de spec résolue avec l'utilisateur (AskUserQuestion, session du
-  21/07/2026) : SPEC_ECRAN_ACCUEIL §6 nomme la source `bets.resolved_at`
-  pour l'item de feed « Pari statué par l'admin » mais illustre le rendu par
-  le texte « validé / ajusté », qui correspond en réalité au workflow de
-  VALIDATION (`validated_at`, différent de `resolved_at`). Tranché : lecture
-  littérale de la colonne citée dans le tableau (`resolved_at`) → l'item
-  correspond aux paris ANNULÉS (CANCELLED), cohérente avec la règle
-  « neutralisé, jamais rouge » déjà actée ailleurs (0.2.4 §4, 0.2.9 §7,
-  T6c §4). Libellé rendu : « Neutralisé » (pas « validé/ajusté », qui ne
-  correspond à aucun état atteint par cette colonne).
+- Ambiguïté de spec résolue avec l'utilisateur (AskUserQuestion, 21/07/2026) :
+  SPEC_ECRAN_ACCUEIL §6 nomme `bets.resolved_at` pour l'item « Pari statué »
+  mais illustre par « validé/ajusté » (workflow de VALIDATION, colonne
+  différente). Tranché : lecture littérale de la colonne citée → paris
+  ANNULÉS (CANCELLED), libellé « Neutralisé ».
 
-- Rotation d'écran ET routage client (TreeView.tsx, session du 22/07/2026) :
-  un listener sur `matchMedia("(orientation: landscape)").matches` lu au
-  montage (plutôt qu'un événement `change`) aurait fait atterrir tout
-  visiteur mobile CHARGEANT LA PAGE en paysage directement dans la vue
-  arbre, y compris un premier chargement fortuit — contraire à la spec
-  (vue A = défaut). Résolu en n'agissant JAMAIS sur l'état constaté,
-  seulement sur l'événement de changement. Deuxième piège lié : utiliser un
-  `useState` pour savoir si l'entrée en vue B venait d'une rotation aurait
-  capturé une valeur périmée dans le gestionnaire d'événement (fermeture au
-  moment du montage de l'effet) — remplacé par une `ref`, lue à l'exécution
-  du handler plutôt qu'à sa création.
+- Rotation d'écran ET routage client (TreeView.tsx, 22/07/2026) : agir
+  seulement sur l'ÉVÉNEMENT de changement d'orientation, jamais sur l'état
+  constaté au montage ; une `ref` (pas un `useState`) pour éviter une
+  fermeture périmée dans le listener.
+
+- Colonne absente pour une règle de spec (raccourci pari, écran Matchs,
+  §2.8) : `bets` n'a aucune colonne `rejected_at` — la règle « REJECTED
+  avant/après sa deadline » (0.2.4 §6) n'est donc pas calculable telle
+  quelle. Signalé et tranché AVEC l'utilisateur (toujours considéré
+  « libéré », cas normal compte tenu de sealDeadlines) plutôt que de deviner
+  une colonne de repli (`updated_at`) ou d'élargir le schéma pour un lot pas
+  encore codé (Paris).
 
 Pièges génériques du prototype (Postgres/Git/PowerShell, toujours valables en
 principe) non recopiés ici pour éviter la duplication — voir l'historique du
