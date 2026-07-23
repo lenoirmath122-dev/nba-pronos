@@ -416,6 +416,30 @@ visiteur et pour un admin — les lignes cachées valent toutes 0 (T1 §6.1).
    ce qui rend la vue de classement possible en security_invoker. ACTÉ.
 ```
 
+---
+
+## 11. Correctif post-validation (23/07/2026) — visibilité universelle du classement
+
+**Constat** (trouvé en testant l'écran Classement avec un vrai jeu de données,
+pas seulement `tsc`/`eslint`/`next build`) : l'invariant D4/C-5 (§7) garantit que
+la **valeur** d'un point visible est toujours juste, mais ne garantit PAS que le
+**rang lui-même apparaisse** avant tout verrouillage de match — avant qu'un
+match ne se verrouille, un joueur normal ne voit au classement QUE les lignes
+avec qui il a une visibilité mutuelle (« valider = voir », par match). Un admin
+voit tout ; un joueur normal peut se retrouver seul à son propre classement.
+
+**Décision** : le classement (rang, points, badge « corrigé ») doit être visible
+de TOUT LE MONDE en permanence, indépendamment de la confidentialité au cas par
+cas des pronos/paris/picks (0.2.3 §9, INCHANGÉE). `user_scores` et
+`user_recent_form` passent en `security_invoker = false` (migration #5) : elles
+ne renvoient que des agrégats, jamais une ligne individuelle, donc aucune fuite
+de détail. `admin_corrections_count` est en même temps intégré à `user_scores`
+(auparavant 2 requêtes applicatives séparées, encore RLS-gatées après le
+changement de sécurité des vues seul).
+
+Ne rouvre pas la confidentialité par match (§4) : seule l'agrégation devient
+publique, pas le détail qui l'alimente.
+
 **T3 est VALIDÉ et figé.** Prochaine étape : la **migration #3** (correctif
 join_code + fonctions SECURITY DEFINER + enable RLS + policies + triggers),
 montrée en entier avant tout `db push`, puis le **plan de test §7** joué pour la

@@ -54,6 +54,7 @@ type ScoreRow = {
   bets_points: number;
   correct_match_winners: number;
   exact_margins: number;
+  admin_corrections_count: number;
 };
 
 // Départage du rang (0.2.6 §3, même ordre que lib/queries/home.ts) :
@@ -116,11 +117,13 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
 
   // user_scores : une ligne par (compétition, joueur) ayant au moins une ligne
   // de scoring — « jamais joué » est donc naturellement absent (§8), pas besoin
-  // de partir de la table des joueurs.
+  // de partir de la table des joueurs. Vue security_invoker=false (migration #5,
+  // 23/07/2026) : le classement agrégé est visible de tous, indépendamment de la
+  // confidentialité par match/pari/pick qui reste inchangée sur les tables sources.
   const { data: scores } = await supabase
     .from("user_scores")
     .select(
-      "user_id, total_points, matches_points, bracket_points, bets_points, correct_match_winners, exact_margins"
+      "user_id, total_points, matches_points, bracket_points, bets_points, correct_match_winners, exact_margins, admin_corrections_count"
     )
     .eq("competition_id", competition.id);
 
@@ -138,29 +141,14 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
 
   const userIds = scoreRows.map((row) => row.user_id);
 
-  const [{ data: profiles }, { data: forms }, { data: correctedPredictions }, { data: correctedBets }] =
-    await Promise.all([
-      supabase.from("users").select("id, pseudo, status").in("id", userIds),
-      supabase
-        .from("user_recent_form")
-        .select("user_id, recent_form_points")
-        .eq("competition_id", competition.id)
-        .in("user_id", userIds),
-      // adminCorrectionsCount : agrégat sur match_predictions ET bets (§0/§7) —
-      // un attribut du prono/du pari, jamais du joueur.
-      supabase
-        .from("match_predictions")
-        .select("user_id")
-        .eq("competition_id", competition.id)
-        .eq("is_admin_corrected", true)
-        .in("user_id", userIds),
-      supabase
-        .from("bets")
-        .select("user_id")
-        .eq("competition_id", competition.id)
-        .eq("is_admin_corrected", true)
-        .in("user_id", userIds),
-    ]);
+  const [{ data: profiles }, { data: forms }] = await Promise.all([
+    supabase.from("users").select("id, pseudo, status").in("id", userIds),
+    supabase
+      .from("user_recent_form")
+      .select("user_id, recent_form_points")
+      .eq("competition_id", competition.id)
+      .in("user_id", userIds),
+  ]);
 
   const profileById = new Map(
     (profiles ?? []).map((row) => [
@@ -171,12 +159,6 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
   const formByUser = new Map(
     (forms ?? []).map((row) => [row.user_id as string, row.recent_form_points as number])
   );
-
-  const correctionCounts = new Map<string, number>();
-  for (const row of [...(correctedPredictions ?? []), ...(correctedBets ?? [])]) {
-    const userId = row.user_id as string;
-    correctionCounts.set(userId, (correctionCounts.get(userId) ?? 0) + 1);
-  }
 
   const ranks = assignRanks([...scoreRows].sort(compareForRank));
 
@@ -193,7 +175,7 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
       formPoints: formByUser.get(row.user_id) ?? 0,
       exactMarginsCount: row.exact_margins,
       isInactive: profile?.isInactive ?? false,
-      adminCorrectionsCount: correctionCounts.get(row.user_id) ?? 0,
+      adminCorrectionsCount: row.admin_corrections_count,
       isCurrentUser: row.user_id === user?.id,
     };
   });
