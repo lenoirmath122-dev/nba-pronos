@@ -58,11 +58,15 @@
   désormais **les écrans Classement et Bracket partagés**
   (`app/leaderboard`, `app/bracket`, `lib/queries/{leaderboard,bracket}.ts`,
   `components/{leaderboard,bracket}/*`, session du 22/07/2026) sont CODÉS et
-  vérifiés (`tsc`/`eslint`/`next build` propres). Encore À CODER : hub Jouer
-  (matchs/bracket personnel/paris/mes pronos), écrans admin, les server
-  actions au-delà de l'auth (T6b), le moteur de synchro/scoring (T4/T5), le
-  Realtime + rendu des états (T6c). Prochaine étape concrète : hub Jouer
-  (`app/(app)/play/*`). Détail dans `ETAT_ACTUEL.md` §2.
+  vérifiés (`tsc`/`eslint`/`next build` propres). L'écran **Matchs** a
+  désormais une spec produit CLOSE (`SPEC_ECRAN_MATCHS_V0_1.md`,
+  `Cadrage/V1/Spec visuelle/`, session du 23/07/2026, 16 décisions
+  récapitulées §19) — pas encore codé. Prochaine étape concrète : **coder
+  l'écran Matchs** (`app/(app)/play/matches/`), un écran à la fois plutôt
+  que le hub Jouer en bloc. Restent à coder après lui : « Mes pronos »,
+  « Paris », « Bracket personnel », les écrans admin, les server actions
+  au-delà de l'auth (T6b), le moteur de synchro/scoring (T4/T5), le
+  Realtime + rendu des états (T6c). Détail dans `ETAT_ACTUEL.md` §2.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
@@ -87,26 +91,26 @@
   doit être construit d'une manière qui neutralise les changements de
   barème (ex. rang/points relatifs plutôt que total brut). Pas tranché,
   juste à ne pas oublier en conception si le barème change (`BACKLOG_V1.md`).
-
-## Points ouverts issus de la passe design maquettes (T7 sur écrans réels,
-## session du 20/07/2026 — voir `Cadrage/V1/JOURNAL_DESIGN_passe_maquettes.md`
-## et `JOURNAL_SESSIONS.md`)
-
-- **Couleurs de statut de prono** à réconcilier : 0.2.9 §4 avait validé
-  validé/prêt/incomplet/à faire en vert/ambre/gris/bleu, or T7 réserve
-  **vert = gagné** et **or = champion** (résultats de jeu, non des statuts de
-  saisie). Une réconciliation est **proposée** (statuts de prono recolorés
-  hors vert/ambre) mais **non validée** — à trancher avant de coder l'écran
-  Matchs.
-- **Saisie de l'écart** (0.2.3 §3) : stepper `−/+` seul, ou stepper **+
-  saisie libre au pavé numérique** ?
-- **Écran Matchs replié (accordéon)** : vue par défaut, ou bascule
-  compacte/détaillée au choix du joueur ?
-- **Entrée pari sur la carte de match** (0.2.9 §12) : l'indicateur passe de
-  `x/3` à **binaire** (cohérent avec 1 pari/match en NBA Cup) — détail exact
-  du rendu UI à acter.
-- **Gains des paris par niveau** + forme de progression (linéaire vs
-  « jackpot ») : point ouvert de 0.2.5, toujours pas tranché.
+- **Destination du raccourci pari** (`SPEC_ECRAN_MATCHS_V0_1.md` §18.3) : la
+  route de création d'un pari contextualisé sur un match
+  (`/play/bets/new?matchId=…` est l'hypothèse naturelle) n'est figée ni par
+  0.2.9 §12 ni par T6a. À trancher au lot « Paris » ; d'ici là le raccourci
+  pointe vers une cible provisoire.
+- **Deux contraintes transmises au lot « Mes pronos »** (à appliquer, pas à
+  rediscuter) : l'écran doit être ancré sur les **matchs** et non sur les
+  pronos — tout match verrouillé y apparaît même sans aucune ligne
+  `match_predictions`, sinon les matchs oubliés (ceux dont le joueur a le
+  plus besoin) disparaissent ; et c'est lui qui porte le **live** (badge EN
+  DIRECT, score courant, souscription Realtime `matches`), retiré de
+  l'écran Matchs qui s'arrête au coup d'envoi.
+- **Deux points design jamais remontés depuis le journal de la passe
+  maquettes** (ils n'existaient que dans
+  `JOURNAL_DESIGN_passe_maquettes.md` §4, d'où l'oubli) : **portée du
+  bandeau parquet** (recommandé « arène-only » : Matchs, Bracket, Accueil —
+  avec en-tête plus calme sur Classement et Profil, à confirmer, sachant
+  que Classement est déjà codé) ; et **thème clair du bandeau** (garder la
+  bande sombre partout comme acté en §15.7, ou prévoir un éclaircissement
+  de la photo en thème clair — même asset, filtre différent).
 
 ## Interprétations d'implémentation actées (pas des gaps — à connaître, et à
 ## reporter dans `decisions_0.2.x` si l'utilisateur le souhaite un jour)
@@ -170,3 +174,15 @@
     nom de compétition générique (« Playoffs » / « NBA Cup », faute de
     `competitionName` dans `BracketData`) : texte de rendu choisi par
     l'implémentation, pas fourni par la spec ni par le schéma.
+- **Écran Matchs (session du 23/07/2026, `SPEC_ECRAN_MATCHS_V0_1.md`)** :
+  - la fenêtre 3 jours filtre sur **`scheduled_at > now()`**, jamais sur
+    `matches.status` — le planificateur tournant toutes les 30-60 min (T4/A8),
+    un match commencé peut rester `SCHEDULED` en base près d'une heure ; le
+    verrouillage est piloté par l'heure connue, jamais par le live (T6c §10.3) ;
+  - `N` du compteur « X/N ont pronostiqué » = joueurs **`ACTIVE` uniquement**
+    (un `DISABLED` n'écrit plus, l'y compter rendrait `N/N` inatteignable) —
+    sans contradiction avec sa conservation au classement, qui porte sur
+    autre chose ;
+  - « accéder à un match oublié » = **consulter** + déposer une **requête de
+    correction** (0.2.3 §7), **jamais** une réouverture de la saisie (le
+    verrouillage au coup d'envoi reste irréversible, 0.2.3 §4).

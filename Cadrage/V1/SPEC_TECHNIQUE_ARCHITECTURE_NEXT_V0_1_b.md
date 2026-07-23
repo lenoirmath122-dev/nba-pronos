@@ -141,20 +141,30 @@ et fait un `revalidatePath` **ciblé** (T6a §2.3). Aucune n'utilise `service_ro
 ```ts
 // Écrit/écrase le brouillon du joueur (upsert). RLS mp_insert / mp_update_self
 // (self, is_active(), status='DRAFT', match non verrouillé).
+//
+// CORRECTIF POST-VALIDATION (23/07/2026) — les deux champs sont désormais OPTIONNELS.
+// Motif : le brouillon PARTIEL est un état produit acquis (0.2.3 §5, 0.2.9 §4 statut
+// « incomplet », T1 §3.9 colonnes nullable) et le §2 de CE document le prévoit déjà
+// (« brouillon PARTIEL → reste DRAFT »). La signature initiale, en exigeant les deux
+// champs, rendait ce statut inatteignable. Aucune règle produit n'est modifiée :
+// §3.1 est réaligné sur §2.
 async function saveMatchPredictionDraft(input: {
-  matchId: string; predictedWinnerTeamId: string; predictedMargin: number; // 1..50
+  matchId: string;
+  predictedWinnerTeamId?: string | null;   // null = champ explicitement vidé
+  predictedMargin?: number | null;         // 1..50 si fourni
 }): Promise<ActionResult>;
 
-// DRAFT → VALIDATED, IRRÉVERSIBLE (« valider = voir »). Exige les 2 champs complets.
+// INCHANGÉE — exige toujours les 2 champs complets.
 async function validateMatchPrediction(matchId: string): Promise<ActionResult>;
 
-// « Tout valider » : bascule tous les brouillons COMPLETS du joueur (0.2.9 §4).
-// Ne touche ni les incomplets ni les déjà validés. Renvoie la liste concernée
-// (l'écran affiche la confirmation AVANT d'appeler — 0.2.9 §4).
+// INCHANGÉE.
 async function validateAllCompleteMatchPredictions(): Promise<{ validatedMatchIds: string[] }>;
 ```
 
 ```text
+Les gardes ci-dessous s'appliquent à chaque champ FOURNI. Un champ absent (undefined)
+n'est pas écrit ; un champ à null vide explicitement la valeur en base.
+
 Validations serveur (avant écriture) :
 - predictedWinnerTeamId ∈ { match.home_team_id, match.away_team_id } (sinon rejet).
 - predictedMargin entier 1..50 (garde app + CHECK T1 ; borne UX 0.2.3).
@@ -409,6 +419,9 @@ sealDeadlines (§2)
 
 ACTIONS JOUEUR (§3)
 4.  saveMatchPredictionDraft : predictedMargin hors 1..50 → rejet ; winner hors paire → rejet.
+4bis. saveMatchPredictionDraft avec UN SEUL des deux champs → ACCEPTÉ, la ligne reste
+      DRAFT et le prono s'affiche « incomplet ». À la deadline, sealDeadlines (§2) la
+      laisse en DRAFT = absence, 0 point, jamais de négatif.
 5.  validateMatchPrediction sur brouillon incomplet → rejet ; sur complet → VALIDATED,
     puis re-validation impossible (irréversibilité, RLS status='DRAFT').
 6.  validateAllComplete : ne bascule que les complets ; renvoie la liste.
@@ -452,6 +465,18 @@ using ( self AND is_active() AND not bracket_deadline_passed(competition_id) )
 **Acté.** `LOCKED` n'est **pas** écrit. « Verrouillé » est un état **calculé**
 (`match_is_locked`, P9) ; `VALIDATED` est l'état terminal stocké d'un prono. L'enum
 conserve `LOCKED` en réserve, inutilisé, sans dette ni seconde écriture datée.
+
+### 9.3 Correctif post-validation (23/07/2026) — `saveMatchPredictionDraft`
+
+Les deux champs de `saveMatchPredictionDraft` (§3.1) sont passés d'obligatoires à
+**optionnels**. Motif : §3.1 contredisait §2 du même document, qui prévoit déjà
+qu'un brouillon PARTIEL reste `DRAFT`. Sans ce correctif, le statut « incomplet »
+de 0.2.9 §4 était inatteignable et un joueur ne pouvait pas enregistrer un prono à
+moitié rempli pour le finaliser plus tard.
+
+Aucune règle produit modifiée. Même traitement que les trois correctifs
+post-validation de T6a. Trouvé à la rédaction de `SPEC_ECRAN_MATCHS_V0_1.md` (§18.1),
+session du 23/07/2026.
 
 ---
 

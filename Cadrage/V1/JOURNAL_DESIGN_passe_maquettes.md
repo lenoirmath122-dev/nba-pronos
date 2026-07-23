@@ -66,16 +66,16 @@
 ## 4. Points ouverts (à trancher avant/pendant la consolidation)
 
 - ~~Couleurs de statut de prono~~ — **CLOS**, résolu §15.5 (rampe neutre, cf. §2).
-- **Saisie de l'écart** : stepper seul, ou stepper **+ saisie libre au pavé numérique** (0.2.3 §3).
-- **Matchs repliés** : vue par défaut, ou bascule compacte/détaillée ?
-- **Entrée pari sur la carte** : passer l'indicateur `x/3` → **binaire** (1 pari/match en Cup).
-- **Gains des paris par niveau** + forme de progression (linéaire / « jackpot ») : point ouvert de 0.2.5.
+- ~~Saisie de l'écart~~ — **CLOS** : stepper `−/+`, valeur tapable → pavé numérique. Voir `SPEC_ECRAN_MATCHS_V0_1.md` §6.
+- ~~Matchs repliés~~ — **CLOS** : vue repliée par défaut, fixe, plusieurs lignes ouvrables. Voir `SPEC_ECRAN_MATCHS_V0_1.md` §3.
+- ~~Entrée pari sur la carte~~ — **CLOS** : binaire en Cup, `x/3` en Playoffs. Voir `SPEC_ECRAN_MATCHS_V0_1.md` §10.
+- ~~Gains des paris par niveau~~ — **CLOS (faux ouvert)** : déjà acté par `decisions_0.2.5` §8 (linéaire 5/10/15/20/25, « jackpot » explicitement écarté).
 - **Marqueur « corrigé »** au classement : wording et placement.
 - **Séparateur visuel du Total** (tableau classement desktop) : à trancher.
-- **Portée du bandeau parquet** : recommandé **arène-only** (Matchs, Bracket, Accueil) avec en-tête plus calme sur les écrans de lecture (Classement, Profil) — à confirmer.
-- **Thème clair du bandeau** : garder la bande sombre partout (acté §15.7) ou prévoir un éclaircissement de la photo uniquement en clair (même asset, filtre différent) — ouvert.
-- **Écart** : divulgation progressive (révélé après le choix du vainqueur) ou visible d'emblée — ouvert.
-- **Propager le tap-to-pick** à `ecran-matchs-replie` (même formulaire de saisie) — à faire.
+- **Portée du bandeau parquet** : recommandé **arène-only** (Matchs, Bracket, Accueil) avec en-tête plus calme sur les écrans de lecture (Classement, Profil) — à confirmer. Suivi désormais aussi dans `GAPS_OUVERTS.md`.
+- **Thème clair du bandeau** : garder la bande sombre partout (acté §15.7) ou prévoir un éclaircissement de la photo uniquement en clair (même asset, filtre différent) — ouvert. Suivi désormais aussi dans `GAPS_OUVERTS.md`.
+- ~~Écart : divulgation progressive~~ — **CLOS** : visible d'emblée, pas de divulgation progressive. Voir `SPEC_ECRAN_MATCHS_V0_1.md` §6.
+- ~~Propager le tap-to-pick à `ecran-matchs-replie`~~ — **CLOS**, devenu obligatoire : la vue repliée est désormais le chemin de saisie principal. Voir `SPEC_ECRAN_MATCHS_V0_1.md` §5.
 
 ## 5. Flags résolus en cours de route
 
