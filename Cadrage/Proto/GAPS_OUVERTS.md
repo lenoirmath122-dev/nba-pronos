@@ -116,6 +116,19 @@
   plus besoin) disparaissent ; et c'est lui qui porte le **live** (badge EN
   DIRECT, score courant, souscription Realtime `matches`), retiré de
   l'écran Matchs qui s'arrête au coup d'envoi.
+- **Logos de franchise sur Accueil et Classement** (trouvé le 24/07/2026 : les
+  30 SVG existent bien dans `public/logos/teams/` et sont déjà committés,
+  mais aucun écran ne les affichait — câblés le même jour sur Bracket et
+  Matchs, `components/ui/TeamLogo.tsx`, chemin déduit de l'abréviation, sans
+  toucher aux contrats de types). Accueil et Classement laissés de côté
+  volontairement : Classement n'affiche aucune équipe (classement de
+  joueurs) ; Accueil ne porte les équipes que dans du texte déjà formaté
+  (`TodoItem.subtitle`, `FeedItem.label`, ex. « Prochain : BOS - ATL ») —
+  y ajouter un logo demanderait de restructurer ces contrats de type en
+  objets équipe, un changement plus large qu'un simple ajout visuel. À
+  décider plus tard : soit dans ce sens (restructurer), soit un simple
+  remplacement texte→texte+logo par extraction regex du subtitle/label,
+  moins propre.
 - **Deux points design jamais remontés depuis le journal de la passe
   maquettes** (ils n'existaient que dans
   `JOURNAL_DESIGN_passe_maquettes.md` §4, d'où l'oubli) : **portée du

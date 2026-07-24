@@ -1,4 +1,5 @@
 import type { TeamRef } from "@/lib/queries/matches";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 import styles from "./TeamPicker.module.css";
 
 // Sélecteur de vainqueur par tap direct sur l'équipe (T7 §15.8) — pas de
@@ -24,6 +25,7 @@ export function TeamPicker({ homeTeam, awayTeam, selectedTeamId, onSelect }: Tea
             onClick={() => onSelect(team.id)}
             aria-pressed={isSelected}
           >
+            <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={32} />
             <span className={styles.abbrev}>{team.abbreviation}</span>
             <span className={styles.name}>{team.name}</span>
           </button>

@@ -1,4 +1,5 @@
 import type { BracketNode } from "@/lib/queries/bracket";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 import styles from "./NodeCard.module.css";
 
 // Carte résumé d'une série. Présentiel pur (pas de "use client") : rendu
@@ -32,7 +33,12 @@ function TeamLabel({
     return <span className={styles.team}>—</span>;
   }
   const className = isChampion ? styles.teamChampion : isWinner ? styles.teamWinner : styles.team;
-  return <span className={className}>{team.abbreviation}</span>;
+  return (
+    <span className={className}>
+      <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={18} />
+      {team.abbreviation}
+    </span>
+  );
 }
 
 export function NodeCard({ node, isOpen, disabled, onToggle }: NodeCardProps) {
