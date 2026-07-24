@@ -15,3 +15,27 @@
   /* Espace pour ne pas passer sous la barre de nav fixe en bas. */
   padding-bottom: calc(var(--tap-target-min) + var(--space-4));
 }
+
+/* TEMPORAIRE (24/07/2026) — voir layout.tsx et GAPS_OUVERTS.md. */
+.tempLogout {
+  position: fixed;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 20;
+}
+
+.tempLogoutButton {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px dashed var(--color-border-strong);
+  background: var(--color-surface-overlay);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.tempLogoutButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

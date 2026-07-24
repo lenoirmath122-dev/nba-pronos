@@ -129,6 +129,16 @@
   décider plus tard : soit dans ce sens (restructurer), soit un simple
   remplacement texte→texte+logo par extraction regex du subtitle/label,
   moins propre.
+- **Déconnexion temporaire** (24/07/2026, demandée par l'utilisateur pour
+  pouvoir tester plusieurs comptes) : `app/(app)/layout.tsx` porte désormais
+  un bouton « Déconnexion (temporaire) » (coin haut-droit, hors design
+  system — bordure pointillée, texte muted, volontairement pas fini) qui
+  appelle `logout()` (`lib/auth/actions.ts`, déjà existant, jamais câblé nulle
+  part avant). Vérifié de bout en bout (formulaire réellement soumis, cookie
+  de session effacé, redirection `/login`). **À retirer** dès que l'écran
+  Profil reprend cette action pour de bon — ne pas le laisser traîner en V1
+  finale. Ne couvre que la zone `(app)` (Accueil/Jouer/Matchs/Profil) ; pas
+  `/leaderboard` ni `/bracket` (`ScreenShell`, hors de ce layout).
 - **Deux points design jamais remontés depuis le journal de la passe
   maquettes** (ils n'existaient que dans
   `JOURNAL_DESIGN_passe_maquettes.md` §4, d'où l'oubli) : **portée du
