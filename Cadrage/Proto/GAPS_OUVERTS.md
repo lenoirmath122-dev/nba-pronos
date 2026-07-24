@@ -129,6 +129,17 @@
   décider plus tard : soit dans ce sens (restructurer), soit un simple
   remplacement texte→texte+logo par extraction regex du subtitle/label,
   moins propre.
+- **Hub Jouer temporaire** (24/07/2026, posé pour pouvoir naviguer jusqu'à
+  l'écran Matchs — jusqu'ici codé mais inaccessible depuis l'UI, l'onglet
+  « Jouer » pointant sur un stub) : `app/(app)/play/page.tsx` (+
+  `page.module.css`) liste désormais 4 entrées — « Matchs » en `<Link>` actif
+  vers `/play/matches`, « Mes pronos »/« Mon bracket »/« Paris » rendues
+  INERTES (pas de `<Link>`, routes `/play/my-predictions`, `/play/bracket`,
+  `/play/bets` inexistantes à ce jour) avec le libellé « à venir ». Marqué
+  temporaire aux trois endroits (commentaire code, mention visible « hub
+  temporaire — sera remplacé », cette entrée). Aucune pastille « à faire »
+  calculée (hors périmètre, rôle du vrai hub). **À retirer** dès que le vrai
+  hub Jouer (spec d'écran dédiée, pas encore écrite) existe.
 - **Déconnexion temporaire** (24/07/2026, demandée par l'utilisateur pour
   pouvoir tester plusieurs comptes) : `app/(app)/layout.tsx` porte désormais
   un bouton « Déconnexion (temporaire) » (coin haut-droit, hors design

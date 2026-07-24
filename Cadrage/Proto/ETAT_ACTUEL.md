@@ -5,12 +5,11 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 24/07/2026. Suite directe du lot du
-> 23/07/2026 (seed de test, correctif RLS Classement, écran Matchs) : deux
-> petits compléments demandés en testant l'appli réelle — les logos de
-> franchise (déjà déposés par l'utilisateur, jamais câblés par aucun écran)
-> affichés sur Bracket et Matchs, et un bouton de déconnexion TEMPORAIRE (§2.9)
-> en attendant l'écran Profil.
+> Dernière mise à jour : session du 24/07/2026. Suite directe du lot du même
+> jour (logos de franchise + bouton de déconnexion TEMPORAIRE, §2.9) : un
+> hub Jouer TEMPORAIRE posé (§2.10) pour que l'onglet « Jouer » mène enfin
+> quelque part — l'écran Matchs était codé et vérifié depuis le 23/07/2026
+> mais restait un cul-de-sac, faute de lien depuis l'UI.
 
 ---
 
@@ -48,9 +47,10 @@ RLS         : ACTIVE sur les 15 tables publiques, testée de bout en bout (T3).
 Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
               exclusivement les tokens sémantiques de `app/tokens.css` (aucune
               valeur en dur) — convention posée par l'écran Accueil,
-              reconduite sur Classement/Bracket puis Matchs. Tailwind
-              (présent au projet) reste utilisé tel quel pour les écrans PAS
-              ENCORE stylés selon T7 (login/signup, non retouchés).
+              reconduite sur Classement/Bracket/Matchs puis le hub Jouer
+              temporaire (§2.10). Tailwind (présent au projet) reste utilisé
+              tel quel pour les écrans PAS ENCORE stylés selon T7
+              (login/signup, non retouchés).
 ```
 
 ## 2. Avancement
@@ -58,9 +58,11 @@ Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
 ```text
 Phase V1 — la série de specs techniques T1 → T7 est VALIDÉE. Le socle de
 données (modèle + auth + RLS) est posé et codé (§3). CODÉS ET VÉRIFIÉS avec
-un vrai jeu de données : Accueil, Classement, Bracket, et désormais Matchs
-(§2.8) — les quatre premiers écrans du hub joueur, logos de franchise câblés
-sur Bracket/Matchs (§2.9). Restent à coder : « Mes pronos », Paris, Bracket
+un vrai jeu de données : Accueil, Classement, Bracket, et Matchs (§2.8) — les
+quatre premiers écrans du hub joueur, logos de franchise câblés sur
+Bracket/Matchs (§2.9). Un hub Jouer TEMPORAIRE (§2.10) relie désormais
+l'onglet « Jouer » à l'écran Matchs — en attendant le vrai hub, dont la spec
+d'écran reste à écrire. Restent à coder : « Mes pronos », Paris, Bracket
 personnel (mêmes conventions, un écran à la fois), puis les écrans admin.
 ```
 
@@ -74,8 +76,8 @@ personnel (mêmes conventions, un écran à la fois), puis les écrans admin.
 
 Paquets installés : @supabase/ssr, @supabase/supabase-js, server-only.
 AUCUNE nouvelle dépendance ajoutée depuis (écrans Accueil, Classement/
-Bracket, Matchs compris) — le seed et les scripts de vérification jetables
-utilisent les mêmes paquets, rien de plus.
+Bracket, Matchs compris, hub Jouer temporaire §2.10) — le seed et les scripts
+de vérification jetables utilisent les mêmes paquets, rien de plus.
 
 lib/supabase/{browser,server,service}.ts (T6a §2.4) : les 3 clients —
   getBrowserClient (anon, navigateur), getServerClient (anon + JWT cookies,
@@ -130,7 +132,7 @@ Consolidation (21/07/2026, avant le lot Accueil) :
   components/nav/TabBar.tsx, toujours utilisées telles quelles depuis.
 - app/tokens.css ÉCRIT (P-DS7, dark sur :root + override [data-theme="light"]),
   importé par app/globals.css — consommé par tous les écrans codés depuis
-  (Accueil, Classement, Bracket, Matchs).
+  (Accueil, Classement, Bracket, Matchs, hub Jouer temporaire §2.10).
 - public/brand/ : convention posée pour hero-parquet.webp, aucun binaire
   ajouté (pas utilisé par les écrans codés à ce jour).
 ```
@@ -354,7 +356,8 @@ précisait pas l'exact mécanisme) :
   la prose §8 mentionne) — le type fait autorité, badge générique.
 - Destination du raccourci pari (§10, non fixée par la spec, §18.3) :
   pointe vers `/play` (hub existant) en attendant que `/play/bets/new`
-  existe.
+  existe — inchangé par le hub temporaire §2.10 (toujours `/play`, la vraie
+  route de création de pari n'existe pas plus qu'avant).
 
 Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres,
 aucun conflit de route. Testé en conditions réelles avec de VRAIES sessions
@@ -378,7 +381,7 @@ Confirmé par l'utilisateur en testant lui-même dans un vrai navigateur
 remontées traitées en §2.9 (logos absents, pas de déconnexion possible).
 ```
 
-### 2.9 Compléments post-test utilisateur (session du 24/07/2026, nouveau)
+### 2.9 Compléments post-test utilisateur (session du 24/07/2026)
 
 ```text
 L'utilisateur a testé l'écran Matchs lui-même (premier vrai test au clavier/
@@ -423,7 +426,44 @@ Aucune migration, aucun changement de schéma dans ce lot. `npx tsc --noEmit`,
 `npx eslint .`, `npx next build` propres après chaque changement.
 ```
 
-### 2.10 Prochaine étape
+### 2.10 Hub Jouer temporaire (session du 24/07/2026, nouveau)
+
+```text
+Problème posé : l'écran Matchs (§2.8/§2.9) est codé et vérifié, mais
+l'onglet « Jouer » de la nav pointait sur app/(app)/play/page.tsx, resté un
+stub « à venir » depuis le tout début — cul-de-sac, aucun moyen d'y accéder
+depuis l'UI.
+
+Fait : app/(app)/play/page.tsx remplacé par un hub MINIMAL et
+VOLONTAIREMENT TEMPORAIRE, en attendant le vrai hub Jouer (spec d'écran
+dédiée, non écrite, hors périmètre de ce lot). Composant SERVEUR (aucun
+"use client", rien ici n'en a besoin) : liste de 4 entrées reprises de
+l'arbre app/ de SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md — « Matchs » en
+<Link> actif vers /play/matches ; « Mes pronos » (/play/my-predictions),
+« Mon bracket » (/play/bracket), « Paris » (/play/bets) rendues INERTES
+(PAS de <Link>, pour éviter un 404 puisque ces 3 routes n'existent pas
+encore), libellé « à venir ». app/(app)/play/page.module.css colocalisé,
+lisant exclusivement les tokens sémantiques de app/tokens.css (aucune valeur
+en dur) — même convention que tous les écrans codés depuis Accueil (§2.3).
+
+Marqué TEMPORAIRE aux trois endroits, même patron que le bouton de
+déconnexion (§2.9) : commentaire dans le code (page.tsx, page.module.css),
+mention visible dans le rendu (« Hub temporaire — sera remplacé »), entrée
+dans GAPS_OUVERTS.md. Aucune pastille « à faire » calculée (hors périmètre,
+rôle du vrai hub, qui devra probablement l'afficher). Aucun autre fichier
+touché : TabBar, layout, migrations et dépendances inchangés.
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build tous propres,
+aucun conflit de route (/play toujours listé seul dans la carte des routes
+générée par le build, à côté de /play/matches). Aucune migration, aucun
+changement de schéma.
+
+À RETIRER dès que le vrai hub Jouer existe (voir GAPS_OUVERTS.md et §6
+ci-dessous) — ne doit pas survivre jusqu'à la V1 finale, même remarque que
+le bouton de déconnexion temporaire (§2.9).
+```
+
+### 2.11 Prochaine étape
 
 ```text
 Dans l'ordre déjà acté : « Mes pronos » (ancré sur les MATCHS, pas sur les
@@ -432,9 +472,11 @@ badge EN DIRECT + souscription Realtime `matches`, absent de l'écran
 Matchs) ; puis Paris (fixera la destination du raccourci, §18.3) ; puis
 Bracket personnel. Même conventions reconduites (composants serveur par
 défaut, CSS Modules + tokens, RLS/fonctions dédiées comme seule autorité de
-lecture). Puis les écrans admin, puis T8 (déploiement — §6 à faire avant,
-dont l'effacement du jeu de données de test ET le retrait du bouton de
-déconnexion temporaire §2.9).
+lecture). Le vrai hub Jouer (§2.10) reste, lui, à SPÉCIFIER (spec d'écran
+dédiée) avant d'être codé — aucune date arrêtée. Puis les écrans admin, puis
+T8 (déploiement — §6 à faire avant, dont l'effacement du jeu de données de
+test, le retrait du bouton de déconnexion temporaire §2.9, ET le retrait du
+hub Jouer temporaire §2.10).
 ```
 
 ## 3. État actuel de la base de données
@@ -442,8 +484,9 @@ déconnexion temporaire §2.9).
 ```text
 6 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
 chacune montrée intégralement et confirmée par l'utilisateur avant
-application) — inchangé depuis le 23/07/2026, aucune migration dans le lot
-du 24/07 (logos + déconnexion temporaire, §2.9, purement applicatif) :
+application) — inchangé depuis le 23/07/2026, aucune migration dans les lots
+du 24/07 (logos + déconnexion temporaire §2.9, hub Jouer temporaire §2.10 —
+purement applicatifs) :
 
 1. 20260718090000_initial_schema.sql — schéma complet.
 2. 20260718100000_auth_join_code_and_profile.sql — code compétition,
@@ -486,7 +529,10 @@ app/
       à retirer, voir GAPS_OUVERTS.md).
     home/page.tsx + page.module.css — écran Accueil. CODÉ.
     play/
-      page.tsx         — stub « à venir », PAS stylé (hub, pas un écran).
+      page.tsx + page.module.css — hub Jouer TEMPORAIRE (§2.10, à retirer,
+        voir GAPS_OUVERTS.md) : liste 4 entrées, « Matchs » en <Link> actif,
+        les 3 autres inertes (« à venir »). PAS l'écran hub définitif (spec
+        dédiée à écrire).
       matches/
         page.tsx + page.module.css — écran Matchs. CODÉ (§2.8).
     profile/page.tsx  — stub « à venir », PAS stylé. Portera la vraie
@@ -528,7 +574,8 @@ components/
       l'abréviation, repli texte via onError. Partagé Bracket + Matchs.
   nav/
     TabBar.tsx + .module.css — onNavigate (useGuardedNavigation) sur les 4
-      onglets, inerte par défaut. CODÉ §2.8.
+      onglets, inerte par défaut. CODÉ §2.8. Non modifié par le hub Jouer
+      temporaire (§2.10) — le lien « Jouer » continue de pointer sur /play.
     PublicNav.tsx / ScreenShell.tsx (+ .module.css chacun) — inchangés.
   home/ — inchangé depuis §2.4 (EmptyState réutilisé par Classement,
     Bracket ET Matchs). Pas de logo ici (§2.9, GAPS_OUVERTS.md).
@@ -546,7 +593,8 @@ components/
       useState local — permis, transitivement bundlé client).
     RevealPanel.tsx            — sans "use client" : compteur X/N toujours
       affiché, contenu seulement si isRevealed.
-    BetShortcut.tsx            — sans "use client", raccourci pari.
+    BetShortcut.tsx            — sans "use client", raccourci pari, pointe
+      toujours vers /play (§2.8/§18.3), désormais le hub temporaire §2.10.
     ValidateAllBanner.tsx      — "use client" (3/3) : bandeau + confirmation
       « Tout valider », état local (pas remonté à la page serveur).
 
@@ -564,7 +612,8 @@ Cadrage/
   V1/     — specs techniques V1 validées (T1→T7) + Spec visuelle/
             SPEC_ECRAN_ACCUEIL, SPEC_ECRAN_CLASSEMENT_BRACKET,
             SPEC_ECRAN_MATCHS (close, §2.8). SPEC_TECHNIQUE_RLS_V0.1.md
-            complétée §11 (correctif §2.7).
+            complétée §11 (correctif §2.7). Aucune spec pour le hub Jouer
+            définitif à ce jour (§2.10) — à écrire avant de le coder.
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + cadrage fonctionnel hérité du prototype.
   OLD/    — cadrage antérieur, non consulté activement.
@@ -593,9 +642,9 @@ supabase/
   officielles.
 - Fichiers de suivi (dont celui-ci) : toujours régénérés en entier au moment
   où on les met à jour, jamais résumés/coupés silencieusement — y compris
-  pour un lot « petit » (§2.9) : la mise à jour de GAPS_OUVERTS.md seul,
-  sans toucher à celui-ci ni au journal, a été un oubli réel cette session,
-  corrigé seulement quand l'utilisateur a demandé de vérifier.
+  pour un lot « petit » (§2.9, §2.10) : la mise à jour de GAPS_OUVERTS.md
+  seul, sans toucher à celui-ci ni au journal, a été un oubli réel lors du
+  lot §2.9, corrigé seulement quand l'utilisateur a demandé de vérifier.
 - Une note de suivi (« pas encore déposé », etc.) est un ÉTAT PASSÉ, pas une
   preuve présente : avant d'affirmer qu'un fichier n'existe pas, VÉRIFIER LE
   DISQUE (`ls`/`find`), pas seulement relire `ETAT_ACTUEL.md`. Erreur commise
@@ -623,10 +672,10 @@ supabase/
 - Un jeu de données de TEST révèle des défauts qu'une lecture de spec seule
   ne révèle pas : tester avec de vraies données, pas seulement
   `tsc`/`eslint`/`next build`, fait partie du travail.
-- Un changement volontairement TEMPORAIRE (§2.9, bouton de déconnexion) doit
-  être marqué comme tel dans le CODE (commentaire), dans le RENDU (libellé
-  visible « temporaire », style volontairement pas fini) ET dans le SUIVI
-  (`GAPS_OUVERTS.md`) — les trois, pas seulement un des trois.
+- Un changement volontairement TEMPORAIRE (§2.9 bouton de déconnexion, §2.10
+  hub Jouer) doit être marqué comme tel dans le CODE (commentaire), dans le
+  RENDU (libellé visible « temporaire », style volontairement pas fini) ET
+  dans le SUIVI (`GAPS_OUVERTS.md`) — les trois, pas seulement un des trois.
 ```
 
 ## 6. Config à faire au déploiement — pas encore faite
@@ -645,8 +694,11 @@ supabase/
   script de nettoyage écrit à ce jour.
 - RETIRER le bouton de déconnexion temporaire (§2.9) dès que l'écran Profil
   porte cette action pour de bon.
+- RETIRER le hub Jouer temporaire (§2.10, app/(app)/play/page.tsx +
+  page.module.css) dès que le vrai hub Jouer (spec d'écran dédiée à écrire)
+  existe.
 - Activer la publication Realtime côté base sur matches ET series (T4 §9,
-  resserré par T6c §14.2) — nécessaire pour « Mes pronos » (§2.10), pas pour
+  resserré par T6c §14.2) — nécessaire pour « Mes pronos » (§2.11), pas pour
   Matchs (aucun live ici, §2.8/§18.2 de sa spec).
 - Configurer le planificateur externe gratuit (cron-job.org / GitHub
   Actions) pour appeler /api/sync/teams, /api/sync/schedule,

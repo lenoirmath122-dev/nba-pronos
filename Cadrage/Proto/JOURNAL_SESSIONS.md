@@ -1445,3 +1445,40 @@ temporairement). Un point de méthode retenu pour la suite : vérifier le
 disque avant d'affirmer un état de fichier, et mettre à jour LES TROIS
 fichiers de suivi à chaque lot, même les petits — pas seulement
 `GAPS_OUVERTS.md`. Prochaine étape inchangée : « Mes pronos ».
+
+---
+
+## Session du 24/07/2026 (suite — hub Jouer temporaire)
+
+Suite directe. Constat : l'écran Matchs est codé et vérifié (§2.8/§2.9) mais
+inaccessible depuis l'UI — l'onglet « Jouer » pointait sur
+`app/(app)/play/page.tsx`, resté stub « à venir » depuis le début. Lot court
+et explicitement TEMPORAIRE, demandé pour pouvoir naviguer et tester, en
+attendant le vrai hub Jouer (spec d'écran dédiée, non écrite, hors périmètre
+de ce lot).
+
+**Fait** : `app/(app)/play/page.tsx` remplacé — composant SERVEUR (aucun
+`"use client"`, rien ici n'en a besoin), liste de 4 entrées reprises de
+l'arbre `app/` de `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md` : « Matchs »
+en `<Link>` actif vers `/play/matches` ; « Mes pronos », « Mon bracket »,
+« Paris » rendues INERTES (pas de `<Link>`, pour éviter un 404 — leurs routes
+`/play/my-predictions`, `/play/bracket`, `/play/bets` n'existent pas encore),
+libellé « à venir ». `page.module.css` colocalisé, lisant exclusivement les
+tokens sémantiques de `app/tokens.css` (aucune valeur en dur).
+
+Marqué TEMPORAIRE aux trois endroits, même patron que le bouton de
+déconnexion (§2.9) : commentaire dans le code (`page.tsx`,
+`page.module.css`), mention visible dans le rendu (« Hub temporaire — sera
+remplacé »), entrée dans `GAPS_OUVERTS.md`. Aucune pastille « à faire »
+calculée — hors périmètre, rôle du vrai hub. Aucun autre fichier touché
+(TabBar, layout, migrations, dépendances inchangés).
+
+**Vérifications finales** : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` tous propres, aucun conflit de route (`/play` toujours
+listé seul dans la carte des routes générée par le build). Aucune migration,
+aucun changement de schéma.
+
+**État en fin de session** : les 4 onglets de la nav mènent désormais quelque
+part de cohérent — plus de cul-de-sac sur « Jouer ». `ETAT_ACTUEL.md` et
+`GAPS_OUVERTS.md` mis à jour en conséquence. Prochaine étape inchangée :
+« Mes pronos » (le vrai hub Jouer reste, lui, à spécifier avant d'être codé).
