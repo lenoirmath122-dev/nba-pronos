@@ -1,0 +1,68 @@
+.panel {
+  border-top: 1px solid var(--color-border-hair);
+  padding-top: var(--space-2);
+}
+
+.summary {
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-height: var(--tap-target-min);
+  display: flex;
+  align-items: center;
+}
+
+.summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.empty {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: var(--space-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.pseudo {
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.pick {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.points {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.correctedBadge {
+  flex-basis: 100%;
+  font-size: var(--font-size-xs);
+  color: var(--color-trend);
+}
+
+.absentees {
+  margin: var(--space-2) 0 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}

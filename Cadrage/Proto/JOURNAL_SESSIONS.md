@@ -1482,3 +1482,135 @@ aucun changement de schéma.
 part de cohérent — plus de cul-de-sac sur « Jouer ». `ETAT_ACTUEL.md` et
 `GAPS_OUVERTS.md` mis à jour en conséquence. Prochaine étape inchangée :
 « Mes pronos » (le vrai hub Jouer reste, lui, à spécifier avant d'être codé).
+
+---
+
+## Session du 24/07/2026 (suite — lot « Mes pronos », 5 étapes)
+
+Suite directe. Objectif : coder l'écran « Mes pronos », cinquième écran du
+hub joueur, deuxième écran qui écrit, premier qui porte le live — conduit en
+5 étapes actées d'avance (lecture seule → labels → migrations → lecture/
+écriture → écran/composants), avec arrêt et validation explicite après
+chacune.
+
+**ÉTAPE 0 (lecture seule, vérifications de dépôt §18)** : les 3 points
+étaient déjà corrects — `TeamRef` importable tel quel ; la policy SELECT sur
+`correction_requests` existait déjà (contrairement à ce que la spec
+envisageait comme probable) ; les triggers T-b/T-c acceptent un UPDATE admin
+sur une ligne vide (aucune garde de complétude dans leur code) ;
+`count_committed_predictions` filtre bien `status <> 'DRAFT'`. Une requête
+réelle en base a en revanche montré 0 match verrouillé (`scheduled_at <=
+now()`) — l'écran aurait été invérifiable. Signalé sans coder, décidé AVEC
+l'utilisateur (« 1. Oui ») d'étendre le seed plutôt que d'inventer un
+contournement. `scripts/seed-playoffs-test-data.mjs` étendu : 3 matchs
+existants (déjà porteurs de pronos significatifs — Yanis44 corrigé,
+Marco_D désactivé) passés dans le passé plutôt que d'en créer de nouveaux,
+un seul prono ajouté (Nina_R, partiel, pour couvrir le cas INCOMPLETE
+verrouillé). Le script ET la base déjà seedée ont été alignés (3 UPDATE +
+1 INSERT ciblés, non destructifs) — un wipe/reseed complet aurait exigé de
+supprimer et recréer les 7 comptes auth, jugé disproportionné pour 3 lignes.
+
+**ÉTAPE 1** : `lib/labels/rounds.ts` créé (extraction pure de `ROUND_LABELS`
+depuis `lib/queries/bracket.ts`, qui le portait en dur), importé par les deux
+écrans. Refactor isolé, aucun libellé changé, revérifié seul avant de
+poursuivre.
+
+**ÉTAPE 2** : 2 migrations montrées intégralement, confirmées avant push.
+#7 (`request_prediction_correction`, SECURITY DEFINER, voie A du §10.2 —
+crée une ligne `match_predictions` vide + sa requête de correction en une
+transaction si aucune ligne n'existe, sinon réutilise l'existante ; tous les
+garde-fous du §10.3 dans la fonction, justification du contournement RLS en
+commentaire dans le fichier). #8 (`alter publication supabase_realtime add
+table matches`, uniquement `matches`, `series` reporté au lot Bracket
+personnel). Les deux vérifiées après push par un appel direct (garde
+d'authentification confirmée en aveugle avant le test en conditions réelles
+de fin de session).
+
+**ÉTAPE 3** : `lib/queries/my-predictions.ts` (types §13 recopiés à
+l'identique) + `lib/actions/corrections.ts`. **Ambiguïté réelle trouvée en
+codant, hors du tableau fermé §8, tranchée AVEC l'utilisateur avant
+d'écrire la fonction de dérivation** : `sealDeadlines` (l'auto-validation
+DRAFT complet → VALIDATED décrite par T6b §2) n'est invoquée nulle part
+dans le code de ce dépôt (vérifié par recherche — aucun cron, aucune
+fonction de ce nom, seulement des commentaires qui la mentionnent comme
+hypothèse). Une ligne DRAFT aux deux champs remplis (joueur qui a rempli son
+prono sans avoir cliqué « Valider » avant le verrouillage) est donc un 4e cas
+réel, non prévu par les 3 états du tableau. Tranché : la complétude prime
+sur le statut brut → rendu FROZEN, appliqué symétriquement à mon prono et à
+ceux des autres joueurs.
+
+**ÉTAPE 4** : `app/(app)/play/my-predictions/page.tsx` +
+`components/my-predictions/*`. **Second point d'ambiguïté, également
+signalé et tranché AVEC l'utilisateur avant de continuer** : `TeamLogo.tsx`
+(partagé Bracket/Matchs depuis le 24/07 précédent) n'avait jamais sa PROPRE
+directive `"use client"` — il ne fonctionnait que parce que ses 2 points
+d'appel existants sont TOUJOURS atteints via un ancêtre client, une
+coïncidence jamais vérifiée explicitement. `MatchRowStatic` (serveur, sans
+ancêtre client) l'utilise directement pour la première fois. Recommandation
+de Claude (corriger le composant partagé à la source plutôt que vérifier
+empiriquement d'abord) suivie par l'utilisateur : `"use client"` ajouté
+directement à `TeamLogo.tsx`, sans changement de rendu pour Bracket/Matchs
+(confirmé par `next build`). Un seul fichier client pour l'écran :
+`LiveSubscriber.tsx`, qui exporte à la fois le Provider (souscription
+Realtime unique, Context React) et un consommateur (`LiveBadgeAndScore`) —
+patron nécessaire pour qu'un canal unique mette à jour le contenu de lignes
+par ailleurs entièrement serveur, jamais rencontré avant sur ce projet.
+Formulaire de correction natif, erreur portée par l'URL de redirection
+(un formulaire sans JS ne peut pas lire une valeur de retour).
+
+**Vérifications ÉTAPES 1-4** : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` tous propres après chaque étape, aucun conflit de route.
+
+**ÉTAPE 5 — test en conditions réelles, demandé explicitement par
+l'utilisateur avant le suivi/remise** : serveur local (`next start`) +
+sessions authentifiées réelles, obtenues en rejouant le vrai POST sans JS du
+formulaire de connexion. Trouvaille technique en cours de route : React
+19/Next 16 encodent le repli sans JS d'un `useActionState` (login, signup)
+DIFFÉREMMENT d'un simple `<form action={fn}>` sans état lié (logout,
+requête de correction) — 4 champs cachés distincts au lieu d'un seul,
+jamais rencontrés jusqu'ici. Deux mots de passe temporaires posés via l'API
+Admin (Amine92, Marco_D), jamais affichés dans le chat, re-randomisés en fin
+de session.
+
+Résultats, tous conformes à la spec : fenêtre Récent correcte, badge EN
+DIRECT + score et score final rendus correctement, prono FROZEN de Marco_D
+(désactivé) bien conservé, panneau des autres joueurs avec le rendu
+nominatif exact du §7.1. **Écriture réelle testée** : dépôt d'une requête de
+correction par Amine92 sur un match sans prono → ligne vide + requête
+PENDING créées exactement selon la voie A, rechargement affichant bien
+« Requête en attente. ». **Cas négatif testé** : la même tentative par
+Marco_D (désactivé) bloquée par la garde `is_active()` de la fonction SQL,
+erreur affichée dans la bonne ligne au rechargement — le mécanisme complet
+(garde-fou base + remontée d'erreur sans JS) vérifié dans les deux sens.
+Aucune régression sur les écrans déjà codés.
+
+**Trouvaille distincte, demandée explicitement par l'utilisateur en fin de
+test** (« tu vas me dire si oui ou non la création de compte fonctionne ») :
+le vrai flux d'inscription (`/signup`) a été testé pour la première fois de
+bout en bout sur ce projet — jusqu'ici les 7 comptes de seed avaient tous
+été créés via l'API Admin, qui ne passe jamais par l'envoi d'email. Le code
+est correct (vérifié en isolant l'appel `signUp()` seul) mais échoue avec
+« 429 — email rate limit exceeded » : conséquence directe d'un point déjà
+connu et déjà tracé (« désactiver Confirm email », `GAPS_OUVERTS.md`/
+`ETAT_ACTUEL.md` §6, jamais fait) — ce n'était simplement jamais apparu
+puisque personne n'avait encore essayé le vrai formulaire public. Rapporté
+honnêtement comme un gap PRÉEXISTANT et déjà documenté, pas une régression
+introduite ce jour. Aucun compte orphelin créé (vérifié via l'API Admin).
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` régénéré en entier (nouveau
+§2.11, §1/§3/§4/§6/§7 mis à jour), `GAPS_OUVERTS.md` (« Mes pronos » sorti des
+points ouverts, gap ajouté sur l'alignement du badge de correction de
+l'écran Matchs, gap ajouté sur la publication Realtime de `series`, section
+des interprétations d'implémentation complétée), cette entrée de journal.
+`SPEC_ECRAN_MES_PRONOS_V0_1.md` marquée CLOSE (les 3 vérifications de §18
+levées en ÉTAPE 0).
+
+**État en fin de session** : cinq écrans du hub joueur codés et vérifiés
+(Accueil, Classement, Bracket, Matchs, Mes pronos), le premier avec Realtime
+et une écriture testée en conditions réelles dans les deux sens (succès et
+échec de garde-fou). Rien n'est committé automatiquement — les commandes
+sont montrées à l'utilisateur, qui committe lui-même. Reste en base, artefact
+de test légitime non nettoyé : 1 requête PENDING (Amine92/DEN-SAC) + sa ligne
+vide associée. Prochaine étape : « Paris » (fixera la destination du
+raccourci pari) ; le point « désactiver Confirm email » a gagné en urgence
+pratique (rate limit désormais rencontré, pas seulement théorique).

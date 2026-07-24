@@ -1,0 +1,49 @@
+.summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  padding: 0 var(--space-2);
+  min-height: calc(var(--tap-target-min) * 0.55);
+  border-radius: var(--radius-pill);
+  white-space: nowrap;
+}
+
+.stateFrozen {
+  color: var(--color-text-primary);
+  background: var(--color-accent-soft);
+  border: 1px solid var(--color-accent-line);
+}
+
+.stateIncomplete {
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.stateMissing {
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border-subtle);
+}
+
+.adminCorrection {
+  flex-basis: 100%;
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-trend);
+}
+
+.points {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}

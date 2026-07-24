@@ -253,15 +253,64 @@ async function main() {
   // Étalés : plusieurs sous 3 jours (fenêtre de l'écran Matchs), certains
   // au-delà, un match 2 à date encore inconnue (scheduled_at NULL — cas réel
   // du match 2 d'une série non encore calé tant que le match 1 n'est pas joué).
+  //
+  // AJOUT du 24/07/2026 (vérification §18 de SPEC_ECRAN_MES_PRONOS_V0_1,
+  // ÉTAPE 0) : la requête réelle en base a montré 0 match avec scheduled_at
+  // <= now() — l'écran "Mes pronos" (ancré sur les matchs VERROUILLÉS, §3)
+  // aurait donc été invérifiable. Trois matchs déjà porteurs de pronos
+  // significatifs sont donc passés dans le PASSÉ plutôt que d'en inventer de
+  // nouveaux (moindre surface, aucune série/bracket supplémentaire à créer) :
+  // CLE-ORL#1 (Yanis44, corrigé par Sofia_Admin — teste le marquage nominatif
+  // §7.1), DEN-SAC#1 (Marco_D, désactivé APRÈS validation — teste la
+  // conservation d'un prono figé) et MIN-GSW#1 (aucun prono avant cet ajout).
+  // `status`/`home_score`/`away_score` posés à la main pour ces trois-là
+  // UNIQUEMENT, en l'absence du planificateur (T4, non codé) : geste
+  // équivalent à ce que fait déjà ce script pour l'auto-validation (T6b)
+  // ailleurs, jamais une simulation de résultat officiel de scoring (T5).
   const MATCHES = [
     { key: "BOS-MIA", game: 1, at: E1_GAME1_AT, home: "BOS", away: "MIA" }, // 18h — sous 3j
     { key: "BOS-MIA", game: 2, at: null, home: "MIA", away: "BOS" }, // date pas encore confirmée
     { key: "NYK-ATL", game: 1, at: hoursFromNow(30), home: "NYK", away: "ATL" }, // sous 3j
     { key: "MIL-CHI", game: 1, at: hoursFromNow(52), home: "MIL", away: "CHI" }, // ~2j4h, sous 3j
-    { key: "CLE-ORL", game: 1, at: hoursFromNow(92), home: "CLE", away: "ORL" }, // ~3j20h, AU-DELÀ de 3j
+    {
+      // ~1j6h dans le PASSÉ : "Récent" de Mes pronos (fenêtre 3j en arrière,
+      // §4.1). FINISHED + score final posé à la main (voir note ci-dessus) —
+      // teste le rendu terminé + le marquage de correction NOMINATIF (§7.1).
+      key: "CLE-ORL",
+      game: 1,
+      at: hoursFromNow(-30),
+      home: "CLE",
+      away: "ORL",
+      status: "FINISHED",
+      homeScore: 101,
+      awayScore: 97,
+    },
     { key: "OKC-SAS", game: 1, at: hoursFromNow(42), home: "OKC", away: "SAS" }, // sous 3j
-    { key: "DEN-SAC", game: 1, at: hoursFromNow(120), home: "DEN", away: "SAC" }, // 5j, au-delà
-    { key: "MIN-GSW", game: 1, at: hoursFromNow(144), home: "MIN", away: "GSW" }, // 6j, au-delà
+    {
+      // 2h dans le PASSÉ, "Récent". IN_PROGRESS + score partiel posé à la
+      // main — teste le badge EN DIRECT (§5.1) et le prono FIGÉ conservé
+      // d'un joueur désactivé APRÈS coup (Marco_D, isInactive).
+      key: "DEN-SAC",
+      game: 1,
+      at: hoursFromNow(-2),
+      home: "DEN",
+      away: "SAC",
+      status: "IN_PROGRESS",
+      homeScore: 58,
+      awayScore: 52,
+    },
+    {
+      // 4 jours dans le PASSÉ : AU-DELÀ des 3 jours de "Récent" → seulement
+      // visible dans "Historique". `status` volontairement LAISSÉ à
+      // SCHEDULED (défaut) : simule le planificateur (30-60 min, T4) pas
+      // encore passé sur un match pourtant déjà commencé — teste le
+      // MatchLiveState 'STARTED' (latence assumée, §5.4/§13).
+      key: "MIN-GSW",
+      game: 1,
+      at: hoursFromNow(-96),
+      home: "MIN",
+      away: "GSW",
+    },
     { key: "LAL-HOU", game: 1, at: hoursFromNow(26), home: "LAL", away: "HOU" }, // sous 3j
   ];
 
@@ -278,6 +327,8 @@ async function main() {
           scheduled_at: m.at,
           home_team_id: teamId[m.home],
           away_team_id: teamId[m.away],
+          ...(m.status ? { status: m.status } : {}),
+          ...(m.homeScore !== undefined ? { home_score: m.homeScore, away_score: m.awayScore } : {}),
         })
         .select("id")
         .single()
@@ -451,6 +502,12 @@ async function main() {
 
   // Nina_R : 1 brouillon complet, non validé.
   await insertPrediction("Nina_R", "MIL-CHI-1", { winner: "CHI", margin: 2 });
+
+  // Nina_R : 1 brouillon PARTIEL sur un match désormais VERROUILLÉ (ajout du
+  // 24/07/2026, §18 de SPEC_ECRAN_MES_PRONOS_V0_1) — le seul cas INCOMPLETE
+  // du lot "Mes pronos" (ligne DRAFT, un seul champ rempli, sur un match déjà
+  // commencé). Sans lui, MIN-GSW-1 verrouillé n'aurait aucun prono du tout.
+  await insertPrediction("Nina_R", "MIN-GSW-1", { winner: "MIN", margin: null });
 
   // Yanis44 : validé PUIS corrigé par l'admin sur requête (0.2.3 §7) — le
   // workflow complet est rejoué (insert, puis 2 update séparés), ce qui

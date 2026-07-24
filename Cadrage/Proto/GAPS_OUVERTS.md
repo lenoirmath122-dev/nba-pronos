@@ -53,17 +53,21 @@
 
 - **Implémentation code de la V1** (post-T7, EN COURS depuis la session du
   19/07/2026 suite) : plomberie Supabase, garde d'authentification, flux
-  login/signup, l'écran Accueil, les écrans partagés Classement/Bracket, et
-  désormais **l'écran Matchs** (`app/(app)/play/matches/`,
-  `lib/queries/matches.ts`, `lib/actions/matches.ts`,
-  `lib/hooks/useUnsavedGuard.tsx`, `components/matches/*`, session du
-  23/07/2026, premier écran qui ÉCRIT) sont CODÉS et vérifiés
-  (`tsc`/`eslint`/`next build` propres, testés avec un vrai jeu de données de
-  test). Prochaine étape concrète : **« Mes pronos »** (ancré sur les
-  matchs, pas les pronos — contrainte transmise ci-dessous ; porte le live,
-  absent de l'écran Matchs). Restent à coder après lui : « Paris » (fixera
-  la destination du raccourci pari, ci-dessous), « Bracket personnel », les
-  écrans admin, le moteur de synchro/scoring (T4/T5), le Realtime + rendu
+  login/signup, l'écran Accueil, les écrans partagés Classement/Bracket,
+  **l'écran Matchs** (`app/(app)/play/matches/`, `lib/queries/matches.ts`,
+  `lib/actions/matches.ts`, `lib/hooks/useUnsavedGuard.tsx`,
+  `components/matches/*`, session du 23/07/2026, premier écran qui ÉCRIT) et
+  désormais **« Mes pronos »** (`app/(app)/play/my-predictions/`,
+  `lib/queries/my-predictions.ts`, `lib/actions/corrections.ts`,
+  `lib/labels/rounds.ts`, `components/my-predictions/*`, migrations #7/#8,
+  session du 24/07/2026, ancré sur les matchs verrouillés, porte le live)
+  sont CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres, testés avec un
+  vrai jeu de données de test ET en conditions réelles — sessions
+  authentifiées réelles, écriture réelle testée, cas négatif RLS testé).
+  Prochaine étape concrète : **« Paris »** (fixera la destination du
+  raccourci pari, ci-dessous). Restent à coder après lui : « Bracket
+  personnel » (activera la publication Realtime de `series`, ci-dessous),
+  les écrans admin, le moteur de synchro/scoring (T4/T5), le Realtime + rendu
   des états au-delà de ce qui existe déjà (T6c). Détail dans
   `ETAT_ACTUEL.md` §2.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
@@ -109,13 +113,23 @@
   restant à la deadline — un rejet après coup est un cas limite hors
   fonctionnement normal). À rouvrir au lot « Paris » si une vraie colonne
   `rejected_at` est ajoutée à ce moment-là.
-- **Deux contraintes transmises au lot « Mes pronos »** (à appliquer, pas à
-  rediscuter) : l'écran doit être ancré sur les **matchs** et non sur les
-  pronos — tout match verrouillé y apparaît même sans aucune ligne
-  `match_predictions`, sinon les matchs oubliés (ceux dont le joueur a le
-  plus besoin) disparaissent ; et c'est lui qui porte le **live** (badge EN
-  DIRECT, score courant, souscription Realtime `matches`), retiré de
-  l'écran Matchs qui s'arrête au coup d'envoi.
+- **Aligner le badge de correction de l'écran Matchs sur le rendu nominatif**
+  (ajouté le 24/07/2026, lot « Mes pronos » §7.1) : Matchs rend un badge
+  **générique** (« Corrigé par un admin », contrat de types `OtherPrediction.
+  isAdminCorrected: boolean` figé avant que le rendu nominatif ne soit
+  décidé) alors que Mes pronos rend désormais le nom de l'admin + le motif
+  en entier (« Saisi par X à la demande de Y — motif »), conformément à
+  0.2.3 §7 (garde-fou social, pas technique). Divergence assumée à la
+  rédaction de `SPEC_ECRAN_MES_PRONOS_V0_1.md` §7.1, pas reproduite là pour
+  raison de symétrie — à trancher : soit étendre le contrat de types de
+  Matchs (nom d'admin + nom du requérant), soit assumer la divergence en V1
+  et harmoniser plus tard.
+- **Publication Realtime de `series`** (ajoutée le 24/07/2026, lot « Mes
+  pronos ») : `matches` est désormais publiée (migration #8) — `series`,
+  prévue par T4 §9 et resserrée par T6c §14.2 (drill-down série + résumé
+  bracket live), reste reportée au lot **Bracket personnel**, seul écran qui
+  en aura besoin. Chaque table publiée quand un écran en a réellement
+  besoin, pas avant.
 - **Logos de franchise sur Accueil et Classement** (trouvé le 24/07/2026 : les
   30 SVG existent bien dans `public/logos/teams/` et sont déjà committés,
   mais aucun écran ne les affichait — câblés le même jour sur Bracket et
@@ -250,3 +264,30 @@
   - statuts de prono (§4) et rappel « ✓ LAL −8 » : rendus en CSS pur (tokens
     de bordure/fond) + caractères (✓, →), aucune icône SVG créée — la spec
     elle-même écrit le rappel en toutes lettres avec un caractère ✓.
+- **Écran Mes pronos (session du 24/07/2026, `SPEC_ECRAN_MES_PRONOS_V0_1.md`,
+  `lib/queries/my-predictions.ts`, `components/my-predictions/*`)** :
+  - **Dérivation d'état par COMPLÉTUDE, jamais par statut brut** (tranché AVEC
+    l'utilisateur, ambiguïté non couverte par le tableau fermé §8) :
+    `sealDeadlines` (auto-validation DRAFT complet → VALIDATED, T6b §2) n'est
+    invoquée nulle part dans le code (aucun cron, aucune fonction de ce nom) —
+    une ligne DRAFT aux deux champs remplis est donc un 4e cas réel. Rendu
+    FROZEN par complétude, symétriquement pour mon prono et ceux des autres
+    joueurs (RevealPanel) ;
+  - le requérant d'une correction étant toujours le propriétaire du prono
+    (§7.1), le rendu nominatif distingue « à ta demande » (mon propre prono,
+    `PredictionSummary`) de « à la demande de <pseudo> » (prono d'un autre,
+    `RevealPanel`) — aucune donnée supplémentaire à lire, juste un choix de
+    formulation selon qui affiche le bloc ;
+  - filtre date (§4.2) : `<input type="date">` natif (pas un `<select>`
+    contraint aux `availableDates`), conformément à la lettre de la spec —
+    une date hors du jeu de données mène simplement à l'état vide « Aucun
+    match pour ce filtre » (§15.4), pas une erreur ;
+  - libellé de série des filtres/en-tête de pari (§4.2/§11.2), non fixé par
+    la spec : `<libellé de tour> — <équipe1> vs <équipe2>` (ex. « 1er tour —
+    BOS vs MIA »), construit via `lib/labels/rounds.ts` + `series.team1_id/
+    team2_id` (pas les home/away du match, qui peuvent être inversés d'un
+    match à l'autre de la même série) ;
+  - pari MATCH/SERIES affiché (`AssociatedBetCard`) : `catégorie` suit la
+    même règle que `difficulté` (`validated_category ?? proposed_category`,
+    la validée fait foi, 0.2.4 §7) — la spec ne le précise que pour la
+    difficulté, extension jugée cohérente plutôt qu'une nouvelle règle.

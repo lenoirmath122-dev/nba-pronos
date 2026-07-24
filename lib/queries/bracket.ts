@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { ROUND_LABELS } from "@/lib/labels/rounds";
 
 // Lecture de l'écran Bracket (vue globale de consultation), composants
 // serveur uniquement — SPEC_ECRAN_CLASSEMENT_BRACKET §15.2. Un seul module,
@@ -60,16 +61,6 @@ function emptyData(): BracketData {
 
 const PLAYOFFS_ROUNDS = ["ROUND_1", "CONF_SEMIS", "CONF_FINALS", "NBA_FINALS"] as const;
 const CUP_ROUNDS = ["CUP_QUARTERS", "CUP_SEMIS", "CUP_FINAL"] as const;
-
-const ROUND_LABELS: Record<string, string> = {
-  ROUND_1: "1er tour",
-  CONF_SEMIS: "Demi-finales de conférence",
-  CONF_FINALS: "Finales de conférence",
-  NBA_FINALS: "Finale NBA",
-  CUP_QUARTERS: "Quarts de finale",
-  CUP_SEMIS: "Demi-finales",
-  CUP_FINAL: "Finale",
-};
 
 const CONFERENCE_RANK: Record<string, number> = { EAST: 0, WEST: 1 };
 

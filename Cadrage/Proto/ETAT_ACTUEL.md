@@ -5,11 +5,12 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 24/07/2026. Suite directe du lot du même
-> jour (logos de franchise + bouton de déconnexion TEMPORAIRE, §2.9) : un
-> hub Jouer TEMPORAIRE posé (§2.10) pour que l'onglet « Jouer » mène enfin
-> quelque part — l'écran Matchs était codé et vérifié depuis le 23/07/2026
-> mais restait un cul-de-sac, faute de lien depuis l'UI.
+> Dernière mise à jour : session du 24/07/2026 (suite — lot « Mes pronos »,
+> SPEC_ECRAN_MES_PRONOS_V0_1.md, désormais CLOSE). Cinquième écran du hub
+> joueur, deuxième écran qui écrit (une seule écriture : la requête de
+> correction), premier écran qui porte le live (badge EN DIRECT, Realtime sur
+> `matches`, migration #8). Suite directe des lots du même jour (logos +
+> déconnexion temporaire §2.9, hub Jouer temporaire §2.10).
 
 ---
 
@@ -36,14 +37,24 @@ Auth        : Supabase Auth (email + mot de passe), pont École A vers
               voir §2.9 (bouton TEMPORAIRE, aucun écran ne la portait avant).
 RLS         : ACTIVE sur les 15 tables publiques, testée de bout en bout (T3).
               Consommée directement par les écrans de lecture (Accueil,
-              Classement, Bracket, Matchs) via getServerClient() — JAMAIS
-              service_role. Deux vues (`user_scores`/`user_recent_form`) et
-              une fonction (`count_committed_predictions`) sont volontairement
-              en dehors du régime « invoker » (§2.7/§2.8) : elles n'exposent
-              QUE des agrégats (points, compteurs), jamais une ligne
-              individuelle — la confidentialité par match/pari/pick, elle,
-              reste entièrement portée par la RLS des tables sources,
-              inchangée.
+              Classement, Bracket, Matchs, Mes pronos) via getServerClient()
+              — JAMAIS service_role. Deux vues (`user_scores`/
+              `user_recent_form`) et deux fonctions (`count_committed_
+              predictions`, `request_prediction_correction`) sont
+              volontairement en dehors du régime « invoker » (§2.7/§2.8/
+              §2.11) : `request_prediction_correction` (migration #7) est la
+              SEULE écriture qui contourne une policy (`mp_insert`, pour la
+              voie A du §2.11) — elle n'écrit jamais de contenu de
+              pronostic, seulement une ligne vide + sa requête liée. Les
+              deux vues/fonctions restantes n'exposent QUE des agrégats
+              (points, compteurs), jamais une ligne individuelle — la
+              confidentialité par match/pari/pick, elle, reste entièrement
+              portée par la RLS des tables sources, inchangée.
+Realtime    : publication `supabase_realtime` activée sur `matches`
+              UNIQUEMENT (migration #8, §2.11) — `series` reste à activer au
+              lot Bracket personnel (GAPS_OUVERTS.md). Souscription unique
+              côté client dans `LiveSubscriber.tsx` (Mes pronos), RLS native
+              (matches_select = `using (true)`, rien de privé n'y transite).
 Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
               exclusivement les tokens sémantiques de `app/tokens.css` (aucune
               valeur en dur) — convention posée par l'écran Accueil,
@@ -58,11 +69,12 @@ Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
 ```text
 Phase V1 — la série de specs techniques T1 → T7 est VALIDÉE. Le socle de
 données (modèle + auth + RLS) est posé et codé (§3). CODÉS ET VÉRIFIÉS avec
-un vrai jeu de données : Accueil, Classement, Bracket, et Matchs (§2.8) — les
-quatre premiers écrans du hub joueur, logos de franchise câblés sur
-Bracket/Matchs (§2.9). Un hub Jouer TEMPORAIRE (§2.10) relie désormais
-l'onglet « Jouer » à l'écran Matchs — en attendant le vrai hub, dont la spec
-d'écran reste à écrire. Restent à coder : « Mes pronos », Paris, Bracket
+un vrai jeu de données : Accueil, Classement, Bracket, Matchs (§2.8) et
+désormais « Mes pronos » (§2.11) — les cinq premiers écrans du hub joueur,
+logos de franchise câblés sur Bracket/Matchs/Mes pronos (§2.9/§2.11). Un hub
+Jouer TEMPORAIRE (§2.10) relie l'onglet « Jouer » à Matchs ET Mes pronos
+désormais — en attendant le vrai hub, dont la spec d'écran reste à écrire.
+Restent à coder : Paris (fixera la destination du raccourci pari), Bracket
 personnel (mêmes conventions, un écran à la fois), puis les écrans admin.
 ```
 
@@ -463,30 +475,174 @@ ci-dessous) — ne doit pas survivre jusqu'à la V1 finale, même remarque que
 le bouton de déconnexion temporaire (§2.9).
 ```
 
-### 2.11 Prochaine étape
+### 2.11 Écran Mes pronos (session du 24/07/2026, CLOSE)
 
 ```text
-Dans l'ordre déjà acté : « Mes pronos » (ancré sur les MATCHS, pas sur les
-pronos — contrainte transmise §17/§18.2 de la spec Matchs ; porte le live,
-badge EN DIRECT + souscription Realtime `matches`, absent de l'écran
-Matchs) ; puis Paris (fixera la destination du raccourci, §18.3) ; puis
-Bracket personnel. Même conventions reconduites (composants serveur par
-défaut, CSS Modules + tokens, RLS/fonctions dédiées comme seule autorité de
-lecture). Le vrai hub Jouer (§2.10) reste, lui, à SPÉCIFIER (spec d'écran
-dédiée) avant d'être codé — aucune date arrêtée. Puis les écrans admin, puis
-T8 (déploiement — §6 à faire avant, dont l'effacement du jeu de données de
-test, le retrait du bouton de déconnexion temporaire §2.9, ET le retrait du
-hub Jouer temporaire §2.10).
+Périmètre : SPEC_ECRAN_MES_PRONOS_V0_1.md (Cadrage/V1/Spec visuelle/, close,
+31 décisions actées §19) appliquée telle quelle. Cinquième écran du hub
+joueur, DEUXIÈME écran qui ÉCRIT (une seule écriture : la requête de
+correction), PREMIER écran qui porte le LIVE (badge EN DIRECT, retiré de
+l'écran Matchs). Ancré sur les MATCHS VERROUILLÉS (scheduled_at <= now()),
+jamais sur matches.status — aucun recouvrement avec Matchs (scheduled_at >
+now()), même horloge, deux sens.
+
+ÉTAPE 0 (vérification de dépôt, §18, lecture seule) : les 3 points étaient
+tous déjà corrects, rien à corriger dans la migration #7 —
+`TeamRef` (lib/queries/matches.ts) importable tel quel ; la policy SELECT
+sur correction_requests EXISTAIT DÉJÀ (migration #3, `correction_requests_
+select`) ; les triggers T-b/T-c (migration #3) acceptent bien un UPDATE admin
+sur une ligne vide (aucun contrôle de complétude dans leur code, seulement
+la machine à états DRAFT/VALIDATED et la cohérence requête↔admin) ;
+`count_committed_predictions` (migration #6) filtre bien `status <> 'DRAFT'`.
+Requête réelle en base : 0 match avec scheduled_at <= now() — écran
+invérifiable en l'état. Décidé AVEC l'utilisateur : étendre le seed plutôt
+que ne rien coder. `scripts/seed-playoffs-test-data.mjs` étendu (3 matchs
+existants passés dans le passé plutôt que d'en inventer : CLE-ORL#1 FINISHED
+101-97, prono Yanis44 corrigé — teste le rendu nominatif §7.1 ; DEN-SAC#1
+IN_PROGRESS 58-52, prono Marco_D (désactivé) — teste le badge EN DIRECT + la
+conservation ; MIN-GSW#1 laissé SCHEDULED malgré une date passée — teste le
+MatchLiveState 'STARTED', latence assumée §5.4 — + 1 prono partiel Nina_R
+ajouté dessus, seul cas INCOMPLETE du lot). Le script a été mis à jour ET la
+base déjà seedée a été alignée directement (3 UPDATE + 1 INSERT ciblés,
+non destructifs — pas de wipe/reseed complet, qui aurait exigé de supprimer
+et recréer les 7 comptes auth).
+
+ÉTAPE 1 : `lib/labels/rounds.ts` créé (extraction PURE de `ROUND_LABELS`,
+portée en dur jusque-là par `lib/queries/bracket.ts`), importé par Bracket ET
+Mes pronos (§16.5). Aucun libellé changé.
+
+ÉTAPE 2 — 2 migrations, montrées intégralement et confirmées avant push :
+- **migration #7** (`20260724100000_request_prediction_correction.sql`) :
+  fonction `request_prediction_correction()` SECURITY DEFINER, voie A (§10.2)
+  — si aucune ligne (user_id, match_id) n'existe, en crée une VIDE (DRAFT,
+  les deux champs NULL) puis pose la `correction_requests` liée, dans une
+  seule transaction. Garde-fous (§10.3) : auth.uid() uniquement, joueur
+  ACTIVE, match effectivement verrouillé, réutilisation si une ligne existe
+  déjà (jamais de doublon), justification obligatoire, une seule requête
+  PENDING à la fois (déjà imposé par un index unique partiel du schéma,
+  contrôle applicatif redondant pour un message clair). Justification du
+  contournement RLS documentée EN COMMENTAIRE dans le fichier de migration.
+- **migration #8** (`20260724110000_realtime_matches.sql`) :
+  `alter publication supabase_realtime add table matches;` — UNIQUEMENT
+  `matches`, jamais `series` (reporté au lot Bracket personnel, chaque table
+  publiée quand un écran en a besoin).
+Les deux vérifiées après push par appel direct (garde d'authentification
+confirmée en aveugle) — voir aussi le test en conditions réelles plus bas.
+
+ÉTAPE 3 : `lib/queries/my-predictions.ts` (`getMyPredictions()`, types §13
+recopiés à l'identique, `TeamRef` réimporté) + `lib/actions/corrections.ts`
+(`requestPredictionCorrection()`, appel `.rpc()` uniquement). Dérivation
+d'état (§8) PAR COMPLÉTUDE UNIQUEMENT (§10.4), jamais par présence ni statut
+brut. **Décision tranchée AVEC l'utilisateur** (ambiguïté trouvée en codant,
+non couverte par le tableau §8 fermé) : `sealDeadlines` (l'auto-validation
+DRAFT complet → VALIDATED décrite par T6b §2) n'est INVOQUÉE NULLE PART dans
+le code — aucun cron, aucune fonction de ce nom n'existe, seulement des
+commentaires qui la mentionnent. Une ligne DRAFT aux DEUX champs remplis
+(joueur qui a rempli son prono sans cliquer « Valider » avant le
+verrouillage) est donc un 4e cas non prévu par le tableau. Tranché : la
+complétude prime sur le statut brut → rendu FROZEN, appliqué symétriquement
+à MON prono et à ceux des AUTRES joueurs (RevealPanel). Filtres date/série
+(§4.2) calculés en Europe/Paris sans librairie externe (offset recalculé à
+midi UTC du jour visé, même contrainte que `lib/queries/matches.ts`).
+
+ÉTAPE 4 : `app/(app)/play/my-predictions/page.tsx` + `components/my-
+predictions/*` (MatchRowStatic, PredictionSummary, RevealPanel,
+AssociatedBetCard, SeriesBetHeader, FilterBar, SegmentTabs,
+CorrectionRequestForm — tous SERVEUR ; `urls.ts`, utilitaire pur sans JSX).
+**Un seul fichier `"use client"` : `LiveSubscriber.tsx`**, qui exporte à la
+fois le Provider (souscription Realtime unique, Context React) ET un
+consommateur (`LiveBadgeAndScore`, lu depuis les lignes SERVEUR) — toujours
+dans le même fichier, donc une seule frontière client pour l'écran (§1.1).
+
+**Point touché hors périmètre strict de la spec, décidé AVEC l'utilisateur
+en cours de route** : `components/ui/TeamLogo.tsx` (partagé Bracket/Matchs
+depuis §2.9) n'avait jamais sa PROPRE directive `"use client"` — il ne
+fonctionnait que parce que ses 2 points d'appel existants sont TOUJOURS
+atteints via un ancêtre client (`NodeCard` rendu exclusivement par
+`SeriesDrillDown`/`TreeView`, `MatchRow` lui-même client). Sur Mes pronos,
+`MatchRowStatic` (serveur, sans ancêtre client) l'utilise directement pour
+la première fois — cas jamais rencontré. Choix (recommandé, validé par
+l'utilisateur plutôt que de vérifier empiriquement d'abord) : ajouter
+`"use client"` directement à `TeamLogo.tsx`. Aucun changement de rendu pour
+Bracket/Matchs (déjà dans ce cas en pratique), confirmé par `next build`
+sans régression.
+
+Formulaire de correction (`CorrectionRequestForm`) : `<form action={...}>`
+natif (§1.1 point 3), wrapper `requestPredictionCorrectionFormAction`
+(`lib/actions/corrections.ts`) qui reçoit un `FormData` brut et REDIRIGE
+(succès ou échec) — un formulaire sans JS ne peut pas lire une valeur de
+retour, l'erreur est donc portée par l'URL de redirection
+(`?correctionError=...&correctionMatchId=...`) et rendue par la page au
+rechargement, dans la bonne ligne (`<details open>` forcé).
+
+**Vérifications ÉTAPES 1-4** : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` tous propres après chaque étape, aucun conflit de route
+(`/play/my-predictions` listé seul).
+
+**Test en conditions réelles (ÉTAPE 5, même session)** : serveur local
+(`next start`) + sessions authentifiées réelles obtenues en rejouant le vrai
+POST sans JS du formulaire de connexion (React 19/Next 16 encode désormais
+ce cas avec 3 champs cachés `$ACTION_REF_N` / `$ACTION_N:0` / `$ACTION_N:1` /
+`$ACTION_KEY`, PAS le champ unique `$ACTION_ID_...` observé jusqu'ici sur
+`logout()` — la différence tient au fait que `login`/`signup` sont liées via
+`useActionState`, avec un état lié en argument, contrairement à `logout()` ou
+`requestPredictionCorrectionFormAction`, actions SANS état lié). Deux mots de
+passe temporaires posés via l'API Admin sur Amine92/Marco_D (jamais affichés
+dans le chat), re-randomisés en fin de session.
+
+Résultats, tous conformes : fenêtre Récent correcte (2 des 3 matchs
+verrouillés, le plus ancien exclu mais présent dans les filtres) ; badge EN
+DIRECT + score et score final rendus correctement ; prono FROZEN de Marco_D
+(désactivé) bien conservé et affiché ; panneau des autres joueurs avec le
+rendu NOMINATIF exact du §7.1 (« Saisi par Sofia_Admin à la demande de
+Yanis44 — … ») ; **écriture réelle testée** : dépôt d'une requête de
+correction par Amine92 sur un match MISSING → ligne `match_predictions` vide
+créée + `correction_requests` PENDING créée exactement selon la voie A,
+rechargement affichant bien « Requête en attente. » ; **cas négatif testé** :
+la même tentative par Marco_D (désactivé) bloquée par la garde `is_active()`
+de la fonction SQL, erreur affichée dans la bonne ligne au rechargement.
+Aucune régression sur `/home`, `/leaderboard`, `/bracket`, `/play`,
+`/play/matches`.
+
+**Trouvaille distincte, hors périmètre du lot mais vérifiée à la demande de
+l'utilisateur** : le vrai flux d'INSCRIPTION (`/signup`) a été testé pour la
+première fois de bout en bout sur ce projet (les 7 comptes de seed avaient
+tous été créés via l'API Admin, qui ne passe jamais par l'envoi d'email). Le
+code est correct (code compétition vérifié, unicité du pseudo vérifiée,
+appel `signUp()` dans le bon ordre) mais échoue avec `429 — email rate limit
+exceeded` côté Supabase : conséquence DIRECTE du point déjà connu §6
+ci-dessous (« Confirm email » toujours actif) — tant qu'il ne l'est pas
+désactivé, chaque inscription réelle tente d'envoyer un email de
+confirmation et sature vite le mailer par défaut. Aucun compte orphelin
+créé (vérifié via l'API Admin). Non corrigible par le code, action dashboard
+seule.
+
+Reste en base, artefact de test légitime non nettoyé : 1 requête PENDING
+(Amine92/DEN-SAC) + sa ligne `match_predictions` vide associée.
+```
+
+### 2.12 Prochaine étape
+
+```text
+Dans l'ordre déjà acté : Paris (fixera la destination du raccourci pari,
+§18.3 de la spec Matchs) ; puis Bracket personnel (activera la publication
+Realtime de `series`, reportée depuis §2.11). Même conventions reconduites
+(composants serveur par défaut, CSS Modules + tokens, RLS/fonctions dédiées
+comme seule autorité de lecture). Le vrai hub Jouer (§2.10) reste, lui, à
+SPÉCIFIER (spec d'écran dédiée) avant d'être codé — aucune date arrêtée.
+Puis les écrans admin, puis T8 (déploiement — §6 à faire avant, dont
+l'effacement du jeu de données de test, le retrait du bouton de déconnexion
+temporaire §2.9, ET le retrait du hub Jouer temporaire §2.10).
 ```
 
 ## 3. État actuel de la base de données
 
 ```text
-6 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
+8 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
 chacune montrée intégralement et confirmée par l'utilisateur avant
-application) — inchangé depuis le 23/07/2026, aucune migration dans les lots
-du 24/07 (logos + déconnexion temporaire §2.9, hub Jouer temporaire §2.10 —
-purement applicatifs) :
+application) — les 6 premières inchangées depuis le 23/07/2026 (les lots
+logos/déconnexion/hub temporaire du 24/07, §2.9/§2.10, étaient purement
+applicatifs) ; #7 et #8 ajoutées par le lot « Mes pronos » (§2.11) :
 
 1. 20260718090000_initial_schema.sql — schéma complet.
 2. 20260718100000_auth_join_code_and_profile.sql — code compétition,
@@ -501,15 +657,35 @@ purement applicatifs) :
 6. 20260724090000_match_predictions_committed_count.sql —
    count_committed_predictions(p_match), SECURITY DEFINER, un entier
    uniquement (§2.8).
+7. 20260724100000_request_prediction_correction.sql —
+   request_prediction_correction(p_match, p_justification, p_proposed_*),
+   SECURITY DEFINER, voie A (§2.11/§10.2 de la spec) : crée une ligne
+   match_predictions VIDE si aucune n'existe puis la correction_requests
+   liée, dans une seule transaction. Garde-fous complets §10.3. N'écrit
+   JAMAIS de contenu de pronostic.
+8. 20260724110000_realtime_matches.sql — publication supabase_realtime
+   étendue à `matches` UNIQUEMENT (§2.11) ; `series` reste à activer au lot
+   Bracket personnel.
 
 RLS vérifiée de bout en bout via le plan de test T3 §7, puis re-testée avec
 un vrai jeu de données (§2.6) — un piège trouvé à cette occasion (§7).
 Consommée directement (sans service_role) par tous les écrans joueur via
-getServerClient().
+getServerClient(). La fonction #7 est la seule à contourner une policy
+(mp_insert) — justifiée en commentaire dans son fichier de migration et
+testée en conditions réelles (§2.11).
 
 Données : compétition Playoffs de TEST active (§2.6) — 30 équipes, 15
 séries, 9 matchs, 7 comptes. JETABLE, pas une vraie compétition — à
-distinguer et à effacer avant tout lancement réel (§6).
+distinguer et à effacer avant tout lancement réel (§6). Étendue le
+24/07/2026 (§2.11) : 3 des 9 matchs sont désormais VERROUILLÉS
+(scheduled_at passé) — CLE-ORL#1 (FINISHED, prono Yanis44 corrigé),
+DEN-SAC#1 (IN_PROGRESS, prono Marco_D désactivé), MIN-GSW#1 (SCHEDULED
+malgré une date passée, latence délibérée + prono partiel Nina_R) —
+nécessaire pour que l'écran Mes pronos, ancré sur les matchs verrouillés,
+soit vérifiable. Porte aussi, depuis le test en conditions réelles du
+24/07/2026 : 1 requête de correction PENDING (Amine92 sur DEN-SAC#1) + sa
+ligne match_predictions vide associée — artefact de test légitime, non
+nettoyé.
 
 `teams.logo_url` : colonne existante, TOUJOURS VIDE (jamais remplie par le
 seed) — les logos affichés (§2.9) ne dépendent pas de cette colonne, le
@@ -530,11 +706,13 @@ app/
     home/page.tsx + page.module.css — écran Accueil. CODÉ.
     play/
       page.tsx + page.module.css — hub Jouer TEMPORAIRE (§2.10, à retirer,
-        voir GAPS_OUVERTS.md) : liste 4 entrées, « Matchs » en <Link> actif,
-        les 3 autres inertes (« à venir »). PAS l'écran hub définitif (spec
-        dédiée à écrire).
+        voir GAPS_OUVERTS.md) : liste 4 entrées, « Matchs » ET « Mes pronos »
+        en <Link> actifs (§2.11), les 2 autres inertes (« à venir »). PAS
+        l'écran hub définitif (spec dédiée à écrire).
       matches/
         page.tsx + page.module.css — écran Matchs. CODÉ (§2.8).
+      my-predictions/
+        page.tsx + page.module.css — écran Mes pronos. CODÉ (§2.11).
     profile/page.tsx  — stub « à venir », PAS stylé. Portera la vraie
       déconnexion un jour (§2.9).
   leaderboard/page.tsx  — Classement. CODÉ (§2.5), lib mise à jour §2.7.
@@ -551,18 +729,33 @@ lib/
     matches.ts — saveMatchPredictionDraft/validateMatchPrediction/
       validateAllCompleteMatchPredictions + type ActionResult (local à ce
       fichier — pas encore partagé). CODÉ §2.8.
+    corrections.ts — requestPredictionCorrection() (appel .rpc() vers la
+      migration #7) + requestPredictionCorrectionFormAction() (wrapper
+      FormData → redirection, pour le <form> natif sans JS). CODÉ §2.11.
   hooks/
     useUnsavedGuard.tsx (+ .module.css) — Garde C2 TRANSVERSE :
       UnsavedGuardProvider, useUnsavedGuard(key), useGuardedNavigation().
-      CODÉ §2.8.
+      CODÉ §2.8. Non étendu par Mes pronos (aucune saisie de prono à
+      protéger sur cet écran, §17 de sa spec).
+  labels/
+    rounds.ts — ROUND_LABELS, PARTAGÉ Bracket + Mes pronos (§16.5). NOUVEAU
+      §2.11, extrait de lib/queries/bracket.ts qui le portait en dur.
   queries/
     home.ts        — getHomeData(). CODÉ.
     leaderboard.ts — getLeaderboard(). CODÉ §2.5, MODIFIÉ §2.7 (lit
       admin_corrections_count depuis user_scores, 2 requêtes en moins).
-    bracket.ts     — getBracket(). CODÉ.
+    bracket.ts     — getBracket(). CODÉ, MODIFIÉ §2.11 (importe ROUND_LABELS
+      depuis lib/labels/rounds.ts au lieu de le porter en dur).
     matches.ts     — getMatches() + types figés MatchCard/MatchDay/
       MatchesData/TeamRef/OtherPrediction/BetSlotIndicator/
       PredictionViewStatus (spec §13, recopiés à l'identique). CODÉ §2.8.
+    my-predictions.ts — getMyPredictions() + types figés MyPredictionsMode/
+      MatchLiveState/MyPredictionState/AdminCorrection/MyPrediction/
+      RevealedPrediction/CorrectionRequestState/AssociatedBet/
+      MyPredictionRow/SeriesBetHeader/MyPredictionsData (spec §13, recopiés
+      à l'identique ; TeamRef réimporté depuis matches.ts, jamais redéfini).
+      Dérivation d'état PAR COMPLÉTUDE uniquement (§10.4), y compris pour le
+      4e cas DRAFT-complet tranché avec l'utilisateur (§2.11). CODÉ §2.11.
   scoring/, sync/ — PAS ENCORE CRÉÉS.
 
 components/
@@ -571,7 +764,11 @@ components/
   ui/
     Countdown.tsx (+ .module.css) — partagé Accueil + Bracket.
     TeamLogo.tsx (+ .module.css) — NOUVEAU (§2.9). Logo déduit de
-      l'abréviation, repli texte via onError. Partagé Bracket + Matchs.
+      l'abréviation, repli texte via onError. Partagé Bracket + Matchs +
+      Mes pronos. Directive "use client" PROPRE ajoutée §2.11 (jusque-là
+      transitivement bundlé client via ses 2 seuls appelants, tous deux
+      atteints depuis un ancêtre client — devenu insuffisant sur Mes pronos,
+      qui l'utilise depuis un composant serveur sans ancêtre client).
   nav/
     TabBar.tsx + .module.css — onNavigate (useGuardedNavigation) sur les 4
       onglets, inerte par défaut. CODÉ §2.8. Non modifié par le hub Jouer
@@ -597,6 +794,30 @@ components/
       toujours vers /play (§2.8/§18.3), désormais le hub temporaire §2.10.
     ValidateAllBanner.tsx      — "use client" (3/3) : bandeau + confirmation
       « Tout valider », état local (pas remonté à la page serveur).
+  my-predictions/ — NOUVEAU §2.11, 9 fichiers + leurs .module.css :
+    urls.ts                   — utilitaire pur (aucun JSX), construction des
+      URL de vue (segment/filtre/pagination), partagé par plusieurs
+      composants serveur.
+    SegmentTabs.tsx            — serveur, liens Récent/Historique.
+    FilterBar.tsx              — serveur, formulaire GET natif (date/série)
+      + puce de filtre actif.
+    SeriesBetHeader.tsx        — serveur, en-tête de pari SERIES (§11.2,
+      uniquement en mode filtré sur une série).
+    MatchRowStatic.tsx         — serveur, ligne de match (logos, prono,
+      pari, requête de correction, panneau des autres).
+    PredictionSummary.tsx      — serveur, rendu de MON prono (3 états +
+      marquage de correction nominatif "à ta demande").
+    RevealPanel.tsx            — serveur, <details> natif, TOUJOURS rendu
+      avec son contenu (aucune confidentialité pré-verrouillage ici, §12) —
+      marquage de correction nominatif complet ("à la demande de <pseudo>").
+    AssociatedBetCard.tsx      — serveur, rappel de pari en lecture seule,
+      tous statuts affichés (§11.3).
+    CorrectionRequestForm.tsx  — serveur, <form action={...}> natif, seule
+      écriture de l'écran ; erreur rendue au rechargement (portée par l'URL).
+    LiveSubscriber.tsx         — "use client" (1/1, SEUL fichier client de
+      l'écran) : exporte le Provider (souscription Realtime unique sur
+      `matches`, Context React) ET un consommateur (LiveBadgeAndScore, lu
+      depuis les lignes serveur).
 
 public/
   logos/teams/ — 30 SVG (+ 30 PNG), déposés et committés depuis le
@@ -611,15 +832,16 @@ scripts/
 Cadrage/
   V1/     — specs techniques V1 validées (T1→T7) + Spec visuelle/
             SPEC_ECRAN_ACCUEIL, SPEC_ECRAN_CLASSEMENT_BRACKET,
-            SPEC_ECRAN_MATCHS (close, §2.8). SPEC_TECHNIQUE_RLS_V0.1.md
-            complétée §11 (correctif §2.7). Aucune spec pour le hub Jouer
-            définitif à ce jour (§2.10) — à écrire avant de le coder.
+            SPEC_ECRAN_MATCHS (close, §2.8), SPEC_ECRAN_MES_PRONOS (close,
+            §2.11). SPEC_TECHNIQUE_RLS_V0.1.md complétée §11 (correctif
+            §2.7). Aucune spec pour le hub Jouer définitif à ce jour (§2.10)
+            — à écrire avant de le coder.
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + cadrage fonctionnel hérité du prototype.
   OLD/    — cadrage antérieur, non consulté activement.
 
 supabase/
-  migrations/  — 6 migrations versionnées, voir §3.
+  migrations/  — 8 migrations versionnées, voir §3.
   config.toml  — supabase link vers le projet Supabase NEUF de la V1.
 ```
 
@@ -683,6 +905,12 @@ supabase/
 ```text
 - Dashboard Supabase : désactiver « Confirm email » (accès immédiat au
   compte après inscription, C4 — rappel laissé dans la migration #2).
+  DEVENU CONCRET le 24/07/2026 (§2.11) : le vrai flux /signup, testé pour la
+  première fois de bout en bout, échoue avec « 429 — email rate limit
+  exceeded » tant que ce réglage n'est pas désactivé (chaque inscription
+  réelle tente d'envoyer un email de confirmation). Les comptes de seed y
+  échappent (créés via l'API Admin, email_confirm:true, aucun email envoyé)
+  — ce n'est donc apparu qu'en testant la vraie inscription publique.
 - Écrire la migration de seed du 1er admin RÉEL (A4), une fois le 1er
   pseudo réel connu — DISTINCT du compte Sofia_Admin du jeu de test (§2.6),
   qui n'est qu'un admin de test jetable.
@@ -697,9 +925,10 @@ supabase/
 - RETIRER le hub Jouer temporaire (§2.10, app/(app)/play/page.tsx +
   page.module.css) dès que le vrai hub Jouer (spec d'écran dédiée à écrire)
   existe.
-- Activer la publication Realtime côté base sur matches ET series (T4 §9,
-  resserré par T6c §14.2) — nécessaire pour « Mes pronos » (§2.11), pas pour
-  Matchs (aucun live ici, §2.8/§18.2 de sa spec).
+- Activer la publication Realtime côté base sur `series` (T4 §9, resserré
+  par T6c §14.2) — `matches` est FAIT (migration #8, §2.11) ; `series`
+  reporté au lot Bracket personnel (drill-down/résumé live), chaque table
+  publiée quand un écran en a réellement besoin.
 - Configurer le planificateur externe gratuit (cron-job.org / GitHub
   Actions) pour appeler /api/sync/teams, /api/sync/schedule,
   /api/sync/results et /api/heartbeat aux fréquences actées par T4/T8.
@@ -812,6 +1041,50 @@ supabase/
   « libéré », cas normal compte tenu de sealDeadlines) plutôt que de deviner
   une colonne de repli (`updated_at`) ou d'élargir le schéma pour un lot pas
   encore codé (Paris).
+
+- Composant client SANS sa propre directive (`TeamLogo.tsx`, trouvé en
+  codant Mes pronos, §2.11) : un composant qui utilise un hook (`useState`)
+  mais n'a pas sa PROPRE `"use client"` ne fonctionne que « transitivement
+  bundlé » — c'est-à-dire uniquement si TOUS ses points d'appel sont déjà
+  atteints via un ancêtre `"use client"` (ce qui était vrai par coïncidence
+  pour `NodeCard`/`MatchRow`, jamais vérifié explicitement). Dès qu'un
+  composant SERVEUR sans ancêtre client veut le rendre directement (`Match
+  RowStatic` sur Mes pronos), il faut lui donner sa propre directive —
+  sans changement de rendu pour les appelants existants, qui étaient déjà
+  dans ce cas en pratique.
+
+- Un canal Realtime unique pour toute une liste rendue par des composants
+  SERVEUR (`LiveSubscriber.tsx`, Mes pronos, §2.11) : un seul composant
+  client peut porter la souscription ET rester la seule frontière
+  `"use client"` de l'écran, à condition d'exporter DEUX éléments du MÊME
+  fichier — un Provider (Context React, souscription unique) qui ENVELOPPE
+  la liste des lignes serveur (passées en `children`, patron RSC officiel :
+  un Server Component peut être passé en enfant d'un Client Component sans
+  jamais s'exécuter côté client), et un petit consommateur (`useContext`)
+  que CES lignes serveur peuvent instancier directement à l'endroit précis
+  où le badge/score doit se mettre à jour.
+
+- Tester un formulaire natif `useActionState` (login/signup) SANS JS, VS un
+  simple `<form action={fn}>` sans état lié (logout, requête de correction) :
+  React 19/Next 16 encodent les deux cas DIFFÉREMMENT en repli
+  progressive-enhancement. Le 2e cas porte un unique champ caché `<input
+  name="$ACTION_ID_...">` (technique déjà connue, §7 plus haut, logout). Le
+  1er cas (état précédent lié en argument via `useActionState`) porte 4
+  champs cachés distincts — `$ACTION_REF_N` (vide), `$ACTION_N:0` (JSON
+  `{id, bound}`), `$ACTION_N:1` (JSON du/des argument(s) lié(s)),
+  `$ACTION_KEY` — les 4 doivent être renvoyés tels quels dans le POST
+  multipart pour que l'action s'exécute. Trouvé et vérifié en rejouant un
+  vrai login sans navigateur (§2.11), même esprit que la technique déjà
+  utilisée pour la déconnexion.
+
+- Rate limit d'email Supabase sur l'inscription réelle (`/signup`, trouvé en
+  testant Mes pronos en conditions réelles, §2.11) : tant que « Confirm
+  email » n'est pas désactivé côté dashboard (§6, point déjà connu mais
+  jamais concrètement rencontré), CHAQUE appel réel à `supabase.auth.signUp()`
+  tente d'envoyer un email de confirmation — le mailer par défaut sature vite
+  (`429, over_email_send_rate_limit`). Invisible tant que les comptes de test
+  sont créés via l'API Admin (`email_confirm:true`, aucun envoi) : ce n'est
+  apparu qu'en testant pour la première fois le vrai formulaire public.
 
 Pièges génériques du prototype (Postgres/Git/PowerShell, toujours valables en
 principe) non recopiés ici pour éviter la duplication — voir l'historique du

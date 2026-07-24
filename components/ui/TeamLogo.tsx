@@ -1,6 +1,16 @@
+"use client";
+
 import { useState } from "react";
 import Image from "next/image";
 import styles from "./TeamLogo.module.css";
+
+// Directive ajoutée le 24/07/2026 (lot "Mes pronos", §1.1) : ce composant
+// utilise useState mais n'avait jamais sa PROPRE frontière client — il ne
+// fonctionnait que parce que ses deux points d'appel (NodeCard, MatchRow)
+// sont toujours atteints via un ancêtre "use client" (transitivement bundlé,
+// ETAT_ACTUEL §2.9). Sur l'écran "Mes pronos", MatchRowStatic (serveur, sans
+// ancêtre client) l'utilise directement — d'où la directive explicite, qui ne
+// change AUCUN rendu pour Bracket/Matchs (déjà dans ce cas en pratique).
 
 // Logo de franchise — partagé Bracket + Matchs (les deux seuls écrans avec un
 // objet équipe structuré, voir GAPS_OUVERTS.md pour Accueil/Classement,

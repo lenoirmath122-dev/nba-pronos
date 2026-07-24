@@ -8,7 +8,7 @@ import styles from "./page.module.css";
 // voir GAPS_OUVERTS.md.
 const ENTRIES = [
   { label: "Matchs", href: "/play/matches" },
-  { label: "Mes pronos", href: null },
+  { label: "Mes pronos", href: "/play/my-predictions" },
   { label: "Mon bracket", href: null },
   { label: "Paris", href: null },
 ] as const;

@@ -1,0 +1,66 @@
+.card {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.description {
+  flex: 1 1 100%;
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.descriptionCancelled {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  opacity: var(--opacity-cancelled);
+}
+
+.meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.status {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.statusNeutral {
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.statusMuted {
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.statusWon {
+  color: var(--color-win);
+  border: 1px solid var(--color-win);
+}
+
+.statusLost {
+  color: var(--color-loss);
+  border: 1px solid var(--color-loss);
+}
+
+.statusCancelled {
+  color: var(--color-neutralized);
+  border: 1px dashed var(--color-neutralized);
+}
+
+.points {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
