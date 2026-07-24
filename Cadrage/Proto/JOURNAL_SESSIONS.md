@@ -1360,3 +1360,88 @@ explicite de l'utilisateur après un « ok go » — écart ponctuel à la
 convention « l'utilisateur committe lui-même », signalé comme tel sur le
 moment. Prochaine étape : « Mes pronos » (ancré sur les matchs, porte le
 live), puis Paris, puis Bracket personnel.
+
+---
+
+## Session du 24/07/2026 (retours du premier test utilisateur réel : logos, déconnexion)
+
+Courte session de compléments. L'utilisateur a testé l'écran Matchs lui-même
+dans un vrai navigateur (premier test au clavier/souris de toute la V1,
+jusque-là tout avait été vérifié par Claude via cookies SSR reconstitués) et
+a remonté deux points, plus une vérification de suivi en fin de session.
+
+**Logos de franchise absents — erreur commise puis corrigée.** Première
+réponse de Claude à la question de l'utilisateur : « les fichiers ne sont
+pas déposés » — **fausse**, tirée d'une note de `ETAT_ACTUEL.md` sans
+vérifier le disque. L'utilisateur a repoussé (« il me semble que j'ai déjà
+déposé les logos »), Claude a vérifié `public/logos/teams/` : les 30 SVG
+existent bel et bien et sont déjà committés depuis le 21/07/2026. La vraie
+cause, cette fois vérifiée par recherche dans le code (0 occurrence de
+`logos/teams` ou `logo_url` avant ce jour) : aucun écran ne les référence,
+jamais. Leçon retenue et écrite dans `ETAT_ACTUEL.md` §5 : une note de suivi
+décrit un état passé, pas une preuve présente — vérifier le disque avant
+d'affirmer qu'un fichier n'existe pas.
+
+Décision de périmètre discutée avant de coder : câbler les logos partout
+(4 écrans) ou seulement où c'est structurellement possible ? Réponse de
+Claude, demandée explicitement (« tu en penses quoi ? ») : seuls Bracket et
+Matchs ont un objet équipe structuré (`TeamRef`/`BracketNode.teamA/teamB`) ;
+Accueil ne porte les équipes que dans du texte déjà formaté et Classement
+n'affiche aucune équipe — les étendre aurait demandé de restructurer des
+contrats de types déjà livrés. L'utilisateur a suivi la recommandation, en
+demandant explicitement que le point Accueil/Classement soit noté en gap
+ouvert plutôt qu'oublié.
+
+`components/ui/TeamLogo.tsx` (nouveau, partagé) : chemin déduit de
+`teams.abbreviation` (`/logos/teams/{ABBRÉVIATION}.svg`) — aucun champ
+ajouté aux contrats de types figés des specs, aucune colonne base consommée
+(`teams.logo_url` reste vide). `next/image` avec la prop `unoptimized`
+(Next.js bloque l'optimisation SVG par défaut, aurait demandé
+`dangerouslyAllowSVG` + CSP dans `next.config` — évité, documenté par
+Next.js pour ce cas précis). Repli sur l'abréviation texte via `onError` si
+un fichier venait à manquer. Câblé dans `NodeCard.tsx` (Bracket) et
+`TeamPicker.tsx`/`MatchRow.tsx` (Matchs). Vérifié avec de vraies sessions
+authentifiées : chemins corrects dans le HTML rendu, fichier réellement
+servi par le serveur (200, `image/svg+xml`).
+
+**Aucun moyen de se déconnecter.** Deuxième remontée de l'utilisateur, avec
+sa propre hypothèse (« c'est peut-être une fonctionnalité de Profil, pas
+codé »). Vérifié : `logout()` existe dans `lib/auth/actions.ts` depuis le
+tout début de la V1 mais n'a jamais été câblée sur aucun bouton, aucun
+écran — l'hypothèse de l'utilisateur était juste. Sur sa demande explicite
+(« ajoute-le de manière temporaire, toujours en traçant »), ajout d'un
+bouton dans `app/(app)/layout.tsx` (coin haut-droit, bordure pointillée,
+texte muted — volontairement pas fini pour signaler visuellement son
+caractère temporaire, pas seulement dans le code). Testé de bout en bout
+SANS JavaScript ni navigateur : un `<form action={logout}>` sans JS poste en
+réel vers l'URL courante avec un champ caché `<input type="hidden"
+name="$ACTION_ID_...">` dont le NOM (pas la valeur) identifie l'action —
+rejoué avec `curl -F "$ACTION_ID_...=" ...` + les cookies de session,
+confirmé : `303 → /login`, cookie de session effacé (`Max-Age=0`). Ne
+couvre que la zone `(app)` (Accueil/Jouer/Matchs/Profil), pas
+`/leaderboard`/`/bracket` (`ScreenShell`, hors de ce layout) — signalé,
+pas étendu sans le demander.
+
+**Vérification de suivi demandée par l'utilisateur** (« tu as bien mis à
+jour tous les fichiers de suivi ? ») : réponse honnête après vérification
+réelle (`git show --stat` sur les deux derniers commits) — non. Les deux
+compléments (logos, déconnexion) avaient chacun mis à jour
+`GAPS_OUVERTS.md` seul, ni `ETAT_ACTUEL.md` ni ce journal n'avaient bougé
+depuis le lot Matchs du 23/07/2026. Corrigé dans la foulée : `ETAT_ACTUEL.md`
+régénéré en entier (nouveau §2.9, mentions ajoutées dans §1/§2.3/§2.5/§2.8/
+§4/§5/§6/§7), cette entrée de journal ajoutée.
+
+**Vérifications finales** : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` propres après chaque changement (logos, puis déconnexion).
+Aucune migration, aucun changement de schéma. Committé par Claude
+(confirmé par l'utilisateur à chaque fois, pattern désormais établi depuis
+le « ok go » du 23/07) : un commit pour les logos, un commit pour le bouton
+de déconnexion temporaire + sa note de suivi.
+
+**État en fin de session** : les 4 écrans du hub joueur sont maintenant
+visuellement plus proches de leur cible (logos réels au lieu du texte seul),
+et testables en continu par l'utilisateur (déconnexion possible, même
+temporairement). Un point de méthode retenu pour la suite : vérifier le
+disque avant d'affirmer un état de fichier, et mettre à jour LES TROIS
+fichiers de suivi à chaque lot, même les petits — pas seulement
+`GAPS_OUVERTS.md`. Prochaine étape inchangée : « Mes pronos ».
