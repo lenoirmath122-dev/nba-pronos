@@ -5,12 +5,10 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 25/07/2026 (correctif pastille de logo,
-> §2.12) — suite directe du lot « Mes pronos » (24/07/2026, SPEC_ECRAN_MES_
-> PRONOS_V0_1.md, désormais CLOSE, §2.11). Cinquième écran du hub joueur,
-> deuxième écran qui écrit (une seule écriture : la requête de correction),
-> premier écran qui porte le live (badge EN DIRECT, Realtime sur `matches`,
-> migration #8).
+> Dernière mise à jour : session du 25/07/2026 (suite — refonte de l'entête
+> replié de l'écran Matchs + correctif des 30 logos de franchise, §2.13),
+> après le correctif de pastille de logo (§2.12) et le lot « Mes pronos »
+> (24/07/2026, SPEC_ECRAN_MES_PRONOS_V0_1.md, désormais CLOSE, §2.11).
 
 ---
 
@@ -648,7 +646,71 @@ changement est interne au composant). Vérifié : `npx tsc --noEmit`,
 `GAPS_OUVERTS.md`.
 ```
 
-### 2.13 Prochaine étape
+### 2.13 Refonte de l'entête Matchs + correctif des 30 logos (session du 25/07/2026, suite)
+
+```text
+Suite de petites retouches demandées par l'utilisateur en testant l'écran
+Matchs, conduites une par une, chacune montrée en diff et vérifiée
+(tsc/eslint/build) avant la suivante. Rien de committé à ce stade.
+
+TeamPicker.tsx (carte dépliée, PredictionForm) :
+- Logo agrandi 32 → 48px (seule cette carte ; MatchRow replié et NodeCard du
+  bracket gardent leurs tailles).
+- Abréviation retirée de l'affichage (ne restent QUE le logo et le nom
+  complet en petit) — l'abréviation vit désormais uniquement dans l'entête
+  replié (ci-dessous), plus besoin de la répéter ici. Classe .abbrev, devenue
+  inutilisée, retirée de TeamPicker.module.css.
+
+MatchRow.tsx (+ .module.css) — refonte de l'entête REPLIÉ, variante A « split
+neutre » (demandée explicitement, comportement d'ouverture inchangé) :
+- Les 2 <TeamLogo> disparaissent de l'entête replié (recentrés ailleurs, cf.
+  ci-dessous) ; remplacés par un split 2 colonnes (grosse abréviation par
+  équipe, séparateur vertical 1px) — import TeamLogo retiré de MatchRow.tsx
+  (plus utilisé dans ce fichier après ce changement).
+- Nouvelle structure : .split (grille 3 colonnes équipe/séparateur/équipe) au-
+  dessus, .metaRow (heure+verrou à gauche, statut+chevron à droite, séparée
+  par une bordure horizontale) en dessous — remplace l'ancienne grille à 4
+  colonnes sur une seule ligne.
+- Token de taille de l'abréviation repris À L'IDENTIQUE de TeamPicker
+  (--font-size-lg), pas réinventé.
+- .status/.status*/.chevron/.chevron Open/.time/.lock/.row inchangés (mêmes
+  règles, juste redistribués dans la nouvelle disposition).
+
+Correctif des 30 logos de franchise (public/logos/teams/*.svg) — remonté par
+l'utilisateur en testant Mes pronos : les logos paraissaient décentrés dans
+leur pastille (certains « trop hauts », d'autres « trop à gauche »), variable
+selon l'équipe. Diagnostic (pas supposé, vérifié fichier par fichier) : ce
+n'était PAS un bug de TeamLogo.tsx/.module.css (le centrage CSS via
+object-fit:contain + flex était déjà correct), mais un défaut des fichiers
+SVG eux-mêmes — chaque `viewBox` réservait un canevas plus grand que le
+dessin réel (ex. SAS.svg : viewBox déclaré 420×399.5, mais tous les tracés du
+fichier restent sous y≈180 — plus de la moitié du canevas est du vide jamais
+dessiné, poussant visuellement le logo en haut de sa pastille). Neuf fichiers
+(ATL/DEN/DET/IND/LAC/MIN/PHI/TOR/WAS) partagent un viewBox absolument
+identique (`420 514.7`) — signe d'un gabarit d'export commun, pas d'un
+défaut isolé.
+
+Corrigé par un script Node jetable (aucune dépendance ajoutée, aucun
+navigateur) : parseur de tracés SVG maison (commandes M/L/H/V/C/S/Q + Z,
+échantillonnage à 32 points par courbe de Bézier pour l'approximation —
+aucune commande d'arc rencontrée dans ces 30 fichiers, vérifié par recherche
+avant d'écrire le parseur) + polygones/rects/cercles, calcule la boîte
+englobante RÉELLE du dessin de chaque logo, puis réécrit son `viewBox` pour
+qu'il colle au dessin (marge uniforme de 4 % de la plus grande dimension).
+Diff complet (30 lignes, une par équipe) montré et confirmé par l'utilisateur
+AVANT toute écriture — passe dry-run puis passe d'écriture séparées. Chaque
+fichier n'a qu'UNE seule ligne changée (l'attribut viewBox), rien d'autre
+dans le XML. Confirmé visuellement par l'utilisateur après coup : logos bien
+centrés.
+
+Vérifié après chaque étape : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` tous propres. Aucun autre fichier touché (TeamPicker/
+MatchRow restent les 2 seuls fichiers de code modifiés ; les 30 SVG sont les
+seuls assets modifiés). Rien committé à ce stade — à committer par
+l'utilisateur ou sur sa demande explicite.
+```
+
+### 2.14 Prochaine étape
 
 ```text
 Dans l'ordre déjà acté : Paris (fixera la destination du raccourci pari,
@@ -811,11 +873,16 @@ components/
   matches/ — 8 fichiers + leurs .module.css :
     MatchDayGroup.tsx        — serveur, regroupement par jour.
     MatchRow.tsx              — "use client" (1/3) : ouverture de la ligne,
-      repère de verrouillage + décompte animé, logos §2.9.
+      repère de verrouillage + décompte animé. Entête replié refondu §2.13
+      (variante « split neutre » : grosses abréviations + séparateur, plus
+      de logos ici — TeamLogo retiré de ce fichier, recentré sur la carte
+      dépliée uniquement).
     PredictionForm.tsx        — "use client" (2/3) : saisie, drapeau C2,
       2 CTA, dialogue de validation (distinct du dialogue C2).
     TeamPicker.tsx             — sans "use client", tap direct sur l'équipe,
-      logos §2.9.
+      logo agrandi à 48px §2.13 (abréviation retirée de cette carte, ne reste
+      que logo + nom complet — l'abréviation vit désormais dans l'entête
+      replié de MatchRow).
     MarginStepper.tsx          — sans "use client" (porte son propre
       useState local — permis, transitivement bundlé client).
     RevealPanel.tsx            — sans "use client" : compteur X/N toujours
@@ -851,8 +918,11 @@ components/
 
 public/
   logos/teams/ — 30 SVG (+ 30 PNG), déposés et committés depuis le
-    21/07/2026, câblés depuis le 24/07/2026 (§2.9). brand/ : convention
-    posée, hero-parquet.webp toujours pas déposé.
+    21/07/2026, câblés depuis le 24/07/2026 (§2.9). `viewBox` des 30 SVG
+    recalculé §2.13 (chaque fichier réservait un canevas plus grand que son
+    dessin réel, logos décentrés dans leur pastille — corrigé par un script
+    de bounding box, confirmé visuellement par l'utilisateur). brand/ :
+    convention posée, hero-parquet.webp toujours pas déposé.
 
 scripts/
   seed-playoffs-test-data.mjs — Script de seed, HORS migrations, usage :
@@ -1115,6 +1185,20 @@ supabase/
   (`429, over_email_send_rate_limit`). Invisible tant que les comptes de test
   sont créés via l'API Admin (`email_confirm:true`, aucun envoi) : ce n'est
   apparu qu'en testant pour la première fois le vrai formulaire public.
+
+- Logo décentré dans sa pastille malgré un CSS correct (trouvé en testant Mes
+  pronos, §2.13) : `object-fit: contain` centre fidèlement la boîte du
+  `viewBox` déclaré — mais si ce `viewBox` réserve un canevas plus grand que
+  le dessin réel (marge non désirée laissée par l'export du fichier), le
+  logo VISIBLE se retrouve décalé même si le CSS, lui, est irréprochable. Pas
+  détectable en lisant le composant : il faut ouvrir le SVG et regarder où se
+  trouvent réellement les tracés par rapport au `viewBox` déclaré. Corrigé en
+  recalculant la boîte englobante réelle de chaque fichier (tokenizer de
+  commandes de tracé SVG écrit à la main — M/L/H/V/C/S/Q/Z, échantillonnage
+  des courbes de Bézier — aucune dépendance, aucun navigateur nécessaire) et
+  en réécrivant le `viewBox` en conséquence. Diagnostic AVANT correctif :
+  toujours vérifier l'hypothèse (ouvrir le fichier réel) avant de proposer un
+  correctif CSS qui n'aurait rien changé.
 
 Pièges génériques du prototype (Postgres/Git/PowerShell, toujours valables en
 principe) non recopiés ici pour éviter la duplication — voir l'historique du

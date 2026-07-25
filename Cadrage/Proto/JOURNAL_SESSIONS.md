@@ -1655,3 +1655,73 @@ entrée de journal.
 tous les logos, sur les 3 écrans qui utilisent `TeamLogo` (Bracket, Matchs,
 Mes pronos) — un seul composant partagé corrigé une seule fois. Prochaine
 étape inchangée : « Paris ».
+
+---
+
+## Session du 25/07/2026 (suite — entête Matchs + correctif des 30 logos)
+
+Suite directe. Série de petites retouches demandées par l'utilisateur en
+testant l'écran Matchs dans un vrai navigateur, chacune conduite séparément
+(JSX/CSS montrés en diff, vérifiée `tsc`/`eslint`/`build`, attente de
+confirmation avant la suivante).
+
+**Refonte de l'entête replié de `MatchRow.tsx`** (variante A « split
+neutre ») : les deux `<TeamLogo>` disparaissent du bandeau replié, remplacés
+par un split 2 colonnes (grosse abréviation par équipe + séparateur
+vertical) ; l'heure/le verrou et le statut/chevron passent d'une grille à 4
+colonnes sur une ligne à deux zones empilées (`.split` puis `.metaRow`
+séparée par une bordure). Comportement d'ouverture, `PredictionForm` et
+`TeamPicker` non touchés. Avant d'écrire quoi que ce soit, Claude a affiché
+le JSX/CSS existants et attendu confirmation — puis, avant de coder, est allé
+lire `TeamPicker.module.css` pour reprendre EXACTEMENT le même token de
+taille d'abréviation (`--font-size-lg`) plutôt que d'en inventer un.
+
+**`TeamPicker.tsx`** (carte dépliée) : logo agrandi 32 → 48px puis, sur
+demande suivante, abréviation retirée de cette carte (ne restent que le logo
+et le nom complet) — l'abréviation ne vit plus que dans l'entête replié,
+la répéter aux deux endroits n'avait plus de sens une fois le split en place.
+
+**Correctif des 30 logos de franchise — trouvaille la plus substantielle de
+cette session.** L'utilisateur a remonté que les logos paraissaient
+décentrés dans leur pastille (certains trop hauts, d'autres trop à gauche),
+de façon variable selon l'équipe. Claude a d'abord répondu avec une
+explication INCOMPLÈTE (proportions différentes entre logos) sans avoir lu
+le contenu réel des fichiers — l'utilisateur a explicitement poussé
+(« prends l'exemple des Spurs, la boîte est toute petite en hauteur, non ? »),
+ce qui a mené à ouvrir vraiment le fichier SAS.svg : ses tracés ne dépassent
+jamais y≈180 alors que son `viewBox` déclare une hauteur de 399.5 — plus de
+la moitié du canevas est un vide jamais dessiné, ce qui pousse mécaniquement
+le logo visible vers le haut de sa pastille malgré un CSS de centrage par
+ailleurs correct (`object-fit: contain`).
+
+Correctif proposé et validé AVANT d'être écrit : un script Node jetable
+(aucune dépendance ajoutée, aucun navigateur) qui parse les commandes de
+tracé SVG (M/L/H/V/C/S/Q/Z — vérifié par recherche qu'aucun arc n'apparaît
+dans les 30 fichiers avant d'écrire le parseur, pour ne pas avoir à le
+supporter), échantillonne les courbes de Bézier à 32 points pour approximer
+leurs extrêmes, calcule la boîte englobante RÉELLE du dessin de chaque logo
+(tracés + polygones + rects + cercles), puis réécrit son `viewBox` pour
+coller au dessin (marge uniforme 4 %). Exécuté d'abord en dry-run (tableau
+des 30 `viewBox` avant/après montré intégralement), écriture réelle
+seulement après confirmation explicite. Neuf fichiers (ATL/DEN/DET/IND/LAC/
+MIN/PHI/TOR/WAS) partageaient un `viewBox` identique au chiffre près — signe
+d'un gabarit d'export commun, cohérent avec le diagnostic. Chaque fichier
+n'a eu qu'UNE seule ligne modifiée (l'attribut `viewBox`), confirmé par
+`git diff --stat`. **Confirmé visuellement par l'utilisateur** après coup :
+logos bien centrés.
+
+**Vérifications** : `npx tsc --noEmit`, `npx eslint .`, `npx next build`
+tous propres après chaque étape. Aucun fichier touché en dehors de
+`MatchRow.tsx`/`.module.css`, `TeamPicker.tsx`/`.module.css` et les 30 SVG.
+Rien committé — laissé à l'utilisateur.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.13, « Prochaine
+étape » renumérotée §2.14, fiches `MatchRow.tsx`/`TeamPicker.tsx`/`logos/
+teams/` du §4 mises à jour, nouveau piège technique en §7 sur le décentrage
+logo/viewBox). `GAPS_OUVERTS.md` : rien à modifier, aucun point resté ouvert
+sur ce lot. Cette entrée de journal.
+
+**État en fin de session** : entête Matchs conforme à la variante demandée,
+carte dépliée simplifiée (logo + nom, sans redite d'abréviation), les 30
+logos de franchise correctement centrés dans leur pastille sur les 3 écrans
+qui les utilisent. Prochaine étape inchangée : « Paris ».

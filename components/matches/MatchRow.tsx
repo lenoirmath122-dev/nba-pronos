@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import type { MatchCard } from "@/lib/queries/matches";
-import { TeamLogo } from "@/components/ui/TeamLogo";
 import { PredictionForm } from "./PredictionForm";
 import styles from "./MatchRow.module.css";
 
@@ -107,20 +106,27 @@ export function MatchRow({ match }: MatchRowProps) {
   return (
     <div className={styles.row}>
       <button type="button" className={styles.header} onClick={() => setIsOpen((v) => !v)} aria-expanded={isOpen}>
-        <span className={styles.teams}>
-          <TeamLogo abbreviation={match.homeTeam.abbreviation} alt={match.homeTeam.name} size={20} />
-          {match.homeTeam.abbreviation} – {match.awayTeam.abbreviation}
-          <TeamLogo abbreviation={match.awayTeam.abbreviation} alt={match.awayTeam.name} size={20} />
+        <span className={styles.split}>
+          <span className={styles.teamAbbr}>
+            {match.homeTeam.abbreviation}
+            <span className={styles.srOnly}> contre </span>
+          </span>
+          <span className={styles.divider} aria-hidden="true" />
+          <span className={styles.teamAbbr}>{match.awayTeam.abbreviation}</span>
         </span>
-        <span className={styles.meta}>
-          <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
-          <span className={styles.lock}>{isOpen ? liveLockLabel : lockLabel}</span>
-        </span>
-        <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
-          {recap !== null ? `✓ ${recap} −${match.myMargin}` : STATUS_LABEL[match.viewStatus]}
-        </span>
-        <span className={isOpen ? styles.chevronOpen : styles.chevron} aria-hidden="true">
-          ▾
+        <span className={styles.metaRow}>
+          <span className={styles.meta}>
+            <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
+            <span className={styles.lock}>{isOpen ? liveLockLabel : lockLabel}</span>
+          </span>
+          <span className={styles.metaRight}>
+            <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
+              {recap !== null ? `✓ ${recap} −${match.myMargin}` : STATUS_LABEL[match.viewStatus]}
+            </span>
+            <span className={isOpen ? styles.chevronOpen : styles.chevron} aria-hidden="true">
+              ▾
+            </span>
+          </span>
         </span>
       </button>
       {isOpen && <PredictionForm match={match} />}

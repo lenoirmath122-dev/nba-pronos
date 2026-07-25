@@ -25,8 +25,7 @@ export function TeamPicker({ homeTeam, awayTeam, selectedTeamId, onSelect }: Tea
             onClick={() => onSelect(team.id)}
             aria-pressed={isSelected}
           >
-            <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={32} />
-            <span className={styles.abbrev}>{team.abbreviation}</span>
+            <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={48} />
             <span className={styles.name}>{team.name}</span>
           </button>
         );
