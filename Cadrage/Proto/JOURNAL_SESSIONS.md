@@ -1614,3 +1614,44 @@ de test légitime non nettoyé : 1 requête PENDING (Amine92/DEN-SAC) + sa ligne
 vide associée. Prochaine étape : « Paris » (fixera la destination du
 raccourci pari) ; le point « désactiver Confirm email » a gagné en urgence
 pratique (rate limit désormais rencontré, pas seulement théorique).
+
+---
+
+## Session du 25/07/2026 (correctif pastille de logo)
+
+Suite directe. L'utilisateur a remonté, en testant l'écran Mes pronos, que la
+pastille neutre censée être posée derrière chaque logo (`SPEC_DESIGN_SYSTEM_
+V0_1.md` §10.1, acté §14.3) ne s'affichait pas — le logo apparaissait nu.
+D'abord noté dans `GAPS_OUVERTS.md` sur demande explicite (sans corriger),
+vérifié contre la spec pour confirmer que le gap était réel et pas juste une
+impression : `components/ui/TeamLogo.tsx`/`.module.css` (créé §2.9 le
+24/07/2026) n'avait effectivement jamais porté de fond — un oubli depuis sa
+création, jamais rattrapé pendant le lot « Mes pronos » qui réutilisait le
+même composant.
+
+**Correctif demandé et conduit en 3 étapes précises fournies par
+l'utilisateur** (fichiers exacts, contenu exact, ordre exact — Claude a
+vérifié chaque prérequis avant d'exécuter, montré chaque diff, attendu
+confirmation avant l'étape suivante) :
+1. `app/tokens.css` : un token ajouté, `--color-logo-pastille-text`
+   (texte du repli abréviation, sombre CONSTANT sur la pastille claire
+   constante).
+2. `components/ui/TeamLogo.module.css`/`.tsx` réécrits : nouveau conteneur
+   `.pastille` (fond + cercle + padding, `size` = diamètre), logo et repli
+   abréviation désormais inscrits DEDANS plutôt que de porter leur propre
+   fond. Empreinte visuelle inchangée (`box-sizing: border-box`).
+
+**Vérifications** : `npx tsc --noEmit`, `npx eslint .`, `npx next build`
+tous propres. Aucun autre fichier touché (aucun appelant de `TeamLogo`
+modifié). Committé par Claude à la demande explicite de l'utilisateur
+(« tu peux le faire »).
+
+**Suivi mis à jour en miroir** : `GAPS_OUVERTS.md` (gap retiré, désormais
+traité), `ETAT_ACTUEL.md` (nouveau §2.12, renumérotation de « Prochaine
+étape » en §2.13, mention ajoutée sur la fiche `TeamLogo.tsx` du §4), cette
+entrée de journal.
+
+**État en fin de session** : la pastille neutre s'affiche désormais derrière
+tous les logos, sur les 3 écrans qui utilisent `TeamLogo` (Bracket, Matchs,
+Mes pronos) — un seul composant partagé corrigé une seule fois. Prochaine
+étape inchangée : « Paris ».

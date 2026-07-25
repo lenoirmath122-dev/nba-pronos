@@ -5,12 +5,12 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 24/07/2026 (suite — lot « Mes pronos »,
-> SPEC_ECRAN_MES_PRONOS_V0_1.md, désormais CLOSE). Cinquième écran du hub
-> joueur, deuxième écran qui écrit (une seule écriture : la requête de
-> correction), premier écran qui porte le live (badge EN DIRECT, Realtime sur
-> `matches`, migration #8). Suite directe des lots du même jour (logos +
-> déconnexion temporaire §2.9, hub Jouer temporaire §2.10).
+> Dernière mise à jour : session du 25/07/2026 (correctif pastille de logo,
+> §2.12) — suite directe du lot « Mes pronos » (24/07/2026, SPEC_ECRAN_MES_
+> PRONOS_V0_1.md, désormais CLOSE, §2.11). Cinquième écran du hub joueur,
+> deuxième écran qui écrit (une seule écriture : la requête de correction),
+> premier écran qui porte le live (badge EN DIRECT, Realtime sur `matches`,
+> migration #8).
 
 ---
 
@@ -621,7 +621,34 @@ Reste en base, artefact de test légitime non nettoyé : 1 requête PENDING
 (Amine92/DEN-SAC) + sa ligne `match_predictions` vide associée.
 ```
 
-### 2.12 Prochaine étape
+### 2.12 Correctif pastille de logo (session du 25/07/2026)
+
+```text
+Remonté par l'utilisateur en testant l'écran Mes pronos (visible aussi sur
+Bracket/Matchs, même composant partagé) : SPEC_DESIGN_SYSTEM_V0_1.md §10.1
+(acté §14.3) exige une pastille neutre CONSTANTE (`--color-logo-pastille`,
+#EDF1F7, cercle `--radius-full`, identique dark/clair) DERRIÈRE chaque logo
+— jamais implémentée depuis la création de `TeamLogo.tsx` (§2.9) : le logo
+(et son repli abréviation) s'affichait nu, sans fond.
+
+Corrigé en 2 étapes montrées et validées séparément :
+1. `app/tokens.css` : nouveau token `--color-logo-pastille-text` (texte du
+   repli, `var(--c-navy-900)` — sombre CONSTANT sur la pastille claire
+   constante, jamais un token qui suit le thème, §10.3).
+2. `components/ui/TeamLogo.module.css`/`.tsx` réécrits : nouveau conteneur
+   `.pastille` (fond + `border-radius: var(--radius-full)` + padding
+   `--space-1`, `size` = diamètre de la pastille, `box-sizing: border-box`
+   pour ne pas changer l'empreinte visuelle) enveloppant le logo OU le
+   repli abréviation, qui remplissent désormais 100% du conteneur au lieu
+   de porter leur propre fond/couleur.
+
+Aucun autre fichier touché (aucun appelant de `TeamLogo` modifié — le
+changement est interne au composant). Vérifié : `npx tsc --noEmit`,
+`npx eslint .`, `npx next build` tous propres. Gap retiré de
+`GAPS_OUVERTS.md`.
+```
+
+### 2.13 Prochaine étape
 
 ```text
 Dans l'ordre déjà acté : Paris (fixera la destination du raccourci pari,
@@ -768,7 +795,10 @@ components/
       Mes pronos. Directive "use client" PROPRE ajoutée §2.11 (jusque-là
       transitivement bundlé client via ses 2 seuls appelants, tous deux
       atteints depuis un ancêtre client — devenu insuffisant sur Mes pronos,
-      qui l'utilise depuis un composant serveur sans ancêtre client).
+      qui l'utilise depuis un composant serveur sans ancêtre client). Pastille
+      neutre constante (`--color-logo-pastille`) implémentée §2.12 — absente
+      depuis la création du composant, remontée par l'utilisateur en testant
+      Mes pronos.
   nav/
     TabBar.tsx + .module.css — onNavigate (useGuardedNavigation) sur les 4
       onglets, inerte par défaut. CODÉ §2.8. Non modifié par le hub Jouer

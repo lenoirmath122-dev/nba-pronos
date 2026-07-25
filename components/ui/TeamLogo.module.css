@@ -1,16 +1,39 @@
-.logo {
-  display: block;
-  object-fit: contain;
+/* Pastille neutre constante (§10.1 / §14.3) : cercle clair identique dans les
+   deux thèmes, sur lequel le logo — ou le repli abréviation — est inscrit avec
+   un padding interne. Le `size` (prop) est le DIAMÈTRE de la pastille ;
+   box-sizing border-box garde l'empreinte inchangée par rapport à l'ancien logo nu. */
+.pastille {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-1);
+  background: var(--color-logo-pastille);
+  border-radius: var(--radius-full);
+  overflow: hidden;
   flex-shrink: 0;
 }
 
+.logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Repli abréviation (§10.3) : posé sur la pastille CLAIRE constante, donc texte
+   SOMBRE constant (jamais un token qui suit le thème). --font-numeric = --font-ui,
+   il faut lui adjoindre tabular-nums explicitement (R-TYP1). */
 .fallback {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 1.5em;
-  color: var(--color-text-secondary);
+  width: 100%;
+  height: 100%;
+  color: var(--color-logo-pastille-text);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-bold);
   font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  flex-shrink: 0;
+  line-height: 1;
 }

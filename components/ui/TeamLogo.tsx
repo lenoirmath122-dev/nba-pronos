@@ -21,6 +21,10 @@ import styles from "./TeamLogo.module.css";
 // (nécessiterait `dangerouslyAllowSVG` + CSP dans next.config, non posé) —
 // pattern documenté par Next.js pour ce cas exact. Repli texte si le fichier
 // manque pour une équipe (fallback réel acté §2.3), via onError.
+//
+// Le logo (ou son repli) est inscrit dans une pastille neutre constante
+// (§10.1) : le `size` est le diamètre de la pastille, le contenu remplit
+// l'intérieur moins le padding.
 type TeamLogoProps = {
   abbreviation: string;
   alt: string;
@@ -30,19 +34,21 @@ type TeamLogoProps = {
 export function TeamLogo({ abbreviation, alt, size = 24 }: TeamLogoProps) {
   const [failed, setFailed] = useState(false);
 
-  if (failed) {
-    return <span className={styles.fallback}>{abbreviation}</span>;
-  }
-
   return (
-    <Image
-      src={`/logos/teams/${abbreviation}.svg`}
-      alt={alt}
-      width={size}
-      height={size}
-      unoptimized
-      className={styles.logo}
-      onError={() => setFailed(true)}
-    />
+    <span className={styles.pastille} style={{ width: size, height: size }}>
+      {failed ? (
+        <span className={styles.fallback}>{abbreviation}</span>
+      ) : (
+        <Image
+          src={`/logos/teams/${abbreviation}.svg`}
+          alt={alt}
+          width={size}
+          height={size}
+          unoptimized
+          className={styles.logo}
+          onError={() => setFailed(true)}
+        />
+      )}
+    </span>
   );
 }

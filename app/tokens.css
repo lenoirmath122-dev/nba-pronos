@@ -128,6 +128,7 @@
 
   /* Pastille de logo — constante (§10.1 / §14.3) */
   --color-logo-pastille: #EDF1F7;
+  --color-logo-pastille-text: var(--c-navy-900); /* texte du repli abréviation, sur la pastille claire constante : sombre dans les deux thèmes (§10.3) */
 
   /* Opacités d'état (§9.4) */
   --opacity-cancelled:      0.55; /* pari annulé/neutralisé (barré + grisé) */
