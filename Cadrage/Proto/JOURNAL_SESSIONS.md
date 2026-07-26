@@ -1725,3 +1725,59 @@ sur ce lot. Cette entrée de journal.
 carte dépliée simplifiée (logo + nom, sans redite d'abréviation), les 30
 logos de franchise correctement centrés dans leur pastille sur les 3 écrans
 qui les utilisent. Prochaine étape inchangée : « Paris ».
+
+---
+
+## Session du 25/07/2026 (suite — commit/push + amendements de specs)
+
+Suite directe, session courte et exclusivement documentaire (aucun code
+touché). L'utilisateur a demandé de committer et pousser le lot précédent,
+puis de mettre à jour les fichiers de suivi ET les deux specs amendées.
+
+**Commit/push** : le lot « entête Matchs + correctif des 30 logos » (§2.13
+de `ETAT_ACTUEL.md`) committé (`5956966`) et poussé sur `main`, à la suite de
+`483a9fb` (pastille) et `d73498b` (Mes pronos). Seul `Cadrage/nba-pronos.lnk`
+(raccourci Windows) reste volontairement de côté, comme à chaque fois.
+
+**Point bloquant trouvé en relisant le delta demandé, signalé AVANT
+d'écrire quoi que ce soit** : la demande fournissait un point à ajouter dans
+`GAPS_OUVERTS.md` comme « ouvert » — « normalisation des 30 SVG… tâche asset
+côté utilisateur » — décrit comme la cause du décentrage. Or ce décentrage
+avait déjà été corrigé (script de bounding box) ET confirmé visuellement par
+l'utilisateur lui-même dans la session précédente. L'écrire tel quel aurait
+effacé, dans le fichier qui fait autorité, un travail fait et confirmé.
+Claude s'est arrêté et a posé la question (AskUserQuestion) plutôt que de
+choisir en silence entre « exécuter tel quel » et « ignorer la demande » :
+confirmé qu'il s'agissait en réalité d'un point DIFFÉRENT et réel — les 30
+`viewBox` sont désormais bien centrés sur leur propre dessin, mais pas
+uniformément CARRÉS entre eux, donc les logos très larges (SAS) apparaissent
+plus petits/plus fins dans leur pastille que les logos plus carrés (LAL).
+Reformulé en conséquence avant d'écrire.
+
+**Amendements consignés DANS les specs elles-mêmes** (pas seulement dans
+`ETAT_ACTUEL.md`), demandé explicitement par l'utilisateur :
+- `SPEC_DESIGN_SYSTEM_V0_1.md` §16 (nouveau, après §15) : §10.2 précisé — le
+  tier `--logo-size-lg` (48px, « moment fort ») se déplace de l'entête de
+  match (qui n'a plus de logo du tout) vers la carte-sélecteur `TeamPicker` ;
+  provenance réelle des logos clarifiée (déposés à la main par l'utilisateur,
+  indépendants de Highlightly/B4 cité au préambule de §10, jamais implémenté
+  côté synchro) ; le test de pastille à 50 % (essayé puis abandonné avant
+  tout commit) explicitement noté comme NE constituant PAS un amendement de
+  §10.1/§14.3.
+- `SPEC_ECRAN_MATCHS_V0_1.md` §20 (nouveau, après §19) : le mockup de §3.1
+  (`[logo] BOS – MIA …`) annoté inline (même patron que l'amendement V0.2 de
+  T7 — annotation sous l'original, rien réécrit en place) puis détaillé dans
+  une section dédiée ; ligne 17 ajoutée au récapitulatif §19.
+
+**Fichiers de suivi régénérés en entier** (pas résumés, pas coupés) :
+`ETAT_ACTUEL.md` (§2.13 corrigé — n'était plus « non committé » depuis le
+push —, nouveau §2.14 recensant commit/push + amendements + clarification du
+gap, « Prochaine étape » renumérotée §2.15, listing `Cadrage/V1/` mis à
+jour) ; `GAPS_OUVERTS.md` (3 points ajoutés : tailles inégales entre logos,
+cohérence des tailles entre écrans, piste « logo encore plus grand » non
+tranchée) ; cette entrée de journal.
+
+**État en fin de session** : les 3 fichiers de suivi et les 2 specs
+amendées reflètent fidèlement l'état réel du code ET des décisions prises,
+sans qu'aucun travail déjà confirmé n'ait été rouvert par erreur. Prochaine
+étape inchangée : « Paris ».

@@ -5,10 +5,11 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 25/07/2026 (suite — refonte de l'entête
-> replié de l'écran Matchs + correctif des 30 logos de franchise, §2.13),
-> après le correctif de pastille de logo (§2.12) et le lot « Mes pronos »
-> (24/07/2026, SPEC_ECRAN_MES_PRONOS_V0_1.md, désormais CLOSE, §2.11).
+> Dernière mise à jour : session du 25/07/2026 (suite — commit/push du lot
+> logos + amendements de `SPEC_DESIGN_SYSTEM_V0_1.md` et
+> `SPEC_ECRAN_MATCHS_V0_1.md`, §2.14), après la refonte de l'entête Matchs +
+> correctif des 30 logos (§2.13), le correctif de pastille (§2.12) et le lot
+> « Mes pronos » (24/07/2026, SPEC_ECRAN_MES_PRONOS_V0_1.md, CLOSE, §2.11).
 
 ---
 
@@ -706,11 +707,50 @@ centrés.
 Vérifié après chaque étape : `npx tsc --noEmit`, `npx eslint .`,
 `npx next build` tous propres. Aucun autre fichier touché (TeamPicker/
 MatchRow restent les 2 seuls fichiers de code modifiés ; les 30 SVG sont les
-seuls assets modifiés). Rien committé à ce stade — à committer par
-l'utilisateur ou sur sa demande explicite.
+seuls assets modifiés). Committé et poussé sur `main` sur demande explicite
+de l'utilisateur (« Commit tout et push ») — voir §2.14.
 ```
 
-### 2.14 Prochaine étape
+### 2.14 Commit/push du lot logos + amendements de specs (session du 25/07/2026, suite)
+
+```text
+Le lot §2.13 (entête Matchs + correctif des 30 logos) a été committé
+(`5956966`) et poussé sur `main` sur demande explicite de l'utilisateur
+(« Commit tout et push »), à la suite du commit du correctif de pastille
+(`483a9fb`, §2.12) et du lot « Mes pronos » (`d73498b`, §2.11).
+
+Une expérimentation intermédiaire, demandée puis explicitement ABANDONNÉE
+dans la foulée, n'a laissé AUCUNE trace dans le code committé : un fond de
+pastille à 50 % d'opacité (`color-mix(in srgb, var(--color-logo-pastille)
+50%, transparent)` dans `TeamLogo.module.css`) a été essayé, montré en diff,
+puis retiré sur demande avant tout commit — retour au fond plein d'origine.
+Consigné ici pour mémoire, mais ce n'est PAS un amendement de §10.1/§14.3 de
+`SPEC_DESIGN_SYSTEM_V0_1.md` : rien n'a changé sur ce point.
+
+**Amendements consignés dans les specs elles-mêmes** (pas seulement ici —
+demandé explicitement par l'utilisateur, pour que les fichiers de cadrage
+restent la source de vérité au-delà de ce fichier d'état) :
+- `SPEC_DESIGN_SYSTEM_V0_1.md` §16 (nouveau) : le tier `--logo-size-lg`
+  (48px, « moment fort », §10.2) se déplace de l'entête de match (qui perd
+  son logo) vers la carte-sélecteur `TeamPicker` ; provenance réelle des
+  logos clarifiée (déposés à la main par l'utilisateur, indépendants de
+  Highlightly/B4 cité au préambule de §10) ; test de pastille à 50 %
+  documenté comme abandonné, pas comme amendement.
+- `SPEC_ECRAN_MATCHS_V0_1.md` §20 (nouveau) : l'entête replié (§3.1) passe du
+  mockup `[logo] BOS – MIA …` à un split neutre deux abréviations sans logo ;
+  annotation inline ajoutée directement sous le mockup d'origine (même
+  patron que l'amendement V0.2 de T7) ; ligne 17 ajoutée au récapitulatif
+  §19.
+
+Clarification demandée par l'utilisateur avant d'écrire quoi que ce soit dans
+`GAPS_OUVERTS.md` (AskUserQuestion) : le décentrage des logos (§2.13) est
+bien réglé et confirmé — le point resté réellement ouvert est différent
+(tailles inégales entre logos faute de viewBox uniformément carré, cf.
+`GAPS_OUVERTS.md`), pas le décentrage lui-même. Une reformulation naïve
+aurait rouvert à tort un point déjà fermé et confirmé par l'utilisateur.
+```
+
+### 2.15 Prochaine étape
 
 ```text
 Dans l'ordre déjà acté : Paris (fixera la destination du raccourci pari,
@@ -932,10 +972,12 @@ scripts/
 Cadrage/
   V1/     — specs techniques V1 validées (T1→T7) + Spec visuelle/
             SPEC_ECRAN_ACCUEIL, SPEC_ECRAN_CLASSEMENT_BRACKET,
-            SPEC_ECRAN_MATCHS (close, §2.8), SPEC_ECRAN_MES_PRONOS (close,
+            SPEC_ECRAN_MATCHS (close, §2.8 ; amendée §20 le 25/07/2026,
+            §2.14 — entête replié sans logo), SPEC_ECRAN_MES_PRONOS (close,
             §2.11). SPEC_TECHNIQUE_RLS_V0.1.md complétée §11 (correctif
-            §2.7). Aucune spec pour le hub Jouer définitif à ce jour (§2.10)
-            — à écrire avant de le coder.
+            §2.7). SPEC_DESIGN_SYSTEM_V0_1.md amendée §16 le 25/07/2026
+            (§2.14 — tailles/provenance des logos). Aucune spec pour le hub
+            Jouer définitif à ce jour (§2.10) — à écrire avant de le coder.
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + cadrage fonctionnel hérité du prototype.
   OLD/    — cadrage antérieur, non consulté activement.

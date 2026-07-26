@@ -1,7 +1,9 @@
 # SPEC_DESIGN_SYSTEM_V0.1 — Design system NBA Pronos (T7)
 
 > Phase : V1 propre. Livrable de cadrage **technique/visuel**. **Statut : VALIDÉ et
-> figé (19/07/2026).** Le 1er écran joueur vient APRÈS T7 (B9 / 0.2.9 §2).
+> figé (19/07/2026)**, amendé à l'usage réel le 20/07/2026 (§15, passe
+> maquettes) puis le 25/07/2026 (§16, post-implémentation Matchs/Mes pronos —
+> logos). Le 1er écran joueur vient APRÈS T7 (B9 / 0.2.9 §2).
 > Nature : **design tokens + règles d'usage**. Aucun écran, aucun composant, aucune
 > feuille de style de production ici — seulement les jetons et leurs règles.
 > T7 **ne produit aucune migration**, ne touche ni au SQL, ni aux server actions
@@ -883,3 +885,54 @@ l'usage réel) :
 
 Aucun écran n'est stylé à ce stade : cette passe pose uniquement la couche de
 tokens.
+
+---
+
+## 16. Amendement — logos, post-implémentation (25/07/2026)
+
+> Rédigé après coup, à l'usage réel (écrans Matchs et Mes pronos codés et
+> testés en conditions réelles) — contrairement à V0.2 (§15), qui précédait
+> le code. Aucune décision close ci-dessus n'est rouverte ; ce qui suit
+> précise leur application concrète, une fois les écrans réellement en main.
+
+### 16.1 §10.2 — la carte-sélecteur devient le tier « lg », l'entête replié perd son logo
+
+**Constat** : §10.2 réservait `--logo-size-lg` (48px, « moment fort ») à
+« l'entête de match, bracket ». Or l'entête REPLIÉ de l'écran Matchs a été
+refondu en **split neutre** (deux grosses abréviations + séparateur, §3.1 de
+`SPEC_ECRAN_MATCHS_V0_1.md`, amendement du même jour) : il ne porte plus AUCUN
+logo. Le logo « moment fort » s'est donc déplacé — pas disparu.
+
+**Acté** : le tier `lg` (48px) s'applique désormais à la **carte-sélecteur du
+vainqueur** (`TeamPicker`, ligne dépliée de l'écran Matchs) plutôt qu'à
+l'entête repliée — c'est là, au moment de choisir un vainqueur, que la
+reconnaissance visuelle immédiate du logo compte le plus, cohérent avec la
+lecture « moment fort » de §10.2. Le bracket (`NodeCard`) reste inchangé.
+`--logo-size-md` (32px, « carte de match, drill-down ») n'est plus utilisé
+par la carte-sélecteur depuis ce changement.
+
+**Périmètre non couvert, laissé en gap** (`GAPS_OUVERTS.md`) : les autres
+surfaces qui affichent un logo (`MatchRowStatic` de l'écran Mes pronos)
+restent à leur taille d'origine, non revues à cette occasion — cohérence des
+tailles entre écrans à trancher plus tard.
+
+### 16.2 §10.1/§14.3 — pastille testée à 50 %, puis abandonnée : AUCUN changement
+
+Une variante de fond de pastille à 50 % d'opacité (`color-mix(in srgb,
+var(--color-logo-pastille) 50%, transparent)`, au lieu du fond plein) a été
+essayée puis explicitement abandonnée dans la même session — retour au fond
+plein d'origine. **§10.1 et §14.3 restent inchangés tels quels** : ceci n'est
+PAS un amendement, juste une expérimentation non retenue, consignée ici pour
+ne pas laisser croire qu'un essai isolé aurait valeur de décision.
+
+### 16.3 §10 (préambule) — provenance réelle des logos, à corriger
+
+Le préambule de §10 cite « B4 : logos Highlightly (`GET /teams`.`logo`),
+hébergés en interne » comme source. En pratique, à l'implémentation
+(21/07/2026), les 30 logos ont été **déposés directement par l'utilisateur**
+en SVG dans `public/logos/teams/*.svg` (nommés par abréviation) —
+indépendamment de toute synchro Highlightly, qui n'est pas codée (`teams.
+logo_url` reste vide, colonne jamais utilisée par le rendu). Le CONTENANT
+décrit par §10 (pastille, tailles, fallback) reste entièrement valide et
+appliqué tel quel ; seule la provenance présumée du fichier source (B4)
+diverge de ce qui a réellement été livré.

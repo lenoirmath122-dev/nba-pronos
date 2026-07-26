@@ -124,6 +124,32 @@
   raison de symétrie — à trancher : soit étendre le contrat de types de
   Matchs (nom d'admin + nom du requérant), soit assumer la divergence en V1
   et harmoniser plus tard.
+- **Tailles inégales entre les 30 logos de franchise** (trouvé le 25/07/2026,
+  en corrigeant le décentrage §2.13 de `ETAT_ACTUEL.md`) : le script de
+  bounding box a bien réglé le DÉCENTRAGE (chaque `viewBox` colle désormais
+  au dessin réel de son propre fichier — confirmé visuellement par
+  l'utilisateur), mais il ne les a PAS rendus uniformément CARRÉS entre eux :
+  chaque logo garde son aspect ratio naturel (ex. SAS ≈ 2:1 large, LAL quasi
+  carré). Conséquence : `object-fit: contain` dans la pastille carrée
+  affiche donc les logos très larges (SAS) sensiblement plus PETITS/plus
+  fins à l'intérieur de leur pastille que les logos plus carrés (LAL) — un
+  problème de TAILLE relative, distinct du décentrage déjà réglé. Pas
+  corrigé : nécessiterait soit de recadrer chaque SVG à un ratio carré
+  uniforme (perte de marge autour du dessin, à valider visuellement par
+  logo), soit une règle de mise à l'échelle différenciée côté CSS — aucune
+  des deux tranchée à ce jour.
+- **Cohérence des tailles de logo entre écrans** (25/07/2026, §2.13) : la
+  carte-sélecteur de l'écran Matchs (`TeamPicker`) est passée à 48px
+  (`SPEC_DESIGN_SYSTEM_V0_1.md` §16.1) ; les logos de l'écran Mes pronos
+  (`MatchRowStatic`) n'ont PAS été revus à cette occasion et restent à leur
+  taille d'origine (20px). Le bracket (`NodeCard`) est également resté
+  inchangé (par choix, tier `lg` toujours approprié pour lui). À harmoniser
+  si une cohérence stricte entre écrans est voulue.
+- **Grossir encore le logo de la carte-sélecteur ?** (évoqué par
+  l'utilisateur le 25/07/2026, NON tranché) : au-delà des 48px actuels
+  (`--logo-size-lg`), une taille plus grande a été mentionnée comme piste
+  possible sans être décidée. À reprendre si le besoin se confirme à
+  l'usage.
 - **Publication Realtime de `series`** (ajoutée le 24/07/2026, lot « Mes
   pronos ») : `matches` est désormais publiée (migration #8) — `series`,
   prévue par T4 §9 et resserrée par T6c §14.2 (drill-down série + résumé

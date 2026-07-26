@@ -3,6 +3,8 @@
 > **Statut** : **close** — les 4 points ouverts ont été tranchés le 23/07/2026 (§18). Une
 > seule contrainte est transmise au lot suivant (« Mes pronos », §17), aucune ne bloque
 > l'implémentation de cet écran. Rédigée et close le 23/07/2026, phase V1 propre.
+> Amendée à l'usage réel le 25/07/2026 (§20) : l'entête replié perd son logo,
+> refondu en split neutre deux abréviations.
 > **Portée** : l'écran **Matchs** du hub Jouer (`/play/matches`) — la fenêtre de **saisie**
 > des pronos match par match. Les écrans « Mes pronos », « Paris » et « Bracket personnel »
 > du même hub sont hors périmètre (lots ultérieurs, un écran à la fois).
@@ -110,6 +112,11 @@ Doit rester lisible d'un coup d'œil (0.2.9 §4) :
 - l'heure de verrouillage est un repère textuel, **pas** un compte à rebours vivant sur
   chaque ligne (un `Countdown` par ligne coûterait un timer par match) — le décompte animé
   reste réservé à la ligne **dépliée**.
+
+> **Amendement §20 (25/07/2026)** : le mockup ci-dessus (`[logo] BOS – MIA …`) est
+> **remplacé** à l'implémentation par une variante « split neutre » sans logo —
+> voir §20. Le statut et le chevron sont inchangés ; c'est la zone
+> équipes/heure qui change de disposition.
 
 ### 3.2 Ligne dépliée
 
@@ -525,7 +532,51 @@ points — les deux règles ne se contredisent pas, elles portent sur deux chose
 | 14 | Aucun live ici : badge EN DIRECT et souscription `matches` → « Mes pronos » | §11 |
 | 15 | « Mes pronos » ancré sur les **matchs** (contrainte transmise au lot suivant) | §17 §18.2 |
 | 16 | `N` du compteur = joueurs `ACTIVE` uniquement | §18.4 |
+| 17 | Entête replié refondu en split neutre, sans logo (amendement 25/07/2026) | §3.1 §20 |
 
 > Rappel de méthode, pas une question : les **noms de colonnes** et **valeurs de statut** sont
 > à lire dans le schéma réel à l'implémentation. Cette spec décrit l'intention et fige les
 > contrats de types ; elle ne présume aucun nom.
+
+---
+
+## 20. Amendement post-implémentation — entête replié (25/07/2026)
+
+> Rédigé après coup, à l'usage réel (écran codé, testé dans un vrai
+> navigateur, retouché à la demande de l'utilisateur) — pas une réouverture
+> du produit tranché le 23/07/2026, une précision de mise en forme. Le
+> comportement d'ouverture (§3), le contenu de la ligne dépliée (§3.2),
+> `PredictionForm` et `TeamPicker` (hors son logo agrandi, cf.
+> `SPEC_DESIGN_SYSTEM_V0_1.md` §16.1) ne sont pas concernés.
+
+**Constat** : le mockup de §3.1 (`[logo] BOS – MIA … [statut] ▾`) plaçait un
+logo devant le libellé des équipes. À l'usage réel, demandé explicitement par
+l'utilisateur : **variante « split neutre »** — les deux logos disparaissent
+de l'entête replié, remplacés par les deux abréviations en grand (grille
+1fr/1px/1fr, séparateur vertical), la ligne heure/verrou et la ligne statut/
+chevron passant d'une seule rangée à deux rangées empilées séparées par une
+bordure.
+
+```text
+  BOS         |         MIA
+——————————————————————————————————————
+21:00 · verrou dans 2 h 14        [statut]  ▾
+```
+
+**Acté** :
+- le logo « moment fort » ne disparaît pas de l'écran : il se déplace vers la
+  **carte-sélecteur** (`TeamPicker`, ligne dépliée), agrandie à 48px en
+  conséquence — voir `SPEC_DESIGN_SYSTEM_V0_1.md` §16.1, même amendement,
+  décision symétrique ;
+- le statut (rampe §4) et le chevron sont **repris tels quels**, seulement
+  redistribués dans la nouvelle disposition — aucune règle de §4 n'est
+  rouverte ;
+- l'accessibilité de l'ordre de lecture (équipe à domicile vs visiteuse) est
+  préservée par un texte `sr-only` (« contre ») entre les deux abréviations,
+  invisible à l'écran mais lu par les lecteurs d'écran.
+
+**Hors périmètre de cet amendement** : la carte dépliée (`TeamPicker`) a par
+ailleurs perdu l'affichage de l'abréviation à côté de son logo (ne reste que
+logo + nom complet) — ce n'est pas une conséquence du split neutre, mais un
+choix séparé fait le même jour (l'abréviation, répétée aux deux endroits,
+n'avait plus d'utilité une fois le split en place dans l'entête).
