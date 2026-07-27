@@ -5,9 +5,10 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — écran Profil codé et
-> testé, §2.18, spec rédigée et close en séance), après le déploiement
-> Vercel + activation de l'inscription + 1er admin réel (§2.17), l'écran
+> Dernière mise à jour : session du 27/07/2026 (suite — écran Mes paris codé
+> et testé, §2.19, spec rédigée et close en séance), après l'écran Profil
+> (§2.18, spec rédigée et close en séance), le déploiement Vercel +
+> activation de l'inscription + 1er admin réel (§2.17), l'écran
 > Bracket personnel codé et testé (§2.16, spec rédigée et close en séance),
 > lui-même après le bandeau sticky + saisie inline dans Matchs (§2.15 suite), l'écran Nouveau
 > pari codé et testé le 26/07/2026 (SPEC_ECRAN_NOUVEAU_PARI_V0_1.md, CLOSE,
@@ -1105,37 +1106,108 @@ Déployé en production (`vercel --prod`) juste après, vérifié en ligne
 (`curl` → 307 sur `/` et `/profile`).
 ```
 
-### 2.19 Prochaine étape
+### 2.19 Écran Mes paris (session du 27/07/2026, suite, CLOSE)
 
 ```text
-Dans l'ordre à confirmer avec l'utilisateur : « Mes paris » (consultation/
-quotas globaux — hors périmètre du lot Nouveau pari §2.15, spec distincte à
-écrire) ; ou les écrans admin. Bracket personnel (§2.16) et Profil (§2.18)
-sont désormais CODÉS, retirés de cette liste. Publication Realtime de
-`series` (T4 §9) : reste REPORTÉE (§2.16) faute de besoin live identifié
-sur un écran codé à ce jour — à réévaluer si un futur écran (drill-down
-live, résumé) en a explicitement besoin. Même conventions reconduites
-(composants serveur par défaut, CSS Modules + tokens, RLS/fonctions
-dédiées comme seule autorité de lecture ; vérifier D'ABORD si la RLS
-existante suffit avant d'ajouter une fonction SECURITY DEFINER). Le vrai
-hub Jouer (§2.10) reste à SPÉCIFIER (spec d'écran dédiée) avant d'être
-codé — aucune date arrêtée. Puis T8 (déploiement — §6 à faire avant, dont
-l'effacement du jeu de données de test ET du compte de démo partagé
-§2.17, ET le retrait du hub Jouer temporaire §2.10 ; le bouton de
-déconnexion temporaire §2.9 est désormais RETIRÉ pour de bon, §2.18).
+Périmètre : SPEC_ECRAN_MES_PARIS_V0_1.md (Cadrage/V1/Spec visuelle/, CLOSE)
+— consultation PERSONNELLE de tous les paris du joueur (tous statuts) +
+quotas, ferme le 8ème écran du hub joueur. Aucune spec détaillée
+n'existait avant cette session (seulement identifié comme « hors
+périmètre » dans le préambule de SPEC_ECRAN_NOUVEAU_PARI_V0_1.md). Deux
+points fermés AVANT rédaction (AskUserQuestion) : révélation publique des
+AUTRES joueurs (0.2.4 §9, jamais construite nulle part malgré la décision
+actée — vérifié dans le code réel d'AssociatedBetCard, qui ne lit que
+`user_id = auth.uid()`) — REPORTÉE, reste un point ouvert distinct
+(GAPS_OUVERTS.md) ; demande de correction sur un pari — INCLUSE mais
+restreinte au cas « pari VALIDATED dont la cible est déjà terminée et
+jamais résolu » (contester un REFUS ou un résultat déjà posé nécessiterait
+d'étendre `enforce_bet_transitions`, REJECTED/WON/LOST étant des états
+TERMINAUX aujourd'hui — hors périmètre de ce lot).
+
+Pré-vol : `bets_select` (migration #3) confirmée suffisante côté
+propriétaire ; `enforce_bet_transitions` confirmé laissant déjà
+VALIDATED→WON/LOST ouvert (aucune modification nécessaire pour la
+correction) ; `correction_requests` confirmée déjà prête pour
+`target_type='BET'` — et l'index unique partiel `uniq_pending_correction_
+per_bet` (garde « une seule requête PENDING ») EXISTAIT DÉJÀ depuis la
+toute première migration (#1), anticipé avant même que la fonctionnalité
+ne soit spécifiée.
+
+Code : `lib/queries/my-bets.ts` (`getMyBets`, réutilise `MATCH_SLOT_CAP`
+de lib/labels/bets.ts pour l'affichage du quota, aucune 2e implémentation
+du calcul) ; `lib/actions/bet-corrections.ts`
+(`requestBetCorrectionFormAction`, même patron FormData + redirect que
+`requestPredictionCorrectionFormAction`) ; `app/(app)/play/bets/page.tsx`
+(l'INDEX du dossier existant, `new/` et `[id]/edit/` inchangés) ;
+`components/my-bets/{SegmentTabs,QuotaBanner,MyBetRow}.tsx` — statuts/
+couleurs REPRIS À L'IDENTIQUE d'`AssociatedBetCard` (Mes pronos), pas une
+2e convention divergente pour le même statut. Migration #11
+(`request_bet_correction`, SECURITY DEFINER, SANS « voie A » — un pari
+existe TOUJOURS complet dès sa création, contrairement à un prono).
+
+**Bug trouvé en testant, corrigé par migration #12** (même patron que la
+migration #4 historique — patch via un NOUVEAU fichier, jamais une
+réécriture de la migration déjà appliquée) : la migration #11 lisait
+`series.status`, colonne qui N'EXISTE PAS — la vraie colonne est
+`series.official_status` (`matches`, elle, porte bien `status`). Aurait
+fait échouer TOUTE requête de correction sur un pari SÉRIE. Trouvé en
+appelant la fonction en conditions réelles, pas en relisant le code.
+
+Hub Jouer temporaire : l'entrée « Paris » pointait vers `/play/bets/new`
+depuis le lot Nouveau pari — corrigée pour pointer vers `/play/bets` (ce
+nouvel écran), qui porte lui-même le lien vers `/play/bets/new`, même
+patron que les autres entrées du hub.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` propres.
+**Test en session authentifiée réelle** (compte Demo_Amis, serveur `next
+dev` déjà en cours réutilisé) : 7 paris de test créés via service_role
+couvrant les 7 statuts (dont un VALIDATED ciblant un match déjà FINISHED
+— cas « oublié »), tous rendus correctement dans le bon segment (En
+cours/Terminés), bandeau de quota vérifié (« 1/1 série · 1/3 match ») ;
+formulaire « Signaler à un admin » réellement soumis sans JS, ligne
+`correction_requests` vérifiée en base, page rechargée affichant bien
+« Requête en attente » ; 3 cas négatifs testés en session réelle (2e
+requête sur le même pari, tentative sur un DRAFT, tentative sur un
+SUBMITTED — tous bloqués avec le bon message). Toutes les données de test
+supprimées après coup (7 paris + 1 requête de correction), compte
+Demo_Amis vérifié identique à son état d'avant test. Aucune régression
+sur les 10 autres routes de l'app. Déployé en production (`vercel
+--prod`), vérifié en ligne.
+```
+
+### 2.20 Prochaine étape
+
+```text
+Restent à confirmer avec l'utilisateur : les écrans admin (aucune spec
+n'existe). « Mes paris » (§2.19) et Profil (§2.18) sont désormais CODÉS,
+retirés de cette liste — Bracket personnel (§2.16) l'était déjà. Deux
+points ouverts distincts identifiés en codant « Mes paris », toujours non
+traités : révélation publique des paris des autres joueurs (0.2.4 §9) ;
+contester un pari REJETÉ ou déjà résolu GAGNÉ/PERDU (nécessiterait
+d'étendre enforce_bet_transitions) — voir GAPS_OUVERTS.md pour le détail.
+Publication Realtime de `series` (T4 §9) : reste REPORTÉE (§2.16) faute
+de besoin live identifié sur un écran codé à ce jour. Même conventions
+reconduites (composants serveur par défaut, CSS Modules + tokens, RLS/
+fonctions dédiées comme seule autorité de lecture ; vérifier D'ABORD si
+la RLS existante suffit avant d'ajouter une fonction SECURITY DEFINER).
+Le vrai hub Jouer (§2.10) reste à SPÉCIFIER (spec d'écran dédiée) avant
+d'être codé — aucune date arrêtée. Puis T8 (déploiement — §6 à faire
+avant, dont l'effacement du jeu de données de test ET du compte de démo
+partagé §2.17, ET le retrait du hub Jouer temporaire §2.10).
 ```
 
 ## 3. État actuel de la base de données
 
 ```text
-10 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
+12 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
 chacune montrée intégralement et confirmée par l'utilisateur avant
 application) — les 6 premières inchangées depuis le 23/07/2026 (les lots
 logos/déconnexion/hub temporaire du 24/07, §2.9/§2.10, étaient purement
 applicatifs) ; #7 et #8 ajoutées par le lot « Mes pronos » (§2.11) ; #9 et
 #10 ajoutées par le lot « Nouveau pari » (§2.15, poussées par l'utilisateur
 lui-même — `db push` bloqué pour Claude par le classificateur de permissions
-de l'environnement) :
+de l'environnement) ; #11 et #12 ajoutées par le lot « Mes paris » (§2.19,
+`db push` NON bloqué cette fois, poussées directement) :
 
 1. 20260718090000_initial_schema.sql — schéma complet.
 2. 20260718100000_auth_join_code_and_profile.sql — code compétition,
@@ -1172,6 +1244,15 @@ de l'environnement) :
    (clé user × série) avant le comptage du cap 3 MATCH/série, qui n'a aucun
    backstop d'index unique — ferme une fenêtre de course entre deux
    créations concurrentes.
+11. 20260727100000_request_bet_correction.sql — `request_bet_correction(
+   p_bet, p_justification)`, SECURITY DEFINER (§2.19) : SANS voie A
+   (contrairement à #7, un pari existe toujours complet dès sa création) —
+   crée une correction_requests (target_type='BET') sur une ligne bets DÉJÀ
+   existante, restreint aux paris VALIDATED dont la cible est FINISHED.
+12. 20260727110000_fix_request_bet_correction_series_column.sql — correctif
+   trouvé en testant #11 en conditions réelles : lisait `series.status`
+   (colonne inexistante) au lieu de `series.official_status`. Même patron
+   que la migration #4 (patch via un nouveau fichier, #11 jamais réécrite).
 
 **Toujours 10 migrations après le lot Bracket personnel (§2.16)** : la RLS
 `brackets_insert/update`/`bracket_picks_insert/update` (migration #3)
@@ -1181,10 +1262,11 @@ contrairement aux deux lots précédents.
 RLS vérifiée de bout en bout via le plan de test T3 §7, puis re-testée avec
 un vrai jeu de données (§2.6) — un piège trouvé à cette occasion (§7).
 Consommée directement (sans service_role) par tous les écrans joueur via
-getServerClient(). Les fonctions #7 et #10 sont les seules à opérer en
-SECURITY DEFINER (contournent une policy/la RLS) — chacune justifiée en
-commentaire dans son fichier de migration et testée en conditions réelles
-(§2.11/§2.15). #9 modifie seulement la whitelist du trigger existant
+getServerClient(). Les fonctions #7, #10 et #11/#12 sont les seules à
+opérer en SECURITY DEFINER (contournent une policy/la RLS) — chacune
+justifiée en commentaire dans son fichier de migration et testée en
+conditions réelles (§2.11/§2.15/§2.19). #9 modifie seulement la whitelist
+du trigger existant
 (`enforce_bet_transitions`, PAS security definer, inchangé sur ce point).
 
 Données : compétition Playoffs de TEST active (§2.6) — 30 équipes, 15
@@ -1858,6 +1940,19 @@ supabase/
   RÉELLES avant d'écrire une seule ligne de garde applicative) est ce qui
   a évité soit une migration inutile, soit — pire — une garde dupliquée qui
   aurait pu diverger de la RLS.
+
+- Nom de colonne supposé par analogie, jamais vérifié (migration #11, §2.19,
+  27/07/2026) : `matches` porte une colonne `status`, mais `series` porte
+  `official_status` — deux tables voisines, deux noms différents pour un
+  concept similaire. Une fonction SQL écrite par analogie (« matches.status
+  existe, donc series.status doit exister aussi ») a fait planter TOUTE
+  requête de correction sur un pari SÉRIE (« column series.status does not
+  exist »), trouvé seulement en appelant la fonction en conditions réelles,
+  jamais en relisant le code. Corrigé par la migration #12 (même patron que
+  #4). Leçon reconduite : même quand une colonne « doit sûrement exister »
+  par cohérence avec une table voisine, vérifier le VRAI schéma (fichier de
+  migration réel) avant de l'utiliser dans du SQL — l'analogie n'est pas une
+  preuve.
 
 Pièges génériques du prototype (Postgres/Git/PowerShell, toujours valables en
 principe) non recopiés ici pour éviter la duplication — voir l'historique du

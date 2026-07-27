@@ -2323,3 +2323,93 @@ production (`vercel --prod`, re-vérifié en ligne). Bouton de déconnexion
 temporaire définitivement retiré. Thème clair/sombre fonctionnel sur tout
 le site. Prochaine étape toujours ouverte, inchangée par ce lot : « Mes
 paris » (consultation/quotas globaux) ou les écrans admin.
+
+---
+
+## Session du 27/07/2026 (suite) — Écran Mes paris, spec rédigée en séance + code + tests, correctif migration
+
+Suite directe. L'utilisateur choisit « Mes paris » comme prochain lot, en
+demandant explicitement une vraie spec écrite (pas une mini-spec) — même
+niveau d'exigence que les lots précédents sans brouillon préalable.
+
+**Recherche avant rédaction** (pas seulement les fichiers déjà connus) :
+préambule de `SPEC_ECRAN_NOUVEAU_PARI_V0_1.md` (périmètre déjà identifié,
+jamais détaillé) ; `nba_pronos_decisions_0_2_4_paris_personnalises.md`
+(règles fonctionnelles de référence, quota/deadline/statuts/visibilité) ;
+schéma réel de `bets`/`correction_requests` ; `Cadrage/OLD/
+ETAT_DEVELOPPEMENT_PROTOTYPE.md` §9 (l'écran équivalent du prototype,
+volontairement PERSONNEL, un écran public séparé jamais repris en V1) ;
+code réel d'`AssociatedBetCard` (Mes pronos) pour vérifier si la
+révélation publique des paris (0.2.4 §9) était déjà construite quelque
+part — CONFIRMÉ QUE NON (ne lit que `user_id = auth.uid()`), malgré la
+décision fonctionnelle actée.
+
+**2 points fermés AVANT rédaction** (AskUserQuestion) : révélation
+publique des autres joueurs — REPORTÉE (reste personnel, comme le
+prototype) ; demande de correction sur un pari — INCLUSE (la table
+`correction_requests` supporte déjà `target_type='BET'`, mais aucune
+fonction SQL ne l'utilisait).
+
+**Rédaction de la spec** (`SPEC_ECRAN_MES_PARIS_V0_1.md`, nouveau fichier,
+statut BROUILLON puis VALIDÉ) : le mécanisme de correction proposé
+(« pari oublié » — VALIDATED dont la cible est FINISHED mais jamais
+résolu) a été choisi délibérément plus restreint que ce qu'aurait permis
+le schéma, après avoir vérifié `enforce_bet_transitions` : REJECTED/WON/
+LOST sont des états TERMINAUX aujourd'hui, contester un refus ou une
+résolution déjà posée aurait nécessité d'étendre ce trigger — jugé hors
+périmètre, signalé explicitement plutôt que fait en silence ou deviné.
+4 points fermés avec l'utilisateur (AskUserQuestion, §14) : portée de la
+correction confirmée telle quelle ; bandeau de quota GLOBAL unique (pas
+dépliable) ; libellé « Signaler à un admin » ; tri par défaut accepté.
+
+**Pré-vol** (lecture des migrations RÉELLES) : `bets_select` confirmée
+suffisante côté propriétaire ; `enforce_bet_transitions` confirmé laissant
+VALIDATED→WON/LOST ouvert ; découverte notable — l'index unique partiel
+`uniq_pending_correction_per_bet` (garde « une seule requête PENDING »)
+EXISTAIT DÉJÀ depuis la toute première migration (#1), anticipé avant même
+que cette fonctionnalité ne soit spécifiée.
+
+**Code** : `lib/queries/my-bets.ts` (`getMyBets`, réutilise `MATCH_SLOT_CAP`
+tel quel) ; `lib/actions/bet-corrections.ts` (FormData + redirect, même
+patron que `requestPredictionCorrectionFormAction`) ; `app/(app)/play/
+bets/page.tsx` (l'INDEX du dossier existant) ; `components/my-bets/*` —
+statuts/couleurs REPRIS À L'IDENTIQUE d'`AssociatedBetCard` (Mes pronos),
+pas une 2e convention. Migration #11 (`request_bet_correction`, SECURITY
+DEFINER, SANS voie A). Hub Jouer temporaire mis à jour : « Paris » pointe
+désormais vers `/play/bets` plutôt que directement vers `/play/bets/new`.
+
+**Bug trouvé en testant, corrigé par migration #12** : la migration #11
+lisait `series.status` (colonne INEXISTANTE, vérifié après coup dans le
+schéma réel — la vraie colonne est `official_status`, contrairement à
+`matches.status`). Trouvé en appelant la fonction en session réelle sur
+un pari SÉRIE, pas en relisant le code. Corrigé par un NOUVEAU fichier de
+migration (`CREATE OR REPLACE`), même patron que la migration #4
+historique — jamais de réécriture d'une migration déjà appliquée.
+
+**Vérifié** : `npx tsc --noEmit`, `npx eslint .`, `npx next build` propres
+(un warning ESLint intermédiaire — `RELEASED_BET_STATUSES` déclaré mais
+jamais utilisé — corrigé en le retirant, le filtre `ONGOING_STATUSES`
+suffisait pour ce calcul de quota précis).
+
+**Test en session authentifiée réelle** (compte Demo_Amis, serveur `next
+dev` déjà en cours réutilisé) : 7 paris de test créés via service_role
+couvrant les 7 statuts (dont un VALIDATED ciblant un match déjà FINISHED,
+cas « oublié ») — tous rendus dans le bon segment, bandeau de quota
+vérifié (« 1/1 série · 1/3 match ») ; formulaire « Signaler à un admin »
+réellement soumis sans JS, ligne `correction_requests` vérifiée en base,
+rechargement affichant bien « Requête en attente » ; 3 cas négatifs testés
+(2e requête sur le même pari, tentative sur un DRAFT, tentative sur un
+SUBMITTED — tous bloqués avec le bon message). Toutes les données de test
+supprimées après coup, compte `Demo_Amis` vérifié identique à son état
+d'avant test. Aucune régression sur 10 autres routes testées.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.19, header,
+§3 migrations, §7 nouveau piège) ; `GAPS_OUVERTS.md` (« Mes paris » retiré
+de la liste à coder ; 2 nouveaux points ouverts distincts — révélation
+publique des autres joueurs, contester un refus/résultat déjà posé ;
+référence à l'ancien état inerte marquée SUPERSEDÉE) ; cette entrée de
+journal.
+
+**État en fin de session** : écran Mes paris CODÉ, VÉRIFIÉ et DÉPLOYÉ en
+production (`vercel --prod`, re-vérifié en ligne). Prochaine étape
+toujours ouverte : les écrans admin (aucune spec n'existe à ce jour).

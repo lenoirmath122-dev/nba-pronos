@@ -70,16 +70,17 @@
   `lib/queries/bracket-fill.ts`, `lib/actions/bracket-fill.ts`,
   `components/bracket-fill/*`, session du 27/07/2026, remplissage tour par
   tour, AUCUNE migration nécessaire — la RLS existante suffisait) et
-  désormais **Profil** (`app/(app)/profile/`, `lib/queries/profile.ts`,
+  **Profil** (`app/(app)/profile/`, `lib/queries/profile.ts`,
   `lib/actions/profile.ts`, `components/profile/*`, session du 27/07/2026,
   thème clair/sombre câblé dans `app/layout.tsx`, AUCUNE migration
-  nécessaire) sont CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres,
-  testés avec un vrai jeu de données de test ET en conditions réelles —
-  sessions authentifiées réelles, écriture réelle testée en SQL/RPC direct
-  et/ou en navigateur réel, cas négatifs testés). Prochaine étape à
-  confirmer avec l'utilisateur : **« Mes paris »** (consultation/quotas
-  globaux — spec distincte, hors périmètre du lot « Nouveau pari »,
-  ci-dessous) ou les écrans admin. Restent
+  nécessaire) et désormais **Mes paris** (`app/(app)/play/bets/page.tsx`,
+  `lib/queries/my-bets.ts`, `lib/actions/bet-corrections.ts`,
+  `components/my-bets/*`, session du 27/07/2026, migrations #11/#12) sont
+  CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres, testés avec un
+  vrai jeu de données de test ET en conditions réelles — sessions
+  authentifiées réelles, écriture réelle testée en SQL/RPC direct et/ou en
+  navigateur réel, cas négatifs testés). Prochaine étape à confirmer avec
+  l'utilisateur : **les écrans admin** (aucune spec n'existe). Restent
   à coder après : le moteur de synchro/scoring (T4/T5), le Realtime + rendu
   des états au-delà de ce qui existe déjà (T6c). Détail dans
   `ETAT_ACTUEL.md` §2.
@@ -231,15 +232,25 @@
   que Classement est déjà codé) ; et **thème clair du bandeau** (garder la
   bande sombre partout comme acté en §15.7, ou prévoir un éclaircissement
   de la photo en thème clair — même asset, filtre différent).
-- **Écran « Mes paris » (consultation/quotas globaux)** (identifié dès
-  `SPEC_ECRAN_NOUVEAU_PARI_V0_1.md` préambule, non traité par ce lot) :
-  écran de suivi des paris du joueur (tous statuts, quotas série/match par
-  série) — hors périmètre de l'écran Nouveau pari (création/édition
-  uniquement, `ETAT_ACTUEL.md` §2.15). Spec d'écran dédiée pas encore
-  écrite. Tant qu'il n'existe pas, un pari non éditable ici (`/play/bets/
-  [id]/edit` sur un pari VALIDATED/REJECTED/WON/LOST/CANCELLED, ou un
-  `betId` invalide/pas le sien) affiche un état inerte plutôt que de
-  rediriger vers une route qui n'existe pas encore.
+- **Révélation publique des paris des AUTRES joueurs** (0.2.4 §9, décision
+  fonctionnelle actée mais JAMAIS construite nulle part — trouvé en codant
+  Mes paris, 27/07/2026, `ETAT_ACTUEL.md` §2.19, en vérifiant le code réel
+  d'`AssociatedBetCard` qui ne lit que `user_id = auth.uid()`) : chaque pari
+  devrait devenir visible publiquement (nominatif) à sa propre deadline —
+  la RLS `bet_is_public()` existe déjà et fonctionne (T3), mais aucun écran
+  (Matchs, Mes pronos, Mes paris) ne l'exploite pour afficher les paris
+  d'AUTRES joueurs. Décision explicite (27/07/2026) : Mes paris reste
+  personnel pour l'instant (comme le faisait le prototype, qui avait un
+  écran public séparé, jamais repris en V1) — ce point reste ouvert, sans
+  écran assigné pour l'accueillir.
+- **Contester un pari REJETÉ ou déjà résolu GAGNÉ/PERDU** (trouvé en codant
+  Mes paris, 27/07/2026, `ETAT_ACTUEL.md` §2.19) : le mécanisme de
+  correction ajouté (migration #11) ne couvre QUE le cas « pari VALIDATED
+  jamais résolu » — `enforce_bet_transitions` traite REJECTED/WON/LOST comme
+  des états TERMINAUX, aucune règle ne permet d'en sortir. Étendre à la
+  contestation d'un refus ou d'une résolution déjà posée nécessiterait une
+  extension de ce trigger, pas seulement une nouvelle fonction — décision
+  explicite de ne pas le faire dans ce lot.
 - **Bandeau sticky non traité pour la saisie inline dans Matchs** (27/07/2026,
   `ETAT_ACTUEL.md` §2.15 suite) : le formulaire dédié (`BetForm.tsx`) a son
   contenu fixé en bas de viewport, mais `InlineBetForm.tsx` (Matchs) ne l'a
@@ -397,9 +408,11 @@
     sans logo, restent des `<select>` natifs) ;
   - pari non éditable ici (statut non DRAFT/SUBMITTED, propriétaire différent,
     ou `betId` invalide) sur `/play/bets/[id]/edit` : état inerte affiché
-    plutôt qu'une redirection vers « Mes paris », qui n'existe pas encore
-    (voir gap ci-dessus) — pas un choix produit, une conséquence du
-    séquencement des lots ;
+    plutôt qu'une redirection vers « Mes paris », qui n'existait pas encore
+    à l'époque — pas un choix produit, une conséquence du séquencement des
+    lots. SUPERSEDÉ le 27/07/2026 : « Mes paris » existe désormais
+    (`ETAT_ACTUEL.md` §2.19) — faire pointer cet état inerte vers
+    `/play/bets` reste une amélioration possible, non faite (pas demandée) ;
   - saisie inline MATCH dans Matchs (27/07/2026, demandée explicitement
     par l'utilisateur en cours de session, PAS dans la spec close) : élargit
     le périmètre acté par la spec §1 (deux points d'entrée vers un écran
