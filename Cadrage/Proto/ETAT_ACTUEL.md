@@ -6,9 +6,11 @@
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
 > Dernière mise à jour : session du 27/07/2026 (suite — chantier T5, lot
-> 1/4 : moteur de scoring PUR codé et testé, §2.24, 26 tests automatisés
-> `vitest` — 1re dépendance de test du projet), après un correctif de
-> région Vercel (latence, iad1 → dub1, même région que Supabase), après
+> 2/4 : writer `series.official_*` codé et vérifié en conditions réelles,
+> §2.25), après le lot 1/4 (moteur de scoring PUR, §2.24, 26 tests
+> automatisés `vitest` — 1re dépendance de test du projet), après un
+> correctif de région Vercel (latence, iad1 → dub1, même région que
+> Supabase), après
 > Historique des logs (§2.23, quatrième écran du lot Admin, DERNIÈRE page
 > fille sans dépendance sur T5), après Gestion des joueurs (§2.22), après
 > la file de validation des paris (§2.21), après le tableau de bord admin
@@ -99,11 +101,12 @@ dépendance sur le moteur de scoring T5. Restent « résolution » et
 « requêtes », toutes deux PARTIELLEMENT bloquées par l'absence de T5 (voir
 GAPS_OUVERTS.md pour le détail exact de ce qui est/n'est pas codable dès
 maintenant). Le bouton Recalculer du tableau de bord reste absent pour la
-même raison — mais le CHANTIER T5 est désormais ENTAMÉ : le **moteur pur**
-(§2.24, `lib/scoring/engine.ts`, lot 1/4, 26 tests `vitest` PASSENT) est
-CODÉ ET VÉRIFIÉ. Restent 3 lots avant de pouvoir débloquer résolution/
-requêtes/Recalculer : le writer `series.official_*`, l'orchestration
-(`recompute*`), puis le câblage admin lui-même.
+même raison — mais le CHANTIER T5 avance : le **moteur pur** (§2.24,
+`lib/scoring/engine.ts`, lot 1/4, 26 tests `vitest` PASSENT) et le
+**writer `series.official_*`** (§2.25, `lib/sync/writeSeriesOutcome.ts`,
+lot 2/4) sont CODÉS ET VÉRIFIÉS. Restent 2 lots avant de pouvoir débloquer
+résolution/requêtes/Recalculer : l'orchestration (`recompute*`), puis le
+câblage admin lui-même.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2319,6 +2322,32 @@ tous PASSENT).
 
 Vérifié : npx tsc --noEmit, npx eslint ., npx next build tous propres
 (aucune route impactée, engine.ts/.test.ts hors app/) ; npm test → 26/26.
+
+COMMITTÉ et POUSSÉ sur `main`.
+```
+
+### 2.25 Lot 2/4 T5 — Writer `series.official_*` (`lib/sync/writeSeriesOutcome.ts`)
+
+```text
+Périmètre : SPEC_TECHNIQUE_SCORING_V0_1.md §12.1/§12.2 (C-2) — UNIQUEMENT
+la fonction d'écriture, PAS le reste de T4 (aucune route /api/sync/*, aucun
+client Highlightly, aucun cron — ces pièces restent à construire
+séparément le jour où la vraie synchro API est câblée).
+
+Fonction fine (un seul UPDATE service_role sur `series.official_status/
+official_winner_team_id/official_score_format`), SANS garde de
+"changement" — réécrit toujours ce qu'on lui donne (idempotent) ; la
+décision d'appeler ou non revient à L'APPELANT (recomputeMatch, lot 3 —
+"on ne rejoue pas pour rien", §10.3). Ne re-vérifie PAS is_admin()
+elle-même (contexte système, service_role) — c'est la responsabilité de
+l'appelant (action admin re-vérifiée AVANT d'appeler, T6a §5.1).
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build tous propres.
+Test en conditions réelles (service_role, sur une série "sans rôle
+particulier" du jeu de test) : écriture des 3 colonnes vérifiée, puis
+revert vérifié (état final identique à l'état initial). PAS de test
+`vitest` pour ce module (touche une vraie base, pas une fonction pure —
+vérifié en conditions réelles comme le reste du projet, pas mockée).
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```

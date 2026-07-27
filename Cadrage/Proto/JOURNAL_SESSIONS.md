@@ -2750,6 +2750,29 @@ aucune route impactée.
 **Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.24 + note sur
 le découpage des 4 lots + `vitest`) ; cette entrée de journal.
 
-**État en fin de session** : moteur pur CODÉ, TESTÉ (pas encore committé —
-à confirmer avec l'utilisateur). Prochaine étape : lot 2/4, le writer
-`series.official_*`.
+**État en fin de session** : moteur pur CODÉ, TESTÉ, COMMITTÉ et POUSSÉ.
+Prochaine étape : lot 2/4, le writer `series.official_*`.
+
+---
+
+## Session du 27/07/2026 (suite) — Chantier T5, lot 2/4 : writer `series.official_*`
+
+**Code** : `lib/sync/writeSeriesOutcome.ts` — UNIQUEMENT le writer (T5
+§12.1/§12.2), pas le reste de T4 (pas de route API, pas de client
+Highlightly, pas de cron, comme annoncé au découpage du lot 1). Fonction
+fine (un UPDATE service_role sur les 3 colonnes `series.official_*`), sans
+garde de « changement » — c'est à l'appelant (orchestration, lot 3) de
+décider s'il faut écrire.
+
+**Vérifié** : `tsc`/`eslint`/`next build` propres. Test en conditions
+réelles (service_role, sur une série sans rôle particulier du jeu de
+test) : écriture des 3 colonnes vérifiée puis revert vérifié. Pas de test
+`vitest` pour ce module — touche une vraie base, vérifié en conditions
+réelles comme le reste du projet plutôt que mocké.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.25, header,
+§2 avancement) ; cette entrée de journal.
+
+**État en fin de session** : writer CODÉ, VÉRIFIÉ (pas encore committé —
+à confirmer avec l'utilisateur). Prochaine étape : lot 3/4, l'orchestration
+(`recomputeMatch`/`recomputeSeries`/`recomputeBet`/`recomputeCompetition`).
