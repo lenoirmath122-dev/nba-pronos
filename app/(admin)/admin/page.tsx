@@ -5,9 +5,9 @@ import styles from "./page.module.css";
 
 // Tableau de bord admin (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1, VALIDÉ) : premier
 // écran du lot Admin. Composant SERVEUR — seule la RecalculateButton est
-// "use client" (§4, dialogue de confirmation). Les 5 pages filles sont
-// désormais TOUTES des <Link> actifs — le lot Admin ET le chantier T5
-// sont entièrement clos (lot 4c, dernier morceau du câblage admin).
+// "use client" (§4, dialogue de confirmation). Le lot Admin ET le chantier
+// T5 sont entièrement clos ; « Compétitions » (SPEC_ECRAN_ADMIN_
+// COMPETITIONS_V0_1, chantier séparé et postérieur) ajouté en lien simple.
 
 export default async function AdminDashboardPage() {
   const data = await getAdminDashboardData();
@@ -56,6 +56,14 @@ export default async function AdminDashboardPage() {
       </ul>
 
       <ul className={styles.linkList}>
+        <li>
+          <Link href="/admin/competitions" className={styles.linkEntryActive}>
+            Compétitions
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
         <li>
           <Link href="/admin/players" className={styles.linkEntryActive}>
             Gestion des joueurs
