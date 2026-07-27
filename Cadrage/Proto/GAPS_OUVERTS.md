@@ -147,6 +147,19 @@
   de la V1 — même famille que l'autre élément temporaire encore suivi
   (hub Jouer temporaire ; la déconnexion temporaire, elle, est retirée pour
   de bon depuis l'écran Profil, 27/07/2026).
+- **Dates du jeu de données de test à re-décaler périodiquement** (trouvé le
+  27/07/2026, demande utilisateur — ses amis testeurs, via `Demo_Amis`
+  ci-dessus, ne voyaient plus aucun match à pronostiquer ni de bracket
+  ouvert) : `bracket_deadline` et les dates des matchs sont des timestamps
+  ABSOLUS posés relativement au moment du seed (23/07/2026) — 4 jours plus
+  tard, tout était mécaniquement passé. Corrigé une première fois (5 séries
+  « sans rôle particulier » + `bracket_deadline` décalées vers l'avenir,
+  mêmes offsets relatifs qu'à l'origine ; les 3 matchs à rôle spécial de
+  §2.11 — CLE-ORL FINISHED, DEN-SAC IN_PROGRESS, MIN-GSW latence —
+  intentionnellement NON touchés). Se reproduira : à recorriger (même
+  méthode, script jetable service_role) chaque fois que la démo doit
+  redevenir active après quelques jours d'inactivité, tant que le seed
+  n'est pas remplacé par un mécanisme relatif à `now()`.
 - **Pré-remplissage IA gagné/perdu des paris** (reporté, non bloquant V1) :
   évolution envisagée pour suggérer gagné/perdu à partir des données du
   match (réaliste pour les paris déductibles de scores/box scores, inopérant

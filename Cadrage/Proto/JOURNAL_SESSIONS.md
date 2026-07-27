@@ -2495,7 +2495,39 @@ supprimés (non committés).
 entrées : bouton Recalculer + 5 pages filles admin, bloquées sur T5 pour la
 première) ; cette entrée de journal.
 
-**État en fin de session** : tableau de bord admin CODÉ et VÉRIFIÉ (pas
-encore committé/déployé — à confirmer avec l'utilisateur). Prochaine étape :
-choisir la 1ʳᵉ page fille (validation, résolution, requêtes, joueurs ou
-logs) — chacune sa propre spec, comme ce lot.
+**État en fin de session** : tableau de bord admin CODÉ, VÉRIFIÉ, COMMITTÉ
+(2 commits, même patron que les lots précédents — code+spec puis suivi) et
+POUSSÉ sur `main`. Prochaine étape : choisir la 1ʳᵉ page fille (validation,
+résolution, requêtes, joueurs ou logs) — chacune sa propre spec, comme ce
+lot.
+
+---
+
+## Session du 27/07/2026 (suite) — Correctif ponctuel : dates du jeu de données de test
+
+**Demande utilisateur** : ses amis testeurs (compte `Demo_Amis`, §2.17) ne
+voyaient plus aucun match à pronostiquer ni de bracket ouvert. Diagnostic
+(lecture seule, service_role) : `bracket_deadline` de « Playoffs NBA (test) »
+et les dates de tous les matchs sont des timestamps ABSOLUS posés
+relativement au moment du seed (23/07/2026, `hoursFromNow(...)`) — 4 jours
+plus tard (aujourd'hui), tout était mécaniquement passé : bracket verrouillé,
+0 match dans la fenêtre 3 jours de l'écran Matchs.
+
+**3 matchs identifiés comme À NE PAS toucher** (rôle de test documenté,
+§2.11) : CLE-ORL#1 FINISHED (teste Mes pronos verrouillé + une correction
+admin déjà rejouée), DEN-SAC#1 IN_PROGRESS (teste le badge EN DIRECT),
+MIN-GSW#1 resté SCHEDULED malgré une date passée (teste la latence).
+Confirmé AVEC l'utilisateur (AskUserQuestion) avant toute écriture.
+
+**Correctif** : script jetable service_role — décale les 5 AUTRES séries
+round 1 (sans rôle particulier) + `bracket_deadline`, en conservant les
+MÊMES offsets relatifs qu'à l'origine (même patron temporel que le seed :
+bracket_deadline = 1er match, les 4 autres séries étalées sur ~34h après).
+Script non committé (patch ponctuel de données, pas un changement du seed
+lui-même). Vérifié après coup : bracket_deadline dans le futur (28/07),
+5/9 matchs désormais dans la fenêtre 3 jours de l'écran Matchs.
+
+**Point noté pour la suite** (`GAPS_OUVERTS.md`) : ce correctif devra être
+rejoué à chaque fois que la démo redevient active après plusieurs jours
+d'inactivité, tant que le seed reste sur des dates absolues plutôt que
+relatives à `now()` au moment du lancement de la démo.
