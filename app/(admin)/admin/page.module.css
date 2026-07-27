@@ -88,6 +88,21 @@
   font-size: var(--font-size-sm);
 }
 
+.linkEntryActive {
+  composes: linkEntry;
+  text-decoration: none;
+}
+
+.linkEntryActive:hover,
+.linkEntryActive:focus-visible {
+  background: var(--color-surface-inset);
+}
+
+.linkEntryActive:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .inertTag {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
