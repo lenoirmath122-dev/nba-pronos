@@ -3061,3 +3061,38 @@ sessions, réécrite de façon concise conformément à la nature du fichier) ;
 committé — à confirmer avec l'utilisateur). Prochaine étape à re-discuter
 avec l'utilisateur : ordre entre vulnérabilités npm, vrai hub Jouer, et
 lot 2/3 des compétitions (saisie manuelle de résultats).
+
+---
+
+## Correctif — dialogue de validation Matchs (27/07/2026, suite)
+
+Après le commit du lot 1/3 Compétitions, question hors-chantier de
+l'utilisateur : capture d'écran de `/play/matches` (test mobile réel sur
+Vercel), LAL–HOU, Lakers sélectionnés + écart posé à 6, mais message
+d'erreur rouge « Choisis un vainqueur et un écart avant de valider. »
+affiché malgré une saisie visiblement complète. « Normal ? »
+
+**Diagnostic** (lecture de code, pas de reproduction en environnement
+réel) : `PredictionForm.tsx` active `Valider le prono` dès que la saisie
+LOCALE (state React) est complète, mais `validateMatchPrediction`
+(`lib/actions/matches.ts`) relit le brouillon PERSISTÉ en base, jamais la
+saisie locale. Cliquer directement sur `Valider` sans être passé par
+`Enregistrer le brouillon` échoue donc systématiquement — exactement le
+cas de la capture. Confirmé comme vrai bug, pas une fausse manip.
+
+Proposition initiale (désactiver `Valider` tant que non enregistré) —
+**refusée par l'utilisateur** : le bouton doit rester accessible. Contre-
+proposition de l'utilisateur, actée telle quelle : dialogue de
+confirmation à deux variantes selon `isUnsaved` — brouillon à jour :
+inchangé (Annuler/Valider) ; brouillon non enregistré : avertissement
+explicite + 3 actions (Retour / Enregistrer le brouillon / Valider
+définitivement — enregistre puis valide en un seul clic).
+
+**Code** : `components/matches/PredictionForm.tsx` (+`.module.css`,
+nouvelle classe `.dialogSecondary`). Spec amendée en miroir
+(`SPEC_ECRAN_MATCHS_V0_1.md` §21, décision consignée au §19).
+
+**Vérifié** : `tsc`/`eslint`/`next build` propres. Action `useTransition`
+(même famille que `RecalculateButton`) — pas rejouable en headless comme
+noté précédemment ; test réel laissé à l'utilisateur sur le déploiement,
+comme convenu avant de committer.

@@ -2696,3 +2696,32 @@ compétition de test résiduelle.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```
+
+### 2.31 Correctif — dialogue de validation Matchs (session du 27/07/2026, suite)
+
+```text
+Remonté par l'utilisateur en test réel mobile sur le déploiement Vercel
+(écran /play/matches, LAL–HOU) : sélection complète à l'écran (Lakers +
+écart 6) mais clic sur « Valider le prono » rejeté avec « Choisis un
+vainqueur et un écart avant de valider. ». Diagnostic : le bouton s'active
+sur la saisie LOCALE (React state), mais `validateMatchPrediction`
+(lib/actions/matches.ts) relit le brouillon PERSISTÉ en base — jamais la
+saisie locale. Cliquer « Valider » sans être passé par « Enregistrer le
+brouillon » échouait donc systématiquement, alors que l'écran semblait
+prêt. Vrai bug, pas une fausse manip.
+
+Correctif décidé avec l'utilisateur (pas de disable supplémentaire sur le
+bouton) : `components/matches/PredictionForm.tsx`, dialogue de
+confirmation à deux variantes selon que la saisie locale diffère du
+brouillon enregistré (`isUnsaved`) — brouillon à jour : dialogue inchangé
+(Annuler/Valider) ; brouillon non enregistré : corps de dialogue explicite
++ 3 actions (Retour / Enregistrer le brouillon / Valider définitivement,
+qui enregistre puis valide en un seul clic explicite). Spec amendée en
+miroir : SPEC_ECRAN_MATCHS_V0_1.md §21.
+
+Vérifié : npx tsc --noEmit, npx eslint, npx next build tous propres.
+Action `useTransition` (comme RecalculateButton) : pas rejouable en
+headless, test réel laissé à l'utilisateur sur le déploiement.
+
+PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+```
