@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getProfileData, getTeamOptions } from "@/lib/queries/profile";
 import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
 import { logout } from "@/lib/auth/actions";
@@ -73,10 +74,9 @@ export default async function ProfilePage({
       {profile.isAdmin && (
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Administration</h2>
-          {/* /admin n'existe pas encore (lot futur) — entrée inerte, même
-              patron que le hub Jouer temporaire (ETAT_ACTUEL.md §2.10) plutôt
-              qu'un lien mort vers une route 404. */}
-          <p className={styles.inertEntry}>Admin — à venir</p>
+          <Link href="/admin" className={styles.adminLink}>
+            Tableau de bord admin
+          </Link>
         </section>
       )}
 
