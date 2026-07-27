@@ -2138,5 +2138,100 @@ d'implémentation actées ajoutées) ; cette entrée de journal.
 
 **État en fin de session** : écran Bracket personnel CODÉ et VÉRIFIÉ (test
 pur de la cascade + session authentifiée réelle en navigateur). Prochaine
-étape à confirmer avec l'utilisateur : « Mes paris » (consultation/quotas,
-spec à écrire) ou les écrans admin.
+étape à confirmer avec l'utilisateur : « Mes paris » (consultation/quotas
+globaux, hors périmètre du lot Nouveau pari §2.15) ou les écrans admin —
+choix laissé ouvert, aucune date arrêtée.
+
+---
+
+## Session du 27/07/2026 (suite) — Déploiement Vercel, activation de l'inscription, 1er admin réel
+
+Suite directe. L'utilisateur demande la prochaine étape du projet, puis
+décide d'attaquer le déploiement d'une démo Vercel pour ses amis plutôt que
+de continuer le codage d'écran — « Mes paris »/admin restent en attente.
+
+**Commit/push du travail en attente** : les lots « Nouveau pari » (§2.15) et
+« Bracket personnel » (§2.16) étaient codés et testés mais jamais poussés
+sur GitHub. `npx tsc --noEmit`/`npx eslint .`/`npx next build` revérifiés
+propres avant tout push. Le fichier `Cadrage/nba-pronos.lnk` (raccourci
+Windows accidentel vers le dossier du dépôt, pas du contenu projet) exclu du
+commit. Un seul commit groupé pour les deux lots (`d051097`), confirmé
+explicitement par l'utilisateur après qu'un premier « ok » ambigu — arrivé
+noyé dans une notification système de tâche en arrière-plan, donc NON traité
+comme une confirmation réelle — a été signalé et écarté par prudence
+(risque d'injection). Un 2e commit (`6ff2a68`) suit juste après (voir plus
+bas, correctif de la route racine).
+
+**Déploiement Vercel** : CLI connectée (`npx vercel login`, flow OAuth par
+appareil, navigateur). Projet lié à un NOUVEAU projet Vercel
+(`lenoir-nba/nba-pronos`), connecté automatiquement au dépôt GitHub
+`lenoirmath122-dev/nba-pronos`. Les 4 variables d'environnement de
+`.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SYNC_SECRET`) poussées sur les 3 environnements
+Vercel (Production/Preview/Development) via une commande shell qui lit
+`.env.local` directement — jamais les valeurs elles-mêmes dans la commande
+visible, pour ne pas les exposer dans la transcription. Déployé en
+production (`npx vercel --prod`) → **https://nba-pronos.vercel.app**, aliasé
+automatiquement.
+
+**Bug trouvé au premier chargement réel** (signalé par l'utilisateur) : la
+racine du site (`/`) affichait le scaffold par défaut de `create-next-app`
+(« To get started, edit the page.tsx file ») au lieu de rediriger vers
+l'app. Cause : `app/page.tsx` n'avait jamais été retouché depuis la création
+du projet (18/07/2026) — invisible jusqu'ici car tous les tests précédents
+visitaient des routes précises (`/login`, `/home`, etc.), jamais la racine
+nue. Corrigé (`app/page.tsx` → `redirect("/login")`, qui renvoie lui-même
+vers `/home` si une session est déjà active, logique déjà portée par
+`proxy.ts`) ; `tsc`/`eslint` revérifiés propres, commit `6ff2a68`, poussé,
+re-déployé et vérifié (`curl` → 307 vers `/login`).
+
+**Activation de l'inscription réelle** : au moment de désactiver « Confirm
+email » dans le dashboard Supabase, l'utilisateur s'est d'abord trompé de
+réglage (ou ne l'a pas sauvegardé) — un premier compte réel (le sien,
+`lenoir.math122@gmail.com`, pseudo **Rillettes-31**) a bien reçu un email de
+confirmation avant de pouvoir se connecter (vérifié via les métadonnées
+`auth.users` : `confirmation_sent_at` quasi simultané à `created_at`,
+`email_confirmed_at` ~43s plus tard, `last_sign_in_at` seulement après ce
+clic). Après capture d'écran, le réglage **Sign In / Providers → Supabase
+Auth → Confirm email** était bien décoché et sauvegardé — mais un 2e test
+(compte jetable créé via l'anon key, immédiatement supprimé après) a de
+nouveau buté sur `over_email_send_rate_limit`, ET une vraie tentative de
+l'utilisateur via `/signup` a échoué avec le message générique « Impossible
+de créer le compte. Réessaie. » (branche catch-all de `signup()`,
+`lib/auth/actions.ts`). **Piège reconnu mais PAS définitivement tranché** :
+soit le quota minuscule du mailer par défaut (souvent ~2 emails/heure,
+partagé par TOUS les types d'email — pas seulement la confirmation) était
+encore épuisé par le tout premier envoi, soit Supabase tente quand même un
+email de courtoisie à l'inscription indépendamment du fait que la
+confirmation soit *obligatoire* ou non. Non revérifié après un délai
+suffisant pour trancher — voir `GAPS_OUVERTS.md`.
+
+**Contournement retenu pour la démo** : au lieu d'attendre/investiguer
+davantage, création directe d'un compte via l'API Admin (`email_confirm:
+true`, même mécanisme que les 7 comptes de seed, AUCUN envoi d'email
+possible par construction) — décision explicite de l'utilisateur : **UN
+SEUL compte PARTAGÉ** pour tous ses amis pour cette démo (`Demo_Amis` /
+`demo-amis@nba-pronos.test`, rôle PLAYER), pas un compte par personne.
+Compromis signalé explicitement AVANT de créer le compte (un seul bracket/
+jeu de pronos partagé, pas de vraie compétition entre amis) — accepté en
+connaissance de cause, un compte par personne prévu après la fin de la V1.
+
+**1er admin réel** : le compte de l'utilisateur (Rillettes-31) promu ADMIN
+par `UPDATE public.users SET role='ADMIN'` direct via service_role — PAS via
+une migration dédiée (contrairement à ce qu'anticipait §6 `ETAT_ACTUEL.md`,
+« écrire la migration du 1er admin réel »), et pas via un écran admin de
+promotion (aucun n'existe encore). Répond à l'esprit du point ouvert mais de
+façon ad hoc, pas par le mécanisme prévu à l'origine.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.18, §1/§6/§7
+mis à jour) ; `GAPS_OUVERTS.md` (T8 partiellement clos — Vercel/variables
+d'env FAITS — nouveaux points ouverts : comportement Confirm email pas
+tranché, compte démo partagé à traiter avant le passage aux comptes
+individuels) ; cette entrée de journal.
+
+**État en fin de session** : démo accessible publiquement
+(https://nba-pronos.vercel.app), inscription au code `EBC67AAD` fonctionnelle
+pour un compte individuel mais avec le comportement email non totalement
+élucidé, admin réel en place, compte de démo partagé communiqué à
+l'utilisateur pour ses amis. Prochaine étape toujours ouverte, inchangée par
+ce lot : « Mes paris » (consultation/quotas globaux) ou les écrans admin.

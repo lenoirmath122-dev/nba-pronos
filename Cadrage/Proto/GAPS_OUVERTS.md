@@ -86,14 +86,41 @@
   ajoutée (l'asset n'est pas fourni, `--font-ui` retombe sur `system-ui`) ;
   asset réel du bandeau parquet (`public/brand/hero-parquet.webp`) pas encore
   déposé (à la charge de l'utilisateur, acté 21/07/2026).
-- **T8 — Déploiement** : configuration du planificateur externe gratuit
-  (cron-job.org / GitHub Actions — fréquences des jobs `/api/sync/*` et
-  `/api/heartbeat`), variables d'env et secrets côté Vercel — pas encore
-  traité. S'y ajoute désormais : **effacer le jeu de données de test**
+- **T8 — Déploiement** : PARTIELLEMENT FAIT le 27/07/2026 (`ETAT_ACTUEL.md`
+  §2.17) — projet Vercel lié + variables d'env poussées + déployé en
+  production (https://nba-pronos.vercel.app). Reste : configuration du
+  planificateur externe gratuit (cron-job.org / GitHub Actions — fréquences
+  des jobs `/api/sync/*` et `/api/heartbeat`), toujours pas traité. S'y
+  ajoute désormais : **effacer le jeu de données de test**
   (`ETAT_ACTUEL.md` §2.6/§6) avant tout lancement réel — compétition
   « Playoffs NBA (test) » + son contenu, et les 7 comptes
   `seed-*@nba-pronos.test` via `auth.admin.deleteUser`. Aucun script de
-  nettoyage écrit à ce jour (le seed n'est pas idempotent).
+  nettoyage écrit à ce jour (le seed n'est pas idempotent). Le futur script
+  devra aussi traiter le compte de démo partagé `demo-amis@nba-pronos.test`
+  (créé le 27/07/2026, voir gap dédié ci-dessous) — motif d'email différent
+  de `seed-*`, pas couvert automatiquement par un filtre sur ce seul motif.
+- **Comportement de « Confirm email » pas élucidé** (27/07/2026,
+  `ETAT_ACTUEL.md` §2.17/§7) : le réglage a été décoché et sauvegardé dans
+  le dashboard Supabase (confirmé par capture d'écran), mais un test
+  contrôlé ET une vraie tentative d'inscription ont quand même buté sur
+  `over_email_send_rate_limit`/le message générique catch-all juste après.
+  Deux hypothèses non tranchées : quota du mailer par défaut (partagé entre
+  tous les types d'email) encore épuisé par un envoi précédent, ou envoi de
+  courtoisie indépendant du réglage. Pas revérifié après un délai suffisant
+  pour trancher. Solution de contournement immédiate (création de compte
+  via API Admin, `email_confirm:true`) utilisée pour la démo, mais ne
+  résout pas la question pour une vraie inscription publique en masse — à
+  reprendre : soit revérifier après un délai, soit configurer un SMTP
+  personnalisé (Resend évoqué, nécessite un nom de domaine vérifié que
+  l'utilisateur ne possède pas à ce jour).
+- **Compte de démo partagé, temporaire** (27/07/2026, `ETAT_ACTUEL.md`
+  §2.17) : `Demo_Amis` / `demo-amis@nba-pronos.test` (rôle PLAYER), créé pour
+  que les amis de l'utilisateur testent l'appli SANS vraie compétition entre
+  eux (un seul bracket/jeu de pronos partagé par tout le monde — compromis
+  signalé et accepté explicitement). **À retirer ou reconvertir** dès que
+  l'utilisateur passe à un compte par ami, prévu explicitement après la fin
+  de la V1 — même famille que les autres éléments temporaires déjà suivis
+  (déconnexion temporaire, hub Jouer temporaire).
 - **Pré-remplissage IA gagné/perdu des paris** (reporté, non bloquant V1) :
   évolution envisagée pour suggérer gagné/perdu à partir des données du
   match (réaliste pour les paris déductibles de scores/box scores, inopérant

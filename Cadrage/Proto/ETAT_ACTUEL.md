@@ -5,9 +5,10 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — écran Bracket
-> personnel codé et testé, §2.16, spec rédigée et close en séance), après le
-> bandeau sticky + saisie inline dans Matchs (§2.15 suite), l'écran Nouveau
+> Dernière mise à jour : session du 27/07/2026 (suite — déploiement Vercel,
+> activation de l'inscription, 1er admin réel, §2.17), après l'écran Bracket
+> personnel codé et testé (§2.16, spec rédigée et close en séance), lui-même
+> après le bandeau sticky + saisie inline dans Matchs (§2.15 suite), l'écran Nouveau
 > pari codé et testé le 26/07/2026 (SPEC_ECRAN_NOUVEAU_PARI_V0_1.md, CLOSE,
 > §2.15), lui-même après le commit/push du lot logos + amendements de specs
 > (25/07/2026, §2.14), la refonte de l'entête Matchs + correctif des 30 logos
@@ -953,7 +954,86 @@ bracket, deadline restaurée, mot de passe réinitialisé) — base vérifiée
 identique à l'état seedé.
 ```
 
-### 2.17 Prochaine étape
+### 2.17 Déploiement Vercel + activation de l'inscription (session du 27/07/2026, suite)
+
+```text
+Périmètre : premier déploiement public du projet, hors périmètre de tout
+lot d'écran — décidé par l'utilisateur pour montrer une démo à ses amis,
+avant de reprendre le codage (« Mes paris »/admin, §2.18).
+
+Commit/push : les lots « Nouveau pari » (§2.15) et « Bracket personnel »
+(§2.16), codés/testés mais jamais poussés, groupés en UN commit (`d051097`,
+tsc/eslint/build revérifiés propres avant push) — `Cadrage/nba-pronos.lnk`
+(raccourci Windows accidentel, pas du contenu projet) exclu. Confirmation
+explicite requise avant ce push : un premier « ok » était arrivé noyé dans
+une notification système de tâche en arrière-plan (donc NON un message
+utilisateur réel) — signalé comme suspect plutôt que traité comme une
+autorisation, l'utilisateur a reconfirmé directement ensuite.
+
+Vercel : CLI connectée (`vercel login`, OAuth par appareil). Nouveau projet
+`lenoir-nba/nba-pronos` lié et connecté au dépôt GitHub existant
+(`lenoirmath122-dev/nba-pronos`, remote déjà en place). Les 4 variables de
+`.env.local` (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`,
+`SUPABASE_SERVICE_ROLE_KEY`, `SYNC_SECRET`) poussées sur Production/Preview/
+Development via une commande qui les lit directement depuis le fichier —
+jamais exposées en clair dans une commande visible. Déployé en production
+(`vercel --prod`) → **https://nba-pronos.vercel.app**.
+
+Bug trouvé au premier chargement réel (signalé par l'utilisateur) :
+`app/page.tsx` était resté le scaffold `create-next-app` par défaut depuis
+la création du projet (18/07/2026) — jamais retouché, jamais remarqué car
+tous les tests précédents visitaient des routes précises, jamais la racine
+nue. Corrigé (`redirect("/login")`, qui renvoie lui-même vers `/home` si une
+session est active, logique déjà portée par `proxy.ts`) — commit `6ff2a68`,
+re-déployé, vérifié (`curl` → 307 vers `/login`).
+
+Activation de l'inscription réelle — épisode PAS totalement élucidé (voir
+GAPS_OUVERTS.md) : dans le dashboard Supabase (Sign In / Providers →
+Supabase Auth → Confirm email), un premier essai de désactivation n'a
+apparemment pas pris effet à temps — le tout premier compte réel (celui de
+l'utilisateur, `lenoir.math122@gmail.com`, pseudo **Rillettes-31**) a reçu un
+email de confirmation avant de pouvoir se connecter (vérifié via les
+métadonnées `auth.users` : `confirmation_sent_at` quasi simultané à
+`created_at`, connexion seulement après le clic sur le lien). Capture
+d'écran ensuite : le toggle était bien décoché et sauvegardé (bouton Save
+grisé, rien à enregistrer) — mais un test contrôlé (compte jetable via l'anon
+key, supprimé aussitôt après) a de nouveau buté sur
+`over_email_send_rate_limit`, et une vraie tentative `/signup` de
+l'utilisateur a échoué avec le message générique catch-all de `signup()`
+(`lib/auth/actions.ts`). Hypothèse retenue mais NON confirmée : le quota du
+mailer par défaut Supabase (partagé entre tous les types d'email, pas
+seulement la confirmation) était encore épuisé par le tout premier envoi —
+alternative non exclue : un envoi de courtoisie indépendant du caractère
+« obligatoire » ou non de la confirmation. Resend évoqué comme solution
+durable (SMTP personnalisé) mais écarté pour l'instant : nécessite un nom de
+domaine vérifié que l'utilisateur ne possède pas, sans quoi Resend ne permet
+d'envoyer qu'à l'adresse du compte Resend lui-même.
+
+Contournement retenu pour la démo : compte créé directement via l'API Admin
+(`email_confirm: true`, même mécanisme que les 7 comptes de seed, AUCUN envoi
+d'email possible par construction) — **UN SEUL compte PARTAGÉ**, décision
+explicite de l'utilisateur après qu'on lui a signalé le compromis (un seul
+bracket/jeu de pronos pour tout le monde, pas de vraie compétition entre
+amis tant que ce compte est partagé) : `Demo_Amis` /
+`demo-amis@nba-pronos.test`, rôle PLAYER. Passage à un compte par ami prévu
+explicitement APRÈS la fin de la V1.
+
+1er admin réel : le compte de l'utilisateur (Rillettes-31) promu ADMIN par
+`UPDATE public.users SET role='ADMIN'` direct via service_role — PAS par une
+migration dédiée (contrairement à ce qu'anticipait le point ouvert du §6
+ci-dessous), et PAS par un écran admin de promotion (aucun n'existe encore,
+« écrans admin » reste un lot à coder, §2.18). Le compte cumule donc les
+deux rôles (joueur Rillettes-31 + admin) pour l'instant.
+
+Code de compétition communiqué (pour une inscription individuelle
+ultérieure, hors du compte partagé) : `EBC67AAD` — compétition « Playoffs
+NBA (test) », seule ACTIVE en base à ce jour.
+
+Aucun changement de schéma, aucune migration dans ce lot (2 commits
+applicatifs seulement : logique app/, pas de fichier `supabase/migrations/`).
+```
+
+### 2.18 Prochaine étape
 
 ```text
 Dans l'ordre à confirmer avec l'utilisateur : « Mes paris » (consultation/
@@ -1377,9 +1457,12 @@ supabase/
   dans le SUIVI (`GAPS_OUVERTS.md`) — les trois, pas seulement un des trois.
 ```
 
-## 6. Config à faire au déploiement — pas encore faite
+## 6. Config à faire au déploiement — PARTIELLEMENT FAITE (§2.17, 27/07/2026)
 
 ```text
+- Vercel : FAIT (§2.17, 27/07/2026). Projet `lenoir-nba/nba-pronos` lié au
+  dépôt GitHub, 4 variables d'env poussées (Production/Preview/Development),
+  déployé en production → https://nba-pronos.vercel.app.
 - Dashboard Supabase : désactiver « Confirm email » (accès immédiat au
   compte après inscription, C4 — rappel laissé dans la migration #2).
   DEVENU CONCRET le 24/07/2026 (§2.11) : le vrai flux /signup, testé pour la
@@ -1388,9 +1471,27 @@ supabase/
   réelle tente d'envoyer un email de confirmation). Les comptes de seed y
   échappent (créés via l'API Admin, email_confirm:true, aucun email envoyé)
   — ce n'est donc apparu qu'en testant la vraie inscription publique.
+  TENTÉ le 27/07/2026 (§2.17) : réglage décoché et sauvegardé (confirmé par
+  capture d'écran), mais comportement PAS totalement élucidé — un test
+  contrôlé et une vraie tentative ont quand même buté sur le même mur
+  après coup. Toujours listé ici tant que non confirmé fiable — voir
+  GAPS_OUVERTS.md pour le détail et la piste retenue (SMTP personnalisé,
+  ex. Resend, nécessite un nom de domaine vérifié — non disponible à ce
+  jour).
 - Écrire la migration de seed du 1er admin RÉEL (A4), une fois le 1er
   pseudo réel connu — DISTINCT du compte Sofia_Admin du jeu de test (§2.6),
-  qui n'est qu'un admin de test jetable.
+  qui n'est qu'un admin de test jetable. FAIT DE FAÇON AD HOC le 27/07/2026
+  (§2.17) : compte Rillettes-31 promu ADMIN par UPDATE SQL direct, PAS par
+  une migration ni un écran dédié (aucun n'existe encore) — cumule les deux
+  rôles (joueur + admin) en attendant un vrai mécanisme.
+- NOUVEAU (27/07/2026, §2.17) : compte de démo PARTAGÉ créé pour la
+  démonstration aux amis de l'utilisateur (`Demo_Amis` /
+  `demo-amis@nba-pronos.test`, rôle PLAYER, via API Admin) — à supprimer ou
+  reconvertir quand le passage à un compte par ami sera fait (prévu
+  explicitement après la fin de la V1), et à ne pas oublier lors du
+  nettoyage du jeu de données de test (ne correspond PAS au motif
+  `seed-*@nba-pronos.test` des 7 comptes de test originels, donc pas couvert
+  par le même script de nettoyage sans ajustement).
 - EFFACER le jeu de données de test (§2.6) avant tout lancement réel :
   compétition « Playoffs NBA (test) » + ses séries/matchs/pronos/paris (DELETE
   SQL, en respectant l'ordre des FK composites — séries du 1er tour avant les
@@ -1562,6 +1663,26 @@ supabase/
   (`429, over_email_send_rate_limit`). Invisible tant que les comptes de test
   sont créés via l'API Admin (`email_confirm:true`, aucun envoi) : ce n'est
   apparu qu'en testant pour la première fois le vrai formulaire public.
+  SUITE le 27/07/2026 (§2.17) : même en décochant « Confirm email » (vérifié
+  décoché ET sauvegardé), un test contrôlé et une vraie tentative ont quand
+  même re-buté sur le même mur peu après. PAS élucidé : soit le quota
+  minuscule du mailer par défaut (souvent ~2 emails/heure, partagé entre
+  TOUS les types d'email, pas seulement la confirmation) était encore
+  épuisé par un envoi précédent, soit Supabase tente un email de courtoisie
+  indépendamment du caractère obligatoire ou non de la confirmation. Seule
+  solution de contournement fiable trouvée : créer les comptes via l'API
+  Admin (`email_confirm:true`), qui ne déclenche structurellement aucun
+  envoi — pas une vraie résolution du mystère, un contournement.
+
+- Route racine jamais câblée (`app/page.tsx`, trouvé au premier déploiement
+  Vercel réel, §2.17, 27/07/2026) : le fichier était resté le scaffold
+  `create-next-app` par défaut depuis la création du projet (18/07/2026) —
+  jamais retouché, jamais remarqué en dev/test car TOUS les tests précédents
+  visitaient des routes précises (`/login`, `/home`, etc.), jamais la racine
+  nue (`/`). Un site tout juste déployé mérite un tour rapide de sa racine
+  avant de le considérer vérifié, pas seulement des routes déjà connues.
+  Corrigé par un simple `redirect("/login")`, qui délègue à `proxy.ts`
+  (déjà testé) le renvoi vers `/home` si une session est active.
 
 - Logo décentré dans sa pastille malgré un CSS correct (trouvé en testant Mes
   pronos, §2.13) : `object-fit: contain` centre fidèlement la boîte du
