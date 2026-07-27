@@ -5,13 +5,16 @@
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
 > **Ordre de reprise décidé avec l'utilisateur (27/07/2026, après la clôture
-> du chantier T5 + lot Admin)** :
+> du chantier T5 + lot Admin)** — le chantier Gestion des compétitions
+> (ci-dessous) a été ouvert APRÈS cette liste, à re-situer dans l'ordre à la
+> reprise :
 > 1. **Vulnérabilités npm** (12, détail ci-dessous) — sécurité, à traiter
 >    avant tout nouveau développement.
 > 2. **Vrai hub Jouer** — remplace le hub temporaire (§2.10 `ETAT_ACTUEL.md`),
 >    aucune spec d'écran encore écrite.
-> 3. **Le reste** (moteur de synchro T4, Realtime T6c au-delà de l'existant)
->    — voir le point « Implémentation code de la V1 » ci-dessous.
+> 3. **Le reste** (lot 2/3 des compétitions — saisie manuelle de résultats,
+>    moteur de synchro T4, Realtime T6c au-delà de l'existant) — voir le
+>    point « Implémentation code de la V1 » ci-dessous.
 
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 
@@ -77,6 +80,29 @@
   cron — seul le writer `series.official_*` de T4 a été construit, comme
   dépendance de T5) et le Realtime + rendu des états au-delà de ce qui
   existe déjà (T6c). Détail dans `ETAT_ACTUEL.md` §2.
+- **Gestion des compétitions — 2 lots restants sur 3** (chantier ouvert le
+  27/07/2026, `ETAT_ACTUEL.md` §2.30, suite à une question directe de
+  l'utilisateur sur le switch Playoffs/Cup — a révélé que le plan
+  d'origine du 16/07/2026 visait la NBA Cup EN PREMIER pour la V1,
+  lancement réel visé le 30/10/2026, mais que le jeu de données de test a
+  silencieusement dérivé vers Playoffs le 23/07 sans que ça ne soit
+  recroisé ; le moteur de scoring T5, lui, n'a jamais dérivé, les deux
+  barèmes sont pleinement codés) : lot 1/3 (création, `/admin/
+  competitions`) FAIT et VÉRIFIÉ. Restent :
+  - **Lot 2/3 — saisie manuelle des résultats de match/avancement de
+    série** : LE PLUS IMPORTANT avant le 30/10 — trouvé au pré-vol du lot 1
+    que RIEN ne fait aujourd'hui avancer une équipe vers le tour suivant ni
+    ne pose un résultat officiel (ni T4, non codée, ni aucune action
+    admin — le writer `series.official_*` de T5 existe mais aucun écran ne
+    l'appelle pour un usage normal). Dure toute la compétition, pas un
+    geste ponctuel comme la création.
+  - **Lot 3/3 — clôture et archivage** : snapshot du classement final dans
+    `competition_archives` (déjà en base, jamais utilisée), reset ensuite.
+    Bouton déjà visible sur `/admin/competitions` mais désactivé.
+  - Hors périmètre des 3 lots, non tranché : mini-bracket NBA Cup (monté
+    une fois les 8 qualifiés connus, ~27/11) ; mapping automatique A7
+    (pré-remplissage depuis T4, quand elle existera) ; onglet Historique
+    côté Profil joueur (`decisions_multi_competitions_historique.md` §4).
 - **12 vulnérabilités npm (`npm audit`, trouvées le 27/07/2026, PRIORITÉ 1
   pour la prochaine session)** — aucune corrigée à ce jour. Deux chaînes
   indépendantes :

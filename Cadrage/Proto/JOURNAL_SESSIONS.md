@@ -2980,3 +2980,84 @@ de fichier, nouvelle entrée détaillée sur les 12 vulnérabilités, entrée
 « Implémentation V1 » reformulée pour refléter l'ordre) ; `ETAT_ACTUEL.md`
 (note de fin remplacée par l'ordre de reprise en 3 points) ; cette entrée
 de journal. Aucun code touché — uniquement de la documentation.
+
+---
+
+## Session du 27/07/2026 (suite) — Chantier Gestion des compétitions, lot 1/3 : création
+
+**Question de l'utilisateur** : « on n'a pas travaillé sur les choix de
+compétitions ? On est par défaut en Playoffs mais on doit pouvoir switcher
+en NBA Cup, c'est prévu ? »
+
+**Investigation, pas d'implémentation immédiate** (question exploratoire) :
+retracé `decisions_multi_competitions_historique.md`. Trouvaille : le plan
+d'origine (16/07/2026) visait la NBA Cup EN PREMIER pour la V1 (lancement
+réel visé 30/10/2026), Playoffs explicitement reporté « sans urgence,
+saison 2027 » — la mécanique Cup était même entièrement décidée le même
+jour. Le 17/07, le périmètre technique (modèle de données/RLS) a été
+élargi à Playoffs+Cup, mais le texte réaffirme un « séquencement
+d'implémentation orienté Cup ». Le 23/07, la création du 1er jeu de
+données de test a silencieusement choisi Playoffs (`seed-playoffs-test-
+data.mjs`) — AUCUNE discussion retrouvée recroisant ce choix avec la
+décision du 17/07. Tous les écrans codés depuis ont été testés contre ce
+jeu Playoffs, renforçant la dérive sans jamais la questionner. Le moteur
+de scoring (T5), lui, n'a jamais dérivé : les deux barèmes sont pleinement
+codés depuis le début.
+
+Présenté clairement à l'utilisateur (formulation factuelle, pas
+d'implémentation en douce). Réponse : peu importe pour les données de
+TEST, mais construire l'écran de gestion des compétitions pour être prêt
+le moment venu.
+
+**2e trouvaille, en creusant le besoin** : même une fois une compétition
+créée, RIEN ne fait aujourd'hui avancer une équipe vers le tour suivant ni
+ne pose un résultat officiel — ni T4 (synchro, non codée), ni aucune
+action admin (le writer `series.official_*` de T5 existe mais aucun écran
+ne l'appelle jamais pour un usage normal). Signalé avant de choisir quoi
+que ce soit.
+
+**Découpage en 3 lots proposé et confirmé** (AskUserQuestion) : 1. création
+(CE lot) — 2. saisie manuelle des résultats (remplace T4, dure toute la
+compétition, LE PLUS IMPORTANT avant le 30/10) — 3. clôture/archivage.
+Confirmé aussi : saisie manuelle des équipes par l'admin à la création,
+pas d'attente du mapping automatique A7 (dépend de T4).
+
+**Spec** (`SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md`, nouveau fichier, close
+en séance). **Trouvaille au pré-vol** : AUCUNE policy RLS d'INSERT
+n'existe sur `series` — la création du bracket Playoffs (15 lignes) passe
+donc par `getServiceClient()` (catégorie B, écriture admin-système, même
+famille que `recomputeCompetition`), après re-vérification de `is_admin()`
+en session, plutôt qu'une nouvelle migration RLS pour un cas d'usage rare.
+
+**Code** : `lib/queries/admin-competitions.ts` ; `lib/actions/
+admin-competitions.ts` (`createCompetition` — topologie du bracket
+Playoffs FIXE codée en dur, bottom-up NBA_FINALS→...→ROUND_1 pour toujours
+connaître l'id de la série aval avant l'amont ; validations serveur :
+16 équipes distinctes, conférences cohérentes) ; `app/(admin)/admin/
+competitions/{page,new}.tsx` (formulaires natifs, 100% composant serveur).
+Carte « Compétitions » ajoutée au tableau de bord.
+
+**Vérifié** : `tsc`/`eslint`/`next build`/`npm test` propres, 24 routes
+sans conflit.
+
+**Test en conditions réelles avec précaution particulière** (touche la
+VRAIE compétition active de la démo) : cas négatif sans risque (tentative
+de création alors qu'une compétition est active → refusée) ; cas de
+succès en ARCHIVANT TEMPORAIREMENT la vraie compétition (bloc try/finally
+garantissant la restauration même en cas d'échec), créant une compétition
+de test avec 16 vraies équipes, vérifiant les 15 séries (topologie
+correcte, ROUND_1 rempli, tours suivants vides), PUIS supprimant le test
+ET restaurant la vraie compétition en ACTIVE. Confirmé après coup :
+compétition réelle intacte, `/leaderboard`/`/bracket` répondent
+normalement, aucune trace de test résiduelle.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.30, header
+resserré — la chaîne « après X, après Y » avait grossi sur plusieurs
+sessions, réécrite de façon concise conformément à la nature du fichier) ;
+`GAPS_OUVERTS.md` (nouvelle entrée détaillée, ordre de reprise noté comme
+à re-discuter) ; cette entrée de journal.
+
+**État en fin de session** : lot 1/3 (création) CODÉ, VÉRIFIÉ (pas encore
+committé — à confirmer avec l'utilisateur). Prochaine étape à re-discuter
+avec l'utilisateur : ordre entre vulnérabilités npm, vrai hub Jouer, et
+lot 2/3 des compétitions (saisie manuelle de résultats).

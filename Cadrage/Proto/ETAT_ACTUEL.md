@@ -5,42 +5,21 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — lot 4c : file des
-> requêtes de correction (`/admin/requests`) codée et vérifiée en
-> conditions réelles sur 4 scénarios (dont un cas négatif où un trigger
-> DÉJÀ EN BASE, pas codé par ce lot, bloque l'auto-correction), §2.29 —
-> DERNIER morceau du câblage admin. **LE CHANTIER T5 ET LE LOT ADMIN SONT
-> DÉSORMAIS TOUS LES DEUX ENTIÈREMENT CLOS** (6 écrans admin, moteur de
-> scoring fonctionnel de bout en bout)), après le lot 4b (file de
-> résolution des paris, §2.28), après le lot 4a (bouton Recalculer câblé
-> sur le tableau de bord admin,
-> §2.27, PLUS un correctif de fond/texte de la coquille admin trouvé par
-> l'utilisateur en testant en vrai — les 4 écrans admin étaient quasi
-> illisibles depuis le début, jamais remarqué avant le premier vrai coup
-> d'œil navigateur), après le lot 3/4 (orchestration
-> `recompute*` codée et vérifiée en conditions réelles, 5 tests
-> d'intégration jetables sur une compétition isolée dont idempotence P5,
-> §2.26 — LE MOTEUR DE SCORING EST FONCTIONNELLEMENT COMPLET), après le
-> lot 2/4 (writer
-> `series.official_*`, §2.25), après le lot 1/4 (moteur de scoring PUR,
-> §2.24, 26 tests automatisés `vitest` — 1re dépendance de test du projet),
-> après un correctif de région Vercel (latence, iad1 → dub1, même région
-> que Supabase), après
-> Historique des logs (§2.23, quatrième écran du lot Admin, DERNIÈRE page
-> fille sans dépendance sur T5), après Gestion des joueurs (§2.22), après
-> la file de validation des paris (§2.21), après le tableau de bord admin
-> (§2.20) — ces 4, spec rédigée et close en séance — après l'écran Mes
-> paris codé et testé (§2.19, spec rédigée et close en séance), lui-même
-> après l'écran Profil
-> (§2.18, spec rédigée et close en séance), le déploiement Vercel +
-> activation de l'inscription + 1er admin réel (§2.17), l'écran
-> Bracket personnel codé et testé (§2.16, spec rédigée et close en séance),
-> lui-même après le bandeau sticky + saisie inline dans Matchs (§2.15 suite), l'écran Nouveau
-> pari codé et testé le 26/07/2026 (SPEC_ECRAN_NOUVEAU_PARI_V0_1.md, CLOSE,
-> §2.15), lui-même après le commit/push du lot logos + amendements de specs
-> (25/07/2026, §2.14), la refonte de l'entête Matchs + correctif des 30 logos
-> (§2.13), le correctif de pastille (§2.12) et le lot « Mes pronos »
-> (24/07/2026, SPEC_ECRAN_MES_PRONOS_V0_1.md, CLOSE, §2.11).
+> Dernière mise à jour : session du 27/07/2026 (suite — nouveau chantier
+> « Gestion des compétitions », lot 1/3 : création (`/admin/competitions`,
+> §2.30), ouvert suite à une question de l'utilisateur sur le switch
+> Playoffs/Cup — a révélé que rien ne fait aujourd'hui avancer une équipe
+> de tour en tour ni ne pose un résultat officiel, d'où le lot 2 à venir
+> — saisie manuelle des résultats — comme le morceau le plus important
+> avant le 30/10). Juste avant : **le lot Admin (6 écrans) ET le chantier
+> T5 (moteur de scoring, 4 lots) sont entièrement clos** (§2.20 à §2.29 —
+> détail complet dans `JOURNAL_SESSIONS.md`), après quoi l'ordre de reprise
+> pour la session suivante a été fixé avec l'utilisateur : 12 vulnérabilités
+> npm en attente (détail `GAPS_OUVERTS.md`), puis le vrai hub Jouer, puis
+> le reste (T4, Realtime T6c) — **désormais complété par ce nouveau
+> chantier compétitions**, à traiter dans l'ordre que l'utilisateur
+> précisera à la reprise. Historique complet session par session :
+> `JOURNAL_SESSIONS.md`.
 
 ---
 
@@ -121,17 +100,26 @@ orchestration (§2.26, `lib/scoring/recompute.ts` — `recomputeMatch`/
 de scoring est FONCTIONNELLEMENT COMPLET ET UTILISABLE de bout en bout
 depuis l'UI admin.
 
-**Ordre de reprise décidé avec l'utilisateur (27/07/2026)**, PROCHAINE
-SESSION — voir GAPS_OUVERTS.md pour le détail de chaque point :
+**Gestion des compétitions — NOUVEAU chantier, lot 1/3 FAIT** (§2.30,
+`/admin/competitions`) : création d'une compétition (nom, type, 8 affiches
+ROUND_1 pour Playoffs saisies À LA MAIN par l'admin). Restent 2 lots,
+SÉPARÉS : **lot 2 — saisie manuelle des résultats de match/avancement de
+série** (remplace T4 tant qu'elle n'existe pas, dure toute la compétition
+— le morceau le plus important avant le 30/10) ; **lot 3 — clôture et
+archivage**.
+
+**Ordre de reprise, PROCHAINE SESSION** (voir GAPS_OUVERTS.md pour le
+détail de chaque point — liste à re-confirmer avec l'utilisateur, le
+chantier compétitions ci-dessus a été ouvert APRÈS que cet ordre a été
+fixé le 27/07/2026) :
 1. **12 vulnérabilités npm** (`npm audit`, trouvées en fin de session,
    aucune corrigée à ce jour — `next` figé 16.2.10 au lieu de 16.2.12,
    `eslint` v9 au lieu de v10) — sécurité, avant tout nouveau code.
 2. **Vrai hub Jouer** — remplace le hub temporaire (§2.10), aucune spec
    d'écran encore écrite.
-3. **Le reste** : moteur de SYNCHRO T4 (aucune route /api/sync/*, aucun
-   client Highlightly, aucun cron — seul le writer `series.official_*` de
-   T4 a été construit, en tant que dépendance de T5), Realtime + rendu des
-   états au-delà de ce qui existe déjà (T6c).
+3. **Le reste** : lot 2/3 des compétitions (saisie manuelle de résultats),
+   moteur de SYNCHRO T4, Realtime + rendu des états au-delà de ce qui
+   existe déjà (T6c).
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2629,6 +2617,82 @@ confirmé supprimé après coup, mot de passe temporaire re-randomisé.
 **CHANTIER T5 ENTIÈREMENT CLOS** (moteur pur, writer, orchestration,
 câblage admin — les 4 lots) **ET LOT ADMIN ENTIÈREMENT CLOS** (6 écrans :
 tableau de bord, validation, résolution, requêtes, joueurs, logs).
+
+COMMITTÉ et POUSSÉ sur `main`.
+```
+
+### 2.30 Gestion des compétitions — lot 1/3 : création (session du 27/07/2026, suite)
+
+```text
+Périmètre : SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md (nouveau fichier, close
+en séance) — nouveau chantier, DISTINCT du lot Admin et de T5, ouvert
+suite à une question directe de l'utilisateur (« on doit pouvoir switcher
+Playoffs/Cup, c'est prévu ? »). `app/(admin)/admin/competitions/{page,
+new}.tsx` — CE lot ne couvre QUE la création. Découpé en 3 avec
+l'utilisateur : 1. création (CE lot) — 2. saisie manuelle des résultats
+(remplace T4 tant qu'elle n'existe pas, dure toute la compétition,
+PROCHAIN morceau) — 3. clôture/archivage.
+
+**Trouvaille structurante, changé le cadrage de la conversation** : en
+retraçant `decisions_multi_competitions_historique.md`, le plan d'origine
+(16/07/2026) visait la NBA Cup EN PREMIER pour la V1 (lancement réel visé
+30/10/2026), Playoffs reporté « sans urgence, saison 2027 » — mais le jeu
+de données de test créé le 23/07/2026 a silencieusement dérivé vers
+Playoffs, jamais recroisé avec cette décision. Le moteur de scoring (T5)
+n'a lui jamais dérivé : les deux barèmes sont pleinement codés. Décision
+de l'utilisateur suite à cette découverte : laisser le jeu de TEST tel
+quel, mais construire l'écran de gestion des compétitions pour être prêt
+en vrai le moment venu — d'où ce chantier.
+
+**Trouvaille au pré-vol, avant tout code** : même une fois une compétition
+créée, RIEN ne fait aujourd'hui avancer une équipe vers le tour suivant ni
+ne pose un résultat officiel — ni T4 (non codée), ni aucune action admin
+(le writer `series.official_*` de T5 existe mais aucun écran ne l'appelle
+pour un usage normal). C'est ce qui a motivé le lot 2 (saisie manuelle)
+comme le morceau le plus important pour le 30 octobre, séparé de celui-ci.
+
+**Décision actée AVEC l'utilisateur** : saisie manuelle des équipes par
+l'admin à la création (pas d'attente de T4/du mapping automatique A7).
+
+**2e trouvaille au pré-vol** : AUCUNE policy RLS d'INSERT n'existe sur
+`series` (seules `series_select`/`series_update` existent) — la création
+du bracket Playoffs (15 lignes) passe donc par `getServiceClient()`
+(catégorie B, écriture admin-système, même famille que `recomputeCompetition`
+/`writeSeriesOutcome`), après re-vérification explicite de `is_admin()` en
+session, PLUTÔT qu'une nouvelle migration RLS pour un cas d'usage rare
+(quelques fois par saison). `competitions`/`competition_secrets` restent en
+session admin (RLS `competitions_insert`/`secrets_all`, déjà en place).
+
+Fichiers : lib/queries/admin-competitions.ts (compétition active + code de
+compétition ; liste des équipes) ; lib/actions/admin-competitions.ts
+(`createCompetition` — topologie du bracket Playoffs FIXE et codée en dur,
+bottom-up NBA_FINALS→CONF_FINALS→CONF_SEMIS→ROUND_1 pour toujours connaître
+l'id de la série aval avant de créer la série amont ; validations
+serveur : 16 équipes distinctes, conférences cohérentes par affiche) ;
+app/(admin)/admin/competitions/page.tsx (statut + code de compétition,
+bouton Clôturer VISIBLE mais DÉSACTIVÉ, lot 3) ; app/(admin)/admin/
+competitions/new/page.tsx (formulaire natif, 100% composant serveur — les
+2 jeux de champs Playoffs/Cup cohabitent dans UN SEUL formulaire, celui
+non pertinent est ignoré côté serveur). Carte « Compétitions » ajoutée au
+tableau de bord.
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build, npm test
+(26/26) tous propres, 24 routes sans conflit.
+
+**Test en conditions réelles avec une précaution particulière** (touche la
+VRAIE compétition active utilisée par les amis de l'utilisateur) : cas
+négatif testé SANS aucun risque (tentative de création alors qu'une
+compétition est déjà active → refusée avec le bon message, rien touché) ;
+cas de succès testé en ARCHIVANT TEMPORAIREMENT la vraie compétition
+(service_role), créant une compétition de test isolée avec 16 vraies
+équipes (8 affiches), vérifiant les 15 séries (8 ROUND_1 remplies +
+7 vides des tours suivants, cascade next_series_id/slot correcte,
+NBA_FINALS sans next_series_id ni conférence), PUIS supprimant la
+compétition de test ET restaurant IMMÉDIATEMENT la vraie compétition en
+ACTIVE (bloc try/finally, restauration garantie même en cas d'échec d'une
+assertion). Confirmé après coup : compétition réelle intacte (ACTIVE,
+mêmes données), `/leaderboard` et `/bracket` répondent normalement, aucune
+compétition de test résiduelle.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```
