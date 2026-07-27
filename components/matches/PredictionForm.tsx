@@ -63,6 +63,9 @@ export function PredictionForm({ match }: PredictionFormProps) {
   }
 
   const isComplete = winner !== null && margin !== null;
+  // Brouillon local non encore persisté — distinct de `dirty` (guard C2) :
+  // relu ici pour choisir le contenu du dialogue de validation (§21).
+  const isUnsaved = winner !== match.myWinnerTeamId || margin !== match.myMargin;
 
   function handleSaveDraft() {
     setError(null);
@@ -72,14 +75,41 @@ export function PredictionForm({ match }: PredictionFormProps) {
         predictedWinnerTeamId: winner,
         predictedMargin: margin,
       });
-      if (result.success) clearDirty();
-      else setError(result.error);
+      if (result.success) {
+        clearDirty();
+        setShowValidateConfirm(false);
+      } else {
+        setError(result.error);
+      }
     });
   }
 
   function handleValidate() {
     setError(null);
     startTransition(async () => {
+      const result = await validateMatchPrediction(match.matchId);
+      setShowValidateConfirm(false);
+      if (result.success) clearDirty();
+      else setError(result.error);
+    });
+  }
+
+  // « Valider définitivement » depuis un brouillon non enregistré (§21,
+  // acté 27/07/2026) : enregistre puis valide dans la foulée, en un seul
+  // clic explicite — ce n'est pas de l'auto-save silencieux (§7), le joueur
+  // a choisi ce bouton précisément pour ça.
+  function handleValidateDefinitively() {
+    setError(null);
+    startTransition(async () => {
+      const saveResult = await saveMatchPredictionDraft({
+        matchId: match.matchId,
+        predictedWinnerTeamId: winner,
+        predictedMargin: margin,
+      });
+      if (!saveResult.success) {
+        setError(saveResult.error);
+        return;
+      }
       const result = await validateMatchPrediction(match.matchId);
       setShowValidateConfirm(false);
       if (result.success) clearDirty();
@@ -129,7 +159,8 @@ export function PredictionForm({ match }: PredictionFormProps) {
       />
 
       {/* Dialogue de VALIDATION — distinct du dialogue C2 de perte de saisie
-          (§7) : wording et déclencheur différents, ne pas fusionner. */}
+          (§7) : wording et déclencheur différents, ne pas fusionner. Contenu
+          à deux variantes selon `isUnsaved` (§21, acté 27/07/2026). */}
       {showValidateConfirm && (
         <div className={styles.backdrop} role="presentation">
           <div
@@ -141,23 +172,65 @@ export function PredictionForm({ match }: PredictionFormProps) {
             <p id={`validate-title-${match.matchId}`} className={styles.dialogTitle}>
               Valider ce prono ?
             </p>
-            <p className={styles.dialogBody}>
-              Une fois validé, il n&rsquo;est plus modifiable — et tu verras (comme les autres joueurs) les pronos
-              déjà déposés sur ce match.
-            </p>
-            <div className={styles.dialogActions}>
-              <button
-                type="button"
-                className={styles.dialogCancel}
-                onClick={() => setShowValidateConfirm(false)}
-                disabled={isPending}
-              >
-                Annuler
-              </button>
-              <button type="button" className={styles.dialogConfirm} onClick={handleValidate} disabled={isPending}>
-                Valider
-              </button>
-            </div>
+            {isUnsaved ? (
+              <>
+                <p className={styles.dialogBody}>
+                  Attention, ton brouillon n&rsquo;est pas encore enregistré. Une fois validé, le prono
+                  n&rsquo;est plus modifiable — enregistre-le d&rsquo;abord si tu veux pouvoir revenir dessus.
+                </p>
+                <div className={styles.dialogActions}>
+                  <button
+                    type="button"
+                    className={styles.dialogCancel}
+                    onClick={() => setShowValidateConfirm(false)}
+                    disabled={isPending}
+                  >
+                    Retour
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dialogSecondary}
+                    onClick={handleSaveDraft}
+                    disabled={isPending}
+                  >
+                    Enregistrer le brouillon
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dialogConfirm}
+                    onClick={handleValidateDefinitively}
+                    disabled={isPending}
+                  >
+                    Valider définitivement
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className={styles.dialogBody}>
+                  Une fois validé, il n&rsquo;est plus modifiable — et tu verras (comme les autres joueurs) les
+                  pronos déjà déposés sur ce match.
+                </p>
+                <div className={styles.dialogActions}>
+                  <button
+                    type="button"
+                    className={styles.dialogCancel}
+                    onClick={() => setShowValidateConfirm(false)}
+                    disabled={isPending}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dialogConfirm}
+                    onClick={handleValidate}
+                    disabled={isPending}
+                  >
+                    Valider
+                  </button>
+                </div>
+              </>
+            )}
           </div>
         </div>
       )}

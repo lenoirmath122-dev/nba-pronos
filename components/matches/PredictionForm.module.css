@@ -132,6 +132,23 @@
   box-shadow: var(--focus-ring);
 }
 
+.dialogSecondary {
+  min-height: var(--tap-target-min);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.dialogSecondary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .dialogConfirm {
   min-height: var(--tap-target-min);
   padding: var(--space-3) var(--space-4);

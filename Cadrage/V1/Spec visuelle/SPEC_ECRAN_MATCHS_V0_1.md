@@ -4,7 +4,9 @@
 > seule contrainte est transmise au lot suivant (« Mes pronos », §17), aucune ne bloque
 > l'implémentation de cet écran. Rédigée et close le 23/07/2026, phase V1 propre.
 > Amendée à l'usage réel le 25/07/2026 (§20) : l'entête replié perd son logo,
-> refondu en split neutre deux abréviations.
+> refondu en split neutre deux abréviations. Amendée à nouveau le 27/07/2026
+> (§21) : le dialogue de validation devient à deux variantes selon que le
+> brouillon local est enregistré ou non.
 > **Portée** : l'écran **Matchs** du hub Jouer (`/play/matches`) — la fenêtre de **saisie**
 > des pronos match par match. Les écrans « Mes pronos », « Paris » et « Bracket personnel »
 > du même hub sont hors périmètre (lots ultérieurs, un écran à la fois).
@@ -533,6 +535,7 @@ points — les deux règles ne se contredisent pas, elles portent sur deux chose
 | 15 | « Mes pronos » ancré sur les **matchs** (contrainte transmise au lot suivant) | §17 §18.2 |
 | 16 | `N` du compteur = joueurs `ACTIVE` uniquement | §18.4 |
 | 17 | Entête replié refondu en split neutre, sans logo (amendement 25/07/2026) | §3.1 §20 |
+| 18 | Dialogue de validation à deux variantes selon brouillon enregistré ou non (27/07/2026) | §7 §21 |
 
 > Rappel de méthode, pas une question : les **noms de colonnes** et **valeurs de statut** sont
 > à lire dans le schéma réel à l'implémentation. Cette spec décrit l'intention et fige les
@@ -580,3 +583,37 @@ ailleurs perdu l'affichage de l'abréviation à côté de son logo (ne reste que
 logo + nom complet) — ce n'est pas une conséquence du split neutre, mais un
 choix séparé fait le même jour (l'abréviation, répétée aux deux endroits,
 n'avait plus d'utilité une fois le split en place dans l'entête).
+
+## 21. Amendement post-implémentation — dialogue de validation (27/07/2026)
+
+> Rédigé après coup, à l'usage réel (bug remonté par l'utilisateur en test
+> mobile sur le déploiement Vercel) — pas une réouverture de §7, une
+> précision de son dialogue de confirmation.
+
+**Constat** : `Valider le prono` (bouton primaire, §7) s'active dès que la
+saisie **locale** (équipe + écart) est complète, mais `validateMatchPrediction`
+relit le brouillon **persisté** en base — jamais la saisie locale. Un joueur
+qui remplit les deux champs puis clique directement sur `Valider` sans être
+passé par `Enregistrer le brouillon` déclenchait le rejet serveur
+« Choisis un vainqueur et un écart avant de valider. », alors même que
+l'écran affichait une sélection complète. Repéré sur un vrai test mobile
+(LAL–HOU, Lakers sélectionnés, écart à 6, rejet malgré tout).
+
+**Acté** :
+- le bouton `Valider le prono` reste accessible dès que la saisie locale est
+  complète (§7 inchangé — la garde d'incomplétude reste la seule à désactiver
+  le bouton) ;
+- le dialogue de confirmation devient **à deux variantes**, selon que la
+  saisie locale diffère ou non du brouillon déjà enregistré :
+  - **brouillon à jour** (rien à enregistrer) : dialogue inchangé, `Annuler` /
+    `Valider` ;
+  - **brouillon non enregistré** : la conséquence de la perte de
+    modifiabilité est explicitée dans le corps du dialogue, et **trois**
+    actions sont proposées — `Retour` (ferme sans rien faire), `Enregistrer
+    le brouillon` (sauvegarde, referme le dialogue, le prono reste
+    modifiable), `Valider définitivement` (enregistre **puis** valide en un
+    seul geste, irréversible) ;
+- `Valider définitivement` n'est pas de l'auto-save silencieux (garde de §7
+  T6b §4) : c'est un clic explicite sur un bouton dont le libellé annonce
+  précisément qu'il enregistre et valide à la fois — le joueur choisit ce
+  chemin en connaissance de cause, il n'est jamais déclenché sans action.
