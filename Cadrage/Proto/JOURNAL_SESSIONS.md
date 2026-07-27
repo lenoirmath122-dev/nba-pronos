@@ -2876,3 +2876,40 @@ correctif, header) ; cette entrée de journal.
 **État en fin de session** : bouton Recalculer + correctif de fond/texte
 CODÉS, VÉRIFIÉS PAR L'UTILISATEUR EN VRAI (les 4 écrans admin), COMMITTÉS
 et POUSSÉS.
+
+---
+
+## Session du 27/07/2026 (suite) — Lot 4b : file de résolution des paris
+
+**Factorisation faite** (annoncée depuis §7 ETAT_ACTUEL, jamais faite avant
+faute d'un 4e utilisateur réel) : `lib/scoring/bet-deadline.ts` —
+`computeBetDeadlinesPassed`, extrait de la logique déjà dupliquée 3 fois.
+Les 3 sites existants NON retouchés (zéro risque pour du code déjà
+testé/committé).
+
+**Code** : `lib/queries/admin-resolution.ts` (bets VALIDATED + échéance
+dépassée, flag `isContested` si une requête de correction PENDING existe
+déjà sur ce pari) ; `lib/actions/admin-resolution.ts` (`resolveBet` —
+motif OBLIGATOIRE côté serveur si contesté) ; `components/admin/
+ResolutionBetCard.tsx` — UN SEUL formulaire à 2 boutons submit
+(`name="outcome"`), plus simple que la validation ici. `lib/labels/
+bets.ts` étendu (`BET_DIFFICULTY_POINTS`, affichage seulement).
+
+**Vérifié** : `tsc`/`eslint`/`next build`/`npm test` propres.
+
+**Test en conditions réelles**, avec un **cas négatif réel** : 2 paris de
+test créés sur une série déjà passée (CLE-ORL, sans toucher aux données
+réelles déjà rattachées) + 1 requête de correction PENDING sur le second.
+Tentative de résoudre le pari contesté SANS motif → refusée côté serveur ;
+avec motif → acceptée. Résultats en base vérifiés exacts : pari normal →
+WON, `points_awarded=20` (calculé par `recomputeBet`, pas deviné) ; pari
+contesté → LOST, `points_awarded=0`, motif enregistré. Tout nettoyé après
+coup.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.28, header,
+§2 avancement) ; `GAPS_OUVERTS.md` (réduit à 1 seule page fille restante —
+requêtes) ; cette entrée de journal.
+
+**État en fin de session** : file de résolution CODÉE, VÉRIFIÉE (pas
+encore committée — à confirmer avec l'utilisateur). Dernier morceau du
+chantier T5 : le traitement des requêtes de correction (`/admin/requests`).

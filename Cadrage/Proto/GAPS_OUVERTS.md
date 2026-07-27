@@ -85,22 +85,15 @@
   — voir gap dédié ci-dessous), puis le moteur de synchro/scoring (T4/T5),
   le Realtime + rendu des états au-delà de ce qui existe déjà (T6c). Détail
   dans `ETAT_ACTUEL.md` §2.
-- **2 pages filles admin restantes + bouton Recalculer : PLUS BLOQUÉES PAR
-  T5, reste juste à les câbler** (ajouté le 27/07/2026, `ETAT_ACTUEL.md`
-  §2.20, réduit à 4 §2.21 — validation FAITE — puis 3 §2.22 — joueurs FAIT
-  — puis 2 §2.23 — logs FAIT ; le CHANTIER T5, §2.24/§2.25/§2.26, a depuis
-  produit `lib/scoring/engine.ts` + `lib/sync/writeSeriesOutcome.ts` +
-  `lib/scoring/recompute.ts`, tous CODÉS et VÉRIFIÉS — `recomputeMatch`/
-  `recomputeSeries`/`recomputeBet`/`recomputeCompetition` existent
-  réellement désormais) : `/admin/resolution` (paris VALIDÉS échus —
-  `resolveBet` peut maintenant appeler `recomputeBet` pour de vrai) ;
-  `/admin/requests` (requêtes de correction — `processCorrectionRequest`
-  peut appeler `recomputeMatch`/`recomputeBet` selon la cible) ; le bouton
-  Recalculer (`recomputeCompetition`). Signatures déjà posées par
-  `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5. Reste : lot 4/4 de T5 —
-  écrire les server actions admin qui appellent ces fonctions (re-vérifier
-  `is_admin()`, journaliser via `lib/actions/audit.ts` déjà partagé), puis
-  les cartes/pages correspondantes.
+- **1 page fille admin restante : `/admin/requests`** (ajouté le
+  27/07/2026, `ETAT_ACTUEL.md` §2.20, réduit à 4 §2.21 — validation FAITE
+  — puis 3 §2.22 — joueurs FAIT — puis 2 §2.23 — logs FAIT ; le CHANTIER T5
+  a débloqué le reste, §2.24-§2.26 ; bouton Recalculer FAIT §2.27 ; file de
+  résolution FAITE §2.28) : requêtes de correction — `processCorrectionRequest`
+  appellera `recomputeMatch`/`recomputeBet` selon la cible (MATCH_PREDICTION
+  ou BET), signature déjà posée par `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md`
+  §5.3. DERNIER morceau du lot 4/4 de T5 — une fois fait, le chantier T5 et
+  le lot Admin sont tous les deux ENTIÈREMENT clos.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à

@@ -5,12 +5,15 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — lot 4a : bouton
-> « Recalculer » câblé sur le tableau de bord admin, §2.27, premier des 3
-> morceaux du câblage admin, PLUS un correctif de fond/texte de la coquille
-> admin trouvé par l'utilisateur en testant en vrai — les 4 écrans admin
-> étaient quasi illisibles depuis le début, jamais remarqué avant le
-> premier vrai coup d'œil navigateur), après le lot 3/4 (orchestration
+> Dernière mise à jour : session du 27/07/2026 (suite — lot 4b : file de
+> résolution des paris (`/admin/resolution`) codée et vérifiée en
+> conditions réelles, dont un cas négatif réel sur le motif obligatoire
+> d'un pari contesté, §2.28 — deuxième des 3 morceaux du câblage admin),
+> après le lot 4a (bouton Recalculer câblé sur le tableau de bord admin,
+> §2.27, PLUS un correctif de fond/texte de la coquille admin trouvé par
+> l'utilisateur en testant en vrai — les 4 écrans admin étaient quasi
+> illisibles depuis le début, jamais remarqué avant le premier vrai coup
+> d'œil navigateur), après le lot 3/4 (orchestration
 > `recompute*` codée et vérifiée en conditions réelles, 5 tests
 > d'intégration jetables sur une compétition isolée dont idempotence P5,
 > §2.26 — LE MOTEUR DE SCORING EST FONCTIONNELLEMENT COMPLET), après le
@@ -115,11 +118,12 @@ VÉRIFIÉS — **moteur pur** (§2.24, `lib/scoring/engine.ts`, 26 tests
 `lib/scoring/recompute.ts` — `recomputeMatch`/`recomputeSeries`/
 `recomputeBet`/`recomputeCompetition`, vérifiée par 5 tests d'intégration
 en conditions réelles dont l'idempotence P5). Le moteur de scoring est
-FONCTIONNELLEMENT COMPLET. Le lot 4/4 (câblage admin) est ENTAMÉ : le
-**bouton Recalculer** (§2.27, `/admin`) est CODÉ, vérification LIMITÉE
-signalée (mécanisme d'appel client-side, pas encore cliqué en vrai par
-Claude — voir §2.27). Restent 2 morceaux : résolution des paris,
-traitement des requêtes.
+FONCTIONNELLEMENT COMPLET. Le lot 4/4 (câblage admin) avance : le
+**bouton Recalculer** (§2.27, `/admin`, CODÉ ET VÉRIFIÉ PAR L'UTILISATEUR
+en vrai) et la **file de résolution des paris** (§2.28, `/admin/
+resolution`, CODÉE ET VÉRIFIÉE en conditions réelles) sont FAITS. Reste
+1 seul morceau : le traitement des requêtes de correction
+(`/admin/requests`).
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2492,4 +2496,51 @@ admin → corrige les 4 d'un coup. Confirmé lisible par l'utilisateur après
 coup, sur les 4 pages.
 
 Bouton Recalculer ET ce correctif : COMMITTÉS et POUSSÉS sur `main`.
+```
+
+### 2.28 Lot 4b T5 — File de résolution des paris (`/admin/resolution`)
+
+```text
+Périmètre : SPEC_ECRAN_ADMIN_RESOLUTION_V0_1.md (Cadrage/V1/Spec visuelle/,
+nouveau fichier, close en séance) — deuxième morceau du câblage admin,
+après le bouton Recalculer (lot 4a).
+
+Factorisation faite (annoncée depuis §7 ETAT_ACTUEL, jamais faite avant
+faute d'un 4e utilisateur réel) : `lib/scoring/bet-deadline.ts` —
+`computeBetDeadlinesPassed`, extrait de la logique dupliquée 3 fois
+(`lib/queries/{bets,home,admin-dashboard}.ts`) — ces 3 sites NE SONT PAS
+retouchés (code déjà testé/committé, zéro risque pris pour un lot qui n'en
+avait pas besoin).
+
+Fichiers : lib/queries/admin-resolution.ts (bets VALIDATED + échéance
+dépassée de TOUS les joueurs, enrichi d'un flag `isContested` — requête de
+correction PENDING déjà déposée sur ce pari précis) ; lib/actions/
+admin-resolution.ts (resolveBet — motif OBLIGATOIRE côté SERVEUR si
+contesté, re-garde le statut VALIDATED dans le WHERE, appelle
+recomputeBet ENSUITE) ; components/admin/ResolutionBetCard.tsx (+
+.module.css, UN SEUL formulaire natif à 2 boutons submit `name="outcome"
+value="WON"/"LOST"` — pas 2 formulaires séparés comme la validation,
+plus simple ici car le motif est partagé). lib/labels/bets.ts étendu
+(`BET_DIFFICULTY_POINTS`, affichage seulement — l'autorité du calcul
+reste `scoreBet`). Carte « à résoudre » du tableau de bord rendue `<Link>`
+actif.
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build, npm test
+(26/26) tous propres, aucun conflit de route.
+
+Test en conditions réelles (même technique @supabase/ssr) : 2 paris de
+test VALIDATED créés sur une série déjà passée (CLE-ORL, sans toucher aux
+pronos/paris réels qui y sont déjà rattachés — nouveaux paris ajoutés,
+rien modifié) + 1 requête de correction PENDING sur le second (pour tester
+« contesté »). Rendu vérifié (badge Contesté, description, catégorie/
+difficulté) ; **cas négatif réel** : tentative de résoudre le pari
+contesté SANS motif → refusée côté serveur (« Un motif est obligatoire
+pour un pari contesté. ») ; résolution avec motif → acceptée. Résultats en
+base 100% corrects : pari normal → WON, points_awarded=20 (barème
+difficulté 4, calculé par recomputeBet, pas deviné) ; pari contesté →
+LOST, points_awarded=0, resolution_reason enregistré. Données de test +
+requête de correction + logs supprimés après vérification, mot de passe
+temporaire re-randomisé.
+
+PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```
