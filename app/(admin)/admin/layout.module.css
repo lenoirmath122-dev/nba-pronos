@@ -1,7 +1,13 @@
+/* Fond/texte pilotés par les tokens, quel que soit ce que définit
+   globals.css par ailleurs (--background y vaut blanc/noir OS, pas les
+   tokens du thème de l'app) — même correctif que app/(app)/layout.module.css. */
 .shell {
   display: flex;
   flex-direction: column;
   min-height: 100dvh;
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
 }
 
 .header {

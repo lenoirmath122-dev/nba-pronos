@@ -1,15 +1,15 @@
 import Link from "next/link";
 import { getAdminDashboardData } from "@/lib/queries/admin-dashboard";
+import { RecalculateButton } from "@/components/admin/RecalculateButton";
 import styles from "./page.module.css";
 
 // Tableau de bord admin (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1, VALIDÉ) : premier
-// écran du lot Admin. Composant 100% SERVEUR — pas de bouton Recalculer
-// dans ce lot (recomputeCompetition, T5, n'existe pas encore en base, voir
-// l'en-tête de la spec). Les cartes « validation », « joueurs » et « logs »
-// sont désormais des <Link> actifs (codés) ; résolution/requêtes restent
-// INERTES « à venir » tant que leur page n'existe pas (partiellement
-// bloquées par T5), même patron que le hub Jouer temporaire
-// (ETAT_ACTUEL.md §2.10) — retirées une à une (GAPS_OUVERTS.md).
+// écran du lot Admin. Composant SERVEUR — seule la RecalculateButton est
+// "use client" (§4, dialogue de confirmation). Les cartes « validation »,
+// « joueurs » et « logs » sont des <Link> actifs (codés) ; résolution/
+// requêtes restent INERTES « à venir » tant que leur page n'existe pas
+// (T5 lot 4/4 les débloque progressivement), même patron que le hub Jouer
+// temporaire (ETAT_ACTUEL.md §2.10).
 
 export default async function AdminDashboardPage() {
   const data = await getAdminDashboardData();
@@ -86,9 +86,7 @@ export default async function AdminDashboardPage() {
         </li>
       </ul>
 
-      <p className={styles.footnote}>
-        Bouton « Recalculer » : ajouté quand le moteur de scoring sera codé.
-      </p>
+      <RecalculateButton disabled={!data.competitionId} />
     </div>
   );
 }
