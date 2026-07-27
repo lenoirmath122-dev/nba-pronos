@@ -40,6 +40,19 @@ export const BET_DIFFICULTY_LABELS: Record<BetDifficulty, string> = {
   5: "Jackpot",
 };
 
+// Barème linéaire (0.2.5 §8, SPEC_TECHNIQUE_SCORING_V0_1 §8) — AFFICHAGE
+// uniquement (« N points en jeu », file de résolution admin). Le calcul
+// RÉEL des points reste l'autorité unique de lib/scoring/engine.ts::scoreBet
+// — cette table ne fait que refléter le même barème côté rendu, jamais
+// utilisée pour écrire un score.
+export const BET_DIFFICULTY_POINTS: Record<BetDifficulty, number> = {
+  1: 5,
+  2: 10,
+  3: 15,
+  4: 20,
+  5: 25,
+};
+
 // Défauts d'un brouillon, actés le 26/07/2026 (§5.4).
 export const DEFAULT_BET_CATEGORY: BetCategory = "PLAYER_PROP";
 export const DEFAULT_BET_DIFFICULTY: BetDifficulty = 3;

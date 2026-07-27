@@ -6,10 +6,10 @@ import styles from "./page.module.css";
 // Tableau de bord admin (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1, VALIDÉ) : premier
 // écran du lot Admin. Composant SERVEUR — seule la RecalculateButton est
 // "use client" (§4, dialogue de confirmation). Les cartes « validation »,
-// « joueurs » et « logs » sont des <Link> actifs (codés) ; résolution/
-// requêtes restent INERTES « à venir » tant que leur page n'existe pas
-// (T5 lot 4/4 les débloque progressivement), même patron que le hub Jouer
-// temporaire (ETAT_ACTUEL.md §2.10).
+// « résolution », « joueurs » et « logs » sont des <Link> actifs (codés) ;
+// seule « requêtes » reste INERTE « à venir » (lot 4c, dernier morceau du
+// câblage admin), même patron que le hub Jouer temporaire
+// (ETAT_ACTUEL.md §2.10).
 
 export default async function AdminDashboardPage() {
   const data = await getAdminDashboardData();
@@ -25,7 +25,7 @@ export default async function AdminDashboardPage() {
       key: "resolution",
       count: data.pendingResolutionCount,
       label: (n: number) => (n > 1 ? "paris à résoudre" : "pari à résoudre"),
-      href: null,
+      href: "/admin/resolution",
     },
     {
       key: "requests",
