@@ -2624,7 +2624,55 @@ temporaire re-randomisé.
 **Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.22) ;
 `GAPS_OUVERTS.md` (4 pages filles → 3 restantes) ; cette entrée de journal.
 
-**État en fin de session** : Gestion des joueurs CODÉE, VÉRIFIÉE (pas
-encore committée — à confirmer avec l'utilisateur). Prochaine étape :
-résolution des paris, requêtes de correction, ou logs — les deux premières
-resteront partiellement bloquées par l'absence du moteur de scoring T5.
+**État en fin de session** : Gestion des joueurs CODÉE, VÉRIFIÉE, COMMITTÉE
+et POUSSÉE. Prochaine étape : résolution des paris, requêtes de correction,
+ou logs — les deux premières resteront partiellement bloquées par
+l'absence du moteur de scoring T5.
+
+---
+
+## Session du 27/07/2026 (suite) — Historique des logs (4e écran, dernier sans dépendance T5)
+
+**Choix** : logs, dernière page fille SANS AUCUNE dépendance sur T5 (écran
+de lecture pure, 0.2.7 §8) — après ce lot, les 2 pages restantes
+(résolution, requêtes) sont TOUTES DEUX partiellement bloquées.
+
+**Trouvaille au pré-vol** : le détail des filtres/tri, que 0.2.9 §11
+semblait lister comme un point encore ouvert, était en réalité DÉJÀ tranché
+— retrouvé dans `nba_pronos_PREP_SPEC_TECHNIQUE_V1.md` §B5 (validé le
+17/07/2026) : tri plus récent d'abord, filtres action/admin/date. Trouvé en
+cherchant la source, pas deviné.
+
+**Spec** (`SPEC_ECRAN_ADMIN_LOGS_V0_1.md`). **Code** :
+`lib/labels/audit.ts` NOUVEAU (vocabulaire fermé des actions, à étendre par
+chaque futur lot admin) ; `lib/queries/admin-logs.ts` (options de filtre
+dérivées des valeurs réellement présentes en base) ; `components/admin/
+AuditLogRow.tsx` ; `app/(admin)/admin/logs/page.tsx` (filtres `<form
+method="get">` natif, aucun JS). Carte « logs » du tableau de bord rendue
+cliquable.
+
+**Refactor mineur en cours de route** : `parisDayBoundsUtc` (écrite pour
+Mes pronos, §2.11) déménagée vers un nouveau module neutre
+`lib/dates/paris.ts`, 2e utilisateur (filtre date des logs) — évite une 3e
+implémentation divergente, même logique que le piège déjà noté pour
+`bet_deadline_open`. Mes pronos re-vérifié après coup, aucun changement de
+comportement.
+
+**Vérifié** : `tsc`/`eslint`/`next build` propres (Mes pronos y compris),
+aucun conflit de route.
+
+**Test en conditions réelles** : 2 vraies entrées de log générées via
+Gestion des joueurs (promotion/rétrogradation de Tariq_M) ; rendu sans
+filtre correct (acteur, libellé, cible résolue) ; filtres action/admin/date
+tous vérifiés, y compris l'état vide filtré. Nettoyé après coup.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.23) ;
+`GAPS_OUVERTS.md` (2 pages filles restantes, TOUTES DEUX partiellement
+bloquées par T5 désormais — reformulé pour le signaler clairement) ; cette
+entrée de journal.
+
+**État en fin de session** : Historique des logs CODÉ, VÉRIFIÉ (pas encore
+committé — à confirmer avec l'utilisateur). Le lot Admin est à 4/6 écrans.
+Prochaine étape naturelle : soit le moteur de scoring T5 (débloquerait
+résolution + requêtes + le bouton Recalculer d'un coup), soit la partie non
+bloquée de « requêtes » (le refus seul, sans le traitement).

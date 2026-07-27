@@ -5,13 +5,13 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — Gestion des joueurs
-> codée et testée, §2.22, troisième écran du lot Admin, spec rédigée et
-> close en séance), après la file de validation des paris (§2.21, deuxième
-> écran du lot Admin, spec rédigée et close en séance), après le tableau de
-> bord admin codé et testé (§2.20, premier écran du lot Admin, spec rédigée
-> et close en séance), après l'écran Mes paris codé et testé (§2.19, spec
-> rédigée et close en séance), lui-même après l'écran Profil
+> Dernière mise à jour : session du 27/07/2026 (suite — Historique des logs
+> codé et testé, §2.23, quatrième écran du lot Admin, DERNIÈRE page fille
+> sans dépendance sur T5, spec rédigée et close en séance), après Gestion
+> des joueurs (§2.22), après la file de validation des paris (§2.21), après
+> le tableau de bord admin (§2.20) — les 4, spec rédigée et close en séance
+> — après l'écran Mes paris codé et testé (§2.19, spec rédigée et close en
+> séance), lui-même après l'écran Profil
 > (§2.18, spec rédigée et close en séance), le déploiement Vercel +
 > activation de l'inscription + 1er admin réel (§2.17), l'écran
 > Bracket personnel codé et testé (§2.16, spec rédigée et close en séance),
@@ -87,13 +87,16 @@ personnel (§2.9/§2.11/§2.16). Le hub Jouer TEMPORAIRE (§2.10) relie
 désormais l'onglet « Jouer » aux QUATRE écrans du hub joueur (Matchs, Mes
 pronos, Paris, Mon bracket) — plus aucune entrée inerte — en attendant le
 vrai hub, dont la spec d'écran reste à écrire. « Mes paris » (§2.19) est
-CODÉ ET VÉRIFIÉ, ce qui ferme le hub joueur. Le lot ADMIN est ENTAMÉ : le
-**tableau de bord** (§2.20, `/admin`), la **file de validation des paris**
-(§2.21, `/admin/validation`) et **Gestion des joueurs** (§2.22,
-`/admin/players`, troisième écran) sont CODÉS ET VÉRIFIÉS. Le bouton
-Recalculer reste absent du tableau de bord (le moteur de scoring T5 qu'il
-appelle n'existe pas encore) ; « résolution », « requêtes » et « logs »
-restent des entrées inertes. Reste à coder : ces 3 pages filles, une à une.
+CODÉ ET VÉRIFIÉ, ce qui ferme le hub joueur. Le lot ADMIN a désormais 4
+écrans sur 6 : le **tableau de bord** (§2.20, `/admin`), la **file de
+validation des paris** (§2.21, `/admin/validation`), **Gestion des
+joueurs** (§2.22, `/admin/players`) et l'**Historique des logs** (§2.23,
+`/admin/logs`) sont CODÉS ET VÉRIFIÉS — c'était la DERNIÈRE page fille sans
+dépendance sur le moteur de scoring T5. Restent « résolution » et
+« requêtes », toutes deux PARTIELLEMENT bloquées par l'absence de T5 (voir
+GAPS_OUVERTS.md pour le détail exact de ce qui est/n'est pas codable dès
+maintenant). Le bouton Recalculer du tableau de bord reste absent pour la
+même raison.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2166,6 +2169,60 @@ trigger, message d'erreur exact remonté par l'URL de redirection. Confirme
 que la garde réelle est bien en base, pas seulement cosmétique dans l'UI.
 2 lignes audit_logs de test (promotion/rétrogradation de Tariq_M)
 supprimées après vérification, mot de passe temporaire re-randomisé.
+
+PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+```
+
+### 2.23 Historique des logs (session du 27/07/2026, suite — DERNIÈRE page sans dépendance T5)
+
+```text
+Périmètre : SPEC_ECRAN_ADMIN_LOGS_V0_1.md (Cadrage/V1/Spec visuelle/,
+nouveau fichier, close en séance) — app/(admin)/admin/logs/page.tsx.
+Quatrième écran du lot Admin, écran de LECTURE PURE (0.2.7 §8) — aucune
+dépendance sur T5, ferme la liste des pages filles « faciles ».
+
+Trouvaille au pré-vol : le détail des filtres/tri (0.2.9 §11 le listait
+comme « à préciser ») était en réalité DÉJÀ tranché — retrouvé dans
+`nba_pronos_PREP_SPEC_TECHNIQUE_V1.md` §B5 (validé le 17/07/2026, jamais
+réouvert dans GAPS_OUVERTS.md depuis) : tri = plus récent d'abord, filtres
+= type d'action, admin, date. Trouvé en CHERCHANT la source avant d'inventer
+un design de filtres.
+
+Fichiers : lib/labels/audit.ts (NOUVEAU — vocabulaire fermé des actions
+journalisées, à étendre par chaque futur lot admin, même rôle que
+lib/labels/bets.ts) ; lib/queries/admin-logs.ts (getAuditLogs +
+getAuditLogFilterOptions — options de filtre DÉRIVÉES des valeurs
+RÉELLEMENT présentes en base, pas une liste figée) ; components/admin/
+AuditLogRow.tsx (+ .module.css, consultation pure, aucun formulaire) ;
+app/(admin)/admin/logs/page.tsx (filtres en `<form method="get">` natif,
+querystring, aucun "use client"). Carte « Historique des logs » du tableau
+de bord rendue `<Link>` actif.
+
+Refactor mineur SANS changement de comportement, en cours de route :
+`parisDayBoundsUtc` (calcul de bornes UTC d'un jour calendaire Europe/Paris,
+écrit pour Mes pronos §2.11) déménagée de lib/queries/my-predictions.ts vers
+un nouveau module neutre lib/dates/paris.ts (aucune dépendance next/headers)
+— 2e utilisateur (le filtre date des logs), pour éviter une 3e
+implémentation divergente de la même fonction (piège déjà noté pour
+bet_deadline_open, §7). Mes pronos re-vérifié après coup (tsc/eslint/build +
+next build listant toujours /play/my-predictions sans erreur) — aucun
+changement de comportement, juste un déplacement de fonction pure.
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build tous propres,
+aucun conflit de route (/admin/logs listé).
+
+Test en conditions réelles (même technique @supabase/ssr) : 2 vraies
+entrées de log générées via Gestion des joueurs (promotion/rétrogradation
+réelle de Tariq_M, déjà le cas de test du lot précédent) ; écran /admin/logs
+sans filtre : acteur (Sofia_Admin), libellé d'action (« Rôle modifié »),
+cible (Tariq_M, pseudo résolu) tous corrects ; filtre par action
+(SET_PLAYER_ROLE) : n'affiche QUE les bonnes entrées ; filtre par admin :
+correct ; filtre par date (aujourd'hui vs une date sans log) : les deux
+comportements corrects, y compris l'état vide filtré (« Aucun résultat pour
+ces filtres. ») ; contenu avant/après (before_value/after_value JSON)
+vérifié directement en base, cohérent avec ce que le rendu affiche. 2 lignes
+de test supprimées après vérification, mot de passe temporaire
+re-randomisé.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```

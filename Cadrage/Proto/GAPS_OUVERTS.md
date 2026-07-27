@@ -85,16 +85,20 @@
   — voir gap dédié ci-dessous), puis le moteur de synchro/scoring (T4/T5),
   le Realtime + rendu des états au-delà de ce qui existe déjà (T6c). Détail
   dans `ETAT_ACTUEL.md` §2.
-- **3 pages filles admin restantes à coder** (ajouté le 27/07/2026,
-  `ETAT_ACTUEL.md` §2.20, réduit à 4 le même jour §2.21 — validation FAITE —
-  puis à 3 §2.22 — joueurs FAIT) : `/admin/resolution` (paris VALIDÉS
-  échus), `/admin/requests` (requêtes de correction pronos+paris),
-  `/admin/logs` (consultation audit_logs). Signatures déjà posées par
-  `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5 (resolveBet,
-  processCorrectionRequest) — reste à écrire la spec d'écran de chacune puis
-  à coder, une à la fois (même patron que ce lot). `/admin/resolution` et la
-  réussite de `/admin/requests` (traitement, pas le refus) dépendent en plus
-  du point ci-dessous (recompute).
+- **2 pages filles admin restantes, TOUTES DEUX partiellement bloquées par
+  T5** (ajouté le 27/07/2026, `ETAT_ACTUEL.md` §2.20, réduit à 4 §2.21 —
+  validation FAITE — puis 3 §2.22 — joueurs FAIT — puis 2 §2.23 — logs
+  FAIT, dernière page SANS dépendance T5) : `/admin/resolution` (paris
+  VALIDÉS échus — resolveBet appelle recomputeBet directement, non codable
+  proprement sans construire une partie du moteur de scoring) ;
+  `/admin/requests` (requêtes de correction — processCorrectionRequest
+  dépend du recompute pour le TRAITEMENT réussi, mais rejectCorrectionRequest
+  n'en dépend pas : codable partiellement, même patron que le bouton
+  Recalculer omis §2.20). Signatures déjà posées par
+  `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5. Le lot Admin est donc à
+  un point où la suite naturelle est soit coder le moteur de scoring T5
+  (débloquerait les 2 pages ET le bouton Recalculer d'un coup), soit coder
+  la partie non bloquée de `/admin/requests` (refus seul) en attendant.
 - **Bouton « Recalculer » du tableau de bord admin bloqué sur T5** (trouvé au
   pré-vol du 27/07/2026, `ETAT_ACTUEL.md` §2.20) : `recalculateCompetition`
   (T6a/T6b) appelle `recomputeCompetition` (T5 §10.1), qui N'EXISTE NULLE
