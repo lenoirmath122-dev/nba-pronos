@@ -2910,6 +2910,51 @@ coup.
 §2 avancement) ; `GAPS_OUVERTS.md` (réduit à 1 seule page fille restante —
 requêtes) ; cette entrée de journal.
 
-**État en fin de session** : file de résolution CODÉE, VÉRIFIÉE (pas
-encore committée — à confirmer avec l'utilisateur). Dernier morceau du
-chantier T5 : le traitement des requêtes de correction (`/admin/requests`).
+**État en fin de session** : file de résolution CODÉE, VÉRIFIÉE, COMMITTÉE
+et POUSSÉE. Dernier morceau du chantier T5 : le traitement des requêtes de
+correction (`/admin/requests`).
+
+---
+
+## Session du 27/07/2026 (suite) — Lot 4c : file des requêtes — CHANTIER T5 CLOS
+
+**Asymétrie trouvée au pré-vol, documentée avant de coder** : les requêtes
+MATCH_PREDICTION (migration #7) peuvent porter une proposition du joueur
+(vainqueur+écart) que l'admin confirme/ajuste — correction réelle de
+contenu. Les requêtes BET (migration #11, « pari oublié ») n'en portent
+JAMAIS — la vraie correction est de résoudre le pari (déjà fait via
+/admin/resolution, lot 4b) ; « traiter » une requête BET ici marque juste
+`is_admin_corrected` (transparence) et clôt la requête. Deux comportements
+de traitement réels, pas un oubli.
+
+**Code** : `lib/queries/admin-requests.ts` (une seule file, les deux
+cibles) ; `lib/actions/admin-requests.ts` (`processCorrectionRequest`
+branché par type, `recomputeMatch` UNIQUEMENT pour MATCH_PREDICTION ;
+`rejectCorrectionRequest`) ; `components/admin/RequestCard.tsx` — rendu
+différent selon le type, aucun "use client".
+
+**Vérifié** : `tsc`/`eslint`/`next build`/`npm test` propres, 6 routes
+`/admin/*` sans conflit.
+
+**Test en conditions réelles le plus complet du lot Admin**, 4 scénarios :
+(1) MATCH_PREDICTION « voie A » avec proposition du joueur, traitée →
+recomputeMatch a réellement scoré le prono corrigé, vérifié en base ; (2)
+**cas négatif réel avec un garde-fou PRÉEXISTANT** — Sofia_Admin tente de
+traiter SA PROPRE requête → bloquée par le TRIGGER
+`enforce_prediction_correction` (déjà en base, pas codé par ce lot),
+message exact remonté, rien modifié ; (3) BET traité → marquage
+transparence appliqué, statut du pari inchangé (résolution reste séparée,
+comme voulu) ; (4) BET refusé avec motif → rien touché sur le pari.
+Nettoyage : cycle de FK circulaire rencontré (match_predictions ↔
+correction_requests), résolu en vidant les FK avant suppression — artefact
+du script jetable, pas un bug de l'écran. Tout confirmé supprimé.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.29, header,
+§2 avancement réécrit — lot Admin ET chantier T5 tous deux ENTIÈREMENT
+clos) ; `GAPS_OUVERTS.md` (les 2 entrées « implémentation V1 » devenues
+obsolètes fusionnées en une seule, à jour) ; cette entrée de journal.
+
+**État en fin de session** : file des requêtes CODÉE, VÉRIFIÉE (pas encore
+committée — à confirmer avec l'utilisateur). **CHANTIER T5 (4/4 lots) ET
+LOT ADMIN (6/6 écrans) ENTIÈREMENT CLOS.** Prochaine étape à discuter avec
+l'utilisateur : moteur de synchro T4, Realtime T6c, ou le vrai hub Jouer.

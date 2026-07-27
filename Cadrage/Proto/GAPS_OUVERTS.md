@@ -51,49 +51,21 @@
 > `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_c.md` / `SPEC_DESIGN_SYSTEM_V0_1.md`
 > et `JOURNAL_SESSIONS.md`.
 
-- **Implémentation code de la V1** (post-T7, EN COURS depuis la session du
-  19/07/2026 suite) : plomberie Supabase, garde d'authentification, flux
-  login/signup, l'écran Accueil, les écrans partagés Classement/Bracket,
-  **l'écran Matchs** (`app/(app)/play/matches/`, `lib/queries/matches.ts`,
-  `lib/actions/matches.ts`, `lib/hooks/useUnsavedGuard.tsx`,
-  `components/matches/*`, session du 23/07/2026, premier écran qui ÉCRIT),
-  **« Mes pronos »** (`app/(app)/play/my-predictions/`,
-  `lib/queries/my-predictions.ts`, `lib/actions/corrections.ts`,
-  `lib/labels/rounds.ts`, `components/my-predictions/*`, migrations #7/#8,
-  session du 24/07/2026, ancré sur les matchs verrouillés, porte le live),
-  **« Nouveau pari »** (`app/(app)/play/bets/{new,[id]/edit}/`,
-  `lib/queries/bets.ts`, `lib/actions/bets.ts`, `lib/labels/bets.ts`,
-  `components/bets/*`, `components/matches/InlineBetForm.tsx` (remplace
-  `BetShortcut.tsx`), migrations #9/#10, sessions du 26-27/07/2026 : création/
-  édition de pari personnalisé + saisie inline MATCH depuis Matchs) et
-  **« Bracket personnel »** (`app/(app)/play/bracket/`,
-  `lib/queries/bracket-fill.ts`, `lib/actions/bracket-fill.ts`,
-  `components/bracket-fill/*`, session du 27/07/2026, remplissage tour par
-  tour, AUCUNE migration nécessaire — la RLS existante suffisait) et
-  **Profil** (`app/(app)/profile/`, `lib/queries/profile.ts`,
-  `lib/actions/profile.ts`, `components/profile/*`, session du 27/07/2026,
-  thème clair/sombre câblé dans `app/layout.tsx`, AUCUNE migration
-  nécessaire) et désormais **Mes paris** (`app/(app)/play/bets/page.tsx`,
-  `lib/queries/my-bets.ts`, `lib/actions/bet-corrections.ts`,
-  `components/my-bets/*`, session du 27/07/2026, migrations #11/#12) et
-  désormais **le tableau de bord admin** (`app/(admin)/admin/{layout,page}.tsx`,
-  `lib/queries/admin-dashboard.ts`, session du 27/07/2026, premier écran du
-  lot Admin) sont CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres,
-  testés avec un vrai jeu de données de test ET en conditions réelles —
-  sessions authentifiées réelles, cas négatif testé). Reste à coder : les
-  **5 pages filles admin** (validation, résolution, requêtes, joueurs, logs
-  — voir gap dédié ci-dessous), puis le moteur de synchro/scoring (T4/T5),
-  le Realtime + rendu des états au-delà de ce qui existe déjà (T6c). Détail
-  dans `ETAT_ACTUEL.md` §2.
-- **1 page fille admin restante : `/admin/requests`** (ajouté le
-  27/07/2026, `ETAT_ACTUEL.md` §2.20, réduit à 4 §2.21 — validation FAITE
-  — puis 3 §2.22 — joueurs FAIT — puis 2 §2.23 — logs FAIT ; le CHANTIER T5
-  a débloqué le reste, §2.24-§2.26 ; bouton Recalculer FAIT §2.27 ; file de
-  résolution FAITE §2.28) : requêtes de correction — `processCorrectionRequest`
-  appellera `recomputeMatch`/`recomputeBet` selon la cible (MATCH_PREDICTION
-  ou BET), signature déjà posée par `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md`
-  §5.3. DERNIER morceau du lot 4/4 de T5 — une fois fait, le chantier T5 et
-  le lot Admin sont tous les deux ENTIÈREMENT clos.
+- **Implémentation code de la V1** (post-T7, EN COURS depuis le 19/07/2026) :
+  le HUB JOUEUR (8 écrans — Accueil, Classement, Bracket, Matchs, Mes
+  pronos, Nouveau pari, Bracket personnel, Mes paris, plus Profil) ET le
+  LOT ADMIN (6 écrans — tableau de bord, validation, résolution, requêtes,
+  joueurs, logs) sont désormais TOUS CODÉS ET VÉRIFIÉS (`tsc`/`eslint`/
+  `next build` propres à chaque lot, testés avec un vrai jeu de données ET
+  en conditions réelles — sessions authentifiées réelles, cas négatifs
+  systématiquement testés). Le CHANTIER T5 (moteur de scoring) est
+  également ENTIÈREMENT CLOS (moteur pur, writer `series.official_*`,
+  orchestration `recompute*`, câblage admin — détail `ETAT_ACTUEL.md` §2.24
+  à §2.29). Reste à coder : le moteur de SYNCHRO T4 (routes `/api/sync/*`,
+  client Highlightly, cron — seul le writer `series.official_*` de T4 a été
+  construit, comme dépendance de T5), le Realtime + rendu des états
+  au-delà de ce qui existe déjà (T6c), le vrai hub Jouer (remplace le hub
+  temporaire §2.10). Détail dans `ETAT_ACTUEL.md` §2.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à

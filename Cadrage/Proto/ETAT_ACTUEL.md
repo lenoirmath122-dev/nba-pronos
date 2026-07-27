@@ -5,11 +5,15 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — lot 4b : file de
-> résolution des paris (`/admin/resolution`) codée et vérifiée en
-> conditions réelles, dont un cas négatif réel sur le motif obligatoire
-> d'un pari contesté, §2.28 — deuxième des 3 morceaux du câblage admin),
-> après le lot 4a (bouton Recalculer câblé sur le tableau de bord admin,
+> Dernière mise à jour : session du 27/07/2026 (suite — lot 4c : file des
+> requêtes de correction (`/admin/requests`) codée et vérifiée en
+> conditions réelles sur 4 scénarios (dont un cas négatif où un trigger
+> DÉJÀ EN BASE, pas codé par ce lot, bloque l'auto-correction), §2.29 —
+> DERNIER morceau du câblage admin. **LE CHANTIER T5 ET LE LOT ADMIN SONT
+> DÉSORMAIS TOUS LES DEUX ENTIÈREMENT CLOS** (6 écrans admin, moteur de
+> scoring fonctionnel de bout en bout)), après le lot 4b (file de
+> résolution des paris, §2.28), après le lot 4a (bouton Recalculer câblé
+> sur le tableau de bord admin,
 > §2.27, PLUS un correctif de fond/texte de la coquille admin trouvé par
 > l'utilisateur en testant en vrai — les 4 écrans admin étaient quasi
 > illisibles depuis le début, jamais remarqué avant le premier vrai coup
@@ -95,35 +99,33 @@ Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
 ```text
 Phase V1 — la série de specs techniques T1 → T7 est VALIDÉE. Le socle de
 données (modèle + auth + RLS) est posé et codé (§3). CODÉS ET VÉRIFIÉS avec
-un vrai jeu de données : Accueil, Classement, Bracket (vue globale), Matchs
-(§2.8), « Mes pronos » (§2.11), « Nouveau pari » (§2.15) et désormais
-**Bracket personnel** (remplissage, §2.16) — les sept premiers écrans du hub
-joueur, logos de franchise câblés sur Bracket/Matchs/Mes pronos/Bracket
-personnel (§2.9/§2.11/§2.16). Le hub Jouer TEMPORAIRE (§2.10) relie
-désormais l'onglet « Jouer » aux QUATRE écrans du hub joueur (Matchs, Mes
-pronos, Paris, Mon bracket) — plus aucune entrée inerte — en attendant le
-vrai hub, dont la spec d'écran reste à écrire. « Mes paris » (§2.19) est
-CODÉ ET VÉRIFIÉ, ce qui ferme le hub joueur. Le lot ADMIN a désormais 4
-écrans sur 6 : le **tableau de bord** (§2.20, `/admin`), la **file de
-validation des paris** (§2.21, `/admin/validation`), **Gestion des
-joueurs** (§2.22, `/admin/players`) et l'**Historique des logs** (§2.23,
-`/admin/logs`) sont CODÉS ET VÉRIFIÉS — c'était la DERNIÈRE page fille sans
-dépendance sur le moteur de scoring T5. Restent « résolution » et
-« requêtes » (partie traitement), et le bouton Recalculer restaient
-PARTIELLEMENT/ENTIÈREMENT bloqués par l'absence de T5 — **CE N'EST PLUS LE
-CAS côté moteur** : les 3 premiers lots de T5 sont désormais CODÉS ET
-VÉRIFIÉS — **moteur pur** (§2.24, `lib/scoring/engine.ts`, 26 tests
-`vitest`), **writer `series.official_*`** (§2.25,
-`lib/sync/writeSeriesOutcome.ts`), et **orchestration** (§2.26,
-`lib/scoring/recompute.ts` — `recomputeMatch`/`recomputeSeries`/
-`recomputeBet`/`recomputeCompetition`, vérifiée par 5 tests d'intégration
-en conditions réelles dont l'idempotence P5). Le moteur de scoring est
-FONCTIONNELLEMENT COMPLET. Le lot 4/4 (câblage admin) avance : le
-**bouton Recalculer** (§2.27, `/admin`, CODÉ ET VÉRIFIÉ PAR L'UTILISATEUR
-en vrai) et la **file de résolution des paris** (§2.28, `/admin/
-resolution`, CODÉE ET VÉRIFIÉE en conditions réelles) sont FAITS. Reste
-1 seul morceau : le traitement des requêtes de correction
-(`/admin/requests`).
+un vrai jeu de données : les HUIT écrans du hub joueur (Accueil, Classement,
+Bracket vue globale, Matchs §2.8, Mes pronos §2.11, Nouveau pari §2.15,
+Bracket personnel §2.16, Mes paris §2.19), logos de franchise câblés sur
+Bracket/Matchs/Mes pronos/Bracket personnel. Le hub Jouer TEMPORAIRE
+(§2.10) relie l'onglet « Jouer » aux QUATRE écrans du hub — reste à
+remplacer par le vrai hub (spec pas encore écrite, GAPS_OUVERTS.md).
+
+**Le lot ADMIN est ENTIÈREMENT CLOS (6/6 écrans)** : tableau de bord
+(§2.20, `/admin`), validation des paris (§2.21), Gestion des joueurs
+(§2.22), Historique des logs (§2.23), résolution des paris (§2.28),
+requêtes de correction (§2.29, DERNIER écran fermé) — tous CODÉS et
+VÉRIFIÉS en conditions réelles.
+
+**Le CHANTIER T5 (moteur de scoring) est ENTIÈREMENT CLOS (4/4 lots)** :
+moteur pur (§2.24, `lib/scoring/engine.ts`, 26 tests `vitest`), writer
+`series.official_*` (§2.25, `lib/sync/writeSeriesOutcome.ts`),
+orchestration (§2.26, `lib/scoring/recompute.ts` — `recomputeMatch`/
+`recomputeSeries`/`recomputeBet`/`recomputeCompetition`), câblage admin
+(§2.27/§2.28/§2.29 — bouton Recalculer, résolution, requêtes). Le moteur
+de scoring est FONCTIONNELLEMENT COMPLET ET UTILISABLE de bout en bout
+depuis l'UI admin.
+
+Reste à coder : le moteur de SYNCHRO T4 (aucune route /api/sync/*, aucun
+client Highlightly, aucun cron — seul le writer `series.official_*` de T4
+a été construit, en tant que dépendance de T5), le Realtime + rendu des
+états au-delà de ce qui existe déjà (T6c), le vrai hub Jouer. Détail des
+points ouverts restants : `GAPS_OUVERTS.md`.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2541,6 +2543,86 @@ difficulté 4, calculé par recomputeBet, pas deviné) ; pari contesté →
 LOST, points_awarded=0, resolution_reason enregistré. Données de test +
 requête de correction + logs supprimés après vérification, mot de passe
 temporaire re-randomisé.
+
+COMMITTÉ et POUSSÉ sur `main`.
+```
+
+### 2.29 Lot 4c T5 — File des requêtes de correction (`/admin/requests`) — DERNIER LOT DE T5
+
+```text
+Périmètre : SPEC_ECRAN_ADMIN_REQUESTS_V0_1.md (Cadrage/V1/Spec visuelle/,
+nouveau fichier, close en séance) — DERNIER morceau du câblage admin
+(lot 4c) ET du chantier T5 tout entier. Après le bouton Recalculer (4a) et
+la file de résolution (4b).
+
+**Asymétrie RÉELLE trouvée au pré-vol, documentée dans la spec (§0), pas
+une invention** : les requêtes MATCH_PREDICTION (migration #7, voie A)
+peuvent porter une proposition du joueur (proposed_winner_team_id/
+proposed_margin) que l'admin confirme ou ajuste — correction RÉELLE de
+contenu. Les requêtes BET (migration #11, « pari oublié ») ne portent
+JAMAIS de valeur proposée — la vraie correction est de RÉSOUDRE le pari
+(déjà fait ailleurs, /admin/resolution, lot 4b) ; « traiter » une requête
+BET ici se contente de marquer is_admin_corrected/corrected_by_admin_id/
+correction_reason sur `bets` (marquage public de transparence, 0.2.3 §7,
+colonnes symétriques à match_predictions jamais utilisées jusqu'ici) et de
+clore la requête — DEUX comportements de traitement bien réels, pas un
+oubli de symétrie.
+
+Garde-fous DÉJÀ EN BASE (pré-vol, AUCUNE migration pour ce lot) :
+RLS cr_update_admin (admin ≠ requérant, bloque déjà l'auto-traitement au
+niveau de correction_requests) ; RLS mp_update_admin + bets_update_admin
+(is_admin() peut modifier n'importe quelle ligne) ; trigger
+enforce_prediction_correction (T-c, migration #3) — re-vérifie EN BASE
+qu'un admin ne corrige jamais son propre prono, INDÉPENDAMMENT de la
+garde côté correction_requests.
+
+Fichiers : lib/queries/admin-requests.ts (TOUTES les correction_requests
+PENDING, MATCH_PREDICTION et BET dans une seule file — 0.2.7 §6) ;
+lib/actions/admin-requests.ts (processCorrectionRequest — branche
+MATCH_PREDICTION/BET, recomputeMatch UNIQUEMENT pour MATCH_PREDICTION,
+aucun recompute pour BET — rien de scorable n'y change ; rejectCorrection
+Request — motif obligatoire, aucune écriture sur la cible) ;
+components/admin/RequestCard.tsx (+ .module.css, rendu DIFFÉRENT selon
+targetType, 2 formulaires natifs indépendants — Traiter/Refuser — AUCUN
+"use client", même un <select> d'équipe fonctionne nativement). Carte
+« requêtes » du tableau de bord rendue `<Link>` actif — LES 5 PAGES
+FILLES SONT DÉSORMAIS TOUTES CÂBLÉES, page.tsx simplifié (plus aucune
+branche « inerte »).
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build, npm test
+(26/26) tous propres, aucun conflit de route (6 routes /admin/* au total).
+
+**Test en conditions réelles le plus complet de tout le lot Admin** (même
+technique @supabase/ssr), 4 scénarios :
+1. MATCH_PREDICTION « voie A » (Tariq_M, jamais pronostiqué) avec
+   proposition du joueur — traité par Sofia_Admin avec vainqueur+écart
+   corrigés → match_predictions bien écrit, is_admin_corrected=true,
+   ET recomputeMatch a réellement scoré le prono corrigé
+   (is_winner_correct=true, winner_points=10, vérifié en base).
+2. **Cas négatif réel, garde-fou EXISTANT (pas codé par ce lot)** :
+   Sofia_Admin tente de traiter SA PROPRE requête MATCH_PREDICTION → le
+   TRIGGER enforce_prediction_correction (pas la RLS de
+   correction_requests, contrairement à l'hypothèse de départ — le
+   trigger sur match_predictions a tranché en premier) bloque avec le
+   message exact « Un admin ne peut pas corriger son propre prono »,
+   remonté tel quel ; le prono de Sofia reste vide, sa requête reste
+   PENDING — confirmé en base.
+3. BET (Chloe_B, « pari oublié ») traité → bets marqué is_admin_corrected/
+   corrected_by_admin_id/correction_reason, statut du PARI inchangé
+   (VALIDATED, la résolution reste une action séparée, comme voulu) ;
+   requête → PROCESSED.
+4. BET (Amine92) refusé avec motif → requête REJECTED, admin_reason
+   enregistré, AUCUNE écriture sur le pari (statut/is_admin_corrected
+   inchangés) — confirmé en base.
+Nettoyage : cycle de FK circulaire rencontré en supprimant les données de
+test (match_predictions.correction_request_id ↔ correction_requests.
+target_match_prediction_id) — résolu en vidant les FK avant suppression,
+pas un bug de l'écran, un artefact du script de nettoyage jetable. Tout
+confirmé supprimé après coup, mot de passe temporaire re-randomisé.
+
+**CHANTIER T5 ENTIÈREMENT CLOS** (moteur pur, writer, orchestration,
+câblage admin — les 4 lots) **ET LOT ADMIN ENTIÈREMENT CLOS** (6 écrans :
+tableau de bord, validation, résolution, requêtes, joueurs, logs).
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```
