@@ -5,13 +5,16 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — Historique des logs
-> codé et testé, §2.23, quatrième écran du lot Admin, DERNIÈRE page fille
-> sans dépendance sur T5, spec rédigée et close en séance), après Gestion
-> des joueurs (§2.22), après la file de validation des paris (§2.21), après
-> le tableau de bord admin (§2.20) — les 4, spec rédigée et close en séance
-> — après l'écran Mes paris codé et testé (§2.19, spec rédigée et close en
-> séance), lui-même après l'écran Profil
+> Dernière mise à jour : session du 27/07/2026 (suite — chantier T5, lot
+> 1/4 : moteur de scoring PUR codé et testé, §2.24, 26 tests automatisés
+> `vitest` — 1re dépendance de test du projet), après un correctif de
+> région Vercel (latence, iad1 → dub1, même région que Supabase), après
+> Historique des logs (§2.23, quatrième écran du lot Admin, DERNIÈRE page
+> fille sans dépendance sur T5), après Gestion des joueurs (§2.22), après
+> la file de validation des paris (§2.21), après le tableau de bord admin
+> (§2.20) — ces 4, spec rédigée et close en séance — après l'écran Mes
+> paris codé et testé (§2.19, spec rédigée et close en séance), lui-même
+> après l'écran Profil
 > (§2.18, spec rédigée et close en séance), le déploiement Vercel +
 > activation de l'inscription + 1er admin réel (§2.17), l'écran
 > Bracket personnel codé et testé (§2.16, spec rédigée et close en séance),
@@ -96,7 +99,11 @@ dépendance sur le moteur de scoring T5. Restent « résolution » et
 « requêtes », toutes deux PARTIELLEMENT bloquées par l'absence de T5 (voir
 GAPS_OUVERTS.md pour le détail exact de ce qui est/n'est pas codable dès
 maintenant). Le bouton Recalculer du tableau de bord reste absent pour la
-même raison.
+même raison — mais le CHANTIER T5 est désormais ENTAMÉ : le **moteur pur**
+(§2.24, `lib/scoring/engine.ts`, lot 1/4, 26 tests `vitest` PASSENT) est
+CODÉ ET VÉRIFIÉ. Restent 3 lots avant de pouvoir débloquer résolution/
+requêtes/Recalculer : le writer `series.official_*`, l'orchestration
+(`recompute*`), puis le câblage admin lui-même.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2234,6 +2241,84 @@ ces filtres. ») ; contenu avant/après (before_value/after_value JSON)
 vérifié directement en base, cohérent avec ce que le rendu affiche. 2 lignes
 de test supprimées après vérification, mot de passe temporaire
 re-randomisé.
+
+COMMITTÉ et POUSSÉ sur `main`.
+```
+
+### Correctif région Vercel (session du 27/07/2026, entre §2.23 et le chantier T5)
+
+```text
+Latence après chaque clic remontée par l'utilisateur. Diagnostiquée :
+fonctions Vercel en iad1 (Washington D.C., région par défaut de tout
+nouveau projet Vercel), base Supabase en eu-west-1 (Dublin). `vercel.json`
+ajouté (`regions: ["dub1"]`, Dublin — même région que Supabase, pas Paris
+malgré la localisation de l'utilisateur : une page fait souvent plusieurs
+allers-retours fonction↔base PAR requête, contre un seul aller-retour
+navigateur↔fonction — recommandation officielle Vercel confirmée par
+recherche web avant d'agir). Committé, poussé, redéployé et vérifié
+(`vercel inspect` confirme `[dub1]` sur toutes les fonctions).
+```
+
+### Chantier T5 — Moteur de scoring (session du 27/07/2026, suite)
+
+```text
+Découpage en 4 lots confirmé AVEC l'utilisateur (AskUserQuestion), un lot à
+la fois avec vérification entre chaque, même discipline que le lot Admin :
+  1. Moteur pur (lib/scoring/engine.ts) — CE lot.
+  2. Writer minimal series.official_* (lib/sync/writeSeriesOutcome.ts) —
+     SEULE la fonction d'écriture, PAS le reste de T4 (pas de route API,
+     pas de client Highlightly, pas de cron).
+  3. Orchestration (lib/scoring/recompute.ts) — recomputeMatch/Series/
+     Bet/Competition.
+  4. Câblage admin — bouton Recalculer, résolution des paris, traitement
+     des requêtes de correction.
+
+**Framework de test ajouté** : `vitest` (devDependency NOUVELLE — la
+première du projet ; jusqu'ici tout vérifié par scripts jetables/tests
+manuels). Confirmé AVEC l'utilisateur (AskUserQuestion) : la spec T5 §11
+décrit elle-même le moteur pur comme testable « sans base, sur cas de
+table » — 32 cas déjà listés, dont 26 relevant du moteur pur (lot 1).
+`npm test` (`vitest run`) ajouté aux scripts.
+```
+
+### 2.24 Lot 1/4 T5 — Moteur pur (`lib/scoring/engine.ts`)
+
+```text
+Périmètre : SPEC_TECHNIQUE_SCORING_V0_1.md §3-§9 — les 4 fonctions PURES
+(deriveSeriesOutcome, scoreMatchPrediction, scoreBracketPick, scoreBet).
+AUCUNE I/O, AUCUNE dépendance getServerClient/next-headers (C-3). Spec déjà
+VALIDÉE et figée (19/07/2026) — aucune nouvelle décision produit, portage
+fidèle des signatures et barèmes du §3.
+
+**Point d'interprétation trouvé et documenté dans le code** (pas une
+nouvelle décision, une clarification de lecture) : le §4 de T5 dit que
+`deriveSeriesOutcome` "renvoie tel quel" un statut CANCELLED/POSTPONED déjà
+présent — mais la signature figée du §3 ne prend QUE `matches` +
+`competitionType`, aucun statut existant en entrée. Ces deux phrases sont
+incompatibles littéralement. Tranché : la signature du §3 (le contrat
+figé) fait autorité — `deriveSeriesOutcome` reste STRICTEMENT pure et
+calcule toujours depuis les matchs ; le respect d'un CANCELLED/POSTPONED
+déjà posé par un admin est un garde-fou de l'ORCHESTRATION (lot 2/3, avant
+d'appeler deriveSeriesOutcome + writeSeriesOutcome), pas de cette fonction.
+Documenté en commentaire dans engine.ts ; le cas de test #5 de la spec (qui
+testait ce point) est donc déplacé au lot 3 (orchestration) plutôt que
+testé ici.
+
+**Clarification trouvée en écrivant le code** (pas un point produit, une
+lecture précise du §6.3) : la composante AFFICHE d'un pick de bracket se
+score dès que la PAIRE OFFICIELLE de la série est connue — INDÉPENDAMMENT
+du fait que la série elle-même soit FINISHED. Un joueur peut donc voir son
+affiche scorée (bonne ou mauvaise) avant même que la série ne soit jouée,
+pendant que vainqueur/score-exact restent encore NULL (en attente). Les
+cas de test #26/#27 de la spec confirment cette lecture (« sera scorée
+quand la paire officielle sera connue »).
+
+Fichiers : lib/scoring/engine.ts (4 fonctions + types + helpers internes
+non exportés) ; lib/scoring/engine.test.ts (26 tests, cas 1-4/6-27 du §11 —
+tous PASSENT).
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build tous propres
+(aucune route impactée, engine.ts/.test.ts hors app/) ; npm test → 26/26.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```

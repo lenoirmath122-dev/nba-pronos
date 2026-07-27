@@ -2671,8 +2671,85 @@ tous vérifiés, y compris l'état vide filtré. Nettoyé après coup.
 bloquées par T5 désormais — reformulé pour le signaler clairement) ; cette
 entrée de journal.
 
-**État en fin de session** : Historique des logs CODÉ, VÉRIFIÉ (pas encore
-committé — à confirmer avec l'utilisateur). Le lot Admin est à 4/6 écrans.
-Prochaine étape naturelle : soit le moteur de scoring T5 (débloquerait
-résolution + requêtes + le bouton Recalculer d'un coup), soit la partie non
-bloquée de « requêtes » (le refus seul, sans le traitement).
+**État en fin de session** : Historique des logs CODÉ, VÉRIFIÉ, COMMITTÉ et
+POUSSÉ. Le lot Admin est à 4/6 écrans. Prochaine étape naturelle : soit le
+moteur de scoring T5, soit la partie non bloquée de « requêtes ».
+
+---
+
+## Session du 27/07/2026 (suite) — Correctif de latence : région Vercel
+
+**Deux questions posées par l'utilisateur avant d'enchaîner sur T5** :
+l'Historique des logs est-il bien en ligne sur Vercel, et une latence
+perceptible après chaque clic est-elle normale ?
+
+**Vérification déploiement** : `vercel ls` + `vercel inspect` confirment
+un déploiement récent (< 1h) aliasé sur `nba-pronos.vercel.app`, incluant
+`/admin/logs`, `/admin/validation`, `/admin/players` — les 3 répondent
+`307 → /login` en production comme en local. Auto-deploy sur push
+fonctionne bien.
+
+**Diagnostic latence** : les fonctions Vercel tournaient en `iad1`
+(Washington D.C., région PAR DÉFAUT de tout nouveau projet Vercel, jamais
+changée depuis le déploiement initial du 27/07). L'utilisateur a confirmé
+via son dashboard Supabase que la base est en `eu-west-1` (Dublin) — pas
+Paris comme supposé au départ. Recherche web faite AVANT de conclure
+(`WebSearch`/`WebFetch` sur la doc Vercel officielle) : le plan Hobby
+permet de choisir UNE région (`vercel.json` → `regions`), et Vercel
+recommande explicitement de coller la région à la BASE DE DONNÉES plutôt
+qu'à l'utilisateur final (une page fait souvent plusieurs allers-retours
+fonction↔base par requête, contre un seul aller-retour navigateur↔fonction).
+`dub1` (Dublin) = `eu-west-1`, correspondance exacte confirmée par la
+table de régions Vercel.
+
+**Correctif** : `vercel.json` (`regions: ["dub1"]`), committé, poussé,
+redéployé. Vérifié après coup : `vercel inspect` du nouveau déploiement
+confirme `[dub1]` sur toutes les fonctions ; site toujours fonctionnel
+(`/leaderboard` 200 après le redéploiement).
+
+**Suivi mis à jour** : `ETAT_ACTUEL.md` (nouvelle sous-section, §1 non
+touché car ce n'est pas un écran). Pas d'entrée `GAPS_OUVERTS.md` (point
+clos, rien à rouvrir).
+
+---
+
+## Session du 27/07/2026 (suite) — Chantier T5, lot 1/4 : moteur pur
+
+**Découpage en 4 lots proposé et confirmé AVEC l'utilisateur**
+(AskUserQuestion), même discipline « un lot à la fois » que le lot Admin :
+moteur pur → writer `series.official_*` minimal (pas tout T4) →
+orchestration `recompute*` → câblage admin. **2e question posée en même
+temps** : ajouter `vitest` (aucun framework de test dans le projet à ce
+jour) pour tester le moteur pur en cas de table, comme le prévoit
+explicitement `SPEC_TECHNIQUE_SCORING_V0_1.md` §11 (32 cas déjà listés) —
+confirmé.
+
+**Code** : `lib/scoring/engine.ts` — les 4 fonctions PURES du §3
+(`deriveSeriesOutcome`, `scoreMatchPrediction`, `scoreBracketPick`,
+`scoreBet`), aucune I/O. `lib/scoring/engine.test.ts` — 26 tests couvrant
+les cas 1-4/6-27 du §11 (32 cas au total, 6 restants — 28-32, orchestration
+— renvoyés au lot 3 ; cas 5 renvoyé au lot 3 aussi, voir ci-dessous).
+
+**2 points trouvés en écrivant le code, documentés en commentaire, PAS de
+nouvelle décision produit** :
+- Le §4 de T5 dit que `deriveSeriesOutcome` « renvoie tel quel » un statut
+  CANCELLED/POSTPONED déjà présent, mais sa signature figée (§3) ne prend
+  QUE `matches`+`competitionType`, pas de statut existant en entrée — les
+  deux phrases sont littéralement incompatibles. Tranché : la signature du
+  §3 fait autorité (fonction strictement pure), le respect d'un statut déjà
+  posé par un admin est un garde-fou d'ORCHESTRATION (lot 3), pas de cette
+  fonction.
+- La composante AFFICHE d'un pick de bracket se score dès que la PAIRE
+  OFFICIELLE de la série est connue, INDÉPENDAMMENT du fait que la série
+  soit FINISHED — confirmé par les cas de test #26/#27 de la spec elle-même
+  (« sera scorée quand la paire officielle sera connue »).
+
+**Vérifié** : `npm test` → 26/26 ; `tsc`/`eslint`/`next build` propres,
+aucune route impactée.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.24 + note sur
+le découpage des 4 lots + `vitest`) ; cette entrée de journal.
+
+**État en fin de session** : moteur pur CODÉ, TESTÉ (pas encore committé —
+à confirmer avec l'utilisateur). Prochaine étape : lot 2/4, le writer
+`series.official_*`.
