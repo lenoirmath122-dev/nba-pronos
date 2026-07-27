@@ -3096,3 +3096,46 @@ nouvelle classe `.dialogSecondary`). Spec amendée en miroir
 (même famille que `RecalculateButton`) — pas rejouable en headless comme
 noté précédemment ; test réel laissé à l'utilisateur sur le déploiement,
 comme convenu avant de committer.
+
+---
+
+## Correctif des 12 vulnérabilités npm (27/07/2026, suite)
+
+Reprise de session : l'utilisateur choisit de traiter le point 1 de
+l'ordre de reprise (12 vulnérabilités `npm audit`, fixées la session
+précédente) plutôt que le lot 2/3 compétitions ou le vrai hub Jouer.
+
+`next` 16.2.10 → 16.2.12 (+ `eslint-config-next` assorti) : corrige les 9
+CVE directes de Next.js. Vérifié par `npm audit --json` : l'entrée `next`
+ne référence plus que `postcss`/`sharp`, embarqués par `next` en version
+figée dans son propre `package.json`.
+
+`eslint` 9 → 10 tenté, **abandonné après une vraie trouvaille bloquante** :
+`eslint-plugin-react@7.37.5` (embarqué par `eslint-config-next@16.2.12`)
+plante sous eslint 10 (`TypeError: contextOrFilename.getFilename is not a
+function` — API supprimée par ESLint 10, aucune version stable compatible
+publiée à ce jour, vérifié sur le registre npm). Flagué explicitement
+avec l'utilisateur (AskUserQuestion) avant de trancher, comme convenu pour
+ce projet quand un plan se heurte à une réalité technique imprévue —
+choix confirmé : rester sur eslint 9.
+
+Les 6 vulnérabilités restantes (chaîne `eslint-plugin-*` →
+`minimatch@3.1.5` → `brace-expansion`) neutralisées par deux `overrides`
+npm ciblés (`minimatch@^10.2.6` + `brace-expansion@^5.0.8` — un override
+de `brace-expansion` seul cassait `minimatch@3.1.5`, découvert en testant,
+pas deviné) + deux autres pour la chaîne `next`/`postcss`/`sharp`
+(`postcss@^8.5.18`, `sharp@^0.35.0`).
+
+**Résultat** : `npm audit` → 0 vulnérabilité (contre 12). `tsc`/`eslint`/
+`npm test` (26 tests)/`next build` tous propres, 24 routes sans conflit,
+aucune régression.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.32, header
+réécrit) ; `GAPS_OUVERTS.md` (gap npm retiré/marqué résolu, nouveau gap
+« eslint bloqué en v9 » ajouté, ordre de reprise pointé sur le point 1
+traité) ; cette entrée de journal.
+
+**État en fin de session** : PAS committé à ce stade (à confirmer avec
+l'utilisateur). Prochaine étape à reconfirmer : vrai hub Jouer ou lot 2/3
+compétitions (saisie manuelle de résultats, le plus important avant le
+30/10).

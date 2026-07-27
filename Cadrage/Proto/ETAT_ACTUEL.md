@@ -5,21 +5,21 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — nouveau chantier
-> « Gestion des compétitions », lot 1/3 : création (`/admin/competitions`,
-> §2.30), ouvert suite à une question de l'utilisateur sur le switch
-> Playoffs/Cup — a révélé que rien ne fait aujourd'hui avancer une équipe
-> de tour en tour ni ne pose un résultat officiel, d'où le lot 2 à venir
-> — saisie manuelle des résultats — comme le morceau le plus important
-> avant le 30/10). Juste avant : **le lot Admin (6 écrans) ET le chantier
-> T5 (moteur de scoring, 4 lots) sont entièrement clos** (§2.20 à §2.29 —
-> détail complet dans `JOURNAL_SESSIONS.md`), après quoi l'ordre de reprise
-> pour la session suivante a été fixé avec l'utilisateur : 12 vulnérabilités
-> npm en attente (détail `GAPS_OUVERTS.md`), puis le vrai hub Jouer, puis
-> le reste (T4, Realtime T6c) — **désormais complété par ce nouveau
-> chantier compétitions**, à traiter dans l'ordre que l'utilisateur
-> précisera à la reprise. Historique complet session par session :
-> `JOURNAL_SESSIONS.md`.
+> Dernière mise à jour : session du 27/07/2026 (suite — PRIORITÉ 1 de
+> l'ordre de reprise traitée : **les 12 vulnérabilités npm sont corrigées**
+> (§2.32, `npm audit` → 0), `next` 16.2.10→16.2.12 et overrides
+> minimatch/brace-expansion/postcss/sharp. Point ouvert trouvé en cours de
+> route, flagué et tranché AVEC l'utilisateur : `eslint` reste en v9 —
+> `eslint-plugin-react` embarqué par `eslint-config-next@16.2.12` plante
+> sous eslint 10 (API supprimée, aucune version stable compatible à ce
+> jour), le bump v10 est donc reporté en amont (`GAPS_OUVERTS.md`). PAS
+> committé à ce stade). Reste à traiter dans l'ordre : le vrai hub Jouer,
+> puis le lot 2/3 compétitions (saisie manuelle des résultats, le plus
+> important avant le 30/10), puis le reste (T4, Realtime T6c) — ordre à
+> reconfirmer avec l'utilisateur à la prochaine reprise. Juste avant : le
+> lot Admin (6 écrans), le chantier T5 (moteur de scoring, 4 lots) et le
+> lot 1/3 du chantier compétitions (création, §2.30) sont entièrement clos
+> — détail complet dans `JOURNAL_SESSIONS.md`.
 
 ---
 
@@ -2724,4 +2724,58 @@ Action `useTransition` (comme RecalculateButton) : pas rejouable en
 headless, test réel laissé à l'utilisateur sur le déploiement.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+```
+
+### 2.32 Correctif des 12 vulnérabilités npm (session du 27/07/2026, suite — PRIORITÉ 1 de l'ordre de reprise)
+
+```text
+Objet : les 12 vulnérabilités `npm audit` trouvées en fin de session
+précédente (§2 ci-dessus, `GAPS_OUVERTS.md`) — deux chaînes indépendantes,
+`next` figé à 16.2.10 et `eslint` en v9.
+
+`next` 16.2.10 → **16.2.12** (`eslint-config-next` assorti à l'identique,
+16.2.12 — convention du projet, même version que `next`) : corrige les 9
+CVE directes de Next.js (Middleware/Proxy bypass, DoS/SSRF Server
+Actions, SSRF rewrites, disclosure endpoints). Vérifié après coup dans
+`npm audit --json` : l'entrée `next` ne référence plus aucune CVE propre,
+seulement un héritage transitif via `postcss`/`sharp` (ci-dessous).
+
+`eslint` 9 → 10 **TENTÉ PUIS ABANDONNÉ, trouvaille bloquante** (pas une
+simple histoire de règles à réajuster, contrairement à l'hypothèse posée
+dans `GAPS_OUVERTS.md`) : `eslint-plugin-react@7.37.5` (embarqué par
+`eslint-config-next@16.2.12`, aucune version stable publiée à ce jour ne
+déclare de compatibilité eslint 10 dans son `peerDependencies`, vérifié
+sur le registre npm) plante avec `TypeError: contextOrFilename.getFilename
+is not a function` — API supprimée par ESLint 10, pas contournable par la
+config. **Flag explicite fait AVANT de continuer** (AskUserQuestion) :
+l'utilisateur a choisi de rester sur eslint 9 plutôt que de casser le lint
+en attendant qu'`eslint-config-next` mette à jour ses plugins embarqués.
+Point réouvert ci-dessous (`GAPS_OUVERTS.md`) pour reprise quand ce sera
+possible en amont.
+
+Les 6 vulnérabilités restantes après le bump `next` seul (toutes dans
+l'arbre de dépendances embarqué par `eslint-config-next` — outillage dev,
+jamais exécuté en production) tracent TOUTES à un seul nœud :
+`brace-expansion <=5.0.7` (DoS, `GHSA-mh99-v99m-4gvg`) remonté via
+`minimatch@3.1.5`. Un override direct de `brace-expansion` seul CASSE
+`minimatch@3.1.5` (`TypeError: expand is not a function` — `brace-expansion`
+5.x a changé la forme de son export, incompatible avec l'API attendue par
+les `minimatch` anciens). Corrigé par `overrides` npm ciblant les DEUX
+niveaux ensemble (`package.json`) : `minimatch: ^10.2.6` (dernière version,
+construite pour la nouvelle forme) + `brace-expansion: ^5.0.8` — cohérent
+entre eux, vérifié par relecture des `peerDependencies`/`dependencies`
+publiés avant d'appliquer. Overrides ajoutés au passage pour la chaîne
+`next`/`postcss`/`sharp`, embarqués par `next` en version FIGÉE dans son
+propre `package.json` (pas résolue par le bump de version de `next` seul) :
+`postcss: ^8.5.18` (3 CVE : XSS stringify, lecture arbitraire de fichier
+via sourceMappingURL, path traversal du même ordre) et `sharp: ^0.35.0`
+(CVE libvips héritées).
+
+Résultat final : `npm audit` → **0 vulnérabilité** (contre 12). `npx tsc
+--noEmit`, `npx eslint .`, `npm test` (26 tests `vitest`), `npx next build`
+tous propres après le dernier `npm install` — 24 routes toujours sans
+conflit, aucune régression.
+
+PAS committé à ce stade (à confirmer avec l'utilisateur, même patron que
+§2.31).
 ```

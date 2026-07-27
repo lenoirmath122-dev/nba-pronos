@@ -5,16 +5,17 @@
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
 > **Ordre de reprise décidé avec l'utilisateur (27/07/2026, après la clôture
-> du chantier T5 + lot Admin)** — le chantier Gestion des compétitions
-> (ci-dessous) a été ouvert APRÈS cette liste, à re-situer dans l'ordre à la
-> reprise :
-> 1. **Vulnérabilités npm** (12, détail ci-dessous) — sécurité, à traiter
->    avant tout nouveau développement.
+> du chantier T5 + lot Admin ; point 1 traité le 27/07/2026, suite, voir
+> `ETAT_ACTUEL.md` §2.32)** :
+> 1. ~~Vulnérabilités npm~~ — **FAIT** (`npm audit` → 0, §2.32). A ouvert un
+>    gap de suivi distinct (`eslint` bloqué en v9, voir ci-dessous).
 > 2. **Vrai hub Jouer** — remplace le hub temporaire (§2.10 `ETAT_ACTUEL.md`),
 >    aucune spec d'écran encore écrite.
 > 3. **Le reste** (lot 2/3 des compétitions — saisie manuelle de résultats,
 >    moteur de synchro T4, Realtime T6c au-delà de l'existant) — voir le
->    point « Implémentation code de la V1 » ci-dessous.
+>    point « Implémentation code de la V1 » ci-dessous. Le lot 2/3 des
+>    compétitions reste noté comme le plus important avant le 30/10 — ordre
+>    entre 2 et 3 à reconfirmer avec l'utilisateur à la reprise.
 
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 
@@ -103,30 +104,25 @@
     une fois les 8 qualifiés connus, ~27/11) ; mapping automatique A7
     (pré-remplissage depuis T4, quand elle existera) ; onglet Historique
     côté Profil joueur (`decisions_multi_competitions_historique.md` §4).
-- **12 vulnérabilités npm (`npm audit`, trouvées le 27/07/2026, PRIORITÉ 1
-  pour la prochaine session)** — aucune corrigée à ce jour. Deux chaînes
-  indépendantes :
-  1. **`next` figé à 16.2.10 exact** (pas une plage — `npm audit`/`fix`
-     seuls ne le touchent pas) : 9 CVE (dont *Middleware/Proxy bypass App
-     Router Turbopack*, *DoS Server Actions*, *SSRF Server Actions*, *SSRF
-     rewrites*, *disclosure Server Function endpoints* — sévérité HIGH) +
-     `postcss`/`sharp` (dépendances transitives de `next`) vulnérables en
-     cascade. Correctif : passer `next` à **16.2.12** dans `package.json`
-     (actuellement épinglé à `16.2.10`), puis `npm install` + revérifier
-     `tsc`/`eslint`/`next build`/`npm test` — AGENTS.md rappelle de
-     consulter `node_modules/next/dist/docs/` avant toute nouvelle brique
-     après une montée de version Next (ruptures déjà rencontrées : proxy.ts,
-     cookies() async, searchParams Promise, onNavigate, next/image SVG).
-  2. **`eslint` en v9** : `brace-expansion`/`minimatch` vulnérables,
-     remontant via `@eslint/config-array`, `@eslint/eslintrc`,
-     `eslint-plugin-{import,jsx-a11y,react}`, jusqu'à `eslint-config-next`.
-     Correctif : `eslint@10.8.0` — **breaking change** annoncé par
-     `npm audit fix --force` (règles/API potentiellement différentes,
-     `eslint.config.*` ou `.eslintrc` à revérifier après coup, `npx eslint .`
-     doit rester propre).
-  Aucune faille exploitée observée à ce jour (démo privée entre amis) —
-  traité comme priorité de sécurité avant nouveau développement, pas comme
-  une urgence de production.
+- **12 vulnérabilités npm — RÉSOLU le 27/07/2026 (suite)**, voir
+  `ETAT_ACTUEL.md` §2.32 pour le détail complet : `next` 16.2.10→16.2.12
+  (corrige les 9 CVE directes) + `overrides` npm (`minimatch@^10.2.6`,
+  `brace-expansion@^5.0.8`, `postcss@^8.5.18`, `sharp@^0.35.0`) pour le
+  reste. `npm audit` → 0, `tsc`/`eslint`/`next build`/`npm test` tous
+  propres. PAS committé à ce stade (à confirmer avec l'utilisateur).
+- **`eslint` bloqué en v9, bump v10 reporté en amont** (trouvé le 27/07/2026
+  en traitant le point ci-dessus, `ETAT_ACTUEL.md` §2.32) : la montée à
+  `eslint@10.8.0` a été tentée, mais `eslint-plugin-react@7.37.5` (embarqué
+  par `eslint-config-next@16.2.12`) plante (`TypeError:
+  contextOrFilename.getFilename is not a function` — API supprimée par
+  ESLint 10). Vérifié sur le registre npm : aucune version stable
+  d'`eslint-plugin-react` ne déclare de compatibilité eslint 10 dans son
+  `peerDependencies` à ce jour (max `^9.7`). Flagué explicitement avec
+  l'utilisateur avant de choisir : reste sur eslint 9 pour l'instant,
+  6 vulnérabilités « eslint-plugin-* » neutralisées autrement (overrides
+  minimatch/brace-expansion ci-dessus) plutôt que par le bump v9→v10. À
+  reprendre : revérifier quand `eslint-config-next` (ou
+  `eslint-plugin-react` seul) publie une version compatible eslint 10.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
