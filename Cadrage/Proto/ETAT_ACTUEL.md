@@ -5,10 +5,12 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — tableau de bord
-> admin codé et testé, §2.20, premier écran du lot Admin, spec rédigée et
-> close en séance), après l'écran Mes paris codé et testé (§2.19, spec
-> rédigée et close en séance), lui-même après l'écran Profil
+> Dernière mise à jour : session du 27/07/2026 (suite — file de validation
+> des paris codée et testée, §2.21, deuxième écran du lot Admin, spec
+> rédigée et close en séance), après le tableau de bord admin codé et testé
+> (§2.20, premier écran du lot Admin, spec rédigée et close en séance),
+> après l'écran Mes paris codé et testé (§2.19, spec rédigée et close en
+> séance), lui-même après l'écran Profil
 > (§2.18, spec rédigée et close en séance), le déploiement Vercel +
 > activation de l'inscription + 1er admin réel (§2.17), l'écran
 > Bracket personnel codé et testé (§2.16, spec rédigée et close en séance),
@@ -85,11 +87,12 @@ désormais l'onglet « Jouer » aux QUATRE écrans du hub joueur (Matchs, Mes
 pronos, Paris, Mon bracket) — plus aucune entrée inerte — en attendant le
 vrai hub, dont la spec d'écran reste à écrire. « Mes paris » (§2.19) est
 CODÉ ET VÉRIFIÉ, ce qui ferme le hub joueur. Le lot ADMIN est ENTAMÉ : le
-**tableau de bord** (§2.20, premier écran, `/admin`) est CODÉ ET VÉRIFIÉ —
-garde de rôle + 3 compteurs de file, mais SANS le bouton Recalculer (le
-moteur de scoring T5 qu'il appelle n'existe pas encore) ni les 5 pages
-filles (validation/résolution/requêtes/joueurs/logs), toutes encore
-inertes. Reste à coder : les 5 pages filles admin, une à une.
+**tableau de bord** (§2.20, `/admin`) et la **file de validation des paris**
+(§2.21, `/admin/validation`, deuxième écran) sont CODÉS ET VÉRIFIÉS. Le
+bouton Recalculer reste absent du tableau de bord (le moteur de scoring T5
+qu'il appelle n'existe pas encore) ; « résolution », « requêtes », « joueurs »
+et « logs » restent des entrées inertes. Reste à coder : ces 4 pages filles,
+une à une.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2048,6 +2051,68 @@ en cours » absent à raison (compétition ACTIVE présente). Mots de passe
 temporaires posés via l'API Admin sur Sofia_Admin/Amine92 (jamais affichés
 dans le chat), re-randomisés en fin de vérification. Scripts jetables de
 test créés puis supprimés, non committés.
+
+PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+```
+
+### 2.21 File de validation des paris (session du 27/07/2026, suite)
+
+```text
+Périmètre : SPEC_ECRAN_ADMIN_VALIDATION_V0_1.md (Cadrage/V1/Spec visuelle/,
+nouveau fichier, close en séance) — app/(admin)/admin/validation/page.tsx.
+Deuxième écran du lot Admin, choisi en premier parmi les 5 pages filles :
+SEULE avec « Gestion des joueurs » à ne PAS dépendre du moteur de scoring
+T5 manquant (validateBet/rejectBet sont catégorie B SANS recompute, T6a
+§5.3 — contrairement à resolveBet, qui appelle recomputeBet).
+
+Trouvaille au pré-vol (pas dans la prose 0.2.9, mais dans le schéma ET la
+signature T6b) : validateBet exige AUSSI une catégorie validée, pas
+seulement la difficulté — sélecteur de catégorie ajouté à la carte en plus
+de la réglette, cohérent avec l'interprétation déjà actée en Mes pronos
+(§2.11 : « catégorie suit la même règle que la difficulté »).
+
+Fichiers : lib/queries/admin-validation.ts (getPendingValidationBets — TOUS
+les joueurs de la compétition active, pas seulement auth.uid(), même
+construction de libellés que lib/queries/my-bets.ts) ; lib/actions/
+admin-validation.ts (validateBet/rejectBet + variantes FormData, session
+admin via getServerClient, RLS bets_update_admin — AUCUNE fonction SQL
+SECURITY DEFINER, AUCUNE migration) ; lib/actions/audit.ts (NOUVEAU,
+PARTAGÉ — logAdminAction, écrit audit_logs, réutilisable par les 4 lots
+admin restants) ; components/admin/ValidationBetCard.tsx (+ .module.css,
+100% composant serveur — 2 formulaires natifs indépendants par carte,
+Valider/Refuser, <select> natifs pour catégorie/difficulté, aucun JS
+requis). Carte « à valider » du tableau de bord rendue <Link> actif vers
+/admin/validation (les 2 autres cartes + les 2 entrées restent inertes).
+
+Garde-fou repris (piège déjà rencontré, §7) : validateBet/rejectBet
+re-vérifient le statut SUBMITTED dans le WHERE de l'UPDATE (pas seulement
+en lecture avant), puis .select().maybeSingle() pour détecter 0 ligne
+affectée (pari déjà traité par un autre admin) — jamais seulement l'absence
+d'erreur.
+
+logAdminAction (lib/actions/audit.ts) : appelée APRÈS la transition,
+best-effort (pas de transaction cross-appel PostgREST possible ici,
+catégorie SANS recompute donc pas de fonction SQL unique) — un échec de log
+ne fait PAS échouer l'action déjà posée, juste signalé en console serveur.
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build tous propres,
+aucun conflit de route (/admin/validation listé).
+
+Test en conditions réelles (même technique @supabase/ssr que §2.20) : 2
+paris de test SUBMITTED créés via service_role (un à valider, un à
+refuser) ; carte rendue avec le bon contexte (joueur, cible, énoncé,
+catégorie/difficulté proposées) ; formulaire Valider soumis réellement
+(POST sans JS, technique $ACTION_ID_ déjà connue) → bets.status=VALIDATED,
+validated_category/validated_difficulty/validated_by_admin_id posés
+correctement, ligne audit_logs "VALIDATE_BET" créée ; formulaire Refuser
+soumis → status=REJECTED, refusal_reason posé, ligne audit_logs
+"REJECT_BET" créée. Piège rencontré en testant (pas un bug du code, un bug
+du script de test) : les 2 formulaires d'une même carte partagent le même
+hidden betId — un script de test qui n'extrait l'ACTION_ID qu'en cherchant
+ce betId récupère le MAUVAIS formulaire ; corrigé en désambiguïsant par un
+2e champ propre à chaque formulaire (validatedCategory vs refusalReason).
+2 paris de test + leurs lignes audit_logs supprimés après vérification,
+mot de passe temporaire re-randomisé.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```

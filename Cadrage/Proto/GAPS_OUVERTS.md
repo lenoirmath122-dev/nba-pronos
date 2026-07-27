@@ -85,16 +85,15 @@
   — voir gap dédié ci-dessous), puis le moteur de synchro/scoring (T4/T5),
   le Realtime + rendu des états au-delà de ce qui existe déjà (T6c). Détail
   dans `ETAT_ACTUEL.md` §2.
-- **5 pages filles admin à coder** (ajouté le 27/07/2026, `ETAT_ACTUEL.md`
-  §2.20) : le tableau de bord admin (`/admin`) affiche 3 compteurs de file +
-  2 entrées de gestion, tous INERTES faute de page cible — `/admin/validation`
-  (paris SOUMIS), `/admin/resolution` (paris VALIDÉS échus), `/admin/requests`
-  (requêtes de correction pronos+paris), `/admin/players` (gestion des
-  joueurs), `/admin/logs` (consultation audit_logs). Signatures déjà posées
-  par `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5 (validateBet, resolveBet,
+- **4 pages filles admin restantes à coder** (ajouté le 27/07/2026,
+  `ETAT_ACTUEL.md` §2.20, réduit à 4 le même jour §2.21 — validation FAITE) :
+  `/admin/resolution` (paris VALIDÉS échus), `/admin/requests` (requêtes de
+  correction pronos+paris), `/admin/players` (gestion des joueurs),
+  `/admin/logs` (consultation audit_logs). Signatures déjà posées par
+  `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5 (resolveBet,
   processCorrectionRequest, setPlayerRole, setPlayerStatus) — reste à écrire
   la spec d'écran de chacune puis à coder, une à la fois (même patron que ce
-  lot). `/admin/resolution` dépend en plus du point ci-dessous.
+  lot). `/admin/resolution` dépend en plus du point ci-dessous (recompute).
 - **Bouton « Recalculer » du tableau de bord admin bloqué sur T5** (trouvé au
   pré-vol du 27/07/2026, `ETAT_ACTUEL.md` §2.20) : `recalculateCompetition`
   (T6a/T6b) appelle `recomputeCompetition` (T5 §10.1), qui N'EXISTE NULLE

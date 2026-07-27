@@ -2531,3 +2531,55 @@ lui-même). Vérifié après coup : bracket_deadline dans le futur (28/07),
 rejoué à chaque fois que la démo redevient active après plusieurs jours
 d'inactivité, tant que le seed reste sur des dates absolues plutôt que
 relatives à `now()` au moment du lancement de la démo.
+
+---
+
+## Session du 27/07/2026 (suite) — File de validation des paris (2e écran du lot Admin)
+
+**Choix du 2e écran** : validation plutôt que résolution/requêtes/joueurs/
+logs, car SEULE avec « Gestion des joueurs » à ne pas dépendre du moteur de
+scoring T5 manquant (`validateBet`/`rejectBet` catégorie B SANS recompute,
+T6a §5.3 — vérifié dans `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5.1
+AVANT de choisir, pas après coup).
+
+**Spec** (`SPEC_ECRAN_ADMIN_VALIDATION_V0_1.md`, nouveau fichier, assemblage
+comme pour le tableau de bord — décisions déjà validées par 0.2.7/0.2.9/T6b).
+**Trouvaille au pré-vol** : la prose 0.2.9 §8 ne mentionne que la réglette
+de difficulté, mais le schéma ET la signature `validateBet` (T6b) exigent
+AUSSI une catégorie validée — sélecteur de catégorie ajouté à la carte,
+cohérent avec l'interprétation déjà actée en Mes pronos (§2.11).
+
+**Code** : `lib/queries/admin-validation.ts` (tous les joueurs, pas
+`auth.uid()` seul) ; `lib/actions/admin-validation.ts` (`validateBet`/
+`rejectBet`, session admin, RLS `bets_update_admin`, AUCUNE migration) ;
+`lib/actions/audit.ts` NOUVEAU — `logAdminAction`, PARTAGÉ, réutilisable par
+les 4 lots admin restants (prévu explicitement par T6b §6, pas une
+abstraction inventée) ; `components/admin/ValidationBetCard.tsx` — 2
+formulaires natifs indépendants (Valider/Refuser) par carte, `<select>`
+natifs, 100% composant serveur. Carte « à valider » du tableau de bord
+rendue `<Link>` actif.
+
+**Garde-fou repris** (piège déjà connu, `ETAT_ACTUEL.md` §7) : re-garde le
+statut `SUBMITTED` dans le `WHERE` de l'`UPDATE`, `.select().maybeSingle()`
+pour détecter une course entre deux admins (0 ligne affectée), jamais
+seulement l'absence d'erreur.
+
+**Vérifié** : `tsc`/`eslint`/`next build` propres, aucun conflit de route.
+
+**Test en conditions réelles** (même technique `@supabase/ssr` que le lot
+précédent) : 2 paris de test `SUBMITTED` créés (service_role), les 2 cartes
+rendues avec le bon contexte, formulaire Valider soumis réellement (POST
+sans JS) → `VALIDATED` + `audit_logs` correct ; formulaire Refuser soumis
+→ `REJECTED` + `audit_logs` correct. **Piège de TEST rencontré** (pas un
+bug du code) : les 2 formulaires d'une carte partagent le même hidden
+`betId` — un script d'extraction naïf de l'`$ACTION_ID_` récupère le
+mauvais formulaire ; corrigé en désambiguïsant par un champ propre à
+chaque formulaire. Données de test + logs supprimés après coup, mot de
+passe temporaire re-randomisé.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.21) ;
+`GAPS_OUVERTS.md` (5 pages filles → 4 restantes) ; cette entrée de journal.
+
+**État en fin de session** : file de validation CODÉE, VÉRIFIÉE (pas encore
+committée — à confirmer avec l'utilisateur). Prochaine étape : choisir la
+page fille suivante (résolution, requêtes, joueurs ou logs).
