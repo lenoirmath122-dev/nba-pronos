@@ -1,5 +1,92 @@
-// Profil joueur — route minimale pour que l'onglet ne renvoie pas de 404.
-// Écran réel (préférences, thème, lien Admin si ADMIN, T6a §3) : lot suivant.
-export default function ProfilePage() {
-  return <p>Profil — à venir.</p>;
+import { redirect } from "next/navigation";
+import { getProfileData, getTeamOptions } from "@/lib/queries/profile";
+import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
+import { logout } from "@/lib/auth/actions";
+import { TeamPicker } from "@/components/profile/TeamPicker";
+import styles from "./page.module.css";
+
+// Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
+// Remplace le stub "à venir" (22/07/2026) et le bouton de déconnexion
+// temporaire (app/(app)/layout.tsx, §5 de la spec).
+
+type SearchParams = { profileError?: string };
+
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const sp = await searchParams;
+  const profile = await getProfileData();
+  if (!profile) redirect("/login"); // ne devrait pas se produire : layout (app) garde déjà la session.
+
+  const teams = await getTeamOptions();
+
+  return (
+    <div className={styles.page}>
+      <header className={styles.header}>
+        <h1 className={styles.pseudo}>{profile.pseudo}</h1>
+        {profile.isAdmin && <span className={styles.adminBadge}>Admin</span>}
+      </header>
+
+      {sp.profileError && (
+        <p className={styles.error} role="alert">
+          {sp.profileError}
+        </p>
+      )}
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Thème</h2>
+        <form action={updateThemePreference}>
+          <input type="hidden" name="theme" value={profile.theme === "DARK" ? "LIGHT" : "DARK"} />
+          <button type="submit" className={styles.secondaryButton}>
+            Passer en thème {profile.theme === "DARK" ? "clair" : "sombre"}
+          </button>
+        </form>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Préférences</h2>
+        <form action={updateProfile} className={styles.preferencesForm}>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Équipe favorite</span>
+            <TeamPicker teams={teams} selectedTeamId={profile.favoriteTeamId} />
+          </label>
+
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Bio</span>
+            <textarea
+              name="bio"
+              defaultValue={profile.bio}
+              placeholder="Quelques mots sur toi (facultatif)"
+              rows={3}
+              className={styles.textarea}
+            />
+          </label>
+
+          <button type="submit" className={styles.primaryButton}>
+            Enregistrer
+          </button>
+        </form>
+      </section>
+
+      {profile.isAdmin && (
+        <section className={styles.section}>
+          <h2 className={styles.sectionTitle}>Administration</h2>
+          {/* /admin n'existe pas encore (lot futur) — entrée inerte, même
+              patron que le hub Jouer temporaire (ETAT_ACTUEL.md §2.10) plutôt
+              qu'un lien mort vers une route 404. */}
+          <p className={styles.inertEntry}>Admin — à venir</p>
+        </section>
+      )}
+
+      <section className={styles.section}>
+        <form action={logout}>
+          <button type="submit" className={styles.logoutButton}>
+            Déconnexion
+          </button>
+        </form>
+      </section>
+    </div>
+  );
 }
