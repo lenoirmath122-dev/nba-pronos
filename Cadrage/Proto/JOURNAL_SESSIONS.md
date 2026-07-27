@@ -2580,6 +2580,51 @@ passe temporaire re-randomisé.
 **Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.21) ;
 `GAPS_OUVERTS.md` (5 pages filles → 4 restantes) ; cette entrée de journal.
 
-**État en fin de session** : file de validation CODÉE, VÉRIFIÉE (pas encore
-committée — à confirmer avec l'utilisateur). Prochaine étape : choisir la
-page fille suivante (résolution, requêtes, joueurs ou logs).
+**État en fin de session** : file de validation CODÉE, VÉRIFIÉE, COMMITTÉE
+et POUSSÉE. Prochaine étape : choisir la page fille suivante (résolution,
+requêtes, joueurs ou logs).
+
+---
+
+## Session du 27/07/2026 (suite) — Gestion des joueurs (3e écran du lot Admin)
+
+**Choix du 3e écran** : joueurs plutôt que résolution/requêtes/logs — même
+raison que la validation, `setPlayerRole`/`setPlayerStatus` sont catégorie B
+SANS recompute (T6a §5.3), pas de dépendance sur T5.
+
+**Bonne surprise au pré-vol** (comme pour le tableau de bord) : les
+garde-fous fins (pas d'auto-rétrogradation, dernier admin actif protégé)
+étaient DÉJÀ posés par un trigger (`enforce_users_invariants`, migration #3
+corrigée #4) — écriture réduite à une UPDATE directe sur `users`, aucune
+fonction SQL, aucune migration pour ce lot.
+
+**Spec** (`SPEC_ECRAN_ADMIN_PLAYERS_V0_1.md`, assemblage comme les 2 lots
+précédents). Décision d'implémentation actée : l'auto-désactivation (rester
+ADMIN mais se désactiver soi-même) n'est pas bloquée sauf pour le dernier
+admin actif — reflété tel quel, pas de garde supplémentaire inventée.
+
+**Code** : `lib/queries/admin-players.ts` (tri ADMIN puis PLAYER, calcule
+`isSelf`/`isLastActiveAdmin` en lecture pour griser AVANT le clic) ;
+`lib/actions/admin-players.ts` (`setPlayerRole`/`setPlayerStatus`,
+messages d'erreur du trigger remontés tels quels) ; `components/admin/
+PlayerRow.tsx` — boutons `disabled` HTML natifs, fonctionnent sans JS.
+Carte « Gestion des joueurs » du tableau de bord rendue `<Link>` actif.
+
+**Vérifié** : `tsc`/`eslint`/`next build` propres, aucun conflit de route.
+
+**Test en conditions réelles**, avec un **vrai cas négatif** cette fois :
+promotion puis rétrogradation de `Tariq_M` (aller-retour réel, sans effet
+résiduel) ; surtout — tentative de **forcer** l'auto-rétrogradation de
+`Sofia_Admin` en construisant le POST directement, contournant le bouton
+désactivé côté UI (qui n'est qu'un confort) : bloquée CÔTÉ SERVEUR par le
+trigger, message d'erreur exact remonté. Confirme que la vraie garde vit en
+base, pas seulement dans l'UI. Logs de test supprimés, mot de passe
+temporaire re-randomisé.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.22) ;
+`GAPS_OUVERTS.md` (4 pages filles → 3 restantes) ; cette entrée de journal.
+
+**État en fin de session** : Gestion des joueurs CODÉE, VÉRIFIÉE (pas
+encore committée — à confirmer avec l'utilisateur). Prochaine étape :
+résolution des paris, requêtes de correction, ou logs — les deux premières
+resteront partiellement bloquées par l'absence du moteur de scoring T5.

@@ -5,12 +5,13 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — file de validation
-> des paris codée et testée, §2.21, deuxième écran du lot Admin, spec
-> rédigée et close en séance), après le tableau de bord admin codé et testé
-> (§2.20, premier écran du lot Admin, spec rédigée et close en séance),
-> après l'écran Mes paris codé et testé (§2.19, spec rédigée et close en
-> séance), lui-même après l'écran Profil
+> Dernière mise à jour : session du 27/07/2026 (suite — Gestion des joueurs
+> codée et testée, §2.22, troisième écran du lot Admin, spec rédigée et
+> close en séance), après la file de validation des paris (§2.21, deuxième
+> écran du lot Admin, spec rédigée et close en séance), après le tableau de
+> bord admin codé et testé (§2.20, premier écran du lot Admin, spec rédigée
+> et close en séance), après l'écran Mes paris codé et testé (§2.19, spec
+> rédigée et close en séance), lui-même après l'écran Profil
 > (§2.18, spec rédigée et close en séance), le déploiement Vercel +
 > activation de l'inscription + 1er admin réel (§2.17), l'écran
 > Bracket personnel codé et testé (§2.16, spec rédigée et close en séance),
@@ -87,12 +88,12 @@ désormais l'onglet « Jouer » aux QUATRE écrans du hub joueur (Matchs, Mes
 pronos, Paris, Mon bracket) — plus aucune entrée inerte — en attendant le
 vrai hub, dont la spec d'écran reste à écrire. « Mes paris » (§2.19) est
 CODÉ ET VÉRIFIÉ, ce qui ferme le hub joueur. Le lot ADMIN est ENTAMÉ : le
-**tableau de bord** (§2.20, `/admin`) et la **file de validation des paris**
-(§2.21, `/admin/validation`, deuxième écran) sont CODÉS ET VÉRIFIÉS. Le
-bouton Recalculer reste absent du tableau de bord (le moteur de scoring T5
-qu'il appelle n'existe pas encore) ; « résolution », « requêtes », « joueurs »
-et « logs » restent des entrées inertes. Reste à coder : ces 4 pages filles,
-une à une.
+**tableau de bord** (§2.20, `/admin`), la **file de validation des paris**
+(§2.21, `/admin/validation`) et **Gestion des joueurs** (§2.22,
+`/admin/players`, troisième écran) sont CODÉS ET VÉRIFIÉS. Le bouton
+Recalculer reste absent du tableau de bord (le moteur de scoring T5 qu'il
+appelle n'existe pas encore) ; « résolution », « requêtes » et « logs »
+restent des entrées inertes. Reste à coder : ces 3 pages filles, une à une.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2113,6 +2114,58 @@ ce betId récupère le MAUVAIS formulaire ; corrigé en désambiguïsant par un
 2e champ propre à chaque formulaire (validatedCategory vs refusalReason).
 2 paris de test + leurs lignes audit_logs supprimés après vérification,
 mot de passe temporaire re-randomisé.
+
+PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+```
+
+### 2.22 Gestion des joueurs (session du 27/07/2026, suite)
+
+```text
+Périmètre : SPEC_ECRAN_ADMIN_PLAYERS_V0_1.md (Cadrage/V1/Spec visuelle/,
+nouveau fichier, close en séance) — app/(admin)/admin/players/page.tsx.
+Troisième écran du lot Admin, choisi (comme la validation) car
+setPlayerRole/setPlayerStatus sont catégorie B SANS recompute (T6a §5.3) —
+aucune dépendance sur le moteur de scoring T5 manquant.
+
+Bonne surprise au pré-vol : les garde-fous fins (pas d'auto-rétrogradation,
+dernier admin actif non rétrogradable/désactivable) étaient DÉJÀ posés en
+base par un trigger (`enforce_users_invariants`, migration #3 corrigée #4)
+— la couche d'écriture de ce lot est une simple UPDATE directe sur `users`
+via la RLS `users_update_admin`, AUCUNE fonction SQL, AUCUNE migration. Les
+messages d'erreur du trigger, déjà rédigés pour un lecteur humain (ex.
+« Un admin ne peut pas se retrograder lui-meme »), sont remontés tels
+quels, même patron que `requestBetCorrection`.
+
+Fichiers : lib/queries/admin-players.ts (getPlayers — tous les joueurs,
+ADMIN d'abord puis PLAYER alphabétique, calcule isSelf/isLastActiveAdmin en
+lecture pour griser les actions AVANT le clic) ; lib/actions/
+admin-players.ts (setPlayerRole/setPlayerStatus + variantes FormData,
+journalisées via lib/actions/audit.ts déjà partagé) ; components/admin/
+PlayerRow.tsx (+ .module.css, 2 formulaires natifs indépendants par ligne,
+boutons `disabled` natifs HTML — fonctionnent sans JS). Carte « Gestion des
+joueurs » du tableau de bord rendue `<Link>` actif.
+
+Décision d'implémentation actée dans la spec (§2, pas une invention) :
+l'auto-désactivation (rester ADMIN mais se désactiver soi-même, PAS une
+rétrogradation) n'est PAS bloquée par le trigger sauf si c'est le dernier
+admin actif — reflété tel quel dans l'UI plutôt que d'inventer une garde
+supplémentaire que ni 0.2.7 ni le trigger n'exigent.
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build tous propres,
+aucun conflit de route (/admin/players listé).
+
+Test en conditions réelles (même technique @supabase/ssr) : ligne de
+Sofia_Admin (soi-même) confirmée avec boutons `disabled` dans le HTML rendu ;
+promotion de Tariq_M en ADMIN puis rétrogradation en PLAYER — les deux
+soumises réellement (POST sans JS) et vérifiées, aller-retour sans effet
+résiduel (état final identique à l'état initial) ; **cas négatif réel** :
+tentative de forcer l'auto-rétrogradation de Sofia_Admin en construisant le
+POST directement (contournant le bouton désactivé côté UI, qui n'est qu'un
+confort, pas la vraie frontière de sécurité) — bloquée CÔTÉ SERVEUR par le
+trigger, message d'erreur exact remonté par l'URL de redirection. Confirme
+que la garde réelle est bien en base, pas seulement cosmétique dans l'UI.
+2 lignes audit_logs de test (promotion/rétrogradation de Tariq_M)
+supprimées après vérification, mot de passe temporaire re-randomisé.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```
