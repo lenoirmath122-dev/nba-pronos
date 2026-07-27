@@ -102,13 +102,3 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
-
-.inertTag {
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  border: 1px dashed var(--color-border-strong);
-  border-radius: var(--radius-pill);
-  padding: 0 var(--space-2);
-  line-height: 1.6;
-}

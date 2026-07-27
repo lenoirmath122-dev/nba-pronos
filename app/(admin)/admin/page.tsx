@@ -5,11 +5,9 @@ import styles from "./page.module.css";
 
 // Tableau de bord admin (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1, VALIDÉ) : premier
 // écran du lot Admin. Composant SERVEUR — seule la RecalculateButton est
-// "use client" (§4, dialogue de confirmation). Les cartes « validation »,
-// « résolution », « joueurs » et « logs » sont des <Link> actifs (codés) ;
-// seule « requêtes » reste INERTE « à venir » (lot 4c, dernier morceau du
-// câblage admin), même patron que le hub Jouer temporaire
-// (ETAT_ACTUEL.md §2.10).
+// "use client" (§4, dialogue de confirmation). Les 5 pages filles sont
+// désormais TOUTES des <Link> actifs — le lot Admin ET le chantier T5
+// sont entièrement clos (lot 4c, dernier morceau du câblage admin).
 
 export default async function AdminDashboardPage() {
   const data = await getAdminDashboardData();
@@ -31,7 +29,7 @@ export default async function AdminDashboardPage() {
       key: "requests",
       count: data.pendingRequestsCount,
       label: (n: number) => (n > 1 ? "requêtes en attente" : "requête en attente"),
-      href: null,
+      href: "/admin/requests",
     },
   ] as const;
 
@@ -44,27 +42,17 @@ export default async function AdminDashboardPage() {
       )}
 
       <ul className={styles.cardList}>
-        {queues.map((queue) =>
-          queue.href ? (
-            <li key={queue.key}>
-              <Link href={queue.href} className={styles.cardLink}>
-                <span className={styles.count}>{queue.count}</span>
-                <span className={styles.cardLabel}>{queue.label(queue.count)}</span>
-                <span className={styles.chevron} aria-hidden="true">
-                  ›
-                </span>
-              </Link>
-            </li>
-          ) : (
-            <li key={queue.key}>
-              <div className={styles.card}>
-                <span className={styles.count}>{queue.count}</span>
-                <span className={styles.cardLabel}>{queue.label(queue.count)}</span>
-                <span className={styles.inertTag}>à venir</span>
-              </div>
-            </li>
-          )
-        )}
+        {queues.map((queue) => (
+          <li key={queue.key}>
+            <Link href={queue.href} className={styles.cardLink}>
+              <span className={styles.count}>{queue.count}</span>
+              <span className={styles.cardLabel}>{queue.label(queue.count)}</span>
+              <span className={styles.chevron} aria-hidden="true">
+                ›
+              </span>
+            </Link>
+          </li>
+        ))}
       </ul>
 
       <ul className={styles.linkList}>
