@@ -121,11 +121,17 @@ orchestration (§2.26, `lib/scoring/recompute.ts` — `recomputeMatch`/
 de scoring est FONCTIONNELLEMENT COMPLET ET UTILISABLE de bout en bout
 depuis l'UI admin.
 
-Reste à coder : le moteur de SYNCHRO T4 (aucune route /api/sync/*, aucun
-client Highlightly, aucun cron — seul le writer `series.official_*` de T4
-a été construit, en tant que dépendance de T5), le Realtime + rendu des
-états au-delà de ce qui existe déjà (T6c), le vrai hub Jouer. Détail des
-points ouverts restants : `GAPS_OUVERTS.md`.
+**Ordre de reprise décidé avec l'utilisateur (27/07/2026)**, PROCHAINE
+SESSION — voir GAPS_OUVERTS.md pour le détail de chaque point :
+1. **12 vulnérabilités npm** (`npm audit`, trouvées en fin de session,
+   aucune corrigée à ce jour — `next` figé 16.2.10 au lieu de 16.2.12,
+   `eslint` v9 au lieu de v10) — sécurité, avant tout nouveau code.
+2. **Vrai hub Jouer** — remplace le hub temporaire (§2.10), aucune spec
+   d'écran encore écrite.
+3. **Le reste** : moteur de SYNCHRO T4 (aucune route /api/sync/*, aucun
+   client Highlightly, aucun cron — seul le writer `series.official_*` de
+   T4 a été construit, en tant que dépendance de T5), Realtime + rendu des
+   états au-delà de ce qui existe déjà (T6c).
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)

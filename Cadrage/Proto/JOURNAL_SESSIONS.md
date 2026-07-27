@@ -2958,3 +2958,25 @@ obsolètes fusionnées en une seule, à jour) ; cette entrée de journal.
 committée — à confirmer avec l'utilisateur). **CHANTIER T5 (4/4 lots) ET
 LOT ADMIN (6/6 écrans) ENTIÈREMENT CLOS.** Prochaine étape à discuter avec
 l'utilisateur : moteur de synchro T4, Realtime T6c, ou le vrai hub Jouer.
+
+---
+
+## Session du 27/07/2026 (suite) — Ordre de reprise fixé + vulnérabilités npm consignées
+
+**Demande utilisateur** : mettre à jour le suivi pour que la prochaine
+session reprenne dans cet ordre : (1) les 12 vulnérabilités npm remontées
+en fin de session précédente (jusqu'ici seulement mentionnées dans le
+chat, jamais consignées dans le suivi du dépôt) ; (2) le vrai hub Jouer ;
+(3) le reste (T4, Realtime T6c).
+
+**`npm audit` rejoué** pour consigner le détail exact plutôt qu'un vague
+« 12 vulnérabilités » : 2 chaînes indépendantes — `next` figé à `16.2.10`
+exact (pas une plage, donc `npm audit fix` seul ne le touche pas) : 9 CVE
+HIGH + `postcss`/`sharp` transitifs, corrigés en passant à `16.2.12` ;
+`eslint` en v9, corrigé par `eslint@10.8.0` (breaking change annoncé).
+
+**Suivi mis à jour** : `GAPS_OUVERTS.md` (nouveau bandeau d'ordre en tête
+de fichier, nouvelle entrée détaillée sur les 12 vulnérabilités, entrée
+« Implémentation V1 » reformulée pour refléter l'ordre) ; `ETAT_ACTUEL.md`
+(note de fin remplacée par l'ordre de reprise en 3 points) ; cette entrée
+de journal. Aucun code touché — uniquement de la documentation.

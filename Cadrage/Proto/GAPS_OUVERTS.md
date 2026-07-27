@@ -4,6 +4,15 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Ordre de reprise décidé avec l'utilisateur (27/07/2026, après la clôture
+> du chantier T5 + lot Admin)** :
+> 1. **Vulnérabilités npm** (12, détail ci-dessous) — sécurité, à traiter
+>    avant tout nouveau développement.
+> 2. **Vrai hub Jouer** — remplace le hub temporaire (§2.10 `ETAT_ACTUEL.md`),
+>    aucune spec d'écran encore écrite.
+> 3. **Le reste** (moteur de synchro T4, Realtime T6c au-delà de l'existant)
+>    — voir le point « Implémentation code de la V1 » ci-dessous.
+
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 
 - **Performance de `lib/botScripting.ts`** : requêtes Supabase séquentielles
@@ -61,11 +70,37 @@
   systématiquement testés). Le CHANTIER T5 (moteur de scoring) est
   également ENTIÈREMENT CLOS (moteur pur, writer `series.official_*`,
   orchestration `recompute*`, câblage admin — détail `ETAT_ACTUEL.md` §2.24
-  à §2.29). Reste à coder : le moteur de SYNCHRO T4 (routes `/api/sync/*`,
-  client Highlightly, cron — seul le writer `series.official_*` de T4 a été
-  construit, comme dépendance de T5), le Realtime + rendu des états
-  au-delà de ce qui existe déjà (T6c), le vrai hub Jouer (remplace le hub
-  temporaire §2.10). Détail dans `ETAT_ACTUEL.md` §2.
+  à §2.29). Reste à coder (ordre de reprise ci-dessus) : **le vrai hub
+  Jouer** (PRIORITÉ 2 — remplace le hub temporaire §2.10, AUCUNE spec
+  d'écran encore écrite, à rédiger en séance comme Bracket personnel) ;
+  PUIS le moteur de SYNCHRO T4 (routes `/api/sync/*`, client Highlightly,
+  cron — seul le writer `series.official_*` de T4 a été construit, comme
+  dépendance de T5) et le Realtime + rendu des états au-delà de ce qui
+  existe déjà (T6c). Détail dans `ETAT_ACTUEL.md` §2.
+- **12 vulnérabilités npm (`npm audit`, trouvées le 27/07/2026, PRIORITÉ 1
+  pour la prochaine session)** — aucune corrigée à ce jour. Deux chaînes
+  indépendantes :
+  1. **`next` figé à 16.2.10 exact** (pas une plage — `npm audit`/`fix`
+     seuls ne le touchent pas) : 9 CVE (dont *Middleware/Proxy bypass App
+     Router Turbopack*, *DoS Server Actions*, *SSRF Server Actions*, *SSRF
+     rewrites*, *disclosure Server Function endpoints* — sévérité HIGH) +
+     `postcss`/`sharp` (dépendances transitives de `next`) vulnérables en
+     cascade. Correctif : passer `next` à **16.2.12** dans `package.json`
+     (actuellement épinglé à `16.2.10`), puis `npm install` + revérifier
+     `tsc`/`eslint`/`next build`/`npm test` — AGENTS.md rappelle de
+     consulter `node_modules/next/dist/docs/` avant toute nouvelle brique
+     après une montée de version Next (ruptures déjà rencontrées : proxy.ts,
+     cookies() async, searchParams Promise, onNavigate, next/image SVG).
+  2. **`eslint` en v9** : `brace-expansion`/`minimatch` vulnérables,
+     remontant via `@eslint/config-array`, `@eslint/eslintrc`,
+     `eslint-plugin-{import,jsx-a11y,react}`, jusqu'à `eslint-config-next`.
+     Correctif : `eslint@10.8.0` — **breaking change** annoncé par
+     `npm audit fix --force` (règles/API potentiellement différentes,
+     `eslint.config.*` ou `.eslintrc` à revérifier après coup, `npx eslint .`
+     doit rester propre).
+  Aucune faille exploitée observée à ce jour (démo privée entre amis) —
+  traité comme priorité de sécurité avant nouveau développement, pas comme
+  une urgence de production.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
