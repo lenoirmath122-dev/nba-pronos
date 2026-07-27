@@ -75,15 +75,35 @@
   thème clair/sombre câblé dans `app/layout.tsx`, AUCUNE migration
   nécessaire) et désormais **Mes paris** (`app/(app)/play/bets/page.tsx`,
   `lib/queries/my-bets.ts`, `lib/actions/bet-corrections.ts`,
-  `components/my-bets/*`, session du 27/07/2026, migrations #11/#12) sont
-  CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres, testés avec un
-  vrai jeu de données de test ET en conditions réelles — sessions
-  authentifiées réelles, écriture réelle testée en SQL/RPC direct et/ou en
-  navigateur réel, cas négatifs testés). Prochaine étape à confirmer avec
-  l'utilisateur : **les écrans admin** (aucune spec n'existe). Restent
-  à coder après : le moteur de synchro/scoring (T4/T5), le Realtime + rendu
-  des états au-delà de ce qui existe déjà (T6c). Détail dans
-  `ETAT_ACTUEL.md` §2.
+  `components/my-bets/*`, session du 27/07/2026, migrations #11/#12) et
+  désormais **le tableau de bord admin** (`app/(admin)/admin/{layout,page}.tsx`,
+  `lib/queries/admin-dashboard.ts`, session du 27/07/2026, premier écran du
+  lot Admin) sont CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres,
+  testés avec un vrai jeu de données de test ET en conditions réelles —
+  sessions authentifiées réelles, cas négatif testé). Reste à coder : les
+  **5 pages filles admin** (validation, résolution, requêtes, joueurs, logs
+  — voir gap dédié ci-dessous), puis le moteur de synchro/scoring (T4/T5),
+  le Realtime + rendu des états au-delà de ce qui existe déjà (T6c). Détail
+  dans `ETAT_ACTUEL.md` §2.
+- **5 pages filles admin à coder** (ajouté le 27/07/2026, `ETAT_ACTUEL.md`
+  §2.20) : le tableau de bord admin (`/admin`) affiche 3 compteurs de file +
+  2 entrées de gestion, tous INERTES faute de page cible — `/admin/validation`
+  (paris SOUMIS), `/admin/resolution` (paris VALIDÉS échus), `/admin/requests`
+  (requêtes de correction pronos+paris), `/admin/players` (gestion des
+  joueurs), `/admin/logs` (consultation audit_logs). Signatures déjà posées
+  par `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5 (validateBet, resolveBet,
+  processCorrectionRequest, setPlayerRole, setPlayerStatus) — reste à écrire
+  la spec d'écran de chacune puis à coder, une à la fois (même patron que ce
+  lot). `/admin/resolution` dépend en plus du point ci-dessous.
+- **Bouton « Recalculer » du tableau de bord admin bloqué sur T5** (trouvé au
+  pré-vol du 27/07/2026, `ETAT_ACTUEL.md` §2.20) : `recalculateCompetition`
+  (T6a/T6b) appelle `recomputeCompetition` (T5 §10.1), qui N'EXISTE NULLE
+  PART dans le dépôt (ni migration, ni `lib/`) — le moteur de scoring T5 est
+  intégralement spécifié mais jamais codé. Le bouton est OMIS du tableau de
+  bord tant que ce moteur n'existe pas ; design conservé dans
+  `SPEC_ECRAN_ADMIN_DASHBOARD_V0_1.md` §4 pour référence. Probablement le
+  même blocage pour `/admin/resolution` (résolution GAGNÉ/PERDU d'un pari,
+  qui recalcule aussi) — à revérifier au moment de coder cette page fille.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à

@@ -2413,3 +2413,89 @@ journal.
 **État en fin de session** : écran Mes paris CODÉ, VÉRIFIÉ et DÉPLOYÉ en
 production (`vercel --prod`, re-vérifié en ligne). Prochaine étape
 toujours ouverte : les écrans admin (aucune spec n'existe à ce jour).
+
+---
+
+## Session du 27/07/2026 (suite) — Tableau de bord admin (premier écran du lot Admin)
+
+**Découpage du lot Admin décidé AVEC l'utilisateur** (AskUserQuestion) :
+plutôt que d'attaquer les 6-7 pages admin d'un coup ou une file précise en
+premier, priorité au **tableau de bord** (hub d'entrée), une page à la fois,
+comme les lots joueur précédents.
+
+**Bonne surprise au pré-vol** : contrairement à Bracket personnel (aucune
+décision, tout à inventer en séance), la zone admin était déjà entièrement
+architecturée dans `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md`/`_b.md`
+(T6a/T6b, validées le 19/07/2026 mais jamais relues depuis) : arbre complet
+`app/(admin)/admin/{page,validation,resolution,requests,players,logs}`,
+garde `is_admin()` côté layout (pas le proxy), signatures des actions
+(`validateBet`, `resolveBet`, `processCorrectionRequest`, `setPlayerRole`,
+`setPlayerStatus`, `recalculateCompetition`, `logAdminAction`). Le lot n'a
+donc consisté qu'à ASSEMBLER l'existant (0.2.7 + 0.2.9 §8 + T6a/T6b) au
+format écran — nouveau fichier `SPEC_ECRAN_ADMIN_DASHBOARD_V0_1.md`.
+
+**2 points fermés avec l'utilisateur avant rédaction finale** (AskUserQuestion) :
+sans compétition active, Gestion des joueurs et Historique des logs restent
+ACCESSIBLES (seuls les compteurs de file retombent à 0) ; bouton Recalculer
+sans compétition active — DÉSACTIVÉ mais VISIBLE, jamais masqué.
+
+**2ᵉ vérification de dépôt (avant code), 2 réalités trouvées et signalées
+AVANT d'écrire quoi que ce soit** (pas devinées, tranchées avec
+l'utilisateur, AskUserQuestion) :
+- **`recomputeCompetition` (T5 §10.1) n'existe NULLE PART** — ni migration,
+  ni `lib/` : le moteur de scoring T5 est intégralement spécifié mais jamais
+  codé. Le bouton « Recalculer » est donc OMIS de ce lot (design conservé
+  dans la spec pour référence, ajouté quand T5 sera codé) plutôt que de
+  construire un bout du moteur de scoring en douce dans un lot « tableau de
+  bord ».
+- **Aucune des 5 pages filles n'existe** : les 3 cartes de file + les 2
+  entrées (joueurs/logs) sont rendues INERTES (pas de `<Link>`, libellé
+  « à venir »), même patron que le hub Jouer temporaire (§2.10) — retirées
+  une à une au fur et à mesure que chaque page fille est codée.
+
+**Code** : `app/(admin)/admin/layout.tsx` (garde is_admin(), redirect /home
+si non-admin — défense en profondeur, le proxy ne garde que la session) +
+`layout.module.css` ; `app/(admin)/admin/page.tsx` (100% composant serveur,
+aucun `"use client"` dans ce lot) + `page.module.css` ; `lib/queries/
+admin-dashboard.ts` (`getAdminDashboardData`, 3 compteurs — validation :
+`bets` SUBMITTED ; résolution : `bets` VALIDATED dont l'échéance est
+passée, `bet_deadline_open()` reproduit en TypeScript, même patron que
+`lib/queries/{bets,home}.ts` ; requêtes : `correction_requests` PENDING,
+TOUTES compétitions confondues — pas de délai limite en V1, 0.2.7 §6).
+Lien « Tableau de bord admin » câblé sur l'écran Profil (remplace l'entrée
+inerte posée le 27/07/2026 lors du lot Profil).
+
+**Vérifié** : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous
+propres (un premier `tsc` a échoué sur un fichier de types Next.js généré
+avant le build — `next build` régénère ces types, résolu après). Aucun
+conflit de route (`/admin` seul dans la carte des routes).
+
+**Test en conditions réelles, technique NOUVELLE cette session** : la
+technique habituelle (rejouer le POST `useActionState` du formulaire de
+login sans JS, champs `$ACTION_*`) a échoué de façon répétée
+(`Failed to find Server Action`) malgré une extraction correcte des champs
+— cause non élucidée avec certitude (dev server très sollicité pendant la
+session). Contournée en produisant directement un cookie de session
+compatible via `@supabase/ssr` (`createServerClient` + `signInWithPassword`,
+MÊME librairie que `lib/supabase/server.ts`/`proxy.ts`) plutôt que de
+rejouer le formulaire — teste directement la garde, sans dépendre du flux
+de login (déjà éprouvé par ailleurs). Résultat : Amine92 (PLAYER) sur
+`/admin` → `307 /home` (gate refuse) ; Sofia_Admin (ADMIN) → `200`,
+« Administration » rendu, 3 cartes affichées (0 à valider, 0 à résoudre,
+**1 requête en attente** — correspond exactement à la requête PENDING
+laissée en base depuis la session Mes pronos, §2.11, confirmation forte que
+le compteur est juste) ; bandeau « Aucune compétition en cours » absent à
+raison (une compétition ACTIVE existe). Mots de passe temporaires posés via
+l'API Admin sur Sofia_Admin/Amine92 (jamais affichés dans le chat),
+re-randomisés en fin de vérification. Scripts jetables utilisés puis
+supprimés (non committés).
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.20) ;
+`GAPS_OUVERTS.md` (tableau de bord admin retiré de « à coder », nouvelles
+entrées : bouton Recalculer + 5 pages filles admin, bloquées sur T5 pour la
+première) ; cette entrée de journal.
+
+**État en fin de session** : tableau de bord admin CODÉ et VÉRIFIÉ (pas
+encore committé/déployé — à confirmer avec l'utilisateur). Prochaine étape :
+choisir la 1ʳᵉ page fille (validation, résolution, requêtes, joueurs ou
+logs) — chacune sa propre spec, comme ce lot.
