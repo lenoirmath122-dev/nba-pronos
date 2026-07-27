@@ -66,16 +66,20 @@
   `components/bets/*`, `components/matches/InlineBetForm.tsx` (remplace
   `BetShortcut.tsx`), migrations #9/#10, sessions du 26-27/07/2026 : création/
   édition de pari personnalisé + saisie inline MATCH depuis Matchs) et
-  désormais **« Bracket personnel »** (`app/(app)/play/bracket/`,
+  **« Bracket personnel »** (`app/(app)/play/bracket/`,
   `lib/queries/bracket-fill.ts`, `lib/actions/bracket-fill.ts`,
   `components/bracket-fill/*`, session du 27/07/2026, remplissage tour par
-  tour, AUCUNE migration nécessaire — la RLS existante suffisait) sont
-  CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres, testés avec un vrai
-  jeu de données de test ET en conditions réelles — sessions authentifiées
-  réelles, écriture réelle testée en SQL/RPC direct et/ou en navigateur réel,
-  cas négatifs testés). Prochaine étape à confirmer avec l'utilisateur :
-  **« Mes paris »** (consultation/quotas globaux — spec distincte, hors
-  périmètre du lot « Nouveau pari », ci-dessous) ou les écrans admin. Restent
+  tour, AUCUNE migration nécessaire — la RLS existante suffisait) et
+  désormais **Profil** (`app/(app)/profile/`, `lib/queries/profile.ts`,
+  `lib/actions/profile.ts`, `components/profile/*`, session du 27/07/2026,
+  thème clair/sombre câblé dans `app/layout.tsx`, AUCUNE migration
+  nécessaire) sont CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres,
+  testés avec un vrai jeu de données de test ET en conditions réelles —
+  sessions authentifiées réelles, écriture réelle testée en SQL/RPC direct
+  et/ou en navigateur réel, cas négatifs testés). Prochaine étape à
+  confirmer avec l'utilisateur : **« Mes paris »** (consultation/quotas
+  globaux — spec distincte, hors périmètre du lot « Nouveau pari »,
+  ci-dessous) ou les écrans admin. Restent
   à coder après : le moteur de synchro/scoring (T4/T5), le Realtime + rendu
   des états au-delà de ce qui existe déjà (T6c). Détail dans
   `ETAT_ACTUEL.md` §2.
@@ -119,8 +123,9 @@
   eux (un seul bracket/jeu de pronos partagé par tout le monde — compromis
   signalé et accepté explicitement). **À retirer ou reconvertir** dès que
   l'utilisateur passe à un compte par ami, prévu explicitement après la fin
-  de la V1 — même famille que les autres éléments temporaires déjà suivis
-  (déconnexion temporaire, hub Jouer temporaire).
+  de la V1 — même famille que l'autre élément temporaire encore suivi
+  (hub Jouer temporaire ; la déconnexion temporaire, elle, est retirée pour
+  de bon depuis l'écran Profil, 27/07/2026).
 - **Pré-remplissage IA gagné/perdu des paris** (reporté, non bloquant V1) :
   évolution envisagée pour suggérer gagné/perdu à partir des données du
   match (réaliste pour les paris déductibles de scores/box scores, inopérant
@@ -218,16 +223,6 @@
   cette entrée). Aucune pastille « à faire » calculée (hors périmètre, rôle
   du vrai hub). **À retirer** dès que le vrai hub Jouer (spec d'écran dédiée,
   pas encore écrite) existe.
-- **Déconnexion temporaire** (24/07/2026, demandée par l'utilisateur pour
-  pouvoir tester plusieurs comptes) : `app/(app)/layout.tsx` porte désormais
-  un bouton « Déconnexion (temporaire) » (coin haut-droit, hors design
-  system — bordure pointillée, texte muted, volontairement pas fini) qui
-  appelle `logout()` (`lib/auth/actions.ts`, déjà existant, jamais câblé nulle
-  part avant). Vérifié de bout en bout (formulaire réellement soumis, cookie
-  de session effacé, redirection `/login`). **À retirer** dès que l'écran
-  Profil reprend cette action pour de bon — ne pas le laisser traîner en V1
-  finale. Ne couvre que la zone `(app)` (Accueil/Jouer/Matchs/Profil) ; pas
-  `/leaderboard` ni `/bracket` (`ScreenShell`, hors de ce layout).
 - **Deux points design jamais remontés depuis le journal de la passe
   maquettes** (ils n'existaient que dans
   `JOURNAL_DESIGN_passe_maquettes.md` §4, d'où l'oubli) : **portée du

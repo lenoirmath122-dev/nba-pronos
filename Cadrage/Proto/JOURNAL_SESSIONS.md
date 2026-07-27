@@ -2235,3 +2235,91 @@ pour un compte individuel mais avec le comportement email non totalement
 élucidé, admin réel en place, compte de démo partagé communiqué à
 l'utilisateur pour ses amis. Prochaine étape toujours ouverte, inchangée par
 ce lot : « Mes paris » (consultation/quotas globaux) ou les écrans admin.
+
+---
+
+## Session du 27/07/2026 (suite) — Écran Profil, spec rédigée en séance + code + tests, thème clair/sombre câblé
+
+Suite directe. L'utilisateur demande où vivra « Mes paris » et se souvient
+qu'un écran Profil reste à faire — Claude confirme : Profil est un 4ème
+onglet à part (préférences/thème/admin), distinct de « Mes paris »
+(consultation de paris, hub Jouer). L'utilisateur choisit Profil, avec la
+recommandation de Claude (petit, débloque le retrait du bouton de
+déconnexion temporaire, pas de dépendance au moteur de synchro contrairement
+aux écrans admin).
+
+**Aucune spec détaillée n'existait** (même situation que Bracket personnel,
+§2.16) — seulement quelques lignes dans `nba_pronos_decisions_0_2_9_ux_ui.md`
+§3 et l'arbre T6a. Rédigée en séance (`SPEC_ECRAN_PROFIL_V0_1.md`, nouveau
+fichier), appuyée sur le schéma réel de `users` (pseudo, avatar_url,
+favorite_team_id, bio, role, status, theme_preference) plutôt que deviné.
+3 points fermés avec l'utilisateur (AskUserQuestion) : pseudo NON
+modifiable (identité publique déjà affichée nominativement ailleurs — un
+changement rétroactif n'a jamais été traité par aucune spec) ; avatar HORS
+PÉRIMÈTRE (le projet n'a jamais utilisé Supabase Storage, pas justifié pour
+ce seul champ) ; thème clair/sombre INCLUS (l'utilisateur a explicitement
+demandé une spec COMPLÈTE, pas une mini-spec, sur ce point précis).
+
+**Pré-vol** (avant tout code, lecture des migrations RÉELLES, pas seulement
+des specs) : policy `users_update_self` (migration #3) confirmée SANS
+restriction de colonne — couvre nativement favorite_team_id/bio/
+theme_preference ; trigger `enforce_users_invariants` (T-a) confirmé NE
+PORTANT QUE sur role/status (relu dans le fichier de migration, pas supposé)
+— aucun risque de blocage pour ce lot ; `is_admin()` et les 30 lignes de
+`teams` confirmées réutilisables telles quelles. Aucune migration
+nécessaire.
+
+**Code** :
+- `lib/queries/profile.ts` (`getProfileData`/`getTeamOptions`) et
+  `lib/actions/profile.ts` (`updateThemePreference`/`updateProfile`) —
+  même patron que `requestPredictionCorrectionFormAction`
+  (`lib/actions/corrections.ts`) : FormData brut, redirect après écriture,
+  aucun `useActionState`.
+- `components/profile/TeamPicker.tsx` : sélecteur d'équipe favorite en
+  VRAIS `<input type="radio">` natifs (pas un `<select>`, ne peut pas
+  afficher de logo ; mais PAS non plus le patron `role="radio"` sur des
+  `<button>` de `BetForm.tsx`, qui nécessite du client-side state pour des
+  champs interdépendants — ce picker n'en a aucun). Résultat : ZÉRO
+  `"use client"` sur tout l'écran, surlignage de la ligne sélectionnée en
+  CSS pur (`:has(.radio:checked)`). Interprétation trouvée EN CODANT, la
+  spec laissait le mécanisme exact ouvert (§10).
+- `app/(app)/profile/page.tsx` (+ page.module.css) : pseudo lecture seule,
+  badge Admin conditionnel, 3 formulaires natifs indépendants (thème,
+  préférences, déconnexion).
+- `app/layout.tsx` (RACINE, hors des deux route groups) : câblage du thème
+  clair/sombre laissé en attente depuis la consolidation des tokens
+  (21/07/2026, `app/tokens.css` : « la bascule est un lot séparé »). Lit
+  `theme_preference` si une session existe, DARK par défaut sinon (visiteur
+  non connecté) ; pose `data-theme="light"` sur `<html>` seulement si LIGHT.
+- `app/(app)/layout.tsx` + `layout.module.css` : bouton de déconnexion
+  temporaire RETIRÉ (code + CSS mort), Profil reprend l'action pour de bon.
+
+**Vérifié** : `npx tsc --noEmit`, `npx eslint .`, `npx next build` propres.
+Toutes les routes deviennent DYNAMIQUES après ce lot (y compris `/`,
+`/login`, `/signup`, auparavant statiques) — conséquence ATTENDUE de la
+lecture de session dans `app/layout.tsx`, pas une régression.
+
+**Test en session authentifiée réelle** (serveur `next dev` déjà en cours
+sur le port 3001 — détecté et réutilisé plutôt que d'en relancer un
+second, même piège que §2.15) : login réel sans JS pour le compte
+`Demo_Amis` (replay des 4 champs `$ACTION_*` d'un formulaire lié à
+`useActionState`, même technique que §2.11) ; toggle thème réellement posé
+et vérifié PROPAGÉ à `/home` sans reconnexion ; visiteur déconnecté
+vérifié TOUJOURS en dark (aucun `data-theme`) ; sélection d'équipe
+favorite persistée en base ET re-rendue avec le bon radio `checked` au
+rechargement ; déconnexion réelle testée (cookie effacé, 303 → `/login`) ;
+tentative d'escalade `role` par la même session confirmée BLOQUÉE par le
+trigger existant. Aucune régression sur `/`, `/login`, `/signup`,
+`/leaderboard`, `/bracket`. Toutes les valeurs de test restaurées après
+coup (compte `Demo_Amis` identique à son état d'avant test).
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.18, header,
+§6 mis à jour) ; `GAPS_OUVERTS.md` (gap « déconnexion temporaire » retiré —
+résolu ; entrée « Implémentation code de la V1 » étendue à Profil) ; cette
+entrée de journal.
+
+**État en fin de session** : écran Profil CODÉ, VÉRIFIÉ et DÉPLOYÉ en
+production (`vercel --prod`, re-vérifié en ligne). Bouton de déconnexion
+temporaire définitivement retiré. Thème clair/sombre fonctionnel sur tout
+le site. Prochaine étape toujours ouverte, inchangée par ce lot : « Mes
+paris » (consultation/quotas globaux) ou les écrans admin.

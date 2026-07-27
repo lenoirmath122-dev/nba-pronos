@@ -5,10 +5,11 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — déploiement Vercel,
-> activation de l'inscription, 1er admin réel, §2.17), après l'écran Bracket
-> personnel codé et testé (§2.16, spec rédigée et close en séance), lui-même
-> après le bandeau sticky + saisie inline dans Matchs (§2.15 suite), l'écran Nouveau
+> Dernière mise à jour : session du 27/07/2026 (suite — écran Profil codé et
+> testé, §2.18, spec rédigée et close en séance), après le déploiement
+> Vercel + activation de l'inscription + 1er admin réel (§2.17), l'écran
+> Bracket personnel codé et testé (§2.16, spec rédigée et close en séance),
+> lui-même après le bandeau sticky + saisie inline dans Matchs (§2.15 suite), l'écran Nouveau
 > pari codé et testé le 26/07/2026 (SPEC_ECRAN_NOUVEAU_PARI_V0_1.md, CLOSE,
 > §2.15), lui-même après le commit/push du lot logos + amendements de specs
 > (25/07/2026, §2.14), la refonte de l'entête Matchs + correctif des 30 logos
@@ -959,7 +960,7 @@ identique à l'état seedé.
 ```text
 Périmètre : premier déploiement public du projet, hors périmètre de tout
 lot d'écran — décidé par l'utilisateur pour montrer une démo à ses amis,
-avant de reprendre le codage (« Mes paris »/admin, §2.18).
+avant de reprendre le codage (« Mes paris »/admin, §2.19).
 
 Commit/push : les lots « Nouveau pari » (§2.15) et « Bracket personnel »
 (§2.16), codés/testés mais jamais poussés, groupés en UN commit (`d051097`,
@@ -1022,7 +1023,7 @@ explicitement APRÈS la fin de la V1.
 `UPDATE public.users SET role='ADMIN'` direct via service_role — PAS par une
 migration dédiée (contrairement à ce qu'anticipait le point ouvert du §6
 ci-dessous), et PAS par un écran admin de promotion (aucun n'existe encore,
-« écrans admin » reste un lot à coder, §2.18). Le compte cumule donc les
+« écrans admin » reste un lot à coder, §2.19). Le compte cumule donc les
 deux rôles (joueur Rillettes-31 + admin) pour l'instant.
 
 Code de compétition communiqué (pour une inscription individuelle
@@ -1033,24 +1034,95 @@ Aucun changement de schéma, aucune migration dans ce lot (2 commits
 applicatifs seulement : logique app/, pas de fichier `supabase/migrations/`).
 ```
 
-### 2.18 Prochaine étape
+### 2.18 Écran Profil (session du 27/07/2026, suite, CLOSE)
+
+```text
+Périmètre : SPEC_ECRAN_PROFIL_V0_1.md (Cadrage/V1/Spec visuelle/, CLOSE) —
+4ème onglet de la nav, remplace le stub « à venir » (22/07/2026) ET le
+bouton de déconnexion temporaire (§2.9). AUCUNE spec détaillée n'existait
+avant cette session (même situation que Bracket personnel, §2.16) —
+rédigée en séance, close après 3 points tranchés (AskUserQuestion) : pseudo
+NON modifiable (identité publique déjà affichée ailleurs) ; avatar HORS
+PÉRIMÈTRE (pas de Supabase Storage introduit) ; thème clair/sombre INCLUS
+dans ce lot (câblage explicitement laissé en attente par app/tokens.css
+depuis la consolidation des tokens, §2.3).
+
+Pré-vol (avant tout code) : RLS `users_update_self` (migration #3)
+confirmée SANS restriction de colonne (`id = auth.uid()`, aucune liste de
+colonnes) — couvre favorite_team_id/bio/theme_preference sans y toucher ;
+trigger `enforce_users_invariants` (T-a) confirmé NE PORTANT QUE sur
+role/status, aucun risque de blocage sur les 3 colonnes de ce lot ;
+`is_admin()` confirmée réutilisable pour le lien Admin conditionnel ; 30
+lignes dans `teams` confirmées (référentiel global D6, stable).
+
+Code : `lib/queries/profile.ts` (getProfileData/getTeamOptions) ;
+`lib/actions/profile.ts` (updateThemePreference/updateProfile, FormData
+brut + redirect("/profile"), même patron que
+requestPredictionCorrectionFormAction) ; `app/(app)/profile/page.tsx` (+
+page.module.css) ; `components/profile/TeamPicker.tsx` (+ .module.css).
+
+Sélecteur d'équipe favorite : PAS un `<select>` natif (ne peut pas afficher
+de logo, piège déjà rencontré §2.15) mais, contrairement aux sélecteurs de
+BetForm.tsx (`role="radio"` sur des `<button>`, nécessitant du client-side
+state), de VRAIS `<input type="radio">` natifs — ce picker n'a AUCUNE
+dépendance entre champs à gérer en direct, donc zéro `"use client"` pour
+tout l'écran (surlignage de la ligne sélectionnée en CSS pur, `:has()`).
+Interprétation trouvée en codant, pas fixée par la spec (qui laissait le
+point ouvert, §10).
+
+Thème clair/sombre : lu et posé dans `app/layout.tsx` (racine, hors des
+deux route groups (app)/(public) — s'applique à TOUT le site, visiteur
+non connecté inclus). Pas de session → défaut DARK (aucune préférence à
+lire). `<html data-theme="light">` posé seulement si LIGHT — sinon
+l'attribut est omis (cohérent avec le CSS, dark par défaut sur :root).
+Écriture suivie d'un `redirect("/profile")` (pattern déjà utilisé PARTOUT
+dans ce projet, jamais dévié pour ce lot) : la redirection retraverse
+`app/layout.tsx`, qui relit la préférence fraîche — bascule effective dès
+la page suivante, sans JS supplémentaire, sans `router.refresh()`.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` propres.
+Toutes les routes deviennent DYNAMIQUES (`ƒ`) après ce lot — y compris `/`,
+`/login`, `/signup`, auparavant statiques (`○`) — conséquence ATTENDUE de
+la lecture de session dans `app/layout.tsx` (cookies), pas une régression.
+
+**Test en session authentifiée réelle** (serveur `next dev` déjà en cours
+sur le port 3001, réutilisé — piège déjà rencontré §2.15, toujours vérifier
+qui sert quoi avant de relancer quoi que ce soit) : login réel sans JS
+(compte Demo_Amis, replay du POST avec les 4 champs `$ACTION_*` d'un
+formulaire lié à `useActionState`, même technique que §2.11) ; toggle
+thème réellement posé (POST du formulaire théorique sans JS, champ
+`$ACTION_ID_...` unique comme pour `logout()`) et vérifié PROPAGÉ à
+`/home` sans reconnexion ; visiteur déconnecté vérifié TOUJOURS en dark
+(aucun attribut `data-theme`) ; sélection d'équipe favorite persistée en
+base ET re-rendue avec le bon radio `checked` au rechargement ;
+déconnexion réelle testée (cookie effacé, 303 → `/login`) ; tentative
+d'escalade `role` par la même session confirmée BLOQUÉE par le trigger
+existant (message inchangé). Aucune régression sur `/`, `/login`,
+`/signup`, `/leaderboard`, `/bracket`. Toutes les valeurs de test
+restaurées après coup (compte Demo_Amis identique à son état d'avant test).
+
+Déployé en production (`vercel --prod`) juste après, vérifié en ligne
+(`curl` → 307 sur `/` et `/profile`).
+```
+
+### 2.19 Prochaine étape
 
 ```text
 Dans l'ordre à confirmer avec l'utilisateur : « Mes paris » (consultation/
 quotas globaux — hors périmètre du lot Nouveau pari §2.15, spec distincte à
-écrire) ; ou les écrans admin. Bracket personnel (§2.16) est désormais CODÉ,
-retiré de cette liste. Publication Realtime de `series` (T4 §9) : reste
-REPORTÉE (§2.16) faute de besoin live identifié sur un écran codé à ce jour
-— à réévaluer si un futur écran (drill-down live, résumé) en a explicitement
-besoin. Même conventions reconduites (composants serveur par défaut, CSS
-Modules + tokens, RLS/fonctions dédiées comme seule autorité de lecture ;
-vérifier D'ABORD si la RLS existante suffit avant d'ajouter une fonction
-SECURITY DEFINER, §2.15 vs §2.16 — les deux lots n'avaient PAS le même
-besoin). Le vrai hub Jouer (§2.10) reste, lui, à SPÉCIFIER (spec d'écran
-dédiée) avant d'être codé — aucune date arrêtée. Puis T8 (déploiement — §6 à
-faire avant, dont l'effacement du jeu de données de test, le retrait du
-bouton de déconnexion temporaire §2.9, ET le retrait du hub Jouer temporaire
-§2.10).
+écrire) ; ou les écrans admin. Bracket personnel (§2.16) et Profil (§2.18)
+sont désormais CODÉS, retirés de cette liste. Publication Realtime de
+`series` (T4 §9) : reste REPORTÉE (§2.16) faute de besoin live identifié
+sur un écran codé à ce jour — à réévaluer si un futur écran (drill-down
+live, résumé) en a explicitement besoin. Même conventions reconduites
+(composants serveur par défaut, CSS Modules + tokens, RLS/fonctions
+dédiées comme seule autorité de lecture ; vérifier D'ABORD si la RLS
+existante suffit avant d'ajouter une fonction SECURITY DEFINER). Le vrai
+hub Jouer (§2.10) reste à SPÉCIFIER (spec d'écran dédiée) avant d'être
+codé — aucune date arrêtée. Puis T8 (déploiement — §6 à faire avant, dont
+l'effacement du jeu de données de test ET du compte de démo partagé
+§2.17, ET le retrait du hub Jouer temporaire §2.10 ; le bouton de
+déconnexion temporaire §2.9 est désormais RETIRÉ pour de bon, §2.18).
 ```
 
 ## 3. État actuel de la base de données
@@ -1498,8 +1570,8 @@ supabase/
   tours suivants), et les 7 comptes seed-*@nba-pronos.test via
   auth.admin.deleteUser (jamais un DELETE direct sur auth.users). Aucun
   script de nettoyage écrit à ce jour.
-- RETIRER le bouton de déconnexion temporaire (§2.9) dès que l'écran Profil
-  porte cette action pour de bon.
+- Bouton de déconnexion temporaire : RETIRÉ (§2.18, 27/07/2026) — l'écran
+  Profil porte désormais la vraie déconnexion.
 - RETIRER le hub Jouer temporaire (§2.10, app/(app)/play/page.tsx +
   page.module.css) dès que le vrai hub Jouer (spec d'écran dédiée à écrire)
   existe.
