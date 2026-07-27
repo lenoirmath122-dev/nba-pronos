@@ -11,7 +11,7 @@ const ENTRIES = [
   { label: "Matchs", href: "/play/matches" },
   { label: "Mes pronos", href: "/play/my-predictions" },
   { label: "Mon bracket", href: "/play/bracket" },
-  { label: "Paris", href: "/play/bets/new" },
+  { label: "Paris", href: "/play/bets" },
 ] as const;
 
 export default function PlayPage() {
