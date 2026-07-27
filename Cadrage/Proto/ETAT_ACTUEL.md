@@ -1630,6 +1630,17 @@ supabase/
 - Vercel : FAIT (§2.17, 27/07/2026). Projet `lenoir-nba/nba-pronos` lié au
   dépôt GitHub, 4 variables d'env poussées (Production/Preview/Development),
   déployé en production → https://nba-pronos.vercel.app.
+  **Correctif de région (27/07/2026, suite)** : latence perceptible après
+  chaque clic remontée par l'utilisateur — diagnostiquée comme les fonctions
+  Vercel tournant en `iad1` (Washington D.C., région par défaut de tout
+  nouveau projet Vercel), alors que la base Supabase est en `eu-west-1`
+  (Dublin) et l'utilisateur en France. `vercel.json` ajouté
+  (`regions: ["dub1"]`, Dublin — même région que Supabase, recommandation
+  officielle Vercel : « les fonctions doivent s'exécuter dans la même
+  région que la base de données »), pas Paris malgré la localisation de
+  l'utilisateur — une page fait souvent plusieurs allers-retours vers la
+  base PAR requête (fonction↔base), contre un seul aller-retour
+  navigateur↔fonction.
 - Dashboard Supabase : désactiver « Confirm email » (accès immédiat au
   compte après inscription, C4 — rappel laissé dans la migration #2).
   DEVENU CONCRET le 24/07/2026 (§2.11) : le vrai flux /signup, testé pour la
