@@ -5,11 +5,11 @@ import styles from "./page.module.css";
 // Tableau de bord admin (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1, VALIDÉ) : premier
 // écran du lot Admin. Composant 100% SERVEUR — pas de bouton Recalculer
 // dans ce lot (recomputeCompetition, T5, n'existe pas encore en base, voir
-// l'en-tête de la spec). Les cartes « validation » et « joueurs » sont
-// désormais des <Link> actifs (codés) ; résolution/requêtes/logs restent
-// INERTES « à venir » tant que leur page n'existe pas, même patron que le
-// hub Jouer temporaire (ETAT_ACTUEL.md §2.10) — retirées une à une au fur
-// et à mesure (GAPS_OUVERTS.md).
+// l'en-tête de la spec). Les cartes « validation », « joueurs » et « logs »
+// sont désormais des <Link> actifs (codés) ; résolution/requêtes restent
+// INERTES « à venir » tant que leur page n'existe pas (partiellement
+// bloquées par T5), même patron que le hub Jouer temporaire
+// (ETAT_ACTUEL.md §2.10) — retirées une à une (GAPS_OUVERTS.md).
 
 export default async function AdminDashboardPage() {
   const data = await getAdminDashboardData();
@@ -77,10 +77,12 @@ export default async function AdminDashboardPage() {
           </Link>
         </li>
         <li>
-          <div className={styles.linkEntry}>
+          <Link href="/admin/logs" className={styles.linkEntryActive}>
             Historique des logs
-            <span className={styles.inertTag}>à venir</span>
-          </div>
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
         </li>
       </ul>
 

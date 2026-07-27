@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
+import { parisDayBoundsUtc } from "@/lib/dates/paris";
 import type { TeamRef } from "@/lib/queries/matches";
 
 // Lecture de l'écran "Mes pronos" (composants serveur uniquement),
@@ -599,28 +600,6 @@ function localDateKey(ms: number): string {
   }).format(new Date(ms));
 }
 
-/** Bornes UTC d'un jour calendaire Europe/Paris (§16.3), sans dépendance
- *  externe (aucune librairie de fuseaux installée dans ce projet — même
- *  contrainte que localDateKey ci-dessus / lib/queries/matches.ts). L'offset
- *  est calculé à midi UTC de ce jour, ce qui évite l'ambiguïté d'une
- *  éventuelle bascule DST pile à minuit. */
-function parisDayBoundsUtc(dateStr: string): { startIso: string; endIsoExclusive: string } {
-  const noonUtcMs = Date.parse(`${dateStr}T12:00:00.000Z`);
-  const offsetMinutes = parisOffsetMinutesAt(noonUtcMs);
-  const startMs = Date.parse(`${dateStr}T00:00:00.000Z`) - offsetMinutes * 60 * 1000;
-  const endMs = startMs + 24 * 60 * 60 * 1000;
-  return { startIso: new Date(startMs).toISOString(), endIsoExclusive: new Date(endMs).toISOString() };
-}
-
-function parisOffsetMinutesAt(atMs: number): number {
-  const parts = new Intl.DateTimeFormat("en-US", {
-    timeZone: DAY_TIMEZONE,
-    timeZoneName: "shortOffset",
-  }).formatToParts(new Date(atMs));
-  const tzName = parts.find((p) => p.type === "timeZoneName")?.value ?? "GMT+0";
-  const match = /GMT([+-]\d+)(?::(\d+))?/.exec(tzName);
-  if (!match) return 0;
-  const hours = parseInt(match[1], 10);
-  const minutes = match[2] ? parseInt(match[2], 10) : 0;
-  return hours * 60 + (hours < 0 ? -minutes : minutes);
-}
+// parisDayBoundsUtc (§16.3) a déménagé dans lib/dates/paris.ts (§0 de
+// SPEC_ECRAN_ADMIN_LOGS_V0_1 — 2e utilisateur, évite une 3e implémentation
+// divergente), importée en tête de fichier.

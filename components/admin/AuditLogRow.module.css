@@ -1,0 +1,61 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-left: 2px solid var(--color-trend);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
+  list-style: none;
+}
+
+.header {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+  font-size: var(--font-size-xs);
+}
+
+.timestamp {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.actor {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.action {
+  color: var(--color-text-primary);
+}
+
+.target {
+  color: var(--color-text-secondary);
+}
+
+.reason {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.diff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.pre {
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-text-muted);
+  font-family: ui-monospace, "SFMono-Regular", Menlo, monospace;
+  font-size: var(--font-size-xs);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
