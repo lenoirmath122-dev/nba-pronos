@@ -2773,6 +2773,53 @@ réelles comme le reste du projet plutôt que mocké.
 **Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.25, header,
 §2 avancement) ; cette entrée de journal.
 
-**État en fin de session** : writer CODÉ, VÉRIFIÉ (pas encore committé —
-à confirmer avec l'utilisateur). Prochaine étape : lot 3/4, l'orchestration
-(`recomputeMatch`/`recomputeSeries`/`recomputeBet`/`recomputeCompetition`).
+**État en fin de session** : writer CODÉ, VÉRIFIÉ, COMMITTÉ et POUSSÉ.
+Prochaine étape : lot 3/4, l'orchestration.
+
+---
+
+## Session du 27/07/2026 (suite) — Chantier T5, lot 3/4 : orchestration (`recompute*`)
+
+**Code** : `lib/scoring/recompute.ts` — `recomputeMatch`/`recomputeSeries`/
+`recomputeBet`/`recomputeCompetition` (T5 §10), adaptateur impur autour du
+moteur pur (lot 1) + du writer (lot 2). Le garde-fou d'orchestration décidé
+au lot 1 (ne jamais écraser un CANCELLED/POSTPONED déjà posé par un admin)
+est implémenté ici, avant tout appel à `deriveSeriesOutcome`/
+`writeSeriesOutcome`. `vitest.config.ts` ajouté (alias `@/*` + `server-only`
+→ vide, nécessaire pour que les modules `lib/` s'importent entre eux sous
+vitest comme dans l'app Next).
+
+**Décision d'implémentation notée** (transaction, §10.3) : la spec demande
+une transaction unique par passe ; `supabase-js` (REST) ne le permet pas
+sans écrire une fonction RPC dédiée pour chaque `recompute*` — jugé hors
+périmètre, compensé par l'idempotence (P5). Assumé et documenté, pas
+silencieux.
+
+**Test d'intégration en conditions réelles, le plus poussé de la session**
+(fichier vitest JETABLE, supprimé après coup — crée/détruit sa PROPRE
+compétition ARCHIVED isolée, jamais "Playoffs NBA (test)") : bracket à 3
+séries (2 ROUND_1 → 1 CONF_SEMIS), 2 joueurs réutilisés (Amine92/Chloe_B),
+4 matchs joués 4-0. **5 vérifications, toutes passent**, dont la plus
+importante : une fois la paire officielle de la série avale renseignée
+(simulant un avancement réel), son affiche se score correctement **sans
+aucun code spécial** — confirme en conditions réelles l'interprétation
+actée au lot 1 (affiche indépendante de FINISHED). Et l'idempotence P5
+vérifiée en rejouant `recomputeCompetition` deux fois de suite sur la
+compétition de test entière : résultat rigoureusement identique. Deux
+frictions techniques résolues en cours de route (pas des bugs du moteur,
+des surprises d'outillage) : `server-only` lève une erreur sous vitest par
+défaut (condition de résolution `react-server` absente, corrigé par alias
+vitest) ; colonne `series.slot_index` NOT NULL découverte en testant (pas
+dans mes notes de schéma), corrigée. Compétition de test entièrement
+supprimée après vérification (confirmé : 0 ligne restante).
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.26, header,
+§2 avancement — "le moteur de scoring est désormais fonctionnellement
+complet") ; `GAPS_OUVERTS.md` (reformulé : résolution/requêtes/Recalculer
+ne sont plus bloqués par l'ABSENCE de T5, reste juste à les câbler) ; cette
+entrée de journal.
+
+**État en fin de session** : orchestration CODÉE, VÉRIFIÉE en conditions
+réelles (pas encore committée — à confirmer avec l'utilisateur). Prochaine
+étape : lot 4/4, le câblage admin (bouton Recalculer, résolution des
+paris, traitement des requêtes) — DERNIER lot du chantier T5.

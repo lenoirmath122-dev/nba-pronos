@@ -6,11 +6,15 @@
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
 > Dernière mise à jour : session du 27/07/2026 (suite — chantier T5, lot
-> 2/4 : writer `series.official_*` codé et vérifié en conditions réelles,
-> §2.25), après le lot 1/4 (moteur de scoring PUR, §2.24, 26 tests
-> automatisés `vitest` — 1re dépendance de test du projet), après un
-> correctif de région Vercel (latence, iad1 → dub1, même région que
-> Supabase), après
+> 3/4 : orchestration `recompute*` codée et vérifiée en conditions réelles
+> (5 tests d'intégration jetables sur une compétition isolée, dont
+> idempotence P5), §2.26 — LE MOTEUR DE SCORING EST DÉSORMAIS
+> FONCTIONNELLEMENT COMPLET, seul le câblage admin (lot 4/4) reste avant de
+> débloquer résolution/requêtes/Recalculer), après le lot 2/4 (writer
+> `series.official_*`, §2.25), après le lot 1/4 (moteur de scoring PUR,
+> §2.24, 26 tests automatisés `vitest` — 1re dépendance de test du projet),
+> après un correctif de région Vercel (latence, iad1 → dub1, même région
+> que Supabase), après
 > Historique des logs (§2.23, quatrième écran du lot Admin, DERNIÈRE page
 > fille sans dépendance sur T5), après Gestion des joueurs (§2.22), après
 > la file de validation des paris (§2.21), après le tableau de bord admin
@@ -98,15 +102,19 @@ validation des paris** (§2.21, `/admin/validation`), **Gestion des
 joueurs** (§2.22, `/admin/players`) et l'**Historique des logs** (§2.23,
 `/admin/logs`) sont CODÉS ET VÉRIFIÉS — c'était la DERNIÈRE page fille sans
 dépendance sur le moteur de scoring T5. Restent « résolution » et
-« requêtes », toutes deux PARTIELLEMENT bloquées par l'absence de T5 (voir
-GAPS_OUVERTS.md pour le détail exact de ce qui est/n'est pas codable dès
-maintenant). Le bouton Recalculer du tableau de bord reste absent pour la
-même raison — mais le CHANTIER T5 avance : le **moteur pur** (§2.24,
-`lib/scoring/engine.ts`, lot 1/4, 26 tests `vitest` PASSENT) et le
-**writer `series.official_*`** (§2.25, `lib/sync/writeSeriesOutcome.ts`,
-lot 2/4) sont CODÉS ET VÉRIFIÉS. Restent 2 lots avant de pouvoir débloquer
-résolution/requêtes/Recalculer : l'orchestration (`recompute*`), puis le
-câblage admin lui-même.
+« requêtes » (partie traitement), et le bouton Recalculer restaient
+PARTIELLEMENT/ENTIÈREMENT bloqués par l'absence de T5 — **CE N'EST PLUS LE
+CAS côté moteur** : les 3 premiers lots de T5 sont désormais CODÉS ET
+VÉRIFIÉS — **moteur pur** (§2.24, `lib/scoring/engine.ts`, 26 tests
+`vitest`), **writer `series.official_*`** (§2.25,
+`lib/sync/writeSeriesOutcome.ts`), et **orchestration** (§2.26,
+`lib/scoring/recompute.ts` — `recomputeMatch`/`recomputeSeries`/
+`recomputeBet`/`recomputeCompetition`, vérifiée par 5 tests d'intégration
+en conditions réelles dont l'idempotence P5). Le moteur de scoring est
+FONCTIONNELLEMENT COMPLET. Seul reste le lot 4/4 (câblage admin — brancher
+`recomputeBet`/`recomputeCompetition`/`recomputeMatch` sur le bouton
+Recalculer, la résolution des paris et le traitement des requêtes) pour
+que tout soit utilisable depuis l'UI.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2348,6 +2356,80 @@ particulier" du jeu de test) : écriture des 3 colonnes vérifiée, puis
 revert vérifié (état final identique à l'état initial). PAS de test
 `vitest` pour ce module (touche une vraie base, pas une fonction pure —
 vérifié en conditions réelles comme le reste du projet, pas mockée).
+
+COMMITTÉ et POUSSÉ sur `main`.
+```
+
+### 2.26 Lot 3/4 T5 — Orchestration (`lib/scoring/recompute.ts`)
+
+```text
+Périmètre : SPEC_TECHNIQUE_SCORING_V0_1.md §10 — recomputeMatch/
+recomputeSeries/recomputeBet/recomputeCompetition, adaptateur IMPUR autour
+du moteur pur (lot 1) + du writer (lot 2). Contexte système (service_role),
+jamais appelée par une action joueur (P2). PAS l'avancement des équipes
+vers la série suivante (écrire series.team1_id/team2_id) : donnée
+OFFICIELLE réelle, fournie par la synchro T4 (hors périmètre) ou une
+résolution admin A2 (lot 4) — jamais dérivée en interne ici.
+
+**vitest.config.ts créé** (alias `@/*` requis pour que les modules
+lib/ s'importent entre eux sous vitest comme dans l'app ; alias
+`server-only` → module vide, car ce garde-fou choisit son export via la
+condition de résolution `react-server` posée par le bundler Next.js,
+absente sous vitest — neutralisé UNIQUEMENT pour les tests, intact dans le
+vrai build).
+
+**Garde-fou d'orchestration implémenté** (interprétation actée au lot 1,
+§2.24) : `recomputeMatch` ne réécrit JAMAIS `series.official_*` si le
+statut actuellement stocké est déjà CANCELLED/POSTPONED (posé par un
+admin) — appelle directement `recomputeSeries` sur l'état existant dans ce
+cas, sans re-dériver.
+
+**Décision d'implémentation** (transaction, §10.3) : la spec demande une
+seule transaction Postgres par passe. `supabase-js` (REST, pas de
+transaction multi-requêtes côté client) ne le permet pas nativement sans
+écrire une fonction RPC dédiée pour CHAQUE recompute — jugé hors périmètre
+de ce lot. Accepté comme simplification, compensée par l'IDEMPOTENCE (P5) :
+une passe interrompue est rejouable sans risque, le pire cas est un état
+transitoirement incomplet entre deux requêtes, jamais un état FAUX ou
+doublé.
+
+**Décision d'implémentation** (scored_at) : posé dès qu'AU MOINS une
+composante d'un pick de bracket est déterminée (l'affiche peut se scorer
+avant le vainqueur, cf. lot 1) — NULL seulement si les 3 composantes
+restent en attente. Pas fixé littéralement par la spec, cohérent avec la
+convention NULL/0 actée (§12.3).
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build, npm test (26/26)
+tous propres.
+
+**Test d'intégration en conditions réelles** (fichier JETABLE, supprimé
+après vérification — pas un test vitest permanent, car il crée/détruit une
+VRAIE compétition ARCHIVED isolée, nécessite service_role) : bracket à 3
+séries (2× ROUND_1 alimentant 1× CONF_SEMIS), 2 joueurs de test
+(Amine92/Chloe_B réutilisés), 4 matchs joués 4-0. 5 vérifications, TOUTES
+PASSENT :
+1. recomputeMatch score correctement les pronos de match (10+5 pour un bon
+   vainqueur + écart exact, 0 pour un mauvais vainqueur).
+2. La série ROUND_1 est correctement dérivée FINISHED/4-0/bon vainqueur,
+   ET la cascade vers recomputeSeries score bien les picks de bracket
+   (vainqueur 25 pts pour ROUND_1, affiche 0 car ROUND_1 sans matchup).
+3. La série CONF_SEMIS avale (paire officielle pas encore connue) laisse
+   bien l'affiche EN ATTENTE (NULL), aucun point fantôme.
+4. Une fois la paire officielle de la série avale renseignée (simulation
+   d'une résolution admin/avancement réel), l'affiche se score
+   correctement SANS AUCUN code spécial — confirme littéralement
+   l'interprétation actée au lot 1 (affiche indépendante de FINISHED).
+5. recomputeBet : WON niveau 4 → 20 pts, LOST → 0.
+6. recomputeCompetition rejouée DEUX FOIS de suite sur toute la
+   compétition de test → résultat rigoureusement identique (idempotence
+   P5, vérifiée en conditions réelles, pas seulement sur le moteur pur).
+
+Compétition de test + toutes ses données enfants supprimées après
+vérification (confirmé : 0 ligne restante). Aucune trace laissée.
+
+**LE MOTEUR DE SCORING EST DÉSORMAIS FONCTIONNELLEMENT COMPLET** — reste
+uniquement le câblage admin (lot 4/4) pour le rendre utilisable depuis
+l'UI (bouton Recalculer, résolution des paris, traitement des requêtes).
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```

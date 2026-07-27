@@ -85,29 +85,22 @@
   — voir gap dédié ci-dessous), puis le moteur de synchro/scoring (T4/T5),
   le Realtime + rendu des états au-delà de ce qui existe déjà (T6c). Détail
   dans `ETAT_ACTUEL.md` §2.
-- **2 pages filles admin restantes, TOUTES DEUX partiellement bloquées par
-  T5** (ajouté le 27/07/2026, `ETAT_ACTUEL.md` §2.20, réduit à 4 §2.21 —
-  validation FAITE — puis 3 §2.22 — joueurs FAIT — puis 2 §2.23 — logs
-  FAIT, dernière page SANS dépendance T5) : `/admin/resolution` (paris
-  VALIDÉS échus — resolveBet appelle recomputeBet directement, non codable
-  proprement sans construire une partie du moteur de scoring) ;
-  `/admin/requests` (requêtes de correction — processCorrectionRequest
-  dépend du recompute pour le TRAITEMENT réussi, mais rejectCorrectionRequest
-  n'en dépend pas : codable partiellement, même patron que le bouton
-  Recalculer omis §2.20). Signatures déjà posées par
-  `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5. Le lot Admin est donc à
-  un point où la suite naturelle est soit coder le moteur de scoring T5
-  (débloquerait les 2 pages ET le bouton Recalculer d'un coup), soit coder
-  la partie non bloquée de `/admin/requests` (refus seul) en attendant.
-- **Bouton « Recalculer » du tableau de bord admin bloqué sur T5** (trouvé au
-  pré-vol du 27/07/2026, `ETAT_ACTUEL.md` §2.20) : `recalculateCompetition`
-  (T6a/T6b) appelle `recomputeCompetition` (T5 §10.1), qui N'EXISTE NULLE
-  PART dans le dépôt (ni migration, ni `lib/`) — le moteur de scoring T5 est
-  intégralement spécifié mais jamais codé. Le bouton est OMIS du tableau de
-  bord tant que ce moteur n'existe pas ; design conservé dans
-  `SPEC_ECRAN_ADMIN_DASHBOARD_V0_1.md` §4 pour référence. Probablement le
-  même blocage pour `/admin/resolution` (résolution GAGNÉ/PERDU d'un pari,
-  qui recalcule aussi) — à revérifier au moment de coder cette page fille.
+- **2 pages filles admin restantes + bouton Recalculer : PLUS BLOQUÉES PAR
+  T5, reste juste à les câbler** (ajouté le 27/07/2026, `ETAT_ACTUEL.md`
+  §2.20, réduit à 4 §2.21 — validation FAITE — puis 3 §2.22 — joueurs FAIT
+  — puis 2 §2.23 — logs FAIT ; le CHANTIER T5, §2.24/§2.25/§2.26, a depuis
+  produit `lib/scoring/engine.ts` + `lib/sync/writeSeriesOutcome.ts` +
+  `lib/scoring/recompute.ts`, tous CODÉS et VÉRIFIÉS — `recomputeMatch`/
+  `recomputeSeries`/`recomputeBet`/`recomputeCompetition` existent
+  réellement désormais) : `/admin/resolution` (paris VALIDÉS échus —
+  `resolveBet` peut maintenant appeler `recomputeBet` pour de vrai) ;
+  `/admin/requests` (requêtes de correction — `processCorrectionRequest`
+  peut appeler `recomputeMatch`/`recomputeBet` selon la cible) ; le bouton
+  Recalculer (`recomputeCompetition`). Signatures déjà posées par
+  `SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_b.md` §5. Reste : lot 4/4 de T5 —
+  écrire les server actions admin qui appellent ces fonctions (re-vérifier
+  `is_admin()`, journaliser via `lib/actions/audit.ts` déjà partagé), puis
+  les cartes/pages correspondantes.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
