@@ -1781,3 +1781,362 @@ tranchée) ; cette entrée de journal.
 amendées reflètent fidèlement l'état réel du code ET des décisions prises,
 sans qu'aucun travail déjà confirmé n'ait été rouvert par erreur. Prochaine
 étape inchangée : « Paris ».
+
+---
+
+## Session du 26/07/2026 — Écran Nouveau pari (« Paris »), spec close + migrations + code
+
+Premier écran du lot « Paris » (ferme la destination du raccourci pari,
+`GAPS_OUVERTS.md`). `SPEC_ECRAN_NOUVEAU_PARI_V0_1.md` était marquée
+**BROUILLON** en tête de fichier au moment du prompt de lancement — Claude
+s'est arrêté avant toute ligne de code (règle du dépôt : spec validée avant
+code), a signalé le blocage, et a proposé 3 options. L'utilisateur a choisi
+de trancher les points ouverts plutôt que de reporter.
+
+**Clôture de la spec** (AskUserQuestion, 3 points de son §16) : défauts de
+brouillon = `PLAYER_PROP` / difficulté 3 (§5.4) ; cible figée en édition —
+`scope`/`series_id`/`match_id` non modifiables une fois le pari créé, un
+nouveau pari pour viser autre chose (§9.2) ; libellés d'états vides/erreurs
+du §12 actés tels quels. Statut de l'en-tête corrigé BROUILLON → VALIDÉ, les
+3 sous-sections mises à jour en conséquence.
+
+**Pré-vol §15 (avant la 1re ligne de code)** :
+- **Bloquant trouvé** : le trigger `enforce_bet_transitions` (migration #3)
+  n'autorisait pas `SUBMITTED → DRAFT` (le geste « retirer » du §9) —
+  seulement `DRAFT→{SUBMITTED,CANCELLED}`, `SUBMITTED→{VALIDATED,REJECTED,
+  CANCELLED}`, `VALIDATED→{WON,LOST,CANCELLED}`, `*→CANCELLED`. Migration
+  dédiée proposée, contenu montré intégralement, confirmée avant push (voir
+  plus bas, migration #9) — jamais ajoutée en éditeur SQL.
+- `bet_deadline_open` (migration #3, `SECURITY DEFINER STABLE`) confirmée
+  réutilisable telle quelle ; sa réplique TypeScript existait déjà dans
+  `lib/queries/home.ts` (§2.4) — même formule reprise pour le bootstrap de
+  cet écran, pas une 3e implémentation.
+- Routes `/play/bets/new` et `/play/bets/[id]/edit` confirmées ABSENTES sur
+  le disque (`find`, pas une relecture de doc) — seules entrées inertes du
+  hub temporaire (§2.10).
+- `TeamLogo` confirmé réutilisable tel quel ; tiers déjà en usage relevés
+  (18/20/48px selon l'écran) — 20px retenu pour les sélecteurs de cet écran,
+  cohérent avec les lignes de liste existantes.
+
+**Décision structurante confirmée AVEC l'utilisateur** (pas tranchée seule) :
+les 3 server actions (`saveDraft`/`submitBet`/`withdrawBet`) suivent le
+patron `request_prediction_correction` (fonction SQL `SECURITY DEFINER`,
+migration #7) plutôt qu'une logique TypeScript pure (patron
+`lib/actions/matches.ts`) — motif : la garde de quota « 3 paris MATCH par
+série » (0.2.4 §6) n'a AUCUN backstop d'index unique (contrairement aux deux
+quotas « 1 actif », `uniq_active_series_bet`/`uniq_active_match_bet`) ; un
+`SELECT count` puis `INSERT` en deux allers-retours TypeScript laisserait une
+fenêtre de course entre deux soumissions quasi simultanées du même joueur.
+
+**Migration #9** (`20260726120000_bet_withdraw_transition.sql`) : ajoute
+`SUBMITTED → DRAFT` à `enforce_bet_transitions` (`create or replace
+function`, le trigger existant s'y raccroche sans recréation). Montrée
+intégralement, confirmée, poussée par l'utilisateur lui-même (`npx supabase
+db push` bloqué pour Claude par le classificateur de permissions de
+l'environnement — pas un refus de Claude ; l'utilisateur a lancé la commande
+et confirmé via `npx supabase migration list`, `remote` alignée sur `local`).
+
+**Migration #10** (`20260726130000_bet_write_functions.sql`) : deux fonctions
+`SECURITY DEFINER` — `save_bet(p_bet_id, p_scope, p_series_id, p_match_id,
+p_description, p_category, p_difficulty, p_submit)` (création OU édition,
+DRAFT/SUBMITTED selon `p_submit` ; cible figée en édition, §9.2 ; refuse un
+`p_submit=false` sur un pari déjà SUBMITTED — le retrait passe exclusivement
+par l'autre fonction) et `withdraw_bet(p_bet_id)` (SUBMITTED→DRAFT, aucun
+champ touché). Chaque garde du §11 recalculée dans la fonction (propriétaire,
+statut, `bet_deadline_open`, cible identifiée, quota, scope interdit en NBA
+Cup) — ces fonctions CONTOURNENT la RLS (rôle propriétaire), donc ne
+délèguent RIEN à elle, exactement comme migration #7. Messages d'erreur des
+cas produits repris MOT POUR MOT du §12. **Verrou de concurrence ajouté par
+Claude, pas demandé explicitement mais nécessaire pour que le choix
+SECURITY DEFINER tienne sa promesse** : `pg_advisory_xact_lock` (clé = user ×
+série) avant le comptage du cap « 3 MATCH/série », qui sérialise les
+créations concurrentes sur la même série — sans lui, deux appels simultanés
+auraient pu chacun lire « 2 existants » et produire 4 paris actifs. Montrée
+intégralement, confirmée, poussée par l'utilisateur.
+
+**Code** :
+- `lib/labels/bets.ts` (nouveau) : catégories/difficultés/défauts/cap de
+  quota — module SANS dépendance serveur (pas de `getServerClient`), pour
+  rester importable à la fois par la lecture serveur ET par le futur
+  composant `"use client"` sans faire fuiter `next/headers` dans le bundle
+  client (piège identifié EN ÉCRIVANT le formulaire, corrigé avant qu'il ne
+  casse le build — voir §7).
+- `lib/queries/bets.ts` : `getNewBetFormData(matchIdParam)` (résout le
+  contexte §2 — raccourci/libre/fermé — et le bootstrap complet) et
+  `getEditBetFormData(betId)` (vérifie propriété + statut éditable EN PLUS
+  de la RLS, qui pourrait sinon révéler un pari public d'un autre joueur à sa
+  deadline). `seriesBetOpen`/`matchBetOpen`/`matchSlotsUsed` recalculés
+  serveur en reproduisant `bet_deadline_open`, jamais lus du client.
+- `lib/actions/bets.ts` : `saveDraftBet`/`submitBet`/`withdrawBet`, relais
+  fins vers `.rpc()`, messages d'erreur remontés tels quels (même patron que
+  `corrections.ts`).
+- Routes `app/(app)/play/bets/new/page.tsx` et `.../[id]/edit/page.tsx`
+  (`searchParams`/`params` en `Promise`, Next.js 16) + `components/bets/
+  BetForm.tsx` (SEULE feuille `"use client"`, §1.1) — sélecteurs série/match
+  en listes de boutons avec logos (`<select>` natif ne peut pas afficher
+  d'image), catégorie/difficulté en `<select>` natifs.
+- `app/(app)/play/page.tsx` (hub temporaire) et `components/matches/
+  BetShortcut.tsx` mis à jour : l'entrée « Paris » et le raccourci pointent
+  désormais vers `/play/bets/new` (+`?matchId=`) au lieu de `/play` — ferme
+  le gap `SPEC_ECRAN_MATCHS_V0_1.md` §18.3.
+
+**Vérifié** : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous
+propres après chaque étape.
+
+**Test en session authentifiée réelle** (script Node jetable, service_role
+pour la préparation + `signInWithPassword` pour la vraie session testée,
+hors dépôt puis supprimé) : 26 vérifications, toutes passées — cycle de vie
+complet (créer DRAFT, soumettre, ré-écrire un SUBMITTED sans toucher
+`submitted_at`, retirer, re-soumettre avec `submitted_at` renouvelé) et 5 cas
+négatifs (retrait d'un DRAFT, brouillon d'un SUBMITTED, pari d'un AUTRE
+joueur, cible déjà commencée, doublon sur un match, cap 3 MATCH/série — 2e/3e
+acceptés, 4e refusé avec le libellé exact §12). Fixtures ajustées en route :
+le seed datant de plusieurs jours, ses matchs « ouverts » étaient repassés
+dans le passé — date de `NYK-ATL#1` temporairement avancée puis restaurée ;
+3 matchs jetables ajoutés à cette série pour exercer le cap, supprimés après
+(un oubli de tracking d'un pari créé pendant un test a bloqué un premier
+nettoyage par contrainte FK — corrigé, nettoyage rendu résilient étape par
+étape). Base vérifiée identique à l'état seedé après coup.
+
+**Suivi mis à jour en miroir** : `SPEC_ECRAN_NOUVEAU_PARI_V0_1.md` (statut
+VALIDÉ, §5.4/§9.2/§12 actés) ; `ETAT_ACTUEL.md` (nouveau §2.15) ;
+`GAPS_OUVERTS.md` (destination du raccourci pari retirée — résolue) ; cette
+entrée de journal.
+
+**État en fin de session** : écran Nouveau pari codé, testé en session
+réelle (SQL/RPC direct, pas encore de navigateur). Prochaine étape : test
+manuel dans un vrai navigateur, puis fichiers de suivi (fait dans la
+session suivante).
+
+---
+
+## Session du 27/07/2026 (suite) — Test manuel navigateur, bandeau sticky, saisie inline dans Matchs
+
+Suite directe. Trois volets : test manuel du lot précédent dans un vrai
+navigateur, puis deux évolutions demandées par l'utilisateur après avoir vu
+le résultat.
+
+**Test manuel navigateur** : aucun skill projet pour lancer l'app (cherché
+d'abord, absent). `chromium-cli` indisponible dans l'environnement —
+`playwright` installé temporairement (`npm install --no-save`, retiré en fin
+de session, `package.json`/`package-lock.json` jamais touchés). Un serveur de
+dev `next dev` tournait déjà (port 3001, lancé lors d'une session
+précédente) — réutilisé tel quel plutôt que d'en lancer un second (un
+premier essai de lancement a d'ailleurs échoué silencieusement, Next.js
+refusant deux instances dev concurrentes sur le même dossier ; le port 3000
+observé servait un projet SANS RAPPORT, un léger doute levé en confirmant que
+le HTML servi référençait bien des assets `nba-pronos` — `Geist`/`Geist_Mono`
+sont d'ailleurs les polices RÉELLES du scaffold `create-next-app`, jamais
+retirées, pas un signe de mauvais projet).
+
+Session réelle obtenue en posant un mot de passe temporaire sur un compte de
+seed (`Nina_R`, via l'API Admin) puis connexion normale par le formulaire.
+Scénarios rejoués avec captures d'écran à chaque étape : entrée libre (série
+déjà prise correctement grisée), création d'un brouillon, édition d'un DRAFT
+existant → soumission, ré-édition d'un SUBMITTED (bon jeu de boutons : pas de
+« Enregistrer le brouillon », « Revenir en brouillon » présent) → retrait,
+raccourci réel depuis Matchs (navigation + pré-remplissage corrects), et
+raccourci vers un match fermé (repli sur le contexte libre + message discret
+§2). Un faux résultat rencontré en cours de route : après avoir enchaîné une
+navigation par clic (`<Link>`) puis une navigation directe (`page.goto`) dans
+LE MÊME onglet, l'état d'un test précédent semblait subsister (une série
+apparaissait sélectionnée alors qu'elle n'aurait pas dû l'être) — vérifié en
+isolant la navigation dans un contexte navigateur neuf : le HTML servi était
+en réalité intégralement correct (aucune présélection, notice affichée), le
+faux résultat venait bien du chaînage de navigations dans le même onglet,
+pas du code. Toutes les fixtures de test (mots de passe, dates de matchs
+avancées, paris créés) nettoyées/restaurées après coup, dépendance
+`playwright` retirée.
+
+**Demande 1 — bandeau sticky** : l'utilisateur veut que la zone de saisie du
+pari (énoncé, catégorie, difficulté, boutons — pas seulement les boutons)
+reste TOUJOURS visible, plutôt qu'à atteindre en scrollant sous le
+sélecteur série/match. Implémenté en `position: fixed` (pas `sticky` — le
+sélecteur au-dessus peut être court ou long, `fixed` garantit une position
+identique dans tous les cas) dans `BetForm.module.css`, avec `padding-bottom`
+généreux sur le conteneur du formulaire pour que le sélecteur reste
+défilable jusqu'au bout. **Bug trouvé en mesurant, pas en devinant** :
+l'offset copié du patron `StickyMeBar` (`components/leaderboard`,
+`calc(var(--tap-target-min) + var(--space-3))` = 56px) chevauchait de ~11px
+la barre d'onglets (`TabBar`, hauteur RÉELLE mesurée ~67px avec son padding +
+bordure — supérieure à ce que le calcul supposait). Corrigé par
+`getBoundingClientRect()` des deux éléments (pas une capture d'écran, biaisée
+en mode plein-page à cause du repositionnement temporaire du viewport par
+l'outil de capture) : offset porté à `calc(var(--tap-target-min) +
+var(--space-6) + env(safe-area-inset-bottom, 0px))`, marge de ~9px confirmée
+après coup, contenu tenant désormais dans son `max-height` sans scroll
+interne.
+
+**Demande 2 — saisie inline dans Matchs** : l'utilisateur veut pouvoir saisir
+un pari DIRECTEMENT dans la ligne Match dépliée (l'onglet Matchs devient
+l'entrée PRINCIPALE, « Mes paris » restant pour le suivi) plutôt que de
+naviguer vers l'écran dédié. Confirmé comme un élargissement RÉEL du
+périmètre acté par `SPEC_ECRAN_NOUVEAU_PARI_V0_1.md` §1 (deux points d'entrée
+vers UN écran dédié, pas de saisie inline) — les routes `/play/bets/new` et
+`/play/bets/[id]/edit` restent en place pour les paris SÉRIE et l'entrée
+libre, l'intégration inline ne couvre QUE les paris MATCH depuis Matchs.
+`components/matches/BetShortcut.tsx` (lien simple) remplacé par
+`components/matches/InlineBetForm.tsx` (formulaire complet, cible scope=MATCH
+figée sur CE match — pas de sélecteur série/match, déjà connu du contexte) ;
+s'ouvre pré-rempli si un pari DRAFT/SUBMITTED existe déjà sur ce match (même
+jeu de boutons que l'écran dédié), reste un simple texte désactivé si le pari
+existant n'est plus éditable ici (VALIDATED/WON/LOST, §9). `lib/queries/
+matches.ts` étendu : nouveau type `MyMatchBet` (id/statut/énoncé/catégorie/
+difficulté du pari actif du joueur sur ce match), la requête `bets` du fichier
+élargie pour porter ces colonnes (elle ne sélectionnait avant que scope/
+statut). Testé en navigateur réel : création inline sans pari existant,
+pré-remplissage correct d'un DRAFT existant, soumission, retrait — tous
+confirmés visuellement.
+
+**Point laissé ouvert, signalé explicitement** : le bandeau sticky n'a PAS
+été reproduit pour la version inline — si deux lignes de match étaient
+dépliées simultanément, deux bandeaux fixes en bas de viewport entreraient
+en conflit (un seul écran/formulaire à la fois pour l'écran dédié, plusieurs
+lignes possibles ici). Consigné dans `GAPS_OUVERTS.md`, pas tranché.
+
+Une alerte d'hydratation React (`caret-color: transparent` ajouté côté
+client sur un `<textarea>`, une seule fois) n'a pu être reliée à aucun code
+du dépôt (recherche globale négative) — probable artefact du Chromium
+headless de test, signalé à l'utilisateur, pas creusé davantage faute de
+piste concrète.
+
+**Vérifié** : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous
+propres après chaque changement. Aucune migration. Dépendance `playwright`
+réinstallée puis re-retirée pour ce second round de test ; toutes les
+fixtures (mots de passe, dates de matchs, paris de test) nettoyées et
+vérifiées restaurées à l'identique.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (§2.15 complété, nouvelle
+« Prochaine étape ») ; `GAPS_OUVERTS.md` (destination du raccourci pari
+retirée pour de bon — remplacée par l'intégration inline ; nouveau point sur
+le bandeau sticky inline non traité) ; cette entrée de journal.
+
+**État en fin de session** : écran Nouveau pari CODÉ et VÉRIFIÉ (SQL/RPC réel
++ navigateur réel), plus saisie inline MATCH depuis l'écran Matchs. Prochaine
+étape : écran « Mes paris » (consultation/quotas, hors périmètre de ce lot,
+spec à écrire) ou Bracket personnel — à confirmer avec l'utilisateur.
+
+---
+
+## Session du 27/07/2026 (suite) — Écran Bracket personnel (remplissage), spec rédigée en séance + code + tests
+
+Suite directe. L'utilisateur choisit « Bracket personnel » comme prochain
+lot. Différence de taille avec les lots précédents : **aucune spec d'écran
+n'existait** pour ce nom, même en brouillon — seulement une mention comme
+« prochaine étape » dans les fichiers de suivi. Claude vérifie (recherche
+sur le disque, pas une supposition) et le signale avant d'avancer.
+L'utilisateur choisit de la rédiger avec Claude, en séance.
+
+**Question annexe posée par l'utilisateur en tout début de session** : rester
+dans Claude Code ou basculer sur claude.ai (chat). Réponse directe (question
+d'outillage, pas de cadrage) : rester ici, Claude Code a un accès direct au
+dépôt/Supabase/terminal/navigateur qu'une interface de chat web n'a pas.
+
+**Rédaction de la spec** (`SPEC_ECRAN_BRACKET_PERSONNEL_V0_1.md`, nouveau
+fichier) : appuyée sur des décisions déjà actées et jamais rouvertes —
+`nba_pronos_decisions_0_2_2_bracket_initial.md` (ouverture, deadline,
+contenu du bracket, score de série, validation non irréversible, cas
+limites) et `nba_pronos_decisions_0_2_9_ux_ui.md` §5 (remplissage tour par
+tour, cascade, champion déduit, groupement conférence) — et sur un
+enseignement retenu du PROTOTYPE (`Cadrage/OLD/ETAT_DEVELOPPEMENT_
+PROTOTYPE.md` §7.2/§7.4, hors dépôt V1 mais lu explicitement pour cette
+raison) : un bug réel y avait fait primer le résultat OFFICIEL sur le
+pronostic du joueur pour dériver les équipes candidates des tours 2+, et
+validait un pick contre les colonnes officielles (toujours NULL avant le
+vrai résultat) au lieu des candidats dérivés — corrigé à l'époque, repris
+ici comme garde-fou explicite à ne pas perdre en réécrivant l'écran pour la
+V1. Vérification du schéma en cours de rédaction : les policies RLS
+`brackets_insert/update`/`bracket_picks_insert/update` (migration #3, lue
+directement dans le fichier de migration) couvrent DÉJÀ propriétaire/actif/
+deadline — repéré AVANT de proposer quoi que ce soit à coder, ce qui a
+permis d'annoncer dès le brouillon qu'aucune migration ne serait nécessaire
+pour ce lot (à l'inverse de « Nouveau pari »).
+
+**4 points fermés avec l'utilisateur** (AskUserQuestion, §12 de la spec) :
+publication Realtime de `series` (reportée — aucun besoin live identifié
+sur CET écran précis, remplissage personnel sans contenu d'autre joueur à
+rafraîchir) ; libellés des états vides actés tels quels ; contenu du popup
+de confirmation « Valider mon bracket » rédigé et validé (pas un
+avertissement « définitif », puisque le bracket reste modifiable après
+validation, 0.2.2 §3) ; structure de fichiers confirmée SÉPARÉE de
+`lib/queries/bracket.ts` (vue globale, lecture seule) plutôt que fusionnée.
+
+**Pré-vol §11** (avant tout code, comme pour « Nouveau pari ») : RLS
+confirmée suffisante (relue une 2e fois sur le disque, pas seulement la
+spec) ; `bracket_deadline_passed()` confirmée réutilisable ; route
+`/play/bracket` confirmée absente (`find`) ; jeu de données de test — le
+bracket d'Amine92 (11/15, volontairement incomplet, seed du 23/07/2026)
+confirmé intact et exploitable pour tester la cascade sans y toucher.
+
+**Code** :
+- `lib/queries/bracket-fill.ts` : `computeCandidateTeamIds(series,
+  myWinnerBySeriesId, competitionType)`, fonction PURE — dérive les 2
+  équipes candidates de chaque série (officielles pour le tour racine,
+  dérivées du PICK du joueur sur les séries feeder pour les tours suivants,
+  JAMAIS du résultat officiel) — et `getBracketFillData()` (bootstrap
+  complet : séries groupées par tour/conférence, pick du joueur, statut
+  validé/auto-validé). Réutilise `ROUND_LABELS` (`lib/labels/rounds.ts`,
+  déjà partagé) et le même ordre de tri Cup-par-coup-d'envoi que
+  `lib/queries/bracket.ts` (vue globale) — cohérence entre les deux écrans,
+  pas une 2e convention.
+- `lib/actions/bracket-fill.ts` : `saveBracketPick`/`validateBracket` —
+  AUCUNE garde de propriétaire/statut/deadline réécrite (déjà portée par la
+  RLS, contrairement à « Nouveau pari » qui contournait la RLS via SECURITY
+  DEFINER) ; seule garde applicative ajoutée = validité du vainqueur soumis,
+  recalculée avec EXACTEMENT la même fonction pure que la lecture — jamais
+  une 2e implémentation qui pourrait diverger (le bug retenu du prototype).
+- Route `app/(app)/play/bracket/` (`?round=` pour la navigation, Next.js 16
+  Promise) + `components/bracket-fill/{RoundTabs, BracketFillBoard}` —
+  BracketFillBoard = SEULE feuille `"use client"` de l'écran (tap vainqueur
+  + boutons de score sauvegardent IMMÉDIATEMENT, lecture littérale de 0.2.9
+  §5, pas de brouillon local à confirmer séparément) ; réutilise
+  `components/bracket/ProgressBar.tsx` (vue globale) tel quel, déjà pur.
+- Hub temporaire (`app/(app)/play/page.tsx`) : dernière entrée inerte
+  (« Mon bracket ») activée → les 4 entrées sont désormais toutes des liens
+  réels. Le changement a révélé du code mort (branche `entryInert`/`.soon`,
+  plus jamais atteinte) — supprimé au passage plutôt que laissé traîner.
+
+**Vérifié** : `npx tsc --noEmit`, `npx eslint .`, `npx next build` propres
+après chaque étape.
+
+**Test de la cascade en isolation** (script jetable, exécuté via `npx tsx`
+— AUCUNE base de données touchée) : 5 vérifications, dont la plus
+significative construit une situation où un résultat "officiel" simulé
+diffère du pick du joueur pour une série ROUND_1, et confirme que la série
+CONF_SEMIS suivante dérive bien du PICK, jamais du résultat officiel — la
+preuve directe que le bug du prototype ne peut pas se reproduire ici.
+
+**Test en session authentifiée réelle** (navigateur, `playwright` installé
+temporairement comme au lot précédent — dev server déjà en cours réutilisé) :
+compte Tariq_M (aucun bracket existant, jeu de données propre). La deadline
+du bracket, datant du seed, était déjà passée (même piège rencontré au lot
+« Nouveau pari » avec les dates de matchs) — avancée temporairement,
+restaurée après. Un premier script de test a produit un faux résultat
+(l'onglet « Demi-finales de conférence » semblait afficher encore le
+contenu du 1er tour) — diagnostiqué comme une course dans le script de test
+lui-même (le sélecteur CSS utilisé pour attendre le chargement matchait déjà
+l'ANCIENNE page, avant que la vraie navigation ne soit terminée), pas un bug
+de l'app : confirmé en vérifiant l'URL réelle après clic
+(`?round=CONF_SEMIS`) et le contenu réel de la page, qui étaient corrects
+dès le début. Séquence confirmée : round 1 rendu (8 séries, logos, boutons
+de score) ; pick d'un vainqueur + score sauvegardé et vérifié directement en
+base ; cascade vers les demi-finales EXACTE (les 2 équipes picked
+apparaissent comme candidates de la bonne série, « Équipe à définir » pour
+les 3 autres qui n'ont pas encore leurs 2 feeders pickés) ; validation du
+bracket à 2/15 réussie (aucune garde de complétude), confirmée en base
+(`is_validated=true`, `validated_at` posé). Toutes les fixtures nettoyées
+après coup (picks, bracket, deadline restaurée, mot de passe réinitialisé),
+dépendance `playwright` retirée — base vérifiée identique à l'état seedé, le
+bracket d'Amine92 jamais touché.
+
+**Suivi mis à jour en miroir** : `SPEC_ECRAN_BRACKET_PERSONNEL_V0_1.md`
+(rédigée et close en séance) ; `ETAT_ACTUEL.md` (nouveau §2.16, « Prochaine
+étape » renumérotée §2.17, fiche migrations/§4/§7 mises à jour) ;
+`GAPS_OUVERTS.md` (Bracket personnel retiré de la liste à coder ; Realtime
+`series` réévaluée et confirmée toujours reportée ; interprétations
+d'implémentation actées ajoutées) ; cette entrée de journal.
+
+**État en fin de session** : écran Bracket personnel CODÉ et VÉRIFIÉ (test
+pur de la cascade + session authentifiée réelle en navigateur). Prochaine
+étape à confirmer avec l'utilisateur : « Mes paris » (consultation/quotas,
+spec à écrire) ou les écrans admin.

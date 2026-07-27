@@ -1,0 +1,251 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  /* Marge généreuse : garantit que le sélecteur série/match reste défilable
+     jusqu'au bout, sans jamais rester coincé sous le bandeau fixe ci-dessous. */
+  padding-bottom: 45vh;
+}
+
+/* Contenu du pari (énoncé/catégorie/difficulté/actions) — FIXE en bas du
+   viewport, toujours visible pendant que le sélecteur défile au-dessus
+   (demandé 27/07/2026). Décalage vérifié contre la hauteur RÉELLE rendue de
+   TabBar (~67px avec son padding + bordure, mesuré en Chromium) — le calc de
+   StickyMeBar (44+12=56px) ne suffit pas et chevauche légèrement ; marge ici
+   volontairement plus large (44+32=76px) pour rester au-dessus dans tous les
+   cas, y compris avec env(safe-area-inset-bottom) sur mobile. */
+.stickyContent {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--tap-target-min) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--color-surface-raised);
+  border-top: 1px solid var(--color-border-subtle);
+  box-shadow: var(--elevation-raised);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.notice {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.frozenTarget {
+  margin: 0;
+  padding: var(--space-3);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.scopeToggle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.scopeButton {
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.scopeButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.scopeButtonActive {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.pickerList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pickerItem {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.pickerItem:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.pickerItem:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.pickerItemSelected {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
+.pickerLogos {
+  display: flex;
+  gap: var(--space-1);
+  flex-shrink: 0;
+}
+
+.pickerLabel {
+  flex: 1;
+}
+
+.pickerReason {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.textarea {
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-ui);
+  resize: vertical;
+}
+
+.textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.select {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.select:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-loss);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.secondary {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.secondary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.primary {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.primary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.withdraw {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.withdraw:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.withdraw:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

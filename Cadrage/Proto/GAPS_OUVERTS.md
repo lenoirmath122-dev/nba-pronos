@@ -56,18 +56,27 @@
   login/signup, l'écran Accueil, les écrans partagés Classement/Bracket,
   **l'écran Matchs** (`app/(app)/play/matches/`, `lib/queries/matches.ts`,
   `lib/actions/matches.ts`, `lib/hooks/useUnsavedGuard.tsx`,
-  `components/matches/*`, session du 23/07/2026, premier écran qui ÉCRIT) et
-  désormais **« Mes pronos »** (`app/(app)/play/my-predictions/`,
+  `components/matches/*`, session du 23/07/2026, premier écran qui ÉCRIT),
+  **« Mes pronos »** (`app/(app)/play/my-predictions/`,
   `lib/queries/my-predictions.ts`, `lib/actions/corrections.ts`,
   `lib/labels/rounds.ts`, `components/my-predictions/*`, migrations #7/#8,
-  session du 24/07/2026, ancré sur les matchs verrouillés, porte le live)
-  sont CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres, testés avec un
-  vrai jeu de données de test ET en conditions réelles — sessions
-  authentifiées réelles, écriture réelle testée, cas négatif RLS testé).
-  Prochaine étape concrète : **« Paris »** (fixera la destination du
-  raccourci pari, ci-dessous). Restent à coder après lui : « Bracket
-  personnel » (activera la publication Realtime de `series`, ci-dessous),
-  les écrans admin, le moteur de synchro/scoring (T4/T5), le Realtime + rendu
+  session du 24/07/2026, ancré sur les matchs verrouillés, porte le live),
+  **« Nouveau pari »** (`app/(app)/play/bets/{new,[id]/edit}/`,
+  `lib/queries/bets.ts`, `lib/actions/bets.ts`, `lib/labels/bets.ts`,
+  `components/bets/*`, `components/matches/InlineBetForm.tsx` (remplace
+  `BetShortcut.tsx`), migrations #9/#10, sessions du 26-27/07/2026 : création/
+  édition de pari personnalisé + saisie inline MATCH depuis Matchs) et
+  désormais **« Bracket personnel »** (`app/(app)/play/bracket/`,
+  `lib/queries/bracket-fill.ts`, `lib/actions/bracket-fill.ts`,
+  `components/bracket-fill/*`, session du 27/07/2026, remplissage tour par
+  tour, AUCUNE migration nécessaire — la RLS existante suffisait) sont
+  CODÉS et vérifiés (`tsc`/`eslint`/`next build` propres, testés avec un vrai
+  jeu de données de test ET en conditions réelles — sessions authentifiées
+  réelles, écriture réelle testée en SQL/RPC direct et/ou en navigateur réel,
+  cas négatifs testés). Prochaine étape à confirmer avec l'utilisateur :
+  **« Mes paris »** (consultation/quotas globaux — spec distincte, hors
+  périmètre du lot « Nouveau pari », ci-dessous) ou les écrans admin. Restent
+  à coder après : le moteur de synchro/scoring (T4/T5), le Realtime + rendu
   des états au-delà de ce qui existe déjà (T6c). Détail dans
   `ETAT_ACTUEL.md` §2.
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
@@ -98,21 +107,18 @@
   doit être construit d'une manière qui neutralise les changements de
   barème (ex. rang/points relatifs plutôt que total brut). Pas tranché,
   juste à ne pas oublier en conception si le barème change (`BACKLOG_V1.md`).
-- **Destination du raccourci pari** (`SPEC_ECRAN_MATCHS_V0_1.md` §18.3) : la
-  route de création d'un pari contextualisé sur un match
-  (`/play/bets/new?matchId=…` est l'hypothèse naturelle) n'est figée ni par
-  0.2.9 §12 ni par T6a. Codé (`components/matches/BetShortcut.tsx`) pointant
-  provisoirement vers `/play` (le hub existant, pas une 404) en attendant
-  que le lot « Paris » fixe la vraie route.
 - **Règle « pari REJECTED avant/après sa deadline »** (0.2.4 §6, rencontrée en
   codant l'écran Matchs, `lib/queries/matches.ts`) : aucune colonne
-  `rejected_at` n'existe (`bets`), et `rejectBet` n'est pas encore codé (lot
-  « Paris ») — la distinction avant/après n'est donc pas calculable
-  aujourd'hui. Tranché AVEC l'utilisateur : un pari `REJECTED` est TOUJOURS
+  `rejected_at` n'existe (`bets`) — la distinction avant/après n'est donc pas
+  calculable. Tranché AVEC l'utilisateur : un pari `REJECTED` est TOUJOURS
   considéré libéré (cas normal, `sealDeadlines` auto-valide tout `SUBMITTED`
   restant à la deadline — un rejet après coup est un cas limite hors
-  fonctionnement normal). À rouvrir au lot « Paris » si une vraie colonne
-  `rejected_at` est ajoutée à ce moment-là.
+  fonctionnement normal). Le lot « Nouveau pari » (§2.15 `ETAT_ACTUEL.md`,
+  fonction `save_bet`, migration #10) applique la MÊME règle pour le quota
+  serveur — cohérence maintenue entre lecture (Matchs) et écriture (Nouveau
+  pari). Toujours pas de gestion admin du refus (`rejectBet`) à ce jour —
+  hors périmètre des deux lots. À rouvrir si une vraie colonne `rejected_at`
+  est ajoutée un jour.
 - **Aligner le badge de correction de l'écran Matchs sur le rendu nominatif**
   (ajouté le 24/07/2026, lot « Mes pronos » §7.1) : Matchs rend un badge
   **générique** (« Corrigé par un admin », contrat de types `OtherPrediction.
@@ -151,11 +157,16 @@
   possible sans être décidée. À reprendre si le besoin se confirme à
   l'usage.
 - **Publication Realtime de `series`** (ajoutée le 24/07/2026, lot « Mes
-  pronos ») : `matches` est désormais publiée (migration #8) — `series`,
+  pronos »; réévaluée et TOUJOURS REPORTÉE le 27/07/2026, lot « Bracket
+  personnel ») : `matches` est désormais publiée (migration #8) — `series`,
   prévue par T4 §9 et resserrée par T6c §14.2 (drill-down série + résumé
-  bracket live), reste reportée au lot **Bracket personnel**, seul écran qui
-  en aura besoin. Chaque table publiée quand un écran en a réellement
-  besoin, pas avant.
+  bracket live), n'a PAS été activée par l'écran Bracket personnel
+  (remplissage), contrairement à ce qui était anticipé : cet écran précis
+  n'affiche que le pick du JOUEUR LUI-MÊME, aucun contenu d'un autre joueur
+  à rafraîchir en direct. Le besoin identifié à l'origine (drill-down/résumé
+  LIVE) concerne la vue GLOBALE (`/bracket`, déjà codée, fonctionne en SSR
+  sans lui) — à activer SI ET QUAND cet écran-là a un besoin live réel,
+  toujours pas le cas à ce jour.
 - **Logos de franchise sur Accueil et Classement** (trouvé le 24/07/2026 : les
   30 SVG existent bien dans `public/logos/teams/` et sont déjà committés,
   mais aucun écran ne les affichait — câblés le même jour sur Bracket et
@@ -172,14 +183,14 @@
 - **Hub Jouer temporaire** (24/07/2026, posé pour pouvoir naviguer jusqu'à
   l'écran Matchs — jusqu'ici codé mais inaccessible depuis l'UI, l'onglet
   « Jouer » pointant sur un stub) : `app/(app)/play/page.tsx` (+
-  `page.module.css`) liste désormais 4 entrées — « Matchs » en `<Link>` actif
-  vers `/play/matches`, « Mes pronos »/« Mon bracket »/« Paris » rendues
-  INERTES (pas de `<Link>`, routes `/play/my-predictions`, `/play/bracket`,
-  `/play/bets` inexistantes à ce jour) avec le libellé « à venir ». Marqué
-  temporaire aux trois endroits (commentaire code, mention visible « hub
-  temporaire — sera remplacé », cette entrée). Aucune pastille « à faire »
-  calculée (hors périmètre, rôle du vrai hub). **À retirer** dès que le vrai
-  hub Jouer (spec d'écran dédiée, pas encore écrite) existe.
+  `page.module.css`) liste 4 entrées — « Matchs », « Mes pronos » ET
+  désormais « Paris » (26/07/2026, → `/play/bets/new`) en `<Link>` actifs,
+  seule « Mon bracket » reste INERTE (route `/play/bracket` inexistante à ce
+  jour) avec le libellé « à venir ». Marqué temporaire aux trois endroits
+  (commentaire code, mention visible « hub temporaire — sera remplacé »,
+  cette entrée). Aucune pastille « à faire » calculée (hors périmètre, rôle
+  du vrai hub). **À retirer** dès que le vrai hub Jouer (spec d'écran dédiée,
+  pas encore écrite) existe.
 - **Déconnexion temporaire** (24/07/2026, demandée par l'utilisateur pour
   pouvoir tester plusieurs comptes) : `app/(app)/layout.tsx` porte désormais
   un bouton « Déconnexion (temporaire) » (coin haut-droit, hors design
@@ -198,6 +209,30 @@
   que Classement est déjà codé) ; et **thème clair du bandeau** (garder la
   bande sombre partout comme acté en §15.7, ou prévoir un éclaircissement
   de la photo en thème clair — même asset, filtre différent).
+- **Écran « Mes paris » (consultation/quotas globaux)** (identifié dès
+  `SPEC_ECRAN_NOUVEAU_PARI_V0_1.md` préambule, non traité par ce lot) :
+  écran de suivi des paris du joueur (tous statuts, quotas série/match par
+  série) — hors périmètre de l'écran Nouveau pari (création/édition
+  uniquement, `ETAT_ACTUEL.md` §2.15). Spec d'écran dédiée pas encore
+  écrite. Tant qu'il n'existe pas, un pari non éditable ici (`/play/bets/
+  [id]/edit` sur un pari VALIDATED/REJECTED/WON/LOST/CANCELLED, ou un
+  `betId` invalide/pas le sien) affiche un état inerte plutôt que de
+  rediriger vers une route qui n'existe pas encore.
+- **Bandeau sticky non traité pour la saisie inline dans Matchs** (27/07/2026,
+  `ETAT_ACTUEL.md` §2.15 suite) : le formulaire dédié (`BetForm.tsx`) a son
+  contenu fixé en bas de viewport, mais `InlineBetForm.tsx` (Matchs) ne l'a
+  PAS reproduit — si deux lignes de match étaient dépliées simultanément avec
+  leur formulaire ouvert, deux bandeaux fixes entreraient en conflit (un seul
+  formulaire à la fois sur l'écran dédié, potentiellement plusieurs ici). Pas
+  tranché : à reprendre si le besoin se confirme à l'usage (ex. ancrer le
+  bandeau à la ligne plutôt qu'au viewport, ou l'exclure explicitement).
+- **Garde `bet_scope=SERIES` interdit en NBA Cup non testée en conditions
+  réelles** (26/07/2026, `save_bet`, migration #10) : le jeu de données de
+  test ne porte qu'une compétition PLAYOFFS active — le refus d'un pari
+  SÉRIE quand la compétition est NBA_CUP a été vérifié par relecture du code
+  SQL uniquement, jamais exercé en live faute d'une compétition NBA Cup de
+  test. À vérifier en conditions réelles si/quand un jeu de données NBA Cup
+  existe.
 
 ## Interprétations d'implémentation actées (pas des gaps — à connaître, et à
 ## reporter dans `decisions_0.2.x` si l'utilisateur le souhaite un jour)
@@ -317,3 +352,61 @@
     même règle que `difficulté` (`validated_category ?? proposed_category`,
     la validée fait foi, 0.2.4 §7) — la spec ne le précise que pour la
     difficulté, extension jugée cohérente plutôt qu'une nouvelle règle.
+- **Écran Nouveau pari (sessions du 26-27/07/2026,
+  `SPEC_ECRAN_NOUVEAU_PARI_V0_1.md`, `lib/queries/bets.ts`,
+  `lib/actions/bets.ts`, `components/bets/BetForm.tsx`,
+  `components/matches/InlineBetForm.tsx`)** :
+  - **choix structurant confirmé AVEC l'utilisateur** : écriture via 2
+    fonctions SQL `SECURITY DEFINER` (`save_bet`/`withdraw_bet`, migration
+    #10, patron `request_prediction_correction`) plutôt qu'une logique
+    TypeScript pure — seule façon de fermer, par un `pg_advisory_xact_lock`,
+    la fenêtre de course sur le cap « 3 MATCH/série » (aucun backstop
+    d'index unique pour ce quota précis, contrairement aux deux quotas
+    « 1 actif ») ;
+  - défaut de scope à l'entrée libre (`mode: "FREE"`, `BetForm.tsx`) : `MATCH`
+    par défaut (pas `SERIES`), simple choix d'ergonomie non fixé par la
+    spec — ajustable sans changement de contrat de données ;
+  - tier de logo des sélecteurs série/match (§13, non fixé par la spec) :
+    20px, cohérent avec les lignes de liste existantes (`MatchRowStatic`,
+    Mes pronos) plutôt qu'un nouveau tier ;
+  - sélecteurs série/match = listes de boutons (`role="radio"`), pas des
+    `<select>` natifs — un `<option>` HTML ne peut pas afficher de logo,
+    exigé par §13 sur ces deux sélecteurs précisément (catégorie/difficulté,
+    sans logo, restent des `<select>` natifs) ;
+  - pari non éditable ici (statut non DRAFT/SUBMITTED, propriétaire différent,
+    ou `betId` invalide) sur `/play/bets/[id]/edit` : état inerte affiché
+    plutôt qu'une redirection vers « Mes paris », qui n'existe pas encore
+    (voir gap ci-dessus) — pas un choix produit, une conséquence du
+    séquencement des lots ;
+  - saisie inline MATCH dans Matchs (27/07/2026, demandée explicitement
+    par l'utilisateur en cours de session, PAS dans la spec close) : élargit
+    le périmètre acté par la spec §1 (deux points d'entrée vers un écran
+    dédié) — confirmé avec l'utilisateur avant de coder, pas une extension
+    silencieuse. Les paris SÉRIE restent exclusivement sur l'écran dédié.
+- **Écran Bracket personnel (session du 27/07/2026,
+  `SPEC_ECRAN_BRACKET_PERSONNEL_V0_1.md`, `lib/queries/bracket-fill.ts`,
+  `lib/actions/bracket-fill.ts`, `components/bracket-fill/*`)** :
+  - **AUCUNE spec n'existait pour cet écran** (contrairement aux lots
+    précédents, qui avaient au moins un brouillon) — rédigée EN SÉANCE avec
+    l'utilisateur, appuyée sur des décisions déjà actées (0.2.2, 0.2.9 §5)
+    plutôt que devinée ;
+  - **choix structurant confirmé AVEC l'utilisateur** : écriture en
+    TypeScript pur (RLS existante suffit, PAS de fonction SECURITY DEFINER)
+    — à l'inverse du choix fait pour « Nouveau pari » ; chaque lot a été
+    évalué sur ses propres besoins de concurrence, pas un patron copié
+    automatiquement du lot précédent ;
+  - garde-fou explicite hérité du prototype (pas une invention) : la cascade
+    des candidats de tour 2+ dérive TOUJOURS du pick du joueur, jamais du
+    résultat officiel — `computeCandidateTeamIds` ne lit même pas les
+    colonnes de résultat, structurellement incapable de reproduire le bug
+    historique (voir `ETAT_ACTUEL.md` §7) ;
+  - Realtime `series` (T4 §9) : réévaluée pour ce lot précisément, TOUJOURS
+    reportée (aucun besoin live sur un écran de saisie personnelle) — voir
+    gap dédié ci-dessus ;
+  - tap vainqueur + boutons de score sauvegardent IMMÉDIATEMENT (pas de
+    bouton "enregistrer" séparé) — lecture littérale de 0.2.9 §5 ("vainqueur
+    en 1 tap"), cohérent avec l'absence de champ texte sur cet écran
+    (contrairement à Nouveau pari, qui a un énoncé libre à saisir) ;
+  - validation du bracket sans garde de complétude (0/15 à 15/15 accepté) :
+    lecture littérale de 0.2.2 §3, confirmée par le comportement du
+    prototype avant réécriture.

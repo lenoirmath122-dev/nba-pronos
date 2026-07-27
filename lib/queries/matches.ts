@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Lecture de l'écran Matchs (composants serveur uniquement), SPEC_ECRAN_MATCHS
 // §13. Un seul module, appelé avec getServerClient() (jamais service_role) :
@@ -24,6 +25,19 @@ export type BetSlotIndicator =
   | { mode: "BINARY"; hasBetOnThisMatch: boolean }
   | { mode: "SERIES_QUOTA"; hasBetOnThisMatch: boolean; usedSlots: number; totalSlots: 3 };
 
+/** Pari MATCH actif du joueur sur CE match, éditable EN LIGNE (DRAFT/SUBMITTED
+ *  uniquement — un pari VALIDATED/WON/LOST reste "posé" mais pas réouvrable
+ *  ici, cf. SPEC_ECRAN_NOUVEAU_PARI_V0_1 §9). `null` si aucun pari actif
+ *  éditable : soit rien n'a jamais été posé, soit le pari existant n'est plus
+ *  dans un statut modifiable (betSlot.hasBetOnThisMatch reste vrai dans ce cas). */
+export type MyMatchBet = {
+  betId: string;
+  status: "DRAFT" | "SUBMITTED";
+  description: string;
+  category: BetCategory;
+  difficulty: BetDifficulty;
+};
+
 export type MatchCard = {
   matchId: string;
   seriesId: string;
@@ -39,6 +53,7 @@ export type MatchCard = {
   others: OtherPrediction[]; // VIDE si !isRevealed
   absentees: string[]; // VIDE si !isRevealed
   betSlot: BetSlotIndicator;
+  myBet: MyMatchBet | null;
 };
 
 export type MatchDay = {
@@ -95,11 +110,17 @@ type OwnPredictionRow = {
 };
 
 type OwnBetRow = {
+  id: string;
   match_id: string | null;
   series_id: string;
   scope: "SERIES" | "MATCH";
   status: string;
+  description: string;
+  proposed_category: BetCategory;
+  proposed_difficulty: BetDifficulty;
 };
+
+const EDITABLE_BET_STATUSES = new Set(["DRAFT", "SUBMITTED"]);
 
 type ActiveUserRow = { id: string; pseudo: string };
 
@@ -164,7 +185,7 @@ export async function getMatches(): Promise<MatchesData> {
       .in("match_id", matchIds),
     supabase
       .from("bets")
-      .select("match_id, series_id, scope, status")
+      .select("id, match_id, series_id, scope, status, description, proposed_category, proposed_difficulty")
       .eq("user_id", user.id)
       .eq("competition_id", competition.id)
       .eq("scope", "MATCH")
@@ -231,6 +252,16 @@ export async function getMatches(): Promise<MatchesData> {
             usedSlots: usedSlotsBySeries.get(match.series_id) ?? 0,
             totalSlots: 3,
           };
+    const myBet: MyMatchBet | null =
+      ownBet && EDITABLE_BET_STATUSES.has(ownBet.status)
+        ? {
+            betId: ownBet.id,
+            status: ownBet.status as "DRAFT" | "SUBMITTED",
+            description: ownBet.description,
+            category: ownBet.proposed_category,
+            difficulty: ownBet.proposed_difficulty,
+          }
+        : null;
 
     cards.push({
       matchId: match.id,
@@ -247,6 +278,7 @@ export async function getMatches(): Promise<MatchesData> {
       others,
       absentees,
       betSlot,
+      myBet,
     });
   }
 

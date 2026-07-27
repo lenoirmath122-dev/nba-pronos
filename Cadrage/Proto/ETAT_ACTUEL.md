@@ -5,11 +5,14 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 25/07/2026 (suite — commit/push du lot
-> logos + amendements de `SPEC_DESIGN_SYSTEM_V0_1.md` et
-> `SPEC_ECRAN_MATCHS_V0_1.md`, §2.14), après la refonte de l'entête Matchs +
-> correctif des 30 logos (§2.13), le correctif de pastille (§2.12) et le lot
-> « Mes pronos » (24/07/2026, SPEC_ECRAN_MES_PRONOS_V0_1.md, CLOSE, §2.11).
+> Dernière mise à jour : session du 27/07/2026 (suite — écran Bracket
+> personnel codé et testé, §2.16, spec rédigée et close en séance), après le
+> bandeau sticky + saisie inline dans Matchs (§2.15 suite), l'écran Nouveau
+> pari codé et testé le 26/07/2026 (SPEC_ECRAN_NOUVEAU_PARI_V0_1.md, CLOSE,
+> §2.15), lui-même après le commit/push du lot logos + amendements de specs
+> (25/07/2026, §2.14), la refonte de l'entête Matchs + correctif des 30 logos
+> (§2.13), le correctif de pastille (§2.12) et le lot « Mes pronos »
+> (24/07/2026, SPEC_ECRAN_MES_PRONOS_V0_1.md, CLOSE, §2.11).
 
 ---
 
@@ -68,13 +71,16 @@ Styles      : CSS Modules colocalisés par composant (`*.module.css`), lisant
 ```text
 Phase V1 — la série de specs techniques T1 → T7 est VALIDÉE. Le socle de
 données (modèle + auth + RLS) est posé et codé (§3). CODÉS ET VÉRIFIÉS avec
-un vrai jeu de données : Accueil, Classement, Bracket, Matchs (§2.8) et
-désormais « Mes pronos » (§2.11) — les cinq premiers écrans du hub joueur,
-logos de franchise câblés sur Bracket/Matchs/Mes pronos (§2.9/§2.11). Un hub
-Jouer TEMPORAIRE (§2.10) relie l'onglet « Jouer » à Matchs ET Mes pronos
-désormais — en attendant le vrai hub, dont la spec d'écran reste à écrire.
-Restent à coder : Paris (fixera la destination du raccourci pari), Bracket
-personnel (mêmes conventions, un écran à la fois), puis les écrans admin.
+un vrai jeu de données : Accueil, Classement, Bracket (vue globale), Matchs
+(§2.8), « Mes pronos » (§2.11), « Nouveau pari » (§2.15) et désormais
+**Bracket personnel** (remplissage, §2.16) — les sept premiers écrans du hub
+joueur, logos de franchise câblés sur Bracket/Matchs/Mes pronos/Bracket
+personnel (§2.9/§2.11/§2.16). Le hub Jouer TEMPORAIRE (§2.10) relie
+désormais l'onglet « Jouer » aux QUATRE écrans du hub joueur (Matchs, Mes
+pronos, Paris, Mon bracket) — plus aucune entrée inerte — en attendant le
+vrai hub, dont la spec d'écran reste à écrire. Reste à coder : « Mes paris »
+(consultation/quotas globaux, hors périmètre du lot Nouveau pari, spec
+distincte à écrire), puis les écrans admin.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -750,28 +756,234 @@ bien réglé et confirmé — le point resté réellement ouvert est différent
 aurait rouvert à tort un point déjà fermé et confirmé par l'utilisateur.
 ```
 
-### 2.15 Prochaine étape
+### 2.15 Écran Nouveau pari + saisie inline dans Matchs (sessions du 26-27/07/2026)
 
 ```text
-Dans l'ordre déjà acté : Paris (fixera la destination du raccourci pari,
-§18.3 de la spec Matchs) ; puis Bracket personnel (activera la publication
-Realtime de `series`, reportée depuis §2.11). Même conventions reconduites
-(composants serveur par défaut, CSS Modules + tokens, RLS/fonctions dédiées
-comme seule autorité de lecture). Le vrai hub Jouer (§2.10) reste, lui, à
-SPÉCIFIER (spec d'écran dédiée) avant d'être codé — aucune date arrêtée.
-Puis les écrans admin, puis T8 (déploiement — §6 à faire avant, dont
-l'effacement du jeu de données de test, le retrait du bouton de déconnexion
-temporaire §2.9, ET le retrait du hub Jouer temporaire §2.10).
+Périmètre : SPEC_ECRAN_NOUVEAU_PARI_V0_1.md (Cadrage/V1/Spec visuelle/,
+CLOSE) — premier écran du lot « Paris », ferme la destination du raccourci
+pari (SPEC_ECRAN_MATCHS_V0_1.md §18.3, GAPS_OUVERTS.md). Sixième écran du
+hub joueur, TROISIÈME écran qui ÉCRIT.
+
+Spec livrée en statut BROUILLON : Claude s'est arrêté avant tout code (règle
+du dépôt) et a signalé le blocage plutôt que de deviner. Close en clarifiant
+3 points de son §16 (AskUserQuestion, pas tranchés seul) : défauts de
+brouillon (catégorie PLAYER_PROP, difficulté 3, §5.4) ; cible figée en
+édition — scope/série/match non modifiables une fois le pari créé, un
+nouveau pari pour viser ailleurs (§9.2) ; libellés d'états vides/erreurs du
+§12 actés tels quels.
+
+Pré-vol §15 (avant la 1re ligne de code) : trigger `enforce_bet_transitions`
+(migration #3) ne whitelistait pas `SUBMITTED → DRAFT` (le geste « retirer »,
+§9) — BLOQUANT, migration dédiée requise (voir plus bas). `bet_deadline_open`
+(migration #3) confirmée réutilisable, sa réplique TypeScript existait déjà
+dans `lib/queries/home.ts` — pas une 3e implémentation. Routes `/play/bets/*`
+confirmées absentes du disque. `TeamLogo` confirmé réutilisable, tier 20px
+retenu pour les sélecteurs de cet écran.
+
+**Décision structurante confirmée AVEC l'utilisateur** : les 3 server actions
+suivent le patron `request_prediction_correction` (fonction SQL `SECURITY
+DEFINER`, migration #7) plutôt qu'une logique TypeScript pure
+(`lib/actions/matches.ts`) — la garde de quota « 3 paris MATCH/série » (0.2.4
+§6) n'a aucun backstop d'index unique, contrairement aux deux quotas « 1
+actif » ; un `SELECT count` puis `INSERT` en deux allers-retours TypeScript
+laisserait une fenêtre de course entre deux soumissions quasi simultanées.
+
+Migration #9 (`20260726120000_bet_withdraw_transition.sql`) : ajoute
+`SUBMITTED → DRAFT` à `enforce_bet_transitions` (`create or replace
+function`, trigger existant inchangé). Migration #10
+(`20260726130000_bet_write_functions.sql`) : `save_bet(...)` (création OU
+édition, DRAFT/SUBMITTED selon `p_submit` ; refuse `p_submit=false` sur un
+SUBMITTED — le retrait passe exclusivement par l'autre fonction) et
+`withdraw_bet(p_bet_id)`, toutes deux `SECURITY DEFINER`, reproduisant
+ELLES-MÊMES chaque garde du §11 (propriétaire, statut, deadline, cible
+identifiée, quota, scope interdit en NBA Cup — RLS contournée par le rôle
+propriétaire, rien ne lui est délégué, comme migration #7). Messages
+d'erreur des cas produits repris mot pour mot du §12.
+**`pg_advisory_xact_lock`** (clé = user × série) ajouté par Claude AVANT le
+comptage du cap « 3 MATCH/série » (pas demandé explicitement, nécessaire
+pour que le choix SECURITY DEFINER tienne sa promesse d'atomicité — sans
+lui, deux créations concurrentes sur la même série auraient pu chacune lire
+« 2 existants » et produire 4 paris actifs). Les deux migrations montrées
+intégralement, confirmées, poussées par l'utilisateur lui-même (`npx
+supabase db push` bloqué pour Claude par le classificateur de permissions de
+l'environnement — pas un refus de Claude).
+
+Code : `lib/labels/bets.ts` (catégories/difficultés/défauts/cap de quota,
+SANS dépendance serveur — importable par le composant `"use client"` sans
+faire fuiter `next/headers` dans son bundle, piège trouvé EN écrivant le
+formulaire, corrigé avant qu'il ne casse le build) ; `lib/queries/bets.ts`
+(`getNewBetFormData`/`getEditBetFormData`, dispos recalculées serveur en
+reproduisant `bet_deadline_open`) ; `lib/actions/bets.ts`
+(`saveDraftBet`/`submitBet`/`withdrawBet`, relais fins vers `.rpc()`) ;
+routes `app/(app)/play/bets/new/` et `.../[id]/edit/` + `components/bets/
+BetForm.tsx` (SEULE feuille `"use client"`, sélecteurs série/match en listes
+de boutons + logos, catégorie/difficulté en `<select>` natifs). Hub
+temporaire (§2.10) et `BetShortcut` (écran Matchs) mis à jour pour pointer
+vers la vraie route — gap fermé.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` propres à
+chaque étape. **Test en session authentifiée réelle** (script Node jetable,
+service_role pour la préparation + `signInWithPassword` pour la vraie
+session testée) : 26 vérifications passées — cycle de vie complet (créer,
+soumettre, ré-écrire un SUBMITTED sans toucher `submitted_at`, retirer,
+re-soumettre avec `submitted_at` renouvelé) + 5 cas négatifs (retrait d'un
+DRAFT, brouillon d'un SUBMITTED, pari d'un AUTRE joueur, cible déjà
+commencée, doublon sur un match, cap 3 MATCH/série). Fixtures de test
+(dates de matchs, paris jetables) nettoyées, base vérifiée identique à
+l'état seedé après coup.
+
+**Test manuel navigateur** (session du 27/07/2026, suite) : aucun skill
+projet pour lancer l'app, `chromium-cli` indisponible — `playwright`
+installé temporairement (`--no-save`, retiré après, `package.json` jamais
+touché), pilotant le serveur `next dev` DÉJÀ EN COURS (réutilisé plutôt que
+d'en relancer un second). 6 scénarios rejoués avec captures : entrée libre,
+création, édition→soumission, ré-édition→retrait, raccourci réel depuis
+Matchs, raccourci vers un match fermé (repli + message discret §2) — tous
+conformes. Un faux résultat (état d'un test précédent semblant subsister
+après un chaînage de navigations dans le même onglet) écarté en isolant la
+navigation dans un contexte navigateur neuf — le rendu serveur était en
+réalité correct.
+
+**Deux évolutions demandées après le test, mêmes conventions** :
+- **Bandeau sticky** : la zone de saisie (énoncé/catégorie/difficulté/
+  boutons, pas seulement les boutons) reste `position: fixed` en bas du
+  viewport dans `BetForm.module.css`, plutôt qu'à atteindre en scrollant.
+  Bug trouvé en MESURANT (`getBoundingClientRect`, pas une capture d'écran —
+  biaisée en plein-page à cause du repositionnement temporaire du viewport
+  par l'outil de capture) : l'offset copié du patron `StickyMeBar`
+  (56px) chevauchait de ~11px la barre d'onglets (hauteur RÉELLE ~67px,
+  supérieure à ce que le calcul supposait) — corrigé (`+var(--space-6) +
+  env(safe-area-inset-bottom, 0px)`, ~76px), marge confirmée après coup.
+- **Saisie inline dans Matchs** : élargissement RÉEL du périmètre acté par
+  la spec §1 (confirmé explicitement avec l'utilisateur avant de coder,
+  pas deviné) — `BetShortcut.tsx` remplacé par `components/matches/
+  InlineBetForm.tsx`, formulaire complet ciblé sur CE match (scope MATCH
+  figé, pas de sélecteur série/match), pré-rempli si un DRAFT/SUBMITTED
+  existe déjà. `lib/queries/matches.ts` étendu : nouveau type `MyMatchBet`
+  (contenu du pari actif du joueur sur ce match), requête `bets` élargie
+  (portait avant seulement scope/statut). Les routes dédiées restent en
+  place pour les paris SÉRIE et l'entrée libre. Testé en navigateur réel :
+  création inline, pré-remplissage, soumission, retrait — confirmés.
+
+**Point laissé ouvert, signalé explicitement, pas tranché** : le bandeau
+sticky n'a pas été reproduit pour la version inline (collision possible si
+plusieurs lignes de match sont dépliées simultanément) — voir
+`GAPS_OUVERTS.md`.
+
+Vérifié à nouveau après les 2 évolutions : `npx tsc --noEmit`, `npx eslint .`,
+`npx next build` propres. Toutes les fixtures de test (mots de passe, dates
+de matchs, paris jetables) nettoyées et vérifiées restaurées à l'identique ;
+dépendance `playwright` retirée. Aucune migration pour ce complément.
+```
+
+### 2.16 Écran Bracket personnel (remplissage) (session du 27/07/2026)
+
+```text
+Périmètre : SPEC_ECRAN_BRACKET_PERSONNEL_V0_1.md (Cadrage/V1/Spec visuelle/,
+CLOSE) — écran de remplissage du bracket, laissé HORS PÉRIMÈTRE par
+SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md §18 (« lot ultérieur »). Septième écran
+du hub joueur, DISTINCT de /bracket (vue globale de consultation partagée,
+déjà codée, INCHANGÉE) : ici, saisie PERSONNELLE d'un joueur connecté.
+
+Aucune spec n'existait pour cet écran (contrairement à Nouveau pari, qui
+avait au moins un brouillon) — rédigée EN SÉANCE avec l'utilisateur, appuyée
+sur des décisions déjà actées (nba_pronos_decisions_0_2_2_bracket_initial.md,
+nba_pronos_decisions_0_2_9_ux_ui.md §5) et sur un enseignement retenu du
+PROTOTYPE (Cadrage/OLD/ETAT_DEVELOPPEMENT_PROTOTYPE.md §7.2/§7.4) : un bug
+réel y avait fait primer le résultat OFFICIEL sur le pronostic du joueur pour
+dériver les équipes candidates des tours 2+, et validait un pick contre les
+colonnes officielles (`series.team1_id/team2_id`, toujours NULL avant le vrai
+résultat) au lieu des candidats dérivés — corrigé à l'époque, explicitement
+consigné comme garde-fou à ne pas perdre pour cette réécriture V1.
+
+Close en confirmant 4 points (AskUserQuestion) : Realtime `series` REPORTÉE
+(aucun besoin live sur cet écran précis) ; libellés des états vides actés
+tels quels ; contenu du popup de validation rédigé et validé ; structure de
+fichiers séparée de lib/queries/bracket.ts (vue globale, pas d'écriture).
+
+Pré-vol (avant tout code) : RLS `brackets_insert/update` et
+`bracket_picks_insert/update` (migration #3) confirmées EXISTANTES et
+SUFFISANTES (propriétaire + `is_active()` + `not bracket_deadline_passed()`)
+— **aucune migration nécessaire pour ce lot**, contrairement à « Nouveau
+pari ». `bracket_deadline_passed(competition_id)` confirmée réutilisable.
+Route `/play/bracket` confirmée absente (seule `/bracket`, vue globale,
+existait). Jeu de données de test : bracket d'Amine92 (11/15, volontairement
+incomplet) confirmé intact, exploitable pour tester la cascade sans y
+toucher.
+
+Code : `lib/queries/bracket-fill.ts` — `computeCandidateTeamIds(series,
+myWinnerBySeriesId, competitionType)`, fonction PURE qui dérive les 2 équipes
+CANDIDATES de chaque série (officielles pour le tour racine — ROUND_1 en
+Playoffs, CUP_QUARTERS en Cup — dérivées du PICK du joueur sur les séries
+`next_series_id`/`next_series_slot` pour les tours suivants, JAMAIS du
+résultat officiel) + `getBracketFillData()` (bootstrap complet : séries
+groupées par tour/conférence, pick du joueur, statut validé/auto-validé).
+`lib/actions/bracket-fill.ts` — `saveBracketPick`/`validateBracket` :
+AUCUNE garde de propriétaire/deadline réécrite (déjà portée par la RLS) ;
+seule garde applicative ajoutée = validité du vainqueur soumis contre les
+candidats, recalculée avec EXACTEMENT la même fonction pure que la lecture
+— jamais une 2e implémentation qui pourrait diverger (le bug retenu
+ci-dessus). Route `app/(app)/play/bracket/` (`?round=` pour la navigation
+par tour, Next.js 16 Promise) + `components/bracket-fill/{RoundTabs,
+BracketFillBoard}` (BracketFillBoard = SEULE feuille `"use client"`, tap
+vainqueur + boutons de score sauvegardent IMMÉDIATEMENT, pas de brouillon à
+confirmer séparément — 0.2.9 §5). `ProgressBar` réutilisé tel quel depuis
+components/bracket/ (vue globale) — composant déjà pur, sans changement.
+Hub temporaire (`app/(app)/play/page.tsx`) mis à jour : les 4 entrées sont
+désormais TOUTES actives (plus aucune entrée inerte) — code CSS mort
+(`.entryInert`/`.soon`) retiré au passage.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` propres.
+**Test de la cascade en isolation** (script jetable, `npx tsx`, AUCUNE base
+de données) : 5/5 vérifications passées, dont la plus significative —
+un résultat officiel simulé DIFFÉRENT du pick du joueur pour une série
+ROUND_1, confirmant que la série CONF_SEMIS dérive bien du PICK, jamais du
+résultat officiel. **Test en session authentifiée réelle** (navigateur,
+compte Tariq_M — aucun bracket existant, jeu de données propre) : la
+deadline du bracket, datant du seed, était déjà passée (même piège que les
+matchs testés au lot précédent) — avancée temporairement, restaurée après.
+Round 1 rendu correctement (8 séries, logos, 4 boutons de score) ; pick
+d'un vainqueur + score sauvegardé et vérifié en base ; navigation vers
+« Demi-finales de conférence » confirmant la cascade EXACTE (les 2 équipes
+picked apparaissent comme candidates de la bonne série, « Équipe à définir »
+pour les 3 autres) ; validation du bracket à 2/15 réussie (aucune garde de
+complétude, conforme à §4) — confirmée en base (`is_validated=true`,
+`validated_at` posé). Toutes les fixtures nettoyées après coup (picks,
+bracket, deadline restaurée, mot de passe réinitialisé) — base vérifiée
+identique à l'état seedé.
+```
+
+### 2.17 Prochaine étape
+
+```text
+Dans l'ordre à confirmer avec l'utilisateur : « Mes paris » (consultation/
+quotas globaux — hors périmètre du lot Nouveau pari §2.15, spec distincte à
+écrire) ; ou les écrans admin. Bracket personnel (§2.16) est désormais CODÉ,
+retiré de cette liste. Publication Realtime de `series` (T4 §9) : reste
+REPORTÉE (§2.16) faute de besoin live identifié sur un écran codé à ce jour
+— à réévaluer si un futur écran (drill-down live, résumé) en a explicitement
+besoin. Même conventions reconduites (composants serveur par défaut, CSS
+Modules + tokens, RLS/fonctions dédiées comme seule autorité de lecture ;
+vérifier D'ABORD si la RLS existante suffit avant d'ajouter une fonction
+SECURITY DEFINER, §2.15 vs §2.16 — les deux lots n'avaient PAS le même
+besoin). Le vrai hub Jouer (§2.10) reste, lui, à SPÉCIFIER (spec d'écran
+dédiée) avant d'être codé — aucune date arrêtée. Puis T8 (déploiement — §6 à
+faire avant, dont l'effacement du jeu de données de test, le retrait du
+bouton de déconnexion temporaire §2.9, ET le retrait du hub Jouer temporaire
+§2.10).
 ```
 
 ## 3. État actuel de la base de données
 
 ```text
-8 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
+10 migrations appliquées (supabase/migrations/, via `npx supabase db push`,
 chacune montrée intégralement et confirmée par l'utilisateur avant
 application) — les 6 premières inchangées depuis le 23/07/2026 (les lots
 logos/déconnexion/hub temporaire du 24/07, §2.9/§2.10, étaient purement
-applicatifs) ; #7 et #8 ajoutées par le lot « Mes pronos » (§2.11) :
+applicatifs) ; #7 et #8 ajoutées par le lot « Mes pronos » (§2.11) ; #9 et
+#10 ajoutées par le lot « Nouveau pari » (§2.15, poussées par l'utilisateur
+lui-même — `db push` bloqué pour Claude par le classificateur de permissions
+de l'environnement) :
 
 1. 20260718090000_initial_schema.sql — schéma complet.
 2. 20260718100000_auth_join_code_and_profile.sql — code compétition,
@@ -793,15 +1005,35 @@ applicatifs) ; #7 et #8 ajoutées par le lot « Mes pronos » (§2.11) :
    liée, dans une seule transaction. Garde-fous complets §10.3. N'écrit
    JAMAIS de contenu de pronostic.
 8. 20260724110000_realtime_matches.sql — publication supabase_realtime
-   étendue à `matches` UNIQUEMENT (§2.11) ; `series` reste à activer au lot
-   Bracket personnel.
+   étendue à `matches` UNIQUEMENT (§2.11) ; `series` toujours PAS activée —
+   le lot Bracket personnel (§2.16) n'en avait finalement pas besoin
+   (aucun contenu live sur cet écran précis), reportée encore une fois.
+9. 20260726120000_bet_withdraw_transition.sql — ajoute `SUBMITTED → DRAFT`
+   au trigger `enforce_bet_transitions` (le geste « retirer » d'un pari
+   soumis, §2.15 / SPEC_ECRAN_NOUVEAU_PARI_V0_1 §9).
+10. 20260726130000_bet_write_functions.sql — `save_bet(p_bet_id, p_scope,
+   p_series_id, p_match_id, p_description, p_category, p_difficulty,
+   p_submit)` et `withdraw_bet(p_bet_id)`, SECURITY DEFINER (§2.15) :
+   reproduisent ELLES-MÊMES toutes les gardes §11 (propriétaire, statut,
+   deadline, cible identifiée, quota, scope interdit en NBA Cup) — RLS
+   contournée par le rôle propriétaire, comme #7. `pg_advisory_xact_lock`
+   (clé user × série) avant le comptage du cap 3 MATCH/série, qui n'a aucun
+   backstop d'index unique — ferme une fenêtre de course entre deux
+   créations concurrentes.
+
+**Toujours 10 migrations après le lot Bracket personnel (§2.16)** : la RLS
+`brackets_insert/update`/`bracket_picks_insert/update` (migration #3)
+couvrait déjà tout le nécessaire pour ce lot — aucune migration ajoutée,
+contrairement aux deux lots précédents.
 
 RLS vérifiée de bout en bout via le plan de test T3 §7, puis re-testée avec
 un vrai jeu de données (§2.6) — un piège trouvé à cette occasion (§7).
 Consommée directement (sans service_role) par tous les écrans joueur via
-getServerClient(). La fonction #7 est la seule à contourner une policy
-(mp_insert) — justifiée en commentaire dans son fichier de migration et
-testée en conditions réelles (§2.11).
+getServerClient(). Les fonctions #7 et #10 sont les seules à opérer en
+SECURITY DEFINER (contournent une policy/la RLS) — chacune justifiée en
+commentaire dans son fichier de migration et testée en conditions réelles
+(§2.11/§2.15). #9 modifie seulement la whitelist du trigger existant
+(`enforce_bet_transitions`, PAS security definer, inchangé sur ce point).
 
 Données : compétition Playoffs de TEST active (§2.6) — 30 équipes, 15
 séries, 9 matchs, 7 comptes. JETABLE, pas une vraie compétition — à
@@ -815,6 +1047,24 @@ soit vérifiable. Porte aussi, depuis le test en conditions réelles du
 24/07/2026 : 1 requête de correction PENDING (Amine92 sur DEN-SAC#1) + sa
 ligne match_predictions vide associée — artefact de test légitime, non
 nettoyé.
+
+Tests du 26-27/07/2026 (§2.15, écran Nouveau pari) : mots de passe
+temporaires posés sur Tariq_M puis Nina_R (API Admin, jamais affichés dans
+le chat, re-randomisés en fin de session) ; dates `scheduled_at` de
+NYK-ATL#1/BOS-MIA#1/MIL-CHI#1 temporairement avancées pour les tests puis
+RESTAURÉES à leur valeur seedée d'origine ; matchs jetables (games 2/3/4 de
+la série NYK-ATL) et paris créés pendant les tests, tous supprimés après
+coup. Base vérifiée par requête directe : identique à l'état seedé, aucun
+résidu de ces deux sessions de test.
+
+Test du 27/07/2026 (§2.16, écran Bracket personnel) : `competitions.
+bracket_deadline` (datant du seed, déjà passée) temporairement avancée puis
+RESTAURÉE à sa valeur d'origine ; mot de passe temporaire posé sur Tariq_M
+(aucun bracket existant avant le test, re-randomisé après) ; bracket +
+2 bracket_picks créés pendant le test (BOS-MIA, NYK-ATL), tous supprimés
+après coup. Le bracket d'Amine92 (11/15, volontairement incomplet, §2.6)
+n'a jamais été touché. Base vérifiée par requête directe : identique à
+l'état seedé.
 
 `teams.logo_url` : colonne existante, TOUJOURS VIDE (jamais remplie par le
 seed) — les logos affichés (§2.9) ne dépendent pas de cette colonne, le
@@ -835,13 +1085,27 @@ app/
     home/page.tsx + page.module.css — écran Accueil. CODÉ.
     play/
       page.tsx + page.module.css — hub Jouer TEMPORAIRE (§2.10, à retirer,
-        voir GAPS_OUVERTS.md) : liste 4 entrées, « Matchs » ET « Mes pronos »
-        en <Link> actifs (§2.11), les 2 autres inertes (« à venir »). PAS
-        l'écran hub définitif (spec dédiée à écrire).
+        voir GAPS_OUVERTS.md) : liste 4 entrées, TOUTES actives depuis
+        §2.16 (Matchs, Mes pronos, Paris → /play/bets/new, Mon bracket →
+        /play/bracket) — plus aucune entrée inerte, code CSS mort retiré.
+        PAS l'écran hub définitif (spec dédiée à écrire).
       matches/
         page.tsx + page.module.css — écran Matchs. CODÉ (§2.8).
       my-predictions/
         page.tsx + page.module.css — écran Mes pronos. CODÉ (§2.11).
+      bets/
+        new/page.tsx + page.module.css — écran Nouveau pari, création
+          (contexte libre ou ?matchId=). CODÉ (§2.15).
+        [id]/edit/page.tsx + page.module.css — écran Nouveau pari, édition
+          d'un DRAFT/SUBMITTED du joueur. CODÉ (§2.15). Si le pari n'existe
+          pas / n'appartient pas au joueur / n'est plus éditable ici : état
+          inerte (pas de redirection vers « Mes paris », qui n'existe pas
+          encore).
+      bracket/
+        page.tsx + page.module.css — écran Bracket personnel (remplissage).
+          CODÉ (§2.16). `?round=` sélectionne le tour affiché. Deadline
+          passée → bandeau lecture seule + lien vers /bracket (vue globale),
+          pas de formulaire figé affiché pour rien.
     profile/page.tsx  — stub « à venir », PAS stylé. Portera la vraie
       déconnexion un jour (§2.9).
   leaderboard/page.tsx  — Classement. CODÉ (§2.5), lib mise à jour §2.7.
@@ -861,23 +1125,43 @@ lib/
     corrections.ts — requestPredictionCorrection() (appel .rpc() vers la
       migration #7) + requestPredictionCorrectionFormAction() (wrapper
       FormData → redirection, pour le <form> natif sans JS). CODÉ §2.11.
+    bets.ts — saveDraftBet/submitBet/withdrawBet, relais fins vers
+      .rpc('save_bet'|'withdraw_bet') (migration #10) — aucune écriture
+      directe sur `bets`. CODÉ §2.15.
+    bracket-fill.ts — saveBracketPick/validateBracket, écriture DIRECTE sur
+      brackets/bracket_picks (RLS migration #3 suffit, aucun .rpc()) — seule
+      garde applicative ajoutée : validité du vainqueur contre les candidats
+      de la cascade, recalculée avec computeCandidateTeamIds
+      (lib/queries/bracket-fill.ts), jamais une 2e implémentation. CODÉ §2.16.
   hooks/
     useUnsavedGuard.tsx (+ .module.css) — Garde C2 TRANSVERSE :
       UnsavedGuardProvider, useUnsavedGuard(key), useGuardedNavigation().
-      CODÉ §2.8. Non étendu par Mes pronos (aucune saisie de prono à
-      protéger sur cet écran, §17 de sa spec).
+      CODÉ §2.8. Non étendu par Mes pronos NI par Nouveau pari (aucune garde
+      de saisie sale demandée sur ces deux écrans).
   labels/
     rounds.ts — ROUND_LABELS, PARTAGÉ Bracket + Mes pronos (§16.5). NOUVEAU
       §2.11, extrait de lib/queries/bracket.ts qui le portait en dur.
+    bets.ts — BET_CATEGORY_OPTIONS/BET_DIFFICULTY_LABELS/DEFAULT_BET_*/
+      MATCH_SLOT_CAP + types BetCategory/BetDifficulty. NOUVEAU §2.15,
+      SANS dépendance serveur (contrairement à lib/queries/bets.ts) — seul
+      moyen pour components/bets/BetForm.tsx ("use client") d'importer ces
+      constantes sans faire fuiter next/headers dans le bundle client.
   queries/
     home.ts        — getHomeData(). CODÉ.
     leaderboard.ts — getLeaderboard(). CODÉ §2.5, MODIFIÉ §2.7 (lit
       admin_corrections_count depuis user_scores, 2 requêtes en moins).
     bracket.ts     — getBracket(). CODÉ, MODIFIÉ §2.11 (importe ROUND_LABELS
-      depuis lib/labels/rounds.ts au lieu de le porter en dur).
+      depuis lib/labels/rounds.ts au lieu de le porter en dur). Vue GLOBALE
+      de consultation uniquement, pas d'écriture — DISTINCT de
+      bracket-fill.ts (§2.16), volontairement pas fusionnés (contrats de
+      types différents : groupes/pourcentages ici, pick personnel là-bas).
     matches.ts     — getMatches() + types figés MatchCard/MatchDay/
       MatchesData/TeamRef/OtherPrediction/BetSlotIndicator/
       PredictionViewStatus (spec §13, recopiés à l'identique). CODÉ §2.8.
+      MODIFIÉ §2.15 : nouveau type MyMatchBet (contenu du pari MATCH actif
+      du joueur sur ce match, DRAFT/SUBMITTED uniquement) + champ MatchCard.
+      myBet — alimente la saisie inline InlineBetForm ; requête `bets` du
+      fichier élargie (portait avant seulement scope/statut).
     my-predictions.ts — getMyPredictions() + types figés MyPredictionsMode/
       MatchLiveState/MyPredictionState/AdminCorrection/MyPrediction/
       RevealedPrediction/CorrectionRequestState/AssociatedBet/
@@ -885,6 +1169,17 @@ lib/
       à l'identique ; TeamRef réimporté depuis matches.ts, jamais redéfini).
       Dérivation d'état PAR COMPLÉTUDE uniquement (§10.4), y compris pour le
       4e cas DRAFT-complet tranché avec l'utilisateur (§2.11). CODÉ §2.11.
+    bets.ts — getNewBetFormData(matchIdParam)/getEditBetFormData(betId) +
+      types figés BetFormBootstrap/SeriesOption/MatchOption/NewBetContext/
+      EditableBet/NewBetFormData/EditBetFormData (spec §10). Dispos
+      (seriesBetOpen/matchBetOpen/matchSlotsUsed/*SlotTaken) recalculées
+      serveur en reproduisant bet_deadline_open — jamais lues du client.
+      CODÉ §2.15.
+    bracket-fill.ts — getBracketFillData() + computeCandidateTeamIds
+      (fonction PURE, exportée et réutilisée à l'identique par
+      lib/actions/bracket-fill.ts — jamais une 2e implémentation de la
+      cascade) + types figés BracketFillCandidate/BracketFillSeries/
+      BracketFillRound/BracketFillData (spec §7). CODÉ §2.16.
   scoring/, sync/ — PAS ENCORE CRÉÉS.
 
 components/
@@ -909,8 +1204,22 @@ components/
   home/ — inchangé depuis §2.4 (EmptyState réutilisé par Classement,
     Bracket ET Matchs). Pas de logo ici (§2.9, GAPS_OUVERTS.md).
   leaderboard/ — inchangé depuis §2.5. Pas de logo ici (aucune équipe affichée).
-  bracket/ — NodeCard.tsx affiche désormais TeamLogo (§2.9).
-  matches/ — 8 fichiers + leurs .module.css :
+  bracket/ — NodeCard.tsx affiche désormais TeamLogo (§2.9). Vue GLOBALE
+    uniquement (lecture, consultation partagée) — ProgressBar.tsx RÉUTILISÉ
+    tel quel par l'écran Bracket personnel (§2.16, aucun changement, déjà
+    pur/générique filledCount/totalCount).
+  bracket-fill/ — NOUVEAU §2.16, 2 fichiers + leurs .module.css :
+    RoundTabs.tsx              — serveur, liens ?round= (même patron que
+      SegmentTabs de Mes pronos, pas de client nécessaire pour changer d'onglet).
+    BracketFillBoard.tsx       — SEULE feuille "use client" de l'écran :
+      tap vainqueur + boutons de score (SeriesPickCard, sous-composant
+      interne) sauvegardent IMMÉDIATEMENT (saveBracketPick), pas de
+      brouillon local à confirmer séparément (0.2.9 §5). Porte aussi le
+      bouton + dialogue de confirmation « Valider mon bracket »
+      (validateBracket) — même patron de dialogue que PredictionForm
+      (écran Matchs), backdrop + alertdialog.
+  matches/ — 8 fichiers + leurs .module.css (BetShortcut REMPLACÉ par
+    InlineBetForm §2.15, décompte inchangé) :
     MatchDayGroup.tsx        — serveur, regroupement par jour.
     MatchRow.tsx              — "use client" (1/3) : ouverture de la ligne,
       repère de verrouillage + décompte animé. Entête replié refondu §2.13
@@ -918,7 +1227,9 @@ components/
       de logos ici — TeamLogo retiré de ce fichier, recentré sur la carte
       dépliée uniquement).
     PredictionForm.tsx        — "use client" (2/3) : saisie, drapeau C2,
-      2 CTA, dialogue de validation (distinct du dialogue C2).
+      2 CTA, dialogue de validation (distinct du dialogue C2). MODIFIÉ §2.15 :
+      rend désormais InlineBetForm (matchId/seriesId/betSlot/myBet) au lieu
+      de BetShortcut.
     TeamPicker.tsx             — sans "use client", tap direct sur l'équipe,
       logo agrandi à 48px §2.13 (abréviation retirée de cette carte, ne reste
       que logo + nom complet — l'abréviation vit désormais dans l'entête
@@ -927,10 +1238,27 @@ components/
       useState local — permis, transitivement bundlé client).
     RevealPanel.tsx            — sans "use client" : compteur X/N toujours
       affiché, contenu seulement si isRevealed.
-    BetShortcut.tsx            — sans "use client", raccourci pari, pointe
-      toujours vers /play (§2.8/§18.3), désormais le hub temporaire §2.10.
+    InlineBetForm.tsx (+ .module.css) — NOUVEAU §2.15, REMPLACE
+      BetShortcut.tsx (supprimé) : sans "use client" propre (rendu par
+      PredictionForm, qui porte déjà la frontière cliente de l'écran) —
+      formulaire complet de saisie/édition d'un pari MATCH ciblé
+      automatiquement sur CE match (pas de sélecteur série/match), appelle
+      saveDraftBet/submitBet/withdrawBet (lib/actions/bets.ts). Pré-rempli
+      si MatchCard.myBet n'est pas null ; simple texte désactivé si un pari
+      existe mais n'est plus éditable ici.
     ValidateAllBanner.tsx      — "use client" (3/3) : bandeau + confirmation
       « Tout valider », état local (pas remonté à la page serveur).
+  bets/ — NOUVEAU §2.15, 2 fichiers :
+    BetForm.tsx (+ .module.css) — SEULE feuille "use client" de l'écran
+      Nouveau pari (§1.1 de la spec). Gère les 3 contextes (création libre,
+      création via raccourci ?matchId=, édition à cible figée) et les 3
+      gestes (saveDraftBet/submitBet/withdrawBet). Sélecteurs série/match en
+      listes de boutons internes (SeriesPicker/MatchPicker, mêmes fichier,
+      logos via TeamLogo) — pas de <select> natif pour eux (ne peut pas
+      afficher d'image). Zone de saisie (énoncé/catégorie/difficulté/
+      actions) en `position: fixed` (bandeau sticky, §2.15 suite 27/07),
+      offset vérifié contre la hauteur RÉELLE de TabBar (mesurée, pas
+      supposée).
   my-predictions/ — NOUVEAU §2.11, 9 fichiers + leurs .module.css :
     urls.ts                   — utilitaire pur (aucun JSX), construction des
       URL de vue (segment/filtre/pagination), partagé par plusieurs
@@ -971,19 +1299,26 @@ scripts/
 
 Cadrage/
   V1/     — specs techniques V1 validées (T1→T7) + Spec visuelle/
-            SPEC_ECRAN_ACCUEIL, SPEC_ECRAN_CLASSEMENT_BRACKET,
+            SPEC_ECRAN_ACCUEIL, SPEC_ECRAN_CLASSEMENT_BRACKET (close ; vue
+            globale, §2.5 — distincte du remplissage §2.16),
             SPEC_ECRAN_MATCHS (close, §2.8 ; amendée §20 le 25/07/2026,
             §2.14 — entête replié sans logo), SPEC_ECRAN_MES_PRONOS (close,
-            §2.11). SPEC_TECHNIQUE_RLS_V0.1.md complétée §11 (correctif
-            §2.7). SPEC_DESIGN_SYSTEM_V0_1.md amendée §16 le 25/07/2026
-            (§2.14 — tailles/provenance des logos). Aucune spec pour le hub
-            Jouer définitif à ce jour (§2.10) — à écrire avant de le coder.
+            §2.11), SPEC_ECRAN_NOUVEAU_PARI (close §2.15, 26/07/2026 —
+            livrée BROUILLON, close en séance en clarifiant ses 3 points
+            §16 avant tout code), SPEC_ECRAN_BRACKET_PERSONNEL (close §2.16,
+            27/07/2026 — AUCUNE spec n'existait, rédigée ET close en séance
+            avec l'utilisateur, appuyée sur 0.2.2/0.2.9 §5 + le prototype).
+            SPEC_TECHNIQUE_RLS_V0.1.md complétée §11 (correctif §2.7).
+            SPEC_DESIGN_SYSTEM_V0_1.md amendée §16 le 25/07/2026 (§2.14 —
+            tailles/provenance des logos). Aucune spec pour le hub Jouer
+            définitif (§2.10) ni pour « Mes paris » (consultation/quotas) à
+            ce jour — à écrire avant de les coder.
   Proto/  — fichiers de suivi (ce fichier, JOURNAL_SESSIONS.md,
             GAPS_OUVERTS.md) + cadrage fonctionnel hérité du prototype.
   OLD/    — cadrage antérieur, non consulté activement.
 
 supabase/
-  migrations/  — 8 migrations versionnées, voir §3.
+  migrations/  — 10 migrations versionnées, voir §3.
   config.toml  — supabase link vers le projet Supabase NEUF de la V1.
 ```
 
@@ -1241,6 +1576,95 @@ supabase/
   en réécrivant le `viewBox` en conséquence. Diagnostic AVANT correctif :
   toujours vérifier l'hypothèse (ouvrir le fichier réel) avant de proposer un
   correctif CSS qui n'aurait rien changé.
+
+- Constante partagée serveur+client qui casse le build (`lib/queries/bets.ts`
+  → `components/bets/BetForm.tsx`, écran Nouveau pari, §2.15) : un module qui
+  importe `getServerClient()` (donc `next/headers`) ne peut pas être importé
+  au RUNTIME (valeurs, pas seulement des types) par un composant `"use
+  client"` — Next.js refuse le build (« next/headers dans un composant
+  client »), même si le composant client n'utilise en pratique que 2-3
+  constantes du fichier. Solution reconduite : extraire les constantes SANS
+  dépendance serveur dans un module neutre (`lib/labels/bets.ts`, même rôle
+  que `lib/labels/rounds.ts`), consommé par la lecture serveur ET le
+  composant client. Les imports `import type {...}` restent sûrs dans les
+  deux sens (effacés à la compilation), seuls les imports de VALEURS posent
+  problème.
+
+- Garde de quota SANS backstop d'index unique, dans une fonction SECURITY
+  DEFINER (`save_bet`, migration #10, §2.15) : un simple `SELECT count(*)`
+  suivi d'un `INSERT`, même regroupés dans une seule fonction/transaction,
+  ne ferme PAS une course entre deux appels CONCURRENTS (deux transactions
+  peuvent chacune lire le même count avant que l'une des deux ne committe).
+  Contrairement aux quotas « 1 pari actif » (protégés par un vrai index
+  unique partiel, backstop atomique quel que soit le code applicatif), le
+  cap « 3 paris MATCH/série » n'a aucun équivalent en base (T1 le note
+  explicitement) — sans mesure supplémentaire, le choix même d'une fonction
+  SECURITY DEFINER n'aurait fermé cette course qu'en apparence. Fermé par un
+  `pg_advisory_xact_lock` (clé = user × série, portée à la transaction)
+  AVANT le comptage, qui sérialise les créations concurrentes visant la même
+  série pour le même joueur.
+
+- Bandeau `position: fixed` : l'offset ne se COPIE pas d'un autre composant
+  sans vérifier (trouvé en réutilisant le calcul de `StickyMeBar`, §2.15
+  suite 27/07/2026) — la hauteur réelle rendue de `TabBar` (padding + bordure
+  inclus) ne correspondait pas à ce que l'autre composant supposait,
+  provoquant un chevauchement de quelques pixels invisible à l'œil nu sur une
+  capture d'écran ordinaire. Mesuré via `getBoundingClientRect()` des deux
+  éléments en conditions réelles (pas une capture d'écran) pour trouver la
+  vraie valeur. Piège annexe : une capture d'écran PLEINE PAGE (`fullPage`)
+  fausse le rendu d'un élément `position: fixed` — l'outil de capture
+  redimensionne temporairement le viewport à la hauteur totale du document,
+  et l'élément fixe s'ancre alors à CE viewport élargi, pas à la fenêtre
+  réelle. Toujours vérifier un `position: fixed`/`sticky` avec une capture
+  VIEWPORT (non pleine page) avant/après un scroll réel, ou par mesure directe.
+
+- `<select>` natif ne peut pas afficher de logo (écran Nouveau pari, §2.15) :
+  la spec demandait des logos de franchise sur les sélecteurs série/match
+  (T7 §15.8-style) — un `<option>` HTML ne rend que du texte. Les
+  sélecteurs concernés (`SeriesPicker`/`MatchPicker`, `components/bets/
+  BetForm.tsx`) sont donc des listes de boutons (`role="radio"`), pas des
+  `<select>` — réservés aux listes fermées SANS logo (catégorie, difficulté).
+
+- Serveur de dev déjà lancé (trouvé en testant l'écran Nouveau pari en
+  navigateur, §2.15 suite 27/07/2026) : `npm run dev` a échoué silencieusement
+  en détectant un verrou d'instance existant pour le même dossier (Next.js 16
+  refuse deux serveurs dev concurrents sur un même projet) — un port
+  totalement différent (3000) répondait par ailleurs pour un projet SANS
+  RAPPORT, source de confusion transitoire. Toujours vérifier QUEL processus
+  sert réellement le contenu attendu (`curl` + inspection du HTML rendu, pas
+  seulement un code 200) avant de tuer/relancer quoi que ce soit ; réutiliser
+  un serveur déjà actif plutôt que d'en imposer un second.
+
+- Cascade dérivée du résultat OFFICIEL au lieu du pick du joueur (leçon du
+  PROTOTYPE, réappliquée en écrivant l'écran Bracket personnel, §2.16) :
+  pour un tour 2+ d'un bracket, les équipes "candidates" doivent être
+  dérivées UNIQUEMENT du pronostic du joueur sur les séries qui alimentent
+  la série courante — jamais du résultat officiel de ces séries, même si ce
+  résultat est déjà connu en base au moment du calcul. Une 1ère version (hors
+  V1, dans le prototype) faisait l'inverse et ne remplissait donc JAMAIS
+  correctement les tours 2+. Techniquement, le cas "résultat officiel connu
+  alors que le bracket est encore modifiable" ne peut de toute façon jamais
+  survenir (le bracket se verrouille au 1er match, avant tout résultat de
+  tour 2+) — mais le CODE ne doit pas dépendre de cette impossibilité pour
+  être correct : `computeCandidateTeamIds` (lib/queries/bracket-fill.ts) ne
+  lit même pas les colonnes de résultat officiel, structurellement incapable
+  de reproduire le bug. Corollaire retenu du même endroit : la validation
+  serveur d'un pick soumis (lib/actions/bracket-fill.ts) doit recalculer les
+  candidats avec la MÊME fonction que la lecture, jamais les revérifier
+  contre `series.team1_id/team2_id` (toujours NULL pour les tours 2+ avant
+  le vrai résultat) — sinon toute écriture sur ces tours échoue à coup sûr.
+
+- Ne pas supposer qu'une migration/fonction SECURITY DEFINER est nécessaire
+  sans vérifier la RLS existante d'abord (comparaison entre les lots §2.15 et
+  §2.16) : « Nouveau pari » a eu besoin d'une migration (trigger) + de deux
+  fonctions SECURITY DEFINER (quota non exprimable en index) ; « Bracket
+  personnel », lu au pré-vol AVANT de coder, n'en a eu besoin d'AUCUNE — la
+  RLS `brackets_insert/update`/`bracket_picks_insert/update` (migration #3)
+  couvrait déjà tout le nécessaire (propriétaire, actif, deadline). Deux
+  lots voisins, deux besoins différents : le pré-vol (lire les policies
+  RÉELLES avant d'écrire une seule ligne de garde applicative) est ce qui
+  a évité soit une migration inutile, soit — pire — une garde dupliquée qui
+  aurait pu diverger de la RLS.
 
 Pièges génériques du prototype (Postgres/Git/PowerShell, toujours valables en
 principe) non recopiés ici pour éviter la duplication — voir l'historique du

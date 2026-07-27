@@ -7,7 +7,7 @@ import type { MatchCard } from "@/lib/queries/matches";
 import { TeamPicker } from "./TeamPicker";
 import { MarginStepper } from "./MarginStepper";
 import { RevealPanel } from "./RevealPanel";
-import { BetShortcut } from "./BetShortcut";
+import { InlineBetForm } from "./InlineBetForm";
 import styles from "./PredictionForm.module.css";
 
 // Ligne dépliée — feuille client n°2/3 (§1) : porte l'état de saisie local
@@ -121,7 +121,12 @@ export function PredictionForm({ match }: PredictionFormProps) {
         </button>
       </div>
 
-      <BetShortcut betSlot={match.betSlot} />
+      <InlineBetForm
+        matchId={match.matchId}
+        seriesId={match.seriesId}
+        betSlot={match.betSlot}
+        myBet={match.myBet}
+      />
 
       {/* Dialogue de VALIDATION — distinct du dialogue C2 de perte de saisie
           (§7) : wording et déclencheur différents, ne pas fusionner. */}
