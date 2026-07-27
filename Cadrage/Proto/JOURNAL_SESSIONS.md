@@ -2820,6 +2820,59 @@ ne sont plus bloqués par l'ABSENCE de T5, reste juste à les câbler) ; cette
 entrée de journal.
 
 **État en fin de session** : orchestration CODÉE, VÉRIFIÉE en conditions
-réelles (pas encore committée — à confirmer avec l'utilisateur). Prochaine
-étape : lot 4/4, le câblage admin (bouton Recalculer, résolution des
-paris, traitement des requêtes) — DERNIER lot du chantier T5.
+réelles, COMMITTÉE et POUSSÉE. Prochaine étape : lot 4/4, le câblage
+admin — DERNIER lot du chantier T5, scindé en 3 morceaux (bouton,
+résolution, requêtes) sur demande de l'utilisateur.
+
+---
+
+## Session du 27/07/2026 (suite) — Lot 4a : bouton « Recalculer »
+
+**Code** : `lib/actions/admin.ts` (`recalculateCompetition`) ;
+`components/admin/RecalculateButton.tsx` — SEULE feuille "use client" du
+tableau de bord, dialogue de confirmation copié du patron déjà utilisé par
+`BracketFillBoard.tsx` (Bracket personnel), comme la spec le prescrivait.
+Bouton câblé dans `app/(admin)/admin/page.tsx`, désactivé si aucune
+compétition active.
+
+**Vérifié** : `tsc`/`eslint`/`next build`/`npm test` tous propres.
+
+**Limite de vérification signalée EXPLICITEMENT à l'utilisateur** (rupture
+avec le patron de tous les lots précédents, où chaque écriture avait été
+réellement cliquée/soumise) : `recalculateCompetition` est appelée par le
+client (`useTransition`) et non par un formulaire natif — rejouer ce
+mécanisme à la main (sans navigateur) est nettement plus complexe que la
+technique `$ACTION_ID_` déjà maîtrisée pour les formulaires natifs
+progressive-enhancement. Compensé par : la fonction appelée
+(`recomputeCompetition`) est déjà prouvée par 5 tests d'intégration réels
+(lot 3) ; le MÉCANISME d'appel (client + `useTransition` + server action
+directe) est déjà prouvé fonctionnel dans ce dépôt sur un cas analogue
+(`validateBracket`, Bracket personnel, §2.16). Reste non vérifié en vrai :
+la composition propre à cette action (is_admin + compétition active +
+logAdminAction, chacun individuellement déjà prouvé ailleurs). Proposé à
+l'utilisateur de cliquer lui-même avant de committer, plutôt que de
+prétendre une vérification qui n'a pas eu lieu.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.27, header,
+§2 avancement) ; cette entrée de journal.
+
+**Bug réel trouvé par l'utilisateur en testant** (capture d'écran) :
+`/admin` s'affichait quasi illisible — texte clair sur fond quasi blanc.
+Diagnostic : `app/(admin)/admin/layout.module.css` `.shell` ne fixait ni
+fond ni couleur via les tokens, retombait sur `--background` de
+`globals.css` (blanc par défaut). EXACT même correctif déjà appliqué à
+`app/(app)/layout.module.css` (commentaire déjà présent là-bas :
+« quel que soit ce que définit globals.css par ailleurs ») — pas répliqué
+en créant la coquille admin (§2.20). Une seule coquille partagée par les 4
+écrans admin → corrigé d'un coup pour les 4. Confirmé lisible par
+l'utilisateur après coup sur les 4 pages. Premier vrai test navigateur de
+la zone admin (les lots précédents n'avaient été vérifiés que par fetch
+HTML, jamais visuellement) — leçon : le HTML correct n'implique pas un
+rendu visuel correct, un test navigateur réel reste irremplaçable.
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (§2.27 complétée avec le
+correctif, header) ; cette entrée de journal.
+
+**État en fin de session** : bouton Recalculer + correctif de fond/texte
+CODÉS, VÉRIFIÉS PAR L'UTILISATEUR EN VRAI (les 4 écrans admin), COMMITTÉS
+et POUSSÉS.

@@ -5,12 +5,16 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — chantier T5, lot
-> 3/4 : orchestration `recompute*` codée et vérifiée en conditions réelles
-> (5 tests d'intégration jetables sur une compétition isolée, dont
-> idempotence P5), §2.26 — LE MOTEUR DE SCORING EST DÉSORMAIS
-> FONCTIONNELLEMENT COMPLET, seul le câblage admin (lot 4/4) reste avant de
-> débloquer résolution/requêtes/Recalculer), après le lot 2/4 (writer
+> Dernière mise à jour : session du 27/07/2026 (suite — lot 4a : bouton
+> « Recalculer » câblé sur le tableau de bord admin, §2.27, premier des 3
+> morceaux du câblage admin, PLUS un correctif de fond/texte de la coquille
+> admin trouvé par l'utilisateur en testant en vrai — les 4 écrans admin
+> étaient quasi illisibles depuis le début, jamais remarqué avant le
+> premier vrai coup d'œil navigateur), après le lot 3/4 (orchestration
+> `recompute*` codée et vérifiée en conditions réelles, 5 tests
+> d'intégration jetables sur une compétition isolée dont idempotence P5,
+> §2.26 — LE MOTEUR DE SCORING EST FONCTIONNELLEMENT COMPLET), après le
+> lot 2/4 (writer
 > `series.official_*`, §2.25), après le lot 1/4 (moteur de scoring PUR,
 > §2.24, 26 tests automatisés `vitest` — 1re dépendance de test du projet),
 > après un correctif de région Vercel (latence, iad1 → dub1, même région
@@ -111,10 +115,11 @@ VÉRIFIÉS — **moteur pur** (§2.24, `lib/scoring/engine.ts`, 26 tests
 `lib/scoring/recompute.ts` — `recomputeMatch`/`recomputeSeries`/
 `recomputeBet`/`recomputeCompetition`, vérifiée par 5 tests d'intégration
 en conditions réelles dont l'idempotence P5). Le moteur de scoring est
-FONCTIONNELLEMENT COMPLET. Seul reste le lot 4/4 (câblage admin — brancher
-`recomputeBet`/`recomputeCompetition`/`recomputeMatch` sur le bouton
-Recalculer, la résolution des paris et le traitement des requêtes) pour
-que tout soit utilisable depuis l'UI.
+FONCTIONNELLEMENT COMPLET. Le lot 4/4 (câblage admin) est ENTAMÉ : le
+**bouton Recalculer** (§2.27, `/admin`) est CODÉ, vérification LIMITÉE
+signalée (mécanisme d'appel client-side, pas encore cliqué en vrai par
+Claude — voir §2.27). Restent 2 morceaux : résolution des paris,
+traitement des requêtes.
 ```
 
 ### 2.1 Ce qui est CODÉ et VÉRIFIÉ (session du 19/07/2026, inchangé depuis)
@@ -2431,5 +2436,60 @@ vérification (confirmé : 0 ligne restante). Aucune trace laissée.
 uniquement le câblage admin (lot 4/4) pour le rendre utilisable depuis
 l'UI (bouton Recalculer, résolution des paris, traitement des requêtes).
 
-PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+COMMITTÉ et POUSSÉ sur `main`.
+```
+
+### 2.27 Lot 4a T5 — Bouton « Recalculer » (premier morceau du câblage admin)
+
+```text
+Périmètre : SPEC_ECRAN_ADMIN_DASHBOARD_V0_1.md §4/§7 (design cible déjà
+figé au lot 1 du lot Admin, §2.20 — enfin codable maintenant que
+recomputeCompetition existe, T5 lot 3). Lot 4/4 de T5 scindé en 3
+morceaux (bouton, résolution, requêtes) — CE morceau : le bouton seul.
+
+Fichiers : lib/actions/admin.ts (recalculateCompetition — re-vérifie
+is_admin() en session, PUIS délègue à recomputeCompetition, PUIS
+logAdminAction "RECALCULATE_COMPETITION") ; components/admin/
+RecalculateButton.tsx (+ .module.css, SEULE feuille "use client" du
+tableau de bord — dialogue de confirmation, MÊME patron que
+components/bracket-fill/BracketFillBoard.tsx, déjà le patron cité par la
+spec) ; app/(admin)/admin/page.tsx (bouton câblé, désactivé si aucune
+compétition active, `.footnote` devenue orpheline retirée du CSS).
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build, npm test
+(26/26) tous propres.
+
+**Limite de vérification assumée et signalée** (pas de conditions réelles
+complètes pour CE morceau précis, contrairement à tous les lots
+précédents) : `recalculateCompetition` est appelée par le client (JS,
+`startTransition`) et non par un `<form action>` natif — le mécanisme
+Next.js sous-jacent (Server Reference résolue via le bundle client) est
+plus complexe à rejouer à la main que la technique `$ACTION_ID_` utilisée
+jusqu'ici pour les formulaires natifs. La fonction APPELÉE
+(`recomputeCompetition`) est déjà prouvée par 5 tests d'intégration réels
+(lot 3, §2.26) ; le MÉCANISME d'appel (composant client + `useTransition`
++ appel direct d'une server action) est déjà prouvé ANALOGUE et
+fonctionnel dans ce même dépôt (`validateBracket`, Bracket personnel,
+§2.16). Seule la COMPOSITION propre à ce lot (is_admin + recherche de la
+compétition active + logAdminAction, tous individuellement déjà prouvés
+ailleurs) n'a pas été cliquée en vrai. Signalé explicitement plutôt que
+prétendu vérifié — à confirmer par l'utilisateur en cliquant lui-même
+(`/profile` → « Tableau de bord admin » → bouton « Recalculer » en bas).
+
+**Bug RÉEL trouvé par l'utilisateur en testant** (premier vrai regard
+navigateur sur la zone admin — les lots précédents, §2.20-§2.23, n'avaient
+été vérifiés que par fetch HTML, jamais visuellement) : `app/(admin)/
+admin/layout.module.css` `.shell` ne fixait NI fond NI couleur de texte via
+les tokens — retombait sur `--background` de `globals.css` (blanc, sauf
+`prefers-color-scheme` OS sombre), rendant le texte clair du thème sombre
+de l'app quasi invisible. Corrigé en ajoutant `background: var(--color-
+surface-base); color: var(--color-text-primary); font-family: var(--font-
+ui);` — EXACT même correctif que `app/(app)/layout.module.css` avait déjà
+dû appliquer (commentaire déjà présent là-bas : « quel que soit ce que
+définit globals.css par ailleurs »), que je n'avais pas répliqué en créant
+la coquille admin (§2.20). Une SEULE coquille partagée par les 4 écrans
+admin → corrige les 4 d'un coup. Confirmé lisible par l'utilisateur après
+coup, sur les 4 pages.
+
+Bouton Recalculer ET ce correctif : COMMITTÉS et POUSSÉS sur `main`.
 ```
