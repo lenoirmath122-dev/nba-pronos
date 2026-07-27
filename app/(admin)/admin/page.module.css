@@ -52,6 +52,28 @@
   color: var(--color-text-primary);
 }
 
+.cardLink {
+  composes: card;
+  text-decoration: none;
+}
+
+.cardLink:hover,
+.cardLink:focus-visible {
+  background: var(--color-surface-inset);
+}
+
+.cardLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.chevron {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-md);
+  line-height: 1;
+}
+
 .linkEntry {
   display: flex;
   align-items: center;
