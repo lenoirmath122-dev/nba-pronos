@@ -3135,7 +3135,85 @@ réécrit) ; `GAPS_OUVERTS.md` (gap npm retiré/marqué résolu, nouveau gap
 « eslint bloqué en v9 » ajouté, ordre de reprise pointé sur le point 1
 traité) ; cette entrée de journal.
 
+**État en fin de session** : committé et poussé sur `main` (2 commits :
+dépendances, puis doc). Prochaine étape choisie par l'utilisateur : lot
+2/3 compétitions (saisie manuelle de résultats).
+
+---
+
+## Gestion des compétitions — lots 2/3 et 3/3 (27-28/07/2026, suite)
+
+L'utilisateur choisit le lot 2/3 (saisie des résultats). Aucune spec
+n'existait — rédigée en séance, même patron que Bracket personnel. Deux
+points structurants tranchés AVEC l'utilisateur (AskUserQuestion) avant de
+coder : avancement du vainqueur vers le tour suivant **automatique** (pas
+de bouton séparé) ; résolution manuelle A2 (série annulée/vainqueur désigné
+à la main) **hors périmètre**, reportée en gap.
+
+**Trouvaille au pré-vol** : la création d'une compétition (lot 1) ne crée
+que les `series`, aucun `matches` — le lot doit donc aussi permettre de
+CRÉER les matchs d'une série au fur et à mesure, pas seulement en saisir
+le score.
+
+**Code** : `lib/scoring/advancement.ts` (`advanceWinnerIfDecided`, NOUVELLE
+fonction, volontairement séparée de `recompute.ts` — T5 reste clos, cette
+frontière n'est pas rouverte) ; `lib/queries/admin-results.ts` ;
+`lib/actions/admin-results.ts` (`createMatch` en service_role — aucune RLS
+INSERT sur `matches`, même trouvaille que `series` au lot 1 —
+`saveMatchResult` enchaîne UPDATE → `recomputeMatch` → `advanceWinnerIfDecided`
+avec une seule entrée d'audit) ; `app/(admin)/admin/competitions/results/`
++ `components/admin/SeriesResultsCard.tsx`, formulaires natifs uniquement.
+
+**Bug remonté par l'utilisateur en testant, corrigé dans la foulée** :
+champs de score illisibles (placeholder minuscule qui disparaît au clic,
+largeur 5 caractères) — corrigé avec un vrai `<label>` visible (abréviation
+d'équipe) et une largeur plus confortable.
+
+**Débloqué en cours de route, pas prévu à ce stade** : en testant la
+création d'une 2e compétition (pour préparer le branchement de T4), la
+contrainte `uniq_one_active_competition` a bloqué l'utilisateur — sans
+clôture, aucune nouvelle compétition. Décidé AVEC l'utilisateur (au lieu
+d'un contournement jetable) : construire le lot 3/3 pour de bon.
+`decisions_multi_competitions_historique.md` §3 (« clôture = snapshot puis
+reset ») interprété comme : en V1, RIEN n'est supprimé (contrairement au
+prototype), chaque ligne reste rattachée à son `competition_id` pour
+toujours ; « reset » = juste `competitions.status` → `ARCHIVED`, ce qui
+libère le slot. **Code** : `closeCompetition`
+(`lib/actions/admin-competitions.ts`, session admin normale, RLS déjà
+ouvertes, aucun service_role) ; `CloseCompetitionButton.tsx` (dialogue de
+confirmation, action irréversible) ; nouveau module partagé
+`lib/scoring/ranking.ts` (`assignRanks`, extrait de `leaderboard.ts` pour
+que l'archive fige EXACTEMENT le même départage de rang que le classement
+live — `leaderboard.ts` migré dessus au passage, aucun changement de
+comportement).
+
+**Question de l'utilisateur en testant, qui a mené à un vrai point non
+tranché** : « l'API peut détecter les matchs Cup automatiquement ? » —
+non tranché : la spec T4 confirme l'API match-centrique (jamais série-
+centrique), donc détecter des matchs est plausible mais construire les 7
+séries du mini-bracket à partir de ça n'a jamais été sondé empiriquement.
+Reporté à une fois la clé API en main (gap reformulé, `GAPS_OUVERTS.md`).
+
+**Test en conditions réelles, par l'utilisateur directement dans son
+navigateur** (connecté en `Rillettes-31`, 2e compte ADMIN du jeu de
+données — Claude n'a pas pu se connecter lui-même, changer un mot de passe
+de test a été refusé par le classifieur du mode auto) : création NBA_CUP
+tentée d'abord → aucune série (comportement documenté, pas un bug) ;
+clôturée puis recréée en PLAYOFFS (« TEST playoff 28/07/2026 »,
+code `78D0EE7C`) ; série ATL–BOS jouée à 4 matchs réels (ATL 4-0) —
+vérifié directement en base par Claude (lecture seule, service_role) :
+série `FINISHED`, vainqueur ATL, propagé correctement dans la bonne série
+CONF_SEMIS (`team2` toujours NULL, attendu — l'autre série qui l'alimente
+n'est pas encore jouée).
+
+**Suivi mis à jour en miroir** : `ETAT_ACTUEL.md` (nouveau §2.33, header
+réécrit) ; `GAPS_OUVERTS.md` (chantier compétitions marqué clos 3/3, gap
+mini-bracket Cup reformulé, ordre de reprise pointé sur T4) ;
+`SPEC_ECRAN_ADMIN_RESULTATS_V0_1.md` (nouveau) ;
+`SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` (§9 ajouté) ; cette entrée de
+journal.
+
 **État en fin de session** : PAS committé à ce stade (à confirmer avec
-l'utilisateur). Prochaine étape à reconfirmer : vrai hub Jouer ou lot 2/3
-compétitions (saisie manuelle de résultats, le plus important avant le
-30/10).
+l'utilisateur). Prochaine étape actée AVEC l'utilisateur : T4 (vraie
+synchro API Highlightly), bloquant = clé API Highlightly à obtenir et
+poser directement dans `.env.local`.

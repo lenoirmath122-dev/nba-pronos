@@ -4,18 +4,19 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **Ordre de reprise décidé avec l'utilisateur (27/07/2026, après la clôture
-> du chantier T5 + lot Admin ; point 1 traité le 27/07/2026, suite, voir
-> `ETAT_ACTUEL.md` §2.32)** :
-> 1. ~~Vulnérabilités npm~~ — **FAIT** (`npm audit` → 0, §2.32). A ouvert un
->    gap de suivi distinct (`eslint` bloqué en v9, voir ci-dessous).
-> 2. **Vrai hub Jouer** — remplace le hub temporaire (§2.10 `ETAT_ACTUEL.md`),
->    aucune spec d'écran encore écrite.
-> 3. **Le reste** (lot 2/3 des compétitions — saisie manuelle de résultats,
->    moteur de synchro T4, Realtime T6c au-delà de l'existant) — voir le
->    point « Implémentation code de la V1 » ci-dessous. Le lot 2/3 des
->    compétitions reste noté comme le plus important avant le 30/10 — ordre
->    entre 2 et 3 à reconfirmer avec l'utilisateur à la reprise.
+> **Ordre de reprise, réactualisé avec l'utilisateur (28/07/2026)** — les 12
+> vulnérabilités npm (`ETAT_ACTUEL.md` §2.32) ET le chantier « Gestion des
+> compétitions » (3/3 lots, §2.33) sont désormais FAITS. Prochaine étape
+> actée AVEC l'utilisateur : **T4 (vraie synchro API Highlightly)** — déjà
+> entièrement spécifiée et validée le 18/07/2026, aucune réserve ouverte,
+> jamais codée (voir `SPEC_TECHNIQUE_SYNCHRO_V0.1.md`). Remplace « le vrai
+> hub Jouer » comme priorité suivante — motif : la saisie manuelle (lot 2/3
+> ci-dessous) n'est un palliatif VIABLE que pour quelques matchs de test,
+> pas pour une saison entière, remarque directe de l'utilisateur après
+> l'avoir testée en vrai. Bloquant pour démarrer : clé API Highlightly
+> (accès direct, pas RapidAPI), à obtenir et poser par l'utilisateur
+> lui-même dans `.env.local` (jamais dans le chat). Le vrai hub Jouer et le
+> reste (Realtime T6c au-delà de l'existant) suivent T4.
 
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 
@@ -65,51 +66,54 @@
 > et `JOURNAL_SESSIONS.md`.
 
 - **Implémentation code de la V1** (post-T7, EN COURS depuis le 19/07/2026) :
-  le HUB JOUEUR (8 écrans — Accueil, Classement, Bracket, Matchs, Mes
-  pronos, Nouveau pari, Bracket personnel, Mes paris, plus Profil) ET le
-  LOT ADMIN (6 écrans — tableau de bord, validation, résolution, requêtes,
-  joueurs, logs) sont désormais TOUS CODÉS ET VÉRIFIÉS (`tsc`/`eslint`/
-  `next build` propres à chaque lot, testés avec un vrai jeu de données ET
-  en conditions réelles — sessions authentifiées réelles, cas négatifs
-  systématiquement testés). Le CHANTIER T5 (moteur de scoring) est
-  également ENTIÈREMENT CLOS (moteur pur, writer `series.official_*`,
-  orchestration `recompute*`, câblage admin — détail `ETAT_ACTUEL.md` §2.24
-  à §2.29). Reste à coder (ordre de reprise ci-dessus) : **le vrai hub
-  Jouer** (PRIORITÉ 2 — remplace le hub temporaire §2.10, AUCUNE spec
-  d'écran encore écrite, à rédiger en séance comme Bracket personnel) ;
-  PUIS le moteur de SYNCHRO T4 (routes `/api/sync/*`, client Highlightly,
-  cron — seul le writer `series.official_*` de T4 a été construit, comme
-  dépendance de T5) et le Realtime + rendu des états au-delà de ce qui
+  le HUB JOUEUR (8 écrans), le LOT ADMIN (6 écrans), le CHANTIER T5
+  (moteur de scoring, 4 lots) ET le chantier « Gestion des compétitions »
+  (3/3 lots, voir entrée dédiée ci-dessous) sont désormais TOUS CODÉS,
+  VÉRIFIÉS ET testés en conditions réelles. Reste à coder (ordre de reprise
+  ci-dessus) : **T4** (routes `/api/sync/*`, client Highlightly, cron —
+  déjà entièrement spécifiée, jamais codée, bloquant = clé API) ; PUIS le
+  vrai hub Jouer (remplace le hub temporaire §2.10, aucune spec d'écran
+  encore écrite) ; PUIS le Realtime + rendu des états au-delà de ce qui
   existe déjà (T6c). Détail dans `ETAT_ACTUEL.md` §2.
-- **Gestion des compétitions — 2 lots restants sur 3** (chantier ouvert le
-  27/07/2026, `ETAT_ACTUEL.md` §2.30, suite à une question directe de
-  l'utilisateur sur le switch Playoffs/Cup — a révélé que le plan
-  d'origine du 16/07/2026 visait la NBA Cup EN PREMIER pour la V1,
+- **Gestion des compétitions — chantier ENTIÈREMENT CLOS (3/3 lots)**
+  (ouvert le 27/07/2026, `ETAT_ACTUEL.md` §2.30, suite à une question
+  directe de l'utilisateur sur le switch Playoffs/Cup — a révélé que le
+  plan d'origine du 16/07/2026 visait la NBA Cup EN PREMIER pour la V1,
   lancement réel visé le 30/10/2026, mais que le jeu de données de test a
   silencieusement dérivé vers Playoffs le 23/07 sans que ça ne soit
   recroisé ; le moteur de scoring T5, lui, n'a jamais dérivé, les deux
-  barèmes sont pleinement codés) : lot 1/3 (création, `/admin/
-  competitions`) FAIT et VÉRIFIÉ. Restent :
-  - **Lot 2/3 — saisie manuelle des résultats de match/avancement de
-    série** : LE PLUS IMPORTANT avant le 30/10 — trouvé au pré-vol du lot 1
-    que RIEN ne fait aujourd'hui avancer une équipe vers le tour suivant ni
-    ne pose un résultat officiel (ni T4, non codée, ni aucune action
-    admin — le writer `series.official_*` de T5 existe mais aucun écran ne
-    l'appelle pour un usage normal). Dure toute la compétition, pas un
-    geste ponctuel comme la création.
-  - **Lot 3/3 — clôture et archivage** : snapshot du classement final dans
-    `competition_archives` (déjà en base, jamais utilisée), reset ensuite.
-    Bouton déjà visible sur `/admin/competitions` mais désactivé.
+  barèmes sont pleinement codés) : lot 1/3 (création), lot 2/3 (saisie des
+  résultats + avancement automatique du bracket, `/admin/competitions/
+  results`) et lot 3/3 (clôture/archivage, débloqué en cours de route par
+  un vrai besoin utilisateur — sans lui, impossible de créer une 2e
+  compétition) tous FAITS, VÉRIFIÉS et testés EN CONDITIONS RÉELLES par
+  l'utilisateur lui-même (§2.33 `ETAT_ACTUEL.md` pour le détail complet).
   - Hors périmètre des 3 lots, non tranché : mini-bracket NBA Cup (monté
     une fois les 8 qualifiés connus, ~27/11) ; mapping automatique A7
     (pré-remplissage depuis T4, quand elle existera) ; onglet Historique
     côté Profil joueur (`decisions_multi_competitions_historique.md` §4).
+    **Reformulé le 28/07/2026** suite à une question directe de
+    l'utilisateur (« l'API peut détecter les matchs Cup automatiquement,
+    non ? ») : la spec T4 (BRANCHE B, §5.2, empiriquement confirmée) dit
+    que l'API est match-centrique, JAMAIS série-centrique — un match
+    synchronisé se rattache à une série interne déjà posée, par
+    heuristique (paire d'équipes + fenêtre de dates), l'API ne peut pas
+    inventer la STRUCTURE d'une série. Détecter les 4 matchs de quarts
+    (dates, équipes) est donc plausible via `/api/sync/schedule` ; mais
+    construire à partir de ça les 7 séries internes (quarts/demies/finale,
+    la bonne équipe au bon slot, distinguer ces matchs de la saison
+    régulière qui tombe la même semaine) est une règle JAMAIS écrite ni
+    sondée empiriquement — contrairement à la branche A/B des Playoffs
+    (sondée sur une vraie requête, §5.1 de T4). Décidé AVEC l'utilisateur :
+    reporté à une fois la clé API Highlightly en main, à sonder sur la
+    fenêtre Cup réelle de décembre 2025 (déjà citée en test A6) avant de
+    concevoir quoi que ce soit.
 - **12 vulnérabilités npm — RÉSOLU le 27/07/2026 (suite)**, voir
   `ETAT_ACTUEL.md` §2.32 pour le détail complet : `next` 16.2.10→16.2.12
   (corrige les 9 CVE directes) + `overrides` npm (`minimatch@^10.2.6`,
   `brace-expansion@^5.0.8`, `postcss@^8.5.18`, `sharp@^0.35.0`) pour le
   reste. `npm audit` → 0, `tsc`/`eslint`/`next build`/`npm test` tous
-  propres. PAS committé à ce stade (à confirmer avec l'utilisateur).
+  propres. Committé et poussé sur `main`.
 - **`eslint` bloqué en v9, bump v10 reporté en amont** (trouvé le 27/07/2026
   en traitant le point ci-dessus, `ETAT_ACTUEL.md` §2.32) : la montée à
   `eslint@10.8.0` a été tentée, mais `eslint-plugin-react@7.37.5` (embarqué

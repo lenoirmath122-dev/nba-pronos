@@ -5,21 +5,23 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 27/07/2026 (suite — PRIORITÉ 1 de
-> l'ordre de reprise traitée : **les 12 vulnérabilités npm sont corrigées**
-> (§2.32, `npm audit` → 0), `next` 16.2.10→16.2.12 et overrides
-> minimatch/brace-expansion/postcss/sharp. Point ouvert trouvé en cours de
-> route, flagué et tranché AVEC l'utilisateur : `eslint` reste en v9 —
-> `eslint-plugin-react` embarqué par `eslint-config-next@16.2.12` plante
-> sous eslint 10 (API supprimée, aucune version stable compatible à ce
-> jour), le bump v10 est donc reporté en amont (`GAPS_OUVERTS.md`). PAS
-> committé à ce stade). Reste à traiter dans l'ordre : le vrai hub Jouer,
-> puis le lot 2/3 compétitions (saisie manuelle des résultats, le plus
-> important avant le 30/10), puis le reste (T4, Realtime T6c) — ordre à
-> reconfirmer avec l'utilisateur à la prochaine reprise. Juste avant : le
-> lot Admin (6 écrans), le chantier T5 (moteur de scoring, 4 lots) et le
-> lot 1/3 du chantier compétitions (création, §2.30) sont entièrement clos
-> — détail complet dans `JOURNAL_SESSIONS.md`.
+> Dernière mise à jour : session du 27-28/07/2026 (suite — **le chantier
+> « Gestion des compétitions » est désormais ENTIÈREMENT CLOS (3/3 lots)**,
+> §2.33 : lot 2/3 (saisie des résultats + avancement automatique du
+> bracket, `/admin/competitions/results`) ET lot 3/3 (clôture/archivage,
+> débloqué en cours de route par un vrai besoin utilisateur) codés,
+> vérifiés, ET testés en conditions réelles PAR L'UTILISATEUR lui-même
+> (série ATL–BOS jouée à 4 matchs, avancement confirmé correct en base).
+> Juste avant : les 12 vulnérabilités npm corrigées (§2.32, `eslint` reste
+> en v9 — bloqué en amont par `eslint-config-next`, gap ouvert). Tout est
+> committé et poussé sur `main`. **Prochaine étape actée AVEC l'utilisateur : T4**
+> (vraie synchro API Highlightly, déjà entièrement spécifiée et validée le
+> 18/07/2026, jamais codée) — remplace le vrai hub Jouer comme priorité
+> suivante, bloquant : clé API Highlightly à obtenir et poser par
+> l'utilisateur dans `.env.local`. Un point réel non tranché a été
+> identifié au passage (construction automatique du mini-bracket NBA Cup
+> depuis l'API — `GAPS_OUVERTS.md`), reporté à une fois la clé en main.
+> Détail complet dans `JOURNAL_SESSIONS.md`.
 
 ---
 
@@ -2776,6 +2778,105 @@ Résultat final : `npm audit` → **0 vulnérabilité** (contre 12). `npx tsc
 tous propres après le dernier `npm install` — 24 routes toujours sans
 conflit, aucune régression.
 
-PAS committé à ce stade (à confirmer avec l'utilisateur, même patron que
-§2.31).
+Committé et poussé sur `main` (2 commits : dépendances, puis doc).
+```
+
+### 2.33 Gestion des compétitions — lots 2/3 (résultats) ET 3/3 (clôture) CODÉS ET VÉRIFIÉS EN CONDITIONS RÉELLES (session du 27-28/07/2026, suite)
+
+```text
+Objet : PRIORITÉ 2 de l'ordre de reprise (§2.32) — le morceau signalé « le
+plus important avant le 30/10 » (§2.30). Spec écrite EN SÉANCE (aucune
+n'existait, même patron que Bracket personnel), deux points structurants
+tranchés AVEC l'utilisateur (AskUserQuestion) AVANT de coder : avancement
+AUTOMATIQUE du vainqueur vers le tour suivant (pas de bouton séparé) ; A2
+(série annulée/vainqueur désigné à la main sans match) HORS périmètre,
+reporté en gap.
+
+**Trouvaille structurante au pré-vol** (documentée
+`SPEC_ECRAN_ADMIN_RESULTATS_V0_1.md` §0) : la création d'une compétition
+(lot 1) ne crée QUE les 15 lignes `series` — AUCUN `matches`. Ce lot doit
+donc aussi permettre de CRÉER les matchs d'une série au fur et à mesure
+(1 à 7, jamais connu à l'avance), pas seulement en saisir le score.
+
+**Code (lot 2/3)** : `lib/scoring/advancement.ts` (`advanceWinnerIfDecided`,
+NOUVELLE fonction, volontairement SÉPARÉE de `lib/scoring/recompute.ts` —
+T5 est VALIDÉ et clos, cette frontière n'est pas rouverte — propage le
+vainqueur d'une série `FINISHED` vers `team1_id`/`team2_id` de la série
+aval, SEULEMENT si ce slot est encore NULL, non destructif) ;
+`lib/queries/admin-results.ts` (lecture groupée par tour, sans la
+confidentialité du Bracket joueur — un admin voit tout) ;
+`lib/actions/admin-results.ts` (`createMatch` en service_role — AUCUNE
+policy RLS `matches_insert` n'existe, même trouvaille que `series` au lot
+1 — et `saveMatchResult` en service_role, qui enchaîne UPDATE →
+`recomputeMatch` → `advanceWinnerIfDecided`, une seule entrée
+`logAdminAction` pour les deux) ; `app/(admin)/admin/competitions/
+results/page.tsx` + `components/admin/SeriesResultsCard.tsx` — formulaires
+natifs uniquement, aucun `"use client"`.
+
+**Bug trouvé par l'utilisateur en testant, corrigé dans la foulée** : les
+champs de score n'avaient qu'un `placeholder` (abréviation d'équipe,
+disparaît au clic) comme seule indication, largeur 5 caractères — illisible.
+Corrigé : vrai `<label>` visible au-dessus de chaque champ (abréviation
+persistante), largeur portée à 3.5rem.
+
+**Débloqué en cours de route : lot 3/3 (clôture/archivage), pas prévu à ce
+stade** — l'utilisateur, en testant la création d'une 2e compétition
+(avant de brancher T4), a buté sur `uniq_one_active_competition` : sans
+clôture, impossible d'en créer une nouvelle. Décidé AVEC l'utilisateur de
+construire le lot pour de bon plutôt qu'un contournement jetable. Lecture
+actée du « reset » (`decisions_multi_competitions_historique.md` §3, pas
+précisée au-delà) : contrairement au prototype (`reset_simulation.sql`),
+RIEN n'est supprimé en V1 — chaque ligne reste rattachée à son
+`competition_id` pour toujours (nécessaire à un futur historique joueur).
+« Reset » = `competitions.status` → `ARCHIVED`, ce qui SEUL libère le slot
+de l'index partiel. **Code** : `lib/actions/admin-competitions.ts`
+(`closeCompetition`, session admin normale — RLS `archives_insert`/
+`competitions_update` déjà ouvertes, AUCUN service_role nécessaire —
+snapshot `competition_archives` puis `ARCHIVED`, gardé contre une double
+clôture) ; `components/admin/CloseCompetitionButton.tsx` (dialogue de
+confirmation, même patron que `RecalculateButton`, action IRRÉVERSIBLE).
+**Nouveau module partagé** `lib/scoring/ranking.ts` (`assignRanks`,
+extrait de `lib/queries/leaderboard.ts`) : le départage de rang (Total,
+bons vainqueurs, écarts exacts, points bracket ; ex-aequo = même rang)
+doit produire EXACTEMENT le même résultat au classement live et dans
+l'archive figée — `leaderboard.ts` a été migré dessus au passage (aucun
+changement de comportement, juste la même règle à un seul endroit).
+
+**Point réel non tranché, remonté par l'utilisateur en testant** (« l'API
+peut détecter les matchs Cup automatiquement ? ») : la spec T4 dit
+l'API match-centrique, jamais série-centrique (branche B, empiriquement
+confirmée) — détecter les matchs de quarts Cup est plausible, mais
+construire les 7 séries du mini-bracket à partir de ça n'a jamais été
+sondé empiriquement (contrairement à la branche A/B des Playoffs). Reporté
+à une fois la clé API Highlightly en main, sur la fenêtre Cup réelle de
+décembre 2025 — voir `GAPS_OUVERTS.md`.
+
+**Test en conditions réelles, PAR L'UTILISATEUR lui-même** (pas de session
+HTTP rejouée par Claude cette fois — bloqué par le mode auto, changer un
+mot de passe de compte de test a été refusé par le classifieur ;
+l'utilisateur a testé directement dans son navigateur, connecté en
+`Rillettes-31`, 2e compte ADMIN du jeu de données, distinct de
+`Sofia_Admin`) : création d'une compétition NBA_CUP bloquée en pratique
+(AUCUNE série créée pour ce type, comme documenté §3 de
+`SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` — pas un bug, jamais construit) ;
+clôturée puis recréée en PLAYOFFS (« TEST playoff 28/07/2026 », code
+`78D0EE7C`) ; série ATL–BOS jouée à 4 matchs réels, ATL gagnant les 4 →
+vérifié directement en base par Claude (service_role, lecture seule) :
+série passée à `FINISHED`, vainqueur ATL, ET propagé correctement dans
+`team1_id` de la bonne série CONF_SEMIS (ES1) — `team2` de cette série
+reste NULL, attendu, l'autre série qui l'alimente (BKN–CHA) n'est pas
+encore jouée.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npm test` (26 tests),
+`npx next build` tous propres après chaque étape (lot 2/3, lot 3/3,
+correctif score) — 25 routes (`/admin/competitions/results` nouvelle),
+aucun conflit.
+
+Committé et poussé sur `main` (3 commits : lot 2/3, lot 3/3, doc).
+Prochaine étape actée AVEC l'utilisateur : T4 (vraie
+synchro API Highlightly) — déjà entièrement spécifié et validé le
+18/07/2026, aucune réserve ouverte, jamais codé. Remplace « vrai hub
+Jouer » comme priorité suivante (`GAPS_OUVERTS.md`). Bloquant : clé API
+Highlightly, à obtenir et poser par l'utilisateur directement dans
+`.env.local` (jamais dans le chat).
 ```
