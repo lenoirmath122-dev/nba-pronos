@@ -3335,3 +3335,53 @@ compétition de dry-run** (documentés `GAPS_OUVERTS.md`, PAS corrigés —
 Serveur de test toujours actif en fin de session (port 3100). Rien de
 committé à ce stade — code T4 + les 2 gaps trouvés restent à traiter à une
 prochaine session.
+
+---
+
+## Commit T4 + correction des 2 gaps + clôture du dry-run (28/07/2026, suite)
+
+L'utilisateur choisit de committer T4 d'abord (AskUserQuestion). `tsc`/
+`eslint`/`next build`/`vitest` (26/26) tous propres. Commit `3f228d5` (17
+fichiers, +1209/-48) : client, `lib/sync/*`, 4 routes, + les 4 amendements
+de spec et le suivi (`ETAT_ACTUEL.md`/`GAPS_OUVERTS.md`/`JOURNAL_
+SESSIONS.md`). `Cadrage/nba-pronos.lnk` (raccourci Windows, non lié à ce
+lot) volontairement exclu du commit. Pas poussé — en attente du feu vert
+explicite de l'utilisateur.
+
+Puis, sur demande explicite : correction des 2 gaps trouvés à la session
+précédente.
+- **Auto-validation admin** : `assertNotOwnBet()` (nouveau helper partagé,
+  `lib/actions/admin-validation.ts`) lit `bets.user_id` AVANT toute
+  écriture et bloque `validateBet`/`rejectBet` si `user_id === auth.uid()`
+  de l'admin appelant, avec un message dédié (« Tu ne peux pas traiter ton
+  propre pari — demande à un autre admin. ») — distinct du message
+  générique « déjà traité » pour ne pas confondre les deux cas. RLS
+  `bets_select` autorise déjà l'admin à lire n'importe quel pari (pas de
+  nouvelle policy nécessaire). Extension par symétrie de la règle déjà
+  actée pour les requêtes de correction (0.2.3), jamais discutée pour la
+  validation normale des paris — pas une nouvelle règle produit inventée.
+- **`InlineBetForm` inaccessible une fois le prono validé** :
+  `PredictionForm.tsx`, branche `viewStatus === "VALIDATED"` — ajout du
+  rendu de `<InlineBetForm>` (déjà importé, self-sufficient sur ses props,
+  aucune dépendance au statut du prono) à côté du récap + `RevealPanel`.
+  Un seul fichier touché.
+
+Vérifié après les deux correctifs : `tsc --noEmit`, `eslint`, `next build`
+(29 routes, aucun conflit), `vitest run` (26/26, aucune régression).
+
+Compétition de dry-run T4 (« TEST T4 sync — Playoffs 2026 (réel) »)
+archivée (script service_role reproduisant `closeCompetition()`, même
+patron que la clôture précédente §2.33/§2.34 — cette fois avec un vrai
+snapshot `competition_archives`, contrairement à la précédente qui n'avait
+aucun participant : l'activité de test de l'utilisateur sur les paris a
+généré des scores). Serveur de test arrêté.
+
+Les 2 entrées correspondantes retirées de `GAPS_OUVERTS.md` (résolues,
+trace ici — convention du fichier : un point retiré = un point traité).
+`ETAT_ACTUEL.md` mis à jour en miroir.
+
+**État en fin de session** : commit `3f228d5` (T4) fait, PAS poussé.
+Correctifs des 2 gaps PAS encore committés à ce stade. Compétition de
+dry-run archivée, aucune compétition active. Prochaine étape à confirmer :
+committer/pousser les 2 correctifs, puis reprendre l'ordre habituel (vrai
+hub Jouer, T6c, mini-bracket Cup, planificateur externe).

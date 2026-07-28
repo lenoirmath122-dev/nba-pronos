@@ -58,6 +58,11 @@ export function PredictionForm({ match }: PredictionFormProps) {
           others={match.others}
           absentees={match.absentees}
         />
+        {/* Le prono et le pari sont deux entités indépendantes (match_predictions
+            vs bets) — valider le prono en premier ne doit pas priver l'accès au
+            pari associé, sans quoi seul l'écran Paris dédié reste utilisable
+            (GAPS_OUVERTS.md, trouvé 28/07/2026). */}
+        <InlineBetForm matchId={match.matchId} seriesId={match.seriesId} betSlot={match.betSlot} myBet={match.myBet} />
       </div>
     );
   }

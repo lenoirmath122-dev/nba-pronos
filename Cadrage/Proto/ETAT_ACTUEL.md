@@ -18,15 +18,19 @@
 > API, attache match→série déterministe avec secours passif par
 > `sync_logs`, formes réelles du client, paramètre `?date=` dev/test) —
 > voir `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (amendements §3/§4/§5.2/§6/§12).
-> **Compétition de dry-run laissée ACTIVE** (« TEST T4 sync — Playoffs 2026
-> (réel) ») à la demande de l'utilisateur, pour être consultée dans le
-> navigateur avant archivage. La compétition de test précédente (« TEST
-> playoff 28/07/2026 », ATL-BOS) a été clôturée pour de vrai (script
-> service_role reproduisant `closeCompetition()`, pas de session navigateur
-> disponible) pour libérer le slot. **Pas encore committé à ce stade.**
-> Prochaine étape à confirmer avec l'utilisateur : le vrai hub Jouer, ou le
-> reste de T6c (Realtime au-delà de l'existant) — voir `GAPS_OUVERTS.md`.
-> Détail complet dans `JOURNAL_SESSIONS.md`.
+> **Suite (même session)** : T4 committé (`3f228d5`, pas encore poussé). En
+> testant la saisie d'un pari sur la compétition de dry-run, l'utilisateur a
+> trouvé 2 points, TOUS DEUX CORRIGÉS dans la foulée (§2.34) : un admin
+> pouvait valider son PROPRE pari (`assertNotOwnBet()`, nouveau) ; le pari
+> associé à un match devenait inaccessible depuis Matchs une fois le prono
+> validé (`InlineBetForm` désormais rendu dans les deux branches). Ces 2
+> correctifs ne sont PAS encore committés. La compétition de dry-run a
+> ensuite été ARCHIVÉE (avec snapshot cette fois, contrairement à la
+> précédente) — **aucune compétition active actuellement**. Prochaine étape
+> à confirmer avec l'utilisateur : committer/pousser les 2 correctifs, puis
+> reprendre l'ordre habituel (vrai hub Jouer, T6c, mini-bracket Cup,
+> planificateur externe) — voir `GAPS_OUVERTS.md`. Détail complet dans
+> `JOURNAL_SESSIONS.md`.
 
 ---
 
@@ -2994,15 +2998,24 @@ requêtes pour tout le tournoi, hors budget). Serveur de test laissé actif
 sur le port 3100 pour consultation navigateur.
 
 **2 points trouvés par l'utilisateur en testant la saisie d'un pari sur
-cette compétition** (détail complet `JOURNAL_SESSIONS.md`, documentés
-`GAPS_OUVERTS.md`, PAS corrigés à ce stade) : un admin peut valider son
-PROPRE pari (aucune garde `validated_by_admin_id != user_id` dans
-`lib/actions/admin-validation.ts`) ; valider le prono avant le pari
-démonte `<InlineBetForm>` de l'écran Matchs (oblige à repasser par
-l'onglet Paris dédié).
+cette compétition, TOUS DEUX CORRIGÉS** (détail complet
+`JOURNAL_SESSIONS.md`) : `assertNotOwnBet()` bloque désormais un admin qui
+tenterait de valider/rejeter son PROPRE pari
+(`lib/actions/admin-validation.ts`, par symétrie avec la règle déjà actée
+pour les requêtes de correction 0.2.3) ; `<InlineBetForm>` est désormais
+rendu même une fois le prono validé (`PredictionForm.tsx`) — plus besoin
+de repasser par l'onglet Paris dédié.
+
+**Compétition de dry-run ARCHIVÉE** (script service_role reproduisant
+`closeCompetition()`, avec cette fois un vrai snapshot
+`competition_archives` — l'activité de test sur les paris avait généré
+des scores). Serveur de test arrêté. **Aucune compétition active
+actuellement.**
 
 **Suivi mis à jour en miroir** : `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (4
-amendements post-validation §3/§4/§5.2/§6/§12) ; `JOURNAL_SESSIONS.md`.
+amendements post-validation §3/§4/§5.2/§6/§12) ; `JOURNAL_SESSIONS.md` ;
+les 2 gaps retirés de `GAPS_OUVERTS.md` (résolus).
 
-**Pas encore committé à ce stade.**
+**Commit `3f228d5` (T4) fait, PAS poussé. Les 2 correctifs de gaps PAS
+encore committés à ce stade.**
 ```

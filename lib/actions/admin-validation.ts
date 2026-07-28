@@ -13,6 +13,24 @@ import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
+// ADMIN = joueur + droits admin (0.2.1) : un admin peut donc soumettre SES
+// PROPRES paris. Aucune garde n'empêchait jusqu'ici de les valider/rejeter
+// lui-même (trouvé 28/07/2026, GAPS_OUVERTS.md) — même principe que
+// « un admin ne peut jamais traiter sa propre requête de correction » (0.2.3),
+// jamais étendu à la file de validation normale des paris. Étendu ici par
+// symétrie, pas une nouvelle règle produit inventée.
+async function assertNotOwnBet(
+  supabase: Awaited<ReturnType<typeof getServerClient>>,
+  betId: string,
+  adminUserId: string
+): Promise<string | null> {
+  const { data: bet } = await supabase.from("bets").select("user_id").eq("id", betId).maybeSingle<{ user_id: string }>();
+  if (bet?.user_id === adminUserId) {
+    return "Tu ne peux pas traiter ton propre pari — demande à un autre admin.";
+  }
+  return null;
+}
+
 export async function validateBet(input: {
   betId: string;
   validatedDifficulty: BetDifficulty;
@@ -23,6 +41,9 @@ export async function validateBet(input: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const ownBetError = await assertNotOwnBet(supabase, input.betId, user.id);
+  if (ownBetError) return { success: false, error: ownBetError };
 
   // Re-garde le statut dans le WHERE de l'UPDATE, pas seulement en lecture
   // avant : une condition qui ne matche aucune ligne réussit SANS erreur
@@ -64,6 +85,9 @@ export async function rejectBet(input: { betId: string; refusalReason: string })
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const ownBetError = await assertNotOwnBet(supabase, input.betId, user.id);
+  if (ownBetError) return { success: false, error: ownBetError };
 
   const reason = input.refusalReason.trim();
   if (reason.length === 0) return { success: false, error: "Un motif est obligatoire pour refuser un pari." };
