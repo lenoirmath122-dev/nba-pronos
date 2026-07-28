@@ -3216,4 +3216,122 @@ journal.
 **État en fin de session** : PAS committé à ce stade (à confirmer avec
 l'utilisateur). Prochaine étape actée AVEC l'utilisateur : T4 (vraie
 synchro API Highlightly), bloquant = clé API Highlightly à obtenir et
+posée par l'utilisateur dans `.env.local`.
+
+---
+
+## T4 — implémentation (28/07/2026)
+
+Clé Highlightly posée par l'utilisateur dans `.env.local`
+(`HIGHLIGHTLY_API_KEY`). Avant de coder, deux points soulevés par
+l'utilisateur ont mené à des vérifications empiriques et des correctifs
+post-validation de `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` — aucun ne rouvre une
+décision de fond de T4, tous découlent de payloads réels jamais inspectés
+au 18/07/2026 (pas de clé API à l'époque).
+
+**Point de départ soulevé par l'utilisateur** : le calendrier réel (28/07,
+intersaison) ne colle pas aux dates visées par le pipeline (`schedule`/
+`results` sont pensés `now()`-relatif). Décidé (AskUserQuestion) : les deux
+routes acceptent un `?date=YYYY-MM-DD` optionnel (`lib/sync/
+devDateOverride.ts`), DEV/TEST UNIQUEMENT, jamais envoyé par le vrai
+planificateur externe, toujours derrière le Bearer `SYNC_SECRET`.
+
+**Avant de coder les types du client** : 2 appels réels effectués (`GET
+/teams`, `GET /matches?date=2025-06-08&timezone=America/New_York` — vrai
+jour de Finals 2025) plutôt que de deviner la forme des payloads au-delà de
+ce que le repérage §5.1 avait sondé (enveloppe/statut/score). Révèle :
+- `/teams` = tableau nu en racine (pas d'enveloppe `data`, contrairement à
+  `/matches`) ;
+- `league="NBA"` (53 entrées) mélange les 30 vraies franchises avec des
+  entités hors référentiel (équipes All-Star, une internationale, "World")
+  — même en filtrant sur "logo présent", 37 passent au lieu de 30 ;
+- 6 abréviations Highlightly diffèrent des nôtres déjà committées (NY/GS/
+  NO/SA/UTAH/WSH vs NYK/GSW/NOP/SAS/UTA/WAS).
+Flagué explicitement à l'utilisateur (AskUserQuestion) avant de coder :
+**table d'alias figée** (`lib/nba/teamAliases.ts`, construite à la main
+depuis le payload réel) choisie plutôt qu'un filtre heuristique — `/api/
+sync/teams` n'écrit donc plus jamais `teams` (nos 30 lignes existantes
+restent la source de vérité), seulement `entity_mappings`.
+
+**Avant de coder l'attache match→série** : le flux PENDING de 0.2.8 §5 ne
+peut pas s'appliquer littéralement (`entity_mappings.internal_id` est `NOT
+NULL` — un match jamais vu n'a aucune ligne interne à pointer), et aucun
+écran de revue de mapping n'a jamais été spécifié. Flagué et tranché AVEC
+l'utilisateur : l'attache est en réalité déterministe (le bracket est déjà
+entièrement construit par l'admin, `team1_id`/`team2_id` toujours connus
+avant qu'un match soit joué) ; le cas résiduel (0 ou 2+ séries candidates)
+est ignoré + journalisé dans `sync_logs`, **volontairement passif** (pas de
+badge d'alerte — confirmé explicitement, resterait un simple `count` à
+ajouter si besoin un jour) ; rattrapage via le bouton « Ajouter un match »
+déjà existant.
+
+**Code** : `lib/nba/client.ts` (C-1, `getTeams`/`getMatchesByDate`/
+`sumQuarters`/`normalizeMatchStatus`) ; `lib/nba/teamAliases.ts` ;
+`lib/dates/newyork.ts` (même patron que `lib/dates/paris.ts`, jour
+calendaire America/New_York via `Intl.DateTimeFormat("en-CA", ...)`) ;
+`lib/sync/{teams,schedule,results,auth,logging,devDateOverride}.ts` ;
+`app/api/sync/{teams,schedule,results}/route.ts` + `app/api/heartbeat/
+route.ts` (Bearer `SYNC_SECRET`, `sync_logs`, runtime Node). `results.ts`
+réutilise le patron déjà établi par `admin-results.ts::saveMatchResult` :
+update `matches` → `recomputeMatch` → `advanceWinnerIfDecided`. Aucune
+migration (T4 n'en produit pas, schéma déjà posé par la migration #1).
+
+**Vérifié** : `tsc --noEmit`, `eslint`, `next build` (les 4 routes
+apparaissent, aucun conflit), `vitest run` (26/26, aucune régression).
+**Pas encore testé en conditions réelles** — prochaine étape : rejouer le
+Plan de test §11 via `?date=` sur une vraie fenêtre de playoffs passée.
+
+**Suivi mis à jour en miroir** : `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (4
+amendements post-validation, §3/§4/§5.2/§6/§12) ; cette entrée de journal.
+`ETAT_ACTUEL.md`/`GAPS_OUVERTS.md` à mettre à jour après le test réel.
+
+**État en fin de session** : pas committé à ce stade. Prochaine étape :
 poser directement dans `.env.local`.
+
+---
+
+## Suite du dry-run T4 : simulation étendue, test manuel utilisateur, 2 gaps trouvés (28/07/2026, suite)
+
+L'utilisateur a demandé de pousser la simulation "comme si on était en
+plein milieu des Playoffs 2026" pour voir plus de contenu. Flagué :
+simuler les Playoffs en entier consommerait ~120-150 requêtes API (aucun
+endpoint de plage de dates, 1 requête/jour scanné), contre ~77 restantes
+sur le quota 100/jour (déjà ~23 consommées cette session). Décidé AVEC
+l'utilisateur (AskUserQuestion, réponse libre) : ne pas pousser la
+simulation plus loin, mais rendre visibles les prochains vrais matchs déjà
+synchronisés en décalant artificiellement leur `scheduled_at` vers
+"maintenant + quelques jours" (même patron déjà utilisé pour les dates du
+jeu de données de seed, `GAPS_OUVERTS.md`).
+
+Un appel `/api/sync/schedule?date=2026-04-22` de plus a découvert 12
+matchs réels non résolus (Game 2/3/4 de 6 séries). Script jetable
+(scratchpad) : décalage linéaire de leur `scheduled_at` vers la fenêtre
+réelle des 3 prochains jours (statut repassé à `SCHEDULED`, scores non
+touchés — déjà NULL). Serveur de test laissé tournant sur le port 3100
+pour que l'utilisateur aille vérifier lui-même dans son navigateur.
+
+**Demande de l'utilisateur, bloquée par le classifieur** : voir les
+identifiants de Sofia_Admin pour vérifier quelque chose sur les paris
+soumis. Réinitialisation du mot de passe via l'API Admin refusée par le
+classifieur du mode auto — même restriction déjà rencontrée §2.33
+(changer un mot de passe de compte de test). Pas contourné ; deux options
+proposées (reset via le dashboard Supabase directement, ou autoriser
+l'action explicitement) ; l'utilisateur n'en a finalement pas eu besoin
+(a réussi à vérifier ce qu'il cherchait autrement).
+
+**2 points trouvés par l'utilisateur en testant la saisie d'un pari sur la
+compétition de dry-run** (documentés `GAPS_OUVERTS.md`, PAS corrigés —
+« on verra ça à un autre moment ») :
+- Admin capable de valider son PROPRE pari (`validateBet`/`rejectBet` ne
+  vérifient que `is_admin()` + statut `SUBMITTED`, aucune garde
+  `validated_by_admin_id != user_id`) — seul précédent connu (interdiction
+  similaire pour les requêtes de correction, 0.2.3) jamais étendu ni
+  discuté pour la validation normale des paris.
+- Valider le prono AVANT le pari démonte `<InlineBetForm>` de l'écran
+  Matchs (`PredictionForm.tsx` : early-return dès `viewStatus ===
+  "VALIDATED"`) — oblige à repasser par l'onglet Paris dédié, pas pratique
+  si les deux étaient prévus dans la même session.
+
+Serveur de test toujours actif en fin de session (port 3100). Rien de
+committé à ce stade — code T4 + les 2 gaps trouvés restent à traiter à une
+prochaine session.

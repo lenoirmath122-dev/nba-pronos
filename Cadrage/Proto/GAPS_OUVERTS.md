@@ -4,19 +4,24 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **Ordre de reprise, réactualisé avec l'utilisateur (28/07/2026)** — les 12
-> vulnérabilités npm (`ETAT_ACTUEL.md` §2.32) ET le chantier « Gestion des
-> compétitions » (3/3 lots, §2.33) sont désormais FAITS. Prochaine étape
-> actée AVEC l'utilisateur : **T4 (vraie synchro API Highlightly)** — déjà
-> entièrement spécifiée et validée le 18/07/2026, aucune réserve ouverte,
-> jamais codée (voir `SPEC_TECHNIQUE_SYNCHRO_V0.1.md`). Remplace « le vrai
-> hub Jouer » comme priorité suivante — motif : la saisie manuelle (lot 2/3
-> ci-dessous) n'est un palliatif VIABLE que pour quelques matchs de test,
-> pas pour une saison entière, remarque directe de l'utilisateur après
-> l'avoir testée en vrai. Bloquant pour démarrer : clé API Highlightly
-> (accès direct, pas RapidAPI), à obtenir et poser par l'utilisateur
-> lui-même dans `.env.local` (jamais dans le chat). Le vrai hub Jouer et le
-> reste (Realtime T6c au-delà de l'existant) suivent T4.
+> **Ordre de reprise, réactualisé avec l'utilisateur (28/07/2026, suite)** —
+> **T4 (vraie synchro API Highlightly) est désormais CODÉE et TESTÉE EN
+> CONDITIONS RÉELLES** (`ETAT_ACTUEL.md` §2.34) : client, `lib/sync/*`, 4
+> routes, dry-run complet sur les vraies affiches/résultats du 1er tour
+> Playoffs NBA 2026 (14 matchs réels créés et scorés automatiquement,
+> idempotence vérifiée). Quatre correctifs post-validation actés au fil du
+> codage, tous documentés dans `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (§3/§4/§5.2/
+> §6/§12) : référentiel équipes par table d'alias (pas de filtre API fiable) ;
+> attache match→série déterministe, secours passif par `sync_logs` (pas de
+> PENDING/écran de revue, structurellement inapplicable) ; formes réelles du
+> client (asymétrie `/teams`/`/matches`, un seul statut confirmé
+> empiriquement) ; paramètre `?date=` dev/test. **Reste à trancher avec
+> l'utilisateur avant de committer** : sort de la compétition de dry-run
+> (laissée ACTIVE à sa demande, pour consultation navigateur). **Prochaine
+> étape, à confirmer** : le vrai hub Jouer (aucune spec d'écran encore
+> écrite) OU le reste de T6c (Realtime au-delà de l'existant) ; puis
+> configurer le vrai planificateur externe (cron-job.org/GitHub Actions) au
+> déploiement pour que T4 tourne en continu (§ Déploiement ci-dessous).
 
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 
@@ -322,6 +327,33 @@
   SQL uniquement, jamais exercé en live faute d'une compétition NBA Cup de
   test. À vérifier en conditions réelles si/quand un jeu de données NBA Cup
   existe.
+- **Admin capable de valider son PROPRE pari** (trouvé le 28/07/2026 par
+  l'utilisateur en testant la saisie d'un pari sur la compétition de
+  dry-run T4) : `lib/actions/admin-validation.ts::validateBet`/`rejectBet`
+  ne vérifient QUE `is_admin()` (via RLS) et le statut `SUBMITTED` du pari
+  — aucune garde n'empêche `validated_by_admin_id = bets.user_id` (l'admin
+  qui soumet un pari, ADMIN = joueur + droits admin, 0.2.1, peut ensuite se
+  valider lui-même dans la file de validation). Le seul précédent connu de
+  ce principe est explicitement acté pour les requêtes de correction
+  (« un admin ne peut jamais traiter sa propre requête », 0.2.3 — via
+  `handled_by_admin_id`, « jamais l'auteur ») mais n'a jamais été étendu ni
+  discuté pour la validation normale des paris (`SPEC_ECRAN_ADMIN_
+  VALIDATION_V0_1.md`, aucune mention). Pas corrigé — à trancher : soit
+  bloquer explicitement (garde applicative, `user_id != validated_by_admin_id`),
+  soit assumer que la confiance repose sur le nombre réduit d'admins et le
+  traçage `audit_logs` (déjà en place, visible dans « Historique des logs »).
+- **Friction UX — prono et pari saisis ensemble sur un même match, dans
+  Matchs** (trouvé le 28/07/2026, testé sur la compétition de dry-run T4) :
+  valider le prono ET le pari nécessite deux clics « Valider » séparés
+  (comportement voulu — deux workflows/tables distincts, `match_predictions`
+  vs `bets`). Mais si le prono est validé EN PREMIER, `PredictionForm.tsx`
+  (ligne 48 : `if (match.viewStatus === "VALIDATED") return ...`) bascule la
+  ligne en lecture seule et démonte `<InlineBetForm>` avec elle — il devient
+  alors impossible de saisir/soumettre le pari associé depuis l'onglet
+  Matchs, il faut repasser par l'onglet Paris dédié (`/play/bets/new`), pas
+  pratique si les deux étaient prévus dans la même session. Pas corrigé —
+  piste à explorer : rendre `InlineBetForm` indépendant du `viewStatus` du
+  prono plutôt que conditionné par le même early-return.
 
 ## Interprétations d'implémentation actées (pas des gaps — à connaître, et à
 ## reporter dans `decisions_0.2.x` si l'utilisateur le souhaite un jour)

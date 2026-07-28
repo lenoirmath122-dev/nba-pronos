@@ -108,6 +108,26 @@ async function getTeams(): Promise<RawTeam[]>;
 function sumQuarters(scoreArray: number[]): number; // 4 valeurs (5 en prolongation)
 ```
 
+> **Amendement 28/07/2026 (formes réelles vérifiées, correctif post-validation)**
+> — deux appels réels effectués avant l'implémentation (`GET /teams`, `GET
+> /matches?date=2025-06-08&timezone=America/New_York`, un vrai jour de Finals
+> 2025) révèlent des points non couverts par le repérage §5.1 :
+> - **`/teams` renvoie un TABLEAU NU en racine** (pas d'enveloppe `"data"`),
+>   contrairement à `/matches` qui, lui, enveloppe bien dans `"data"` —
+>   asymétrie non anticipée par la spec, gérée explicitement par le client
+>   (`lib/nba/client.ts` : parsing différent pour chacune des deux routes).
+> - Forme confirmée d'un match : `{ id, league, season, date, state: { clock,
+>   period, description, score: { homeTeam: number[], awayTeam: number[] } },
+>   homeTeam: { id, displayName, name, abbreviation, logo }, awayTeam: {...} }`.
+> - `state.description` : **seule valeur confirmée empiriquement à ce jour :
+>   "Finished"**. Les autres statuts (SCHEDULED, IN_PROGRESS, POSTPONED,
+>   CANCELLED) sont mappés par hypothèse de vocabulaire anglais courant
+>   (`normalizeMatchStatus()`), PAS vérifiés sur un vrai payload — à confirmer
+>   au premier test réel sur une fenêtre de matchs passée (voir Plan de test
+>   §11). Un texte non reconnu retombe sur IN_PROGRESS et est journalisé.
+> Voir aussi l'amendement §4 (référentiel équipes) et §5.2 (attache
+> match→série), déclenchés par la même vérification empirique.
+
 Règles du client :
 - **Clé API** : `x-rapidapi-key` lu depuis une variable d'environnement **serveur**
   (jamais exposée au client). Un seul header, pas de `x-rapidapi-host` (accès direct, A6).
@@ -146,6 +166,29 @@ Règles du client :
 Le référentiel est **global et persistant** : il ne fait pas partie du cycle de
 vie d'une compétition, ne subit aucun wipe (rétention D2), et sert de cible aux
 FK `favorite_team_id`, `team1_id`, etc.
+
+> **Amendement 28/07/2026 (référentiel équipes, correctif post-validation)** —
+> le paragraphe ci-dessus ET §12 point 4 supposaient un `GET /teams` propre,
+> filtrable par `league="NBA"`, avec upsert direct dans `teams`. Un appel réel
+> (28/07/2026) contredit les deux points :
+> - `league="NBA"` (53 entrées) mélange les 30 vraies franchises avec des
+>   entités hors référentiel (équipes All-Star "Team Durant"/"Team Giannis"/
+>   "Team LeBron"/"Western Conf All-Stars"/"Eastern Conf All-Stars", "World",
+>   l'internationale "NEWZEALAND Breakers") — un filtre supplémentaire sur
+>   "logo présent" en laisse encore passer 7 en trop (37 au lieu de 30).
+> - 6 abréviations Highlightly diffèrent des nôtres (déjà committées, câblées
+>   aux 30 SVG de `public/logos/teams/` et à tous les FK de l'app) : `NY`↔`NYK`,
+>   `GS`↔`GSW`, `NO`↔`NOP`, `SA`↔`SAS`, `UTAH`↔`UTA`, `WSH`↔`WAS`. Une
+>   correspondance par abréviation en manquerait 6.
+>
+> **Décision actée avec l'utilisateur** : `/api/sync/teams` ne crée JAMAIS de
+> ligne `teams` — nos 30 lignes existantes restent la source de vérité pour
+> `name`/`abbreviation`/`logo` (déjà câblées à l'app entière). Une table figée
+> dans le code (`lib/nba/teamAliases.ts`, id Highlightly ↔ notre
+> `abbreviation`, construite à la main à partir du payload réel du 28/07/2026)
+> sert UNIQUEMENT à écrire `entity_mappings` (CONFIRMED direct, référentiel
+> toujours déterministe, 0.2.8 §5). Un id Highlightly absent de cette table est
+> ignoré — jamais une des 30 franchises réelles, garde défensive seulement.
 
 > **Amendement 21/07/2026 (logos)** — le paragraphe « Logos » ci-dessus (téléchargement
 > + bucket Supabase Storage + `teams.logo_url` → URL interne) est **remplacé** par des
@@ -201,6 +244,33 @@ BRANCHE B — l'API n'expose que des matchs (pas de série) :
 > pas trouvée. Le client (§3) devra donc gérer l'enveloppe `data`, le filtre
 > `league="NBA"` et la lecture du statut via `state.description`.
 
+> **Amendement 28/07/2026 (attache match→série, correctif post-validation)** —
+> précision actée AVEC l'utilisateur sur la nature exacte de l'« heuristique »
+> ci-dessus, et sur le devenir du cas non résolu :
+> - Ce n'est PAS une heuristique floue en pratique : `series.team1_id`/
+>   `team2_id` sont TOUJOURS déjà connus avant qu'un match de cette série soit
+>   joué (saisis à la création du bracket par l'admin, ou posés automatiquement
+>   par `advanceWinnerIfDecided`, lot « Gestion des compétitions »). Une paire
+>   d'équipes ne peut donc être active que dans UNE série à la fois au sein de
+>   la compétition ACTIVE — l'attache est une recherche déterministe (paire non
+>   ordonnée + série non FINISHED/CANCELLED), pas un score de confiance.
+> - **Le flux PENDING décrit par 0.2.8 §5 ne s'applique PAS ici** :
+>   `entity_mappings.internal_id` est `NOT NULL` (T1) — un match jamais vu et
+>   non attachable (0 ou 2+ séries candidates, ne devrait structurellement
+>   jamais arriver) n'a par construction AUCUNE ligne interne à pointer. Aucun
+>   écran de revue des mappings en attente n'a jamais été spécifié ni construit
+>   (A7 concerne le pré-remplissage des affiches à la CRÉATION d'une
+>   compétition, pas l'attache des matchs individuels ensuite — resté non fait,
+>   `GAPS_OUVERTS.md`).
+> - **Décision actée** : ce cas résiduel n'est ni créé ni deviné — le match est
+>   ignoré pour cette passe et journalisé dans `sync_logs` (déjà consulté par
+>   l'admin via l'écran « Historique des logs » existant), **volontairement
+>   passif** (pas de badge ni d'alerte dans l'UI — confirmé explicitement avec
+>   l'utilisateur, cette voie de secours resterait un simple `count` détectable
+>   si un signal plus visible s'avérait nécessaire à l'usage). Rattrapage
+>   possible à tout moment via le bouton « Ajouter un match » déjà existant
+>   (lot 2/3 compétitions, `lib/actions/admin-results.ts::createMatch`).
+
 ### 5.3 Ce qui est commun aux deux branches
 ```text
 - Le mapping MATCH est toujours présent (source match id ↔ internal id).
@@ -239,6 +309,16 @@ Notes :
 - **Idempotence** : rejouer `/schedule` ou `/results` sur le même état ne change
   rien (upsert par id, jamais de doublon ; une prédiction figée n'est jamais
   touchée — 0.2.2/0.2.3). C'est ce qui rend la synchro rejouable sans risque.
+- **Amendement 28/07/2026 (paramètre `?date=`, correctif post-validation,
+  DEV/TEST UNIQUEMENT)** — trouvé avant même l'implémentation : on est le
+  28/07/2026, en pleine intersaison NBA, sans aucun match réel dans l'horizon
+  "aujourd'hui" pendant plusieurs mois. `/api/sync/schedule` et
+  `/api/sync/results` acceptent donc un paramètre optionnel `?date=YYYY-MM-DD`
+  (`lib/sync/devDateOverride.ts`) qui remplace `new Date()` par une date
+  choisie — permet de rejouer le pipeline complet sur une VRAIE fenêtre de
+  playoffs passée. **Jamais envoyé par le vrai planificateur externe** (reste
+  absent en production, comportement `now()` inchangé) ; toujours protégé en
+  amont par le Bearer `SYNC_SECRET` (§6) — ce n'est pas une surface ouverte.
 - **Heartbeat** : une simple requête (`select 1` ou lecture triviale) suffit à
   réinitialiser le compteur d'inactivité de 7 jours de Supabase (A8).
 
@@ -390,3 +470,16 @@ levé par le repérage §5.1). T4 ne produit **aucune migration** ; l'implément
 (client, lib/sync, routes) viendra après T5. Prochaine spec : **T5 (scoring)** —
 qui consomme le signal de recalcul de T4 — puis T6 (écrans + Realtime + server
 actions).
+
+> **Implémentation (28/07/2026)** — client, lib/sync/*, routes et référentiel
+> équipes codés, vérifiés (`tsc`/`eslint`/`next build`/`vitest`, 0 régression),
+> pas encore testés en conditions réelles (voir Plan de test §11, à rejouer via
+> `?date=` sur une vraie fenêtre de playoffs passée, hors saison actuellement).
+> Quatre correctifs post-validation actés avec l'utilisateur au fil du codage,
+> tous documentés en ligne ci-dessus : formes réelles du client (§3, asymétrie
+> `/teams`/`/matches`, statuts non tous vérifiés) ; référentiel équipes par
+> table d'alias plutôt que filtre `league="NBA"` (§4) ; attache match→série
+> déterministe, PENDING structurellement inapplicable, secours passif par
+> `sync_logs` (§5.2) ; paramètre `?date=` dev/test (§6). Aucun ne rouvre une
+> décision de fond de T4 — tous découlent de la vérification empirique des
+> payloads réels, pas anticipable au 18/07/2026 sans clé API en main.
