@@ -70,3 +70,25 @@
 
 - Image exportable du classement ou du bracket rempli, à partager en
   dehors de l'app (génération côté client, pas de dépendance serveur).
+
+## Nom & habillage
+
+- Renommer l'écran Classement en **« Hall of shame »** (28/07/2026). À FAIRE
+  VRAIMENT À LA FIN — l'utilisateur finit encore la direction artistique,
+  pas la peine de coder ce renommage avant que la DA soit stabilisée
+  (renommage cosmétique pur : libellé de nav + titre d'écran, aucun impact
+  scoring/statuts/route).
+
+## Personnalisation du profil
+
+- Couleurs de l'interface du Profil adaptées à l'équipe favorite choisie
+  (28/07/2026) — SI un choix a été fait (`favorite_team_id` non NULL),
+  sinon comportement par défaut inchangé. Nécessite une source de couleur
+  par équipe (aucune colonne dédiée aujourd'hui, `teams` ne porte que
+  `logo_url` — à voir en spec technique : couleurs codées en dur par équipe,
+  ou dérivées d'un asset).
+- Remplacer la liste longue de sélection d'équipe favorite (actuellement
+  `components/profile/TeamPicker.tsx`, une liste de 30 boutons radio) par
+  un **menu déroulant** (28/07/2026) — accès plus rapide, moins de
+  défilement. Compatible avec les 30 logos existants (à voir si le menu
+  déroulant les affiche ou reste texte seul, en spec technique).
