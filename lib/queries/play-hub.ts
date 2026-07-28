@@ -1,5 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
-import { getBracketFillData } from "@/lib/queries/bracket-fill";
+import { getBracketFillData, getRemainingSeriesBets } from "@/lib/queries/bracket-fill";
 
 // Lecture du hub Jouer (SPEC_ECRAN_HUB_JOUER_V0_1 §2/§4). Un instantané TRÈS
 // LÉGER par carte — pas de réutilisation des requêtes complètes des écrans
@@ -32,6 +32,9 @@ export type PlayHubBracketCard = {
   deadline: string | null;
   isNearDeadline: boolean;
   isActionable: boolean;
+  /** Nombre de séries où un pari série reste possible et pas encore posé
+   *  (demandé par l'utilisateur 28/07/2026) — toujours 0 en NBA Cup. */
+  remainingSeriesBets: number;
 };
 
 export type PlayHubBetsCard = {
@@ -157,6 +160,7 @@ async function getBracketCard(): Promise<PlayHubBracketCard> {
     deadline: data.deadline,
     isNearDeadline,
     isActionable,
+    remainingSeriesBets: getRemainingSeriesBets(data).length,
   };
 }
 

@@ -12,6 +12,9 @@
   background: var(--color-surface-raised);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
+  /* Ancre #series-<id> (Accueil "Paris séries") : évite que la carte visée
+     n'atterrisse masquée sous la nav/en-tête au chargement de la page. */
+  scroll-margin-top: var(--space-6);
 }
 
 .pending {

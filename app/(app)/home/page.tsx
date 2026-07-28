@@ -1,15 +1,17 @@
 import { getHomeData } from "@/lib/queries/home";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { TodoList } from "@/components/home/TodoList";
+import { SeriesBetList } from "@/components/home/SeriesBetList";
 import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
 import styles from "./page.module.css";
 
 // Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « À traiter »
-// (+ bloc admin) + « Ça vient de tomber ». Aucun fetch client, aucune
-// logique métier ici — tout est déjà calculé par lib/queries/home.ts.
+// (+ bloc admin) + « Paris séries non remplis » + « Ça vient de tomber ».
+// Aucun fetch client, aucune logique métier ici — tout est déjà calculé par
+// lib/queries/home.ts.
 export default async function HomePage() {
-  const { competitionId, header, todo, adminTodo, feed } = await getHomeData();
+  const { competitionId, header, todo, adminTodo, seriesBets, feed } = await getHomeData();
 
   if (competitionId === null || header === null) {
     return (
@@ -36,6 +38,16 @@ export default async function HomePage() {
         <section className={styles.section} aria-label="À traiter (admin)">
           <h2 className={styles.sectionTitle}>À traiter (admin)</h2>
           <TodoList items={adminTodo} />
+        </section>
+      )}
+
+      {/* Retirée entièrement dès que rien ne reste (demandé par l'utilisateur
+          28/07/2026) — jamais d'état vide affiché ici, contrairement aux 2
+          sections ci-dessus. */}
+      {seriesBets.length > 0 && (
+        <section className={styles.section} aria-label="Paris séries non remplis">
+          <h2 className={styles.sectionTitle}>Paris séries non remplis</h2>
+          <SeriesBetList items={seriesBets} />
         </section>
       )}
 

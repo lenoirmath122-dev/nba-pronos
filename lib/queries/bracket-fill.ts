@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
+import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Lecture de l'écran Bracket personnel (remplissage), composants serveur
 // uniquement — SPEC_ECRAN_BRACKET_PERSONNEL_V0_1 §7. Module DISTINCT de
@@ -20,6 +21,17 @@ export type BetSeriesFormat = "4-0" | "4-1" | "4-2" | "4-3";
 
 export type BracketFillCandidate = { teamId: string; abbreviation: string; name: string } | null;
 
+/** Pari SÉRIE actif sur cette série, éditable ICI (DRAFT/SUBMITTED
+ *  uniquement — un pari VALIDATED/WON/LOST reste "posé" mais pas réouvrable,
+ *  même convention que MyMatchBet, lib/queries/matches.ts). */
+export type MySeriesBet = {
+  betId: string;
+  status: "DRAFT" | "SUBMITTED";
+  description: string;
+  category: BetCategory;
+  difficulty: BetDifficulty;
+};
+
 export type BracketFillSeries = {
   seriesId: string;
   round: string;
@@ -31,6 +43,17 @@ export type BracketFillSeries = {
     winnerTeamId: string | null;
     scoreFormat: BetSeriesFormat | null; // toujours null en NBA Cup
   };
+  /** Un pari (tout statut confondu) occupe déjà le slot SÉRIE de cette série
+   *  (paris centralisés dans Bracket, demandé par l'utilisateur 28/07/2026 —
+   *  même patron que betSlot/myBet de l'écran Matchs pour les paris MATCH). */
+  hasBet: boolean;
+  myBet: MySeriesBet | null;
+  /** Reproduit public.bet_deadline_open(SERIES, ...) (T3 §2) : coup d'envoi
+   *  du 1er match de la série — true si AUCUN match n'est encore programmé
+   *  (deadline toujours ouverte). Sert au décompte "paris séries restants"
+   *  (hub Jouer, Accueil — demandé par l'utilisateur 28/07/2026), PAS de
+   *  garde d'écriture ici (déjà portée par la fonction SQL save_bet). */
+  isBetDeadlinePassed: boolean;
 };
 
 export type BracketFillRound = { key: string; label: string; series: BracketFillSeries[] };
@@ -130,6 +153,21 @@ type BracketPickRow = {
   predicted_score_format: BetSeriesFormat | null;
 };
 
+type SeriesBetRow = {
+  id: string;
+  series_id: string;
+  status: "DRAFT" | "SUBMITTED" | "VALIDATED" | "REJECTED" | "WON" | "LOST" | "CANCELLED";
+  description: string;
+  proposed_category: BetCategory;
+  proposed_difficulty: BetDifficulty;
+};
+
+// Un pari REJECTED/CANCELLED libère toujours son slot (0.2.4 §6, même
+// convention que lib/queries/matches.ts) — ce sont donc les SEULS statuts
+// qu'on exclut ici : au plus une ligne active peut matcher par série
+// (uniq_active_series_bet).
+const RELEASED_SERIES_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
+
 export async function getBracketFillData(): Promise<BracketFillData> {
   const supabase = await getServerClient();
 
@@ -201,13 +239,34 @@ export async function getBracketFillData(): Promise<BracketFillData> {
     picks.map((p) => [p.series_id, { winnerTeamId: p.predicted_winner_team_id, scoreFormat: p.predicted_score_format }])
   );
 
+  // Paris SÉRIE actifs (0 ou 1 par série, uniq_active_series_bet) — pour
+  // centraliser la saisie inline directement sur la carte de série.
+  const { data: seriesBetsData } = await supabase
+    .from("bets")
+    .select("id, series_id, status, description, proposed_category, proposed_difficulty")
+    .eq("user_id", user.id)
+    .eq("competition_id", competition.id)
+    .eq("scope", "SERIES")
+    .in(
+      "series_id",
+      series.map((s) => s.id)
+    );
+  const seriesBetBySeriesId = new Map(
+    ((seriesBetsData ?? []) as SeriesBetRow[])
+      .filter((row) => !RELEASED_SERIES_BET_STATUSES.has(row.status))
+      .map((row) => [row.series_id, row])
+  );
+
   const candidatesBySeriesId = computeCandidateTeamIds(series, myWinnerBySeriesId, competition.type);
 
-  // Ordre des séries en NBA Cup : « matchs ordonnés par coup d'envoi » (même
-  // convention que lib/queries/bracket.ts §14) — slot_index seul ne reflète
-  // pas l'ordre réel des demies/finale en Cup.
+  // Coup d'envoi le plus tôt par série — sert à l'ordre d'affichage en NBA
+  // Cup (slot_index seul ne reflète pas l'ordre réel des demies/finale) ET à
+  // la deadline des paris SÉRIE (public.bet_deadline_open, T3 §2 : "min(
+  // scheduled_at) des matchs de la série"), pour les DEUX types de
+  // compétition — plus seulement conditionné à NBA_CUP comme avant l'ajout
+  // des paris séries (28/07/2026).
   const earliestKickoffBySeries = new Map<string, number>();
-  if (competition.type === "NBA_CUP") {
+  {
     const { data: matches } = await supabase
       .from("matches")
       .select("series_id, scheduled_at")
@@ -240,6 +299,9 @@ export async function getBracketFillData(): Promise<BracketFillData> {
         const candidates = candidatesBySeriesId.get(row.id) ?? { teamAId: null, teamBId: null };
         const teamA = candidates.teamAId ? resolveTeam(teams, candidates.teamAId) : null;
         const teamB = candidates.teamBId ? resolveTeam(teams, candidates.teamBId) : null;
+        const seriesBet = seriesBetBySeriesId.get(row.id);
+        const isBetEditable = seriesBet?.status === "DRAFT" || seriesBet?.status === "SUBMITTED";
+        const earliestKickoffMs = earliestKickoffBySeries.get(row.id);
         return {
           seriesId: row.id,
           round: row.round,
@@ -248,6 +310,18 @@ export async function getBracketFillData(): Promise<BracketFillData> {
           teamB,
           isSelectable: teamA !== null && teamB !== null,
           myPick: myPickBySeriesId.get(row.id) ?? { winnerTeamId: null, scoreFormat: null },
+          hasBet: seriesBet !== undefined,
+          myBet:
+            seriesBet && isBetEditable
+              ? {
+                  betId: seriesBet.id,
+                  status: seriesBet.status as "DRAFT" | "SUBMITTED",
+                  description: seriesBet.description,
+                  category: seriesBet.proposed_category,
+                  difficulty: seriesBet.proposed_difficulty,
+                }
+              : null,
+          isBetDeadlinePassed: earliestKickoffMs !== undefined && earliestKickoffMs <= Date.now(),
         };
       });
 
@@ -273,6 +347,19 @@ export async function getBracketFillData(): Promise<BracketFillData> {
     filledCount,
     totalCount: series.length,
   };
+}
+
+/** Séries où un pari SÉRIE reste POSSIBLE et pas encore posé — "restants",
+ *  demandé par l'utilisateur (28/07/2026) pour la carte Bracket du hub Jouer
+ *  et la section Accueil dédiée. NBA Cup exclue (pas de paris séries, une
+ *  "série" y est 1 seul match). Fonction PURE, réutilisée par
+ *  lib/queries/play-hub.ts et lib/queries/home.ts — jamais recalculée deux
+ *  fois avec une logique divergente. */
+export function getRemainingSeriesBets(data: BracketFillData): BracketFillSeries[] {
+  if (data.competitionType !== "PLAYOFFS") return [];
+  return data.rounds
+    .flatMap((round) => round.series)
+    .filter((s) => s.isSelectable && !s.hasBet && !s.isBetDeadlinePassed);
 }
 
 function resolveTeam(teams: Map<string, { name: string; abbreviation: string }>, teamId: string): BracketFillCandidate {

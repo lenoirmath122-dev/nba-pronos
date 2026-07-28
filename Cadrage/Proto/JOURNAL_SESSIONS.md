@@ -3431,3 +3431,96 @@ L'utilisateur a annoncé vouloir détailler chaque écran cible un peu plus à
 une prochaine session (pas un gap, juste une suite explicitement annoncée).
 
 **État en fin de session** : hub Jouer codé et vérifié, PAS encore committé.
+
+---
+
+## Commit du hub Jouer, revue des gaps, centralisation prono/pari (28/07/2026, suite)
+
+Push du hub Jouer (`277313e`). L'utilisateur enchaîne sur « détailler chaque
+écran » — demande d'abord une liste des corrections possibles issues de
+`GAPS_OUVERTS.md` (hors décisions de scope/déploiement) : badge de correction
+générique sur Matchs, tailles de logos inégales, bandeau sticky non traité en
+double ouverture, tailles de logo différentes entre écrans. **Reformulation
+de l'utilisateur** : ce n'est pas ça qu'il visait — il veut en réalité
+centraliser la saisie des pronos/paris dans Matchs et Bracket. Reformulé et
+confirmé avec lui avant de coder :
+1. Pari SÉRIE saisissable directement sur la carte de série dans Bracket
+   (même principe que le pari MATCH inline dans Matchs, posé le 27/07) —
+   écran « Nouveau pari » gardé tel quel comme option secondaire (pas retiré).
+2. Validation SYNCHRONISÉE prono+pari sur Matchs : un seul bouton quand les
+   deux sont prêts en même temps, sinon comportement inchangé (confirmé :
+   si le pari n'est pas rempli au moment de valider le prono, rien de
+   spécial, il reste à saisir plus tard).
+
+**Code (validation synchronisée, `components/matches/PredictionForm.tsx`)** :
+`InlineBetForm` généralisé et déplacé vers `components/bets/InlineBetForm.tsx`
+(scope MATCH/SERIES, `matchId` nullable, `hasBet`/`triggerLabel` calculés par
+l'appelant plutôt qu'imposés par un contrat de type unique — découplé de
+`MatchCard.betSlot`, figé par la spec Matchs). Nouvelles props
+`hideSubmit`/`onFieldsChange` : `PredictionForm` lit en direct les champs du
+pari via un miroir d'état (`betFields`), et n'affiche qu'UN bouton "Valider"
+quand prono ET pari sont prêts ensemble — `handleValidate`/
+`handleValidateDefinitively` enchaînent alors `validateMatchPrediction` PUIS
+`submitBet`, avec un message d'erreur dédié si le prono passe mais pas le
+pari (jamais l'inverse caché). Dialogue de confirmation étendu en
+conséquence (mention du pari si `betFields` non NULL).
+
+**Code (paris SÉRIE dans Bracket, `lib/queries/bracket-fill.ts`,
+`components/bracket-fill/BracketFillBoard.tsx`)** : `BracketFillSeries` étendu
+de `hasBet`/`myBet` (paris SÉRIE actifs, 0 ou 1 par série,
+`uniq_active_series_bet`) — même patron que `betSlot`/`myBet` de Matchs, mais
+type dédié (`MySeriesBet`) pour rester découplé du contrat Matchs. Nouveau
+`<InlineBetForm scope="SERIES">` sur chaque carte de série SÉLECTIONNABLE,
+**PLAYOFFS uniquement** (NBA Cup exclue — une série y est 1 seul match,
+`save_bet` refuse déjà le scope SÉRIE en Cup, pas la peine d'offrir une
+action vouée à l'échec).
+
+**Test en conditions réelles** : compétition minimale créée (« Test UI
+Matchs », script jetable service_role, scratchpad) — 1 série ROUND_1
+LAL-BOS + 1 match dans ~5h. Serveur `next start` relancé sur le port 3100.
+**Confirmé par l'utilisateur lui-même dans son navigateur** : la validation
+synchronisée « fonctionne nickel ».
+
+**Suite immédiate demandée par l'utilisateur** : ajouter le nombre de paris
+séries RESTANTS sur la carte Bracket du hub Jouer, et une section dédiée sur
+Accueil listant les paris séries pas encore posés, qui disparaît entièrement
+une fois tout rempli (jamais un état vide affiché, contrairement aux 2
+sections existantes).
+
+**Code** : `bracket-fill.ts` — nouveau champ `isBetDeadlinePassed` par série
+(reproduit `public.bet_deadline_open(SERIES, ...)`, T3 §2 : coup d'envoi du
+1er match de la série ; calcul du plus proche coup d'envoi par série
+généralisé aux Playoffs, plus seulement calculé pour l'ordre d'affichage
+NBA Cup comme avant) ; nouvelle fonction PURE exportée
+`getRemainingSeriesBets(data)` (séries sélectionnables, sans pari, deadline
+pas passée, PLAYOFFS uniquement) — réutilisée par `lib/queries/play-hub.ts`
+(carte Bracket : ligne "N paris séries restants", indépendante de
+`isActionable` — un pari série reste possible même après la deadline du
+bracket lui-même, pour les tours qui n'ont pas encore commencé) ET
+`lib/queries/home.ts` (nouvelle section, `SeriesBetTodoItem` dédié — PAS un
+`TodoItem` détourné, celui-ci agrège alors qu'ici chaque série est listée
+individuellement). Nouveau composant `components/home/SeriesBetList.tsx`.
+Ancre `#series-<id>` posée sur chaque carte de `BracketFillBoard.tsx`
+(+ `scroll-margin-top`) pour que le lien Accueil→Bracket pointe directement
+sur la bonne carte.
+
+Libellé de la section Accueil ajusté sur demande explicite de l'utilisateur
+après un premier essai : **« Paris séries non remplis »** (pas juste « Paris
+séries »).
+
+Vérifié à chaque étape : `tsc --noEmit`, `eslint`, `next build` (29 routes,
+aucun conflit), `vitest run` (26/26, aucune régression). Confirmé
+visuellement par l'utilisateur dans son navigateur (serveur relancé après
+chaque changement de build).
+
+**Trouvaille distincte, sans rapport avec ce lot** : `components/home/
+TodoRow.module.css` porte une modification non committée déjà présente AVANT
+cette session (un commentaire vide `/*  */` remplaçant une ligne blanche) —
+Claude ne l'a pas produite, aucune trace dans ce lot de travail. Laissée TELLE
+QUELLE (ni committée avec ce lot, ni annulée) — à statuer avec l'utilisateur
+une prochaine fois.
+
+**État en fin de session** : validation synchronisée + paris séries
+centralisés + décomptes hub/Accueil, TOUS codés et vérifiés. **PAS encore
+committés.** Compétition de test (« Test UI Matchs ») toujours ACTIVE en
+base — pas archivée.

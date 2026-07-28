@@ -30,9 +30,18 @@ function bracketDeadlineLabel(deadline: string): string {
 }
 
 function bracketLines(data: Awaited<ReturnType<typeof getPlayHubData>>["bracket"]): string[] {
-  if (!data.isActionable) return [];
-  const lines = [`Rempli ${data.filledCount}/${data.totalCount}`];
-  if (data.isNearDeadline && data.deadline) lines.push(bracketDeadlineLabel(data.deadline));
+  const lines: string[] = [];
+  if (data.isActionable) {
+    lines.push(`Rempli ${data.filledCount}/${data.totalCount}`);
+    if (data.isNearDeadline && data.deadline) lines.push(bracketDeadlineLabel(data.deadline));
+  }
+  // Indépendant de isActionable : un pari série reste posable même après la
+  // deadline du BRACKET (celle du 1er match du tournoi) tant que le 1er match
+  // DE CETTE SÉRIE précise n'a pas eu lieu (tours suivants notamment).
+  if (data.remainingSeriesBets > 0) {
+    const n = data.remainingSeriesBets;
+    lines.push(`${n} pari${n > 1 ? "s" : ""} série${n > 1 ? "s" : ""} restant${n > 1 ? "s" : ""}`);
+  }
   return lines;
 }
 

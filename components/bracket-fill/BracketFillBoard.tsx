@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { saveBracketPick, validateBracket } from "@/lib/actions/bracket-fill";
 import type { BetSeriesFormat, BracketFillSeries } from "@/lib/queries/bracket-fill";
+import { InlineBetForm } from "@/components/bets/InlineBetForm";
 import styles from "./BracketFillBoard.module.css";
 
 // SEULE feuille "use client" de l'écran Bracket personnel (§1 de la spec) :
@@ -101,7 +102,7 @@ function SeriesPickCard({ series, competitionType, onError }: SeriesPickCardProp
 
   if (!series.isSelectable) {
     return (
-      <div className={styles.card}>
+      <div id={`series-${series.seriesId}`} className={styles.card}>
         <p className={styles.pending}>Équipe à définir — complète les séries précédentes.</p>
       </div>
     );
@@ -122,7 +123,7 @@ function SeriesPickCard({ series, competitionType, onError }: SeriesPickCardProp
   }
 
   return (
-    <div className={styles.card}>
+    <div id={`series-${series.seriesId}`} className={styles.card}>
       <div className={styles.teams}>
         {[series.teamA, series.teamB].map((team) => {
           if (!team) return null;
@@ -158,6 +159,23 @@ function SeriesPickCard({ series, competitionType, onError }: SeriesPickCardProp
             </button>
           ))}
         </div>
+      )}
+
+      {/* Pari SÉRIE centralisé ici (demandé par l'utilisateur 28/07/2026 —
+          « tout centraliser dans Matchs et Bracket ») — jamais dans Matchs,
+          qui reste réservé aux paris MATCH. NBA Cup exclu : une "série" y est
+          1 seul match (T1), le pari SÉRIE y est de toute façon refusé par
+          save_bet (migration #10) — pas la peine d'offrir une action vouée à
+          l'échec. */}
+      {competitionType === "PLAYOFFS" && (
+        <InlineBetForm
+          scope="SERIES"
+          matchId={null}
+          seriesId={series.seriesId}
+          hasBet={series.hasBet}
+          triggerLabel="Proposer un pari"
+          myBet={series.myBet}
+        />
       )}
     </div>
   );

@@ -4,35 +4,23 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **Ordre de reprise, réactualisé avec l'utilisateur (28/07/2026, suite)** —
-> **T4 (vraie synchro API Highlightly) est désormais CODÉE et TESTÉE EN
-> CONDITIONS RÉELLES** (`ETAT_ACTUEL.md` §2.34) : client, `lib/sync/*`, 4
-> routes, dry-run complet sur les vraies affiches/résultats du 1er tour
-> Playoffs NBA 2026 (14 matchs réels créés et scorés automatiquement,
-> idempotence vérifiée). Quatre correctifs post-validation actés au fil du
-> codage, tous documentés dans `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (§3/§4/§5.2/
-> §6/§12) : référentiel équipes par table d'alias (pas de filtre API fiable) ;
-> attache match→série déterministe, secours passif par `sync_logs` (pas de
-> PENDING/écran de revue, structurellement inapplicable) ; formes réelles du
-> client (asymétrie `/teams`/`/matches`, un seul statut confirmé
-> empiriquement) ; paramètre `?date=` dev/test. Committé (`3f228d5`) et
-> poussé. Compétition de dry-run ARCHIVÉE. Les 2 gaps trouvés en testant la
-> saisie d'un pari (auto-validation admin, `InlineBetForm` inaccessible après
-> validation du prono) CORRIGÉS (commit `ace0d46`).
+> **État au 28/07/2026 (fin de session)** — T4 (synchro API Highlightly) et le
+> vrai hub Jouer sont CODÉS, TESTÉS et COMMITTÉS/POUSSÉS (détail complet
+> `ETAT_ACTUEL.md` §2.34/§2.35, `JOURNAL_SESSIONS.md`). Suite à la demande de
+> l'utilisateur de « centraliser » la saisie, deux fonctionnalités ajoutées le
+> même jour (`ETAT_ACTUEL.md` §2.36) : validation synchronisée prono+pari sur
+> Matchs, et paris SÉRIE désormais saisissables directement dans Bracket (+
+> décompte "paris séries restants" sur le hub Jouer et nouvelle section
+> Accueil "Paris séries non remplis"). **PAS ENCORE COMMITTÉ à ce stade** —
+> une compétition de test (« Test UI Matchs », LAL-BOS) reste ACTIVE en base,
+> posée pour la vérification visuelle, pas encore archivée.
 >
-> **Le vrai hub Jouer est désormais CODÉ** (28/07/2026, suite,
-> `SPEC_ECRAN_HUB_JOUER_V0_1.md`, nouvelle) : grille 2×2 (Matchs/Mes pronos en
-> haut, Bracket/Paris en bas), une pastille + un aperçu très court par carte
-> (`lib/queries/play-hub.ts`, `components/play/PlayHubCard.tsx`), état vide =
-> titre seul (jamais de libellé de substitution). Remplace le hub temporaire
-> (`app/(app)/play/page.tsx`). L'utilisateur a annoncé vouloir détailler
-> chaque écran cible un peu plus à une prochaine session — pas un gap, juste
-> une suite annoncée.
->
-> **Prochaine étape, à confirmer avec l'utilisateur** : détail des écrans
-> évoqué ci-dessus, OU le reste de T6c (Realtime au-delà de l'existant) ; puis
-> configurer le vrai planificateur externe (cron-job.org/GitHub Actions) au
-> déploiement pour que T4 tourne en continu (§ Déploiement ci-dessous).
+> **Prochaine étape, à confirmer avec l'utilisateur** : committer ce dernier
+> lot (et décider du sort de la compétition de test) ; détail de chaque écran
+> cible déjà annoncé par l'utilisateur ; le reste de T6c (Realtime au-delà de
+> l'existant) ; puis configurer le vrai planificateur externe (cron-job.org/
+> GitHub Actions) au déploiement pour que T4 tourne en continu (§ Déploiement
+> ci-dessous).
 
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 

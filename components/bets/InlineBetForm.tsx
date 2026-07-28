@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
 import {
   BET_CATEGORY_OPTIONS,
@@ -9,28 +9,50 @@ import {
   DEFAULT_BET_DIFFICULTY,
 } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
-import type { BetSlotIndicator, MyMatchBet } from "@/lib/queries/matches";
 import styles from "./InlineBetForm.module.css";
 
-// Saisie du pari DIRECTEMENT dans la ligne Match dépliée (demandé 27/07/2026,
-// en complément — pas en remplacement — de /play/bets/new et /play/bets/
-// [id]/edit qui restent l'entrée pour les paris SÉRIE et le hub libre). Cible
-// TOUJOURS ce match précis (scope MATCH figé, pas de sélecteur série/match ici
-// — la cible est déjà connue du contexte). Sans "use client" propre : rendu
-// par PredictionForm, qui porte déjà la frontière cliente de l'écran Matchs.
-//
-// Remplace l'ancien BetShortcut (lien vers l'écran dédié) : même logique de
-// disponibilité (betSlot), mais le formulaire s'ouvre ICI plutôt que de
-// naviguer ailleurs.
+// Saisie de pari partagée, générique sur le scope (MATCH ou SERIES) —
+// GÉNÉRALISÉ le 28/07/2026 depuis components/matches/InlineBetForm.tsx
+// (posé le 27/07/2026 pour les paris MATCH dans l'écran Matchs) pour être
+// réutilisé aussi par le Bracket personnel (paris SÉRIE, demandé par
+// l'utilisateur — « tout centraliser dans Matchs et Bracket »). Volontairement
+// DÉCOUPLÉ des contrats de types figés de chaque écran appelant
+// (MatchCard.betSlot, BracketFillSeries...) : le parent traduit son propre
+// indicateur de slot en `hasBet`/`triggerLabel` avant d'appeler ce composant,
+// plutôt que d'imposer une forme unique aux deux écrans.
+
+export type InlineBetFields = { description: string; category: BetCategory; difficulty: BetDifficulty };
+export type InlineBetOwned = InlineBetFields & { betId: string; status: "DRAFT" | "SUBMITTED" };
 
 type InlineBetFormProps = {
-  matchId: string;
+  scope: "MATCH" | "SERIES";
+  matchId: string | null; // null si scope === "SERIES"
   seriesId: string;
-  betSlot: BetSlotIndicator;
-  myBet: MyMatchBet | null;
+  /** Un pari (tout statut confondu) occupe déjà le slot pour cette cible. */
+  hasBet: boolean;
+  /** Libellé du bouton d'ouverture — construit par l'appelant (ex. "Proposer
+   *  un pari" ou "Proposer un pari · 2/3"), ce composant ne connaît pas la
+   *  mécanique de quota de chaque écran. */
+  triggerLabel: string;
+  /** Non NULL seulement si un pari existe ET reste éditable ICI (DRAFT/SUBMITTED). */
+  myBet: InlineBetOwned | null;
+  /** Masque le bouton de soumission propre — le parent gère alors la
+   *  soumission (validation synchronisée, écran Matchs uniquement à ce jour). */
+  hideSubmit?: boolean;
+  /** Miroir live des champs, NULL tant que rien n'est prêt à soumettre. */
+  onFieldsChange?: (fields: InlineBetFields | null) => void;
 };
 
-export function InlineBetForm({ matchId, seriesId, betSlot, myBet }: InlineBetFormProps) {
+export function InlineBetForm({
+  scope,
+  matchId,
+  seriesId,
+  hasBet,
+  triggerLabel,
+  myBet,
+  hideSubmit,
+  onFieldsChange,
+}: InlineBetFormProps) {
   const [isOpen, setIsOpen] = useState(myBet !== null);
   const [description, setDescription] = useState(myBet?.description ?? "");
   const [category, setCategory] = useState<BetCategory>(myBet?.category ?? DEFAULT_BET_CATEGORY);
@@ -38,22 +60,26 @@ export function InlineBetForm({ matchId, seriesId, betSlot, myBet }: InlineBetFo
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
-  // Pari déjà posé mais dans un statut non éditable ici (VALIDATED/WON/LOST,
-  // §9) : lecture seule, comme avant — pas de ré-ouverture inline.
-  if (betSlot.hasBetOnThisMatch && !myBet) {
+  useEffect(() => {
+    if (!onFieldsChange) return;
+    const ready = isOpen && description.trim().length > 0;
+    onFieldsChange(ready ? { description, category, difficulty } : null);
+  }, [isOpen, description, category, difficulty, onFieldsChange]);
+
+  // Pari déjà posé mais dans un statut non éditable ici (VALIDATED/WON/LOST) :
+  // lecture seule, pas de ré-ouverture inline.
+  if (hasBet && !myBet) {
     return (
       <span className={styles.disabled} aria-disabled="true">
-        Pari déjà posé sur ce match
+        Pari déjà posé sur cette {scope === "SERIES" ? "série" : "match"}
       </span>
     );
   }
 
   if (!isOpen) {
-    const label =
-      betSlot.mode === "BINARY" ? "Proposer un pari" : `Proposer un pari · ${betSlot.usedSlots}/${betSlot.totalSlots}`;
     return (
       <button type="button" className={styles.trigger} onClick={() => setIsOpen(true)}>
-        {label}
+        {triggerLabel}
       </button>
     );
   }
@@ -64,7 +90,7 @@ export function InlineBetForm({ matchId, seriesId, betSlot, myBet }: InlineBetFo
   function targetPayload() {
     return {
       betId: myBet?.betId,
-      scope: "MATCH" as const,
+      scope,
       seriesId,
       matchId,
       description,
@@ -148,14 +174,16 @@ export function InlineBetForm({ matchId, seriesId, betSlot, myBet }: InlineBetFo
             Enregistrer le brouillon
           </button>
         )}
-        <button
-          type="button"
-          className={styles.primary}
-          onClick={handleSubmit}
-          disabled={isPending || descriptionEmpty}
-        >
-          {isSubmittedBet ? "Soumettre les modifications" : "Soumettre à validation"}
-        </button>
+        {!hideSubmit && (
+          <button
+            type="button"
+            className={styles.primary}
+            onClick={handleSubmit}
+            disabled={isPending || descriptionEmpty}
+          >
+            {isSubmittedBet ? "Soumettre les modifications" : "Soumettre à validation"}
+          </button>
+        )}
         {isSubmittedBet && (
           <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>
             Revenir en brouillon

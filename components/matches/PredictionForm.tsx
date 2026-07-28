@@ -3,12 +3,17 @@
 import { useEffect, useState, useTransition } from "react";
 import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
 import { saveMatchPredictionDraft, validateMatchPrediction } from "@/lib/actions/matches";
-import type { MatchCard } from "@/lib/queries/matches";
+import { submitBet } from "@/lib/actions/bets";
+import type { BetSlotIndicator, MatchCard } from "@/lib/queries/matches";
 import { TeamPicker } from "./TeamPicker";
 import { MarginStepper } from "./MarginStepper";
 import { RevealPanel } from "./RevealPanel";
-import { InlineBetForm } from "./InlineBetForm";
+import { InlineBetForm, type InlineBetFields } from "@/components/bets/InlineBetForm";
 import styles from "./PredictionForm.module.css";
+
+function triggerLabelFor(betSlot: BetSlotIndicator): string {
+  return betSlot.mode === "BINARY" ? "Proposer un pari" : `Proposer un pari · ${betSlot.usedSlots}/${betSlot.totalSlots}`;
+}
 
 // Ligne dépliée — feuille client n°2/3 (§1) : porte l'état de saisie local
 // (winner/margin) et le drapeau `dirty` consommé par useUnsavedGuard (C2).
@@ -34,6 +39,12 @@ export function PredictionForm({ match }: PredictionFormProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showValidateConfirm, setShowValidateConfirm] = useState(false);
+  // Miroir live du pari inline (InlineBetForm), non NULL seulement quand un
+  // pari est ouvert ET a un énoncé — permet de synchroniser sa soumission
+  // avec la validation du prono (demandé par l'utilisateur le 28/07/2026) :
+  // un SEUL bouton quand les deux sont prêts ensemble, sinon comportement
+  // inchangé (chacun géré indépendamment).
+  const [betFields, setBetFields] = useState<InlineBetFields | null>(null);
 
   useEffect(() => {
     const dirty = winner !== match.myWinnerTeamId || margin !== match.myMargin;
@@ -62,7 +73,14 @@ export function PredictionForm({ match }: PredictionFormProps) {
             vs bets) — valider le prono en premier ne doit pas priver l'accès au
             pari associé, sans quoi seul l'écran Paris dédié reste utilisable
             (GAPS_OUVERTS.md, trouvé 28/07/2026). */}
-        <InlineBetForm matchId={match.matchId} seriesId={match.seriesId} betSlot={match.betSlot} myBet={match.myBet} />
+        <InlineBetForm
+          scope="MATCH"
+          matchId={match.matchId}
+          seriesId={match.seriesId}
+          hasBet={match.betSlot.hasBetOnThisMatch}
+          triggerLabel={triggerLabelFor(match.betSlot)}
+          myBet={match.myBet}
+        />
       </div>
     );
   }
@@ -89,13 +107,36 @@ export function PredictionForm({ match }: PredictionFormProps) {
     });
   }
 
+  // Soumet le pari inline SI il est prêt (betFields non NULL) — no-op sinon.
+  // Appelée APRÈS une validation de prono réussie, jamais avant : un échec de
+  // soumission du pari ne doit pas empêcher ni masquer le succès du prono
+  // (déjà acquis, irréversible) — l'erreur, s'il y en a une, le dit clairement.
+  async function submitBetIfReady(): Promise<{ success: true } | { success: false; error: string }> {
+    if (!betFields) return { success: true };
+    const result = await submitBet({
+      betId: match.myBet?.betId,
+      scope: "MATCH",
+      seriesId: match.seriesId,
+      matchId: match.matchId,
+      description: betFields.description,
+      category: betFields.category,
+      difficulty: betFields.difficulty,
+    });
+    return result.success ? { success: true } : { success: false, error: result.error };
+  }
+
   function handleValidate() {
     setError(null);
     startTransition(async () => {
       const result = await validateMatchPrediction(match.matchId);
       setShowValidateConfirm(false);
-      if (result.success) clearDirty();
-      else setError(result.error);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      clearDirty();
+      const betResult = await submitBetIfReady();
+      if (!betResult.success) setError(`Prono validé — le pari n'a pas pu être soumis : ${betResult.error}`);
     });
   }
 
@@ -117,8 +158,13 @@ export function PredictionForm({ match }: PredictionFormProps) {
       }
       const result = await validateMatchPrediction(match.matchId);
       setShowValidateConfirm(false);
-      if (result.success) clearDirty();
-      else setError(result.error);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      clearDirty();
+      const betResult = await submitBetIfReady();
+      if (!betResult.success) setError(`Prono validé — le pari n'a pas pu être soumis : ${betResult.error}`);
     });
   }
 
@@ -152,15 +198,22 @@ export function PredictionForm({ match }: PredictionFormProps) {
           onClick={() => setShowValidateConfirm(true)}
           disabled={isPending || !isComplete}
         >
-          Valider le prono
+          {betFields ? "Valider" : "Valider le prono"}
         </button>
       </div>
 
+      {/* hideSubmit/onFieldsChange : synchronisation de la validation quand
+          prono ET pari sont prêts ensemble (voir submitBetIfReady ci-dessus)
+          — sinon, comportement inchangé (chacun soumis indépendamment). */}
       <InlineBetForm
+        scope="MATCH"
         matchId={match.matchId}
         seriesId={match.seriesId}
-        betSlot={match.betSlot}
+        hasBet={match.betSlot.hasBetOnThisMatch}
+        triggerLabel={triggerLabelFor(match.betSlot)}
         myBet={match.myBet}
+        hideSubmit={isComplete && betFields !== null}
+        onFieldsChange={setBetFields}
       />
 
       {/* Dialogue de VALIDATION — distinct du dialogue C2 de perte de saisie
@@ -182,6 +235,7 @@ export function PredictionForm({ match }: PredictionFormProps) {
                 <p className={styles.dialogBody}>
                   Attention, ton brouillon n&rsquo;est pas encore enregistré. Une fois validé, le prono
                   n&rsquo;est plus modifiable — enregistre-le d&rsquo;abord si tu veux pouvoir revenir dessus.
+                  {betFields && " Ton pari sera aussi soumis à un admin pour validation."}
                 </p>
                 <div className={styles.dialogActions}>
                   <button
@@ -215,6 +269,7 @@ export function PredictionForm({ match }: PredictionFormProps) {
                 <p className={styles.dialogBody}>
                   Une fois validé, il n&rsquo;est plus modifiable — et tu verras (comme les autres joueurs) les
                   pronos déjà déposés sur ce match.
+                  {betFields && " Ton pari sera aussi soumis à un admin pour validation."}
                 </p>
                 <div className={styles.dialogActions}>
                   <button

@@ -5,42 +5,39 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/07/2026 (suite — **T4 (synchro API
-> Highlightly) est CODÉE et TESTÉE EN CONDITIONS RÉELLES**, §2.34 : client
-> (`lib/nba/client.ts`), `lib/sync/{teams,schedule,results}.ts`, 4 routes
-> (`/api/sync/*`, `/api/heartbeat`). Clé API posée par l'utilisateur dans
-> `.env.local`. Dry-run complet sur les VRAIES affiches et VRAIS résultats
-> du 1er tour des Playoffs NBA 2026 (8 séries, 14 matchs réels, scores
-> exacts) : création automatique des matchs, synchro des scores, recalcul
-> du scoring (moteur T5 inchangé), idempotence — TOUT vérifié en conditions
-> réelles. Quatre correctifs post-validation actés avec l'utilisateur en
-> cours de route (référentiel équipes par table d'alias plutôt que filtre
-> API, attache match→série déterministe avec secours passif par
-> `sync_logs`, formes réelles du client, paramètre `?date=` dev/test) —
-> voir `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (amendements §3/§4/§5.2/§6/§12).
-> **Suite (même session)** : les 2 gaps trouvés en testant un pari sur la
-> compétition de dry-run (auto-validation admin, `InlineBetForm`
-> inaccessible après validation du prono) CORRIGÉS. T4 (`3f228d5`) + ces
-> correctifs (`ace0d46`) COMMITTÉS ET POUSSÉS sur `main`. Compétition de
-> dry-run ARCHIVÉE (avec snapshot) — **aucune compétition active
-> actuellement**.
+> Dernière mise à jour : session du 28/07/2026 (longue session, 4 chantiers
+> enchaînés, détail complet §2.34/§2.35/§2.36 + `JOURNAL_SESSIONS.md`) :
 >
-> **Puis : le VRAI hub Jouer est CODÉ** (§2.35, `SPEC_ECRAN_HUB_JOUER_V0_1.md`,
-> nouvelle — rédigée en séance, la règle fonctionnelle 0.2.9 §3 existait déjà
-> mais aucune spec visuelle). Grille 2×2 (Matchs/Mes pronos en haut,
-> Bracket/Paris en bas), pastille + aperçu très court par carte, état vide =
-> titre seul. Remplace le hub temporaire (§2.10). `tsc`/`eslint`/`next
-> build`/`vitest` tous propres — **pas encore committé**, pas de test visuel
-> en conditions réelles peuplées (aucune compétition active à ce stade).
+> 1. **T4 (synchro API Highlightly) CODÉE et TESTÉE EN CONDITIONS RÉELLES**
+>    (§2.34) — dry-run complet sur les vraies affiches/résultats du 1er tour
+>    Playoffs NBA 2026, idempotence vérifiée. Committé et poussé (`3f228d5`).
+> 2. **2 gaps trouvés en testant un pari** (auto-validation admin,
+>    `InlineBetForm` inaccessible après validation du prono) CORRIGÉS,
+>    committés et poussés (`ace0d46`).
+> 3. **Le vrai hub Jouer CODÉ** (§2.35, `SPEC_ECRAN_HUB_JOUER_V0_1.md`) —
+>    grille 2×2, pastille + aperçu par carte. Committé et poussé (`277313e`).
+> 4. **Centralisation prono/pari, demandée par l'utilisateur** (§2.36) :
+>    validation synchronisée prono+pari sur Matchs (un seul bouton quand les
+>    deux sont prêts) ; paris SÉRIE saisissables directement dans Bracket
+>    (Playoffs uniquement) ; décompte "paris séries restants" sur la carte
+>    Bracket du hub ; nouvelle section Accueil "Paris séries non remplis"
+>    (disparaît quand vide). **PAS ENCORE COMMITTÉ.**
 >
-> Au passage, rappel donné à l'utilisateur sur le reste de T6c (Realtime au
-> delà de l'existant) : l'essentiel était déjà construit au fil des écrans ;
-> le morceau réellement manquant est la publication Realtime sur `series`
-> (jamais activée) + son câblage sur le Bracket global.
+> **État de la base** : une compétition de test (« Test UI Matchs », 1 série
+> LAL-BOS + 1 match) reste ACTIVE, posée pour vérifier visuellement le point
+> 4 — confirmé fonctionnel par l'utilisateur lui-même dans son navigateur.
+> Pas encore archivée.
 >
-> Prochaine étape à confirmer : committer le hub Jouer, puis le détail de
-> chaque écran cible (annoncé par l'utilisateur) ou le reste de T6c — voir
-> `GAPS_OUVERTS.md`. Détail complet dans `JOURNAL_SESSIONS.md`.
+> **Rien à signaler côté T6c** au-delà de ce qui était déjà su : Realtime sur
+> `series` reste le seul morceau manquant (jamais activée).
+>
+> **Trouvaille sans rapport, laissée en l'état** : `components/home/
+> TodoRow.module.css` porte une modification non committée PRÉEXISTANTE à
+> cette session (pas produite par Claude) — à statuer avec l'utilisateur.
+>
+> Prochaine étape à confirmer : committer le lot de centralisation (+ décider
+> du sort de la compétition de test), puis le détail de chaque écran cible
+> (annoncé par l'utilisateur) ou le reste de T6c — voir `GAPS_OUVERTS.md`.
 
 ---
 
@@ -104,7 +101,10 @@ Bracket vue globale, Matchs §2.8, Mes pronos §2.11, Nouveau pari §2.15,
 Bracket personnel §2.16, Mes paris §2.19), logos de franchise câblés sur
 Bracket/Matchs/Mes pronos/Bracket personnel. Le VRAI hub Jouer (§2.35,
 `SPEC_ECRAN_HUB_JOUER_V0_1.md`) remplace désormais le hub temporaire
-(§2.10) — grille 2×2, pastilles + aperçu par carte.
+(§2.10) — grille 2×2, pastilles + aperçu par carte. **Centralisation
+prono/pari** (§2.36, demandée par l'utilisateur) : validation synchronisée
+sur Matchs, paris SÉRIE désormais dans Bracket, décomptes sur le hub et
+l'Accueil.
 
 **Le lot ADMIN est ENTIÈREMENT CLOS (6/6 écrans)** : tableau de bord
 (§2.20, `/admin`), validation des paris (§2.21), Gestion des joueurs
@@ -3078,6 +3078,85 @@ spec plutôt que vérifiée à l'écran.
 L'utilisateur a annoncé vouloir détailler chaque écran cible un peu plus à
 une prochaine session (pas un gap, une suite explicitement annoncée par
 lui).
+
+PAS encore committé à ce stade — committé et poussé depuis (`277313e`),
+voir §2.36.
+```
+
+### 2.36 Centralisation prono/pari — validation synchronisée + paris séries dans Bracket (session du 28/07/2026, suite)
+
+```text
+Périmètre : demandé par l'utilisateur en reprenant les gaps ouverts — pas une
+correction de bug, une évolution fonctionnelle ("tout centraliser dans
+Matchs et Bracket"). Deux points confirmés avec lui avant de coder : pari
+SÉRIE inline sur la carte de série dans Bracket (même principe que le pari
+MATCH inline dans Matchs, §2.15) ; validation SYNCHRONISÉE prono+pari quand
+les deux sont prêts en même temps sur un match (sinon comportement
+inchangé). Écran « Nouveau pari » gardé TEL QUEL comme option secondaire —
+pas retiré, décision explicite.
+
+**Validation synchronisée (`components/matches/PredictionForm.tsx`)** :
+`InlineBetForm` GÉNÉRALISÉ et DÉPLACÉ vers `components/bets/InlineBetForm.tsx`
+(scope MATCH/SERIES, `matchId` nullable, `hasBet`/`triggerLabel`/`myBet`
+calculés par l'appelant — volontairement DÉCOUPLÉ du contrat figé
+`MatchCard.betSlot`, spec Matchs §13). Nouvelles props `hideSubmit`/
+`onFieldsChange` : `PredictionForm` maintient un miroir d'état des champs du
+pari (`betFields`) et n'affiche qu'UN bouton "Valider" quand prono ET pari
+sont prêts ensemble. `handleValidate`/`handleValidateDefinitively`
+enchaînent alors `validateMatchPrediction` PUIS `submitBet` — un échec de
+soumission du pari APRÈS un prono déjà validé ne masque jamais le succès du
+prono (message d'erreur dédié, jamais un rollback silencieux). Dialogue de
+confirmation étendu (mention du pari si `betFields` non NULL).
+
+**Paris SÉRIE dans Bracket (`lib/queries/bracket-fill.ts`,
+`components/bracket-fill/BracketFillBoard.tsx`)** : `BracketFillSeries`
+étendu de `hasBet`/`myBet` (type dédié `MySeriesBet`, même patron que
+Matchs sans partager son contrat). `<InlineBetForm scope="SERIES">` posé sur
+chaque carte de série SÉLECTIONNABLE, **PLAYOFFS uniquement** — NBA Cup
+exclue (une série y est 1 seul match ; `save_bet`, migration #10, refuse
+déjà ce scope en Cup, pas la peine d'offrir une action vouée à l'échec).
+
+**Décompte "paris séries restants" (hub Jouer + Accueil)** : nouveau champ
+`isBetDeadlinePassed` par série (`bracket-fill.ts`, reproduit
+`public.bet_deadline_open(SERIES,...)` — coup d'envoi du 1er match de la
+série ; calcul du plus proche coup d'envoi généralisé aux Playoffs, plus
+seulement calculé pour l'ordre d'affichage NBA Cup comme avant). Nouvelle
+fonction PURE exportée `getRemainingSeriesBets(data)` (séries sélectionnables,
+sans pari, deadline pas passée, PLAYOFFS uniquement) — réutilisée par :
+- `lib/queries/play-hub.ts` : carte Bracket du hub, ligne "N paris séries
+  restants", INDÉPENDANTE de `isActionable` (un pari série reste possible
+  même après la deadline du bracket lui-même, pour les tours pas encore
+  commencés) ;
+- `lib/queries/home.ts` : nouvelle section Accueil **« Paris séries non
+  remplis »** (libellé ajusté sur demande explicite après un 1er essai),
+  type dédié `SeriesBetTodoItem` (liste chaque série individuellement,
+  contrairement à `TodoItem` qui agrège) + nouveau composant
+  `components/home/SeriesBetList.tsx`. Section **retirée entièrement**
+  quand la liste est vide — jamais un état vide affiché, contrairement aux
+  2 sections existantes (« À traiter », « Ça vient de tomber »).
+
+Ancre `#series-<id>` posée sur chaque carte de `BracketFillBoard.tsx` (+
+`scroll-margin-top`) pour que chaque lien Accueil→Bracket pointe directement
+sur la bonne carte de série.
+
+**Test en conditions réelles** : compétition minimale créée pour l'occasion
+(« Test UI Matchs », script jetable service_role — 1 série ROUND_1 LAL-BOS +
+1 match dans les heures suivantes). Serveur `next start` relancé après
+chaque changement de build (port 3100). **Confirmé fonctionnel par
+l'utilisateur lui-même, dans son navigateur** — validation synchronisée,
+pari série sur Bracket, décomptes hub/Accueil, tous vérifiés visuellement.
+
+Vérifié à chaque étape : `npx tsc --noEmit`, `npx eslint .`, `npx next build`
+(29 routes, aucun conflit), `npx vitest run` (26/26, aucune régression).
+
+**Trouvaille distincte, sans rapport avec ce lot** : `components/home/
+TodoRow.module.css` porte une modification non committée déjà présente AVANT
+cette session (commentaire vide `/*  */` remplaçant une ligne blanche) —
+Claude ne l'a pas produite. Laissée telle quelle (ni committée, ni annulée) —
+à statuer avec l'utilisateur.
+
+Compétition de test (« Test UI Matchs ») toujours ACTIVE en base à ce stade
+— pas archivée.
 
 PAS encore committé à ce stade.
 ```

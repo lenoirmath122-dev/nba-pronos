@@ -1,4 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getBracketFillData, getRemainingSeriesBets } from "@/lib/queries/bracket-fill";
+import { ROUND_LABELS } from "@/lib/labels/rounds";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
 // §7. Un seul module, appelé avec getServerClient() : les requêtes passent par
@@ -39,11 +41,17 @@ export type FeedItem = {
   occurredAt: string;
 };
 
+/** Un item de la section « Paris séries » (demandée par l'utilisateur
+ *  28/07/2026) — LISTE chaque série individuellement (contrairement à
+ *  TodoItem, qui agrège), donc un type dédié plutôt qu'un TodoItem détourné. */
+export type SeriesBetTodoItem = { seriesId: string; title: string; href: string };
+
 export type HomeData = {
   competitionId: string | null;
   header: HomeHeader | null;
   todo: TodoItem[];
   adminTodo: TodoItem[];
+  seriesBets: SeriesBetTodoItem[];
   feed: FeedItem[];
 };
 
@@ -56,6 +64,7 @@ const EMPTY_HOME_DATA: HomeData = {
   header: null,
   todo: [],
   adminTodo: [],
+  seriesBets: [],
   feed: [],
 };
 
@@ -89,14 +98,33 @@ export async function getHomeData(): Promise<HomeData> {
     return EMPTY_HOME_DATA;
   }
 
-  const [header, todo, adminTodo, feed] = await Promise.all([
+  const [header, todo, adminTodo, seriesBets, feed] = await Promise.all([
     getHeader(supabase, competition, user.id),
     getTodo(supabase, competition, user.id),
     getAdminTodo(supabase, competition.id),
+    getSeriesBetsTodo(),
     getFeed(supabase, competition.id, user.id),
   ]);
 
-  return { competitionId: competition.id, header, todo, adminTodo, feed };
+  return { competitionId: competition.id, header, todo, adminTodo, seriesBets, feed };
+}
+
+// ============================================================================
+// « Paris séries » (demandé par l'utilisateur 28/07/2026) — liste chaque
+// série où un pari reste possible et pas encore posé ; section RETIRÉE dès
+// que la liste est vide (jamais un état vide affiché, contrairement à « À
+// traiter »/« Ça vient de tomber »). Réutilise getBracketFillData() +
+// getRemainingSeriesBets() (lib/queries/bracket-fill.ts) — même logique que
+// la carte Bracket du hub Jouer, jamais recalculée deux fois.
+// ============================================================================
+
+async function getSeriesBetsTodo(): Promise<SeriesBetTodoItem[]> {
+  const data = await getBracketFillData();
+  return getRemainingSeriesBets(data).map((series) => ({
+    seriesId: series.seriesId,
+    title: `${ROUND_LABELS[series.round] ?? series.round} — ${series.teamA?.abbreviation} vs ${series.teamB?.abbreviation}`,
+    href: `/play/bracket#series-${series.seriesId}`,
+  }));
 }
 
 // ============================================================================
