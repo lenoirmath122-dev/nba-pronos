@@ -18,19 +18,29 @@
 > API, attache match→série déterministe avec secours passif par
 > `sync_logs`, formes réelles du client, paramètre `?date=` dev/test) —
 > voir `SPEC_TECHNIQUE_SYNCHRO_V0.1.md` (amendements §3/§4/§5.2/§6/§12).
-> **Suite (même session)** : T4 committé (`3f228d5`, pas encore poussé). En
-> testant la saisie d'un pari sur la compétition de dry-run, l'utilisateur a
-> trouvé 2 points, TOUS DEUX CORRIGÉS dans la foulée (§2.34) : un admin
-> pouvait valider son PROPRE pari (`assertNotOwnBet()`, nouveau) ; le pari
-> associé à un match devenait inaccessible depuis Matchs une fois le prono
-> validé (`InlineBetForm` désormais rendu dans les deux branches). Ces 2
-> correctifs ne sont PAS encore committés. La compétition de dry-run a
-> ensuite été ARCHIVÉE (avec snapshot cette fois, contrairement à la
-> précédente) — **aucune compétition active actuellement**. Prochaine étape
-> à confirmer avec l'utilisateur : committer/pousser les 2 correctifs, puis
-> reprendre l'ordre habituel (vrai hub Jouer, T6c, mini-bracket Cup,
-> planificateur externe) — voir `GAPS_OUVERTS.md`. Détail complet dans
-> `JOURNAL_SESSIONS.md`.
+> **Suite (même session)** : les 2 gaps trouvés en testant un pari sur la
+> compétition de dry-run (auto-validation admin, `InlineBetForm`
+> inaccessible après validation du prono) CORRIGÉS. T4 (`3f228d5`) + ces
+> correctifs (`ace0d46`) COMMITTÉS ET POUSSÉS sur `main`. Compétition de
+> dry-run ARCHIVÉE (avec snapshot) — **aucune compétition active
+> actuellement**.
+>
+> **Puis : le VRAI hub Jouer est CODÉ** (§2.35, `SPEC_ECRAN_HUB_JOUER_V0_1.md`,
+> nouvelle — rédigée en séance, la règle fonctionnelle 0.2.9 §3 existait déjà
+> mais aucune spec visuelle). Grille 2×2 (Matchs/Mes pronos en haut,
+> Bracket/Paris en bas), pastille + aperçu très court par carte, état vide =
+> titre seul. Remplace le hub temporaire (§2.10). `tsc`/`eslint`/`next
+> build`/`vitest` tous propres — **pas encore committé**, pas de test visuel
+> en conditions réelles peuplées (aucune compétition active à ce stade).
+>
+> Au passage, rappel donné à l'utilisateur sur le reste de T6c (Realtime au
+> delà de l'existant) : l'essentiel était déjà construit au fil des écrans ;
+> le morceau réellement manquant est la publication Realtime sur `series`
+> (jamais activée) + son câblage sur le Bracket global.
+>
+> Prochaine étape à confirmer : committer le hub Jouer, puis le détail de
+> chaque écran cible (annoncé par l'utilisateur) ou le reste de T6c — voir
+> `GAPS_OUVERTS.md`. Détail complet dans `JOURNAL_SESSIONS.md`.
 
 ---
 
@@ -92,9 +102,9 @@ données (modèle + auth + RLS) est posé et codé (§3). CODÉS ET VÉRIFIÉS a
 un vrai jeu de données : les HUIT écrans du hub joueur (Accueil, Classement,
 Bracket vue globale, Matchs §2.8, Mes pronos §2.11, Nouveau pari §2.15,
 Bracket personnel §2.16, Mes paris §2.19), logos de franchise câblés sur
-Bracket/Matchs/Mes pronos/Bracket personnel. Le hub Jouer TEMPORAIRE
-(§2.10) relie l'onglet « Jouer » aux QUATRE écrans du hub — reste à
-remplacer par le vrai hub (spec pas encore écrite, GAPS_OUVERTS.md).
+Bracket/Matchs/Mes pronos/Bracket personnel. Le VRAI hub Jouer (§2.35,
+`SPEC_ECRAN_HUB_JOUER_V0_1.md`) remplace désormais le hub temporaire
+(§2.10) — grille 2×2, pastilles + aperçu par carte.
 
 **Le lot ADMIN est ENTIÈREMENT CLOS (6/6 écrans)** : tableau de bord
 (§2.20, `/admin`), validation des paris (§2.21), Gestion des joueurs
@@ -3016,6 +3026,58 @@ actuellement.**
 amendements post-validation §3/§4/§5.2/§6/§12) ; `JOURNAL_SESSIONS.md` ;
 les 2 gaps retirés de `GAPS_OUVERTS.md` (résolus).
 
-**Commit `3f228d5` (T4) fait, PAS poussé. Les 2 correctifs de gaps PAS
-encore committés à ce stade.**
+**Commits `3f228d5` (T4) et `ace0d46` (correctifs) faits ET POUSSÉS sur
+`main`.**
+```
+
+### 2.35 Vrai hub Jouer (session du 28/07/2026, suite)
+
+```text
+Périmètre : SPEC_ECRAN_HUB_JOUER_V0_1.md (nouvelle, rédigée en séance —
+0.2.9 §3 posait déjà la règle fonctionnelle non rouvrable : « Jouer = HUB
+regroupant Matchs, Bracket, Paris, Mes pronos, avec pastilles "à faire" par
+univers », mais aucune spec visuelle n'existait). Remplace ENTIÈREMENT le
+hub temporaire (§2.10) — app/(app)/play/page.tsx + page.module.css réécrits.
+
+Layout : grille 2×2 fixe (2 colonnes même en mobile, contrainte demandée) —
+Matchs / Mes pronos en haut, Mon bracket / Paris en bas (décidé avec
+l'utilisateur). État vide (décidé avec l'utilisateur) : une carte sans rien
+à montrer affiche SEULEMENT son titre, jamais de libellé de substitution
+type « Rien à faire ».
+
+Contenu par carte (pastille + 0-2 lignes d'aperçu, décidé avec
+l'utilisateur) :
+- Matchs : pastille = nombre de matchs de la fenêtre 3 jours pas encore
+  VALIDATED ; aperçu = le prochain match (équipes + heure).
+- Mes pronos : PAS de pastille (écran de consultation) ; aperçu = le
+  dernier prono verrouillé et scoré (équipe, écart, gagné/perdu, points).
+- Mon bracket : pas de badge séparé (le ratio "X/15" EST la pastille, porté
+  par la 1ère ligne) ; 2e ligne = compte à rebours si la deadline est à
+  moins de 2 jours.
+- Paris : pastille = brouillons + en attente d'admin ; aperçu = décompte
+  par catégorie, jamais un total brut.
+
+Code : lib/queries/play-hub.ts (NOUVEAU — lectures LÉGÈRES dédiées par
+carte, PAS de réutilisation des requêtes complètes des écrans cibles, sauf
+UNE exception assumée : la carte Bracket réutilise directement
+getBracketFillData() — dupliquer la dérivation des candidats de tour 2+
+pour économiser quelques colonnes aurait été un vrai risque de divergence,
+cf. la leçon retenue de SPEC_ECRAN_BRACKET_PERSONNEL_V0_1 §0, pour un gain
+de perf négligeable sur une seule compétition de 15 séries) ;
+components/play/PlayHubCard.tsx (+ .module.css, carte générique serveur,
+badge optionnel + jusqu'à 2 lignes) ; app/(app)/play/page.tsx +
+page.module.css réécrits.
+
+Vérifié : npx tsc --noEmit, npx eslint ., npx next build (29 routes, /play
+toujours seul, aucun conflit), npx vitest run (26/26, aucune régression).
+PAS de test visuel en conditions réelles peuplées cette fois (aucune
+compétition active à ce stade, dry-run T4 archivée juste avant) — la
+logique de chaque état vide/actionnable a été relue ligne à ligne contre la
+spec plutôt que vérifiée à l'écran.
+
+L'utilisateur a annoncé vouloir détailler chaque écran cible un peu plus à
+une prochaine session (pas un gap, une suite explicitement annoncée par
+lui).
+
+PAS encore committé à ce stade.
 ```

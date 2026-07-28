@@ -3385,3 +3385,49 @@ Correctifs des 2 gaps PAS encore committés à ce stade. Compétition de
 dry-run archivée, aucune compétition active. Prochaine étape à confirmer :
 committer/pousser les 2 correctifs, puis reprendre l'ordre habituel (vrai
 hub Jouer, T6c, mini-bracket Cup, planificateur externe).
+
+---
+
+## Vrai hub Jouer — spec rédigée en séance et codée (28/07/2026, suite)
+
+Poussé `3f228d5` + `ace0d46` sur `main` (demande explicite). L'utilisateur
+choisit d'attaquer le vrai hub Jouer ; demande d'abord un rappel de ce que
+recouvre le reste de T6c (lu directement dans
+`SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_c.md`, croisé avec le code réel) :
+l'essentiel des 13 points du chantier T6c était déjà construit au fil des
+écrans (barre « toi », bascule bracket, tri classement, absents/inactif,
+dialogue C2, marquage correction nominatif) — le morceau réellement manquant
+est la publication Realtime sur `series` (jamais activée, T4 §9/T6c §14.2)
+et son câblage sur le Bracket global (résumé + drill-down en direct).
+
+**Hub Jouer** : aucune spec n'existait (`nba_pronos_decisions_0_2_9_ux_ui.md`
+§3 posait déjà la règle fonctionnelle non rouvrable — « HUB regroupant
+Matchs, Bracket, Paris, Mes pronos, avec pastilles "à faire" par univers » —
+mais aucune spec d'écran visuelle). Rédigée EN SÉANCE
+(`SPEC_ECRAN_HUB_JOUER_V0_1.md`, même patron que Bracket personnel) après un
+aller-retour avec l'utilisateur : proposition de contenu par carte, mockup
+texte, puis 2 décisions actées directement par l'utilisateur — ordre des 2
+lignes (Matchs/Mes pronos en haut, Bracket/Paris en bas) et état vide = titre
+seul (jamais de libellé de substitution du type « Rien à faire »).
+
+**Code** : `lib/queries/play-hub.ts` (nouveau, lectures LÉGÈRES dédiées par
+carte — sauf la carte Bracket, qui réutilise directement
+`getBracketFillData()` par choix assumé : dupliquer la cascade de candidats
+de tour 2+ pour économiser quelques colonnes aurait été un vrai risque de
+divergence pour un gain négligeable) ; `components/play/PlayHubCard.tsx` (+
+`.module.css`, carte générique serveur, badge + jusqu'à 2 lignes) ;
+`app/(app)/play/page.tsx` + `page.module.css` réécrits (grille 2×2 fixe,
+2 colonnes même en mobile). Le hub temporaire (§2.10) est remplacé
+entièrement — l'entrée correspondante retirée de `GAPS_OUVERTS.md`.
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (29 routes, `/play` toujours
+seul, aucun conflit), `vitest run` (26/26, aucune régression). Pas de
+compétition active à ce stade (dry-run archivée juste avant) — pas de test
+visuel en conditions réelles avec des données peuplées cette fois, mais la
+logique de chaque état vide/actionnable a été relue ligne à ligne contre la
+spec.
+
+L'utilisateur a annoncé vouloir détailler chaque écran cible un peu plus à
+une prochaine session (pas un gap, juste une suite explicitement annoncée).
+
+**État en fin de session** : hub Jouer codé et vérifié, PAS encore committé.

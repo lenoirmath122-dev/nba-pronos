@@ -15,11 +15,22 @@
 > attache match→série déterministe, secours passif par `sync_logs` (pas de
 > PENDING/écran de revue, structurellement inapplicable) ; formes réelles du
 > client (asymétrie `/teams`/`/matches`, un seul statut confirmé
-> empiriquement) ; paramètre `?date=` dev/test. **Reste à trancher avec
-> l'utilisateur avant de committer** : sort de la compétition de dry-run
-> (laissée ACTIVE à sa demande, pour consultation navigateur). **Prochaine
-> étape, à confirmer** : le vrai hub Jouer (aucune spec d'écran encore
-> écrite) OU le reste de T6c (Realtime au-delà de l'existant) ; puis
+> empiriquement) ; paramètre `?date=` dev/test. Committé (`3f228d5`) et
+> poussé. Compétition de dry-run ARCHIVÉE. Les 2 gaps trouvés en testant la
+> saisie d'un pari (auto-validation admin, `InlineBetForm` inaccessible après
+> validation du prono) CORRIGÉS (commit `ace0d46`).
+>
+> **Le vrai hub Jouer est désormais CODÉ** (28/07/2026, suite,
+> `SPEC_ECRAN_HUB_JOUER_V0_1.md`, nouvelle) : grille 2×2 (Matchs/Mes pronos en
+> haut, Bracket/Paris en bas), une pastille + un aperçu très court par carte
+> (`lib/queries/play-hub.ts`, `components/play/PlayHubCard.tsx`), état vide =
+> titre seul (jamais de libellé de substitution). Remplace le hub temporaire
+> (`app/(app)/play/page.tsx`). L'utilisateur a annoncé vouloir détailler
+> chaque écran cible un peu plus à une prochaine session — pas un gap, juste
+> une suite annoncée.
+>
+> **Prochaine étape, à confirmer avec l'utilisateur** : détail des écrans
+> évoqué ci-dessus, OU le reste de T6c (Realtime au-delà de l'existant) ; puis
 > configurer le vrai planificateur externe (cron-job.org/GitHub Actions) au
 > déploiement pour que T4 tourne en continu (§ Déploiement ci-dessous).
 
@@ -274,17 +285,6 @@
   décider plus tard : soit dans ce sens (restructurer), soit un simple
   remplacement texte→texte+logo par extraction regex du subtitle/label,
   moins propre.
-- **Hub Jouer temporaire** (24/07/2026, posé pour pouvoir naviguer jusqu'à
-  l'écran Matchs — jusqu'ici codé mais inaccessible depuis l'UI, l'onglet
-  « Jouer » pointant sur un stub) : `app/(app)/play/page.tsx` (+
-  `page.module.css`) liste 4 entrées — « Matchs », « Mes pronos » ET
-  désormais « Paris » (26/07/2026, → `/play/bets/new`) en `<Link>` actifs,
-  seule « Mon bracket » reste INERTE (route `/play/bracket` inexistante à ce
-  jour) avec le libellé « à venir ». Marqué temporaire aux trois endroits
-  (commentaire code, mention visible « hub temporaire — sera remplacé »,
-  cette entrée). Aucune pastille « à faire » calculée (hors périmètre, rôle
-  du vrai hub). **À retirer** dès que le vrai hub Jouer (spec d'écran dédiée,
-  pas encore écrite) existe.
 - **Deux points design jamais remontés depuis le journal de la passe
   maquettes** (ils n'existaient que dans
   `JOURNAL_DESIGN_passe_maquettes.md` §4, d'où l'oubli) : **portée du

@@ -1,32 +1,70 @@
-import Link from "next/link";
+import { getPlayHubData } from "@/lib/queries/play-hub";
+import { PlayHubCard } from "@/components/play/PlayHubCard";
 import styles from "./page.module.css";
 
-// TEMPORAIRE (24/07/2026) — hub "Jouer" minimal, posé uniquement pour
-// disposer d'un chemin de navigation vers les écrans déjà codés (jusqu'ici
-// inaccessibles depuis l'UI). Le vrai hub (spec d'écran dédiée, hors
-// périmètre de ce lot) le remplacera entièrement. À retirer alors ; voir
-// GAPS_OUVERTS.md. Les 4 entrées sont désormais toutes actives (27/07/2026,
-// Bracket personnel ferme la dernière) — plus d'entrée inerte à ce jour.
-const ENTRIES = [
-  { label: "Matchs", href: "/play/matches" },
-  { label: "Mes pronos", href: "/play/my-predictions" },
-  { label: "Mon bracket", href: "/play/bracket" },
-  { label: "Paris", href: "/play/bets" },
-] as const;
+// Hub Jouer (SPEC_ECRAN_HUB_JOUER_V0_1) — remplace le hub temporaire
+// (ETAT_ACTUEL.md §2.10). Grille 2×2 : Matchs/Mes pronos en haut,
+// Mon bracket/Paris en bas (acté avec l'utilisateur, §1). Composant serveur
+// pur, aucune interaction hormis la navigation native des cartes.
 
-export default function PlayPage() {
+const TIME_FORMATTER = new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", hour: "2-digit", minute: "2-digit" });
+
+function matchesLines(data: Awaited<ReturnType<typeof getPlayHubData>>["matches"]): string[] {
+  if (!data.nextMatch) return [];
+  const time = TIME_FORMATTER.format(new Date(data.nextMatch.scheduledAt));
+  return [`${data.nextMatch.homeAbbreviation} - ${data.nextMatch.awayAbbreviation} · ${time}`];
+}
+
+function predictionsLines(data: Awaited<ReturnType<typeof getPlayHubData>>["predictions"]): string[] {
+  if (!data.lastScored) return [];
+  const { teamAbbreviation, margin, isWin, points } = data.lastScored;
+  const outcome = isWin ? "gagné" : "perdu";
+  return [`Dernier verrouillé : ${teamAbbreviation} −${margin} (${outcome}, ${points} pt${points > 1 ? "s" : ""})`];
+}
+
+function bracketDeadlineLabel(deadline: string): string {
+  const remainingMs = Date.parse(deadline) - Date.now();
+  const hours = Math.max(0, Math.round(remainingMs / (60 * 60 * 1000)));
+  if (hours < 24) return `Deadline dans ${hours} h`;
+  return `Deadline dans ${Math.round(hours / 24)} j`;
+}
+
+function bracketLines(data: Awaited<ReturnType<typeof getPlayHubData>>["bracket"]): string[] {
+  if (!data.isActionable) return [];
+  const lines = [`Rempli ${data.filledCount}/${data.totalCount}`];
+  if (data.isNearDeadline && data.deadline) lines.push(bracketDeadlineLabel(data.deadline));
+  return lines;
+}
+
+function betsLines(data: Awaited<ReturnType<typeof getPlayHubData>>["bets"]): string[] {
+  const parts: string[] = [];
+  if (data.draftCount > 0) parts.push(`${data.draftCount} brouillon${data.draftCount > 1 ? "s" : ""}`);
+  if (data.submittedCount > 0) parts.push(`${data.submittedCount} en attente d'admin`);
+  return parts.length > 0 ? [parts.join(", ")] : [];
+}
+
+export default async function PlayPage() {
+  const data = await getPlayHubData();
+
   return (
-    <div className={styles.page}>
-      <p className={styles.notice}>Hub temporaire — sera remplacé.</p>
-      <ul className={styles.list}>
-        {ENTRIES.map((entry) => (
-          <li key={entry.label}>
-            <Link href={entry.href} className={styles.entry}>
-              {entry.label}
-            </Link>
-          </li>
-        ))}
-      </ul>
+    <div className={styles.grid}>
+      <PlayHubCard
+        title="Matchs"
+        href="/play/matches"
+        badge={data.matches.todoCount}
+        lines={matchesLines(data.matches)}
+      />
+      <PlayHubCard title="Mes pronos" href="/play/my-predictions" lines={predictionsLines(data.predictions)} />
+      {/* Pas de badge numérique ici : la pastille "à faire" du bracket est le
+          ratio "X/15" lui-même (§2.3), déjà porté par la 1ère ligne
+          (bracketLines) — un badge séparé ne ferait que le répéter. */}
+      <PlayHubCard title="Mon bracket" href="/play/bracket" lines={bracketLines(data.bracket)} />
+      <PlayHubCard
+        title="Paris"
+        href="/play/bets"
+        badge={data.bets.draftCount + data.bets.submittedCount}
+        lines={betsLines(data.bets)}
+      />
     </div>
   );
 }
