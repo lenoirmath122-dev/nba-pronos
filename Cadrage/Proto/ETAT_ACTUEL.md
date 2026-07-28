@@ -5,48 +5,47 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/07/2026 (suite, T8 — spec
-> DÉPLOIEMENT rédigée et VALIDÉE, planificateur + nettoyage CODÉS — détail
-> §2.41 ; audit initial §2.38, 5 premiers correctifs §2.39, T6a §2.40,
-> `JOURNAL_SESSIONS.md`, `GAPS_OUVERTS.md`) :
+> Dernière mise à jour : session du 28/07/2026 (suite et FIN — l'audit
+> structurel T1→T8/D1-D6 et ses 7 correctifs sont désormais ENTIÈREMENT CLOS,
+> committés (`9caee5f`), poussés, déployés sur Vercel, et les 3 actions
+> externes de T8 exécutées pour de vrai par l'utilisateur — détail §2.42 ;
+> audit initial §2.38, 5 premiers correctifs §2.39, T6a §2.40, spec+code T8
+> §2.41, `JOURNAL_SESSIONS.md`, `GAPS_OUVERTS.md`) :
 >
 > 1. **Audit croisé spec ↔ code réel sur T1→T8 et D1-D6** (§2.38). Verdict
 >    global : **aucune des 6 décisions structurantes D1-D6 n'a été violée
 >    silencieusement.** Realtime sur `series` jamais activée reste bien le
 >    SEUL écart T6c.
-> 2. **Les 7 écarts trouvés sont désormais TOUS CORRIGÉS** (§2.39 : `recognized`
->    → `sync_logs`, avertissement quota API bas, `recompute.test.ts` (11
->    tests, 37/37 au total), 2 correctifs post-validation dans les specs
->    T3/T5 ; §2.40 : T6a — route `/reset-password` codée et vérifiée en
->    conditions réelles ; §2.41 : **T8 — `SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md`
->    rédigée et VALIDÉE** (3 décisions tranchées avec l'utilisateur : GitHub
->    Actions, fréquence fixe pour `/api/sync/results`, nettoyage dans le
->    même lot), 4 workflows GitHub Actions écrits, `scripts/cleanup-test-
->    data.mjs` écrit et testé en dry-run contre la vraie base).
+> 2. **Les 7 écarts trouvés, TOUS CORRIGÉS ET DÉPLOYÉS** : `recognized` →
+>    `sync_logs`, avertissement quota API bas, `recompute.test.ts` (11 tests,
+>    37/37), 2 correctifs post-validation dans les specs T3/T5 (§2.39) ; T6a
+>    — route `/reset-password`, testée avec un vrai envoi d'email reçu par
+>    l'utilisateur (§2.40) ; T8 — spec + planificateur GitHub Actions +
+>    script de nettoyage (§2.41).
+> 3. **T8 rendu réellement OPÉRATIONNEL** (§2.42) : les 3 actions externes
+>    faites par l'utilisateur — `HIGHLIGHTLY_API_KEY` poussée sur Vercel ;
+>    `SYNC_SECRET` ajouté comme secret GitHub Actions (1er essai raté, valeur
+>    collée avec un retour à la ligne parasite puis tout le `.env.local` par
+>    erreur — corrigé, reconfirmé vert) ; `cleanup-test-data.mjs --confirm`
+>    exécuté pour de vrai — « Playoffs NBA (test) », « Test UI Matchs » et
+>    les 7 comptes de seed supprimés, vérifié directement en base.
 >
-> **3 actions concrètes restent à la charge de l'utilisateur** (aucune ne
-> peut être faite par Claude — secrets/actions externes) : pousser
-> `HIGHLIGHTLY_API_KEY` sur Vercel (confirmé MANQUANT) ; ajouter
-> `SYNC_SECRET` comme secret GitHub Actions ; exécuter
-> `cleanup-test-data.mjs --confirm` pour de vrai. Détail dans
-> `GAPS_OUVERTS.md`, entrée T8.
+> **Trouvailles distinctes en cours de route** : les emails
+> `@nba-pronos.test` des comptes de seed sont REJETÉS par le validateur
+> Supabase Auth (TLD `.test` non accepté), sans impact sur rien de codé ;
+> **3 compétitions ARCHIVÉES jamais documentées avant** (« TEST NBA CUP »,
+> « TEST playoff 28/07/2026 », « TEST T4 sync — Playoffs 2026 (réel) »),
+> trouvées en vérifiant l'état post-nettoyage — décision explicite de
+> l'utilisateur : gardées comme historique de test, pas supprimées.
 >
-> **Trouvaille distincte, en testant T6a** : les emails `@nba-pronos.test`
-> des comptes de seed sont REJETÉS par le validateur Supabase Auth (TLD
-> `.test` non accepté, `400 — invalid email`) — n'affecte pas les comptes de
-> seed existants (créés via l'API Admin, hors validation), tracé dans
-> `GAPS_OUVERTS.md` pour mémoire future.
+> **État de la base** : « Playoffs NBA (test) » et « Test UI Matchs »
+> n'existent plus. `Demo_Amis`/`Rillettes-31` intacts. Les 3 compétitions
+> archivées ci-dessus restent en base, délibérément. **Tout ce lot
+> (audit + 7 correctifs) est committé (`9caee5f`) ET poussé** — plus rien
+> en attente de commit sur ce chantier.
 >
-> **État de la base** : inchangé depuis la session précédente — la
-> compétition de test (« Test UI Matchs », 1 série LAL-BOS + 1 match) reste
-> ACTIVE (sera retirée par `cleanup-test-data.mjs --confirm` quand
-> l'utilisateur le décidera). Le lot centralisation prono/pari (§2.36) reste
-> committé et poussé (`b1cd597`), vérifié en ligne sur Vercel. Les
-> correctifs §2.39, le lot T6a §2.40 et le lot T8 §2.41 ne sont **pas
-> encore committés**.
->
-> Prochaine étape à confirmer avec l'utilisateur : committer §2.39 + §2.40 +
-> §2.41 ; puis les 3 actions externes listées ci-dessus.
+> Prochaine étape à confirmer avec l'utilisateur : le détail de chaque écran
+> cible déjà annoncé, ou le reste de T6c (Realtime sur `series`).
 
 ---
 
@@ -3639,4 +3638,71 @@ Vérifié : `npx tsc --noEmit`, `npx eslint .` (0 warning) — les fichiers
 `.mjs`/`.yml` de ce lot ne sont pas dans le périmètre TypeScript/Next mais
 n'introduisent aucune régression sur le reste. Aucune migration, aucun
 changement de schéma. PAS ENCORE COMMITTÉ à ce stade.
+```
+
+### 2.42 Commit/push du lot audit + les 3 actions externes T8 (session du 28/07/2026, fin)
+
+```text
+Commit unique (`9caee5f`, 20 fichiers) regroupant tout le lot de la session :
+audit structurel (§2.38), 5 correctifs (§2.39), écran reset-password (§2.40),
+spec + code T8 (§2.41) — `Cadrage/nba-pronos.lnk` (raccourci Windows
+accidentel, déjà exclu par le passé) laissé hors du commit. Poussé sur
+`main`. Déploiement Vercel automatique déclenché par le push, vérifié en
+ligne sans régression (`/reset-password` 200, `/login` avec le lien reset,
+`/home` 307, `/leaderboard`/`/bracket`/`/signup` 200).
+
+**Les 3 actions externes de T8, faites par l'utilisateur lui-même dans son
+terminal/les dashboards, une à une** :
+1. `HIGHLIGHTLY_API_KEY` poussée sur Vercel (production, preview,
+   development) — la valeur est apparue EN CLAIR dans le terminal au moment
+   de l'ajout "development" (contrairement à production/preview, marquées
+   "Sensitive"), donc visible dans l'historique de cette session. Signalé à
+   l'utilisateur (même famille que les 2 incidents précédents sur ce
+   projet) ; décision explicite de l'utilisateur : PAS de régénération de
+   la clé cette fois (« on zappe »).
+2. `SYNC_SECRET` ajouté comme secret GitHub Actions (Settings → Secrets and
+   variables → Actions). Guidé pas à pas (l'utilisateur n'avait jamais fait
+   ça). **2 échecs successifs, diagnostiqués en conditions réelles avant de
+   deviner** : le 1er run manuel (`sync-teams.yml`) a échoué ; l'appel exact
+   du workflow rejoué depuis un terminal local avec la vraie valeur de
+   `.env.local` a RÉUSSI (200, 30 équipes) — ce qui a immédiatement écarté
+   Vercel/HIGHLIGHTLY_API_KEY et pointé vers le secret GitHub lui-même.
+   2e essai : `curl: (43) Failed sending HTTP request` — signature connue
+   d'un header HTTP contenant un retour à la ligne (le secret collé avec un
+   `\n` de fin). Cause réelle, confirmée après coup par l'utilisateur : la
+   toute première tentative avait collé le CONTENU ENTIER de `.env.local`
+   au lieu de la seule valeur de `SYNC_SECRET`. Corrigé (sélection précise
+   Maj+Fin dans l'éditeur, sans le saut de ligne) — reconfirmé vert. Les 4
+   workflows partagent le même secret GitHub : corrigé une fois, corrigé
+   pour les 4.
+3. `scripts/cleanup-test-data.mjs --confirm` exécuté POUR DE VRAI par
+   l'utilisateur (dry-run déjà vérifié en §2.41). Résultat vérifié
+   directement en base par Claude après coup (script jetable, lecture
+   seule, supprimé après) plutôt que de se fier à la description du script :
+   « Playoffs NBA (test) » et « Test UI Matchs » bien absentes ;
+   `Demo_Amis`/`Rillettes-31` intacts, comme prévu ; les 7 comptes de seed
+   absents.
+
+**Trouvaille en vérifiant le résultat du nettoyage** : 3 compétitions
+ARCHIVÉES restent en base, jamais documentées dans aucun fichier de suivi
+avant ce jour et donc jamais dans le périmètre du script — « TEST NBA CUP »,
+« TEST playoff 28/07/2026 », « TEST T4 sync — Playoffs 2026 (réel) »,
+laissant 30 matchs/30 séries/15 picks de bracket/2 pronos/1 pari en base
+(status ARCHIVED, aucun impact sur le jeu réel — une seule compétition
+ACTIVE possible à la fois, contrainte DB). Signalé explicitement à
+l'utilisateur plutôt que nettoyé en silence ou re-signalé comme un gap.
+**Décision explicite de l'utilisateur : gardées comme historique de test.**
+`GAPS_OUVERTS.md` mis à jour en conséquence (nouvelle entrée dédiée, pas un
+gap à rouvrir).
+
+**Le chantier T8 est désormais réellement opérationnel** (pas seulement
+codé) : les 4 workflows GitHub Actions peuvent authentifier leurs appels,
+les 5 secrets sont alignés partout (local/Vercel/GitHub), et la base ne
+porte plus que des données réelles + les 3 archives de test conservées à
+dessein.
+
+Aucun changement de code dans ce lot (uniquement des actions
+config/exécution + vérifications en lecture seule). Rien à committer côté
+code — le commit `9caee5f` couvrait déjà tout le code produit cette
+session.
 ```

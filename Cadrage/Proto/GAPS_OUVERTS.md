@@ -4,48 +4,39 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 28/07/2026 (fin de session)** — T4 (synchro API Highlightly) et le
-> vrai hub Jouer sont CODÉS, TESTÉS et COMMITTÉS/POUSSÉS (détail complet
-> `ETAT_ACTUEL.md` §2.34/§2.35, `JOURNAL_SESSIONS.md`). Suite à la demande de
-> l'utilisateur de « centraliser » la saisie, deux fonctionnalités ajoutées le
-> même jour (`ETAT_ACTUEL.md` §2.36) : validation synchronisée prono+pari sur
-> Matchs, et paris SÉRIE désormais saisissables directement dans Bracket (+
-> décompte "paris séries restants" sur le hub Jouer et nouvelle section
-> Accueil "Paris séries non remplis"). **PAS ENCORE COMMITTÉ à ce stade** —
-> une compétition de test (« Test UI Matchs », LAL-BOS) reste ACTIVE en base,
-> posée pour la vérification visuelle, pas encore archivée.
+> **État au 28/07/2026 (fin de session)** — l'AUDIT STRUCTUREL T1→T8/D1-D6
+> (demandé par l'utilisateur avant de détailler les écrans un par un) et les
+> 7 écarts qu'il a trouvés sont désormais entièrement CLOS, y compris leur
+> exécution réelle (pas seulement le code) : voir la section dédiée
+> ci-dessous et `ETAT_ACTUEL.md` §2.38→§2.42.
 >
-> **Prochaine étape, à confirmer avec l'utilisateur** : committer ce dernier
-> lot (et décider du sort de la compétition de test) ; détail de chaque écran
-> cible déjà annoncé par l'utilisateur ; le reste de T6c (Realtime au-delà de
-> l'existant) ; puis configurer le vrai planificateur externe (cron-job.org/
-> GitHub Actions) au déploiement pour que T4 tourne en continu (§ Déploiement
-> ci-dessous).
+> **Prochaine étape, à confirmer avec l'utilisateur** : le détail de chaque
+> écran cible déjà annoncé par l'utilisateur ; le reste de T6c (Realtime sur
+> `series`, au-delà de l'existant sur `matches`).
 
-## Écarts trouvés par l'audit structurel T1→T8 / D1-D6 (28/07/2026)
+## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
-> Audit croisé spec ↔ code réel demandé par l'utilisateur avant de détailler
-> les écrans un par un (lecture seule pendant l'audit lui-même — détail
-> complet, méthode et preuves fichier:ligne dans `JOURNAL_SESSIONS.md` et
-> `ETAT_ACTUEL.md` §2.38/§2.39). Verdict global : **aucune des 6 décisions
+> Audit croisé spec ↔ code réel, lecture seule pendant l'audit lui-même —
+> détail complet, méthode et preuves fichier:ligne dans `JOURNAL_SESSIONS.md`
+> et `ETAT_ACTUEL.md` §2.38→§2.42. Verdict : **aucune des 6 décisions
 > structurantes D1-D6 n'a été violée silencieusement.** T1, T2, T3, T5, T6b,
-> T6c, T7 CONFIRMÉS COHÉRENTS ; T4, T6a, T8 avec un écart réel chacun.
+> T6c, T7 CONFIRMÉS COHÉRENTS ; T4, T6a, T8 avaient chacun un écart réel.
 > Confirmation explicite obtenue : Realtime sur `series` jamais activée
 > reste bien le SEUL écart sur T6c (grep exhaustif des 12 migrations).
 >
-> **Les 7 écarts trouvés sont désormais TOUS CORRIGÉS** (même session,
-> 28/07/2026, détail `ETAT_ACTUEL.md` §2.39/§2.40/§2.41) : `recognized`
+> **Les 7 écarts trouvés sont CORRIGÉS ET DÉPLOYÉS** (committé `9caee5f`,
+> poussé, vérifié en ligne sur Vercel sans régression) : `recognized`
 > propagé jusqu'à `sync_logs` (T4) ; avertissement quota API bas ajouté (T4) ;
 > couverture vitest de l'idempotence écrite (`lib/scoring/recompute.test.ts`,
-> T5) ; fonctions SECURITY DEFINER rétro-actées (`SPEC_TECHNIQUE_RLS_V0.1.md`
-> §12, T3) ; garde CANCELLED/POSTPONED rétro-actée comme choix
-> d'implémentation assumé (`SPEC_TECHNIQUE_SCORING_V0_1.md` §13, T5) ; T6a —
-> route `/reset-password` codée (`ResetPasswordForm.tsx`, flux Supabase
-> standard 100% client) ; **T8 — `SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md` rédigée
-> et VALIDÉE** (3 décisions tranchées avec l'utilisateur), workflows GitHub
-> Actions écrits (`.github/workflows/*.yml`), `scripts/cleanup-test-data.mjs`
-> écrit et testé en dry-run contre la vraie base. `tsc`/`eslint`/`vitest`
-> (37/37)/`next build` tous propres après ces 7 correctifs.
+> 37/37) ; fonctions SECURITY DEFINER rétro-actées (`SPEC_TECHNIQUE_RLS_V0.1.md`
+> §12, T3) ; garde CANCELLED/POSTPONED rétro-actée (`SPEC_TECHNIQUE_SCORING_V0_1.md`
+> §13, T5) ; T6a — route `/reset-password` codée et testée avec un vrai envoi
+> d'email ; **T8 — spec rédigée/validée, planificateur GitHub Actions ET
+> nettoyage des données de test ENTIÈREMENT OPÉRATIONNELS** (les 3 actions
+> externes faites par l'utilisateur : `HIGHLIGHTLY_API_KEY` sur Vercel,
+> `SYNC_SECRET` sur GitHub — un premier essai raté par un secret mal collé,
+> corrigé — et `cleanup-test-data.mjs --confirm` exécuté pour de vrai,
+> vérifié en base). `tsc`/`eslint`/`vitest`/`next build` tous propres.
 
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 
@@ -163,25 +154,27 @@
   ajoutée (l'asset n'est pas fourni, `--font-ui` retombe sur `system-ui`) ;
   asset réel du bandeau parquet (`public/brand/hero-parquet.webp`) pas encore
   déposé (à la charge de l'utilisateur, acté 21/07/2026).
-- **T8 — Déploiement** : spec écrite et VALIDÉE, config du planificateur
-  ET script de nettoyage CODÉS le 28/07/2026
-  (`SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md`, `ETAT_ACTUEL.md` §2.41). Reste, 3
-  actions concrètes avant que ce soit réellement opérationnel :
-  1. Pousser `HIGHLIGHTLY_API_KEY` sur Vercel (confirmé MANQUANT via `vercel
-     env ls`, 28/07/2026 — les routes `/api/sync/schedule`/`results`
-     échoueraient en prod aujourd'hui) : `npx vercel env add
-     HIGHLIGHTLY_API_KEY production` (+ preview + development), à la charge
-     de l'utilisateur.
-  2. Ajouter `SYNC_SECRET` comme secret GitHub (Settings → Secrets and
-     variables → Actions, dépôt `lenoirmath122-dev/nba-pronos`) pour que les
-     4 workflows `.github/workflows/*.yml` puissent authentifier leurs
-     appels — sinon ils échoueront tous en 401 dès leur premier déclenchement.
-  3. Exécuter `scripts/cleanup-test-data.mjs --confirm` pour de vrai (testé
-     en dry-run seulement à ce jour) — supprime « Playoffs NBA (test) »,
-     « Test UI Matchs » et les 7 comptes `seed-*@nba-pronos.test`.
-     `demo-amis@nba-pronos.test` reste explicitement HORS PÉRIMÈTRE de ce
-     script (compte encore utilisé par les amis de l'utilisateur, voir gap
-     dédié ci-dessous).
+- **T8 — Déploiement : CHANTIER ENTIÈREMENT CLOS** (28/07/2026,
+  `SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md`, `ETAT_ACTUEL.md` §2.41/§2.42). Les 3
+  actions externes sont FAITES et VÉRIFIÉES par l'utilisateur : (1)
+  `HIGHLIGHTLY_API_KEY` poussée sur Vercel (production/preview/development) ;
+  (2) `SYNC_SECRET` ajouté comme secret GitHub Actions — un premier essai a
+  échoué (`curl: (43)`, valeur collée avec un retour à la ligne parasite,
+  tout le fichier `.env.local` copié par erreur au lieu de la seule valeur),
+  corrigé et reconfirmé vert ; (3) `scripts/cleanup-test-data.mjs --confirm`
+  exécuté pour de vrai par l'utilisateur — « Playoffs NBA (test) », « Test
+  UI Matchs » et les 7 comptes `seed-*@nba-pronos.test` supprimés, vérifié
+  directement en base après coup (`Demo_Amis`/`Rillettes-31` intacts, comme
+  prévu).
+- **3 compétitions de test ARCHIVÉES, jamais documentées avant le nettoyage,
+  gardées comme historique** (trouvées le 28/07/2026 en vérifiant l'état
+  post-nettoyage) : « TEST NBA CUP », « TEST playoff 28/07/2026 », « TEST T4
+  sync — Playoffs 2026 (réel) » — hors du périmètre connu du script de
+  nettoyage (qui ne ciblait que « Playoffs NBA (test) »/« Test UI Matchs »),
+  laissent 30 matchs/30 séries/15 picks de bracket/2 pronos/1 pari en base.
+  Statut ARCHIVED (jamais ACTIVE, aucun impact sur le jeu réel). Décision
+  explicite de l'utilisateur : **gardées comme trace historique des tests**,
+  pas supprimées — ne pas les re-signaler comme un oubli.
 - **Comportement de « Confirm email » pas élucidé** (27/07/2026,
   `ETAT_ACTUEL.md` §2.17/§7) : le réglage a été décoché et sauvegardé dans
   le dashboard Supabase (confirmé par capture d'écran), mais un test

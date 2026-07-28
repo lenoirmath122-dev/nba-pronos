@@ -3728,3 +3728,47 @@ Restent 3 actions externes à la charge de l'utilisateur (voir
 `GAPS_OUVERTS.md`, entrée T8) : pousser `HIGHLIGHTLY_API_KEY` sur Vercel,
 ajouter `SYNC_SECRET` comme secret GitHub, exécuter le nettoyage pour de
 vrai.
+
+---
+
+## Commit/push du lot audit + les 3 actions externes T8 (28/07/2026, fin de l'arc)
+
+Commit unique `9caee5f` (20 fichiers) pour tout le lot de la session
+(audit, 7 correctifs, reset-password, spec+code T8), poussé sur `main`.
+Déploiement Vercel automatique vérifié sans régression.
+
+Les 3 actions externes de T8 faites par l'utilisateur, guidées pas à pas :
+1. `HIGHLIGHTLY_API_KEY` sur Vercel (3 environnements) — la valeur est
+   apparue en clair dans le terminal lors de l'ajout "development"
+   (production/preview l'avaient masquée en "Sensitive"), donc visible
+   dans cette session. Signalé (3e incident du genre sur ce projet) ;
+   l'utilisateur a choisi de NE PAS régénérer la clé cette fois.
+2. `SYNC_SECRET` comme secret GitHub Actions. 2 échecs diagnostiqués en
+   conditions réelles (pas en devinant) : rejouer l'appel exact du workflow
+   depuis un terminal local avec la vraie valeur a réussi, écartant
+   Vercel/la clé Highlightly ; puis `curl: (43)` a pointé vers un header
+   HTTP contenant un retour à la ligne. Cause réelle (confirmée par
+   l'utilisateur après coup) : tout le contenu de `.env.local` avait été
+   collé au lieu de la seule valeur de `SYNC_SECRET`. Corrigé, reconfirmé
+   vert — un seul secret partagé par les 4 workflows, corrigé pour les 4
+   d'un coup.
+3. `scripts/cleanup-test-data.mjs --confirm` exécuté pour de vrai par
+   l'utilisateur. Vérifié en base après coup (script jetable, lecture
+   seule) plutôt que de se fier à la description : « Playoffs NBA (test) »
+   et « Test UI Matchs » absentes, `Demo_Amis`/`Rillettes-31` intacts, les
+   7 comptes de seed absents — conforme au dry-run.
+
+**Trouvaille en vérifiant le résultat** : 3 compétitions ARCHIVÉES jamais
+documentées avant (« TEST NBA CUP », « TEST playoff 28/07/2026 », « TEST T4
+sync — Playoffs 2026 (réel) »), hors du périmètre connu du script,
+laissant des matchs/séries/picks en base (sans impact, jamais ACTIVE).
+Signalé explicitement plutôt que nettoyé en silence. **Décision de
+l'utilisateur : gardées comme historique de test.**
+
+**T8 est désormais réellement opérationnel**, pas seulement codé — les 4
+workflows peuvent authentifier leurs appels, les 5 secrets sont alignés
+partout, la base ne porte plus que des données réelles + les 3 archives
+conservées à dessein.
+
+**L'arc complet de la session — audit structurel T1-T8/D1-D6, ses 7
+écarts, et leur mise en production réelle — est clos.**
