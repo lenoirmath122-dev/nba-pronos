@@ -84,6 +84,15 @@ export type AssociatedBet = {
   points: number | null;
 };
 
+/** Pari PUBLIC d'un AUTRE joueur (0.2.4 §9 — révélé à sa propre deadline, RLS
+ *  bet_is_public()). AUCUN champ de statut/points/difficulté ici : la spec ne
+ *  demande que le nom du joueur et l'énoncé, pas un mini AssociatedBetCard. */
+export type OtherBet = {
+  userId: string;
+  userName: string;
+  description: string;
+};
+
 export type MyPredictionRow = {
   matchId: string;
   seriesId: string;
@@ -103,6 +112,9 @@ export type MyPredictionRow = {
    *  (§12). Le repli est purement visuel (<details>). */
   others: RevealedPrediction[];
   absenteeCount: number;
+  /** Paris MATCH publics des AUTRES joueurs sur CE match (0.2.4 §9). RLS
+   *  bet_is_public() a déjà filtré — jamais re-filtré ici (C-6). */
+  otherBets: OtherBet[];
 };
 
 export type SeriesBetHeader = {
@@ -110,6 +122,8 @@ export type SeriesBetHeader = {
   /** Construit avec lib/labels/rounds.ts, jamais en dur (§16.5). */
   seriesLabel: string;
   bet: AssociatedBet | null;
+  /** Paris SERIES publics des AUTRES joueurs sur CETTE série (0.2.4 §9). */
+  otherBets: OtherBet[];
 };
 
 export type MyPredictionsData = {
@@ -171,6 +185,7 @@ type CorrectionRequestRow = {
 
 type BetRow = {
   id: string;
+  user_id: string;
   match_id: string | null;
   series_id: string;
   description: string;
@@ -280,12 +295,15 @@ export async function getMyPredictions(params: {
           "id, user_id, match_id, predicted_winner_team_id, predicted_margin, is_auto_validated, corrected_by_admin_id, correction_reason, points_awarded, scored_at"
         )
         .in("match_id", matchIds),
+      // PAS de filtre user_id (contrairement à avant, §9 révélation
+      // publique) : RLS bet_is_public() renvoie déjà mon pari + les paris
+      // PUBLICS des autres, jamais un pari privé d'un autre (C-6, jamais
+      // re-filtré ici).
       supabase
         .from("bets")
         .select(
-          "id, match_id, series_id, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, status, points_awarded, scored_at"
+          "id, user_id, match_id, series_id, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, status, points_awarded, scored_at"
         )
-        .eq("user_id", user.id)
         .eq("competition_id", competition.id)
         .eq("scope", "MATCH")
         .in("match_id", matchIds),
@@ -304,7 +322,10 @@ export async function getMyPredictions(params: {
     predictions.filter((p) => p.user_id !== user.id && isComplete(p)).map((p) => p.user_id)
   );
   const adminIds = new Set(predictions.filter((p) => p.corrected_by_admin_id).map((p) => p.corrected_by_admin_id!));
-  const pseudoNeededIds = [...new Set([...otherAuthorIds, ...adminIds])];
+  // Auteurs des paris MATCH publics des autres joueurs (§9) — même lot de
+  // pseudos que les pronos, un seul aller-retour pour tout.
+  const otherBetAuthorIds = new Set(bets.filter((b) => b.user_id !== user.id).map((b) => b.user_id));
+  const pseudoNeededIds = [...new Set([...otherAuthorIds, ...adminIds, ...otherBetAuthorIds])];
   const { data: profilesData } =
     pseudoNeededIds.length > 0
       ? await supabase.from("users").select("id, pseudo").in("id", pseudoNeededIds)
@@ -337,7 +358,16 @@ export async function getMyPredictions(params: {
     list.push(p);
     predictionsByMatch.set(p.match_id, list);
   }
-  const betByMatch = new Map(bets.map((b) => [b.match_id as string, b]));
+  const betByMatch = new Map(bets.filter((b) => b.user_id === user.id).map((b) => [b.match_id as string, b]));
+
+  const otherBetsByMatch = new Map<string, OtherBet[]>();
+  for (const b of bets) {
+    if (b.user_id === user.id || !b.match_id) continue;
+    const list = otherBetsByMatch.get(b.match_id) ?? [];
+    list.push({ userId: b.user_id, userName: pseudoById.get(b.user_id) ?? "", description: b.description });
+    otherBetsByMatch.set(b.match_id, list);
+  }
+  for (const list of otherBetsByMatch.values()) list.sort((a, b) => a.userName.localeCompare(b.userName));
 
   const rows: MyPredictionRow[] = [];
   for (const match of matches) {
@@ -379,6 +409,7 @@ export async function getMyPredictions(params: {
       bet: betByMatch.has(match.id) ? toAssociatedBet(betByMatch.get(match.id)!) : null,
       others,
       absenteeCount,
+      otherBets: otherBetsByMatch.get(match.id) ?? [],
     });
   }
 
@@ -561,7 +592,10 @@ async function getAvailableFilters(
   return { availableDates, availableSeries, seriesById };
 }
 
-/** En-tête de pari SERIES (§11.2) — uniquement en mode FILTERED sur une série. */
+/** En-tête de pari SERIES (§11.2) — uniquement en mode FILTERED sur une série.
+ *  §9 (révélation publique) : PAS de filtre user_id — RLS bet_is_public()
+ *  renvoie mon pari + les paris publics des autres, jamais un pari privé
+ *  d'un autre (C-6). */
 async function getSeriesBetHeader(
   supabase: SupabaseServerClient,
   competitionId: string,
@@ -572,21 +606,34 @@ async function getSeriesBetHeader(
   const { data: teamsData } = await supabase.from("teams").select("id, name, abbreviation");
   const teams = new Map(((teamsData ?? []) as TeamRow[]).map((t) => [t.id, teamRef(t)]));
 
-  const { data: betData } = await supabase
+  const { data: betsData } = await supabase
     .from("bets")
     .select(
-      "id, match_id, series_id, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, status, points_awarded, scored_at"
+      "id, user_id, match_id, series_id, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, status, points_awarded, scored_at"
     )
-    .eq("user_id", userId)
     .eq("competition_id", competitionId)
     .eq("scope", "SERIES")
-    .eq("series_id", seriesId)
-    .maybeSingle<BetRow>();
+    .eq("series_id", seriesId);
+  const bets = (betsData ?? []) as BetRow[];
+
+  const own = bets.find((b) => b.user_id === userId);
+  const otherAuthorIds = bets.filter((b) => b.user_id !== userId).map((b) => b.user_id);
+  const { data: profilesData } =
+    otherAuthorIds.length > 0
+      ? await supabase.from("users").select("id, pseudo").in("id", otherAuthorIds)
+      : { data: [] as { id: string; pseudo: string }[] };
+  const pseudoById = new Map((profilesData ?? []).map((row) => [row.id as string, row.pseudo as string]));
+
+  const otherBets: OtherBet[] = bets
+    .filter((b) => b.user_id !== userId)
+    .map((b) => ({ userId: b.user_id, userName: pseudoById.get(b.user_id) ?? "", description: b.description }))
+    .sort((a, b) => a.userName.localeCompare(b.userName));
 
   return {
     seriesId,
     seriesLabel: seriesLabel(seriesById.get(seriesId), teams),
-    bet: betData ? toAssociatedBet(betData) : null,
+    bet: own ? toAssociatedBet(own) : null,
+    otherBets,
   };
 }
 

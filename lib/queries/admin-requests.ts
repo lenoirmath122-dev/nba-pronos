@@ -37,6 +37,8 @@ export type MatchPredictionRequest = {
   teamOptions: [TeamOption, TeamOption];
 };
 
+export type BetStatusValue = "DRAFT" | "SUBMITTED" | "VALIDATED" | "REJECTED" | "WON" | "LOST" | "CANCELLED";
+
 export type BetRequest = {
   requestId: string;
   requesterPseudo: string;
@@ -46,6 +48,16 @@ export type BetRequest = {
   betId: string;
   targetLabel: string;
   description: string;
+  /** Statut ACTUEL du pari — pilote l'UI (migration #13, GAPS_OUVERTS.md
+   *  "contester un pari REJETÉ ou déjà résolu") : VALIDATED (jamais résolu,
+   *  cas d'origine) → renvoie vers /admin/resolution ; REJECTED/WON/LOST
+   *  (contesté) → l'admin choisit directement le nouveau statut ici. */
+  currentStatus: BetStatusValue;
+  /** NULL si le pari n'a jamais été validé (refusé dès SUBMITTED) — dans ce
+   *  cas, la réouverture vers VALIDATED/WON/LOST exige de fournir une
+   *  difficulté (le formulaire la propose, défaut = proposedDifficulty). */
+  currentValidatedDifficulty: number | null;
+  proposedDifficulty: number;
 };
 
 export type PendingCorrectionRequest = MatchPredictionRequest | BetRequest;
@@ -64,7 +76,16 @@ type RequestRow = {
 
 type MatchRow = { id: string; game_number: number; scheduled_at: string | null; home_team_id: string | null; away_team_id: string | null };
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null };
-type BetRow = { id: string; scope: "SERIES" | "MATCH"; series_id: string; match_id: string | null; description: string };
+type BetRow = {
+  id: string;
+  scope: "SERIES" | "MATCH";
+  series_id: string;
+  match_id: string | null;
+  description: string;
+  status: BetStatusValue;
+  validated_difficulty: number | null;
+  proposed_difficulty: number;
+};
 
 export async function getPendingCorrectionRequests(): Promise<PendingCorrectionRequest[]> {
   const supabase = await getServerClient();
@@ -89,7 +110,10 @@ export async function getPendingCorrectionRequests(): Promise<PendingCorrectionR
       ? supabase.from("match_predictions").select("id, match_id, predicted_winner_team_id, predicted_margin").in("id", predictionIds)
       : Promise.resolve({ data: [] as { id: string; match_id: string; predicted_winner_team_id: string | null; predicted_margin: number | null }[] }),
     betIds.length > 0
-      ? supabase.from("bets").select("id, scope, series_id, match_id, description").in("id", betIds)
+      ? supabase
+          .from("bets")
+          .select("id, scope, series_id, match_id, description, status, validated_difficulty, proposed_difficulty")
+          .in("id", betIds)
       : Promise.resolve({ data: [] as BetRow[] }),
   ]);
 
@@ -179,6 +203,9 @@ export async function getPendingCorrectionRequests(): Promise<PendingCorrectionR
         betId: bet.id,
         targetLabel,
         description: bet.description,
+        currentStatus: bet.status,
+        currentValidatedDifficulty: bet.validated_difficulty,
+        proposedDifficulty: bet.proposed_difficulty,
       });
     }
   }

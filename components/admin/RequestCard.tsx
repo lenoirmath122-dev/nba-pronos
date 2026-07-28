@@ -93,24 +93,87 @@ function MatchPredictionFields({ request }: { request: Extract<PendingCorrection
   );
 }
 
+const BET_STATUS_LABEL: Record<string, string> = {
+  VALIDATED: "Validé (en attente de résolution)",
+  WON: "Gagné",
+  LOST: "Perdu",
+  REJECTED: "Refusé",
+};
+
 function BetFields({ request }: { request: Extract<PendingCorrectionRequest, { targetType: "BET" }> }) {
+  // Cas d'origine (migration #11) : pari VALIDATED jamais résolu — comportement
+  // INCHANGÉ, la vraie résolution reste sur /admin/resolution.
+  if (request.currentStatus === "VALIDATED") {
+    return (
+      <form action={processCorrectionRequestFormAction} className={styles.processForm}>
+        <input type="hidden" name="requestId" value={request.requestId} />
+        <p className={styles.description}>{request.description}</p>
+        <p className={styles.betNote}>
+          Ce pari attend une résolution — traite-le via{" "}
+          <a href="/admin/resolution" className={styles.link}>
+            la file de résolution
+          </a>
+          , puis clôture cette requête ci-dessous.
+        </p>
+        <label className={styles.field}>
+          Motif (visible publiquement)
+          <textarea name="reason" rows={2} className={styles.textarea} />
+        </label>
+        <button type="submit" className={styles.processButton}>
+          Traiter (clôturer la requête)
+        </button>
+      </form>
+    );
+  }
+
+  // Pari CONTESTÉ (migration #13) : REJECTED/WON/LOST — l'admin tranche
+  // directement ici, plutôt qu'un détour par /admin/resolution. Statut
+  // courant retiré des options (se corriger vers soi-même n'a pas de sens).
+  const statusOptions = (["VALIDATED", "WON", "LOST", "REJECTED"] as const).filter((s) => s !== request.currentStatus);
+  const needsDifficulty = request.currentValidatedDifficulty === null;
+
   return (
     <form action={processCorrectionRequestFormAction} className={styles.processForm}>
       <input type="hidden" name="requestId" value={request.requestId} />
       <p className={styles.description}>{request.description}</p>
       <p className={styles.betNote}>
-        Ce pari attend une résolution — traite-le via{" "}
-        <a href="/admin/resolution" className={styles.link}>
-          la file de résolution
-        </a>
-        , puis clôture cette requête ci-dessous.
+        Statut actuel : <strong>{BET_STATUS_LABEL[request.currentStatus] ?? request.currentStatus}</strong>, contesté.
       </p>
+
+      <label className={styles.field}>
+        Nouveau statut
+        <select name="newBetStatus" required defaultValue="" className={styles.select}>
+          <option value="" disabled>
+            Choisir…
+          </option>
+          {statusOptions.map((s) => (
+            <option key={s} value={s}>
+              {BET_STATUS_LABEL[s]}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      {needsDifficulty && (
+        <label className={styles.field}>
+          Difficulté (jamais validée — requise sauf si tu choisis « Refusé »)
+          <select name="newBetDifficulty" defaultValue={request.proposedDifficulty} className={styles.select}>
+            {[1, 2, 3, 4, 5].map((level) => (
+              <option key={level} value={level}>
+                Niveau {level}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+
       <label className={styles.field}>
         Motif (visible publiquement)
         <textarea name="reason" rows={2} className={styles.textarea} />
       </label>
+
       <button type="submit" className={styles.processButton}>
-        Traiter (clôturer la requête)
+        Traiter
       </button>
     </form>
   );

@@ -1,5 +1,6 @@
 import type { SeriesBetHeader as SeriesBetHeaderData } from "@/lib/queries/my-predictions";
 import { AssociatedBetCard } from "./AssociatedBetCard";
+import { OtherBetsModal } from "./OtherBetsModal";
 import styles from "./SeriesBetHeader.module.css";
 
 // En-tête de pari SERIES (§11.2) — UNIQUEMENT visible en mode FILTERED sur une
@@ -20,6 +21,7 @@ export function SeriesBetHeader({ header }: SeriesBetHeaderProps) {
       ) : (
         <p className={styles.empty}>Aucun pari posé sur cette série.</p>
       )}
+      <OtherBetsModal bets={header.otherBets} />
     </div>
   );
 }

@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/actions/audit";
-import { recomputeMatch } from "@/lib/scoring/recompute";
+import { recomputeMatch, recomputeBet } from "@/lib/scoring/recompute";
 
 // Écriture de la file des requêtes (SPEC_ECRAN_ADMIN_REQUESTS_V0_1 §4).
 // RLS cr_update_admin (is_admin() ET requester_user_id <> auth.uid()) —
@@ -20,11 +20,20 @@ type RequestRow = {
   target_bet_id: string | null;
 };
 
+type NewBetStatus = "VALIDATED" | "WON" | "LOST" | "REJECTED";
+
 export async function processCorrectionRequest(input: {
   requestId: string;
   correctedWinnerTeamId?: string;
   correctedMargin?: number;
   reason?: string;
+  /** BET uniquement, réservé au cas "pari contesté" (migration #13) — un
+   *  pari VALIDATED jamais résolu (cas d'origine) n'en a pas besoin, il
+   *  reste réservé à /admin/resolution, comportement inchangé. */
+  newBetStatus?: NewBetStatus;
+  /** Requis SI le pari n'a jamais eu de validated_difficulty (refusé avant
+   *  toute validation) ET que newBetStatus n'est pas REJECTED. */
+  newBetDifficulty?: number;
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   const {
@@ -71,19 +80,34 @@ export async function processCorrectionRequest(input: {
 
     await recomputeMatch(prediction.match_id);
   } else {
-    // BET : aucune valeur métier proposée par ce workflow (migration #11) —
-    // la vraie correction est la résolution (/admin/resolution, lot 4b,
-    // séparée). Ici : marquage public de transparence seulement (0.2.3 §7).
-    const { error: betErr } = await supabase
-      .from("bets")
-      .update({
-        is_admin_corrected: true,
-        corrected_by_admin_id: user.id,
-        correction_request_id: request.id,
-        correction_reason: reason.length > 0 ? reason : null,
-      })
-      .eq("id", request.target_bet_id as string);
+    // BET : deux cas distincts, réunis dans le même écran depuis la
+    // migration #13.
+    // (a) newBetStatus fourni (pari REJETÉ/déjà résolu, contesté) : l'admin
+    //     tranche directement ici — trigger enforce_bet_transitions (admin
+    //     != auteur, correction_request_id requis) fait foi, PUIS recompute.
+    // (b) newBetStatus absent (pari VALIDATED jamais résolu, cas d'origine
+    //     de la migration #11) : comportement INCHANGÉ — marquage de
+    //     transparence seulement, la vraie résolution reste sur
+    //     /admin/resolution.
+    const betUpdate: Record<string, unknown> = {
+      is_admin_corrected: true,
+      corrected_by_admin_id: user.id,
+      correction_request_id: request.id,
+      correction_reason: reason.length > 0 ? reason : null,
+    };
+    if (input.newBetStatus) {
+      betUpdate.status = input.newBetStatus;
+      if (input.newBetStatus !== "REJECTED" && input.newBetDifficulty !== undefined) {
+        betUpdate.validated_difficulty = input.newBetDifficulty;
+      }
+    }
+
+    const { error: betErr } = await supabase.from("bets").update(betUpdate).eq("id", request.target_bet_id as string);
     if (betErr) return { success: false, error: betErr.message };
+
+    if (input.newBetStatus) {
+      await recomputeBet(request.target_bet_id as string);
+    }
   }
 
   const { data: updated, error: closeErr } = await supabase
@@ -151,12 +175,16 @@ export async function processCorrectionRequestFormAction(formData: FormData): Pr
   const correctedWinnerTeamIdRaw = formData.get("correctedWinnerTeamId");
   const correctedMarginRaw = formData.get("correctedMargin");
   const reason = String(formData.get("reason") ?? "");
+  const newBetStatusRaw = formData.get("newBetStatus");
+  const newBetDifficultyRaw = formData.get("newBetDifficulty");
 
   const result = await processCorrectionRequest({
     requestId,
     correctedWinnerTeamId: correctedWinnerTeamIdRaw ? String(correctedWinnerTeamIdRaw) : undefined,
     correctedMargin: correctedMarginRaw ? Number(correctedMarginRaw) : undefined,
     reason,
+    newBetStatus: newBetStatusRaw ? (String(newBetStatusRaw) as "VALIDATED" | "WON" | "LOST" | "REJECTED") : undefined,
+    newBetDifficulty: newBetDifficultyRaw ? Number(newBetDifficultyRaw) : undefined,
   });
 
   if (!result.success) {

@@ -3772,3 +3772,38 @@ conservées à dessein.
 
 **L'arc complet de la session — audit structurel T1-T8/D1-D6, ses 7
 écarts, et leur mise en production réelle — est clos.**
+
+---
+
+## Révélation publique des paris + contestation d'un pari refusé/résolu (28/07/2026, suite)
+
+Demande de l'utilisateur : traiter 2 points du backlog "confort/reporté"
+plutôt que de les laisser pour plus tard — révélation publique des paris
+(0.2.4 §9) et contestation d'un pari REJETÉ/déjà résolu (0.2.7 §6).
+
+**Révélation publique** : option confirmée AVANT de coder — un déclencheur
+"Voir les paris des autres joueurs" ouvrant une popup à 2 colonnes
+(Joueur/Pari), pas une extension du RevealPanel des pronos. Raffinement
+décidé par Claude en cours de route, signalé explicitement : implémenté
+UNIQUEMENT sur Mes pronos (pas Matchs comme évoqué au départ) — un pari
+MATCH ne peut structurellement jamais être public sur l'écran Matchs
+(matchs à venir uniquement, deadline = coup d'envoi jamais atteint). Testé
+en session réelle de 2 comptes jetables (signInWithPassword, pas
+service_role) : RLS `bet_is_public()` confirmée pour les paris MATCH et
+SÉRIE.
+
+**Contestation d'un pari refusé/résolu** : trouvaille en relisant le
+cadrage AVANT de coder — 0.2.7 §6 n'exclut aucun statut, l'exclusion de
+REJECTED/WON/LOST (migration #11) était un raccourci technique, pas une
+décision produit. Migration #13 poussée : trigger `enforce_bet_transitions`
+étendu (réouverture encadrée, admin ≠ auteur, correction liée obligatoire) ;
+`request_bet_correction` élargie aux 3 statuts. L'admin tranche directement
+dans `/admin/requests` (décision explicite de l'utilisateur), pas de détour
+par `/admin/resolution`. Testé en conditions réelles avec 2 vrais comptes
+(joueur + admin) : contestation, garde admin≠auteur, résolution directe, et
+un test e2e séparé confirmant que `recomputeBet` pose bien les bons points
+après coup — 2 bugs de SCRIPT DE TEST trouvés et corrigés en cours de route
+(aucun bug du code produit lui-même).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` tous propres. Migration #13
+déjà poussée sur la vraie base. Code applicatif **pas encore committé**.

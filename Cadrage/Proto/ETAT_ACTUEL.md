@@ -5,12 +5,13 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/07/2026 (suite et FIN — l'audit
-> structurel T1→T8/D1-D6 et ses 7 correctifs sont désormais ENTIÈREMENT CLOS,
-> committés (`9caee5f`), poussés, déployés sur Vercel, et les 3 actions
-> externes de T8 exécutées pour de vrai par l'utilisateur — détail §2.42 ;
-> audit initial §2.38, 5 premiers correctifs §2.39, T6a §2.40, spec+code T8
-> §2.41, `JOURNAL_SESSIONS.md`, `GAPS_OUVERTS.md`) :
+> Dernière mise à jour : session du 28/07/2026 (suite — 2 fonctionnalités du
+> backlog "confort/reporté" CODÉES ET VÉRIFIÉES EN CONDITIONS RÉELLES : la
+> révélation publique des paris des autres joueurs et la contestation d'un
+> pari refusé/déjà résolu — détail §2.43 ; l'audit structurel T1→T8/D1-D6 et
+> ses 7 correctifs restent CLOS, committés (`9caee5f`), poussés, déployés —
+> détail §2.42 ; audit initial §2.38, 5 premiers correctifs §2.39, T6a §2.40,
+> spec+code T8 §2.41, `JOURNAL_SESSIONS.md`, `GAPS_OUVERTS.md`) :
 >
 > 1. **Audit croisé spec ↔ code réel sur T1→T8 et D1-D6** (§2.38). Verdict
 >    global : **aucune des 6 décisions structurantes D1-D6 n'a été violée
@@ -29,6 +30,13 @@
 >    erreur — corrigé, reconfirmé vert) ; `cleanup-test-data.mjs --confirm`
 >    exécuté pour de vrai — « Playoffs NBA (test) », « Test UI Matchs » et
 >    les 7 comptes de seed supprimés, vérifié directement en base.
+> 4. **2 points du backlog codés et vérifiés en conditions réelles** (§2.43,
+>    demandés par l'utilisateur) : révélation publique des paris des autres
+>    joueurs (0.2.4 §9 — popup « Voir les paris des autres joueurs » sur Mes
+>    pronos uniquement, Matchs délibérément exclu — motif détaillé §2.43) ;
+>    contestation d'un pari REFUSÉ/déjà résolu (migration #13, l'admin
+>    tranche directement dans `/admin/requests`, sans détour par
+>    `/admin/resolution`).
 >
 > **Trouvailles distinctes en cours de route** : les emails
 > `@nba-pronos.test` des comptes de seed sont REJETÉS par le validateur
@@ -40,12 +48,13 @@
 >
 > **État de la base** : « Playoffs NBA (test) » et « Test UI Matchs »
 > n'existent plus. `Demo_Amis`/`Rillettes-31` intacts. Les 3 compétitions
-> archivées ci-dessus restent en base, délibérément. **Tout ce lot
-> (audit + 7 correctifs) est committé (`9caee5f`) ET poussé** — plus rien
-> en attente de commit sur ce chantier.
+> archivées ci-dessus restent en base, délibérément. Le lot audit + 7
+> correctifs est committé (`9caee5f`) ET poussé. **Le lot §2.43
+> (otherBets + contestation) n'est PAS ENCORE COMMITTÉ à ce stade.**
 >
-> Prochaine étape à confirmer avec l'utilisateur : le détail de chaque écran
-> cible déjà annoncé, ou le reste de T6c (Realtime sur `series`).
+> Prochaine étape à confirmer avec l'utilisateur : committer §2.43 ; puis le
+> détail de chaque écran cible déjà annoncé, ou le reste de T6c (Realtime
+> sur `series`).
 
 ---
 
@@ -3638,6 +3647,99 @@ Vérifié : `npx tsc --noEmit`, `npx eslint .` (0 warning) — les fichiers
 `.mjs`/`.yml` de ce lot ne sont pas dans le périmètre TypeScript/Next mais
 n'introduisent aucune régression sur le reste. Aucune migration, aucun
 changement de schéma. PAS ENCORE COMMITTÉ à ce stade.
+```
+
+### 2.43 Révélation publique des paris + contestation d'un pari refusé/résolu (session du 28/07/2026, suite)
+
+```text
+2 points du backlog "confort/reporté" (recensé en fin d'audit), demandés par
+l'utilisateur pour être traités maintenant plutôt que plus tard.
+
+**Lot 1 — Révélation publique des paris des autres joueurs (0.2.4 §9)**
+
+Décision produit confirmée par l'utilisateur, AVANT de coder : réutiliser le
+patron déjà en place (RevealPanel), mais sous forme d'un déclencheur
+cliquable dédié « Voir les paris des autres joueurs » ouvrant une POPUP à 2
+colonnes (Joueur / Pari) — pas une extension du RevealPanel des pronos
+existant, un composant séparé.
+
+**Raffinement décidé par Claude en cours de route, signalé ici plutôt que
+silencieux** : la proposition initiale citait « Matchs et Mes pronos »
+(les 2 écrans qui ont déjà un RevealPanel) comme candidats. En regardant le
+calcul réel de `bet_is_public()` (VALIDATED/WON/LOST + deadline passée),
+l'écran Matchs ne montre QUE des matchs à venir (`scheduled_at > now()`) —
+un pari MATCH n'y est donc JAMAIS public (sa deadline = le coup d'envoi de
+CE match précis, toujours futur sur cet écran). Implémenté UNIQUEMENT sur
+Mes pronos (matchs verrouillés, `scheduled_at <= now()`), le seul endroit où
+la donnée peut réellement exister.
+
+Code : `lib/queries/my-predictions.ts` — nouveau type `OtherBet` ; requête
+`bets` du match SANS filtre `user_id` (RLS `bet_is_public()` fait déjà le tri
+— mon pari + les paris publics des autres, jamais un pari privé d'un autre,
+C-6) ; `getSeriesBetHeader` étendue de la même façon (2e requête série,
+propre lookup de pseudos). `components/my-predictions/OtherBetsModal.tsx`
+(nouveau, "use client", SEULE feuille client de ce lot) : même patron de
+dialogue que `components/admin/RecalculateButton.tsx` (backdrop + div
+role="dialog"), adapté en lecture seule. Câblé dans `MatchRowStatic.tsx`
+(paris MATCH) et `SeriesBetHeader.tsx` (paris SERIES).
+
+Testé en conditions réelles (pas de compétition active à ce stade — jeu de
+données jetable créé et détruit par script, 2 vrais comptes, vraie session
+signInWithPassword du joueur A, PAS service_role) : le pari MATCH et le pari
+SERIES du joueur B remontent bien pour le joueur A via la requête exacte
+utilisée par le code (RLS confirmée, pas supposée).
+
+**Lot 2 — Contester un pari REFUSÉ ou déjà résolu (0.2.7 §6)**
+
+Trouvaille en relisant le cadrage AVANT de coder : 0.2.7 §6 dit "correction
+possible même après le match" et "1 requête = 1 prono/pari sur 1 match ou
+1 série", sans exclure aucun statut — l'exclusion de REJECTED/WON/LOST
+(migration #11) était un raccourci TECHNIQUE pris en codant, jamais une
+décision produit. Confirmé avec l'utilisateur : l'admin tranche directement
+dans `/admin/requests`, pas de détour par `/admin/resolution` pour ce cas.
+
+Migration #13 (`20260728120000_contest_resolved_bet.sql`), poussée
+(`npx supabase db push`) : (1) `enforce_bet_transitions` — nouvelle branche
+autorisant REJECTED/WON/LOST → VALIDATED/WON/LOST/REJECTED, UNIQUEMENT si
+`correction_request_id` + `corrected_by_admin_id` (≠ auteur du pari) sont
+renseignés dans le même UPDATE — même garde que `enforce_prediction_
+correction` (T-c) pour les pronos, transposée dans ce trigger plutôt qu'un
+trigger séparé ; (2) `request_bet_correction` élargie à REJECTED/WON/LOST
+(pas seulement VALIDATED), contrôle "cible terminée" retiré pour REJECTED
+(le grief porte sur le refus lui-même, pas sur une résolution).
+
+Code : `lib/queries/admin-requests.ts` (+ `status`/`validated_difficulty`/
+`proposed_difficulty` du pari) ; `lib/actions/admin-requests.ts`
+(`processCorrectionRequest` — nouveaux `newBetStatus`/`newBetDifficulty`
+optionnels ; si fournis, UN SEUL update pose statut + difficulté + champs de
+correction, PUIS `recomputeBet` — sinon comportement de la migration #11
+INCHANGÉ, toujours réservé à VALIDATED jamais résolu) ; `components/admin/
+RequestCard.tsx` (`BetFields` — 2 rendus selon `currentStatus` : VALIDATED
+= UI d'origine inchangée ; REJECTED/WON/LOST = sélecteur du nouveau statut,
++ sélecteur de difficulté SI `validated_difficulty` est NULL — un pari
+refusé avant toute validation n'en a jamais eu, pré-rempli sur
+`proposedDifficulty`, même patron que `MatchPredictionFields`).
+
+Testé en conditions réelles (2 scripts jetables successifs, données créées
+et détruites) : (a) `request_bet_correction()` sur un pari REJECTED réussit
+en vraie session joueur ; (b) 2e appel immédiat bloqué (requête déjà
+PENDING) ; (c) garde admin≠auteur vérifiée EN PREMIER (avant toute
+correction réussie, pour ne pas fausser le test) : un `corrected_by_admin_id`
+égal à l'auteur du pari est bien rejeté, pari inchangé ; (d) un VRAI second
+compte admin, en vraie session, transitionne REJECTED → VALIDATED avec la
+bonne difficulté ; (e) test e2e séparé (vitest, DB réelle, `recomputeBet`
+réel importé — pas mocké) : REJECTED → WON avec difficulté 4 produit bien
+`points_awarded = 20` (barème `BET_DIFFICULTY_POINTS`), `scored_at` posé.
+2 bugs de script jetable trouvés et corrigés EN COURS DE TEST (mauvaise
+destructuration du retour service-role, ordre de nettoyage FK circulaire
+`bets.correction_request_id`/`correction_requests.target_bet_id`) — aucun
+des deux n'était un bug du code produit, uniquement des scripts de
+vérification eux-mêmes.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .` (0 warning), `npx vitest run`
+(37/37, aucune régression), `npx next build` (30 routes, aucun conflit).
+Migration #13 déjà poussée sur la vraie base (contrairement au code
+applicatif, qui n'est PAS ENCORE COMMITTÉ à ce stade).
 ```
 
 ### 2.42 Commit/push du lot audit + les 3 actions externes T8 (session du 28/07/2026, fin)

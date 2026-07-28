@@ -1,0 +1,94 @@
+.trigger {
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-height: var(--tap-target-min);
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 24rem;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-arena);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+
+.th {
+  text-align: left;
+  padding: var(--space-2) var(--space-2) var(--space-1) 0;
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-semibold);
+  border-bottom: 1px solid var(--color-border-hair);
+}
+
+.td {
+  padding: var(--space-2) var(--space-2) var(--space-2) 0;
+  color: var(--color-text-primary);
+  border-bottom: 1px solid var(--color-border-hair);
+  vertical-align: top;
+}
+
+.close {
+  align-self: flex-end;
+  min-height: var(--tap-target-min);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.close:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

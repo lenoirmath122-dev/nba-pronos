@@ -8,7 +8,11 @@
 > (demandé par l'utilisateur avant de détailler les écrans un par un) et les
 > 7 écarts qu'il a trouvés sont désormais entièrement CLOS, y compris leur
 > exécution réelle (pas seulement le code) : voir la section dédiée
-> ci-dessous et `ETAT_ACTUEL.md` §2.38→§2.42.
+> ci-dessous et `ETAT_ACTUEL.md` §2.38→§2.42. **2 points supplémentaires du
+> backlog "confort/reporté" traités dans la foulée** (§2.43) : révélation
+> publique des paris des autres joueurs (Mes pronos, popup dédiée) et
+> contestation d'un pari REFUSÉ/déjà résolu (l'admin tranche directement dans
+> `/admin/requests`) — les 2 bullets correspondants retirés ci-dessous.
 >
 > **Prochaine étape, à confirmer avec l'utilisateur** : le détail de chaque
 > écran cible déjà annoncé par l'utilisateur ; le reste de T6c (Realtime sur
@@ -320,25 +324,6 @@
   que Classement est déjà codé) ; et **thème clair du bandeau** (garder la
   bande sombre partout comme acté en §15.7, ou prévoir un éclaircissement
   de la photo en thème clair — même asset, filtre différent).
-- **Révélation publique des paris des AUTRES joueurs** (0.2.4 §9, décision
-  fonctionnelle actée mais JAMAIS construite nulle part — trouvé en codant
-  Mes paris, 27/07/2026, `ETAT_ACTUEL.md` §2.19, en vérifiant le code réel
-  d'`AssociatedBetCard` qui ne lit que `user_id = auth.uid()`) : chaque pari
-  devrait devenir visible publiquement (nominatif) à sa propre deadline —
-  la RLS `bet_is_public()` existe déjà et fonctionne (T3), mais aucun écran
-  (Matchs, Mes pronos, Mes paris) ne l'exploite pour afficher les paris
-  d'AUTRES joueurs. Décision explicite (27/07/2026) : Mes paris reste
-  personnel pour l'instant (comme le faisait le prototype, qui avait un
-  écran public séparé, jamais repris en V1) — ce point reste ouvert, sans
-  écran assigné pour l'accueillir.
-- **Contester un pari REJETÉ ou déjà résolu GAGNÉ/PERDU** (trouvé en codant
-  Mes paris, 27/07/2026, `ETAT_ACTUEL.md` §2.19) : le mécanisme de
-  correction ajouté (migration #11) ne couvre QUE le cas « pari VALIDATED
-  jamais résolu » — `enforce_bet_transitions` traite REJECTED/WON/LOST comme
-  des états TERMINAUX, aucune règle ne permet d'en sortir. Étendre à la
-  contestation d'un refus ou d'une résolution déjà posée nécessiterait une
-  extension de ce trigger, pas seulement une nouvelle fonction — décision
-  explicite de ne pas le faire dans ce lot.
 - **Bandeau sticky non traité pour la saisie inline dans Matchs** (27/07/2026,
   `ETAT_ACTUEL.md` §2.15 suite) : le formulaire dédié (`BetForm.tsx`) a son
   contenu fixé en bas de viewport, mais `InlineBetForm.tsx` (Matchs) ne l'a

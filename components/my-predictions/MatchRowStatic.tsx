@@ -4,6 +4,7 @@ import { LiveBadgeAndScore } from "./LiveSubscriber";
 import { PredictionSummary } from "./PredictionSummary";
 import { RevealPanel } from "./RevealPanel";
 import { AssociatedBetCard } from "./AssociatedBetCard";
+import { OtherBetsModal } from "./OtherBetsModal";
 import { CorrectionRequestForm } from "./CorrectionRequestForm";
 import styles from "./MatchRowStatic.module.css";
 
@@ -50,6 +51,7 @@ export function MatchRowStatic({ row, returnTo, forceOpenCorrectionForm, correct
       <PredictionSummary prediction={row.prediction} />
 
       {row.bet && <AssociatedBetCard bet={row.bet} />}
+      <OtherBetsModal bets={row.otherBets} />
 
       <CorrectionRequestForm
         matchId={row.matchId}
