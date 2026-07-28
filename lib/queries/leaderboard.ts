@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { assignRanks } from "@/lib/scoring/ranking";
 
 // Lecture de l'écran Classement (composants serveur uniquement),
 // SPEC_ECRAN_CLASSEMENT_BRACKET §15.1. Un seul module, appelé avec
@@ -56,38 +57,6 @@ type ScoreRow = {
   exact_margins: number;
   admin_corrections_count: number;
 };
-
-// Départage du rang (0.2.6 §3, même ordre que lib/queries/home.ts) :
-// 1. Total  2. bons vainqueurs de match  3. écarts exacts  4. points bracket.
-function compareForRank(a: ScoreRow, b: ScoreRow): number {
-  return (
-    b.total_points - a.total_points ||
-    b.correct_match_winners - a.correct_match_winners ||
-    b.exact_margins - a.exact_margins ||
-    b.bracket_points - a.bracket_points
-  );
-}
-
-function sameRankKey(a: ScoreRow, b: ScoreRow): boolean {
-  return (
-    a.total_points === b.total_points &&
-    a.correct_match_winners === b.correct_match_winners &&
-    a.exact_margins === b.exact_margins &&
-    a.bracket_points === b.bracket_points
-  );
-}
-
-/** Ex-aequo : rang partagé, le rang suivant saute — numérotation 1, 2, 2, 4 (§9). */
-function assignRanks(sortedByRank: ScoreRow[]): Map<string, number> {
-  const ranks = new Map<string, number>();
-  sortedByRank.forEach((row, index) => {
-    const previous = sortedByRank[index - 1];
-    const rank =
-      index === 0 || !sameRankKey(row, previous) ? index + 1 : ranks.get(previous.user_id)!;
-    ranks.set(row.user_id, rank);
-  });
-  return ranks;
-}
 
 const SORT_ACCESSOR: Record<SortKey, (row: LeaderboardRow) => number> = {
   total: (row) => row.totalPoints,
@@ -160,7 +129,7 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
     (forms ?? []).map((row) => [row.user_id as string, row.recent_form_points as number])
   );
 
-  const ranks = assignRanks([...scoreRows].sort(compareForRank));
+  const ranks = assignRanks(scoreRows);
 
   const rows: LeaderboardRow[] = scoreRows.map((row) => {
     const profile = profileById.get(row.user_id);

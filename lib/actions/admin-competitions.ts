@@ -2,9 +2,11 @@
 
 import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { logAdminAction } from "@/lib/actions/audit";
+import { assignRanks } from "@/lib/scoring/ranking";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -175,4 +177,96 @@ export async function createCompetitionFormAction(formData: FormData): Promise<v
     redirect(`/admin/competitions/new?competitionError=${encodeURIComponent(result.error)}`);
   }
   redirect("/admin/competitions");
+}
+
+type ArchiveScoreRow = {
+  user_id: string;
+  total_points: number;
+  matches_points: number;
+  margin_bonus_points: number;
+  bracket_points: number;
+  bets_points: number;
+  correct_match_winners: number;
+  exact_margins: number;
+};
+
+// Clôture et archivage (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1 §9, lot 3/3) —
+// décision produite 0.2.9/decisions_multi_competitions_historique §3 :
+// 1. instantané FIGÉ du classement final dans competition_archives (RLS
+//    archives_insert = is_admin(), session admin normale, pas de
+//    service_role) ; 2. `status` passe à ARCHIVED — ça SEUL libère le slot
+//    `uniq_one_active_competition`, AUCUNE donnée n'est supprimée (series/
+//    matches/predictions/brackets/bets restent en base, competition_id les
+//    rattache pour toujours — nécessaire à un futur historique joueur,
+//    GAPS_OUVERTS.md). Même départage de rang que le classement live
+//    (lib/scoring/ranking.ts) : l'archive doit geler exactement ce que le
+//    classement affichait juste avant la clôture.
+export async function closeCompetition(competitionId: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { success: false, error: "Réservé aux admins." };
+
+  const { data: scores } = await supabase
+    .from("user_scores")
+    .select(
+      "user_id, total_points, matches_points, margin_bonus_points, bracket_points, bets_points, correct_match_winners, exact_margins"
+    )
+    .eq("competition_id", competitionId);
+  const scoreRows = (scores ?? []) as ArchiveScoreRow[];
+
+  if (scoreRows.length > 0) {
+    const userIds = scoreRows.map((row) => row.user_id);
+    const { data: profiles } = await supabase.from("users").select("id, pseudo").in("id", userIds);
+    const pseudoById = new Map((profiles ?? []).map((p) => [p.id as string, p.pseudo as string]));
+    const ranks = assignRanks(scoreRows);
+
+    const archiveRows = scoreRows.map((row) => ({
+      competition_id: competitionId,
+      user_id: row.user_id,
+      pseudo_snapshot: pseudoById.get(row.user_id) ?? "—",
+      rank: ranks.get(row.user_id)!,
+      total_points: row.total_points,
+      matches_points: row.matches_points,
+      margin_bonus_points: row.margin_bonus_points,
+      bracket_points: row.bracket_points,
+      bets_points: row.bets_points,
+      correct_match_winners: row.correct_match_winners,
+      exact_margins: row.exact_margins,
+    }));
+
+    const { error: archiveErr } = await supabase.from("competition_archives").insert(archiveRows);
+    if (archiveErr) return { success: false, error: archiveErr.message };
+  }
+
+  const { data: closed, error: closeErr } = await supabase
+    .from("competitions")
+    .update({ status: "ARCHIVED" })
+    .eq("id", competitionId)
+    .eq("status", "ACTIVE")
+    .select("id")
+    .maybeSingle();
+  if (closeErr) return { success: false, error: closeErr.message };
+  if (!closed) return { success: false, error: "Cette compétition est déjà clôturée." };
+
+  await logAdminAction(supabase, {
+    actorUserId: user.id,
+    action: "CLOSE_COMPETITION",
+    targetType: "competition",
+    targetId: competitionId,
+    after: { archivedPlayerCount: scoreRows.length },
+  });
+
+  revalidatePath("/admin/competitions");
+  revalidatePath("/admin/competitions/results");
+  revalidatePath("/leaderboard");
+  revalidatePath("/bracket");
+  revalidatePath("/home");
+  revalidatePath("/play");
+
+  return { success: true };
 }

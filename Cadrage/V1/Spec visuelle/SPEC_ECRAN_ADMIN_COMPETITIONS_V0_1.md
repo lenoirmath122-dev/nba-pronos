@@ -201,10 +201,68 @@ Nom vide, équipe dupliquée, conférences incohérentes sur une affiche :
 
 ```text
 - Saisie manuelle des résultats de match/avancement de série (lot 2,
-  séparé, dure toute la compétition).
-- Clôture et archivage (lot 3, séparé) — bouton visible, désactivé.
+  séparé, dure toute la compétition) — VOIR SPEC_ECRAN_ADMIN_RESULTATS_V0_1.md.
+- Clôture et archivage (lot 3, séparé) — VOIR §9 CI-DESSOUS (ajouté le
+  27/07/2026, suite, débloqué par un besoin réel : impossible de créer une
+  2e compétition tant que la 1re reste ACTIVE sans mécanisme de clôture).
 - Mini-bracket NBA Cup (monté une fois les 8 qualifiés connus — lot 2 ou
   un lot dédié, pas tranché ici).
 - Mapping automatique A7 (pré-remplissage depuis la synchro T4) — la
   saisie manuelle reste le seul chemin tant que T4 n'existe pas.
+```
+
+---
+
+## 9. Lot 3/3 — Clôture et archivage (`/admin/competitions`) — **acté 27/07/2026**
+
+```text
+Motif de la reprise : en testant la création d'une 2e compétition (avant
+de brancher T4, pour repartir sur des équipes/matchs alignés avec ce que
+l'API renvoie réellement), l'utilisateur a buté sur
+`uniq_one_active_competition` — sans clôture, aucune nouvelle compétition
+n'est possible. Décision AVEC l'utilisateur (AskUserQuestion) : construire
+le lot 3/3 pour de bon plutôt qu'un contournement jetable.
+
+Source : `nba_pronos_decisions_multi_competitions_historique.md` §3 —
+« Clôture = action MANUELLE et EXPLICITE de l'admin... 1. Capture d'un
+instantané du classement FINAL... 2. Reset ensuite ». Lecture actée du
+« reset » (pas précisée plus loin dans la décision d'origine) : dans le
+modèle V1 (contrairement au prototype et son `reset_simulation.sql`), RIEN
+n'est supprimé — chaque ligne `series`/`matches`/`match_predictions`/
+`brackets`/`bracket_picks`/`bets` reste rattachée pour toujours à son
+`competition_id` (nécessaire à un futur historique joueur, `decisions_
+multi_competitions_historique.md` §4, GAPS_OUVERTS.md). « Reset » = passer
+`competitions.status` à `ARCHIVED`, ce qui SEUL libère le slot de l'index
+partiel `uniq_one_active_competition` — aucun DELETE, aucun TRUNCATE.
+
+Écriture (`lib/actions/admin-competitions.ts`, `closeCompetition`) :
+session admin normale (`getServerClient`), AUCUN `service_role` nécessaire
+— RLS déjà ouvertes pour l'admin (`archives_insert`/`competitions_update`,
+migration RLS #3, is_admin()) :
+  1. Lit `user_scores` pour la compétition (agrégats déjà en base, mêmes
+     colonnes que `competition_archives` — vue non-invoker, migration #5).
+  2. Calcule le rang via `lib/scoring/ranking.ts` (`assignRanks`, NOUVEAU
+     module — extrait de `lib/queries/leaderboard.ts` pour que l'archive
+     gèle EXACTEMENT le même départage que le classement affichait en
+     direct, pas une règle recopiée à la main qui pourrait diverger un
+     jour) : Total, puis bons vainqueurs de match, puis écarts exacts,
+     puis points bracket ; ex-aequo = même rang (1, 2, 2, 4).
+  3. INSERT `competition_archives` (1 ligne par joueur ayant au moins une
+     ligne de scoring — mêmes participants que `user_scores`), avec
+     `pseudo_snapshot` (figé, lu sur `users.pseudo` au moment de la
+     clôture).
+  4. UPDATE `competitions.status = 'ARCHIVED'` — gardé par
+     `.eq("status", "ACTIVE")` + vérification de la ligne retournée
+     (refuse une double clôture, message dédié).
+  `logAdminAction` ("CLOSE_COMPETITION") après succès.
+
+UI (`components/admin/CloseCompetitionButton.tsx`) : SEULE feuille
+`"use client"` de l'écran, même patron que `RecalculateButton.tsx`
+(dialogue de confirmation — action IRRÉVERSIBLE, `decisions_multi_
+competitions_historique.md` §3 : « AUCUNE correction possible après
+clôture »). Remplace le bouton DÉSACTIVÉ posé au lot 1.
+
+Hors périmètre de CE lot (toujours ouvert, `GAPS_OUVERTS.md`) : l'onglet
+Historique côté Profil joueur qui LIRAIT `competition_archives` — cette
+table est désormais alimentée, mais rien ne l'affiche encore côté joueur.
 ```
