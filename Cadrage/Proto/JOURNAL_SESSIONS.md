@@ -3524,3 +3524,49 @@ une prochaine fois.
 centralisés + décomptes hub/Accueil, TOUS codés et vérifiés. **PAS encore
 committés.** Compétition de test (« Test UI Matchs ») toujours ACTIVE en
 base — pas archivée.
+
+---
+
+## Commit du lot centralisation, vérif Vercel, largeur d'écran (28/07/2026, suite)
+
+Commit (`b1cd597`) et push du lot centralisation prono/pari. Vérifié sur
+Vercel (`npx vercel ls`, projet déjà lié) : déploiement de production déclenché
+automatiquement par le push, passé de "Building" à "● Ready" en ~35s —
+confirmé en ligne sur https://nba-pronos.vercel.app.
+
+**Demande de l'utilisateur, capture d'écran à l'appui** : réduire la largeur
+de l'écran sur desktop, « à mi-chemin entre mobile et desktop », plutôt que
+d'étirer l'appli bord à bord. Nouveau token `--layout-max-width: 640px`
+(`app/tokens.css`) ; `body` contraint + centré (`app/globals.css`). Les
+barres en `position: fixed` ignorant le flux normal (elles ne suivent PAS
+automatiquement le max-width du body) ont dû être alignées une par une —
+distinguées des fonds de dialogue (`position: fixed; inset: 0` + overlay
+semi-transparent, laissés intacts, correctement plein viewport) :
+`TabBar.module.css`, `StickyMeBar.module.css` (leaderboard, "barre toi"),
+`BetForm.module.css` (bandeau collant du formulaire de pari) — même token,
+même traitement (`max-width` + `margin-inline: auto`).
+
+**Remontée immédiate de l'utilisateur en testant** (capture d'écran) : les
+bandes latérales apparues de part et d'autre de la colonne centrée étaient
+dans la couleur de fond PAR DÉFAUT du navigateur (le `<html>` n'avait jamais
+de fond posé explicitement — seul `.shell` de chaque layout, contenu DANS le
+body désormais rétréci, portait `--color-surface-base`). Corrigé : `html {
+background: var(--color-surface-base); }` dans `app/globals.css` — respecte
+`data-theme` comme le reste de l'app (attribut posé sur `<html>` par
+`app/layout.tsx`), pas une couleur figée.
+
+Vérifié à chaque étape : `next build` propre, confirmé visuellement par
+l'utilisateur dans son navigateur (serveur `next start` relancé 3 fois,
+port 3100) — validé "parfait" après le correctif de fond.
+
+**Question restée ouverte, reposée à l'utilisateur** : que faire de
+`components/home/TodoRow.module.css` (modification préexistante, pas
+produite par Claude). Réponse : « je ne sais pas trop, tu en penses quoi ? »
+— recommandation de Claude : l'annuler (commentaire vide sans aucun effet
+visuel/fonctionnel, ressemble à un artefact accidentel plutôt qu'un travail
+en cours) plutôt que de le committer sans savoir ce que c'est, ni le laisser
+traîner indéfiniment. Voir le fichier lui-même pour l'issue retenue.
+
+**État en fin de session** : compétition de test (« Test UI Matchs »)
+délibérément LAISSÉE ACTIVE (décision explicite de l'utilisateur, « on
+laisse pour le moment »).

@@ -20,8 +20,20 @@
   }
 }
 
+/* Bandes latérales (desktop, colonne centrée §ci-dessous) : couleur de fond
+   réelle de l'app (respecte data-theme, posé sur <html> par app/layout.tsx)
+   plutôt que le blanc/noir par défaut du navigateur derrière le body. */
+html {
+  background: var(--color-surface-base);
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+  /* Colonne centrée à mi-chemin entre mobile et desktop (demandé par
+     l'utilisateur 28/07/2026) — sans effet sur mobile, où le viewport est
+     déjà plus étroit que --layout-max-width. */
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
 }

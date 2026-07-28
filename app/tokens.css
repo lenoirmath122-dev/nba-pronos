@@ -171,6 +171,16 @@
 
 
   /* ========================================================================
+     LARGEUR DE MISE EN PAGE — colonne centrée, à mi-chemin entre mobile et
+     desktop (demandé par l'utilisateur 28/07/2026). Sans effet sur mobile
+     (viewport déjà plus étroit) ; recentre le contenu ET les barres fixes
+     (nav basse, bandeaux collants) sur desktop plutôt que de les étirer
+     bord à bord.
+     ======================================================================== */
+  --layout-max-width: 640px;
+
+
+  /* ========================================================================
      RAYONS — barème « niveau C / net » (§15.2, remplace §5.2)
      ======================================================================== */
   --radius-sm:    2px;    /* tags, badges (valeur générale) */

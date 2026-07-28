@@ -21,23 +21,27 @@
 >    deux sont prêts) ; paris SÉRIE saisissables directement dans Bracket
 >    (Playoffs uniquement) ; décompte "paris séries restants" sur la carte
 >    Bracket du hub ; nouvelle section Accueil "Paris séries non remplis"
->    (disparaît quand vide). **PAS ENCORE COMMITTÉ.**
+>    (disparaît quand vide). Committé et poussé (`b1cd597`) — **vérifié en
+>    ligne sur Vercel** (déploiement de prod déclenché par le push, ● Ready).
+> 5. **Largeur d'écran resserrée sur desktop** (§2.37, demandé par
+>    l'utilisateur) : colonne centrée à 640px (`--layout-max-width`, nouveau
+>    token) plutôt qu'étirée bord à bord ; bandes latérales recolorées à
+>    `--color-surface-base` (le `<html>` n'avait jamais de fond posé). Testé
+>    et validé "parfait" par l'utilisateur. Committé et poussé.
 >
 > **État de la base** : une compétition de test (« Test UI Matchs », 1 série
-> LAL-BOS + 1 match) reste ACTIVE, posée pour vérifier visuellement le point
-> 4 — confirmé fonctionnel par l'utilisateur lui-même dans son navigateur.
-> Pas encore archivée.
+> LAL-BOS + 1 match) reste ACTIVE, **délibérément LAISSÉE** (décision
+> explicite de l'utilisateur, "on laisse pour le moment") — pas un oubli.
 >
 > **Rien à signaler côté T6c** au-delà de ce qui était déjà su : Realtime sur
 > `series` reste le seul morceau manquant (jamais activée).
 >
-> **Trouvaille sans rapport, laissée en l'état** : `components/home/
-> TodoRow.module.css` porte une modification non committée PRÉEXISTANTE à
-> cette session (pas produite par Claude) — à statuer avec l'utilisateur.
+> **`components/home/TodoRow.module.css`** — modification non committée
+> PRÉEXISTANTE à cette session (pas produite par Claude, un commentaire vide
+> sans effet) : voir §2.37 pour l'issue retenue.
 >
-> Prochaine étape à confirmer : committer le lot de centralisation (+ décider
-> du sort de la compétition de test), puis le détail de chaque écran cible
-> (annoncé par l'utilisateur) ou le reste de T6c — voir `GAPS_OUVERTS.md`.
+> Prochaine étape à confirmer : le détail de chaque écran cible (annoncé par
+> l'utilisateur) ou le reste de T6c — voir `GAPS_OUVERTS.md`.
 
 ---
 
@@ -3157,6 +3161,57 @@ Claude ne l'a pas produite. Laissée telle quelle (ni committée, ni annulée) �
 
 Compétition de test (« Test UI Matchs ») toujours ACTIVE en base à ce stade
 — pas archivée.
+
+PAS encore committé à ce stade — committé et poussé depuis (`b1cd597`),
+vérifié en ligne sur Vercel (déploiement de prod déclenché automatiquement
+par le push, ● Ready en ~35s).
+```
+
+### 2.37 Largeur d'écran resserrée sur desktop (session du 28/07/2026, suite)
+
+```text
+Demandé par l'utilisateur : réduire la largeur de l'appli sur desktop, "à
+mi-chemin entre mobile et desktop", plutôt que de l'étirer bord à bord.
+
+Nouveau token `--layout-max-width: 640px` (`app/tokens.css`) — sans effet
+sur mobile (viewport déjà plus étroit). `body` contraint + centré
+(`app/globals.css`, `max-width` + `margin-inline: auto`) : suffit pour tout
+le contenu en flux normal (tous les layouts — app/public/admin — en
+héritent automatiquement, aucun autre fichier à toucher).
+
+Les barres en `position: fixed` ignorent le max-width du body (elles se
+positionnent par rapport au VIEWPORT, pas au flux normal) — alignées une
+par une avec le même token, DISTINGUÉES des fonds de dialogue
+(`position: fixed; inset: 0` + overlay semi-transparent, laissés intacts,
+correctement plein viewport pour un fond de modale) :
+- `components/nav/TabBar.module.css` (nav 4 onglets, `inset-inline: 0`) ;
+- `components/leaderboard/StickyMeBar.module.css` (barre "toi", `left/right:
+  var(--space-4)` — le max-width prime une fois le viewport plus large que
+  la colonne, `margin-inline: auto` recentre dans cet espace) ;
+- `components/bets/BetForm.module.css` (bandeau collant du formulaire de
+  pari, `inset-inline: 0`).
+
+**Remontée immédiate de l'utilisateur en testant (capture d'écran)** : les
+bandes latérales de part et d'autre de la colonne centrée étaient dans la
+couleur de fond PAR DÉFAUT du navigateur — `<html>` n'avait jamais de fond
+posé explicitement (seul `.shell` de chaque layout, contenu DANS le body
+désormais rétréci, porte `--color-surface-base`). Corrigé :
+`html { background: var(--color-surface-base); }` dans `app/globals.css` —
+respecte `data-theme` (attribut posé sur `<html>` par `app/layout.tsx`),
+jamais une couleur figée.
+
+Vérifié : `next build` propre à chaque étape. Confirmé visuellement par
+l'utilisateur dans son navigateur (serveur `next start` relancé 3 fois, port
+3100) — validé "parfait" après le correctif de fond.
+
+**`components/home/TodoRow.module.css`** — modification non committée
+PRÉEXISTANTE à cette session (commentaire vide `/*  */` sans aucun effet
+visuel/fonctionnel, pas produite par Claude). Reposée à l'utilisateur
+(AskUserQuestion) : ANNULÉE (`git checkout`) plutôt que committée à
+l'aveugle — recommandation de Claude, suivie telle quelle.
+
+Compétition de test (« Test UI Matchs ») toujours délibérément LAISSÉE
+ACTIVE (décision explicite de l'utilisateur, "on laisse pour le moment").
 
 PAS encore committé à ce stade.
 ```

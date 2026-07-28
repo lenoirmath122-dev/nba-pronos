@@ -5,6 +5,11 @@
   inset-inline: 0;
   bottom: 0;
   z-index: 10;
+  /* Alignée sur la colonne centrée du body (28/07/2026) — sans ça, une barre
+     position:fixed ignore le max-width du flux normal et s'étire bord à
+     bord même sur desktop. */
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
   display: flex;
   justify-content: space-around;
   align-items: stretch;
