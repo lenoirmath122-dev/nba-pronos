@@ -1,0 +1,23 @@
+name: Sync — résultats des matchs
+
+# Appelle /api/sync/results (T4/T8) : scores + statuts, déclenche le
+# recalcul du scoring. Fréquence FIXE toute l'année plutôt que bornée aux
+# horaires plausibles de matchs (choix confirmé avec l'utilisateur,
+# 28/07/2026, SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md §5) — plus simple à
+# maintenir, le quota de 100 req/jour Highlightly reste large même à cette
+# fréquence (doc maître §2, A6).
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/sync/results
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/sync/results"

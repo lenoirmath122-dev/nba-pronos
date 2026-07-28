@@ -27,6 +27,11 @@ async function handle(request: Request): Promise<Response> {
       `${result.changed} changé(s), ${result.unchanged} inchangé(s).` +
       (result.skipped.length > 0
         ? ` Ignorés : ${result.skipped.map((s) => `#${s.highlightlyMatchId} (${s.reason})`).join("; ")}.`
+        : "") +
+      (result.unrecognizedStatuses.length > 0
+        ? ` Statuts Highlightly non reconnus (retombés sur IN_PROGRESS) : ${result.unrecognizedStatuses
+            .map((s) => `#${s.highlightlyMatchId} ("${s.description}")`)
+            .join("; ")}.`
         : "");
     await writeSyncLog(supabase, {
       syncType: "RESULTS",

@@ -1,0 +1,31 @@
+name: Heartbeat Supabase
+
+# Appelle /api/heartbeat (T8, doc maître §2, A8) : empêche la mise en pause
+# automatique du projet Supabase gratuit (déclenchée après 7 jours
+# d'inactivité). 1x/jour suffit largement.
+#
+# LIMITE CONNUE, à garder en tête (pas corrigée ici, juste documentée) :
+# GitHub désactive automatiquement un workflow planifié après 60 jours SANS
+# AUCUNE activité sur le dépôt (commit/push — pas le déclenchement du
+# workflow lui-même qui compte). Les creux de saison NBA (ex. entre la fin
+# des Playoffs en juin et le début de la Cup en novembre) peuvent largement
+# dépasser 60 jours SANS commit sur ce dépôt — le heartbeat s'arrêterait
+# alors silencieusement, sans email ni alerte, et Supabase finirait par se
+# mettre en pause quand même. Parade la plus simple si ça se confirme un
+# jour : un commit ou un `workflow_dispatch` manuel avant le 60e jour de
+# silence (aucune automatisation prévue pour ça à ce stade).
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/heartbeat
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/heartbeat"

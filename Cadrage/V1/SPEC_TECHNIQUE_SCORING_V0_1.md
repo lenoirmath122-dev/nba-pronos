@@ -205,7 +205,10 @@ Précisions :
   n'a que des matchs) ; ils sont posés par l'admin (0.2.7) ou dérivés d'une
   cascade (§9). `deriveSeriesOutcome` **respecte un statut CANCELLED/POSTPONED
   déjà présent** en le renvoyant tel quel (elle ne le réécrit pas à partir des
-  matchs) — c'est la porte d'entrée de la neutralisation A2 (§9).
+  matchs) — c'est la porte d'entrée de la neutralisation A2 (§9). **Précision
+  d'implémentation, §13.1** : dans le code réel, ce respect n'est pas porté
+  par cette fonction elle-même (dont la signature `(matches, competitionType)`
+  ne reçoit même pas le statut actuel) mais par son appelant.
 
 > **Frontière d'écriture (actée §12.1)** : `deriveSeriesOutcome` est **pure** (elle
 > *calcule* l'agrégat). L'**écriture** de `series.official_*` reste dans `lib/sync`
@@ -550,6 +553,7 @@ MOTEUR PUR — deriveSeriesOutcome (§4)
 3.  Série 3-2 (5 joués) → IN_PROGRESS, winner NULL, format NULL.
 4.  Cup (1 match FINISHED) → FINISHED, winner = vainqueur du match, format NULL.
 5.  Statut CANCELLED déjà présent en entrée → renvoyé tel quel (pas réécrit §4).
+    Testé via recomputeMatch, pas deriveSeriesOutcome directement — voir §13.
 
 MOTEUR PUR — scoreMatchPrediction (§5)
 6.  Bon vainqueur + écart exact → 10 + 5 = 15.
@@ -593,6 +597,15 @@ IDEMPOTENCE & ORCHESTRATION (§10, en base)
 32. Match FINISHED→recompute→puis correction admin d'un prono (0.2.3 §7) →
     recomputeMatch rescore uniquement ce prono, idempotent.
 ```
+
+**Couverture réelle (28/07/2026)** : cas 1-4 et 6-27 dans `lib/scoring/
+engine.test.ts` (moteur pur). Cas 5, 28, 29 (variante directe), 31 dans
+`lib/scoring/recompute.test.ts` (orchestration, contre une fake DB en
+mémoire — pas une vraie instance Supabase, voir tête de fichier). Cas 30 et
+32 pas couverts par un test dédié à ce jour (30 découle structurellement du
+fait que `recompute.ts` n'écrit jamais `predicted_*`, vérifiable par lecture
+du code ; 32 nécessiterait un scénario de correction admin complet, hors
+périmètre de ce lot).
 
 ---
 
@@ -641,3 +654,51 @@ TypeScript strict, commentaires FR, noms EN). Prochaine spec : **T6** (arboresce
 `app/`, server actions, Realtime, garde-fou de saisie C2), qui **consomme** les
 colonnes de scoring et la convention §12.3, et implémente le writer partagé
 `writeSeriesOutcome` (§12.1/§12.2) côté `lib/sync` (spécifié en T4, réutilisé ici).
+
+---
+
+## 13. Correctif post-audit (28/07/2026) — garde CANCELLED/POSTPONED : orchestration, pas fonction pure
+
+### 13.1 Constat
+
+Audit structurel du 28/07/2026 (`GAPS_OUVERTS.md`) : la lettre du §4
+attribue le respect d'un statut `CANCELLED`/`POSTPONED` déjà posé à
+`deriveSeriesOutcome` elle-même (« la renvoyant tel quel »). Dans
+l'implémentation réelle (`lib/scoring/engine.ts`), `deriveSeriesOutcome` a
+la signature stricte `(matches, competitionType)` du §3 — elle ne reçoit
+**jamais** le statut actuellement en base, donc ne peut structurellement
+rien « respecter » : rester pure au sens C-3 (aucune connaissance de l'état
+persisté) l'en empêche par construction.
+
+### 13.2 Où vit réellement le garde-fou
+
+Dans `lib/scoring/recompute.ts` (`recomputeMatch`), AVANT tout appel à
+`deriveSeriesOutcome` :
+
+```text
+if (ADMIN_LOCKED_STATUSES.has(seriesRow.official_status)) {   // {"CANCELLED", "POSTPONED"}
+  await recomputeSeries(seriesRow.id);   // rescore les picks contre l'état existant
+  return;                                 // deriveSeriesOutcome n'est jamais appelée
+}
+```
+
+`deriveSeriesOutcome` n'est donc pas « appelée puis son résultat ignoré » —
+elle n'est **jamais invoquée du tout** quand la série est verrouillée par un
+admin. Le comportement produit (un statut CANCELLED/POSTPONED n'est jamais
+écrasé par une dérivation depuis les matchs) est conforme à l'intention du
+§4 ; seul l'endroit où vit la garantie diffère de sa description littérale.
+
+### 13.3 Décision
+
+**Pas un bug, pas une correction de code à faire** : la localisation dans
+l'orchestration est la seule cohérente avec C-3 (le moteur pur ne doit rien
+savoir de l'état persisté) et était déjà documentée en commentaire dans le
+code (`engine.ts`, tête de `deriveSeriesOutcome` ; `recompute.ts`, commentaire
+au-dessus de `ADMIN_LOCKED_STATUSES`) — ce n'était donc pas un écart
+silencieux, mais un écart entre la prose du §4 et l'implémentation qui
+n'avait jamais été rétro-acté ici. **Acté** : le §4 décrit l'intention
+produit, ce §13 fait foi pour l'implémentation réelle. Testé explicitement
+(cas 5 du plan §11) dans `lib/scoring/recompute.test.ts`.
+
+**T5 reste VALIDÉ et figé** — ce §13 est un rattrapage documentaire, pas une
+réouverture de décision.

@@ -1,0 +1,21 @@
+name: Sync — calendrier des matchs
+
+# Appelle /api/sync/schedule (T4/T8) : rattache les matchs Highlightly aux
+# séries internes. 1x/jour (doc maître §2, A8) — pas besoin de plus, le
+# calendrier ne change pas d'heure en heure. GitHub Actions n'exécute qu'en
+# UTC : 08:00 UTC = 09:00 ou 10:00 heure de Paris selon l'heure d'été.
+on:
+  schedule:
+    - cron: "0 8 * * *"
+  workflow_dispatch: {} # déclenchement manuel possible depuis l'onglet Actions.
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/sync/schedule
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/sync/schedule"

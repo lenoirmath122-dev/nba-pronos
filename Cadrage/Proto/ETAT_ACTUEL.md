@@ -5,43 +5,48 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/07/2026 (longue session, 4 chantiers
-> enchaînés, détail complet §2.34/§2.35/§2.36 + `JOURNAL_SESSIONS.md`) :
+> Dernière mise à jour : session du 28/07/2026 (suite, T8 — spec
+> DÉPLOIEMENT rédigée et VALIDÉE, planificateur + nettoyage CODÉS — détail
+> §2.41 ; audit initial §2.38, 5 premiers correctifs §2.39, T6a §2.40,
+> `JOURNAL_SESSIONS.md`, `GAPS_OUVERTS.md`) :
 >
-> 1. **T4 (synchro API Highlightly) CODÉE et TESTÉE EN CONDITIONS RÉELLES**
->    (§2.34) — dry-run complet sur les vraies affiches/résultats du 1er tour
->    Playoffs NBA 2026, idempotence vérifiée. Committé et poussé (`3f228d5`).
-> 2. **2 gaps trouvés en testant un pari** (auto-validation admin,
->    `InlineBetForm` inaccessible après validation du prono) CORRIGÉS,
->    committés et poussés (`ace0d46`).
-> 3. **Le vrai hub Jouer CODÉ** (§2.35, `SPEC_ECRAN_HUB_JOUER_V0_1.md`) —
->    grille 2×2, pastille + aperçu par carte. Committé et poussé (`277313e`).
-> 4. **Centralisation prono/pari, demandée par l'utilisateur** (§2.36) :
->    validation synchronisée prono+pari sur Matchs (un seul bouton quand les
->    deux sont prêts) ; paris SÉRIE saisissables directement dans Bracket
->    (Playoffs uniquement) ; décompte "paris séries restants" sur la carte
->    Bracket du hub ; nouvelle section Accueil "Paris séries non remplis"
->    (disparaît quand vide). Committé et poussé (`b1cd597`) — **vérifié en
->    ligne sur Vercel** (déploiement de prod déclenché par le push, ● Ready).
-> 5. **Largeur d'écran resserrée sur desktop** (§2.37, demandé par
->    l'utilisateur) : colonne centrée à 640px (`--layout-max-width`, nouveau
->    token) plutôt qu'étirée bord à bord ; bandes latérales recolorées à
->    `--color-surface-base` (le `<html>` n'avait jamais de fond posé). Testé
->    et validé "parfait" par l'utilisateur. Committé et poussé.
+> 1. **Audit croisé spec ↔ code réel sur T1→T8 et D1-D6** (§2.38). Verdict
+>    global : **aucune des 6 décisions structurantes D1-D6 n'a été violée
+>    silencieusement.** Realtime sur `series` jamais activée reste bien le
+>    SEUL écart T6c.
+> 2. **Les 7 écarts trouvés sont désormais TOUS CORRIGÉS** (§2.39 : `recognized`
+>    → `sync_logs`, avertissement quota API bas, `recompute.test.ts` (11
+>    tests, 37/37 au total), 2 correctifs post-validation dans les specs
+>    T3/T5 ; §2.40 : T6a — route `/reset-password` codée et vérifiée en
+>    conditions réelles ; §2.41 : **T8 — `SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md`
+>    rédigée et VALIDÉE** (3 décisions tranchées avec l'utilisateur : GitHub
+>    Actions, fréquence fixe pour `/api/sync/results`, nettoyage dans le
+>    même lot), 4 workflows GitHub Actions écrits, `scripts/cleanup-test-
+>    data.mjs` écrit et testé en dry-run contre la vraie base).
 >
-> **État de la base** : une compétition de test (« Test UI Matchs », 1 série
-> LAL-BOS + 1 match) reste ACTIVE, **délibérément LAISSÉE** (décision
-> explicite de l'utilisateur, "on laisse pour le moment") — pas un oubli.
+> **3 actions concrètes restent à la charge de l'utilisateur** (aucune ne
+> peut être faite par Claude — secrets/actions externes) : pousser
+> `HIGHLIGHTLY_API_KEY` sur Vercel (confirmé MANQUANT) ; ajouter
+> `SYNC_SECRET` comme secret GitHub Actions ; exécuter
+> `cleanup-test-data.mjs --confirm` pour de vrai. Détail dans
+> `GAPS_OUVERTS.md`, entrée T8.
 >
-> **Rien à signaler côté T6c** au-delà de ce qui était déjà su : Realtime sur
-> `series` reste le seul morceau manquant (jamais activée).
+> **Trouvaille distincte, en testant T6a** : les emails `@nba-pronos.test`
+> des comptes de seed sont REJETÉS par le validateur Supabase Auth (TLD
+> `.test` non accepté, `400 — invalid email`) — n'affecte pas les comptes de
+> seed existants (créés via l'API Admin, hors validation), tracé dans
+> `GAPS_OUVERTS.md` pour mémoire future.
 >
-> **`components/home/TodoRow.module.css`** — modification non committée
-> PRÉEXISTANTE à cette session (pas produite par Claude, un commentaire vide
-> sans effet) : voir §2.37 pour l'issue retenue.
+> **État de la base** : inchangé depuis la session précédente — la
+> compétition de test (« Test UI Matchs », 1 série LAL-BOS + 1 match) reste
+> ACTIVE (sera retirée par `cleanup-test-data.mjs --confirm` quand
+> l'utilisateur le décidera). Le lot centralisation prono/pari (§2.36) reste
+> committé et poussé (`b1cd597`), vérifié en ligne sur Vercel. Les
+> correctifs §2.39, le lot T6a §2.40 et le lot T8 §2.41 ne sont **pas
+> encore committés**.
 >
-> Prochaine étape à confirmer : le détail de chaque écran cible (annoncé par
-> l'utilisateur) ou le reste de T6c — voir `GAPS_OUVERTS.md`.
+> Prochaine étape à confirmer avec l'utilisateur : committer §2.39 + §2.40 +
+> §2.41 ; puis les 3 actions externes listées ci-dessus.
 
 ---
 
@@ -3214,4 +3219,424 @@ Compétition de test (« Test UI Matchs ») toujours délibérément LAISSÉE
 ACTIVE (décision explicite de l'utilisateur, "on laisse pour le moment").
 
 PAS encore committé à ce stade.
+```
+
+### 2.38 Audit structurel T1→T8 / D1-D6 (session du 28/07/2026, suite)
+
+```text
+Demandé par l'utilisateur avant de continuer à détailler les écrans un par
+un : une passe de VÉRIFICATION STRUCTURELLE croisant chaque chantier
+technique (T1-T8) et chaque décision structurante (D1-D6) du document maître
+(SPEC_TECHNIQUE_V0.1_1.md) avec le VRAI code — pas seulement les docs de
+suivi. Lecture seule, aucune modification pendant l'audit lui-même (les
+corrections sont un chantier séparé, à trancher avec l'utilisateur).
+
+Méthode : lecture directe du document maître + ETAT_ACTUEL.md +
+GAPS_OUVERTS.md par Claude, puis 5 agents lancés EN PARALLÈLE (chacun avec
+un périmètre précis, des chemins de fichiers exacts, consigne « lecture
+seule, aucune modification ») :
+- Agent 1 : T1 (modèle de données) + D2/D5/D6 vs les 12 migrations réelles.
+- Agent 2 : T2 (auth) + T3 (RLS) + D4 vs migrations + lib/supabase/ +
+  lib/auth/ + proxy.ts.
+- Agent 3 : T4 (synchro Highlightly) — chantier prioritaire de l'audit
+  (codé le 28/07/2026, jamais encore audité), avec vérification explicite
+  des 4 amendements post-validation §3/§4/§5.2/§6 de
+  SPEC_TECHNIQUE_SYNCHRO_V0.1.md.
+- Agent 4 : T5 (scoring) + D3 (portage, principes P5/P6).
+- Agent 5 : T6a/T6b/T6c (architecture Next) + T7 (design system), avec
+  consigne explicite de CONFIRMER (pas redécouvrir) que Realtime sur
+  `series` jamais activée est bien le seul écart T6c.
+T8 (déploiement) et D1 (nouveau dépôt/projet) vérifiés directement par
+Claude (pas d'agent) : vercel.json, .vercel/project.json, absence de
+.github/workflows, absence de script de nettoyage sous scripts/, grep des
+artefacts du prototype (botScripting/simulation_state/is_primary_human)
+dans le code réel, git remote + premier commit.
+
+VERDICT GLOBAL : aucune des 6 décisions structurantes D1-D6 n'a été violée
+silencieusement. Sur les 8 chantiers T1-T8 : T1, T2, T3, T5, T6b, T6c, T7
+CONFIRMÉS COHÉRENTS (T3 et T5 avec des réserves mineures non bloquantes,
+détaillées ci-dessous et dans GAPS_OUVERTS.md) ; T4, T6a, T8 avec un écart
+réel chacun.
+
+**T1 (modèle de données) — CONFIRMÉ COHÉRENT.** Migration initiale
+(20260718090000_initial_schema.sql) = transcription fidèle de
+SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md (17 enums, 16 tables, mêmes FK
+composites, mêmes CHECK >=0, mêmes vues security_invoker). Les 11 migrations
+suivantes n'étendent jamais le schéma T1 de façon contradictoire.
+
+**T2 (auth) — CONFIRMÉ COHÉRENT.** Flux d'inscription en 3 temps
+(verify_join_code → unicité pseudo → signUp), pont École A
+(handle_new_user), séparation des clients (browser/server/service),
+proxy.ts — tout conforme ligne à ligne à SPEC_TECHNIQUE_AUTH_V0.1.md.
+
+**T3 (RLS) — CONFIRMÉ COHÉRENT, réserve mineure.** 15 tables couvertes,
+fonctions SECURITY DEFINER (is_admin/is_active/match_is_locked/
+has_committed_prediction/bracket_deadline_passed/bet_is_public) et policy
+match_predictions_select identiques à SPEC_TECHNIQUE_RLS_V0.1.md. Réserve :
+les fonctions SECURITY DEFINER ajoutées après le 18/07/2026
+(count_committed_predictions, request_prediction_correction, save_bet/
+withdraw_bet, request_bet_correction) ne sont pas rétro-actées dans la spec
+T3 (qui s'arrête à son §11 du 23/07) — chacune documente pourtant son motif
+dans sa propre migration. Écart de PROCESS de cadrage, pas de sécurité (voir
+GAPS_OUVERTS.md).
+
+**T4 (synchro Highlightly) — ÉCART.** Globalement fidèle : timezone
+America/New_York sur les appels datés, date API jamais reconverti, somme du
+tableau par quart-temps, C-1 (lib/nba/client.ts seul fichier connaissant
+Highlightly) et C-2 (lib/sync/* seul écrivain teams/series/matches/
+entity_mappings, jamais une prédiction) respectés, secret Bearer vérifié sur
+les 4 routes, verrouillage piloté par l'heure connue. Les 4 amendements
+§3/§4/§5.2/§6 de SPEC_TECHNIQUE_SYNCHRO_V0.1.md sont bien codés — SAUF un
+point précis de l'amendement §3 : `normalizeMatchStatus()`
+(lib/nba/client.ts:106) promet qu'un statut Highlightly non reconnu remonte
+`recognized: false` pour être journalisé dans sync_logs ; en réalité ce
+booléen n'est JAMAIS consommé (lib/sync/schedule.ts:110,
+lib/sync/results.ts:82 ne lisent que `.status`), et aucune route ne
+journalise ce cas. Un statut imprévu de l'API basculerait donc
+silencieusement en IN_PROGRESS sans trace — ÉCART SILENCIEUX, priorité la
+plus haute de cet audit (voir GAPS_OUVERTS.md). Point mineur additionnel,
+hors des 4 amendements : pas d'avertissement journalisé sur quota API bas
+(`requestsRemaining` jamais comparé à un seuil).
+
+**T5 (scoring) — CONFIRMÉ COHÉRENT, 2 réserves mineures.** Moteur pur
+(lib/scoring/engine.ts) sans I/O, barèmes MATCH/BRACKET Playoffs+Cup/PARIS
+conformes chiffre pour chiffre à SPEC_TECHNIQUE_SCORING_V0_1.md,
+neutralisation A2 nativement gérée par les branches NULL, orchestration
+(recompute.ts) avec les 4 fonctions attendues. Réserves : (1) le garde-fou
+« respecte un CANCELLED/POSTPONED déjà posé » vit dans l'orchestration
+(recompute.ts:136-143, ADMIN_LOCKED_STATUSES) et non dans la fonction pure
+deriveSeriesOutcome comme la lettre du §4 le suggère — documenté en
+commentaire dans le code, pas un oubli ; (2) les cas 28-32 du plan de test
+§11 (idempotence/orchestration en base, dont la vérification transverse P6)
+n'existent dans aucune suite vitest permanente — vérifiés une seule fois via
+un test jetable supprimé après coup (voir GAPS_OUVERTS.md).
+
+**D3 (portage, P5/P6) — CONFIRMÉ COHÉRENT.** P5 (idempotence) garanti
+doublement : colonnes `points_awarded` en `generated always as (...) stored`
+en base + recompute.ts qui ne fait que des UPDATE réécrivant toutes les
+colonnes de scoring (jamais d'incrément). P6 (jamais négatif) garanti
+doublement : logique du moteur structurellement incapable de produire une
+valeur négative + CHECK >=0 en base sur toutes les colonnes de points.
+
+**T6a (arbre app/, route groups) — ÉCART.** Tout l'arbre prescrit par
+SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md est en place (routes physiques
+uniques /leaderboard et /bracket, proxy.ts, frontière service_role confinée
+à lib/sync|scoring|actions), SAUF `app/(public)/reset-password/page.tsx`
+(ligne 177 de la spec, « reset Supabase standard (T2 §8) ») qui n'existe
+pas — aucun lien « mot de passe oublié » sur /login. Jamais tracé avant cet
+audit (voir GAPS_OUVERTS.md).
+
+**T6b (server actions + garde C2) — CONFIRMÉ COHÉRENT.**
+useUnsavedGuard.tsx (beforeunload + interception onNavigate + agrégation
+multi-clés), policy bracket corrigée (plus de `not is_validated`),
+audit_logs bien appelés par les actions admin — tout conforme.
+
+**T6c (Realtime + rendu des états) — CONFIRMÉ COHÉRENT, confirmation
+explicite obtenue.** Grep exhaustif des 12 migrations : un seul hit
+`supabase_realtime` (20260724110000_realtime_matches.sql, sur `matches`
+uniquement) — Realtime sur `series` jamais activée EST bien le SEUL écart
+T6c, comme déjà su. Toutes les autres règles de rendu d'état vérifiées et
+codées : paris annulés barrés/grisés (MyBetRow.module.css), joueurs absents
+comptés (RevealPanel des 2 écrans), marquage public de correction admin
+(générique sur Matchs, nominatif sur Mes pronos — divergence déjà connue,
+voir GAPS_OUVERTS.md), joueur inactif conservé au classement
+(lib/queries/leaderboard.ts, isInactive jamais utilisé pour filtrer).
+
+**T7 (design system) — CONFIRMÉ COHÉRENT.** app/tokens.css fidèle à
+SPEC_DESIGN_SYSTEM_V0_1.md §3/§5/§15 (amendement V0.2 inclus). Les 3 points
+déjà connus et non bloquants (contraste AA --color-trend sur fond clair,
+police Inter auto-hébergée, asset hero-parquet.webp) confirmés toujours dans
+le même état — pas de nouveauté.
+
+**T8 (déploiement) — vérifié directement par Claude, PARTIEL confirmé.**
+Projet Vercel bien lié (.vercel/project.json) et déployé. Aucun
+planificateur externe configuré (pas de .github/workflows, pas de clé
+`crons` dans vercel.json), aucun script de nettoyage du jeu de test
+(scripts/ ne contient que le seed). Point nouveau : aucun fichier
+SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md n'a jamais été écrit, alors que le
+document maître (§4) en prévoit un dédié pour T8 comme pour T1-T7 — le
+déficit de ce chantier n'est donc pas que d'implémentation.
+
+**D1 (nouveau dépôt/projet Supabase) — CONFIRMÉ COHÉRENT.** git remote
+distinct (lenoirmath122-dev/nba-pronos), premier commit du 18/07/2026,
+aucun artefact du prototype (botScripting/simulation_state/
+is_primary_human) dans le code réel — ces termes n'apparaissent que dans
+Cadrage/ (références historiques attendues, pas du code).
+
+**D2 (rétention, pas de suppression) — CONFIRMÉ COHÉRENT.** competition_id
+NOT NULL structurel sur series/brackets. Recherche exhaustive de
+DELETE/DROP/TRUNCATE sur tout le repo (hors node_modules/.next) : zéro
+résultat sur le domaine métier. closeCompetition
+(lib/actions/admin-competitions.ts:204-272) fait bien un snapshot dans
+competition_archives puis une bascule de statut, jamais un effacement.
+
+**D4 (security_invoker vues classement) — CONFIRMÉ COHÉRENT.** Le passage
+en security_invoker=false (migration #5, 23/07/2026) est réellement
+documenté en §11 de SPEC_TECHNIQUE_RLS_V0.1.md comme correctif
+post-validation (jamais appliqué en silence), et les deux vues ne renvoient
+que des agrégats — aucune fuite de ligne individuelle.
+
+**D5 (aucune colonne email sur public.users) — CONFIRMÉ COHÉRENT** sur les
+12 migrations.
+
+**D6 (NBA Cup, synchro connaît seulement les 8 qualifiés) — principe
+respecté, réserve déjà connue.** Aucune synchro n'ingère de phase de
+groupes (lib/sync/schedule.ts ne fait que rattacher des matchs à des séries
+DÉJÀ existantes). Mais la moitié « saisie manuelle des 8 qualifiés via
+l'écran de création » n'est pas codée (createCompetition ne construit un
+bracket que pour PLAYOFFS) — déjà tracké comme gap ouvert (mini-bracket NBA
+Cup), pas un écart caché.
+
+LISTE PRIORISÉE DES 7 ÉCARTS TROUVÉS (détail complet, avec fichier:ligne,
+dans GAPS_OUVERTS.md nouvelle section dédiée) :
+1. T4 — `recognized: false` jamais consommé ni journalisé (silencieux,
+   priorité la plus haute).
+2. T6a — `app/(public)/reset-password/page.tsx` manquant, jamais tracé.
+3. T5 — trou de couverture vitest sur l'idempotence/orchestration en base.
+4. T8 — aucune spec SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md n'a jamais existé.
+5. T3 — fonctions SECURITY DEFINER post-18/07 non rétro-documentées.
+6. T5 — garde CANCELLED/POSTPONED dans l'orchestration plutôt que la
+   fonction pure (documenté en commentaire, pas silencieux).
+7. T4 — pas d'avertissement sur quota API bas (mineur, hors amendements).
+
+Aucune modification de fichier de code pendant cet audit. Résolution des 7
+points : à trancher avec l'utilisateur (ordre, périmètre de chacun — voir
+GAPS_OUVERTS.md).
+```
+
+### 2.39 Résolution de 5 des 7 écarts de l'audit (session du 28/07/2026, suite)
+
+```text
+Demande de l'utilisateur juste après l'audit (§2.38) : « on commence à
+résoudre ces points si ça te paraît cohérent ». Vu l'hétérogénéité des 7
+points (correctif d'une ligne vs script à écrire vs spec entière à
+rédiger), découpage proposé et confirmé par l'utilisateur (AskUserQuestion)
+avant de coder : les 4 correctifs sûrs d'abord, reset-password (T6a) et la
+spec T8 ensuite (chacun touchant une vraie décision — config Supabase Auth,
+rédaction d'un document dédié).
+
+**T4 — `recognized` propagé jusqu'à `sync_logs`** (le plus prioritaire,
+écart silencieux) : `lib/sync/schedule.ts` et `lib/sync/results.ts`
+collectent désormais chaque statut Highlightly non reconnu
+(`UnrecognizedStatus[]`, nouveau champ `unrecognizedStatuses` sur
+`SyncScheduleResult`/`SyncResultsResult`) ; `app/api/sync/schedule/route.ts`
+et `app/api/sync/results/route.ts` les ajoutent au `summary` écrit dans
+`sync_logs` (« Statuts Highlightly non reconnus (retombés sur
+IN_PROGRESS) : #123 ("texte inconnu"); ... »). Un statut imprévu de l'API
+laisse désormais une trace exploitable, plus jamais silencieux.
+
+**T4 — avertissement quota API bas** (mineur, hors des 4 amendements déjà
+actés) : `lib/sync/logging.ts` (`writeSyncLog`, seul point d'écriture
+partagé par les 4 routes de synchro) compare désormais
+`requestsRemaining` à un seuil (`LOW_QUOTA_THRESHOLD = 10`, 10% du quota
+journalier de 100 — la spec ne chiffre pas « proche de 0 », seuil choisi et
+documenté en commentaire, pas un choix produit) : sous ce seuil, un
+avertissement est préfixé au `summary` ET journalisé via `console.warn`.
+
+**T5 — `lib/scoring/recompute.test.ts` écrit** (trou de couverture des cas
+28-32 du plan §11, dont P6) : contre une FAKE Supabase en mémoire
+(`FakeBuilder`/`FakeSupabase`, colocalisées dans le fichier de test —
+reproduisent uniquement le sous-ensemble .from/.select/.update/.eq/.in/
+.single/.maybeSingle réellement utilisé par `recompute.ts` et
+`writeSeriesOutcome.ts`, mockée via `vi.mock("@/lib/supabase/service")`),
+JAMAIS une vraie instance Supabase. Horloge figée (`vi.useFakeTimers()`)
+pour comparer deux passes successives sans faux-positif sur `scored_at`.
+11 nouveaux tests : idempotence de `recomputeMatch` (pronos seuls, puis
+série complétée + bracket picks), garde CANCELLED (cas 5 du plan §11,
+annoncé par le commentaire d'`engine.test.ts` mais jamais écrit avant ce
+jour), idempotence de `recomputeBet` (WON/LOST/CANCELLED/VALIDATED),
+idempotence de `recomputeCompetition` (rejeu intégral + vérification
+transverse P6 sur tout l'état final), idempotence de `recomputeSeries`
+appelée seule. 37/37 tests au total (26 existants + 11 nouveaux),
+`tsc`/`eslint`/`next build` tous propres après coup.
+
+**T3 — fonctions SECURITY DEFINER rétro-actées** (écart de PROCESS de
+cadrage, pas de sécurité) : nouveau §12 dans `SPEC_TECHNIQUE_RLS_V0.1.md`
+(« Correctif post-audit — fonctions SECURITY DEFINER ajoutées après T3,
+rétro-actées ») listant les 4 fonctions ajoutées après le 18/07
+(`count_committed_predictions`, `request_prediction_correction`, `save_bet`/
+`withdraw_bet`, `request_bet_correction`), chacune avec sa migration et son
+motif — sans toucher au code (aucune de ces fonctions n'élargissait une
+visibilité, juste jamais actée formellement dans la spec).
+
+**T5 — garde CANCELLED/POSTPONED rétro-actée** (lettre de la spec vs
+emplacement réel du code) : nouveau §13 dans
+`SPEC_TECHNIQUE_SCORING_V0_1.md` clarifiant que `deriveSeriesOutcome` (§3,
+signature `(matches, competitionType)`) ne peut structurellement PAS
+« respecter » un statut existant (elle ne le reçoit jamais) — le garde-fou
+vit dans `recomputeMatch` (`ADMIN_LOCKED_STATUSES`), qui court-circuite
+l'appel à `deriveSeriesOutcome` avant même qu'elle soit invoquée. Décision :
+pas un bug, l'emplacement réel est le seul cohérent avec C-3 (moteur pur
+sans connaissance de l'état persisté) — le §4 décrit l'intention produit, le
+§13 fait foi pour l'implémentation. Testé explicitement dans le nouveau
+`recompute.test.ts` (cas 5).
+
+**GAPS_OUVERTS.md mis à jour** : les 5 bullets résolus retirés (convention
+du fichier : un point retiré = un point traité, la trace vit ici et dans
+JOURNAL_SESSIONS.md) ; ne restent que T6a (reset-password) et T8 (spec
+déploiement jamais écrite), chacun explicitement noté comme nécessitant une
+décision avant de coder plutôt qu'un simple correctif.
+
+Vérifié après CHAQUE étape (pas seulement à la fin) : `npx tsc --noEmit`,
+`npx eslint .` (0 warning), `npx vitest run` (37/37), `npx next build` (29
+routes, aucun conflit) — tous propres. Aucune migration, aucun changement de
+schéma. PAS ENCORE COMMITTÉ à ce stade.
+```
+
+### 2.40 T6a — écran reset-password (session du 28/07/2026, suite)
+
+```text
+Dernier des 2 écarts nécessitant une décision avant de coder (l'autre, T8,
+reporté en session dédiée). Périmètre : SPEC_TECHNIQUE_AUTH_V0.1.md §8
+(« Reset password : flux Supabase standard par email... Écrans en T6 ») +
+l'unique route prescrite par SPEC_TECHNIQUE_ARCHITECTURE_NEXT_V0_1_a.md §3
+(`app/(public)/reset-password/page.tsx`).
+
+**Choix de conception (interprétation d'implémentation, pas un choix
+produit — la spec ne détaille pas le mécanisme)** : UNE seule route gère les
+2 étapes (demande d'email, puis choix du nouveau mot de passe), distinguées
+par la présence ou non d'une session de récupération détectée côté client —
+jamais par un paramètre d'URL lu à la main. Mécanisme : le lien reçu par
+email dépose un jeton dans le FRAGMENT d'URL (`#access_token=...&type=
+recovery`), que `getBrowserClient()` (`lib/supabase/browser.ts`,
+`createBrowserClient` de `@supabase/ssr`, session en cookie) détecte
+automatiquement au chargement et persiste en cookie — c'est l'événement
+`onAuthStateChange` `PASSWORD_RECOVERY` qui fait basculer l'écran, jamais un
+`?code=` lu côté serveur. Conséquence : AUCUNE route supplémentaire
+(`/auth/confirm` ou équivalent) n'était nécessaire — le fragment n'atteint
+jamais le serveur, tout se résout côté navigateur, cohérent avec l'unique
+route prescrite par l'arbre T6a.
+
+**Écriture 100% côté client, PAS de server action** (à la différence de
+login/signup/logout, `lib/auth/actions.ts`) : demande
+(`resetPasswordForEmail`) et confirmation (`updateUser({password})`) sont 2
+appels directs au SDK Supabase depuis `ResetPasswordForm.tsx` — aucune
+donnée applicative à nous à valider avant (pas de code compétition, pas de
+pseudo), contrairement à signup. Message de la demande volontairement
+GÉNÉRIQUE que l'email corresponde ou non à un compte (D5 : l'email reste un
+identifiant privé, cet écran ne doit jamais confirmer/infirmer l'existence
+d'un compte). Après confirmation réussie : déconnexion puis redirection
+`/login?resetSuccess=1` (bandeau de courtoisie affiché par `LoginForm.tsx`,
+lu via `useSyncExternalStore` plutôt qu'un `useEffect` + `setState` — évite
+la nouvelle règle ESLint `react-hooks/set-state-in-effect`, découverte en
+codant ce lot, qui bloquait le build sur ce point précis).
+
+**Fichiers** : `components/auth/ResetPasswordForm.tsx` (nouveau, "use
+client") ; `app/(public)/reset-password/page.tsx` (nouveau, serveur, calque
+de `login/page.tsx`) ; `components/auth/LoginForm.tsx` (lien « Mot de passe
+oublié ? » + bandeau de succès). Aucune migration, aucun changement de
+schéma, aucune modification de `proxy.ts` (`/reset-password` n'était déjà ni
+dans `APP_ZONE_PREFIXES` ni dans `AUTH_PAGES` — un visiteur avec une session
+de récupération n'est donc jamais rebondi vers `/home` en arrivant dessus,
+vérifié par lecture du fichier avant de coder, pas supposé).
+
+**Testé en conditions réelles** : serveur `next start` (port 3101, 3100
+déjà occupé par un reliquat d'une session précédente), `/reset-password`
+répond 200 avec le bon titre et l'état « Chargement… » attendu au tout
+premier rendu serveur (avant hydratation) ; lien « Mot de passe oublié ? »
+confirmé présent dans le HTML de `/login` ; `/leaderboard`, `/bracket`,
+`/home` (redirection 307 attendue), `/signup` non régressés. Appel réel
+`resetPasswordForEmail()` exécuté contre le VRAI projet Supabase (script
+jetable, supprimé après coup) : **rejeté pour un email de seed**
+(`seed-amine92@nba-pronos.test`, `400 — invalid email`, TLD `.test` non
+accepté par le validateur Supabase — trouvaille distincte, tracée dans
+GAPS_OUVERTS.md, sans rapport avec le code de ce lot) puis **accepté sans
+erreur** pour l'email personnel de l'utilisateur (redirectTo déjà autorisé
+côté dashboard Supabase, aucune erreur de quota rencontrée cette fois) — un
+vrai email de réinitialisation a donc été envoyé à cette adresse ; à
+l'utilisateur de confirmer la réception et de dérouler le clic jusqu'au bout
+si un test manuel complet au clavier/souris est voulu (hors de portée d'un
+script jetable, pas de navigateur disponible dans cet environnement).
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .` (0 warning après le correctif
+`useSyncExternalStore`), `npx vitest run` (37/37, aucune régression), `npx
+next build` (30 routes, `/reset-password` listée, aucun conflit). PAS
+ENCORE COMMITTÉ à ce stade.
+```
+
+### 2.41 T8 — spec Déploiement rédigée, planificateur + nettoyage codés (session du 28/07/2026, suite)
+
+```text
+Dernier écart de l'audit (§2.38). Contrairement à T1-T7, la spec T8 n'avait
+jamais été écrite alors que le déploiement Vercel était déjà partiellement
+fait (§2.17, 27/07/2026) — brouillon rédigé par Claude (ce qui est déjà
+fait + points de décision), 3 décisions tranchées AVEC l'utilisateur
+(AskUserQuestion) avant tout code, comme pour chaque autre chantier T :
+1. Planificateur externe : **GitHub Actions** (pas cron-job.org) — reste
+   dans le dépôt, pas de tiers de confiance en plus pour SYNC_SECRET.
+2. Fréquence de `/api/sync/results` : **fixe toute l'année** (pas de plage
+   bornée aux horaires plausibles de matchs) — plus simple, quota large.
+3. Nettoyage des données de test : **même lot** que le reste de T8, pas une
+   session séparée.
+
+`Cadrage/V1/SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md` (nouveau) : documente ce qui
+était déjà fait (Vercel lié, 4 des 5 secrets poussés), les 4 routes à
+appeler et leurs fréquences (T4/doc maître §2 A8), les 3 décisions
+ci-dessus tranchées, et un inventaire des secrets. Statut VALIDÉ.
+
+**Trouvaille concrète en vérifiant l'état réel de Vercel avant d'écrire la
+spec** (`npx vercel env ls`) : `HIGHLIGHTLY_API_KEY` (ajoutée en local avec
+T4 le 28/07) N'EST PAS poussée sur Vercel — les 4 variables du déploiement
+initial (27/07) y sont, celle-ci jamais répercutée depuis. Conséquence
+concrète : `/api/sync/schedule`/`results` échoueraient en production
+aujourd'hui. Signalé à l'utilisateur avec la commande exacte à taper
+lui-même (`vercel env add`, jamais la valeur collée dans le chat).
+
+**4 workflows GitHub Actions** (`.github/workflows/`) :
+- `sync-teams.yml` : AUCUN `schedule` — `workflow_dispatch` seul (référentiel
+  fixe, jamais planifié, T4 §4).
+- `sync-schedule.yml` : `0 8 * * *` (1x/jour) + `workflow_dispatch`.
+- `sync-results.yml` : `*/30 * * * *` (fréquence fixe, décision ci-dessus) +
+  `workflow_dispatch`.
+- `heartbeat.yml` : `0 6 * * *` (1x/jour) + `workflow_dispatch`. Limite
+  connue documentée en tête de fichier : GitHub désactive un workflow
+  planifié après 60 jours SANS commit sur le dépôt — un creux de saison NBA
+  peut dépasser ce délai, le heartbeat s'arrêterait alors silencieusement.
+  Pas de parade automatisée à ce stade, juste documentée.
+
+Chacun appelle sa route via `curl --fail` (échec bruyant, visible dans
+l'onglet Actions) avec `Authorization: Bearer ${{ secrets.SYNC_SECRET }}` —
+`SYNC_SECRET` doit être ajouté comme secret GitHub par l'utilisateur (pas
+encore fait à ce stade), sans quoi les 4 workflows échoueraient tous en 401
+à leur premier déclenchement.
+
+**`scripts/cleanup-test-data.mjs`** (nouveau, symétrique du seed) :
+dry-run PAR DÉFAUT (n'affiche que ce qui serait supprimé), `--confirm`
+requis pour exécuter réellement. Périmètre EXPLICITE (jamais un motif large
+`.test`, qui attraperait `demo-amis@nba-pronos.test` à tort) : compétitions
+« Playoffs NBA (test) » ET « Test UI Matchs » (cette 2e trouvée en écrivant
+le script, pas anticipée à la rédaction de la spec — même famille
+d'artefact, ajoutée à la liste) ; les 7 comptes `seed-*@nba-pronos.test`
+(via `auth.admin.deleteUser`, jamais un DELETE SQL direct). EXCLU
+délibérément : `demo-amis@nba-pronos.test` (compte encore utilisé par les
+amis de l'utilisateur) et le compte réel (Rillettes-31).
+
+Ordre de suppression respecte les FK réelles du schéma T1 (pas de cascade
+sauf `competition_secrets`/`public.users`, vérifiées dans les migrations
+avant d'écrire le script, pas supposées) : casse la FK circulaire
+`correction_requests` ↔ `match_predictions`/`bets` en premier (met
+`correction_request_id` à NULL), puis feuilles vers racines par
+compétition, comptes en tout dernier (`auth.admin.deleteUser` cascade vers
+`public.users`, D5).
+
+**Bug trouvé et corrigé EN TESTANT** (pas en relisant le code) : mauvaise
+destructuration du retour de la fonction `ok()` (`const { data: X } =
+ok(...)` alors que `ok()` retourne `data` directement, pas `{data}`) — le
+tout premier dry-run affichait "2 compétitions trouvées" dans son propre
+log de lecture puis "Aucune compétition trouvée" juste après, contradiction
+qui a permis de repérer le bug immédiatement. Corrigé sur les 5 points
+concernés, revérifié.
+
+**Dry-run testé contre la vraie base** (28/07/2026) : 2 compétitions de test
+trouvées avec des décomptes cohérents avec ce qui est déjà documenté
+ailleurs (9 matchs / 15 séries / 45 picks / 6 paris / 11 pronos pour
+« Playoffs NBA (test) » ; 1 match / 1 série / 1 pick pour « Test UI
+Matchs ») ; 7 comptes de seed retrouvés par pseudo avec leurs vrais UUID.
+**PAS ENCORE EXÉCUTÉ EN VRAI** (`--confirm` jamais passé) — décision
+d'exécution réelle laissée à l'utilisateur.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .` (0 warning) — les fichiers
+`.mjs`/`.yml` de ce lot ne sont pas dans le périmètre TypeScript/Next mais
+n'introduisent aucune régression sur le reste. Aucune migration, aucun
+changement de schéma. PAS ENCORE COMMITTÉ à ce stade.
 ```

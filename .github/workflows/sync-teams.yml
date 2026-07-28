@@ -1,0 +1,19 @@
+name: Sync — référentiel équipes (à la demande)
+
+# Appelle /api/sync/teams (T4/T8). AUCUN "schedule" volontairement : le
+# référentiel des 30 franchises NBA est fixe (D6, doc maître §7) — ce
+# workflow existe uniquement pour permettre un déclenchement MANUEL depuis
+# l'onglet Actions de GitHub, jamais planifié.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/sync/teams
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/sync/teams"

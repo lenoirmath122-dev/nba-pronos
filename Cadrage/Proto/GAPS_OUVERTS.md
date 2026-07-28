@@ -22,6 +22,31 @@
 > GitHub Actions) au déploiement pour que T4 tourne en continu (§ Déploiement
 > ci-dessous).
 
+## Écarts trouvés par l'audit structurel T1→T8 / D1-D6 (28/07/2026)
+
+> Audit croisé spec ↔ code réel demandé par l'utilisateur avant de détailler
+> les écrans un par un (lecture seule pendant l'audit lui-même — détail
+> complet, méthode et preuves fichier:ligne dans `JOURNAL_SESSIONS.md` et
+> `ETAT_ACTUEL.md` §2.38/§2.39). Verdict global : **aucune des 6 décisions
+> structurantes D1-D6 n'a été violée silencieusement.** T1, T2, T3, T5, T6b,
+> T6c, T7 CONFIRMÉS COHÉRENTS ; T4, T6a, T8 avec un écart réel chacun.
+> Confirmation explicite obtenue : Realtime sur `series` jamais activée
+> reste bien le SEUL écart sur T6c (grep exhaustif des 12 migrations).
+>
+> **Les 7 écarts trouvés sont désormais TOUS CORRIGÉS** (même session,
+> 28/07/2026, détail `ETAT_ACTUEL.md` §2.39/§2.40/§2.41) : `recognized`
+> propagé jusqu'à `sync_logs` (T4) ; avertissement quota API bas ajouté (T4) ;
+> couverture vitest de l'idempotence écrite (`lib/scoring/recompute.test.ts`,
+> T5) ; fonctions SECURITY DEFINER rétro-actées (`SPEC_TECHNIQUE_RLS_V0.1.md`
+> §12, T3) ; garde CANCELLED/POSTPONED rétro-actée comme choix
+> d'implémentation assumé (`SPEC_TECHNIQUE_SCORING_V0_1.md` §13, T5) ; T6a —
+> route `/reset-password` codée (`ResetPasswordForm.tsx`, flux Supabase
+> standard 100% client) ; **T8 — `SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md` rédigée
+> et VALIDÉE** (3 décisions tranchées avec l'utilisateur), workflows GitHub
+> Actions écrits (`.github/workflows/*.yml`), `scripts/cleanup-test-data.mjs`
+> écrit et testé en dry-run contre la vraie base. `tsc`/`eslint`/`vitest`
+> (37/37)/`next build` tous propres après ces 7 correctifs.
+
 ## Gaps techniques du prototype (à corriger ou trancher dans son périmètre)
 
 - **Performance de `lib/botScripting.ts`** : requêtes Supabase séquentielles
@@ -138,19 +163,25 @@
   ajoutée (l'asset n'est pas fourni, `--font-ui` retombe sur `system-ui`) ;
   asset réel du bandeau parquet (`public/brand/hero-parquet.webp`) pas encore
   déposé (à la charge de l'utilisateur, acté 21/07/2026).
-- **T8 — Déploiement** : PARTIELLEMENT FAIT le 27/07/2026 (`ETAT_ACTUEL.md`
-  §2.17) — projet Vercel lié + variables d'env poussées + déployé en
-  production (https://nba-pronos.vercel.app). Reste : configuration du
-  planificateur externe gratuit (cron-job.org / GitHub Actions — fréquences
-  des jobs `/api/sync/*` et `/api/heartbeat`), toujours pas traité. S'y
-  ajoute désormais : **effacer le jeu de données de test**
-  (`ETAT_ACTUEL.md` §2.6/§6) avant tout lancement réel — compétition
-  « Playoffs NBA (test) » + son contenu, et les 7 comptes
-  `seed-*@nba-pronos.test` via `auth.admin.deleteUser`. Aucun script de
-  nettoyage écrit à ce jour (le seed n'est pas idempotent). Le futur script
-  devra aussi traiter le compte de démo partagé `demo-amis@nba-pronos.test`
-  (créé le 27/07/2026, voir gap dédié ci-dessous) — motif d'email différent
-  de `seed-*`, pas couvert automatiquement par un filtre sur ce seul motif.
+- **T8 — Déploiement** : spec écrite et VALIDÉE, config du planificateur
+  ET script de nettoyage CODÉS le 28/07/2026
+  (`SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md`, `ETAT_ACTUEL.md` §2.41). Reste, 3
+  actions concrètes avant que ce soit réellement opérationnel :
+  1. Pousser `HIGHLIGHTLY_API_KEY` sur Vercel (confirmé MANQUANT via `vercel
+     env ls`, 28/07/2026 — les routes `/api/sync/schedule`/`results`
+     échoueraient en prod aujourd'hui) : `npx vercel env add
+     HIGHLIGHTLY_API_KEY production` (+ preview + development), à la charge
+     de l'utilisateur.
+  2. Ajouter `SYNC_SECRET` comme secret GitHub (Settings → Secrets and
+     variables → Actions, dépôt `lenoirmath122-dev/nba-pronos`) pour que les
+     4 workflows `.github/workflows/*.yml` puissent authentifier leurs
+     appels — sinon ils échoueront tous en 401 dès leur premier déclenchement.
+  3. Exécuter `scripts/cleanup-test-data.mjs --confirm` pour de vrai (testé
+     en dry-run seulement à ce jour) — supprime « Playoffs NBA (test) »,
+     « Test UI Matchs » et les 7 comptes `seed-*@nba-pronos.test`.
+     `demo-amis@nba-pronos.test` reste explicitement HORS PÉRIMÈTRE de ce
+     script (compte encore utilisé par les amis de l'utilisateur, voir gap
+     dédié ci-dessous).
 - **Comportement de « Confirm email » pas élucidé** (27/07/2026,
   `ETAT_ACTUEL.md` §2.17/§7) : le réglage a été décoché et sauvegardé dans
   le dashboard Supabase (confirmé par capture d'écran), mais un test
@@ -165,6 +196,21 @@
   reprendre : soit revérifier après un délai, soit configurer un SMTP
   personnalisé (Resend évoqué, nécessite un nom de domaine vérifié que
   l'utilisateur ne possède pas à ce jour).
+- **Les emails `@nba-pronos.test` des comptes de seed sont rejetés par
+  Supabase Auth** (trouvé le 28/07/2026 en testant `resetPasswordForEmail`
+  en conditions réelles, lot reset-password T6a) : Supabase renvoie
+  `400 — Email address "..." is invalid` pour toute adresse `@nba-pronos.test`
+  (TLD `.test`, réservé RFC 2606 pour les tests — le validateur email de
+  Supabase Auth le rejette explicitement, contrairement à un domaine réel
+  type `example.com`, testé et accepté sans erreur). N'affecte PAS les 7
+  comptes de seed existants (créés via l'API Admin, `auth.admin.createUser`,
+  qui ne repasse pas par cette validation) ni la connexion normale — mais
+  bloque toute action qui redéclenche un envoi d'email Supabase pour un
+  compte de seed (reset password réel, ou un futur renvoi de confirmation).
+  Pas bloquant pour l'instant (aucun écran ne l'utilise sur un compte de
+  seed), mais à garder en tête si un test de reset-password en conditions
+  réelles est un jour tenté sur un compte de seed plutôt qu'un email
+  personnel.
 - **Compte de démo partagé, temporaire** (27/07/2026, `ETAT_ACTUEL.md`
   §2.17) : `Demo_Amis` / `demo-amis@nba-pronos.test` (rôle PLAYER), créé pour
   que les amis de l'utilisateur testent l'appli SANS vraie compétition entre

@@ -445,3 +445,63 @@ join_code + fonctions SECURITY DEFINER + enable RLS + policies + triggers),
 montrée en entier avant tout `db push`, puis le **plan de test §7** joué pour la
 première vraie vérification de sécurité de bout en bout. Ensuite : T4 (synchro
 API) et T5 (scoring), puis T6 (écrans).
+
+## 12. Correctif post-audit (28/07/2026) — fonctions `SECURITY DEFINER` ajoutées après T3, rétro-actées
+
+**Constat** (audit structurel du 28/07/2026, `GAPS_OUVERTS.md`) : après la
+validation de T3 (18/07/2026) et son unique correctif tracé (§11,
+23/07/2026), l'implémentation des écrans joueur a ajouté 4 fonctions
+`SECURITY DEFINER` supplémentaires, chacune motivée et commentée dans sa
+propre migration, mais jamais actée ici — un écart de PROCESS de cadrage
+(la spec RLS n'était plus à jour avec la surface `SECURITY DEFINER` réelle
+du projet), pas un écart de sécurité (aucune n'élargit une visibilité audelà
+de ce que sa policy propre justifie, chacune contourne la RLS pour UNE
+écriture précise et documentée, jamais pour une lecture).
+
+Rétro-actées ici, par ordre chronologique :
+
+```text
+- count_committed_predictions(p_match)  — migration #6 (24/07/2026)
+  Lecture seule : renvoie un ENTIER (compte de joueurs ACTIVE ayant commité
+  un prono sur CE match), jamais une ligne. Même principe que
+  has_committed_prediction() déjà actée en §2 — un simple comptage ne peut
+  pas fuiter le contenu d'un prono individuel. Motivé par le même piège que
+  D4/§11 (un COUNT() en session joueur sous-compte tant que l'appelant n'a
+  pas lui-même validé sur CE match précis), mais PAR MATCH plutôt que
+  globalement au classement.
+
+- request_prediction_correction()  — migration #7 (24/07/2026)
+  Écriture, voie A (0.2.3 §10.2) : crée une ligne match_predictions VIDE
+  (DRAFT, aucun champ de contenu) si aucune n'existe encore pour
+  (auth.uid(), match), puis pose la correction_requests liée — dans une
+  seule transaction. Garde-fous : auth.uid() uniquement, joueur ACTIVE,
+  match effectivement verrouillé, réutilisation si une ligne existe déjà
+  (jamais de doublon), une seule requête PENDING à la fois. N'écrit JAMAIS
+  de contenu de pronostic (P10) — seule fonction de ce groupe qui contourne
+  une policy d'INSERT plutôt qu'une simple lecture agrégée.
+
+- save_bet() / withdraw_bet()  — migration #10 (26/07/2026)
+  Écriture des paris joueur. Justification structurante (pas un simple
+  contournement de confort) : le cap « 3 paris MATCH par série » n'a aucun
+  backstop d'index unique possible (contrairement aux 2 quotas « 1 pari
+  actif », eux bien couverts par un index unique partiel) — seule une
+  fonction SECURITY DEFINER peut fermer la fenêtre de course via un
+  pg_advisory_xact_lock. Patron repris de request_prediction_correction.
+
+- request_bet_correction()  — migrations #11/#12 (27/07/2026, #12 = correctif
+  d'une colonne mal nommée dans #11, même jour)
+  Écriture, même patron que request_prediction_correction() mais pour un
+  pari VALIDATED jamais résolu (ne couvre PAS un refus ou une résolution
+  déjà posée — enforce_bet_transitions traite REJECTED/WON/LOST comme des
+  états terminaux, voir GAPS_OUVERTS.md).
+```
+
+**Aucune policy RLS existante n'est modifiée par ces 4 fonctions** — elles
+s'ajoutent au socle §2, ne le remplacent pas. Chacune reste documentée en
+premier lieu dans sa propre migration (justification, garde-fous) ; cette
+section n'ajoute qu'un renvoi centralisé, pour que la liste des fonctions
+`SECURITY DEFINER` du projet reste visible à un seul endroit sans avoir à
+parcourir 12 fichiers de migration.
+
+**T3 reste VALIDÉ et figé** — ce §12 est un rattrapage documentaire, pas une
+réouverture de décision.

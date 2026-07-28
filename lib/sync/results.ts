@@ -15,10 +15,16 @@ import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
 
 export type SkippedResultMatch = { highlightlyMatchId: number; reason: string };
 
+// Correctif post-audit (28/07/2026, GAPS_OUVERTS.md) : voir la même note dans
+// lib/sync/schedule.ts — `recognized: false` collecté et remonté, plus jamais
+// ignoré silencieusement.
+export type UnrecognizedStatus = { highlightlyMatchId: number; description: string };
+
 export type SyncResultsResult = {
   changed: number;
   unchanged: number;
   skipped: SkippedResultMatch[];
+  unrecognizedStatuses: UnrecognizedStatus[];
   requestsRemaining: number | null;
 };
 
@@ -28,7 +34,13 @@ type MatchRow = { id: string; series_id: string; status: string; home_score: num
  *  convention que lib/sync/schedule.ts. */
 export async function syncResults(referenceDate: Date = new Date()): Promise<SyncResultsResult> {
   const supabase = getServiceClient();
-  const result: SyncResultsResult = { changed: 0, unchanged: 0, skipped: [], requestsRemaining: null };
+  const result: SyncResultsResult = {
+    changed: 0,
+    unchanged: 0,
+    skipped: [],
+    unrecognizedStatuses: [],
+    requestsRemaining: null,
+  };
 
   const { data: rawMatches, requestsRemaining } = await getMatchesByDate(nyDateString(referenceDate));
   result.requestsRemaining = requestsRemaining;
@@ -79,7 +91,10 @@ async function processOneMatch(
 
   const homeScore = sumQuarters(rawMatch.state.score.homeTeam);
   const awayScore = sumQuarters(rawMatch.state.score.awayTeam);
-  const status = normalizeMatchStatus(rawMatch.state.description).status;
+  const { status, recognized } = normalizeMatchStatus(rawMatch.state.description);
+  if (!recognized) {
+    result.unrecognizedStatuses.push({ highlightlyMatchId: rawMatch.id, description: rawMatch.state.description });
+  }
 
   const hasChanged = before.status !== status || before.home_score !== homeScore || before.away_score !== awayScore;
   if (!hasChanged) {

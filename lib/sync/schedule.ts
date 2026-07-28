@@ -33,10 +33,18 @@ type SeriesRow = {
 
 export type SkippedMatch = { highlightlyMatchId: number; reason: string };
 
+// Correctif post-audit (28/07/2026, GAPS_OUVERTS.md) : normalizeMatchStatus()
+// (lib/nba/client.ts) remonte `recognized: false` pour tout statut Highlightly
+// non reconnu (§3 de la spec synchro le promet), mais ce booléen n'était
+// jamais lu — un statut imprévu passait silencieusement pour IN_PROGRESS,
+// sans trace. Désormais collecté et remonté dans sync_logs (voir la route).
+export type UnrecognizedStatus = { highlightlyMatchId: number; description: string };
+
 export type SyncScheduleResult = {
   updated: number;
   created: number;
   skipped: SkippedMatch[];
+  unrecognizedStatuses: UnrecognizedStatus[];
   requestsRemaining: number | null;
 };
 
@@ -65,7 +73,13 @@ function findCandidateSeries(series: SeriesRow[], homeTeamId: string, awayTeamId
  *  saison (convenu avec l'utilisateur le 28/07/2026, voir la route). */
 export async function syncSchedule(referenceDate: Date = new Date()): Promise<SyncScheduleResult> {
   const supabase = getServiceClient();
-  const result: SyncScheduleResult = { updated: 0, created: 0, skipped: [], requestsRemaining: null };
+  const result: SyncScheduleResult = {
+    updated: 0,
+    created: 0,
+    skipped: [],
+    unrecognizedStatuses: [],
+    requestsRemaining: null,
+  };
 
   const { data: activeCompetition } = await supabase
     .from("competitions")
@@ -107,7 +121,10 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
 
   for (const match of allMatches) {
     const sourceRef = String(match.id);
-    const status = normalizeMatchStatus(match.state.description).status;
+    const { status, recognized } = normalizeMatchStatus(match.state.description);
+    if (!recognized) {
+      result.unrecognizedStatuses.push({ highlightlyMatchId: match.id, description: match.state.description });
+    }
     const existingInternalId = matchInternalIdBySourceRef.get(sourceRef);
 
     if (existingInternalId) {
