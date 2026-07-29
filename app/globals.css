@@ -69,7 +69,10 @@ body {
 .hero-banner::before {
   background-image: var(--hero-image);
   background-size: cover;
-  background-position: center;
+  /* Point focal réglable (§15.7) : recentré plus bas pour montrer le
+     parquet + la ligne de terrain, pas seulement le ballon en gros plan
+     (retour utilisateur sur hero-parquet.jpg, 29/07/2026). */
+  background-position: center 75%;
   filter: saturate(0.85) brightness(0.82);
 }
 
