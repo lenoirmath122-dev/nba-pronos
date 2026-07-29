@@ -26,11 +26,11 @@
 > câblé sur les 9 écrans joueur — puis corrigé pour aussi s'afficher dans les
 > 4 états vides qui le masquaient (Classement/Bracket/Accueil/Mes paris).
 > **Committé (`ef5b305` + correctif) ET poussé**, déployé sans régression.
-> **Reste bloquant : `public/brand/hero-parquet.webp` toujours absent.**
+> **L'asset réel est désormais déposé** (`hero-parquet.jpg`, format réel
+> ajusté dans `--hero-image`) — plus aucun point bloquant sur ce lot.
 >
-> **Prochaine étape, à confirmer avec l'utilisateur** : déposer l'asset du
-> bandeau parquet ; ensuite, le détail de chaque écran cible déjà annoncé par
-> l'utilisateur.
+> **Prochaine étape, à confirmer avec l'utilisateur** : le détail de chaque
+> écran cible déjà annoncé par l'utilisateur.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
@@ -169,9 +169,9 @@
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
   vérifier à l'usage réel) ; `@font-face` Inter **auto-hébergée** pas encore
-  ajoutée (l'asset n'est pas fourni, `--font-ui` retombe sur `system-ui`) ;
-  asset réel du bandeau parquet (`public/brand/hero-parquet.webp`) pas encore
-  déposé (à la charge de l'utilisateur, acté 21/07/2026).
+  ajoutée (l'asset n'est pas fourni, `--font-ui` retombe sur `system-ui`).
+  Asset réel du bandeau parquet : DÉPOSÉ le 29/07/2026
+  (`public/brand/hero-parquet.jpg`, §2.45 `ETAT_ACTUEL.md`) — retiré d'ici.
 - **T8 — Déploiement : CHANTIER ENTIÈREMENT CLOS** (28/07/2026,
   `SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md`, `ETAT_ACTUEL.md` §2.41/§2.42). Les 3
   actions externes sont FAITES et VÉRIFIÉES par l'utilisateur : (1)

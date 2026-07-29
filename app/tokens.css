@@ -220,10 +220,11 @@
   /* ========================================================================
      BANDEAU « parquet » (§15.7) — une seule variable à éditer pour changer l'asset
      ======================================================================== */
-  /* TODO asset réel (licencié/possédé, sans watermark, interne). Placeholder de
-     dev = *.dev.* ignoré par git (voir public/brand/README.md). Le bandeau reste
-     SOMBRE dans les deux thèmes (constante hors thème, §15.7) — donc pas d'override. */
-  --hero-image: url("/brand/hero-parquet.webp");
+  /* Asset réel déposé par l'utilisateur le 29/07/2026 (format .jpg réel,
+     pas .webp — nom de fichier ajusté en conséquence, contenu inchangé).
+     Le bandeau reste SOMBRE dans les deux thèmes (constante hors thème,
+     §15.7) — donc pas d'override. */
+  --hero-image: url("/brand/hero-parquet.jpg");
   /* Texte du bandeau (titre/sous-titre) : figé en clair, indépendant du thème
      (§15.7 — même bande sombre dans les deux thèmes) — pas dans les overrides
      [data-theme="light"] ci-dessous. */

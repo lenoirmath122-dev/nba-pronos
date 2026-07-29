@@ -3902,6 +3902,9 @@ cas normal, juste un bandeau générique en repli côté état vide). Bracket
 n'avait jamais eu son propre `page.module.css` — créé pour l'occasion.
 `tsc`/`eslint`/`next build` propres, committé et poussé dans la foulée.
 
-**Bloqué sur `public/brand/hero-parquet.webp`**, toujours pas déposé par
-l'utilisateur — en attente de l'asset et d'un dernier test visuel avec la
-vraie photo. Détail complet dans `ETAT_ACTUEL.md` §2.45.
+**Asset réel déposé dans la foulée** : `public/brand/hero-parquet.jpg`
+(format réel `.jpg`, fichier initialement nommé `images.jpg` — renommé,
+`--hero-image`/README ajustés). Rendu vérifié visuellement avec le vrai
+fichier (harnais Playwright) : image + voile dégradé + texte lisibles,
+conforme à l'intention §15.7. `tsc`/`eslint`/`next build` propres. Plus
+aucun point bloquant sur ce lot. Détail complet dans `ETAT_ACTUEL.md` §2.45.

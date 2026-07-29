@@ -74,11 +74,12 @@
 > series) est committé (`c453d84`) ET poussé**, déploiement Vercel revérifié
 > sans régression. **Le lot §2.45 (4 points UI + correctif bandeau en état
 > vide) est committé (`ef5b305` + son correctif immédiat) ET poussé.**
-> **Reste bloquant : `public/brand/hero-parquet.webp` toujours absent.**
+> **L'asset réel du bandeau parquet est désormais déposé** (`hero-parquet.jpg`,
+> §2.45 suite) — dernier point bloquant levé.
 >
-> Prochaine étape à confirmer avec l'utilisateur : déposer l'asset du
-> bandeau parquet, puis le détail de chaque écran cible déjà annoncé (aucune
-> spec d'écran encore écrite au-delà de ce qui existe).
+> Prochaine étape à confirmer avec l'utilisateur : le détail de chaque écran
+> cible déjà annoncé (aucune spec d'écran encore écrite au-delà de ce qui
+> existe).
 
 ---
 
@@ -4020,4 +4021,14 @@ sans compétition, contrat `HomeData` non touché). Bracket : n'avait jamais
 son propre `page.module.css` (dépendait entièrement de `BracketSummary`) —
 créé pour porter `.header`/`.title`. `tsc`/`eslint`/`next build` propres,
 committé et poussé dans la foulée.
+
+**Asset réel déposé (même session)** : `public/brand/hero-parquet.jpg`
+fourni par l'utilisateur — format réel `.jpg`, pas `.webp` comme le nom du
+token l'anticipait (fichier initialement nommé `images.jpg`, renommé).
+`--hero-image` (`app/tokens.css`) et `public/brand/README.md` ajustés pour
+suivre le fichier réel plutôt que l'inverse. Rendu vérifié visuellement
+(harnais Playwright, cette fois avec le vrai fichier) : image + voile
+dégradé + texte lisibles, registre arène/broadcast conforme à l'intention
+§15.7. `tsc`/`eslint`/`next build` propres. **Dernier point bloquant du lot
+levé.**
 ```
