@@ -7,15 +7,19 @@
 > **État au 29/07/2026 (fin de journée)** — Audit structurel T1→T8/D1-D6
 > CLOS (28/07/2026, 7 écarts corrigés) ; Realtime `series` comblé (T6c,
 > §2.44) ; 4 points UI mineurs + bandeau parquet sur les 10 écrans joueur
-> (§2.45) ; **1er point du backlog codé : Rappels ciblés, canal Push**
-> (§2.46) — voir `ETAT_ACTUEL.md` pour le détail complet de chaque lot.
-> **Tout est committé/déployé jusqu'à `561fcaf`** ; seul le lot §2.46
-> (Rappels ciblés) reste à committer, en attente que l'utilisateur ajoute
-> les clés VAPID sur Vercel.
+> (§2.45) ; **1er point du backlog codé ET validé en conditions RÉELLES :
+> Rappels ciblés, canal Push** (§2.46/§2.47) — testé par l'utilisateur sur
+> son vrai compte, PC + iPhone, 3 bugs réels trouvés et corrigés (multi-
+> appareils sur un même compte, VAPID rejeté par Apple) — voir
+> `ETAT_ACTUEL.md` pour le détail complet. **Tout est committé/déployé
+> jusqu'à `18ffe7c`.**
 >
-> **Prochaine étape, à confirmer avec l'utilisateur** : ajouter
-> `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` sur Vercel, committer
-> §2.46, puis la suite du backlog (`BACKLOG_V1.md`).
+> **Résidu mineur, non bloquant** : le compte `Demo_Amis` a 3 abonnements
+> push Apple dupliqués (Safari en recrée un à chaque tentative) — à
+> dédupliquer si gênant en usage, pas urgent (§2.47 `ETAT_ACTUEL.md`).
+>
+> **Prochaine étape, à confirmer avec l'utilisateur** : la suite du backlog
+> (`BACKLOG_V1.md`).
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
@@ -286,6 +290,13 @@
   SQL uniquement, jamais exercé en live faute d'une compétition NBA Cup de
   test. À vérifier en conditions réelles si/quand un jeu de données NBA Cup
   existe.
+- **3 abonnements Apple dupliqués sur `Demo_Amis`** (trouvé le 29/07/2026 en
+  testant les rappels ciblés en conditions réelles, `ETAT_ACTUEL.md` §2.47) :
+  Safari (iOS) crée un NOUVEL abonnement à chaque tentative plutôt que de
+  réutiliser le même, contrairement à Chrome/FCM. Sans conséquence
+  fonctionnelle (`sendPushToSubscriptions` boucle sur tous), juste 3 envois
+  identiques au lieu d'un pour ce compte précis. À dédupliquer (ex. garder le
+  plus récent par `user_id`) si gênant en usage réel, pas urgent.
 
 ## Interprétations d'implémentation actées (pas des gaps — à connaître, et à
 ## reporter dans `decisions_0.2.x` si l'utilisateur le souhaite un jour)

@@ -5,14 +5,17 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 29/07/2026 (suite, fin de journée) —
-> **1er point du BACKLOG codé : Rappels ciblés, canal Push** (§2.46) — infra
-> Web Push complète (jamais existante avant), 2 déclencheurs cron (match du
-> soir non pronostiqué, deadline du bracket qui approche), testé de bout en
-> bout en conditions RÉELLES (vrai navigateur Chromium piloté par Playwright,
-> vrai abonnement FCM, envoi réel accepté 201). **Pas encore committé** —
-> reste à l'utilisateur d'ajouter `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/
-> `VAPID_PRIVATE_KEY` sur Vercel avant que ça tourne en prod.
+> Dernière mise à jour : session du 29/07/2026 (fin de journée) — **1er
+> point du BACKLOG codé ET validé en conditions RÉELLES : Rappels ciblés,
+> canal Push** (§2.46/§2.47). Infra Web Push complète (jamais existante
+> avant) + 2 déclencheurs cron, testée par l'utilisateur lui-même sur son
+> VRAI compte, PC ET iPhone — **3 bugs réels trouvés et corrigés en cours de
+> route** : réglage Windows bloquant Chrome (pas un bug) ; multi-appareils
+> sur un même compte (le radio déjà coché ne pouvait pas activer un 2e
+> appareil — corrigé par un bouton dédié) ; Apple qui rejetait le sujet
+> VAPID factice (`BadJwtToken`, corrigé en utilisant l'URL réelle du site).
+> Notifications confirmées reçues sur les deux appareils par l'utilisateur.
+> **Tout committé et déployé** (`b7061ae`, `d712012`, `4124e27`, `18ffe7c`).
 >
 > Plus tôt la même session (§2.45, tout CLOS, committé et déployé) : 4
 > points UI mineurs (tailles de logo, aspect ratio des logos évalué et
@@ -29,12 +32,12 @@
 > des paris, contestation d'un pari refusé/résolu) — détail §2.38→§2.43,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `561fcaf` inclus** (hub Jouer).
-> Le lot §2.46 (Rappels ciblés) est le seul non committé à ce jour.
+> **Tout est committé et déployé jusqu'à `18ffe7c` inclus.**
 >
-> Prochaine étape à confirmer avec l'utilisateur : ajouter les clés VAPID
-> sur Vercel puis committer §2.46 ; ensuite, la suite du backlog (système de
-> ligue, historique/stats, etc. — voir `BACKLOG_V1.md`).
+> Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
+> (système de ligue, historique/stats, etc. — voir `BACKLOG_V1.md`), ou un
+> nettoyage mineur (3 abonnements Apple dupliqués sur `Demo_Amis`, sans
+> conséquence — voir §2.47).
 >
 > **Détail de l'audit du 28/07/2026** (voir aussi `JOURNAL_SESSIONS.md`) :
 >
@@ -4143,18 +4146,101 @@ navigation privée, https://crbug.com/41124656, trouvé en cours de route) :
   vérification jetables supprimés.
 
 Migration #15 poussée sur la vraie base. Paquets ajoutés : `web-push`,
-`@types/web-push` (dev). Pas encore committé.
-
-**Reste à faire par l'utilisateur avant que ça tourne en production** :
-ajouter `NEXT_PUBLIC_VAPID_PUBLIC_KEY` et `VAPID_PRIVATE_KEY` comme
-variables d'environnement Vercel (même geste que `HIGHLIGHTLY_API_KEY`,
-§2.42) — sans ça, les routes `/api/reminders/*` échoueront en prod (clé
-manquante). Aucun nouveau secret GitHub à ajouter (réutilise `SYNC_SECRET`).
+`@types/web-push` (dev). **Committé (`b7061ae`) et poussé**, déployé.
+L'utilisateur a ajouté `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`
+sur Vercel (Production + Preview ; Development impossible pour la clé
+privée — Vercel interdit `Sensitive` + `Development` ensemble, sans
+conséquence puisque le dev local lit `.env.local` directement).
 
 **Hors périmètre de ce lot, à reprendre plus tard** : canal Email (bloqué
 sur un domaine vérifié) ; contenu/horaires des 2 fenêtres de rappel
 (4h/24h) sont des choix d'implémentation, pas produit — à ajuster si
-l'usage montre qu'il faut un délai différent ; pas de moyen pour un joueur
-de voir/gérer ses appareils abonnés au-delà d'activer/désactiver (pas
-demandé).
+l'usage montre qu'il faut un délai différent.
+```
+
+### 2.47 Rappels ciblés — validation en conditions RÉELLES + 3 correctifs (session du 29/07/2026, fin de journée)
+
+```text
+Demandé par l'utilisateur juste après le déploiement : « on peut tester
+rapidement les notifs ? ». Test mené sur le VRAI compte de l'utilisateur
+(`Rillettes-31`), PC (Chrome/Windows) ET iPhone (Safari) — pas un compte de
+test jetable cette fois, la démo réelle. A trouvé 3 bugs réels, chacun
+corrigé et revérifié en conditions réelles avant de passer au suivant.
+
+**1. Réglage Windows.** Premier envoi (`web-push` direct, script jetable)
+accepté par FCM (201) mais rien reçu sur PC. Cause : notifications Chrome
+désactivées au niveau de Windows lui-même (Paramètres → Système →
+Notifications), pas un problème du code. Une fois réactivé côté
+utilisateur, la notif est arrivée (deux fois — les 2 abonnements PC
+existants, un résidu du test précédent avec un compte jetable, voir
+§2.46).
+
+**2. iPhone — restriction Apple, pas un bug.** Confirmé que le téléphone
+est un iPhone : sur iOS, AUCUN navigateur (Chrome inclus, qui utilise le
+moteur WebKit d'Apple) ne peut recevoir de notifications web dans un onglet
+classique — seule une app ajoutée à l'écran d'accueil via Safari le peut
+(restriction plateforme, actée depuis iOS 16.4). Ajouté pour rendre ça
+possible :
+- `app/manifest.ts` (convention Next.js, auto-lié) : nom, icônes, 
+  `display: "standalone"` — nécessaire pour qu'iOS reconnaisse l'app comme
+  installable avec le plein support notifications.
+- `app/apple-icon.png` + `public/icons/icon-{192,512}.png` : icône
+  PLACEHOLDER générée (monogramme "NP", tokens `--color-accent`/fond arène)
+  via un script jetable (`sharp`) — à remplacer par un vrai logo si besoin,
+  aucun impact fonctionnel.
+- Committé (`d712012`) et poussé.
+- Premier essai de l'utilisateur toujours sans effet : il avait ajouté
+  l'icône à l'écran d'accueil AVANT que le manifest existe — Safari n'avait
+  donc pas pu reconnaître le mode standalone à ce moment-là. Correction :
+  supprimer l'ancienne icône, refaire "Sur l'écran d'accueil" une fois le
+  manifest en place. Reste alors introuvable un 2e problème, structurel
+  celui-là (point 3 ci-dessous).
+
+**3. Bug réel — multi-appareils sur le même compte.** `notification_
+preference` est un champ du COMPTE, pas de l'appareil. Le compte de
+l'utilisateur étant déjà en `PUSH` (activé depuis le PC), le radio "Push"
+s'affichait déjà coché sur iPhone — cliquer sur un `<input type="radio">`
+déjà sélectionné ne déclenche AUCUN `onChange` (comportement natif du
+navigateur, pas un choix de code) : impossible d'abonner un 2e appareil du
+même compte, quoi qu'on fasse depuis l'UI existante. Corrigé
+(`components/profile/NotificationSettings.tsx`) : détection côté client de
+l'état RÉEL de CET appareil précis (`navigator.serviceWorker` +
+`PushManager.getSubscription()`, indépendant de la préférence serveur) ;
+si le compte est en Push mais que l'appareil courant n'a pas d'abonnement
+local, un bloc dédié apparaît (« Push activé sur ton compte, mais pas
+encore sur cet appareil ») avec un bouton « Activer sur cet appareil » qui
+appelle directement `enablePush()`, hors du mécanisme radio/onChange.
+Committé (`4124e27`) et poussé. Au passage, ajout des `catch` manquants
+sur `enablePush`/`disableNotifications` (aucune gestion d'erreur avant —
+un échec aurait échoué en silence sans aucun message) + un nouvel essai
+automatique sur `subscribe()` (constaté : peut échouer une première fois
+juste après l'enregistrement du service worker). Committé (`2201484`).
+
+**4. Bug réel — Apple rejette le sujet VAPID factice.** Une fois le bouton
+dédié cliqué sur iPhone, un VRAI abonnement `web.push.apple.com` a bien été
+créé et sauvegardé — mais **sous le compte `Demo_Amis`**, pas
+`Rillettes-31` : l'utilisateur était connecté avec le compte partagé sur
+son téléphone, pas son compte personnel (aucun bug, juste une confusion de
+compte, précisée en testant). Premier envoi vers cet abonnement Apple :
+rejeté, `403 BadJwtToken`. Recherche web ciblée (`WebSearch`) : Apple valide
+strictement le sujet du JWT VAPID (`sub`), contrairement à Google/FCM — un
+domaine factice type `.invalid` (ce que `lib/push/send.ts` utilisait,
+`mailto:contact@nba-pronos.invalid`) est rejeté, même famille que `.test`
+déjà rejeté par Supabase Auth ailleurs dans ce projet. Corrigé : sujet
+remplacé par l'URL réelle du site (`https://nba-pronos.vercel.app`),
+valide pour les deux services. Revérifié par un envoi direct (script
+jetable) : accepté (201) ET reçu sur l'iPhone, confirmé par l'utilisateur.
+Committé (`18ffe7c`) et poussé.
+
+**État final vérifié par l'utilisateur lui-même** : notifications reçues
+sur PC ET iPhone, sur son propre compte réel. `tsc`/`eslint`/`next build`
+propres après chaque correctif, chaque déploiement Vercel revérifié sans
+régression (`vercel ls` + routes clés).
+
+**Résidu mineur non nettoyé, non bloquant** : le compte `Demo_Amis` a 3
+abonnements Apple dupliqués (Safari en crée un nouveau à chaque tentative,
+contrairement à Chrome/FCM qui réutilise le même) — sans conséquence
+(l'envoi boucle sur tous, un joueur recevrait juste 3 notifs identiques
+au lieu d'une). À dédupliquer si observé gênant en usage réel.
+```
 ```

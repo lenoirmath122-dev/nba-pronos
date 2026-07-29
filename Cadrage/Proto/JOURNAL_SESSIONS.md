@@ -3957,6 +3957,44 @@ d'authentification + exécution sans erreur). Compte de test et scripts
 jetables supprimés après coup.
 
 `tsc`/`eslint`/`next build` propres. Paquets ajoutés : `web-push`,
-`@types/web-push`. Migration #15 poussée sur la vraie base. **Pas encore
-committé** — reste à l'utilisateur d'ajouter `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/
-`VAPID_PRIVATE_KEY` sur Vercel. Détail complet dans `ETAT_ACTUEL.md` §2.46.
+`@types/web-push`. Migration #15 poussée sur la vraie base. Committé
+(`b7061ae`) et poussé après que l'utilisateur a ajouté les clés VAPID sur
+Vercel.
+
+---
+
+## Validation en conditions réelles des rappels ciblés + 3 correctifs (29/07/2026, fin de journée)
+
+L'utilisateur a testé le push sur son VRAI compte (`Rillettes-31`), PC et
+iPhone — pas un compte jetable. 3 bugs réels trouvés et corrigés,
+chacun revérifié avant de passer au suivant :
+
+1. **Notifications Chrome désactivées côté Windows** (Paramètres système,
+   pas un bug du code) — une fois réactivées, réception confirmée sur PC.
+2. **iOS ne permet le push que depuis une app à l'écran d'accueil**
+   (restriction Apple). Ajouté `app/manifest.ts` + `app/apple-icon.png` +
+   `public/icons/*` (icône placeholder "NP", générée via `sharp`).
+   Committé (`d712012`).
+3. **Multi-appareils sur un même compte** : `notification_preference` est
+   un champ du COMPTE — un 2e appareil (iPhone) voyait le radio "Push" déjà
+   coché (compte déjà en Push depuis le PC) et cliquer dessus ne
+   déclenchait rien (un radio déjà sélectionné ne fait jamais de
+   `onChange`). Corrigé : détection de l'état RÉEL de l'appareil courant +
+   bouton dédié "Activer sur cet appareil" quand le compte est en Push mais
+   pas cet appareil. Ajouté au passage les `catch` manquants (aucune
+   gestion d'erreur avant) + un nouvel essai automatique sur `subscribe()`.
+   Committé (`4124e27`).
+4. **Apple rejette le sujet VAPID factice** (`403 BadJwtToken`) — le vrai
+   abonnement iPhone créé (sous le compte `Demo_Amis`, confusion de compte
+   de l'utilisateur, pas un bug) a été refusé par `web.push.apple.com` :
+   `mailto:contact@nba-pronos.invalid` (domaine factice, même famille que
+   `.test` déjà rejeté par Supabase Auth ailleurs) n'est pas accepté par
+   Apple, contrairement à Google/FCM qui ne validait pas ce point. Trouvé
+   via une recherche web ciblée. Corrigé : sujet remplacé par l'URL réelle
+   du site. Revérifié : notification reçue sur l'iPhone, confirmé par
+   l'utilisateur. Committé (`18ffe7c`).
+
+`tsc`/`eslint`/`next build` propres après chaque correctif, chaque
+déploiement Vercel revérifié sans régression. Résidu mineur non bloquant :
+3 abonnements Apple dupliqués sur `Demo_Amis` (Safari en recrée un à
+chaque tentative). Détail complet dans `ETAT_ACTUEL.md` §2.47.
