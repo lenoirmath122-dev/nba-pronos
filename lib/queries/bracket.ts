@@ -202,6 +202,41 @@ export async function getBracket(): Promise<BracketData> {
   };
 }
 
+/** Amorce du live Realtime (T6c §2.2/§14.2, migration #14) — SÉPARÉE de
+ *  BracketData/BracketNode (contrat figé §15.2, jamais touché) : ne porte que
+ *  ce qu'un UPDATE brut sur `series` ne peut pas résoudre seul (l'id d'équipe
+ *  → son abréviation). Requête dédiée, minuscule (une compétition ⇒ ≤ 15
+ *  séries), plutôt que d'étendre le type gelé. */
+export type SeriesLiveSeed = {
+  seriesId: string;
+  teamAId: string | null;
+  teamBId: string | null;
+  teamAAbbreviation: string | null;
+  teamBAbbreviation: string | null;
+};
+
+export async function getSeriesLiveSeed(competitionId: string): Promise<SeriesLiveSeed[]> {
+  const supabase = await getServerClient();
+
+  const { data: seriesData } = await supabase
+    .from("series")
+    .select("id, team1_id, team2_id")
+    .eq("competition_id", competitionId);
+  const series = (seriesData ?? []) as Pick<SeriesRow, "id" | "team1_id" | "team2_id">[];
+  if (series.length === 0) return [];
+
+  const { data: teamsData } = await supabase.from("teams").select("id, name, abbreviation");
+  const teams = new Map(((teamsData ?? []) as TeamRow[]).map((team) => [team.id, team.abbreviation]));
+
+  return series.map((row) => ({
+    seriesId: row.id,
+    teamAId: row.team1_id,
+    teamBId: row.team2_id,
+    teamAAbbreviation: row.team1_id ? (teams.get(row.team1_id) ?? null) : null,
+    teamBAbbreviation: row.team2_id ? (teams.get(row.team2_id) ?? null) : null,
+  }));
+}
+
 function conferenceRank(conference: "EAST" | "WEST" | null): number {
   return conference ? (CONFERENCE_RANK[conference] ?? 2) : 2;
 }

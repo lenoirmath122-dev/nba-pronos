@@ -1,5 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
-import { getBracket } from "@/lib/queries/bracket";
+import { getBracket, getSeriesLiveSeed } from "@/lib/queries/bracket";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import { EmptyState } from "@/components/home/EmptyState";
 import { BracketSummary } from "@/components/bracket/BracketSummary";
@@ -23,6 +23,7 @@ export default async function BracketPage({ searchParams }: BracketPageProps) {
   } = await supabase.auth.getUser();
 
   const data = await getBracket();
+  const liveSeed = data.isStructureKnown && data.competitionId ? await getSeriesLiveSeed(data.competitionId) : [];
 
   return (
     <ScreenShell authenticated={user !== null}>
@@ -38,6 +39,7 @@ export default async function BracketPage({ searchParams }: BracketPageProps) {
           data={data}
           competitionName={data.competitionType === "PLAYOFFS" ? "Playoffs" : "NBA Cup"}
           initialShowTree={initialShowTree}
+          liveSeed={liveSeed}
         />
       )}
     </ScreenShell>

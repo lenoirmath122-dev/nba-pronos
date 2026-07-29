@@ -14,9 +14,12 @@
 > contestation d'un pari REFUSÉ/déjà résolu (l'admin tranche directement dans
 > `/admin/requests`) — les 2 bullets correspondants retirés ci-dessous.
 >
-> **Prochaine étape, à confirmer avec l'utilisateur** : le détail de chaque
-> écran cible déjà annoncé par l'utilisateur ; le reste de T6c (Realtime sur
-> `series`, au-delà de l'existant sur `matches`).
+> **État au 29/07/2026** : dernier écart connu de T6c comblé — Realtime
+> activé sur `series` (migration #14), testé de bout en bout (voir
+> `ETAT_ACTUEL.md` §2.44 / `JOURNAL_SESSIONS.md`). Code pas encore committé.
+>
+> **Prochaine étape, à confirmer avec l'utilisateur** : committer/pousser ce
+> lot, puis le détail de chaque écran cible déjà annoncé par l'utilisateur.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
@@ -292,17 +295,6 @@
   (`--logo-size-lg`), une taille plus grande a été mentionnée comme piste
   possible sans être décidée. À reprendre si le besoin se confirme à
   l'usage.
-- **Publication Realtime de `series`** (ajoutée le 24/07/2026, lot « Mes
-  pronos »; réévaluée et TOUJOURS REPORTÉE le 27/07/2026, lot « Bracket
-  personnel ») : `matches` est désormais publiée (migration #8) — `series`,
-  prévue par T4 §9 et resserrée par T6c §14.2 (drill-down série + résumé
-  bracket live), n'a PAS été activée par l'écran Bracket personnel
-  (remplissage), contrairement à ce qui était anticipé : cet écran précis
-  n'affiche que le pick du JOUEUR LUI-MÊME, aucun contenu d'un autre joueur
-  à rafraîchir en direct. Le besoin identifié à l'origine (drill-down/résumé
-  LIVE) concerne la vue GLOBALE (`/bracket`, déjà codée, fonctionne en SSR
-  sans lui) — à activer SI ET QUAND cet écran-là a un besoin live réel,
-  toujours pas le cas à ce jour.
 - **Logos de franchise sur Accueil et Classement** (trouvé le 24/07/2026 : les
   30 SVG existent bien dans `public/logos/teams/` et sont déjà committés,
   mais aucun écran ne les affichait — câblés le même jour sur Bracket et

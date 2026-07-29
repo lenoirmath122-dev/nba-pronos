@@ -5,8 +5,15 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/07/2026 (suite — 2 fonctionnalités du
-> backlog "confort/reporté" CODÉES ET VÉRIFIÉES EN CONDITIONS RÉELLES : la
+> Dernière mise à jour : session du 29/07/2026 — **dernier écart connu de
+> T6c comblé : Realtime activé sur `series`** (migration #14), le résumé/
+> drill-down Bracket reflète désormais un résultat officiel de série SANS
+> reload — détail §2.44. Code écrit, `tsc`/`eslint`/`next build` propres,
+> migration poussée sur la vraie base, testée de bout en bout (souscription
+> anon réelle + écriture service_role, payload reçu, état restauré) — **pas
+> encore committé côté code** (voir plus bas). Session précédente
+> (28/07/2026, suite) inchangée sinon : 2 fonctionnalités du backlog
+> "confort/reporté" CODÉES ET VÉRIFIÉES EN CONDITIONS RÉELLES : la
 > révélation publique des paris des autres joueurs et la contestation d'un
 > pari refusé/déjà résolu — détail §2.43 ; l'audit structurel T1→T8/D1-D6 et
 > ses 7 correctifs restent CLOS, committés (`9caee5f`), poussés, déployés —
@@ -15,8 +22,8 @@
 >
 > 1. **Audit croisé spec ↔ code réel sur T1→T8 et D1-D6** (§2.38). Verdict
 >    global : **aucune des 6 décisions structurantes D1-D6 n'a été violée
->    silencieusement.** Realtime sur `series` jamais activée reste bien le
->    SEUL écart T6c.
+>    silencieusement.** Realtime sur `series` était alors le SEUL écart T6c —
+>    désormais comblé, §2.44.
 > 2. **Les 7 écarts trouvés, TOUS CORRIGÉS ET DÉPLOYÉS** : `recognized` →
 >    `sync_logs`, avertissement quota API bas, `recompute.test.ts` (11 tests,
 >    37/37), 2 correctifs post-validation dans les specs T3/T5 (§2.39) ; T6a
@@ -48,13 +55,18 @@
 >
 > **État de la base** : « Playoffs NBA (test) » et « Test UI Matchs »
 > n'existent plus. `Demo_Amis`/`Rillettes-31` intacts. Les 3 compétitions
-> archivées ci-dessus restent en base, délibérément. Le lot audit + 7
-> correctifs est committé (`9caee5f`) ET poussé. **Le lot §2.43
-> (otherBets + contestation) n'est PAS ENCORE COMMITTÉ à ce stade.**
+> archivées ci-dessus restent en base, délibérément (« TEST T4 sync —
+> Playoffs 2026 (réel) » a été réactivée PUIS restaurée en ARCHIVED pour le
+> test §2.44 — état final identique à avant). Le lot audit + 7 correctifs
+> est committé (`9caee5f`) ET poussé. **Le lot §2.43 (otherBets +
+> contestation) est également committé (`dc1e991`) ET poussé** — déploiement
+> Vercel revérifié sans régression après coup. **Le lot §2.44 (Realtime
+> series) N'EST PAS ENCORE COMMITTÉ** — migration #14 déjà poussée sur la
+> vraie base (indépendant du commit git), code applicatif en attente.
 >
-> Prochaine étape à confirmer avec l'utilisateur : committer §2.43 ; puis le
-> détail de chaque écran cible déjà annoncé, ou le reste de T6c (Realtime
-> sur `series`).
+> Prochaine étape à confirmer avec l'utilisateur : committer/pousser le lot
+> §2.44, puis le détail de chaque écran cible déjà annoncé (aucune spec
+> d'écran encore écrite au-delà de ce qui existe).
 
 ---
 
@@ -3738,8 +3750,10 @@ vérification eux-mêmes.
 
 Vérifié : `npx tsc --noEmit`, `npx eslint .` (0 warning), `npx vitest run`
 (37/37, aucune régression), `npx next build` (30 routes, aucun conflit).
-Migration #13 déjà poussée sur la vraie base (contrairement au code
-applicatif, qui n'est PAS ENCORE COMMITTÉ à ce stade).
+Migration #13 poussée sur la vraie base. Code applicatif committé (`dc1e991`)
+et poussé — déploiement Vercel revérifié sans régression après coup
+(`/login`, `/leaderboard`, `/admin/requests` répondent 200/307 comme
+attendu).
 ```
 
 ### 2.42 Commit/push du lot audit + les 3 actions externes T8 (session du 28/07/2026, fin)
@@ -3807,4 +3821,75 @@ Aucun changement de code dans ce lot (uniquement des actions
 config/exécution + vérifications en lecture seule). Rien à committer côté
 code — le commit `9caee5f` couvrait déjà tout le code produit cette
 session.
+```
+
+### 2.44 T6c — Realtime sur `series` (session du 29/07/2026)
+
+```text
+Dernier écart connu de T6c (§14.2, GAPS_OUVERTS.md) : la publication
+Realtime n'incluait que `matches` (migration #8) — `series` restait
+délibérément non publiée, faute d'écran qui en avait besoin. L'écran
+Bracket (vue globale, /bracket) a désormais ce besoin : refléter un
+official_winner_team_id qui change SANS reload, dans le résumé (NodeCard)
+ET le drill-down (SeriesGroups reste, lui, non-live — cf. §14.1, seul le
+résultat officiel de la série est concerné, jamais les picks des joueurs).
+
+**Point structurant flagué et tranché AVEC l'utilisateur avant de coder**
+(AskUserQuestion) : résoudre un UPDATE brut Realtime (id + 
+official_winner_team_id) en abréviation d'équipe demande l'id de chaque
+équipe — que `BracketNode`/`BracketData` (contrat FIGÉ, spec écran §15.2)
+ne portent jamais (seulement l'abréviation). Choix retenu : une fonction
+SÉPARÉE, `getSeriesLiveSeed(competitionId)` (lib/queries/bracket.ts),
+qui refait une petite requête series+teams (≤ 15 lignes) dédiée au seed du
+live — `getBracket()`/`BracketNode`/`BracketData` restent EXACTEMENT comme
+figés par la spec, aucune extension du contrat. Cohérent avec T6c §2.3, qui
+anticipait déjà un type `SeriesLive` séparé du contrat de lecture SSR.
+
+Fichiers :
+- `supabase/migrations/20260729090000_realtime_series.sql` (migration #14) :
+  `alter publication supabase_realtime add table series;` — RLS déjà
+  `using (true)` (`series_select`), aucune policy touchée.
+- `lib/queries/bracket.ts` : type `SeriesLiveSeed` + `getSeriesLiveSeed()`.
+- `components/bracket/LiveSeriesSubscriber.tsx` (NOUVEAU, seul fichier
+  `"use client"` de ce lot) : Provider + hook `useLiveWinnerAbbreviation()`,
+  même patron que `components/my-predictions/LiveSubscriber.tsx` (Provider +
+  consommateur dans le même fichier, seed = état SSR, aucun
+  `revalidatePath`). Souscription UPDATE sur `series` sans filtre serveur
+  (résolution en mémoire via le seed, même choix que LiveSubscriber pour
+  `matches`).
+- `components/bracket/NodeCard.tsx` : lit le contexte via
+  `useLiveWinnerAbbreviation(node.nodeId, node.actualWinnerAbbreviation)` —
+  AUCUNE directive `"use client"` propre ajoutée : NodeCard n'est jamais
+  importé que sous un ancêtre client (`SeriesDrillDown`), même mécanisme
+  déjà établi pour MarginStepper/RevealPanel (§2.8) et TeamLogo (§2.11).
+- `components/bracket/BracketSummary.tsx` : monte `<LiveSeriesSubscriber>`
+  en enveloppe (nouvelle prop `liveSeed`), autour de `TreeView` ET
+  `SeriesDrillDown` — une seule frontière live pour tout l'écran.
+- `app/bracket/page.tsx` : appelle `getSeriesLiveSeed(data.competitionId)`
+  quand la structure est connue, la passe à `BracketSummary`.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres,
+aucun conflit de route (`/bracket` inchangé dans la carte des routes).
+
+**Test en conditions réelles (migration poussée + bout-en-bout)** :
+`npx supabase db push` (dry-run puis réel) — seule cette migration en
+attente, appliquée sans erreur. Aucune compétition ACTIVE en base au moment
+du test (les 3 restantes sont ARCHIVED depuis le nettoyage T8, §2.42) :
+flagué à l'utilisateur avant d'agir, qui a choisi de réactiver
+TEMPORAIREMENT « TEST T4 sync — Playoffs 2026 (réel) » pour un test réel
+plutôt que de se contenter du niveau code. Script jetable (client ANON,
+comme un vrai visiteur non connecté — RLS `series_select using(true)`) :
+souscription Realtime ouverte, écriture `official_winner_team_id` via
+service_role pendant que la souscription écoute, payload reçu côté client
+avec la bonne valeur en moins d'une seconde. **Confirme la publication
+migration #14 de bout en bout**, indépendamment du rendu visuel (pas de
+navigateur disponible dans cet environnement pour driver /bracket
+lui-même). État restauré immédiatement après (official_winner_team_id
+remis à `null`, compétition remise en `ARCHIVED`) — vérifié après coup,
+script de vérification/restauration supprimé, rien laissé en base.
+
+Non couvert par ce lot, hors périmètre décidé avec l'utilisateur (§14.1,
+non rouvert) : `match_predictions`/`brackets`/`bracket_picks` restent NON
+publiées — la révélation des pronos d'autrui et les mouvements de
+classement suivent toujours le rythme SSR, jamais le live.
 ```

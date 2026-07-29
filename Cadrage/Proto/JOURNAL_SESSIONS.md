@@ -3807,3 +3807,51 @@ après coup — 2 bugs de SCRIPT DE TEST trouvés et corrigés en cours de route
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` tous propres. Migration #13
 déjà poussée sur la vraie base. Code applicatif **pas encore committé**.
+
+---
+
+## Commit/push du lot otherBets + contestation (28/07/2026, fin)
+
+Commit `dc1e991` (12 fichiers), poussé sur `main`. Déploiement Vercel
+automatique vérifié sans régression (`/login`, `/leaderboard`,
+`/admin/requests` répondent comme attendu). Rien en attente de commit à ce
+stade sur ce projet.
+
+---
+
+## T6c — Realtime sur `series` (29/07/2026)
+
+Dernier écart connu de T6c (§14.2) : `series` restait non publiée, faute
+d'écran qui en avait besoin (migration #8, 24/07/2026, avait délibérément
+laissé `series` de côté). L'écran Bracket (vue globale) en a désormais le
+besoin : résultat officiel d'une série reflété sans reload.
+
+Point structurant flagué et tranché AVEC l'utilisateur avant de coder
+(AskUserQuestion) : résoudre un UPDATE Realtime brut en abréviation
+d'équipe demande l'id de chaque équipe, que `BracketNode`/`BracketData`
+(contrat figé, spec écran §15.2) ne portent jamais. Choix retenu (plutôt
+que d'étendre le contrat figé) : fonction séparée `getSeriesLiveSeed()`
+(lib/queries/bracket.ts), qui refait une petite requête dédiée — cohérent
+avec T6c §2.3, qui anticipait déjà un type `SeriesLive` séparé.
+
+Migration #14 (`20260729090000_realtime_series.sql`) : `alter publication
+supabase_realtime add table series;`, RLS déjà `using(true)`, aucune
+policy touchée. `components/bracket/LiveSeriesSubscriber.tsx` (nouveau,
+seul fichier client de ce lot) : même patron que `LiveSubscriber.tsx`
+(my-predictions). `NodeCard.tsx` consomme le contexte SANS directive
+`"use client"` propre (toujours rendu sous un ancêtre client, même
+mécanisme que MarginStepper/TeamLogo). `BracketSummary.tsx`/`page.tsx`
+câblent le seed.
+
+`tsc`/`eslint`/`next build` tous propres. Migration poussée sur la vraie
+base (`db push`, dry-run puis réel). Testé de bout en bout : aucune
+compétition ACTIVE en base au moment du test (nettoyage T8) — flagué à
+l'utilisateur, qui a choisi de réactiver TEMPORAIREMENT « TEST T4 sync —
+Playoffs 2026 (réel) ». Script jetable : client anon souscrit, écriture
+`official_winner_team_id` via service_role, payload reçu avec la bonne
+valeur en < 1s (confirme la publication de bout en bout, indépendamment du
+rendu visuel — pas de navigateur disponible dans cet environnement). État
+restauré immédiatement après (winner à `null`, compétition à `ARCHIVED`),
+vérifié après coup, script de vérification supprimé.
+
+Code applicatif **pas encore committé**.

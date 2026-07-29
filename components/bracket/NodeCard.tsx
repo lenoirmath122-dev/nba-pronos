@@ -1,5 +1,6 @@
 import type { BracketNode } from "@/lib/queries/bracket";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { useLiveWinnerAbbreviation } from "./LiveSeriesSubscriber";
 import styles from "./NodeCard.module.css";
 
 // Carte résumé d'une série. Présentiel pur (pas de "use client") : rendu
@@ -42,8 +43,9 @@ function TeamLabel({
 }
 
 export function NodeCard({ node, isOpen, disabled, onToggle }: NodeCardProps) {
+  const actualWinnerAbbreviation = useLiveWinnerAbbreviation(node.nodeId, node.actualWinnerAbbreviation);
   const isFinal = FINAL_ROUNDS.has(node.round);
-  const hasChampion = isFinal && node.actualWinnerAbbreviation !== null;
+  const hasChampion = isFinal && actualWinnerAbbreviation !== null;
 
   return (
     <button
@@ -60,14 +62,14 @@ export function NodeCard({ node, isOpen, disabled, onToggle }: NodeCardProps) {
         <span className={styles.teams}>
           <TeamLabel
             team={node.teamA}
-            isChampion={hasChampion && node.teamA?.abbreviation === node.actualWinnerAbbreviation}
-            isWinner={!isFinal && node.teamA?.abbreviation === node.actualWinnerAbbreviation}
+            isChampion={hasChampion && node.teamA?.abbreviation === actualWinnerAbbreviation}
+            isWinner={!isFinal && node.teamA?.abbreviation === actualWinnerAbbreviation}
           />
           <span className={styles.versus}>–</span>
           <TeamLabel
             team={node.teamB}
-            isChampion={hasChampion && node.teamB?.abbreviation === node.actualWinnerAbbreviation}
-            isWinner={!isFinal && node.teamB?.abbreviation === node.actualWinnerAbbreviation}
+            isChampion={hasChampion && node.teamB?.abbreviation === actualWinnerAbbreviation}
+            isWinner={!isFinal && node.teamB?.abbreviation === actualWinnerAbbreviation}
           />
         </span>
         {hasChampion && <span className={styles.championTag}>Champion</span>}
