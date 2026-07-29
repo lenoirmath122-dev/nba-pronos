@@ -72,13 +72,13 @@
 > est committé (`9caee5f`) ET poussé. Le lot §2.43 (otherBets + contestation)
 > est également committé (`dc1e991`) ET poussé. **Le lot §2.44 (Realtime
 > series) est committé (`c453d84`) ET poussé**, déploiement Vercel revérifié
-> sans régression. **Le lot §2.45 (4 points UI) N'EST PAS ENCORE COMMITTÉ** —
-> bloqué sur le dépôt de `public/brand/hero-parquet.webp` par l'utilisateur.
+> sans régression. **Le lot §2.45 (4 points UI + correctif bandeau en état
+> vide) est committé (`ef5b305` + son correctif immédiat) ET poussé.**
+> **Reste bloquant : `public/brand/hero-parquet.webp` toujours absent.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : déposer l'asset du
-> bandeau parquet, committer/pousser le lot §2.45, puis le détail de chaque
-> écran cible déjà annoncé (aucune spec d'écran encore écrite au-delà de ce
-> qui existe).
+> bandeau parquet, puis le détail de chaque écran cible déjà annoncé (aucune
+> spec d'écran encore écrite au-delà de ce qui existe).
 
 ---
 
@@ -4002,6 +4002,22 @@ tant que le fichier est absent, le token pointe vers un asset inexistant
 en conditions réelles avec la vraie photo, à refaire dès qu'elle est
 déposée.
 
-Aucune migration, aucun changement de schéma. Rien committé à ce stade
-(voir en-tête).
+Aucune migration, aucun changement de schéma. Committé (`ef5b305`) et poussé,
+déployé sans régression (`tsc`/`eslint`/`next build` propres avant push ;
+build Vercel confirmé `Ready` via `vercel ls`, `/leaderboard`/`/bracket`/
+`/login`/`/signup` revérifiés 200 en prod).
+
+**Correctif immédiat (même session)** : l'utilisateur a remarqué que le
+bandeau n'apparaissait que quand une compétition existe — Classement,
+Bracket, Accueil et Mes paris masquaient le bandeau dans leur état vide
+(« Aucune compétition en cours »), contrairement aux 4 écrans qui l'avaient
+déjà (Matchs, Mes pronos, Nouveau pari, Bracket personnel). Corrigé : un
+bandeau titre-seul (sans sous-titre de compétition, qui n'existe pas dans ce
+cas) ajouté aux 4 états vides concernés. Accueil : `HomeHeader` (carte
+personnalisée rang/points) reste inchangé, remplacé par un bandeau générique
+« Accueil » seulement dans l'état vide (pas de pseudo/points disponibles
+sans compétition, contrat `HomeData` non touché). Bracket : n'avait jamais
+son propre `page.module.css` (dépendait entièrement de `BracketSummary`) —
+créé pour porter `.header`/`.title`. `tsc`/`eslint`/`next build` propres,
+committé et poussé dans la foulée.
 ```

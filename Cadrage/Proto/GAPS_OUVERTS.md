@@ -23,12 +23,14 @@
 > tailles de logo harmonisées entre écrans (sm=24px) ; aspect ratio des 30
 > logos évalué et laissé tel quel (correctif pire que le problème) ; badge de
 > correction de Matchs harmonisé sur le rendu nominatif ; bandeau parquet
-> câblé sur les 9 écrans joueur (bloqué sur l'asset réel, `public/brand/
-> hero-parquet.webp` toujours absent). **Pas encore committé.**
+> câblé sur les 9 écrans joueur — puis corrigé pour aussi s'afficher dans les
+> 4 états vides qui le masquaient (Classement/Bracket/Accueil/Mes paris).
+> **Committé (`ef5b305` + correctif) ET poussé**, déployé sans régression.
+> **Reste bloquant : `public/brand/hero-parquet.webp` toujours absent.**
 >
 > **Prochaine étape, à confirmer avec l'utilisateur** : déposer l'asset du
-> bandeau parquet puis committer/pousser ce lot ; ensuite, le détail de
-> chaque écran cible déjà annoncé par l'utilisateur.
+> bandeau parquet ; ensuite, le détail de chaque écran cible déjà annoncé par
+> l'utilisateur.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 

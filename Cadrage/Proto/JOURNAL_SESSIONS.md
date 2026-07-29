@@ -3890,7 +3890,18 @@ de page (Matchs, Mes pronos, Nouveau pari, Bracket personnel) en ont reçu un
 minimal, décidé avec l'utilisateur en cours de route. Mécanique vérifiée
 visuellement (harnais Playwright, image placeholder).
 
-`tsc`/`eslint`/`next build` tous propres. **Bloqué sur
-`public/brand/hero-parquet.webp`**, toujours pas déposé par l'utilisateur —
-code pas encore committé, en attente de l'asset et d'un dernier test visuel
-avec la vraie photo. Détail complet dans `ETAT_ACTUEL.md` §2.45.
+`tsc`/`eslint`/`next build` tous propres. Committé (`ef5b305`) et poussé,
+build Vercel confirmé `Ready` (`vercel ls`), routes publiques revérifiées
+sans régression.
+
+**Correctif immédiat** : l'utilisateur a remarqué que le bandeau restait
+masqué dans les états vides (Classement/Bracket/Accueil/Mes paris quand
+aucune compétition n'est active) — corrigé en ajoutant un bandeau
+titre-seul à ces 4 états vides (Accueil garde `HomeHeader` inchangé pour le
+cas normal, juste un bandeau générique en repli côté état vide). Bracket
+n'avait jamais eu son propre `page.module.css` — créé pour l'occasion.
+`tsc`/`eslint`/`next build` propres, committé et poussé dans la foulée.
+
+**Bloqué sur `public/brand/hero-parquet.webp`**, toujours pas déposé par
+l'utilisateur — en attente de l'asset et d'un dernier test visuel avec la
+vraie photo. Détail complet dans `ETAT_ACTUEL.md` §2.45.

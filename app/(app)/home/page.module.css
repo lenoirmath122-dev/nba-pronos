@@ -6,6 +6,22 @@
   padding-bottom: var(--space-6);
 }
 
+/* Bandeau parquet (§15.7) affiché même sans compétition active — repli
+   quand HomeHeader (carte rang/points, nécessite une compétition) n'a rien
+   à afficher. */
+.header {
+  margin: 0 var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
 .section {
   margin: 0 var(--space-4);
   background: var(--color-surface-raised);

@@ -41,7 +41,12 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
     <ScreenShell authenticated={user !== null}>
       <div className={styles.page}>
         {data.competitionId === null ? (
-          <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
+          <>
+            <div className={`${styles.header} hero-banner`}>
+              <p className={`${styles.title} hero-banner-title`}>Classement</p>
+            </div>
+            <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
+          </>
         ) : (
           <>
             <div className={`${styles.header} hero-banner`}>

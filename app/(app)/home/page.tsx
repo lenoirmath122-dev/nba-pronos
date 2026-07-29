@@ -16,6 +16,9 @@ export default async function HomePage() {
   if (competitionId === null || header === null) {
     return (
       <div className={styles.page}>
+        <div className={`${styles.header} hero-banner`}>
+          <p className={`${styles.title} hero-banner-title`}>Accueil</p>
+        </div>
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
     );
