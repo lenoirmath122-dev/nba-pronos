@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   updateNotificationPreference,
   savePushSubscription,
@@ -60,6 +60,31 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
   const [preference, setPreference] = useState<Preference>(initialPreference);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // La préférence est liée au COMPTE, pas à l'appareil : un joueur connecté
+  // sur 2 appareils (ex. PC + téléphone) peut avoir `preference === "PUSH"`
+  // sans que CET appareil précis ait un abonnement local — dans ce cas, le
+  // radio "Push" s'affiche déjà coché et un clic dessus ne déclenche RIEN
+  // (un <input type="radio"> déjà sélectionné ne déclenche pas onChange),
+  // donc impossible d'activer le 2e appareil sans ce statut séparé. Trouvé
+  // en testant en conditions réelles (compte partagé PC/iPhone, 29/07/2026).
+  const [deviceSubscribed, setDeviceSubscribed] = useState<boolean | null>(() => (pushSupported() ? null : false));
+
+  useEffect(() => {
+    if (!pushSupported()) return; // déjà réglé à `false` par l'état initial ci-dessus
+    let cancelled = false;
+    navigator.serviceWorker
+      .getRegistration("/sw.js")
+      .then((registration) => registration?.pushManager.getSubscription() ?? null)
+      .then((subscription) => {
+        if (!cancelled) setDeviceSubscribed(subscription !== null);
+      })
+      .catch(() => {
+        if (!cancelled) setDeviceSubscribed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function enablePush() {
     setPending(true);
@@ -110,6 +135,7 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
         return;
       }
       setPreference("PUSH");
+      setDeviceSubscribed(true);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inattendue, réessaie.");
     } finally {
@@ -136,6 +162,7 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
         return;
       }
       setPreference("NONE");
+      setDeviceSubscribed(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur inattendue, réessaie.");
     } finally {
@@ -176,6 +203,21 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
         <input type="radio" name="notificationPreference" checked={preference === "EMAIL"} disabled />
         Email <span className={styles.soon}>(bientôt disponible)</span>
       </label>
+
+      {/* Compte déjà en Push (ex. activé depuis un autre appareil) mais CET
+          appareil n'a pas encore son propre abonnement local — le radio
+          "Push" ci-dessus est déjà coché, cliquer dessus ne fait donc rien
+          (comportement natif d'un <input type="radio">). */}
+      {preference === "PUSH" && deviceSubscribed === false && (
+        <div className={styles.deviceNotice}>
+          <p className={styles.deviceNoticeText}>
+            Push activé sur ton compte, mais pas encore sur cet appareil.
+          </p>
+          <button type="button" className={styles.deviceButton} disabled={pending} onClick={() => void enablePush()}>
+            Activer sur cet appareil
+          </button>
+        </div>
+      )}
 
       {error && (
         <p className={styles.error} role="alert">
