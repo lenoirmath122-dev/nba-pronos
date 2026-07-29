@@ -5,31 +5,38 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 29/07/2026 (suite) — **4 points UI
-> mineurs traités** (§2.45, `GAPS_OUVERTS.md`) : tailles de logo harmonisées
-> entre écrans (token `--logo-size-sm`=24px enfin créé) ; aspect ratio inégal
-> des 30 logos évalué visuellement (harnais Playwright) puis LAISSÉ TEL QUEL
-> — le seul correctif CSS possible (`object-fit: cover`) coupe le texte des
-> logos larges, décision explicite de l'utilisateur ; badge de correction de
-> Matchs harmonisé sur le rendu nominatif de Mes pronos (correctif
-> post-validation `SPEC_ECRAN_MATCHS_V0_1.md` §13) ; bandeau parquet (§15.7)
-> câblé sur les 9 écrans joueur, 4 d'entre eux (Matchs, Mes pronos, Nouveau
-> pari, Bracket personnel) recevant au passage un titre de page qu'ils
-> n'avaient jamais eu — **bloqué sur l'asset réel**
-> (`public/brand/hero-parquet.webp` toujours absent). Code écrit,
-> `tsc`/`eslint`/`next build` propres — **pas encore committé**.
+> Dernière mise à jour : session du 29/07/2026 (suite, fin de journée) —
+> **1er point du BACKLOG codé : Rappels ciblés, canal Push** (§2.46) — infra
+> Web Push complète (jamais existante avant), 2 déclencheurs cron (match du
+> soir non pronostiqué, deadline du bracket qui approche), testé de bout en
+> bout en conditions RÉELLES (vrai navigateur Chromium piloté par Playwright,
+> vrai abonnement FCM, envoi réel accepté 201). **Pas encore committé** —
+> reste à l'utilisateur d'ajouter `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/
+> `VAPID_PRIVATE_KEY` sur Vercel avant que ça tourne en prod.
 >
-> Session précédente (29/07/2026, plus tôt) : **dernier écart connu de
-> T6c comblé : Realtime activé sur `series`** (migration #14), le résumé/
-> drill-down Bracket reflète désormais un résultat officiel de série SANS
-> reload — détail §2.44. Committé (`c453d84`) et poussé, déployé sans
-> régression. Session d'avant (28/07/2026, suite) inchangée sinon : 2 fonctionnalités du backlog
-> "confort/reporté" CODÉES ET VÉRIFIÉES EN CONDITIONS RÉELLES : la
-> révélation publique des paris des autres joueurs et la contestation d'un
-> pari refusé/déjà résolu — détail §2.43 ; l'audit structurel T1→T8/D1-D6 et
-> ses 7 correctifs restent CLOS, committés (`9caee5f`), poussés, déployés —
-> détail §2.42 ; audit initial §2.38, 5 premiers correctifs §2.39, T6a §2.40,
-> spec+code T8 §2.41, `JOURNAL_SESSIONS.md`, `GAPS_OUVERTS.md`) :
+> Plus tôt la même session (§2.45, tout CLOS, committé et déployé) : 4
+> points UI mineurs (tailles de logo, aspect ratio des logos évalué et
+> laissé tel quel, badge de correction Matchs harmonisé, bandeau parquet
+> §15.7 câblé sur les 10 écrans joueur — les 9 + le hub Jouer, oublié puis
+> rattrapé — avec son asset réel déposé et son point focal réajusté sur
+> demande de l'utilisateur).
+>
+> Avant ça (§2.44, CLOS) : dernier écart connu de T6c comblé, Realtime
+> activé sur `series` (migration #14).
+>
+> Le 28/07/2026 : audit structurel T1→T8/D1-D6 CLOS (7 écarts trouvés,
+> tous corrigés) + 2 points backlog "confort/reporté" (révélation publique
+> des paris, contestation d'un pari refusé/résolu) — détail §2.38→§2.43,
+> `JOURNAL_SESSIONS.md`.
+>
+> **Tout est committé et déployé jusqu'à `561fcaf` inclus** (hub Jouer).
+> Le lot §2.46 (Rappels ciblés) est le seul non committé à ce jour.
+>
+> Prochaine étape à confirmer avec l'utilisateur : ajouter les clés VAPID
+> sur Vercel puis committer §2.46 ; ensuite, la suite du backlog (système de
+> ligue, historique/stats, etc. — voir `BACKLOG_V1.md`).
+>
+> **Détail de l'audit du 28/07/2026** (voir aussi `JOURNAL_SESSIONS.md`) :
 >
 > 1. **Audit croisé spec ↔ code réel sur T1→T8 et D1-D6** (§2.38). Verdict
 >    global : **aucune des 6 décisions structurantes D1-D6 n'a été violée
@@ -64,22 +71,9 @@
 > trouvées en vérifiant l'état post-nettoyage — décision explicite de
 > l'utilisateur : gardées comme historique de test, pas supprimées.
 >
-> **État de la base** : « Playoffs NBA (test) » et « Test UI Matchs »
-> n'existent plus. `Demo_Amis`/`Rillettes-31` intacts. Les 3 compétitions
-> archivées ci-dessus restent en base, délibérément (« TEST T4 sync —
-> Playoffs 2026 (réel) » a été réactivée PUIS restaurée en ARCHIVED pour le
-> test §2.44 — état final identique à avant). Le lot audit + 7 correctifs
-> est committé (`9caee5f`) ET poussé. Le lot §2.43 (otherBets + contestation)
-> est également committé (`dc1e991`) ET poussé. **Le lot §2.44 (Realtime
-> series) est committé (`c453d84`) ET poussé**, déploiement Vercel revérifié
-> sans régression. **Le lot §2.45 (4 points UI + correctif bandeau en état
-> vide) est committé (`ef5b305` + son correctif immédiat) ET poussé.**
-> **L'asset réel du bandeau parquet est désormais déposé** (`hero-parquet.jpg`,
-> §2.45 suite) — dernier point bloquant levé.
->
-> Prochaine étape à confirmer avec l'utilisateur : le détail de chaque écran
-> cible déjà annoncé (aucune spec d'écran encore écrite au-delà de ce qui
-> existe).
+> **État de la base** (28/07/2026) : « Playoffs NBA (test) » et « Test UI
+> Matchs » n'existent plus. `Demo_Amis`/`Rillettes-31` intacts. Les 3
+> compétitions archivées ci-dessus restent en base, délibérément.
 
 ---
 
@@ -4050,4 +4044,117 @@ non plus). Cet écran ne dépend d'aucune compétition pour son rendu (chaque
 carte gère son propre état interne) : pas de branche vide séparée à traiter,
 contrairement à Accueil/Classement/Bracket/Mes paris. `tsc`/`eslint`/
 `next build` propres.
+```
+
+### 2.46 Rappels ciblés — canal Push (session du 29/07/2026, suite)
+
+```text
+Premier point du BACKLOG (« Rappels ciblés », marqué PRIORITÉ par
+l'utilisateur) : « tu n'as pas encore pronostiqué le match de ce soir »,
+« la deadline du bracket approche ». AUCUNE spec n'existait — canal,
+modèle de données et déclencheurs tranchés AVEC l'utilisateur avant de
+coder (AskUserQuestion), même patron que les lots jamais spécifiés
+(Bracket personnel, §7 `GAPS_OUVERTS.md`).
+
+**Canal retenu** : Push d'abord, Email plus tard (bloqué sur un nom de
+domaine vérifié pour un SMTP personnalisé — gap « Confirm email »). Le
+modèle de préférence couvre déjà les DEUX canaux pour ne pas le refaire :
+`users.notification_preference` (enum `NONE`/`PUSH`/`EMAIL`, migration #15,
+`20260729100000_push_notifications.sql`) — `EMAIL` reste sélectionnable
+dans l'UI mais désactivé (« bientôt disponible »).
+
+**Infra Web Push (nouvelle, aucune existante avant ce lot)** :
+- Migration #15 : `push_subscriptions` (un joueur, plusieurs appareils —
+  RLS self-only, select/insert/delete) ; `reminder_log` (déduplication —
+  UNIQUE (user_id, kind, ref_id), RLS active SANS AUCUNE policy : verrouillée
+  par défaut, seul service_role y accède, aucun écran ne doit la lire).
+- Paire de clés VAPID générée localement (`web-push.generateVAPIDKeys()`),
+  écrites directement dans `.env.local` (jamais affichées en clair dans le
+  chat, même précaution que SYNC_SECRET) : `NEXT_PUBLIC_VAPID_PUBLIC_KEY`
+  (exposée au client, sans risque) et `VAPID_PRIVATE_KEY` (serveur
+  uniquement).
+- `public/sw.js` (NOUVEAU, JS brut hors bundling Next.js — contrainte de la
+  Push API, un service worker doit être un fichier statique à URL fixe) :
+  affiche la notification à la réception, ouvre/focus l'app au clic.
+- `components/profile/NotificationSettings.tsx` (NOUVEAU, SEUL fichier
+  client de l'écran Profil jusqu'ici — la permission navigateur +
+  l'abonnement Push ne sont atteignables qu'en JS client, contrairement au
+  reste de l'écran, formulaires natifs) : 3 radios Aucun/Push/Email,
+  demande de permission → enregistrement du service worker → abonnement →
+  sauvegarde côté serveur, tout enchaîné avant d'écrire la préférence.
+- `lib/actions/notifications.ts` (NOUVEAU) : 3 actions qui RENVOIENT un
+  résultat typé au lieu de rediriger (contrairement à
+  `lib/actions/profile.ts`) — appelées programmatiquement depuis le
+  composant client, pas via un simple `<form action>`.
+- `lib/push/send.ts` (NOUVEAU, `import "server-only"` — même garde que
+  `getServiceClient()`, `VAPID_PRIVATE_KEY` ne doit jamais atteindre le
+  navigateur) : enveloppe `web-push`, renvoie les abonnements MORTS
+  (404/410, expirés côté navigateur) à nettoyer par l'appelant.
+
+**Déclencheurs** (2 routes `/api/reminders/*`, même garde d'authentification
+Bearer `SYNC_SECRET` que `/api/sync/*` — réutilisée telle quelle, pas de
+nouveau secret) :
+- `lib/reminders/matchesReminder.ts` : matchs dont le coup d'envoi tombe
+  dans les 4 prochaines heures (fenêtre choisie, non fixée par le backlog —
+  « le QUOI, pas le QUAND », en-tête `BACKLOG_V1.md`), joueurs `ACTIVE` en
+  préférence `PUSH` sans prono committé sur ce match, dédoublonné par
+  `reminder_log` (kind `MATCH_TONIGHT`, ref = match_id).
+- `lib/reminders/bracketReminder.ts` : compétitions `ACTIVE` dont
+  `bracket_deadline` tombe dans les 24 prochaines heures (fenêtre choisie),
+  joueurs `ACTIVE` en préférence `PUSH` dont le bracket n'est pas complet
+  (même règle de complétude que `getBracketTodo`, `lib/queries/home.ts`),
+  dédoublonné par `reminder_log` (kind `BRACKET_DEADLINE`, ref =
+  competition_id).
+- `.github/workflows/reminder-matches.yml` (toutes les heures) et
+  `reminder-bracket.yml` (toutes les 6h) — même patron que les workflows
+  `sync-*.yml` existants, réutilisent le secret GitHub `SYNC_SECRET` déjà en
+  place (aucun secret à ajouter).
+
+**Vérifié** : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous
+propres, aucun conflit de route (2 nouvelles routes `/api/reminders/*`).
+
+**Test de bout en bout, en conditions RÉELLES** (`next start` en local,
+port 3100 — pas de navigateur disponible dans cet environnement, conduit
+via un harnais Playwright avec un VRAI navigateur Chromium, contexte
+PERSISTANT et non incognito — Chrome désactive délibérément la Push API en
+navigation privée, https://crbug.com/41124656, trouvé en cours de route) :
+- Compte de test jetable créé via l'API Admin (`auth.admin.createUser` +
+  `user_metadata.pseudo`, seule voie propre, §2.6), connexion réelle via le
+  vrai formulaire de login (clic + saisie, pas un replay de POST cette
+  fois — Playwright pilote un vrai navigateur).
+- Activation Push : permission accordée, service worker enregistré, VRAI
+  abonnement FCM créé (`https://jmt17.google.com/fcm/send/...`), sauvegardé
+  en base, `notification_preference` passé à `PUSH` — confirmé par requête
+  directe en base après coup.
+- Envoi réel testé séparément (script jetable, `web-push.sendNotification`
+  directement contre l'abonnement FCM créé) : **accepté par FCM (201)** —
+  preuve que les clés VAPID et le format du payload sont corrects de bout
+  en bout, indépendamment de l'UI.
+- Désactivation testée : abonnement supprimé côté navigateur ET en base,
+  `notification_preference` repassé à `NONE` — confirmé par un RELOAD
+  complet de la page (rendu SSR, pas l'état client transitoire) montrant
+  bien le radio « Aucun » correctement coché.
+- Les 2 routes `/api/reminders/*` exécutées contre la vraie base (garde
+  d'authentification vérifiée : 401 sans secret/mauvais secret, 200 avec le
+  bon) — 0 notification envoyée à ce test précis (aucun joueur réel n'a
+  encore la préférence PUSH, normal).
+- Compte de test + ses données (abonnement, éventuelles lignes
+  `reminder_log`) supprimés après coup via l'API Admin, scripts de
+  vérification jetables supprimés.
+
+Migration #15 poussée sur la vraie base. Paquets ajoutés : `web-push`,
+`@types/web-push` (dev). Pas encore committé.
+
+**Reste à faire par l'utilisateur avant que ça tourne en production** :
+ajouter `NEXT_PUBLIC_VAPID_PUBLIC_KEY` et `VAPID_PRIVATE_KEY` comme
+variables d'environnement Vercel (même geste que `HIGHLIGHTLY_API_KEY`,
+§2.42) — sans ça, les routes `/api/reminders/*` échoueront en prod (clé
+manquante). Aucun nouveau secret GitHub à ajouter (réutilise `SYNC_SECRET`).
+
+**Hors périmètre de ce lot, à reprendre plus tard** : canal Email (bloqué
+sur un domaine vérifié) ; contenu/horaires des 2 fenêtres de rappel
+(4h/24h) sont des choix d'implémentation, pas produit — à ajuster si
+l'usage montre qu'il faut un délai différent ; pas de moyen pour un joueur
+de voir/gérer ses appareils abonnés au-delà d'activer/désactiver (pas
+demandé).
 ```

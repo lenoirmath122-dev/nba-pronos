@@ -10,6 +10,7 @@ export type ProfileData = {
   favoriteTeamId: string | null;
   bio: string;
   theme: "LIGHT" | "DARK";
+  notificationPreference: "NONE" | "PUSH" | "EMAIL";
 };
 
 export type TeamOption = {
@@ -28,7 +29,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
 
   const { data, error } = await supabase
     .from("users")
-    .select("pseudo, role, favorite_team_id, bio, theme_preference")
+    .select("pseudo, role, favorite_team_id, bio, theme_preference, notification_preference")
     .eq("id", user.id)
     .single<{
       pseudo: string;
@@ -36,6 +37,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
       favorite_team_id: string | null;
       bio: string | null;
       theme_preference: "LIGHT" | "DARK";
+      notification_preference: "NONE" | "PUSH" | "EMAIL";
     }>();
 
   if (error || !data) return null;
@@ -46,6 +48,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
     favoriteTeamId: data.favorite_team_id,
     bio: data.bio ?? "",
     theme: data.theme_preference,
+    notificationPreference: data.notification_preference,
   };
 }
 

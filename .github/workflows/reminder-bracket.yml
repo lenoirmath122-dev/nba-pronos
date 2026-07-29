@@ -1,0 +1,21 @@
+name: Rappel — deadline du bracket qui approche
+
+# Appelle /api/reminders/bracket (backlog "Rappels ciblés") : notifie en push
+# les joueurs actifs dont le bracket n'est pas complet, dans les 24h avant
+# bracket_deadline. Toutes les 6h — largement suffisant pour une fenêtre de
+# 24h, déduplication (reminder_log) empêche tout doublon.
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/reminders/bracket
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/reminders/bracket"

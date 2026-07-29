@@ -4,37 +4,18 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 28/07/2026 (fin de session)** — l'AUDIT STRUCTUREL T1→T8/D1-D6
-> (demandé par l'utilisateur avant de détailler les écrans un par un) et les
-> 7 écarts qu'il a trouvés sont désormais entièrement CLOS, y compris leur
-> exécution réelle (pas seulement le code) : voir la section dédiée
-> ci-dessous et `ETAT_ACTUEL.md` §2.38→§2.42. **2 points supplémentaires du
-> backlog "confort/reporté" traités dans la foulée** (§2.43) : révélation
-> publique des paris des autres joueurs (Mes pronos, popup dédiée) et
-> contestation d'un pari REFUSÉ/déjà résolu (l'admin tranche directement dans
-> `/admin/requests`) — les 2 bullets correspondants retirés ci-dessous.
+> **État au 29/07/2026 (fin de journée)** — Audit structurel T1→T8/D1-D6
+> CLOS (28/07/2026, 7 écarts corrigés) ; Realtime `series` comblé (T6c,
+> §2.44) ; 4 points UI mineurs + bandeau parquet sur les 10 écrans joueur
+> (§2.45) ; **1er point du backlog codé : Rappels ciblés, canal Push**
+> (§2.46) — voir `ETAT_ACTUEL.md` pour le détail complet de chaque lot.
+> **Tout est committé/déployé jusqu'à `561fcaf`** ; seul le lot §2.46
+> (Rappels ciblés) reste à committer, en attente que l'utilisateur ajoute
+> les clés VAPID sur Vercel.
 >
-> **État au 29/07/2026** : dernier écart connu de T6c comblé — Realtime
-> activé sur `series` (migration #14), testé de bout en bout — **committé
-> (`c453d84`) et poussé**, déployé sans régression (voir `ETAT_ACTUEL.md`
-> §2.44 / `JOURNAL_SESSIONS.md`).
->
-> **État au 29/07/2026 (suite)** — 4 points UI mineurs traités (§2.45) :
-> tailles de logo harmonisées entre écrans (sm=24px) ; aspect ratio des 30
-> logos évalué et laissé tel quel (correctif pire que le problème) ; badge de
-> correction de Matchs harmonisé sur le rendu nominatif ; bandeau parquet
-> câblé sur les 9 écrans joueur — puis corrigé pour aussi s'afficher dans les
-> 4 états vides qui le masquaient (Classement/Bracket/Accueil/Mes paris).
-> **Committé (`ef5b305` + correctif) ET poussé**, déployé sans régression.
-> **L'asset réel est désormais déposé** (`hero-parquet.jpg`, format réel
-> ajusté dans `--hero-image`) — plus aucun point bloquant sur ce lot. Point
-> focal réajusté (`center 75%`, retour utilisateur) pour montrer le parquet/
-> la ligne plutôt que le ballon en gros plan. **Hub Jouer** (`/play`,
-> 10ᵉ écran oublié du périmètre initial) ajouté au lot, même patron que les
-> autres écrans sans titre.
->
-> **Prochaine étape, à confirmer avec l'utilisateur** : le détail de chaque
-> écran cible déjà annoncé par l'utilisateur.
+> **Prochaine étape, à confirmer avec l'utilisateur** : ajouter
+> `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY` sur Vercel, committer
+> §2.46, puis la suite du backlog (`BACKLOG_V1.md`).
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
@@ -298,27 +279,6 @@
   décider plus tard : soit dans ce sens (restructurer), soit un simple
   remplacement texte→texte+logo par extraction regex du subtitle/label,
   moins propre.
-- **Bandeau sticky inline Matchs — VÉRIFIÉ, PAS DE BUG (29/07/2026)** :
-  relecture de `InlineBetForm.module.css` — son formulaire est en flux
-  normal, AUCUN `position: fixed` n'a jamais été ajouté. La mise en garde
-  d'origine (27/07/2026) anticipait un conflit SI le même traitement que
-  `BetForm.tsx` (écran dédié) était un jour reproduit ici ; ce n'est pas le
-  cas, donc aucun conflit possible aujourd'hui. À revérifier seulement si
-  quelqu'un ajoute un bandeau fixe à `InlineBetForm` un jour.
-- **Bandeau parquet — CÂBLÉ SUR LES 9 ÉCRANS JOUEUR, ASSET RÉEL EN ATTENTE
-  (29/07/2026)** : portée tranchée AVEC l'utilisateur (Accueil, Classement,
-  Bracket, Matchs, Mes pronos, Nouveau pari, Bracket personnel, Mes paris,
-  Profil — PAS admin/login/signup) ; thème clair n'était pas réellement un
-  gap, déjà tranché par §15.7 (bande toujours sombre, les deux thèmes).
-  Classe globale `.hero-banner`/`.hero-banner-title`/`.hero-banner-subtitle`
-  (`app/globals.css`) + token `--color-hero-text` (`app/tokens.css`), 4
-  écrans qui n'avaient AUCUN titre de page (Matchs, Mes pronos, Nouveau
-  pari, Bracket personnel) en ont désormais un minimal, créé pour l'occasion.
-  Mécanique CSS vérifiée visuellement (harnais Playwright, image
-  placeholder). **Reste bloquant : `public/brand/hero-parquet.webp`
-  toujours absent** — tant que l'utilisateur ne dépose pas le fichier réel,
-  le token pointe dans le vide (pas d'erreur, juste pas d'image visible).
-  Voir `ETAT_ACTUEL.md` §2.45.
 - **Garde `bet_scope=SERIES` interdit en NBA Cup non testée en conditions
   réelles** (26/07/2026, `save_bet`, migration #10) : le jeu de données de
   test ne porte qu'une compétition PLAYOFFS active — le refus d'un pari

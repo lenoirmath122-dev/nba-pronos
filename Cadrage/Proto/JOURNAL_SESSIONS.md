@@ -3919,3 +3919,44 @@ le hub Jouer (`/play`, grille 2×2). Titre « Jouer » + bandeau ajoutés, même
 patron que les 4 écrans qui n'avaient aucun titre — nouvelles classes
 `.header`/`.title` créées dans `app/(app)/play/page.module.css`. `tsc`/
 `eslint`/`next build` propres. Détail complet dans `ETAT_ACTUEL.md` §2.45.
+
+---
+
+## Rappels ciblés — canal Push (29/07/2026, fin de journée)
+
+1er point du backlog codé (marqué PRIORITÉ par l'utilisateur). Aucune spec
+n'existait — canal et architecture tranchés AVEC l'utilisateur avant de
+coder : Push d'abord (aucun prérequis externe), Email plus tard (bloqué sur
+un nom de domaine vérifié pour un SMTP personnalisé, gap "Confirm email").
+Le modèle de préférence (`users.notification_preference`, migration #15)
+couvre déjà les deux canaux pour ne pas le refaire.
+
+Infra Web Push entièrement nouvelle : `push_subscriptions` +
+`reminder_log` (dédoublonnage, RLS sans policy — verrouillée par défaut) ;
+clés VAPID générées localement (`web-push.generateVAPIDKeys()`), écrites
+directement dans `.env.local` (jamais affichées en clair) ; `public/sw.js`
+(service worker) ; `components/profile/NotificationSettings.tsx` (premier
+et seul composant client de l'écran Profil) ; `lib/actions/notifications.ts` ;
+`lib/push/send.ts` (`server-only`).
+
+2 déclencheurs : `lib/reminders/matchesReminder.ts` (fenêtre 4h avant coup
+d'envoi, choix d'implémentation) et `lib/reminders/bracketReminder.ts`
+(fenêtre 24h avant `bracket_deadline`), exposés via `/api/reminders/matches`
+et `/api/reminders/bracket` (même garde Bearer `SYNC_SECRET` que
+`/api/sync/*`, aucun nouveau secret), appelés par 2 nouveaux workflows
+GitHub Actions.
+
+Testé de bout en bout en conditions RÉELLES : compte de test jetable,
+connexion via un VRAI navigateur Chromium (Playwright, contexte persistant
+— Chrome désactive la Push API en incognito, trouvé en cours de route),
+activation Push → vrai abonnement FCM créé et sauvegardé en base, envoi
+réel testé séparément et accepté par FCM (201), désactivation testée
+(abonnement supprimé, préférence repassée à NONE, confirmé par un reload
+complet). Routes `/api/reminders/*` vérifiées contre la vraie base (garde
+d'authentification + exécution sans erreur). Compte de test et scripts
+jetables supprimés après coup.
+
+`tsc`/`eslint`/`next build` propres. Paquets ajoutés : `web-push`,
+`@types/web-push`. Migration #15 poussée sur la vraie base. **Pas encore
+committé** — reste à l'utilisateur d'ajouter `NEXT_PUBLIC_VAPID_PUBLIC_KEY`/
+`VAPID_PRIVATE_KEY` sur Vercel. Détail complet dans `ETAT_ACTUEL.md` §2.46.

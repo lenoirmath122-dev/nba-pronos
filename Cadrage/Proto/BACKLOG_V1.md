@@ -46,8 +46,11 @@
 
 ## Confort au quotidien
 
-- Rappels ciblés (PRIORITÉ) : « tu n'as pas encore pronostiqué le match de
-  ce soir », « la deadline du bracket approche ».
+- ~~Rappels ciblés (PRIORITÉ)~~ **FAIT — canal Push, 29/07/2026**
+  (`ETAT_ACTUEL.md` §2.46) : « tu n'as pas encore pronostiqué le match de ce
+  soir » (fenêtre 4h avant coup d'envoi), « la deadline du bracket approche »
+  (fenêtre 24h). Canal Email reporté, bloqué sur un nom de domaine vérifié
+  (SMTP personnalisé) — le modèle de préférence le couvre déjà.
 - Vue admin « qui manque à l'appel » avant une deadline qui approche.
 - Export calendrier (.ics) des deadlines à venir.
 

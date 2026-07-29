@@ -4,6 +4,7 @@ import { getProfileData, getTeamOptions } from "@/lib/queries/profile";
 import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
+import { NotificationSettings } from "@/components/profile/NotificationSettings";
 import styles from "./page.module.css";
 
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
@@ -69,6 +70,11 @@ export default async function ProfilePage({
             Enregistrer
           </button>
         </form>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Rappels</h2>
+        <NotificationSettings initialPreference={profile.notificationPreference} />
       </section>
 
       {profile.isAdmin && (

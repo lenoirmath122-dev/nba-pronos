@@ -1,0 +1,21 @@
+name: Rappel — match du soir non pronostiqué
+
+# Appelle /api/reminders/matches (backlog "Rappels ciblés") : notifie en push
+# les joueurs actifs sans prono sur un match dans les 4 prochaines heures.
+# Toutes les heures — la fenêtre de 4h et la déduplication (reminder_log)
+# tolèrent largement cette fréquence, pas besoin de plus.
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/reminders/matches
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/reminders/matches"
