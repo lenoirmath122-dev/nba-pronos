@@ -11,7 +11,13 @@ let configured = false;
 function ensureConfigured() {
   if (configured) return;
   webpush.setVapidDetails(
-    "mailto:contact@nba-pronos.invalid", // sujet requis par la spec Web Push, jamais utilisé pour un vrai envoi
+    // Sujet requis par la spec Web Push (RFC 8292) — DOIT être une URL/mailto:
+    // RÉSOLVABLE : Apple (web.push.apple.com) rejette les domaines factices
+    // (`BadJwtToken`) comme `.invalid` (constaté en test réel, même famille
+    // que `.test` déjà rejeté ailleurs par Supabase Auth) ; Google/FCM, lui,
+    // ne validait pas ce point, d'où l'écart passé inaperçu au premier test.
+    // L'URL réelle du site est toujours valide, aucune config supplémentaire.
+    "https://nba-pronos.vercel.app",
     process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
     process.env.VAPID_PRIVATE_KEY!
   );
