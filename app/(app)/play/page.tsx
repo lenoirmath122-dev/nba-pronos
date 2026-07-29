@@ -56,24 +56,29 @@ export default async function PlayPage() {
   const data = await getPlayHubData();
 
   return (
-    <div className={styles.grid}>
-      <PlayHubCard
-        title="Matchs"
-        href="/play/matches"
-        badge={data.matches.todoCount}
-        lines={matchesLines(data.matches)}
-      />
-      <PlayHubCard title="Mes pronos" href="/play/my-predictions" lines={predictionsLines(data.predictions)} />
-      {/* Pas de badge numérique ici : la pastille "à faire" du bracket est le
-          ratio "X/15" lui-même (§2.3), déjà porté par la 1ère ligne
-          (bracketLines) — un badge séparé ne ferait que le répéter. */}
-      <PlayHubCard title="Mon bracket" href="/play/bracket" lines={bracketLines(data.bracket)} />
-      <PlayHubCard
-        title="Paris"
-        href="/play/bets"
-        badge={data.bets.draftCount + data.bets.submittedCount}
-        lines={betsLines(data.bets)}
-      />
+    <div className={styles.page}>
+      <div className={`${styles.header} hero-banner`}>
+        <h1 className={`${styles.title} hero-banner-title`}>Jouer</h1>
+      </div>
+      <div className={styles.grid}>
+        <PlayHubCard
+          title="Matchs"
+          href="/play/matches"
+          badge={data.matches.todoCount}
+          lines={matchesLines(data.matches)}
+        />
+        <PlayHubCard title="Mes pronos" href="/play/my-predictions" lines={predictionsLines(data.predictions)} />
+        {/* Pas de badge numérique ici : la pastille "à faire" du bracket est le
+            ratio "X/15" lui-même (§2.3), déjà porté par la 1ère ligne
+            (bracketLines) — un badge séparé ne ferait que le répéter. */}
+        <PlayHubCard title="Mon bracket" href="/play/bracket" lines={bracketLines(data.bracket)} />
+        <PlayHubCard
+          title="Paris"
+          href="/play/bets"
+          badge={data.bets.draftCount + data.bets.submittedCount}
+          lines={betsLines(data.bets)}
+        />
+      </div>
     </div>
   );
 }

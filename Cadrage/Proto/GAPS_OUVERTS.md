@@ -27,7 +27,11 @@
 > 4 états vides qui le masquaient (Classement/Bracket/Accueil/Mes paris).
 > **Committé (`ef5b305` + correctif) ET poussé**, déployé sans régression.
 > **L'asset réel est désormais déposé** (`hero-parquet.jpg`, format réel
-> ajusté dans `--hero-image`) — plus aucun point bloquant sur ce lot.
+> ajusté dans `--hero-image`) — plus aucun point bloquant sur ce lot. Point
+> focal réajusté (`center 75%`, retour utilisateur) pour montrer le parquet/
+> la ligne plutôt que le ballon en gros plan. **Hub Jouer** (`/play`,
+> 10ᵉ écran oublié du périmètre initial) ajouté au lot, même patron que les
+> autres écrans sans titre.
 >
 > **Prochaine étape, à confirmer avec l'utilisateur** : le détail de chaque
 > écran cible déjà annoncé par l'utilisateur.

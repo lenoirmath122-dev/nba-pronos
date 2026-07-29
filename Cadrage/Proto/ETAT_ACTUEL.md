@@ -4031,4 +4031,23 @@ suivre le fichier réel plutôt que l'inverse. Rendu vérifié visuellement
 dégradé + texte lisibles, registre arène/broadcast conforme à l'intention
 §15.7. `tsc`/`eslint`/`next build` propres. **Dernier point bloquant du lot
 levé.**
+
+**Point focal réajusté (retour utilisateur, même session)** : le cadrage
+`background-position: center` montrait surtout le ballon en gros plan —
+recentré en `center 75%` pour montrer le parquet + la ligne de terrain,
+réglage réévalué visuellement (harnais Playwright, plusieurs valeurs
+comparées : 65/75/85 %/bottom) avant de choisir. `--hero-image` reste la
+SEULE variable propre à l'asset (§15.7) ; le point focal, lui, est une
+propriété de mise en page globale (`.hero-banner::before`), pas du token.
+
+**10ᵉ écran oublié du périmètre initial : le hub Jouer** (`app/(app)/play/
+page.tsx`, remonté par l'utilisateur) — la liste des 9 écrans convenue avec
+lui en début de lot omettait ce hub (grille 2×2 Matchs/Mes pronos/Mon
+bracket/Paris, §2.35). Nouveau titre « Jouer » + bandeau ajoutés, même
+patron que les 4 écrans qui n'avaient aucun titre (nouvelles classes
+`.header`/`.title` dans `app/(app)/play/page.module.css`, qui n'en avait pas
+non plus). Cet écran ne dépend d'aucune compétition pour son rendu (chaque
+carte gère son propre état interne) : pas de branche vide séparée à traiter,
+contrairement à Accueil/Classement/Bracket/Mes paris. `tsc`/`eslint`/
+`next build` propres.
 ```

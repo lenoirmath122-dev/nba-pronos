@@ -3907,4 +3907,15 @@ n'avait jamais eu son propre `page.module.css` — créé pour l'occasion.
 `--hero-image`/README ajustés). Rendu vérifié visuellement avec le vrai
 fichier (harnais Playwright) : image + voile dégradé + texte lisibles,
 conforme à l'intention §15.7. `tsc`/`eslint`/`next build` propres. Plus
-aucun point bloquant sur ce lot. Détail complet dans `ETAT_ACTUEL.md` §2.45.
+aucun point bloquant sur ce lot.
+
+Point focal réajusté ensuite (`center 75%` au lieu de `center`) suite à un
+retour de l'utilisateur : le cadrage montrait trop le ballon, pas assez le
+parquet/la ligne — plusieurs valeurs comparées visuellement avant de
+choisir.
+
+Enfin, l'utilisateur a remonté un 10ᵉ écran oublié du périmètre initial :
+le hub Jouer (`/play`, grille 2×2). Titre « Jouer » + bandeau ajoutés, même
+patron que les 4 écrans qui n'avaient aucun titre — nouvelles classes
+`.header`/`.title` créées dans `app/(app)/play/page.module.css`. `tsc`/
+`eslint`/`next build` propres. Détail complet dans `ETAT_ACTUEL.md` §2.45.
