@@ -39,6 +39,23 @@ function pushSupported(): boolean {
   return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
 }
 
+// Constaté en test (juste après un premier enregistrement de service
+// worker) : le service push peut mettre un instant à être prêt et
+// `subscribe()` échoue une première fois (AbortError). Un seul nouvel essai
+// après une courte pause suffit — pas la peine d'une file de retry plus
+// élaborée pour un cas aussi ponctuel.
+async function subscribeWithRetry(
+  registration: ServiceWorkerRegistration,
+  applicationServerKey: Uint8Array<ArrayBuffer>
+): Promise<PushSubscription> {
+  try {
+    return await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+  } catch {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    return await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
+  }
+}
+
 export function NotificationSettings({ initialPreference }: NotificationSettingsProps) {
   const [preference, setPreference] = useState<Preference>(initialPreference);
   const [pending, setPending] = useState(false);
@@ -69,10 +86,7 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
 
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) {
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        });
+        subscription = await subscribeWithRetry(registration, urlBase64ToUint8Array(publicKey));
       }
 
       const json = subscription.toJSON();
@@ -96,6 +110,8 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
         return;
       }
       setPreference("PUSH");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inattendue, réessaie.");
     } finally {
       setPending(false);
     }
@@ -120,6 +136,8 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
         return;
       }
       setPreference("NONE");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur inattendue, réessaie.");
     } finally {
       setPending(false);
     }
