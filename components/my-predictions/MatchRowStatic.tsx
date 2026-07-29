@@ -36,9 +36,9 @@ export function MatchRowStatic({ row, returnTo, forceOpenCorrectionForm, correct
     <div className={styles.row}>
       <div className={styles.header}>
         <span className={styles.teams}>
-          <TeamLogo abbreviation={row.home.abbreviation} alt={row.home.name} size={20} />
+          <TeamLogo abbreviation={row.home.abbreviation} alt={row.home.name} size={24} />
           {row.home.abbreviation} – {row.away.abbreviation}
-          <TeamLogo abbreviation={row.away.abbreviation} alt={row.away.name} size={20} />
+          <TeamLogo abbreviation={row.away.abbreviation} alt={row.away.name} size={24} />
         </span>
         <span className={styles.gameNumber}>Match {row.gameNumber}</span>
         <LiveBadgeAndScore

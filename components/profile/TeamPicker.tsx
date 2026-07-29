@@ -37,7 +37,7 @@ export function TeamPicker({ teams, selectedTeamId }: TeamPickerProps) {
             defaultChecked={team.teamId === selectedTeamId}
             className={styles.radio}
           />
-          <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={28} />
+          <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={24} />
           <span className={styles.itemLabel}>{team.name}</span>
         </label>
       ))}

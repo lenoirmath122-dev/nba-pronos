@@ -44,9 +44,9 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
         ) : (
           <>
-            <div className={styles.header}>
-              <p className={styles.title}>Classement</p>
-              <p className={styles.competitionName}>{data.competitionName}</p>
+            <div className={`${styles.header} hero-banner`}>
+              <p className={`${styles.title} hero-banner-title`}>Classement</p>
+              <p className={`${styles.competitionName} hero-banner-subtitle`}>{data.competitionName}</p>
             </div>
 
             <SortChips active={sortKey} />

@@ -3854,4 +3854,43 @@ rendu visuel — pas de navigateur disponible dans cet environnement). État
 restauré immédiatement après (winner à `null`, compétition à `ARCHIVED`),
 vérifié après coup, script de vérification supprimé.
 
-Code applicatif **pas encore committé**.
+Code applicatif committé (`c453d84`) et poussé, déployé sans régression
+(`/leaderboard`, `/bracket`, `/login` revérifiés 200).
+
+---
+
+## 4 points UI mineurs (29/07/2026, suite)
+
+État des lieux général demandé par l'utilisateur (GAPS_OUVERTS.md +
+BACKLOG_V1.md), puis choix de nettoyer 4 points UI ouverts depuis plusieurs
+sessions, chacun confirmé avec AskUserQuestion avant de coder.
+
+**Tailles de logo** : les tokens `--logo-size-sm/md/lg` (spec §10.2)
+n'existaient jamais en CSS — créés dans `app/tokens.css`. 4 écrans qui ne
+respectaient aucun palier (NodeCard=18, MatchRowStatic/BetForm=20,
+Profil=28) alignés sur `sm`=24px. Écart doc↔code trouvé au passage :
+`GAPS_OUVERTS.md` affirmait à tort que NodeCard était "tier lg" (48px).
+
+**Aspect ratio des 30 logos** : testé visuellement (harnais Playwright,
+`object-fit: contain` vs `cover`) — `cover` coupe le texte du wordmark sur
+les logos larges (SAS/LAL/ORL/NOP/HOU). Laissé tel quel, décision explicite
+de l'utilisateur après avoir vu la capture.
+
+**Badge de correction Matchs** : `OtherPrediction.isAdminCorrected`
+remplacé par `adminCorrection: AdminCorrection | null` (même type que Mes
+pronos), extrait dans `lib/queries/adminCorrection.ts` (nouveau, partagé)
+pour éviter un import circulaire matches.ts↔my-predictions.ts. Rendu
+nominatif identique aux deux écrans désormais.
+
+**Bandeau parquet** (§15.7) : portée confirmée (9 écrans joueur, pas admin),
+thème clair déjà tranché par la spec (pas un vrai gap). Classes globales
+`.hero-banner`/`.hero-banner-title`/`.hero-banner-subtitle`
+(`app/globals.css`) + token `--color-hero-text`. 4 écrans sans aucun titre
+de page (Matchs, Mes pronos, Nouveau pari, Bracket personnel) en ont reçu un
+minimal, décidé avec l'utilisateur en cours de route. Mécanique vérifiée
+visuellement (harnais Playwright, image placeholder).
+
+`tsc`/`eslint`/`next build` tous propres. **Bloqué sur
+`public/brand/hero-parquet.webp`**, toujours pas déposé par l'utilisateur —
+code pas encore committé, en attente de l'asset et d'un dernier test visuel
+avec la vraie photo. Détail complet dans `ETAT_ACTUEL.md` §2.45.

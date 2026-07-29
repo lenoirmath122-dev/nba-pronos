@@ -5,6 +5,17 @@
   padding: var(--space-4);
 }
 
+.header {
+  padding: var(--space-5) var(--space-4);
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
 .controls {
   display: flex;
   flex-direction: column;

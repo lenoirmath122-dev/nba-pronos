@@ -36,7 +36,7 @@ function TeamLabel({
   const className = isChampion ? styles.teamChampion : isWinner ? styles.teamWinner : styles.team;
   return (
     <span className={className}>
-      <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={18} />
+      <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={24} />
       {team.abbreviation}
     </span>
   );

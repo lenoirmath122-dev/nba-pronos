@@ -20,10 +20,10 @@ export function BracketSummary({ data, competitionName, initialShowTree, liveSee
   return (
     <LiveSeriesSubscriber seed={liveSeed}>
       <div className={styles.page}>
-        <div className={styles.header}>
+        <div className={`${styles.header} hero-banner`}>
           <div>
-            <p className={styles.title}>Bracket</p>
-            <p className={styles.competitionName}>{competitionName}</p>
+            <p className={`${styles.title} hero-banner-title`}>Bracket</p>
+            <p className={`${styles.competitionName} hero-banner-subtitle`}>{competitionName}</p>
           </div>
           <ProgressBar filledCount={data.filledCount} totalCount={data.totalCount} />
         </div>

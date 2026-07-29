@@ -25,8 +25,8 @@ export default async function ProfilePage({
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.pseudo}>{profile.pseudo}</h1>
+      <header className={`${styles.header} hero-banner`}>
+        <h1 className={`${styles.pseudo} hero-banner-title`}>{profile.pseudo}</h1>
         {profile.isAdmin && <span className={styles.adminBadge}>Admin</span>}
       </header>
 

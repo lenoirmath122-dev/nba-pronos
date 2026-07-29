@@ -5,14 +5,25 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 29/07/2026 — **dernier écart connu de
+> Dernière mise à jour : session du 29/07/2026 (suite) — **4 points UI
+> mineurs traités** (§2.45, `GAPS_OUVERTS.md`) : tailles de logo harmonisées
+> entre écrans (token `--logo-size-sm`=24px enfin créé) ; aspect ratio inégal
+> des 30 logos évalué visuellement (harnais Playwright) puis LAISSÉ TEL QUEL
+> — le seul correctif CSS possible (`object-fit: cover`) coupe le texte des
+> logos larges, décision explicite de l'utilisateur ; badge de correction de
+> Matchs harmonisé sur le rendu nominatif de Mes pronos (correctif
+> post-validation `SPEC_ECRAN_MATCHS_V0_1.md` §13) ; bandeau parquet (§15.7)
+> câblé sur les 9 écrans joueur, 4 d'entre eux (Matchs, Mes pronos, Nouveau
+> pari, Bracket personnel) recevant au passage un titre de page qu'ils
+> n'avaient jamais eu — **bloqué sur l'asset réel**
+> (`public/brand/hero-parquet.webp` toujours absent). Code écrit,
+> `tsc`/`eslint`/`next build` propres — **pas encore committé**.
+>
+> Session précédente (29/07/2026, plus tôt) : **dernier écart connu de
 > T6c comblé : Realtime activé sur `series`** (migration #14), le résumé/
 > drill-down Bracket reflète désormais un résultat officiel de série SANS
-> reload — détail §2.44. Code écrit, `tsc`/`eslint`/`next build` propres,
-> migration poussée sur la vraie base, testée de bout en bout (souscription
-> anon réelle + écriture service_role, payload reçu, état restauré) — **pas
-> encore committé côté code** (voir plus bas). Session précédente
-> (28/07/2026, suite) inchangée sinon : 2 fonctionnalités du backlog
+> reload — détail §2.44. Committé (`c453d84`) et poussé, déployé sans
+> régression. Session d'avant (28/07/2026, suite) inchangée sinon : 2 fonctionnalités du backlog
 > "confort/reporté" CODÉES ET VÉRIFIÉES EN CONDITIONS RÉELLES : la
 > révélation publique des paris des autres joueurs et la contestation d'un
 > pari refusé/déjà résolu — détail §2.43 ; l'audit structurel T1→T8/D1-D6 et
@@ -58,15 +69,16 @@
 > archivées ci-dessus restent en base, délibérément (« TEST T4 sync —
 > Playoffs 2026 (réel) » a été réactivée PUIS restaurée en ARCHIVED pour le
 > test §2.44 — état final identique à avant). Le lot audit + 7 correctifs
-> est committé (`9caee5f`) ET poussé. **Le lot §2.43 (otherBets +
-> contestation) est également committé (`dc1e991`) ET poussé** — déploiement
-> Vercel revérifié sans régression après coup. **Le lot §2.44 (Realtime
-> series) N'EST PAS ENCORE COMMITTÉ** — migration #14 déjà poussée sur la
-> vraie base (indépendant du commit git), code applicatif en attente.
+> est committé (`9caee5f`) ET poussé. Le lot §2.43 (otherBets + contestation)
+> est également committé (`dc1e991`) ET poussé. **Le lot §2.44 (Realtime
+> series) est committé (`c453d84`) ET poussé**, déploiement Vercel revérifié
+> sans régression. **Le lot §2.45 (4 points UI) N'EST PAS ENCORE COMMITTÉ** —
+> bloqué sur le dépôt de `public/brand/hero-parquet.webp` par l'utilisateur.
 >
-> Prochaine étape à confirmer avec l'utilisateur : committer/pousser le lot
-> §2.44, puis le détail de chaque écran cible déjà annoncé (aucune spec
-> d'écran encore écrite au-delà de ce qui existe).
+> Prochaine étape à confirmer avec l'utilisateur : déposer l'asset du
+> bandeau parquet, committer/pousser le lot §2.45, puis le détail de chaque
+> écran cible déjà annoncé (aucune spec d'écran encore écrite au-delà de ce
+> qui existe).
 
 ---
 
@@ -3892,4 +3904,104 @@ Non couvert par ce lot, hors périmètre décidé avec l'utilisateur (§14.1,
 non rouvert) : `match_predictions`/`brackets`/`bracket_picks` restent NON
 publiées — la révélation des pronos d'autrui et les mouvements de
 classement suivent toujours le rythme SSR, jamais le live.
+```
+
+### 2.45 4 points UI mineurs (session du 29/07/2026, suite)
+
+```text
+Demandé par l'utilisateur après un état des lieux général (GAPS_OUVERTS.md +
+BACKLOG_V1.md) : nettoyer 4 points UI ouverts depuis plusieurs sessions,
+chacun confirmé/tranché AVEC l'utilisateur avant de coder (AskUserQuestion),
+pas de choix silencieux.
+
+**1. Tailles de logo entre écrans.** Constat élargi en creusant : les tokens
+`--logo-size-sm/md/lg` (24/32/48px, SPEC_DESIGN_SYSTEM_V0_1.md §10.2)
+n'avaient JAMAIS été créés en CSS — chaque écran passait une valeur littérale
+en dur, la plupart ne correspondant à AUCUN palier (NodeCard=18, MatchRowStatic/
+BetForm=20, Profil=28). `GAPS_OUVERTS.md` affirmait même à tort que NodeCard
+était "tier lg" (48) alors que le code portait 18 — écart doc↔code, pas
+juste une taille à harmoniser. Corrigé : les 3 tokens créés dans
+`app/tokens.css` ; NodeCard/MatchRowStatic/BetForm/Profil passés à `sm`=24px
+(les 4 qui ne respectaient aucun palier) ; TeamPicker (Matchs, lg=48) et
+BracketFillBoard (md=32) inchangés, déjà conformes.
+
+**2. Aspect ratio inégal des 30 logos — ÉVALUÉ, LAISSÉ TEL QUEL.** Écart réel
+(SAS ≈2:1 large, LAL quasi carré → SAS parait plus petit/fin dans sa pastille
+avec `object-fit: contain`). Testé visuellement AVANT de choisir : un harnais
+HTML autonome (les vraies pastilles/SVG, Playwright headless — aucune donnée
+de test n'affiche SAS/LAL en ce moment, donc pas testable dans l'app réelle)
+comparant `contain` (actuel) vs `cover` (variante candidate). Capture
+concluante : `cover` uniformise bien la taille mais **coupe visiblement le
+texte du wordmark** sur tous les logos larges (« SAN ANTONIO SPURS » →
+« AN ANTONI »/« PUF », idem LAL/ORL/NOP/HOU). Remède pire que le problème.
+Décision explicite de l'utilisateur : ne rien changer, documenter la
+conclusion plutôt que laisser le gap ouvert comme si rien n'avait été
+essayé.
+
+**3. Badge de correction de Matchs harmonisé sur le rendu nominatif de Mes
+pronos.** Correctif post-validation confirmé AVEC l'utilisateur avant de
+coder : `OtherPrediction.isAdminCorrected: boolean` (lib/queries/matches.ts,
+contrat figé SPEC_ECRAN_MATCHS_V0_1.md §13) remplacé par
+`adminCorrection: AdminCorrection | null`, même type que Mes pronos. Pour
+éviter un import circulaire (`my-predictions.ts` importe déjà `TeamRef`
+depuis `matches.ts`), le type + la fonction `toAdminCorrection()` ont été
+extraits dans un nouveau fichier partagé `lib/queries/adminCorrection.ts`,
+importé par les deux modules. `components/matches/RevealPanel.tsx` rend
+désormais « Saisi par X à la demande de Y — motif », identique à Mes pronos.
+Vérifié : `tsc`/`eslint`/`next build` propres. Pas testé en conditions
+réelles (contrairement aux autres lots) : une correction admin ne peut
+exister que sur un match déjà VERROUILLÉ, or Matchs ne montre que des
+matchs À VENIR (fenêtre 3 jours, `scheduled_at > now()`) — les deux
+conditions semblent structurellement ne jamais pouvoir se rencontrer, donc
+ce badge n'a probablement jamais eu l'occasion de s'afficher, avant comme
+après ce correctif. Non creusé plus loin (hors périmètre de ce lot).
+
+**4. Bandeau parquet (§15.7) câblé sur les 9 écrans joueur.** Portée et
+thème clair tranchés AVEC l'utilisateur : le thème clair n'était en réalité
+PAS un vrai gap (§15.7 l'avait déjà tranché — bande toujours sombre, les
+deux thèmes, texte figé en clair) ; la portée, elle, a été confirmée écran
+par écran : Accueil, Classement, Bracket, Matchs, Mes pronos, Nouveau pari,
+Bracket personnel, Mes paris, Profil — PAS admin/login/signup. En creusant
+le câblage, constat supplémentaire flagué avant de coder : 4 de ces 9 écrans
+(Matchs, Mes pronos, Nouveau pari, Bracket personnel) n'avaient AUCUN titre
+de page — l'utilisateur a confirmé vouloir leur en créer un minimal
+(« Matchs », « Mes pronos », « Nouveau pari », « Mon bracket ») en plus du
+câblage du bandeau.
+
+Implémentation : classes GLOBALES (pas des CSS Modules) `.hero-banner`/
+`.hero-banner-title`/`.hero-banner-subtitle` dans `app/globals.css` — un
+choix délibéré pour que « une seule variable à éditer » (`--hero-image`,
+déjà acté §15.7) reste vrai pour les 9 écrans en même temps, plutôt que 9
+copies de traitement CSS. Mécanique en 2 pseudo-éléments (`::before` porte
+l'image + le filtre assombri/désaturé, `::after` porte le voile dégradé) :
+le filtre ne s'applique jamais au texte réel, qui reste un enfant DOM
+normal. Nouveau token `--color-hero-text` (`app/tokens.css`, constante hors
+thème) ; `color`/`text-shadow` en `!important` sur `.hero-banner-title/
+-subtitle` — nécessaire car l'ordre de bundling entre ce fichier global et
+les CSS Modules de chaque écran n'est pas garanti, et cette couleur figée
+doit TOUJOURS l'emporter sur le token de couleur propre à l'écran. Chaque
+écran garde SA PROPRE classe `.header` (mise en page : flex/gap/
+justify-content, ex. Bracket a un `ProgressBar` à côté du titre) — composée
+avec `.hero-banner`, qui reste purement visuel.
+
+Accueil (`HomeHeader.tsx`) : cas particulier, la carte de rang/points
+existante n'a pas de titre séparé du corps. Bandeau appliqué seulement au
+bloc salutation+compétition (nouveau conteneur `.greetingBlock`, bleed hors
+du padding de la carte avec coins arrondis alignés sur le haut) — le bloc
+stats/forme en dessous garde son fond de carte normal, pas de bandeau sur
+TOUTE la carte.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx next build` tous propres,
+aucun conflit de route. Mécanique CSS vérifiée visuellement (harnais
+Playwright, image placeholder générée localement — layering
+image/dégradé/texte, lisibilité, coins arrondis Accueil, tous confirmés).
+**Point bloquant restant** : `public/brand/hero-parquet.webp` n'a toujours
+pas été déposé par l'utilisateur (demandé explicitement en cours de lot) —
+tant que le fichier est absent, le token pointe vers un asset inexistant
+(aucune erreur de build, juste pas d'image visible à l'écran). Pas de test
+en conditions réelles avec la vraie photo, à refaire dès qu'elle est
+déposée.
+
+Aucune migration, aucun changement de schéma. Rien committé à ce stade
+(voir en-tête).
 ```

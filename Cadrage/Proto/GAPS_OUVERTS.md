@@ -15,11 +15,20 @@
 > `/admin/requests`) — les 2 bullets correspondants retirés ci-dessous.
 >
 > **État au 29/07/2026** : dernier écart connu de T6c comblé — Realtime
-> activé sur `series` (migration #14), testé de bout en bout (voir
-> `ETAT_ACTUEL.md` §2.44 / `JOURNAL_SESSIONS.md`). Code pas encore committé.
+> activé sur `series` (migration #14), testé de bout en bout — **committé
+> (`c453d84`) et poussé**, déployé sans régression (voir `ETAT_ACTUEL.md`
+> §2.44 / `JOURNAL_SESSIONS.md`).
 >
-> **Prochaine étape, à confirmer avec l'utilisateur** : committer/pousser ce
-> lot, puis le détail de chaque écran cible déjà annoncé par l'utilisateur.
+> **État au 29/07/2026 (suite)** — 4 points UI mineurs traités (§2.45) :
+> tailles de logo harmonisées entre écrans (sm=24px) ; aspect ratio des 30
+> logos évalué et laissé tel quel (correctif pire que le problème) ; badge de
+> correction de Matchs harmonisé sur le rendu nominatif ; bandeau parquet
+> câblé sur les 9 écrans joueur (bloqué sur l'asset réel, `public/brand/
+> hero-parquet.webp` toujours absent). **Pas encore committé.**
+>
+> **Prochaine étape, à confirmer avec l'utilisateur** : déposer l'asset du
+> bandeau parquet puis committer/pousser ce lot ; ensuite, le détail de
+> chaque écran cible déjà annoncé par l'utilisateur.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
@@ -258,38 +267,13 @@
   pari). Toujours pas de gestion admin du refus (`rejectBet`) à ce jour —
   hors périmètre des deux lots. À rouvrir si une vraie colonne `rejected_at`
   est ajoutée un jour.
-- **Aligner le badge de correction de l'écran Matchs sur le rendu nominatif**
-  (ajouté le 24/07/2026, lot « Mes pronos » §7.1) : Matchs rend un badge
-  **générique** (« Corrigé par un admin », contrat de types `OtherPrediction.
-  isAdminCorrected: boolean` figé avant que le rendu nominatif ne soit
-  décidé) alors que Mes pronos rend désormais le nom de l'admin + le motif
-  en entier (« Saisi par X à la demande de Y — motif »), conformément à
-  0.2.3 §7 (garde-fou social, pas technique). Divergence assumée à la
-  rédaction de `SPEC_ECRAN_MES_PRONOS_V0_1.md` §7.1, pas reproduite là pour
-  raison de symétrie — à trancher : soit étendre le contrat de types de
-  Matchs (nom d'admin + nom du requérant), soit assumer la divergence en V1
-  et harmoniser plus tard.
-- **Tailles inégales entre les 30 logos de franchise** (trouvé le 25/07/2026,
-  en corrigeant le décentrage §2.13 de `ETAT_ACTUEL.md`) : le script de
-  bounding box a bien réglé le DÉCENTRAGE (chaque `viewBox` colle désormais
-  au dessin réel de son propre fichier — confirmé visuellement par
-  l'utilisateur), mais il ne les a PAS rendus uniformément CARRÉS entre eux :
-  chaque logo garde son aspect ratio naturel (ex. SAS ≈ 2:1 large, LAL quasi
-  carré). Conséquence : `object-fit: contain` dans la pastille carrée
-  affiche donc les logos très larges (SAS) sensiblement plus PETITS/plus
-  fins à l'intérieur de leur pastille que les logos plus carrés (LAL) — un
-  problème de TAILLE relative, distinct du décentrage déjà réglé. Pas
-  corrigé : nécessiterait soit de recadrer chaque SVG à un ratio carré
-  uniforme (perte de marge autour du dessin, à valider visuellement par
-  logo), soit une règle de mise à l'échelle différenciée côté CSS — aucune
-  des deux tranchée à ce jour.
-- **Cohérence des tailles de logo entre écrans** (25/07/2026, §2.13) : la
-  carte-sélecteur de l'écran Matchs (`TeamPicker`) est passée à 48px
-  (`SPEC_DESIGN_SYSTEM_V0_1.md` §16.1) ; les logos de l'écran Mes pronos
-  (`MatchRowStatic`) n'ont PAS été revus à cette occasion et restent à leur
-  taille d'origine (20px). Le bracket (`NodeCard`) est également resté
-  inchangé (par choix, tier `lg` toujours approprié pour lui). À harmoniser
-  si une cohérence stricte entre écrans est voulue.
+- **Tailles inégales entre les 30 logos de franchise — ÉVALUÉ, PAS DE
+  CORRECTIF (29/07/2026)** : disparité réelle (SAS ≈2:1 vs LAL quasi carré)
+  mais `object-fit: cover` (seul correctif CSS pur) a été testé visuellement
+  (harnais Playwright, capture comparative) et **coupe le texte du wordmark**
+  sur tous les logos larges (SAS, LAL, ORL, NOP, HOU) — remède pire que le
+  problème. Décision explicite de l'utilisateur : laisser tel quel plutôt que
+  recadrer les 30 SVG à l'aveugle. Voir `ETAT_ACTUEL.md` §2.45.
 - **Grossir encore le logo de la carte-sélecteur ?** (évoqué par
   l'utilisateur le 25/07/2026, NON tranché) : au-delà des 48px actuels
   (`--logo-size-lg`), une taille plus grande a été mentionnée comme piste
@@ -308,22 +292,27 @@
   décider plus tard : soit dans ce sens (restructurer), soit un simple
   remplacement texte→texte+logo par extraction regex du subtitle/label,
   moins propre.
-- **Deux points design jamais remontés depuis le journal de la passe
-  maquettes** (ils n'existaient que dans
-  `JOURNAL_DESIGN_passe_maquettes.md` §4, d'où l'oubli) : **portée du
-  bandeau parquet** (recommandé « arène-only » : Matchs, Bracket, Accueil —
-  avec en-tête plus calme sur Classement et Profil, à confirmer, sachant
-  que Classement est déjà codé) ; et **thème clair du bandeau** (garder la
-  bande sombre partout comme acté en §15.7, ou prévoir un éclaircissement
-  de la photo en thème clair — même asset, filtre différent).
-- **Bandeau sticky non traité pour la saisie inline dans Matchs** (27/07/2026,
-  `ETAT_ACTUEL.md` §2.15 suite) : le formulaire dédié (`BetForm.tsx`) a son
-  contenu fixé en bas de viewport, mais `InlineBetForm.tsx` (Matchs) ne l'a
-  PAS reproduit — si deux lignes de match étaient dépliées simultanément avec
-  leur formulaire ouvert, deux bandeaux fixes entreraient en conflit (un seul
-  formulaire à la fois sur l'écran dédié, potentiellement plusieurs ici). Pas
-  tranché : à reprendre si le besoin se confirme à l'usage (ex. ancrer le
-  bandeau à la ligne plutôt qu'au viewport, ou l'exclure explicitement).
+- **Bandeau sticky inline Matchs — VÉRIFIÉ, PAS DE BUG (29/07/2026)** :
+  relecture de `InlineBetForm.module.css` — son formulaire est en flux
+  normal, AUCUN `position: fixed` n'a jamais été ajouté. La mise en garde
+  d'origine (27/07/2026) anticipait un conflit SI le même traitement que
+  `BetForm.tsx` (écran dédié) était un jour reproduit ici ; ce n'est pas le
+  cas, donc aucun conflit possible aujourd'hui. À revérifier seulement si
+  quelqu'un ajoute un bandeau fixe à `InlineBetForm` un jour.
+- **Bandeau parquet — CÂBLÉ SUR LES 9 ÉCRANS JOUEUR, ASSET RÉEL EN ATTENTE
+  (29/07/2026)** : portée tranchée AVEC l'utilisateur (Accueil, Classement,
+  Bracket, Matchs, Mes pronos, Nouveau pari, Bracket personnel, Mes paris,
+  Profil — PAS admin/login/signup) ; thème clair n'était pas réellement un
+  gap, déjà tranché par §15.7 (bande toujours sombre, les deux thèmes).
+  Classe globale `.hero-banner`/`.hero-banner-title`/`.hero-banner-subtitle`
+  (`app/globals.css`) + token `--color-hero-text` (`app/tokens.css`), 4
+  écrans qui n'avaient AUCUN titre de page (Matchs, Mes pronos, Nouveau
+  pari, Bracket personnel) en ont désormais un minimal, créé pour l'occasion.
+  Mécanique CSS vérifiée visuellement (harnais Playwright, image
+  placeholder). **Reste bloquant : `public/brand/hero-parquet.webp`
+  toujours absent** — tant que l'utilisateur ne dépose pas le fichier réel,
+  le token pointe dans le vide (pas d'erreur, juste pas d'image visible).
+  Voir `ETAT_ACTUEL.md` §2.45.
 - **Garde `bet_scope=SERIES` interdit en NBA Cup non testée en conditions
   réelles** (26/07/2026, `save_bet`, migration #10) : le jeu de données de
   test ne porte qu'une compétition PLAYOFFS active — le refus d'un pari

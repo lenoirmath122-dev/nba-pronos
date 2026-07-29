@@ -130,6 +130,11 @@
   --color-logo-pastille: #EDF1F7;
   --color-logo-pastille-text: var(--c-navy-900); /* texte du repli abréviation, sur la pastille claire constante : sombre dans les deux thèmes (§10.3) */
 
+  /* Tailles de logo (§10.2) */
+  --logo-size-sm: 24px; /* ligne de classement, liste dense */
+  --logo-size-md: 32px; /* carte de match, drill-down */
+  --logo-size-lg: 48px; /* moment fort : carte-sélecteur de vainqueur (§16.1) */
+
   /* Opacités d'état (§9.4) */
   --opacity-cancelled:      0.55; /* pari annulé/neutralisé (barré + grisé) */
   --opacity-inactive:       0.60; /* ligne joueur inactif */
@@ -219,6 +224,10 @@
      dev = *.dev.* ignoré par git (voir public/brand/README.md). Le bandeau reste
      SOMBRE dans les deux thèmes (constante hors thème, §15.7) — donc pas d'override. */
   --hero-image: url("/brand/hero-parquet.webp");
+  /* Texte du bandeau (titre/sous-titre) : figé en clair, indépendant du thème
+     (§15.7 — même bande sombre dans les deux thèmes) — pas dans les overrides
+     [data-theme="light"] ci-dessous. */
+  --color-hero-text: #F5F7FA;
 }
 
 

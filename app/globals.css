@@ -37,3 +37,61 @@ body {
   max-width: var(--layout-max-width);
   margin-inline: auto;
 }
+
+/* ============================================================================
+   Bandeau de section « parquet » (SPEC_DESIGN_SYSTEM_V0_1.md §15.7) — classe
+   GLOBALE (pas un CSS Module) exprès : posée sur le titre de page de plusieurs
+   écrans indépendants (Accueil, Classement, Bracket, Matchs, Mes pronos,
+   Nouveau pari, Bracket personnel, Mes paris, Profil), « une seule variable à
+   éditer » (--hero-image, app/tokens.css) doit rester vraie pour tous en même
+   temps. Traitement en 2 pseudo-éléments : ::before porte l'image + le filtre
+   (assombri/désaturé), ::after porte le voile dégradé — pour que le filtre ne
+   s'applique jamais au texte réel, qui reste un enfant direct normal.
+   ============================================================================ */
+.hero-banner {
+  /* Purement visuel : la mise en page interne (flex/gap/justify) reste
+     portée par la classe .header propre à chaque écran, composée avec
+     celle-ci — pour ne pas imposer un layout unique à des en-têtes de forme
+     différente (ex. Bracket a un ProgressBar à côté du titre). */
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.hero-banner::before,
+.hero-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.hero-banner::before {
+  background-image: var(--hero-image);
+  background-size: cover;
+  background-position: center;
+  filter: saturate(0.85) brightness(0.82);
+}
+
+.hero-banner::after {
+  background: linear-gradient(180deg, rgba(11, 14, 20, 0.12), rgba(11, 14, 20, 0.52), rgba(11, 14, 20, 0.92));
+}
+
+.hero-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* !important : la couleur figée du texte (§15.7) doit toujours l'emporter sur
+   la couleur --color-text-* propre à chaque écran (CSS Module), quel que soit
+   l'ordre de bundling entre ce fichier global et les modules de page. */
+.hero-banner-title {
+  color: var(--color-hero-text) !important;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
+}
+
+.hero-banner-subtitle {
+  color: var(--color-hero-text) !important;
+  opacity: 0.85;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
+}

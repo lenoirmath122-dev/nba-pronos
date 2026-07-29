@@ -304,8 +304,8 @@ function SeriesPicker({ seriesOptions, scope, selectedSeriesId, onSelect }: Seri
             disabled={!selectable}
           >
             <span className={styles.pickerLogos}>
-              {series.team1Abbr && <TeamLogo abbreviation={series.team1Abbr} alt={series.team1Abbr} size={20} />}
-              {series.team2Abbr && <TeamLogo abbreviation={series.team2Abbr} alt={series.team2Abbr} size={20} />}
+              {series.team1Abbr && <TeamLogo abbreviation={series.team1Abbr} alt={series.team1Abbr} size={24} />}
+              {series.team2Abbr && <TeamLogo abbreviation={series.team2Abbr} alt={series.team2Abbr} size={24} />}
             </span>
             <span className={styles.pickerLabel}>{series.label}</span>
             {reason && <span className={styles.pickerReason}>{reason}</span>}

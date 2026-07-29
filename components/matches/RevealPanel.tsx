@@ -42,7 +42,12 @@ export function RevealPanel({ isRevealed, predictedCount, eligibleCount, others,
                   <span className={styles.pick}>
                     {other.teamAbbreviation} −{other.margin}
                   </span>
-                  {other.isAdminCorrected && <span className={styles.correctedBadge}>Corrigé par un admin</span>}
+                  {other.adminCorrection && (
+                    <span className={styles.correctedBadge}>
+                      Saisi par {other.adminCorrection.adminName} à la demande de {other.pseudo}
+                      {other.adminCorrection.reason ? ` — ${other.adminCorrection.reason}` : ""}
+                    </span>
+                  )}
                   {other.isInactive && <span className={styles.inactiveTag}>inactif</span>}
                 </li>
               ))}

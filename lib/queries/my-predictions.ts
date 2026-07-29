@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDayBoundsUtc } from "@/lib/dates/paris";
 import type { TeamRef } from "@/lib/queries/matches";
+import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
 
 // Lecture de l'écran "Mes pronos" (composants serveur uniquement),
 // SPEC_ECRAN_MES_PRONOS_V0_1 §13. Un seul module, appelé avec
@@ -35,13 +36,10 @@ export type MatchLiveState =
 /** Les trois états du §8. Une ligne VIDE se rend en MISSING, jamais INCOMPLETE. */
 export type MyPredictionState = "FROZEN" | "INCOMPLETE" | "MISSING";
 
-/** Marquage de correction admin, NOMINATIF (§7.1).
- *  Le requérant est toujours le propriétaire du prono : il n'est donc pas porté
- *  ici, il est déjà connu de la ligne qui affiche ce bloc. */
-export type AdminCorrection = {
-  adminName: string;
-  reason: string | null;
-};
+// AdminCorrection/toAdminCorrection : voir lib/queries/adminCorrection.ts
+// (partagé avec lib/queries/matches.ts). Le requérant est toujours le
+// propriétaire du prono (§7.1) : il n'est donc pas porté par ce type, il est
+// déjà connu de la ligne qui affiche ce bloc.
 
 export type MyPrediction = {
   state: MyPredictionState;
@@ -464,15 +462,6 @@ function toLiveState(status: MatchRow["status"]): MatchLiveState {
       // encore passé dessus — latence assumée (§5.4).
       return "STARTED";
   }
-}
-
-function toAdminCorrection(
-  correctedByAdminId: string | null,
-  reason: string | null,
-  pseudoById: Map<string, string>
-): AdminCorrection | null {
-  if (!correctedByAdminId) return null;
-  return { adminName: pseudoById.get(correctedByAdminId) ?? "", reason };
 }
 
 function toMyPrediction(

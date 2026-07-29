@@ -38,6 +38,9 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
   if (!data) {
     return (
       <div className={styles.page}>
+        <div className={`${styles.header} hero-banner`}>
+          <h1 className={`${styles.title} hero-banner-title`}>Mes pronos</h1>
+        </div>
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
     );
@@ -49,6 +52,9 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
 
   return (
     <div className={styles.page}>
+      <div className={`${styles.header} hero-banner`}>
+        <h1 className={`${styles.title} hero-banner-title`}>Mes pronos</h1>
+      </div>
       <div className={styles.controls}>
         {mode !== "FILTERED" && <SegmentTabs active={mode === "HISTORY" ? "HISTORY" : "RECENT"} />}
         <FilterBar availableDates={data.availableDates} availableSeries={data.availableSeries} filter={data.filter} />

@@ -14,6 +14,9 @@ export default async function MatchesPage() {
   if (competitionId === null) {
     return (
       <div className={styles.page}>
+        <div className={`${styles.header} hero-banner`}>
+          <h1 className={`${styles.title} hero-banner-title`}>Matchs</h1>
+        </div>
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
     );
@@ -22,6 +25,9 @@ export default async function MatchesPage() {
   if (days.length === 0) {
     return (
       <div className={styles.page}>
+        <div className={`${styles.header} hero-banner`}>
+          <h1 className={`${styles.title} hero-banner-title`}>Matchs</h1>
+        </div>
         <EmptyState
           title="Aucun match à pronostiquer pour l'instant"
           subtitle="Les prochaines affiches s'afficheront ici dès qu'elles seront connues."
@@ -36,6 +42,9 @@ export default async function MatchesPage() {
   if (allValidated) {
     return (
       <div className={styles.page}>
+        <div className={`${styles.header} hero-banner`}>
+          <h1 className={`${styles.title} hero-banner-title`}>Matchs</h1>
+        </div>
         <EmptyState title="Tout est validé" subtitle="Tu es à jour sur les 3 prochains jours." />
       </div>
     );
@@ -50,6 +59,9 @@ export default async function MatchesPage() {
 
   return (
     <div className={styles.page}>
+      <div className={`${styles.header} hero-banner`}>
+        <h1 className={`${styles.title} hero-banner-title`}>Matchs</h1>
+      </div>
       {readyCount > 0 && <ValidateAllBanner readyMatches={readyMatches} />}
       {days.map((day) => (
         <MatchDayGroup key={day.key} day={day} />

@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
 
 // Lecture de l'écran Matchs (composants serveur uniquement), SPEC_ECRAN_MATCHS
 // §13. Un seul module, appelé avec getServerClient() (jamais service_role) :
@@ -11,12 +12,16 @@ export type TeamRef = { id: string; abbreviation: string; name: string };
 
 export type PredictionViewStatus = "TODO" | "INCOMPLETE" | "READY" | "VALIDATED";
 
-/** Prono d'un AUTRE joueur, révélé seulement quand isRevealed. */
+/** Prono d'un AUTRE joueur, révélé seulement quand isRevealed.
+ *  `adminCorrection` (correctif post-validation SPEC_ECRAN_MATCHS_V0_1.md §13,
+ *  remplace l'ancien `isAdminCorrected: boolean`) : même type nominatif que
+ *  Mes pronos (§7.1) — harmonise le badge générique d'origine sur le rendu
+ *  nominatif « Saisi par X à la demande de Y ». */
 export type OtherPrediction = {
   pseudo: string;
   teamAbbreviation: string;
   margin: number;
-  isAdminCorrected: boolean;
+  adminCorrection: AdminCorrection | null;
   isInactive: boolean;
 };
 
@@ -306,7 +311,7 @@ async function getRevealedContent(
 ): Promise<{ others: OtherPrediction[]; absentees: string[] }> {
   const { data: rowsData } = await supabase
     .from("match_predictions")
-    .select("user_id, predicted_winner_team_id, predicted_margin, is_admin_corrected")
+    .select("user_id, predicted_winner_team_id, predicted_margin, corrected_by_admin_id, correction_reason")
     .eq("match_id", matchId)
     .neq("status", "DRAFT");
 
@@ -314,17 +319,23 @@ async function getRevealedContent(
     user_id: string;
     predicted_winner_team_id: string | null;
     predicted_margin: number | null;
-    is_admin_corrected: boolean;
+    corrected_by_admin_id: string | null;
+    correction_reason: string | null;
   };
   const rows = (rowsData ?? []) as Row[];
   const committedUserIds = new Set(rows.map((r) => r.user_id));
 
+  // Pseudos nécessaires : auteurs des pronos + admins ayant corrigé une ligne
+  // (même patron que lib/queries/my-predictions.ts) — un seul aller-retour.
   const userIds = rows.map((r) => r.user_id);
+  const adminIds = rows.filter((r) => r.corrected_by_admin_id).map((r) => r.corrected_by_admin_id!);
+  const pseudoNeededIds = [...new Set([...userIds, ...adminIds])];
   const { data: profilesData } =
-    userIds.length > 0
-      ? await supabase.from("users").select("id, pseudo, status").in("id", userIds)
+    pseudoNeededIds.length > 0
+      ? await supabase.from("users").select("id, pseudo, status").in("id", pseudoNeededIds)
       : { data: [] as { id: string; pseudo: string; status: string }[] };
   const profileById = new Map((profilesData ?? []).map((p) => [p.id, p]));
+  const pseudoById = new Map((profilesData ?? []).map((p) => [p.id, p.pseudo]));
 
   const others: OtherPrediction[] = rows
     .filter((row) => row.user_id !== ownUserId)
@@ -335,7 +346,7 @@ async function getRevealedContent(
         pseudo: profile?.pseudo ?? "",
         teamAbbreviation: team?.abbreviation ?? "?",
         margin: row.predicted_margin ?? 0,
-        isAdminCorrected: row.is_admin_corrected,
+        adminCorrection: toAdminCorrection(row.corrected_by_admin_id, row.correction_reason, pseudoById),
         isInactive: profile?.status === "DISABLED",
       };
     })

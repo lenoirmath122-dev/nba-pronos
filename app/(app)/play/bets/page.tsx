@@ -45,8 +45,8 @@ export default async function MyBetsPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className={styles.page}>
-      <header className={styles.header}>
-        <h1 className={styles.title}>Mes paris</h1>
+      <header className={`${styles.header} hero-banner`}>
+        <h1 className={`${styles.title} hero-banner-title`}>Mes paris</h1>
         <Link href="/play/bets/new" className={styles.newLink}>
           Créer un pari
         </Link>

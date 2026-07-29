@@ -10,6 +10,15 @@
   box-shadow: var(--elevation-raised);
 }
 
+/* Bandeau parquet (§15.7) : bleed hors du padding de .card pour occuper toute
+   sa largeur, coins arrondis alignés sur ceux de la carte (haut uniquement) —
+   le reste de la carte (stats/forme) garde son fond normal. */
+.greetingBlock {
+  margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+}
+
 .greeting {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);

@@ -14,10 +14,12 @@ export function HomeHeader({ header }: HomeHeaderProps) {
 
   return (
     <section className={styles.card} aria-label="Ton classement">
-      <p className={styles.greeting}>
-        Salut, <span className={styles.pseudo}>{pseudo}</span>
-      </p>
-      <p className={styles.competition}>{competitionName}</p>
+      <div className={`${styles.greetingBlock} hero-banner`}>
+        <p className={`${styles.greeting} hero-banner-title`}>
+          Salut, <span className={styles.pseudo}>{pseudo}</span>
+        </p>
+        <p className={`${styles.competition} hero-banner-subtitle`}>{competitionName}</p>
+      </div>
 
       <div className={styles.stats}>
         <div className={styles.stat}>
