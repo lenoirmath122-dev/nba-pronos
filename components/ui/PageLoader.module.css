@@ -1,0 +1,8 @@
+.wrap {
+  flex: 1;
+  min-height: 50vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface-base);
+}

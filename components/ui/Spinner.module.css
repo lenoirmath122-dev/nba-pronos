@@ -1,0 +1,29 @@
+.spinner {
+  --spinner-size: 24px;
+  width: var(--spinner-size);
+  height: var(--spinner-size);
+  border-radius: var(--radius-full);
+  border: 2px solid var(--color-border-strong);
+  border-top-color: var(--color-accent);
+  animation: spin 700ms linear infinite;
+}
+
+.sm {
+  --spinner-size: 16px;
+}
+
+.lg {
+  --spinner-size: 32px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner {
+    animation: none;
+  }
+}
