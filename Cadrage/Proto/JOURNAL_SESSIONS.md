@@ -4058,4 +4058,49 @@ récursion déjà inclus dedans (poussé en base avant le commit de code),
 correctif affichage sans compétition active (`d1fde4f`). Confirmé
 fonctionnel par l'utilisateur en conditions réelles (création + adhésion
 depuis un autre compte, sélecteur visible).
-chaque tentative). Détail complet dans `ETAT_ACTUEL.md` §2.47.
+
+---
+
+## Vue admin "Qui manque à l'appel" (30/07/2026)
+
+3e point du backlog codé, même session (« Confort au quotidien »). 2 choix
+cadrés AVEC l'utilisateur avant de coder : périmètre = matchs (même fenêtre
+3 jours que l'écran Matchs) ET bracket, dans la même vue ; granularité = PAR
+MATCH (un bloc par échéance, liste nominative), pas une liste agrégée par
+joueur.
+
+Nouvel écran `/admin/missing` (lien ajouté au tableau de bord admin),
+lecture seule — aucune relance manuelle câblée, en complément des rappels
+push automatiques déjà existants (§2.46/§2.47). `lib/queries/admin-
+missing.ts` : l'admin bypasse déjà la RLS sur `match_predictions`/`brackets`
+(policies `using (user_id = auth.uid() or is_admin())`, migration #3) —
+aucune confidentialité à recalculer contrairement à l'écran joueur Matchs
+(§8, `isRevealed`). "Manquant" = joueur ACTIVE sans ligne committed
+(`status <> DRAFT`) sur ce match précis, ou sans bracket validé
+(`is_validated` ou `is_auto_validated`) tant que la deadline n'est pas
+passée.
+
+**Vérifié en conditions réelles, avec une précaution particulière** : aucune
+compétition n'étant active en ce moment, un test end-to-end classique était
+impossible sans en créer une — or les crons GitHub Actions de rappels
+(fenêtre 4h pour les matchs, 24h pour le bracket) tournent en continu et
+ignorent le statut de la compétition pour les matchs (`runMatchesReminder`
+interroge TOUS les matchs par date, toutes compétitions confondues).
+Confirmé AVEC l'utilisateur avant de procéder : compétition ACTIVE
+TEMPORAIRE créée (script jetable), mais matchs et deadline de bracket
+planifiés à J+2 — largement hors des deux fenêtres de rappel, aucun risque
+de notification réelle déclenchée pendant le test. Un seul compte ADMIN
+JETABLE créé pour la lecture (jamais le vrai compte `Rillettes-31`, jamais
+de mot de passe touché sur un compte réel). 6/6 assertions passent :
+reconnaissance ADMIN, lecture RLS-bypass des pronos/brackets, un joueur avec
+prono validé absent de la liste manquante de CE match mais présent sur
+l'autre, un joueur sans aucun prono présent sur les deux. Nettoyage complet
+en fin de script (compétition/série/matchs/prono/compte de test) ; état de
+la base revérifié identique à l'avant-test (3 compétitions archivées
+inchangées, seuls `Rillettes-31`/`Demo_Amis` restants, aucune compétition
+active).
+
+`tsc`/`eslint`/`next build` propres. Committé et poussé (`e934085`). Test au
+clic dans un vrai navigateur reporté à la prochaine compétition réellement
+active (l'état vide "Aucune compétition en cours." est, lui, déjà le
+rendu actuel réel du site).

@@ -5,25 +5,31 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **2e point du BACKLOG codé
-> ET validé en conditions RÉELLES : Système de ligue** (§2.48). Groupement
-> d'amis façon MPP (vue filtrée sur le classement existant, aucun système de
-> scoring séparé) : ligue PERMANENTE, appartenance à plusieurs ligues,
-> création ouverte à tout joueur ACTIVE depuis Profil, adhésion par code
-> généré aléatoirement, rang recalculé dans le groupe. Migration #16
-> (`leagues`/`league_secrets`/`league_memberships` + RLS +
-> `create_league`/`join_league` SECURITY DEFINER) + migration #17
-> (correctif). **1 bug réel trouvé en testant en conditions réelles, PAS en
-> relisant le code** (script jetable, comptes jamais réels) : récursion
-> infinie sur la policy RLS de `league_memberships` — corrigée par
-> `my_league_ids()`, même patron que `is_admin()`/`is_active()`. **1
-> ajustement UX demandé par l'utilisateur en testant** : le sélecteur de
-> ligue doit rester visible même sans compétition active (invariant
-> préexistant du Classement, hérité puis corrigé). Confirmé fonctionnel par
-> l'utilisateur avec 2 vrais comptes (créer + rejoindre + sélecteur
-> visible). **Tout committé et déployé** (`95edf7e`, `d1fde4f`).
+> Dernière mise à jour : session du 30/07/2026 — **3e point du BACKLOG codé
+> ET validé en conditions RÉELLES : vue admin "Qui manque à l'appel"**
+> (§2.49, `/admin/missing`). Lecture seule, en complément des rappels push
+> automatiques : un bloc par échéance à venir (matchs dans la fenêtre 3
+> jours de l'écran Matchs, bracket si sa deadline approche), liste
+> nominative des joueurs ACTIVE manquants — PAR match, pas une liste
+> agrégée. Aucune compétition n'étant active pour tester, vérifié par un
+> script jetable créant une compétition ACTIVE TEMPORAIRE avec des matchs
+> planifiés à J+2 (délibérément hors des fenêtres de rappel push 4h/24h,
+> pour ne JAMAIS risquer de déclencher une vraie notification pendant le
+> test) et un compte ADMIN JETABLE pour la lecture (jamais le vrai compte
+> `Rillettes-31`) — 6/6 assertions passent, base revérifiée identique après
+> nettoyage. Test au clic dans un vrai navigateur reporté à la prochaine
+> compétition réellement active. **Committé et déployé** (`e934085`).
 >
-> Plus tôt (29/07/2026, fin de journée, §2.46/§2.47, CLOS) : **1er point du
+> Plus tôt la même session (§2.48, CLOS) : **2e point du backlog, Système
+> de ligue** — groupement d'amis façon MPP (vue filtrée sur le classement,
+> aucun système de scoring séparé), ligue PERMANENTE, appartenance à
+> plusieurs ligues, adhésion par code généré aléatoirement, rang recalculé
+> dans le groupe. Migration #16 + migration #17 (correctif d'une récursion
+> RLS trouvée en testant, PAS en relisant le code). Confirmé fonctionnel par
+> l'utilisateur avec 2 vrais comptes. Committé/déployé (`95edf7e`,
+> `d1fde4f`).
+>
+> Avant ça (29/07/2026, fin de journée, §2.46/§2.47, CLOS) : **1er point du
 > backlog, Rappels ciblés (canal Push)** — infra Web Push complète + 2
 > déclencheurs cron, testée par l'utilisateur sur son VRAI compte, PC ET
 > iPhone, 3 bugs réels trouvés et corrigés (réglage Windows, multi-appareils
@@ -38,10 +44,10 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `d1fde4f` inclus.**
+> **Tout est committé et déployé jusqu'à `e934085` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
-> (historique/stats, fun/esprit ligue entre potes, etc. — voir
+> (export .ics, historique/stats, fun/esprit ligue entre potes, etc. — voir
 > `BACKLOG_V1.md`), ou un nettoyage mineur (3 abonnements Apple dupliqués
 > sur `Demo_Amis`, sans conséquence — voir §2.47).
 >
@@ -4315,4 +4321,69 @@ deux — le correctif de récursion a été trouvé et poussé en base AVANT ce
 commit, donc les deux fichiers de migration existaient déjà au moment de
 committer le code) ; correctif d'affichage sans compétition active
 (`d1fde4f`).
+```
+
+### 2.49 Vue admin "Qui manque à l'appel" (session du 30/07/2026, suite)
+
+```text
+3e point du backlog codé, même session (BACKLOG_V1.md « Confort au
+quotidien »). 2 choix cadrés AVEC l'utilisateur avant de coder : périmètre =
+matchs (même fenêtre 3 jours que l'écran Matchs, §2/§18.2) ET bracket, dans
+la même vue ; granularité = PAR MATCH (un bloc par échéance, liste
+nominative des joueurs manquants), pas une liste agrégée par joueur.
+
+Nouvel écran `/admin/missing` (`app/(admin)/admin/missing/page.tsx`, lien
+ajouté au tableau de bord admin `app/(admin)/admin/page.tsx`) — lecture
+seule, AUCUNE relance manuelle câblée, en complément des rappels push
+automatiques déjà existants (§2.46/§2.47). `lib/queries/admin-missing.ts`
+(`getAdminMissingData()`) : l'admin bypasse déjà la RLS sur
+`match_predictions`/`brackets` (policies `using (user_id = auth.uid() or
+is_admin())`, migration #3) — AUCUNE confidentialité à recalculer ici,
+contrairement à l'écran joueur Matchs (§8, `isRevealed`) qui doit, lui,
+cacher le contenu tant que le joueur courant n'a pas lui-même validé.
+"Manquant" = joueur `ACTIVE` sans ligne `match_predictions` committed
+(`status <> 'DRAFT'`, même définition que `count_committed_predictions`,
+migration #6) sur ce match précis, ou sans `brackets` validé (`is_validated`
+OU `is_auto_validated`) tant que `bracket_deadline` n'est pas encore passée
+— un bloc bracket n'apparaît que si la deadline est CONNUE et future, un
+bloc match que si au moins un joueur manque effectivement (blocs à 0
+manquant filtrés, rien à montrer).
+
+**Vérifié en conditions réelles, avec une précaution particulière décidée
+AVEC l'utilisateur** : aucune compétition n'étant active en ce moment
+(§2.48), un test end-to-end classique via l'UI était impossible sans en
+créer une. Risque identifié et signalé avant de procéder : les crons GitHub
+Actions de rappels (fenêtre 4h avant un match, 24h avant `bracket_deadline`,
+§2.46) tournent en continu et INDÉPENDAMMENT du statut de la compétition
+pour les matchs — `runMatchesReminder` interroge TOUS les matchs par date,
+toutes compétitions confondues, actives ou non. Une compétition ACTIVE
+TEMPORAIRE a donc été créée (script jetable, service_role, même patron que
+`scripts/seed-playoffs-test-data.mjs`) mais avec des matchs ET une
+`bracket_deadline` planifiés à J+2 — largement hors des deux fenêtres de
+rappel (4h/24h), pour qu'AUCUN risque de notification push réelle ne soit
+couru pendant le test, quel que soit le moment exact où les crons tournent.
+Un seul compte ADMIN JETABLE créé pour la lecture (jamais le vrai compte
+`Rillettes-31`, jamais un mot de passe touché sur un compte réel — même
+précaution que la vérification des ligues, §2.48).
+
+6/6 assertions passent : le compte de test est bien reconnu ADMIN ;
+lecture RLS-bypass réussie sur `match_predictions`/`brackets` ; un joueur
+(`Rillettes-31`, prédiction réelle VALIDATED posée pour le test sur UN SEUL
+des 2 matchs créés) est ABSENT de la liste manquante de ce match précis
+mais PRÉSENT sur l'autre match de la même série (confirme le calcul PAR
+match, pas par joueur global) ; `Demo_Amis` (aucune prédiction posée)
+manquant sur les deux ; aucun bracket créé pour la compétition de test →
+tous les joueurs ACTIVE manquants sur le bloc bracket. Nettoyage complet en
+fin de script, dans l'ordre feuilles→racines (même patron que
+`scripts/cleanup-test-data.mjs`) : `match_predictions` → `matches` →
+`series` → `competitions`, puis `auth.admin.deleteUser` pour le compte de
+test. État de la base revérifié IDENTIQUE à l'avant-test par une requête
+séparée : les 3 compétitions archivées inchangées, seuls `Rillettes-31`
+(ADMIN)/`Demo_Amis` (PLAYER) restants, aucune compétition active.
+
+`tsc`/`eslint`/`next build` propres, aucun conflit de route
+(`/admin/missing` listé seul). Committé et poussé (`e934085`). **Résidu
+noté dans `GAPS_OUVERTS.md`** : test au CLIC dans un vrai navigateur
+reporté à la prochaine compétition réellement active — le script jetable
+vérifie la logique de calcul et la RLS, pas le rendu visuel réel de l'écran.
 ```

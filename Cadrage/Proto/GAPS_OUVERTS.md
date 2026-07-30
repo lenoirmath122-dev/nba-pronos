@@ -14,8 +14,13 @@
 > RÉELLES : Système de ligue** (§2.48) — créer/rejoindre confirmé par
 > l'utilisateur avec 2 comptes réels, 1 bug réel trouvé et corrigé
 > (récursion RLS sur `league_memberships`) + 1 ajustement UX demandé
-> (sélecteur visible même sans compétition active) — voir `ETAT_ACTUEL.md`
-> pour le détail complet. **Tout est committé/déployé jusqu'à `d1fde4f`.**
+> (sélecteur visible même sans compétition active) ; **3e point : vue admin
+> "Qui manque à l'appel"** (§2.49, `/admin/missing`, lecture seule) — vérifié
+> par script jetable (compétition ACTIVE temporaire + matchs à J+2 pour
+> écarter tout risque de déclencher un vrai rappel push pendant le test),
+> test au clic reporté à la prochaine compétition réellement active — voir
+> `ETAT_ACTUEL.md` pour le détail complet. **Tout est committé/déployé
+> jusqu'à `e934085`.**
 >
 > **Résidu mineur, non bloquant** : le compte `Demo_Amis` a 3 abonnements
 > push Apple dupliqués (Safari en recrée un à chaque tentative) — à
@@ -23,6 +28,11 @@
 >
 > **Prochaine étape, à confirmer avec l'utilisateur** : la suite du backlog
 > (`BACKLOG_V1.md`).
+>
+> **Résidu** : `/admin/missing` (§2.49) vérifié par script jetable en base
+> réelle, mais jamais cliqué dans un vrai navigateur (aucune compétition
+> active pour le faire) — à tester au clic dès qu'une compétition redevient
+> active.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 

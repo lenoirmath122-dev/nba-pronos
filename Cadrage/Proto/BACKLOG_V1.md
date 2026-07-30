@@ -53,7 +53,11 @@
   soir » (fenêtre 4h avant coup d'envoi), « la deadline du bracket approche »
   (fenêtre 24h). Canal Email reporté, bloqué sur un nom de domaine vérifié
   (SMTP personnalisé) — le modèle de préférence le couvre déjà.
-- Vue admin « qui manque à l'appel » avant une deadline qui approche.
+- ~~Vue admin « qui manque à l'appel » avant une deadline qui approche~~
+  **FAIT — 30/07/2026** (`ETAT_ACTUEL.md` §2.49) : `/admin/missing`, un bloc
+  par échéance (bracket + chaque match dans la fenêtre 3 jours), liste
+  nominative des joueurs ACTIVE manquants. Lecture seule, en complément des
+  rappels push automatiques.
 - Export calendrier (.ics) des deadlines à venir.
 
 ## Historique & stats
