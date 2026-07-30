@@ -55,6 +55,11 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             <div className={`${styles.header} hero-banner`}>
               <p className={`${styles.title} hero-banner-title`}>Classement</p>
             </div>
+            {/* Sélecteur affiché même sans compétition active (demandé par
+                l'utilisateur, 30/07/2026) : confirme que les ligues existent
+                déjà, avant même la prochaine compétition. Rien à filtrer tant
+                qu'il n'y a pas de classement — SortChips reste, lui, absent. */}
+            <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} sortKey={sortKey} />
             <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
           </>
         ) : (

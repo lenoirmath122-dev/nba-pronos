@@ -93,7 +93,11 @@ export async function getLeaderboard(
     .maybeSingle<CompetitionRow>();
 
   if (!competition) {
-    return emptyData(sortKey);
+    // Le sélecteur de ligue reste affiché même sans compétition active
+    // (demandé par l'utilisateur, 30/07/2026, trouvé en testant) : on
+    // renvoie quand même l'id demandé pour que la puce corresponde,
+    // même si aucun classement n'existe encore à filtrer.
+    return { ...emptyData(sortKey), scopeLeagueId: leagueId ?? null };
   }
 
   // Ligue demandée (BACKLOG_V1.md « Système de ligue ») : `leagues_select`/
