@@ -57,6 +57,11 @@
 .treeColumn {
   display: flex;
   flex-direction: column;
+  /* Centré en hauteur (demandé par l'utilisateur, 30/07/2026) : une colonne
+     à 1 carte (Finale, finale de conférence) se retrouve au milieu de la
+     hauteur disponible, alignée sur le centre des colonnes plus longues
+     (1er tour, 4 cartes) — plutôt que collée en haut. */
+  justify-content: center;
   gap: var(--space-3);
   min-width: 13rem;
   flex-shrink: 0;
