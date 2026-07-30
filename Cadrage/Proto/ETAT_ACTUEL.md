@@ -5,7 +5,18 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **écran Profil réorganisé
+> Dernière mise à jour : session du 30/07/2026 — **« Couleurs d'équipe sur
+> Profil » essayée puis ABANDONNÉE le jour même** par l'utilisateur ("je ne
+> pense pas que ça ait d'importance"). Construite en 2 passes (accents
+> doux, puis fonds + bandeau teintés), entièrement retirée ensuite : revert
+> complet du code (`git revert`, historique jamais réécrit) + migration
+> #20 (`DROP COLUMN use_team_colors`, migration #19 gardée dans le dépôt
+> — déjà appliquée en base au moment du revert, ne doit jamais disparaître
+> du dépôt sous peine de casser `supabase db push`, erreur rencontrée puis
+> corrigée). État final : aucune trace dans le code ni en base. Committé/
+> déployé (`33c9574`). Détail complet dans `JOURNAL_SESSIONS.md`.
+>
+> Plus tôt la même session — **écran Profil réorganisé
 > en 4 sous-onglets** (Compte/Ligues/Historique/Admin, ce dernier visible
 > seulement pour un admin) : l'écran avait grossi toute la session (Thème,
 > Préférences, Rappels, Mes ligues, Historique, Administration,
@@ -122,7 +133,7 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `74de402` inclus.**
+> **Tout est committé et déployé jusqu'à `33c9574` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
 > (export .ics, courbe d'évolution du classement — le socle existe déjà,

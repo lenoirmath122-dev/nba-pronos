@@ -4374,3 +4374,32 @@ confirmation/erreur qui vient d'être posée sur l'onglet Ligues.
 Vérifié en conditions réelles PAR L'UTILISATEUR : les 4 onglets confirmés
 fonctionnels. `tsc`/`eslint`/`next build` propres. Committé et poussé
 (`74de402`).
+
+---
+
+## Couleurs d'équipe sur Profil — essayée puis abandonnée (30/07/2026, fin de session)
+
+Backlog « Personnalisation du profil ». Construite en 2 passes : d'abord
+des accents doux uniquement (`--color-accent-soft`/`--color-accent-line`
+recalculés depuis la couleur de l'équipe favorite, migration #19
+`users.use_team_colors`, couleurs des 30 équipes en constante de code
+`lib/labels/teamColors.ts`) — jugée par l'utilisateur trop discrète.
+Renforcée ensuite (fonds `surface-base/raised/inset` teintés + voile du
+bandeau d'en-tête paramétré via une nouvelle variable
+`--hero-overlay-rgb` dans le composant `hero-banner` partagé, défaut
+inchangé pour les autres écrans) — toujours sans toucher `--color-accent`
+ni le texte, pour rester sans risque de contraste quelle que soit
+l'équipe.
+
+**Abandonnée par l'utilisateur le jour même** ("je ne pense pas que ça
+ait d'importance") : revert complet du code (`git revert`, commits
+`bea23e0`/`b694bbc`, historique jamais réécrit) + migration #20
+(`DROP COLUMN use_team_colors`). Point d'attention retenu : la migration
+#19, déjà appliquée en base réelle au moment du revert, avait été
+supprimée du dépôt par erreur (le fichier avait été ajouté par le commit
+annulé) — restaurée avant de pousser, une migration déjà appliquée ne
+doit JAMAIS disparaître du dépôt (Supabase CLI perd sinon la
+correspondance avec l'historique distant, erreur
+`LegacyDbPushMissingLocalError` rencontrée puis corrigée). État final :
+aucune trace de la feature dans le code, colonne retirée en base,
+`tsc`/`eslint`/`next build` propres. Committé et poussé (`33c9574`).

@@ -97,12 +97,12 @@
 
 ## Personnalisation du profil
 
-- Couleurs de l'interface du Profil adaptées à l'équipe favorite choisie
-  (28/07/2026) — SI un choix a été fait (`favorite_team_id` non NULL),
-  sinon comportement par défaut inchangé. Nécessite une source de couleur
-  par équipe (aucune colonne dédiée aujourd'hui, `teams` ne porte que
-  `logo_url` — à voir en spec technique : couleurs codées en dur par équipe,
-  ou dérivées d'un asset).
+- ~~Couleurs de l'interface du Profil adaptées à l'équipe favorite choisie~~
+  **ESSAYÉE PUIS ABANDONNÉE le 30/07/2026** par l'utilisateur ("je ne pense
+  pas que ça ait d'importance") — construite (2 passes : accents doux, puis
+  fonds/bandeau teintés), puis entièrement retirée (code + migration).
+  Détail dans `JOURNAL_SESSIONS.md`. Ne pas retenter sans qu'il le demande
+  explicitement.
 - Remplacer la liste longue de sélection d'équipe favorite (actuellement
   `components/profile/TeamPicker.tsx`, une liste de 30 boutons radio) par
   un **menu déroulant** (28/07/2026) — accès plus rapide, moins de
