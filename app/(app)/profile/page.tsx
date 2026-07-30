@@ -1,17 +1,15 @@
-import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getProfileData, getTeamOptions } from "@/lib/queries/profile";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { getCompetitionHistory } from "@/lib/queries/history";
-import { updateThemePreference, updateProfile, updateTeamColorsPreference } from "@/lib/actions/profile";
+import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
 import { NotificationSettings } from "@/components/profile/NotificationSettings";
 import { ProfileTabs, type ProfileTab } from "@/components/profile/ProfileTabs";
 import { PlayerLink } from "@/components/ui/PlayerLink";
-import { TEAM_COLORS } from "@/lib/labels/teamColors";
 import styles from "./page.module.css";
 
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
@@ -57,26 +55,8 @@ export default async function ProfilePage({
   const leagues = activeTab === "ligues" ? await getMyLeagues() : [];
   const history = activeTab === "historique" ? await getCompetitionHistory() : [];
 
-  // Couleurs d'équipe (BACKLOG_V1.md « Personnalisation du profil ») :
-  // recalcule UNIQUEMENT --color-accent-soft/--color-accent-line (jamais
-  // --color-accent lui-même, qui pilote les boutons pleins) à partir de la
-  // couleur d'équipe, avec la MÊME formule color-mix que app/tokens.css —
-  // scoping limité à ce conteneur, sans effet sur le reste du site. Inerte
-  // si aucune équipe favorite n'est choisie ou si le joueur a désactivé
-  // l'option.
-  const teamColor =
-    profile.favoriteTeamAbbreviation && profile.useTeamColors
-      ? TEAM_COLORS[profile.favoriteTeamAbbreviation]
-      : undefined;
-  const teamColorStyle: CSSProperties | undefined = teamColor
-    ? ({
-        "--color-accent-soft": `color-mix(in srgb, ${teamColor} 16%, transparent)`,
-        "--color-accent-line": `color-mix(in srgb, ${teamColor} 55%, transparent)`,
-      } as CSSProperties)
-    : undefined;
-
   return (
-    <div className={styles.page} style={teamColorStyle}>
+    <div className={styles.page}>
       <header className={`${styles.header} hero-banner`}>
         <h1 className={`${styles.pseudo} hero-banner-title`}>{profile.pseudo}</h1>
         {profile.isAdmin && <span className={styles.adminBadge}>Admin</span>}
@@ -126,20 +106,6 @@ export default async function ProfilePage({
               </button>
             </form>
           </section>
-
-          {profile.favoriteTeamId && (
-            <section className={styles.section}>
-              <h2 className={styles.sectionTitle}>Couleurs</h2>
-              <form action={updateTeamColorsPreference}>
-                <input type="hidden" name="useTeamColors" value={profile.useTeamColors ? "false" : "true"} />
-                <button type="submit" className={styles.secondaryButton}>
-                  {profile.useTeamColors
-                    ? "Revenir au thème de base"
-                    : "Utiliser les couleurs de mon équipe"}
-                </button>
-              </form>
-            </section>
-          )}
 
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Rappels</h2>
