@@ -189,12 +189,58 @@ function parseOptionalInt(value: FormDataEntryValue | null): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// Bug trouvé le 30/07/2026 (compétition de test créée avec 2h de décalage) :
+// <input type="datetime-local"> renvoie une heure SANS fuseau (ex.
+// "2026-07-30T13:13") — l'admin la saisit en heure de Paris, mais
+// `new Date(str).toISOString()` l'interprétait selon le fuseau du SERVEUR
+// (Vercel, UTC), pas celui de l'admin. Conversion explicite ici, sans
+// librairie externe (même convention que lib/queries/matches.ts) : déduit
+// le décalage Paris/UTC RÉEL à cette date via Intl (jamais +1/+2 codé en
+// dur, pour rester correct été comme hiver).
+const SCHEDULING_TIMEZONE = "Europe/Paris";
+
+function parisLocalToUtcIso(localValue: string): string {
+  const [datePart, timePart] = localValue.split("T");
+  const [year, month, day] = datePart.split("-").map(Number);
+  const [hour, minute] = timePart.split(":").map(Number);
+
+  // Instant de référence en traitant (à tort) les chiffres saisis comme déjà
+  // UTC — juste pour interroger Intl sur le décalage Paris à CETTE date-là.
+  const reference = new Date(Date.UTC(year, month - 1, day, hour, minute));
+
+  const parisParts = new Intl.DateTimeFormat("en-US", {
+    timeZone: SCHEDULING_TIMEZONE,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+    .formatToParts(reference)
+    .reduce<Record<string, string>>((acc, p) => ((acc[p.type] = p.value), acc), {});
+
+  // Ce que "reference" (supposé UTC) représente en heure murale à Paris.
+  const parisAsUtcMs = Date.UTC(
+    Number(parisParts.year),
+    Number(parisParts.month) - 1,
+    Number(parisParts.day),
+    Number(parisParts.hour),
+    Number(parisParts.minute)
+  );
+
+  // Décalage Paris − UTC à cette date (ms). L'instant réel voulu par l'admin
+  // (heure murale Paris) = référence moins ce décalage.
+  const offsetMs = parisAsUtcMs - reference.getTime();
+  return new Date(reference.getTime() - offsetMs).toISOString();
+}
+
 /** Variante `<form action={...}>` native — même patron que admin-resolution.ts. */
 export async function createMatchFormAction(formData: FormData): Promise<void> {
   const seriesId = String(formData.get("seriesId") ?? "");
   const homeTeamId = String(formData.get("homeTeamId") ?? "");
   const scheduledAtLocal = String(formData.get("scheduledAt") ?? "").trim();
-  const scheduledAt = scheduledAtLocal.length > 0 ? new Date(scheduledAtLocal).toISOString() : null;
+  const scheduledAt = scheduledAtLocal.length > 0 ? parisLocalToUtcIso(scheduledAtLocal) : null;
 
   const result = await createMatch({ seriesId, homeTeamId, scheduledAt });
 

@@ -63,7 +63,11 @@ export function SeriesResultsCard({ node, errorMatchId, errorSeriesId, errorMess
                 {match.scheduledAt && (
                   <span className={styles.matchDate}>
                     {" · "}
-                    {new Date(match.scheduledAt).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}
+                    {new Date(match.scheduledAt).toLocaleString("fr-FR", {
+                      timeZone: "Europe/Paris",
+                      dateStyle: "short",
+                      timeStyle: "short",
+                    })}
                   </span>
                 )}
               </p>
