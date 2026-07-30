@@ -1,7 +1,9 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { getLeaderboard, type SortKey } from "@/lib/queries/leaderboard";
+import { getMyLeagues } from "@/lib/queries/leagues";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import { SortChips } from "@/components/leaderboard/SortChips";
+import { LeagueScopeChips } from "@/components/leaderboard/LeagueScopeChips";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { StickyMeBar } from "@/components/leaderboard/StickyMeBar";
 import { EmptyState } from "@/components/home/EmptyState";
@@ -20,19 +22,27 @@ function parseSortKey(value: string | string[] | undefined): SortKey {
 }
 
 type LeaderboardPageProps = {
-  searchParams: Promise<{ tri?: string | string[] }>;
+  searchParams: Promise<{ tri?: string | string[]; ligue?: string | string[] }>;
 };
 
+function parseLeagueId(value: string | string[] | undefined): string | null {
+  if (typeof value !== "string" || value.length === 0) return null;
+  return value;
+}
+
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
-  const { tri } = await searchParams;
+  const { tri, ligue } = await searchParams;
   const sortKey = parseSortKey(tri);
+  const leagueId = parseLeagueId(ligue);
 
   const supabase = await getServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  const data = await getLeaderboard(sortKey);
+  // getMyLeagues() lit sa propre session (RLS) : rien à filtrer pour un
+  // visiteur, elle renvoie déjà [] sans utilisateur authentifié.
+  const [data, myLeagues] = await Promise.all([getLeaderboard(sortKey, leagueId), getMyLeagues()]);
 
   const showStickyBar = data.rankedCount > 20 && data.currentUserRank !== null;
   const currentUserRow = data.rows.find((row) => row.isCurrentUser);
@@ -51,14 +61,18 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           <>
             <div className={`${styles.header} hero-banner`}>
               <p className={`${styles.title} hero-banner-title`}>Classement</p>
-              <p className={`${styles.competitionName} hero-banner-subtitle`}>{data.competitionName}</p>
+              <p className={`${styles.competitionName} hero-banner-subtitle`}>
+                {data.competitionName}
+                {data.scopeLeagueName ? ` — ${data.scopeLeagueName}` : ""}
+              </p>
             </div>
 
+            <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} sortKey={sortKey} />
             <SortChips active={sortKey} />
 
             {data.rows.length === 0 ? (
               <EmptyState
-                title="Personne n'a encore marqué"
+                title={data.scopeLeagueId ? "Personne dans cette ligue n'a encore marqué" : "Personne n'a encore marqué"}
                 subtitle="Le classement s'affichera dès les premiers pronos."
               />
             ) : (

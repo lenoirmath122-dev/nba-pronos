@@ -32,6 +32,12 @@ export type LeaderboardData = {
   rows: LeaderboardRow[]; // déjà triées selon sortKey, rang déjà calculé sur Total
   currentUserRank: number | null; // null = visiteur, ou joueur non classé
   rankedCount: number; // pilote le seuil de 20 de la barre collante
+  // Vue filtrée par ligue (BACKLOG_V1.md « Système de ligue », migration #16) :
+  // rang RECALCULÉ dans le groupe (décidé avec l'utilisateur, 30/07/2026), pas
+  // le rang général conservé — `rows`/`rank`/`rankedCount` ci-dessus portent
+  // déjà cette valeur recalculée quand `scopeLeagueId` est renseigné.
+  scopeLeagueId: string | null; // null = classement Général
+  scopeLeagueName: string | null;
 };
 
 function emptyData(sortKey: SortKey): LeaderboardData {
@@ -42,10 +48,13 @@ function emptyData(sortKey: SortKey): LeaderboardData {
     rows: [],
     currentUserRank: null,
     rankedCount: 0,
+    scopeLeagueId: null,
+    scopeLeagueName: null,
   };
 }
 
 type CompetitionRow = { id: string; name: string };
+type LeagueRow = { id: string; name: string };
 
 type ScoreRow = {
   user_id: string;
@@ -66,7 +75,10 @@ const SORT_ACCESSOR: Record<SortKey, (row: LeaderboardRow) => number> = {
   form: (row) => row.formPoints,
 };
 
-export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData> {
+export async function getLeaderboard(
+  sortKey: SortKey,
+  leagueId?: string | null
+): Promise<LeaderboardData> {
   const supabase = await getServerClient();
 
   const {
@@ -84,6 +96,28 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
     return emptyData(sortKey);
   }
 
+  // Ligue demandée (BACKLOG_V1.md « Système de ligue ») : `leagues_select`/
+  // `league_memberships_select` (migration #16) ne renvoient quelque chose que
+  // si l'appelant est LUI-MÊME membre — un id invalide ou une ligue dont on
+  // n'est pas membre retombe donc silencieusement sur le classement Général,
+  // jamais une page vide surprenante.
+  let scopeLeagueId: string | null = null;
+  let scopeLeagueName: string | null = null;
+  let scopeUserIds: Set<string> | null = null;
+
+  if (leagueId) {
+    const [{ data: league }, { data: members }] = await Promise.all([
+      supabase.from("leagues").select("id, name").eq("id", leagueId).maybeSingle<LeagueRow>(),
+      supabase.from("league_memberships").select("user_id").eq("league_id", leagueId),
+    ]);
+
+    if (league) {
+      scopeLeagueId = league.id;
+      scopeLeagueName = league.name;
+      scopeUserIds = new Set((members ?? []).map((row) => row.user_id as string));
+    }
+  }
+
   // user_scores : une ligne par (compétition, joueur) ayant au moins une ligne
   // de scoring — « jamais joué » est donc naturellement absent (§8), pas besoin
   // de partir de la table des joueurs. Vue security_invoker=false (migration #5,
@@ -96,7 +130,13 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
     )
     .eq("competition_id", competition.id);
 
-  const scoreRows = (scores ?? []) as ScoreRow[];
+  const allScoreRows = (scores ?? []) as ScoreRow[];
+  // Portée ligue : intersection avec les membres — rang recalculé PLUS BAS
+  // (assignRanks tourne sur ce sous-ensemble, jamais sur le classement entier).
+  const scoreRows = scopeUserIds
+    ? allScoreRows.filter((row) => scopeUserIds!.has(row.user_id))
+    : allScoreRows;
+
   if (scoreRows.length === 0) {
     return {
       competitionId: competition.id,
@@ -105,6 +145,8 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
       rows: [],
       currentUserRank: null,
       rankedCount: 0,
+      scopeLeagueId,
+      scopeLeagueName,
     };
   }
 
@@ -163,5 +205,7 @@ export async function getLeaderboard(sortKey: SortKey): Promise<LeaderboardData>
     rows: sortedRows,
     currentUserRank: currentUserRow?.rank ?? null,
     rankedCount: rows.length,
+    scopeLeagueId,
+    scopeLeagueName,
   };
 }

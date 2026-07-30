@@ -1,7 +1,9 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getProfileData, getTeamOptions } from "@/lib/queries/profile";
+import { getMyLeagues } from "@/lib/queries/leagues";
 import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
+import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
 import { NotificationSettings } from "@/components/profile/NotificationSettings";
@@ -11,7 +13,13 @@ import styles from "./page.module.css";
 // Remplace le stub "à venir" (22/07/2026) et le bouton de déconnexion
 // temporaire (app/(app)/layout.tsx, §5 de la spec).
 
-type SearchParams = { profileError?: string };
+type SearchParams = {
+  profileError?: string;
+  leagueError?: string;
+  leagueJoined?: string;
+  newLeagueName?: string;
+  newLeagueCode?: string;
+};
 
 export default async function ProfilePage({
   searchParams,
@@ -23,6 +31,7 @@ export default async function ProfilePage({
   if (!profile) redirect("/login"); // ne devrait pas se produire : layout (app) garde déjà la session.
 
   const teams = await getTeamOptions();
+  const leagues = await getMyLeagues();
 
   return (
     <div className={styles.page}>
@@ -75,6 +84,77 @@ export default async function ProfilePage({
       <section className={styles.section}>
         <h2 className={styles.sectionTitle}>Rappels</h2>
         <NotificationSettings initialPreference={profile.notificationPreference} />
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Mes ligues</h2>
+
+        {sp.leagueError && (
+          <p className={styles.error} role="alert">
+            {sp.leagueError}
+          </p>
+        )}
+        {sp.leagueJoined && (
+          <p className={styles.success} role="status">
+            Tu as rejoint « {sp.leagueJoined} ».
+          </p>
+        )}
+        {sp.newLeagueName && sp.newLeagueCode && (
+          <p className={styles.success} role="status">
+            Ligue « {sp.newLeagueName} » créée. Code à partager :{" "}
+            <span className={styles.leagueCode}>{sp.newLeagueCode}</span>
+          </p>
+        )}
+
+        {leagues.length > 0 && (
+          <div className={styles.leagueList}>
+            {leagues.map((league) => (
+              <div key={league.id} className={styles.leagueRow}>
+                <div className={styles.leagueInfo}>
+                  <span className={styles.leagueName}>{league.name}</span>
+                  <span className={styles.leagueMeta}>
+                    {league.memberCount} membre{league.memberCount > 1 ? "s" : ""} · code{" "}
+                    <span className={styles.leagueCode}>{league.code}</span>
+                  </span>
+                </div>
+                <form action={leaveLeagueFormAction}>
+                  <input type="hidden" name="leagueId" value={league.id} />
+                  <button type="submit" className={styles.leaveButton}>
+                    Quitter
+                  </button>
+                </form>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className={styles.leagueForms}>
+          <form action={createLeagueFormAction} className={styles.leagueForm}>
+            <input
+              type="text"
+              name="name"
+              placeholder="Nom de la nouvelle ligue"
+              required
+              className={styles.leagueInput}
+            />
+            <button type="submit" className={styles.secondaryButton}>
+              Créer
+            </button>
+          </form>
+
+          <form action={joinLeagueFormAction} className={styles.leagueForm}>
+            <input
+              type="text"
+              name="code"
+              placeholder="Code de ligue reçu d'un ami"
+              required
+              className={styles.leagueInput}
+            />
+            <button type="submit" className={styles.secondaryButton}>
+              Rejoindre
+            </button>
+          </form>
+        </div>
       </section>
 
       {profile.isAdmin && (
