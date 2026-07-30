@@ -19,21 +19,26 @@ type FilterBarProps = {
   availableDates: string[];
   availableSeries: { id: string; label: string }[];
   filter: { date: string | null; seriesId: string | null };
+  leagueId?: string | null;
 };
 
-export function FilterBar({ availableDates, availableSeries, filter }: FilterBarProps) {
+export function FilterBar({ availableDates, availableSeries, filter, leagueId }: FilterBarProps) {
   const activeSeriesLabel = filter.seriesId ? availableSeries.find((s) => s.id === filter.seriesId)?.label : null;
   const chipLabel = filter.date ? formatDateChip(filter.date) : activeSeriesLabel;
 
   return (
     <div className={styles.wrap}>
       {chipLabel && (
-        <Link href={buildViewPath({ mode: "RECENT" })} className={styles.chip}>
+        <Link href={buildViewPath({ mode: "RECENT", leagueId })} className={styles.chip}>
           Filtre : {chipLabel} ✕
         </Link>
       )}
 
       <form action="/play/my-predictions" method="get" className={styles.form}>
+        {/* Portée ligue (30/07/2026) : préservée à travers un submit natif,
+            qui remplace sinon TOUTE la query string par les seuls champs
+            nommés de ce formulaire. */}
+        {leagueId && <input type="hidden" name="ligue" value={leagueId} />}
         <label className={styles.field}>
           Date
           <input type="date" name="date" defaultValue={filter.date ?? ""} list="my-predictions-available-dates" />

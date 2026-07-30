@@ -4,6 +4,39 @@ import { getServerClient } from "@/lib/supabase/server";
 // Composants serveur uniquement, RLS seule autorité (leagues_select /
 // league_secrets_select / league_memberships_select : membre uniquement).
 
+type SupabaseServerClient = Awaited<ReturnType<typeof getServerClient>>;
+
+export type LeagueScope = { id: string; name: string; memberUserIds: Set<string> };
+
+/** Résout un `?ligue=` en portée exploitable (nom + membres), réutilisé par
+ *  tout écran qui filtre une liste "des autres joueurs" par ligue
+ *  (Classement, Mes pronos, Bracket, 30/07/2026 — extrait de
+ *  lib/queries/leaderboard.ts pour éviter une 3e implémentation divergente,
+ *  même leçon que lib/dates/paris.ts). `leagues_select`/
+ *  `league_memberships_select` (migration #16) ne renvoient quelque chose
+ *  que si l'appelant est LUI-MÊME membre — un id invalide ou une ligue dont
+ *  on n'est pas membre renvoie donc silencieusement `null` (repli sur "Général"
+ *  côté appelant), jamais une erreur. */
+export async function resolveLeagueScope(
+  supabase: SupabaseServerClient,
+  leagueId: string | null | undefined
+): Promise<LeagueScope | null> {
+  if (!leagueId) return null;
+
+  const [{ data: league }, { data: members }] = await Promise.all([
+    supabase.from("leagues").select("id, name").eq("id", leagueId).maybeSingle<{ id: string; name: string }>(),
+    supabase.from("league_memberships").select("user_id").eq("league_id", leagueId),
+  ]);
+
+  if (!league) return null;
+
+  return {
+    id: league.id,
+    name: league.name,
+    memberUserIds: new Set((members ?? []).map((row) => row.user_id as string)),
+  };
+}
+
 export type MyLeague = {
   id: string;
   name: string;

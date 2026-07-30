@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { getMyPredictions, type MyPredictionsMode } from "@/lib/queries/my-predictions";
+import { getMyLeagues } from "@/lib/queries/leagues";
 import { EmptyState } from "@/components/home/EmptyState";
 import { SegmentTabs } from "@/components/my-predictions/SegmentTabs";
 import { FilterBar } from "@/components/my-predictions/FilterBar";
+import { LeagueScopeChips } from "@/components/my-predictions/LeagueScopeChips";
 import { SeriesBetHeader } from "@/components/my-predictions/SeriesBetHeader";
 import { MatchRowStatic } from "@/components/my-predictions/MatchRowStatic";
 import { LiveSubscriber } from "@/components/my-predictions/LiveSubscriber";
@@ -21,6 +23,7 @@ type SearchParams = {
   date?: string;
   series?: string;
   limit?: string;
+  ligue?: string;
   correctionError?: string;
   correctionMatchId?: string;
 };
@@ -32,8 +35,12 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
   // segmentation, quel que soit ?tab= présent par ailleurs.
   const mode: MyPredictionsMode = hasFilter ? "FILTERED" : sp.tab === "history" ? "HISTORY" : "RECENT";
   const limit = sp.limit ? Number(sp.limit) : undefined;
+  const leagueId = sp.ligue ?? null;
 
-  const data = await getMyPredictions({ mode, date: sp.date, seriesId: sp.series, limit });
+  const [data, myLeagues] = await Promise.all([
+    getMyPredictions({ mode, date: sp.date, seriesId: sp.series, limit, leagueId }),
+    getMyLeagues(),
+  ]);
 
   if (!data) {
     return (
@@ -48,16 +55,37 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
 
   // Vue courante (sans les paramètres d'erreur) : sert de redirection après le
   // dépôt d'une requête de correction, réussie ou non (§1.1 point 3).
-  const returnTo = buildViewPath({ mode, date: data.filter.date, seriesId: data.filter.seriesId, limit });
+  const returnTo = buildViewPath({
+    mode,
+    date: data.filter.date,
+    seriesId: data.filter.seriesId,
+    limit,
+    leagueId: data.scopeLeagueId,
+  });
 
   return (
     <div className={styles.page}>
       <div className={`${styles.header} hero-banner`}>
         <h1 className={`${styles.title} hero-banner-title`}>Mes pronos</h1>
       </div>
+      <LeagueScopeChips
+        myLeagues={myLeagues}
+        activeLeagueId={data.scopeLeagueId}
+        mode={mode}
+        date={data.filter.date}
+        seriesId={data.filter.seriesId}
+        limit={limit}
+      />
       <div className={styles.controls}>
-        {mode !== "FILTERED" && <SegmentTabs active={mode === "HISTORY" ? "HISTORY" : "RECENT"} />}
-        <FilterBar availableDates={data.availableDates} availableSeries={data.availableSeries} filter={data.filter} />
+        {mode !== "FILTERED" && (
+          <SegmentTabs active={mode === "HISTORY" ? "HISTORY" : "RECENT"} leagueId={data.scopeLeagueId} />
+        )}
+        <FilterBar
+          availableDates={data.availableDates}
+          availableSeries={data.availableSeries}
+          filter={data.filter}
+          leagueId={data.scopeLeagueId}
+        />
       </div>
 
       {data.seriesBet && <SeriesBetHeader header={data.seriesBet} />}
@@ -66,7 +94,7 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
         <div className={styles.empty}>
           <EmptyState title={emptyTitle(mode)} subtitle={emptySubtitle(mode)} />
           {mode === "RECENT" && (
-            <Link href={buildViewPath({ mode: "HISTORY" })} className={styles.emptyLink}>
+            <Link href={buildViewPath({ mode: "HISTORY", leagueId: data.scopeLeagueId })} className={styles.emptyLink}>
               Voir l&rsquo;historique
             </Link>
           )}
@@ -101,6 +129,7 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
             date: data.filter.date,
             seriesId: data.filter.seriesId,
             limit: (limit ?? DEFAULT_LIMIT) + DEFAULT_LIMIT,
+            leagueId: data.scopeLeagueId,
           })}
           className={styles.loadMore}
         >

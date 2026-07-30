@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
+import { resolveLeagueScope } from "@/lib/queries/leagues";
 
 // Lecture de l'écran Bracket (vue globale de consultation), composants
 // serveur uniquement — SPEC_ECRAN_CLASSEMENT_BRACKET §15.2. Un seul module,
@@ -47,9 +48,15 @@ export type BracketData = {
   rounds: BracketRound[];
   filledCount: number; // progression X/15 ou X/7
   totalCount: number;
+  /** Filtre "qui a pris quoi" par ligue (30/07/2026, demandé par
+   *  l'utilisateur) — null = Général. Filtre groups/players/
+   *  filledBracketsCount (et le % qui en dérive), jamais l'état RÉEL du
+   *  tournoi (actualWinnerAbbreviation, filledCount global). */
+  scopeLeagueId: string | null;
+  scopeLeagueName: string | null;
 };
 
-function emptyData(): BracketData {
+function emptyData(scopeLeagueId: string | null = null, scopeLeagueName: string | null = null): BracketData {
   return {
     competitionId: null,
     // Valeur inerte : jamais lue, la page teste competitionId === null d'abord.
@@ -60,6 +67,8 @@ function emptyData(): BracketData {
     rounds: [],
     filledCount: 0,
     totalCount: 0,
+    scopeLeagueId,
+    scopeLeagueName,
   };
 }
 
@@ -86,8 +95,12 @@ type SeriesRow = {
 
 type TeamRow = { id: string; name: string; abbreviation: string };
 
-export async function getBracket(): Promise<BracketData> {
+export async function getBracket(leagueId?: string | null): Promise<BracketData> {
   const supabase = await getServerClient();
+
+  const scope = await resolveLeagueScope(supabase, leagueId);
+  const scopeLeagueId = scope?.id ?? null;
+  const scopeLeagueName = scope?.name ?? null;
 
   const { data: competition } = await supabase
     .from("competitions")
@@ -96,7 +109,7 @@ export async function getBracket(): Promise<BracketData> {
     .maybeSingle<CompetitionRow>();
 
   if (!competition) {
-    return emptyData();
+    return emptyData(scopeLeagueId, scopeLeagueName);
   }
 
   const deadline = competition.bracket_deadline;
@@ -122,6 +135,8 @@ export async function getBracket(): Promise<BracketData> {
       rounds: [],
       filledCount: 0,
       totalCount: 0,
+      scopeLeagueId,
+      scopeLeagueName,
     };
   }
 
@@ -156,7 +171,7 @@ export async function getBracket(): Promise<BracketData> {
   // ne sont même pas lancées avant — la confidentialité n'est jamais un `if`
   // de rendu.
   const { filledBySeriesId, groupsBySeriesId } = isDeadlinePassed
-    ? await getFilledPicksAndGroups(supabase, competition.id, competition.type, teams)
+    ? await getFilledPicksAndGroups(supabase, competition.id, competition.type, teams, scope?.memberUserIds ?? null)
     : { filledBySeriesId: new Map<string, number>(), groupsBySeriesId: new Map<string, SeriesPickGroup[]>() };
 
   const roundOrder = competition.type === "PLAYOFFS" ? PLAYOFFS_ROUNDS : CUP_ROUNDS;
@@ -203,6 +218,8 @@ export async function getBracket(): Promise<BracketData> {
     rounds,
     filledCount,
     totalCount: series.length,
+    scopeLeagueId,
+    scopeLeagueName,
   };
 }
 
@@ -262,7 +279,8 @@ async function getFilledPicksAndGroups(
   supabase: SupabaseServerClient,
   competitionId: string,
   competitionType: "PLAYOFFS" | "NBA_CUP",
-  teams: Map<string, { name: string; abbreviation: string }>
+  teams: Map<string, { name: string; abbreviation: string }>,
+  scopeMemberUserIds: Set<string> | null
 ): Promise<{
   filledBySeriesId: Map<string, number>;
   groupsBySeriesId: Map<string, SeriesPickGroup[]>;
@@ -289,11 +307,22 @@ async function getFilledPicksAndGroups(
   // Un pick est « rempli » : vainqueur choisi, ET score de série choisi en
   // Playoffs (pas de score de série en Cup — même convention que
   // lib/queries/home.ts::getBracketTodo).
-  const filledPicks = ((picksData ?? []) as BracketPickRow[]).filter(
+  const filledPicksAll = ((picksData ?? []) as BracketPickRow[]).filter(
     (pick) =>
       pick.predicted_winner_team_id !== null &&
       (competitionType === "NBA_CUP" || pick.predicted_score_format !== null)
   );
+
+  // Portée ligue (30/07/2026, demandé par l'utilisateur) : filtré ICI, EN
+  // AMONT — filledBySeriesId (dénominateur du %) ET les groupes en héritent
+  // automatiquement, cohérent avec le choix confirmé (le % se recalcule sur
+  // la ligue, pas sur tous les joueurs).
+  const filledPicks = scopeMemberUserIds
+    ? filledPicksAll.filter((pick) => {
+        const userId = userIdByBracketId.get(pick.bracket_id);
+        return userId !== undefined && scopeMemberUserIds.has(userId);
+      })
+    : filledPicksAll;
 
   const filledBySeriesId = new Map<string, number>();
   for (const pick of filledPicks) {

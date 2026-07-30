@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { assignRanks } from "@/lib/scoring/ranking";
+import { resolveLeagueScope } from "@/lib/queries/leagues";
 
 // Lecture de l'écran Classement (composants serveur uniquement),
 // SPEC_ECRAN_CLASSEMENT_BRACKET §15.1. Un seul module, appelé avec
@@ -54,7 +55,6 @@ function emptyData(sortKey: SortKey): LeaderboardData {
 }
 
 type CompetitionRow = { id: string; name: string };
-type LeagueRow = { id: string; name: string };
 
 type ScoreRow = {
   user_id: string;
@@ -100,27 +100,14 @@ export async function getLeaderboard(
     return { ...emptyData(sortKey), scopeLeagueId: leagueId ?? null };
   }
 
-  // Ligue demandée (BACKLOG_V1.md « Système de ligue ») : `leagues_select`/
-  // `league_memberships_select` (migration #16) ne renvoient quelque chose que
-  // si l'appelant est LUI-MÊME membre — un id invalide ou une ligue dont on
-  // n'est pas membre retombe donc silencieusement sur le classement Général,
-  // jamais une page vide surprenante.
-  let scopeLeagueId: string | null = null;
-  let scopeLeagueName: string | null = null;
-  let scopeUserIds: Set<string> | null = null;
-
-  if (leagueId) {
-    const [{ data: league }, { data: members }] = await Promise.all([
-      supabase.from("leagues").select("id, name").eq("id", leagueId).maybeSingle<LeagueRow>(),
-      supabase.from("league_memberships").select("user_id").eq("league_id", leagueId),
-    ]);
-
-    if (league) {
-      scopeLeagueId = league.id;
-      scopeLeagueName = league.name;
-      scopeUserIds = new Set((members ?? []).map((row) => row.user_id as string));
-    }
-  }
+  // Ligue demandée (BACKLOG_V1.md « Système de ligue ») : un id invalide ou
+  // une ligue dont on n'est pas membre retombe silencieusement sur le
+  // classement Général, jamais une page vide surprenante (voir
+  // resolveLeagueScope, lib/queries/leagues.ts).
+  const scope = await resolveLeagueScope(supabase, leagueId);
+  const scopeLeagueId = scope?.id ?? null;
+  const scopeLeagueName = scope?.name ?? null;
+  const scopeUserIds = scope?.memberUserIds ?? null;
 
   // user_scores : une ligne par (compétition, joueur) ayant au moins une ligne
   // de scoring — « jamais joué » est donc naturellement absent (§8), pas besoin

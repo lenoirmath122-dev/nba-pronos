@@ -3,6 +3,7 @@ import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDayBoundsUtc } from "@/lib/dates/paris";
 import type { TeamRef } from "@/lib/queries/matches";
 import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
+import { resolveLeagueScope } from "@/lib/queries/leagues";
 
 // Lecture de l'écran "Mes pronos" (composants serveur uniquement),
 // SPEC_ECRAN_MES_PRONOS_V0_1 §13. Un seul module, appelé avec
@@ -136,6 +137,12 @@ export type MyPredictionsData = {
   /** Valeurs proposables par les filtres — jamais inventées au rendu (§4.2). */
   availableDates: string[];
   availableSeries: { id: string; label: string }[];
+  /** Filtre "des autres joueurs" par ligue (30/07/2026, demandé par
+   *  l'utilisateur) — null = Général (tout le monde), même repli
+   *  silencieux qu'ailleurs (id invalide/pas membre -> Général). Filtre
+   *  UNIQUEMENT others/absenteeCount/otherBets, jamais mon propre prono. */
+  scopeLeagueId: string | null;
+  scopeLeagueName: string | null;
 };
 
 const RECENT_WINDOW_DAYS = 3;
@@ -205,6 +212,7 @@ export async function getMyPredictions(params: {
   date?: string;
   seriesId?: string;
   limit?: number; // défaut 40 (§4.4)
+  leagueId?: string | null;
 }): Promise<MyPredictionsData | null> {
   const supabase = await getServerClient();
 
@@ -225,6 +233,10 @@ export async function getMyPredictions(params: {
   if (!competition) {
     return null;
   }
+
+  const scope = await resolveLeagueScope(supabase, params.leagueId);
+  const scopeLeagueId = scope?.id ?? null;
+  const scopeLeagueName = scope?.name ?? null;
 
   const limit = params.limit ?? DEFAULT_LIMIT;
   const nowMs = Date.now();
@@ -269,7 +281,7 @@ export async function getMyPredictions(params: {
   if (matches.length === 0) {
     const seriesBet =
       params.mode === "FILTERED" && params.seriesId
-        ? await getSeriesBetHeader(supabase, competition.id, user.id, params.seriesId, seriesById)
+        ? await getSeriesBetHeader(supabase, competition.id, user.id, params.seriesId, seriesById, scope?.memberUserIds ?? null)
         : null;
     return {
       mode: params.mode,
@@ -279,6 +291,8 @@ export async function getMyPredictions(params: {
       hasMore: false,
       availableDates,
       availableSeries,
+      scopeLeagueId,
+      scopeLeagueName,
     };
   }
 
@@ -311,7 +325,12 @@ export async function getMyPredictions(params: {
   const teams = new Map(((teamsData ?? []) as TeamRow[]).map((t) => [t.id, teamRef(t)]));
   const predictions = (predictionsData ?? []) as PredictionRow[];
   const bets = (betsData ?? []) as BetRow[];
-  const activeUsers = (activeUsersData ?? []) as ActiveUserRow[];
+  // Portée ligue (30/07/2026) : le pool "absents" se restreint aux membres de
+  // la ligue choisie, exactement comme others/otherBets plus bas — mon propre
+  // prono/pari, lui, n'est JAMAIS filtré (§ commentaire de tête du type).
+  const activeUsers = ((activeUsersData ?? []) as ActiveUserRow[]).filter(
+    (u) => !scope || scope.memberUserIds.has(u.id)
+  );
 
   // Pseudos nécessaires : auteurs des pronos des AUTRES joueurs (complets,
   // §7.1 amendement) + admins ayant corrigé un prono (le mien ou celui d'un
@@ -361,6 +380,7 @@ export async function getMyPredictions(params: {
   const otherBetsByMatch = new Map<string, OtherBet[]>();
   for (const b of bets) {
     if (b.user_id === user.id || !b.match_id) continue;
+    if (scope && !scope.memberUserIds.has(b.user_id)) continue;
     const list = otherBetsByMatch.get(b.match_id) ?? [];
     list.push({ userId: b.user_id, userName: pseudoById.get(b.user_id) ?? "", description: b.description });
     otherBetsByMatch.set(b.match_id, list);
@@ -378,6 +398,7 @@ export async function getMyPredictions(params: {
 
     const others: RevealedPrediction[] = matchPredictions
       .filter((p) => p.user_id !== user.id && isComplete(p))
+      .filter((p) => !scope || scope.memberUserIds.has(p.user_id))
       .map((p) => toRevealedPrediction(p, teams, pseudoById))
       .sort((a, b) => a.userName.localeCompare(b.userName));
 
@@ -418,7 +439,7 @@ export async function getMyPredictions(params: {
 
   const seriesBet =
     params.mode === "FILTERED" && params.seriesId
-      ? await getSeriesBetHeader(supabase, competition.id, user.id, params.seriesId, seriesById)
+      ? await getSeriesBetHeader(supabase, competition.id, user.id, params.seriesId, seriesById, scope?.memberUserIds ?? null)
       : null;
 
   return {
@@ -429,6 +450,8 @@ export async function getMyPredictions(params: {
     hasMore,
     availableDates,
     availableSeries,
+    scopeLeagueId,
+    scopeLeagueName,
   };
 }
 
@@ -590,7 +613,8 @@ async function getSeriesBetHeader(
   competitionId: string,
   userId: string,
   seriesId: string,
-  seriesById: Map<string, SeriesRow>
+  seriesById: Map<string, SeriesRow>,
+  scopeMemberUserIds: Set<string> | null
 ): Promise<SeriesBetHeader> {
   const { data: teamsData } = await supabase.from("teams").select("id, name, abbreviation");
   const teams = new Map(((teamsData ?? []) as TeamRow[]).map((t) => [t.id, teamRef(t)]));
@@ -615,6 +639,7 @@ async function getSeriesBetHeader(
 
   const otherBets: OtherBet[] = bets
     .filter((b) => b.user_id !== userId)
+    .filter((b) => !scopeMemberUserIds || scopeMemberUserIds.has(b.user_id))
     .map((b) => ({ userId: b.user_id, userName: pseudoById.get(b.user_id) ?? "", description: b.description }))
     .sort((a, b) => a.userName.localeCompare(b.userName));
 

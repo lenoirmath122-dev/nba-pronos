@@ -1,8 +1,10 @@
 import type { BracketData, SeriesLiveSeed } from "@/lib/queries/bracket";
+import type { MyLeague } from "@/lib/queries/leagues";
 import { Countdown } from "@/components/ui/Countdown";
 import { ProgressBar } from "./ProgressBar";
 import { SeriesDrillDown } from "./SeriesDrillDown";
 import { TreeView } from "./TreeView";
+import { LeagueScopeChips } from "./LeagueScopeChips";
 import { LiveSeriesSubscriber } from "./LiveSeriesSubscriber";
 import styles from "./BracketSummary.module.css";
 
@@ -14,19 +16,25 @@ type BracketSummaryProps = {
   competitionName: string;
   initialShowTree: boolean;
   liveSeed: SeriesLiveSeed[];
+  myLeagues: MyLeague[];
 };
 
-export function BracketSummary({ data, competitionName, initialShowTree, liveSeed }: BracketSummaryProps) {
+export function BracketSummary({ data, competitionName, initialShowTree, liveSeed, myLeagues }: BracketSummaryProps) {
   return (
     <LiveSeriesSubscriber seed={liveSeed}>
       <div className={styles.page}>
         <div className={`${styles.header} hero-banner`}>
           <div>
             <p className={`${styles.title} hero-banner-title`}>Bracket</p>
-            <p className={`${styles.competitionName} hero-banner-subtitle`}>{competitionName}</p>
+            <p className={`${styles.competitionName} hero-banner-subtitle`}>
+              {competitionName}
+              {data.scopeLeagueName ? ` — ${data.scopeLeagueName}` : ""}
+            </p>
           </div>
           <ProgressBar filledCount={data.filledCount} totalCount={data.totalCount} />
         </div>
+
+        <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} showTree={initialShowTree} />
 
         <TreeView data={data} initialShow={initialShowTree} />
 
