@@ -61,6 +61,14 @@
   box-shadow: var(--elevation-glow);
 }
 
+/* Fermé : les radios restent dans le DOM (donc dans le formulaire soumis),
+   seule leur affichage disparaît — cf. bug trouvé en testant (30/07/2026).
+   Règle déclarée APRÈS .list dans ce même fichier : l'emporte à spécificité
+   égale, jamais besoin de !important. */
+.list.hidden {
+  display: none;
+}
+
 .item {
   display: flex;
   align-items: center;

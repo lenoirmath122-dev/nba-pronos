@@ -16,6 +16,13 @@ import styles from "./TeamPicker.module.css";
 // composant (même patron que components/ui/TeamLogo.tsx, §2.9 ETAT_ACTUEL.md) :
 // son parent (la section Préférences de app/(app)/profile/page.tsx) reste un
 // composant serveur.
+//
+// BUG TROUVÉ EN TESTANT (30/07/2026) : la liste était retirée du DOM (`{open
+// && (...)}`) à la fermeture -> le radio coché disparaissait AVANT la
+// soumission du formulaire, qui repartait donc systématiquement sur "Aucune".
+// Corrigé : la liste reste TOUJOURS montée, seule sa visibilité (classe CSS)
+// dépend de `open` — les radios, eux, restent dans le formulaire en
+// permanence.
 
 type TeamPickerProps = {
   teams: TeamOption[];
@@ -56,35 +63,37 @@ export function TeamPicker({ teams, selectedTeamId }: TeamPickerProps) {
         </span>
       </button>
 
-      {open && (
-        <div className={styles.list} role="radiogroup" aria-label="Équipe favorite">
-          <label className={styles.item}>
+      <div
+        className={open ? styles.list : `${styles.list} ${styles.hidden}`}
+        role="radiogroup"
+        aria-label="Équipe favorite"
+      >
+        <label className={styles.item}>
+          <input
+            type="radio"
+            name="favoriteTeamId"
+            value=""
+            defaultChecked={selectedTeamId === null}
+            onChange={() => pick(null)}
+            className={styles.radio}
+          />
+          <span className={styles.itemLabel}>Aucune</span>
+        </label>
+        {teams.map((team) => (
+          <label key={team.teamId} className={styles.item}>
             <input
               type="radio"
               name="favoriteTeamId"
-              value=""
-              defaultChecked={selectedTeamId === null}
-              onChange={() => pick(null)}
+              value={team.teamId}
+              defaultChecked={team.teamId === selectedTeamId}
+              onChange={() => pick(team.teamId)}
               className={styles.radio}
             />
-            <span className={styles.itemLabel}>Aucune</span>
+            <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={24} />
+            <span className={styles.itemLabel}>{team.name}</span>
           </label>
-          {teams.map((team) => (
-            <label key={team.teamId} className={styles.item}>
-              <input
-                type="radio"
-                name="favoriteTeamId"
-                value={team.teamId}
-                defaultChecked={team.teamId === selectedTeamId}
-                onChange={() => pick(team.teamId)}
-                className={styles.radio}
-              />
-              <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={24} />
-              <span className={styles.itemLabel}>{team.name}</span>
-            </label>
-          ))}
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
