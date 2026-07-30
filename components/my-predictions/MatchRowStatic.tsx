@@ -51,19 +51,32 @@ export function MatchRowStatic({ row, returnTo, forceOpenCorrectionForm, correct
       <PredictionSummary prediction={row.prediction} />
 
       {row.bet && <AssociatedBetCard bet={row.bet} />}
-      <OtherBetsModal bets={row.otherBets} />
 
-      <CorrectionRequestForm
-        matchId={row.matchId}
-        home={row.home}
-        away={row.away}
-        correctionRequest={row.correctionRequest}
-        returnTo={returnTo}
-        forceOpen={forceOpenCorrectionForm}
-        error={correctionError}
-      />
+      {/* Repliés sous UN SEUL déclencheur (demandé par l'utilisateur,
+          30/07/2026) : ces 3 blocs prenaient chacun une ligne visible en
+          permanence sur CHAQUE match, même quand leur propre contenu était
+          déjà replié (OtherBetsModal = popup, CorrectionRequestForm/
+          RevealPanel = <details>). Forcé ouvert si on revient ici après une
+          requête de correction en erreur sur CE match précis, sinon
+          l'utilisateur ne verrait jamais le message d'erreur. */}
+      <details className={styles.more} open={forceOpenCorrectionForm}>
+        <summary className={styles.moreSummary}>Plus d&rsquo;options</summary>
+        <div className={styles.moreContent}>
+          <OtherBetsModal bets={row.otherBets} />
 
-      <RevealPanel others={row.others} absenteeCount={row.absenteeCount} />
+          <CorrectionRequestForm
+            matchId={row.matchId}
+            home={row.home}
+            away={row.away}
+            correctionRequest={row.correctionRequest}
+            returnTo={returnTo}
+            forceOpen={forceOpenCorrectionForm}
+            error={correctionError}
+          />
+
+          <RevealPanel others={row.others} absenteeCount={row.absenteeCount} />
+        </div>
+      </details>
     </div>
   );
 }
