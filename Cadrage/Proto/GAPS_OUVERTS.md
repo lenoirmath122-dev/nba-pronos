@@ -4,15 +4,18 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 29/07/2026 (fin de journée)** — Audit structurel T1→T8/D1-D6
-> CLOS (28/07/2026, 7 écarts corrigés) ; Realtime `series` comblé (T6c,
-> §2.44) ; 4 points UI mineurs + bandeau parquet sur les 10 écrans joueur
-> (§2.45) ; **1er point du backlog codé ET validé en conditions RÉELLES :
-> Rappels ciblés, canal Push** (§2.46/§2.47) — testé par l'utilisateur sur
-> son vrai compte, PC + iPhone, 3 bugs réels trouvés et corrigés (multi-
-> appareils sur un même compte, VAPID rejeté par Apple) — voir
-> `ETAT_ACTUEL.md` pour le détail complet. **Tout est committé/déployé
-> jusqu'à `18ffe7c`.**
+> **État au 30/07/2026** — Audit structurel T1→T8/D1-D6 CLOS (28/07/2026, 7
+> écarts corrigés) ; Realtime `series` comblé (T6c, §2.44) ; 4 points UI
+> mineurs + bandeau parquet sur les 10 écrans joueur (§2.45) ; **1er point du
+> backlog codé ET validé en conditions RÉELLES : Rappels ciblés, canal Push**
+> (§2.46/§2.47) — testé par l'utilisateur sur son vrai compte, PC + iPhone, 3
+> bugs réels trouvés et corrigés (multi-appareils sur un même compte, VAPID
+> rejeté par Apple) ; **2e point du backlog codé ET validé en conditions
+> RÉELLES : Système de ligue** (§2.48) — créer/rejoindre confirmé par
+> l'utilisateur avec 2 comptes réels, 1 bug réel trouvé et corrigé
+> (récursion RLS sur `league_memberships`) + 1 ajustement UX demandé
+> (sélecteur visible même sans compétition active) — voir `ETAT_ACTUEL.md`
+> pour le détail complet. **Tout est committé/déployé jusqu'à `d1fde4f`.**
 >
 > **Résidu mineur, non bloquant** : le compte `Demo_Amis` a 3 abonnements
 > push Apple dupliqués (Safari en recrée un à chaque tentative) — à
@@ -476,3 +479,35 @@
   - validation du bracket sans garde de complétude (0/15 à 15/15 accepté) :
     lecture littérale de 0.2.2 §3, confirmée par le comportement du
     prototype avant réécriture.
+- **Système de ligue (session du 30/07/2026, `BACKLOG_V1.md`,
+  `supabase/migrations/20260730090000_leagues.sql` et
+  `..._fix_league_memberships_recursion.sql`, `lib/queries/leagues.ts`,
+  `lib/actions/leagues.ts`)** :
+  - **AUCUNE spec n'existait pour cette fonctionnalité** — 3 choix
+    structurants cadrés AVEC l'utilisateur avant de coder (même patron que
+    le Bracket personnel) : ligue PERMANENTE (indépendante des
+    compétitions) ; appartenance à PLUSIEURS ligues ; création ouverte à
+    tout joueur ACTIVE depuis Profil, adhésion par CODE généré
+    aléatoirement (pas un mot de passe choisi) ; rang de la vue filtrée
+    RECALCULÉ dans le groupe (pas le rang général conservé) ;
+  - **choix structurant confirmé AVEC l'utilisateur** : écriture via 2
+    fonctions SQL SECURITY DEFINER (`create_league`/`join_league`, même
+    patron que `request_prediction_correction`) — seule façon d'écrire le
+    code de ligue sans jamais l'exposer par un INSERT ouvert ; quitter une
+    ligue reste un DELETE direct (RLS suffit, pas de logique particulière) ;
+  - bug réel trouvé en testant EN CONDITIONS RÉELLES (pas en relisant le
+    code) : récursion infinie sur la policy `league_memberships_select`
+    (sous-requête sur sa propre table) — cassait aussi `leagues`/
+    `league_secrets`, qui l'interrogent via `EXISTS`. Corrigé par
+    `my_league_ids()` (SECURITY DEFINER, même patron que
+    `is_admin()`/`is_active()`), migration #17 ;
+  - un id de ligue invalide ou dont l'appelant n'est pas membre retombe
+    silencieusement sur le classement Général (`getLeaderboard`) plutôt que
+    de lever une erreur ou d'afficher une page vide surprenante — la RLS
+    garantit déjà qu'aucune ligne ne fuite, ce repli est une question
+    d'ergonomie, pas de sécurité ;
+  - remontée utilisateur en testant (pas un bug) : le sélecteur de ligue
+    doit rester visible même sans compétition active (contrairement à
+    l'invariant préexistant « aucune active = état vide global » du
+    Classement) — tranché AVEC l'utilisateur, `SortChips` seul reste absent
+    (rien à trier sans classement).

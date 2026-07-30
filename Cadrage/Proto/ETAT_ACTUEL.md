@@ -5,78 +5,57 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 29/07/2026 (fin de journée) — **1er
-> point du BACKLOG codé ET validé en conditions RÉELLES : Rappels ciblés,
-> canal Push** (§2.46/§2.47). Infra Web Push complète (jamais existante
-> avant) + 2 déclencheurs cron, testée par l'utilisateur lui-même sur son
-> VRAI compte, PC ET iPhone — **3 bugs réels trouvés et corrigés en cours de
-> route** : réglage Windows bloquant Chrome (pas un bug) ; multi-appareils
-> sur un même compte (le radio déjà coché ne pouvait pas activer un 2e
-> appareil — corrigé par un bouton dédié) ; Apple qui rejetait le sujet
-> VAPID factice (`BadJwtToken`, corrigé en utilisant l'URL réelle du site).
-> Notifications confirmées reçues sur les deux appareils par l'utilisateur.
-> **Tout committé et déployé** (`b7061ae`, `d712012`, `4124e27`, `18ffe7c`).
+> Dernière mise à jour : session du 30/07/2026 — **2e point du BACKLOG codé
+> ET validé en conditions RÉELLES : Système de ligue** (§2.48). Groupement
+> d'amis façon MPP (vue filtrée sur le classement existant, aucun système de
+> scoring séparé) : ligue PERMANENTE, appartenance à plusieurs ligues,
+> création ouverte à tout joueur ACTIVE depuis Profil, adhésion par code
+> généré aléatoirement, rang recalculé dans le groupe. Migration #16
+> (`leagues`/`league_secrets`/`league_memberships` + RLS +
+> `create_league`/`join_league` SECURITY DEFINER) + migration #17
+> (correctif). **1 bug réel trouvé en testant en conditions réelles, PAS en
+> relisant le code** (script jetable, comptes jamais réels) : récursion
+> infinie sur la policy RLS de `league_memberships` — corrigée par
+> `my_league_ids()`, même patron que `is_admin()`/`is_active()`. **1
+> ajustement UX demandé par l'utilisateur en testant** : le sélecteur de
+> ligue doit rester visible même sans compétition active (invariant
+> préexistant du Classement, hérité puis corrigé). Confirmé fonctionnel par
+> l'utilisateur avec 2 vrais comptes (créer + rejoindre + sélecteur
+> visible). **Tout committé et déployé** (`95edf7e`, `d1fde4f`).
 >
-> Plus tôt la même session (§2.45, tout CLOS, committé et déployé) : 4
-> points UI mineurs (tailles de logo, aspect ratio des logos évalué et
-> laissé tel quel, badge de correction Matchs harmonisé, bandeau parquet
-> §15.7 câblé sur les 10 écrans joueur — les 9 + le hub Jouer, oublié puis
-> rattrapé — avec son asset réel déposé et son point focal réajusté sur
-> demande de l'utilisateur).
+> Plus tôt (29/07/2026, fin de journée, §2.46/§2.47, CLOS) : **1er point du
+> backlog, Rappels ciblés (canal Push)** — infra Web Push complète + 2
+> déclencheurs cron, testée par l'utilisateur sur son VRAI compte, PC ET
+> iPhone, 3 bugs réels trouvés et corrigés (réglage Windows, multi-appareils
+> sur un même compte, VAPID rejeté par Apple). Committé/déployé jusqu'à
+> `18ffe7c`.
 >
-> Avant ça (§2.44, CLOS) : dernier écart connu de T6c comblé, Realtime
-> activé sur `series` (migration #14).
->
-> Le 28/07/2026 : audit structurel T1→T8/D1-D6 CLOS (7 écarts trouvés,
-> tous corrigés) + 2 points backlog "confort/reporté" (révélation publique
-> des paris, contestation d'un pari refusé/résolu) — détail §2.38→§2.43,
+> Avant ça (28/07/2026, CLOS) : audit structurel T1→T8/D1-D6 (7 écarts
+> trouvés, tous corrigés — aucune des 6 décisions structurantes D1-D6
+> violée silencieusement), T8 rendu réellement opérationnel (3 actions
+> externes faites par l'utilisateur), 2 points backlog "confort" codés
+> (révélation publique des paris, contestation d'un pari refusé/résolu),
+> Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `18ffe7c` inclus.**
+> **Tout est committé et déployé jusqu'à `d1fde4f` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
-> (système de ligue, historique/stats, etc. — voir `BACKLOG_V1.md`), ou un
-> nettoyage mineur (3 abonnements Apple dupliqués sur `Demo_Amis`, sans
-> conséquence — voir §2.47).
+> (historique/stats, fun/esprit ligue entre potes, etc. — voir
+> `BACKLOG_V1.md`), ou un nettoyage mineur (3 abonnements Apple dupliqués
+> sur `Demo_Amis`, sans conséquence — voir §2.47).
 >
-> **Détail de l'audit du 28/07/2026** (voir aussi `JOURNAL_SESSIONS.md`) :
+> **Trouvailles distinctes des sessions précédentes, toujours vraies** : les
+> emails `@nba-pronos.test` des comptes de seed sont REJETÉS par le
+> validateur Supabase Auth (TLD `.test` non accepté) ; **3 compétitions
+> ARCHIVÉES** (« TEST NBA CUP », « TEST playoff 28/07/2026 », « TEST T4 sync
+> — Playoffs 2026 (réel) ») restent en base, gardées comme historique de
+> test à la demande explicite de l'utilisateur.
 >
-> 1. **Audit croisé spec ↔ code réel sur T1→T8 et D1-D6** (§2.38). Verdict
->    global : **aucune des 6 décisions structurantes D1-D6 n'a été violée
->    silencieusement.** Realtime sur `series` était alors le SEUL écart T6c —
->    désormais comblé, §2.44.
-> 2. **Les 7 écarts trouvés, TOUS CORRIGÉS ET DÉPLOYÉS** : `recognized` →
->    `sync_logs`, avertissement quota API bas, `recompute.test.ts` (11 tests,
->    37/37), 2 correctifs post-validation dans les specs T3/T5 (§2.39) ; T6a
->    — route `/reset-password`, testée avec un vrai envoi d'email reçu par
->    l'utilisateur (§2.40) ; T8 — spec + planificateur GitHub Actions +
->    script de nettoyage (§2.41).
-> 3. **T8 rendu réellement OPÉRATIONNEL** (§2.42) : les 3 actions externes
->    faites par l'utilisateur — `HIGHLIGHTLY_API_KEY` poussée sur Vercel ;
->    `SYNC_SECRET` ajouté comme secret GitHub Actions (1er essai raté, valeur
->    collée avec un retour à la ligne parasite puis tout le `.env.local` par
->    erreur — corrigé, reconfirmé vert) ; `cleanup-test-data.mjs --confirm`
->    exécuté pour de vrai — « Playoffs NBA (test) », « Test UI Matchs » et
->    les 7 comptes de seed supprimés, vérifié directement en base.
-> 4. **2 points du backlog codés et vérifiés en conditions réelles** (§2.43,
->    demandés par l'utilisateur) : révélation publique des paris des autres
->    joueurs (0.2.4 §9 — popup « Voir les paris des autres joueurs » sur Mes
->    pronos uniquement, Matchs délibérément exclu — motif détaillé §2.43) ;
->    contestation d'un pari REFUSÉ/déjà résolu (migration #13, l'admin
->    tranche directement dans `/admin/requests`, sans détour par
->    `/admin/resolution`).
->
-> **Trouvailles distinctes en cours de route** : les emails
-> `@nba-pronos.test` des comptes de seed sont REJETÉS par le validateur
-> Supabase Auth (TLD `.test` non accepté), sans impact sur rien de codé ;
-> **3 compétitions ARCHIVÉES jamais documentées avant** (« TEST NBA CUP »,
-> « TEST playoff 28/07/2026 », « TEST T4 sync — Playoffs 2026 (réel) »),
-> trouvées en vérifiant l'état post-nettoyage — décision explicite de
-> l'utilisateur : gardées comme historique de test, pas supprimées.
->
-> **État de la base** (28/07/2026) : « Playoffs NBA (test) » et « Test UI
-> Matchs » n'existent plus. `Demo_Amis`/`Rillettes-31` intacts. Les 3
-> compétitions archivées ci-dessus restent en base, délibérément.
+> **État de la base** (30/07/2026) : `Demo_Amis`/`Rillettes-31` intacts,
+> plus une ligue de test créée puis rejointe par l'utilisateur lui-même
+> (nom choisi par lui en testant, non nettoyée — légitime, pas un artefact
+> jetable). Aucune compétition ACTIVE en ce moment (voir §2.48).
 
 ---
 
@@ -4243,4 +4222,97 @@ contrairement à Chrome/FCM qui réutilise le même) — sans conséquence
 (l'envoi boucle sur tous, un joueur recevrait juste 3 notifs identiques
 au lieu d'une). À dédupliquer si observé gênant en usage réel.
 ```
+
+### 2.48 Système de ligue (session du 30/07/2026)
+
+```text
+2e point du backlog codé (BACKLOG_V1.md « Système de ligue »). Aucune spec
+d'écran n'existait — 3 choix structurants cadrés AVEC l'utilisateur avant
+de coder (mêmes AskUserQuestion que pour le Bracket personnel, 27/07/2026) :
+ligue PERMANENTE (indépendante des compétitions, contrairement aux
+brackets/pronos — le filtre s'applique au classement de la compétition
+ACTIVE courante, quelle qu'elle soit) ; appartenance à PLUSIEURS ligues
+simultanément ; création ouverte à N'IMPORTE QUEL joueur ACTIVE (pas
+réservée à l'admin), pour l'instant depuis Profil (un futur onglet "Autre"
+en bas de nav est évoqué par l'utilisateur, explicitement hors périmètre de
+ce lot). Adhésion par CODE généré ALÉATOIREMENT à la création (pas un mot
+de passe choisi par l'utilisateur) ; rang de la vue filtrée RECALCULÉ dans
+le groupe (1er/2e/3e parmi les seuls membres), PAS le rang général
+conservé. Bien distinct du code compétition (qui a le droit de JOUER),
+explicitement écarté d'y toucher — voir
+`nba_pronos_PREP_SPEC_TECHNIQUE_V1.md` §C4 (note déjà actée le 17/07/2026).
+
+Modèle (migration #16, `supabase/migrations/20260730090000_leagues.sql`) :
+3 tables neuves, rien d'existant modifié — `leagues` (nom, créateur, date),
+`league_secrets` (code, SORTI de `leagues` dès la conception — même
+correctif que `competition_secrets`, T3 §3, mais posé du premier coup ici
+plutôt qu'en rattrapage), `league_memberships` (many-to-many joueur/ligue).
+RLS : `leagues`/`league_secrets` visibles des SEULS membres (confidentialité
+de groupe, contrairement aux compétitions qui sont publiques) — un membre
+voit le code de SA ligue pour inviter d'autres amis, ce qu'il connaît déjà
+en pratique. Écriture via 2 fonctions SECURITY DEFINER
+(`create_league(nom)`/`join_league(code)`, même patron que
+`request_prediction_correction`, migration #7) — seule façon d'écrire un
+code de ligue sans jamais l'exposer par un INSERT ouvert côté joueur.
+Quitter une ligue reste un DELETE direct (RLS suffit, aucune logique
+particulière, contrairement à la création/l'adhésion).
+
+**Bug réel trouvé en testant en conditions RÉELLES, PAS en relisant le
+code** (script jetable `scripts/_verify-leagues-tmp.mjs`, JAMAIS committé,
+supprimé après usage — 2 comptes `verif-leagues-*@nba-pronos.test` créés
+puis supprimés via l'API Admin, JAMAIS le compte réel de l'utilisateur) :
+récursion infinie sur la policy `league_memberships_select` — sa propre
+sous-requête (`league_id in (select league_id from league_memberships
+where user_id = auth.uid())`) ré-applique la RLS sur `league_memberships`
+en l'évaluant, qui ré-applique la même policy, etc. (`infinite recursion
+detected in policy for relation "league_memberships"`). Cassait du même
+coup TOUTE lecture de `leagues`/`league_secrets`, qui l'interrogent via
+`EXISTS` — pas seulement les accès directs à `league_memberships`. Corrigé
+par migration #17
+(`..._fix_league_memberships_recursion.sql`) : fonction
+`my_league_ids()` (SECURITY DEFINER, même patron que
+`is_admin()`/`is_active()`, migration #3) qui contourne la RLS pour SA
+PROPRE lecture interne — casse la boucle en réutilisant le mécanisme déjà
+établi du projet plutôt qu'une solution ad hoc. Rejoué après coup : 10/10
+assertions passent (création, confidentialité du code pour un non-membre,
+adhésion, idempotence d'un 2e `join_league`, code invalide rejeté, départ).
+
+Requêtes/actions : `lib/queries/leagues.ts` (`getMyLeagues()`, résout
+nom/code/nombre de membres pour l'écran Profil) ; `lib/queries/leaderboard.ts`
+étendu (`getLeaderboard(sortKey, leagueId?)`) — un `leagueId` invalide ou
+dont l'appelant n'est pas membre retombe SILENCIEUSEMENT sur le classement
+Général (la RLS renvoie déjà un ensemble de membres vide dans ce cas,
+jamais une fuite), plutôt qu'une erreur ou une page vide surprenante ;
+`lib/actions/leagues.ts` (créer/rejoindre/quitter, 3 formulaires natifs
+SANS JS, même patron redirection+query-param que `lib/actions/profile.ts`
+— pas le double niveau de `lib/actions/corrections.ts`, ces 3 actions
+n'ayant pas besoin d'un `returnTo` configurable).
+
+UI : section "Mes ligues" dans Profil (liste avec code/nombre de membres,
+formulaire créer, formulaire rejoindre par code, bouton quitter par ligue) ;
+sélecteur de portée sur Classement
+(`components/leaderboard/LeagueScopeChips.tsx`, même patron `<Link>` sans
+état client que `SortChips.tsx` — paramètre d'URL `?ligue=`, combiné avec
+`?tri=` déjà existant).
+
+**Remontée utilisateur en testant, pas un bug** : le sélecteur de ligue
+héritait de l'invariant préexistant du Classement (« aucune compétition
+ACTIVE → état vide global », posé depuis le tout premier lot Classement,
+22/07/2026) — invisible alors que les ligues existaient déjà, aucune
+compétition n'étant active au moment du test. Tranché AVEC l'utilisateur
+(AskUserQuestion) : affiché quand même au-dessus de l'état vide (avec
+l'option "Général"), `SortChips` seul reste absent (rien à trier sans
+classement). `getLeaderboard` renvoie désormais `scopeLeagueId` même dans
+la branche "aucune compétition" pour que la puce corresponde visuellement.
+
+Vérifié en conditions réelles PAR L'UTILISATEUR lui-même, avec 2 vrais
+comptes (`Rillettes-31` + un second compte) : création d'une ligue, code
+affiché, adhésion depuis l'autre compte confirmée, sélecteur visible et
+fonctionnel sur Classement. `tsc`/`eslint`/`next build` propres à chaque
+étape, aucun conflit de route. Committé et poussé en 2 temps : migration +
+requêtes/actions/UI (`95edf7e`, les 2 migrations #16/#17 y sont toutes les
+deux — le correctif de récursion a été trouvé et poussé en base AVANT ce
+commit, donc les deux fichiers de migration existaient déjà au moment de
+committer le code) ; correctif d'affichage sans compétition active
+(`d1fde4f`).
 ```

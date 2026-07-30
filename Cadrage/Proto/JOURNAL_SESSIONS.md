@@ -3997,4 +3997,65 @@ chacun revérifié avant de passer au suivant :
 `tsc`/`eslint`/`next build` propres après chaque correctif, chaque
 déploiement Vercel revérifié sans régression. Résidu mineur non bloquant :
 3 abonnements Apple dupliqués sur `Demo_Amis` (Safari en recrée un à
+chaque tentative, sans conséquence fonctionnelle) — voir `GAPS_OUVERTS.md`.
+
+---
+
+## Système de ligue (30/07/2026)
+
+2ᵉ point du backlog codé (après les rappels ciblés). Aucune spec n'existait
+— 3 choix structurants cadrés AVEC l'utilisateur avant de coder (même
+patron que le Bracket personnel, 27/07/2026) : ligue PERMANENTE
+(indépendante des compétitions, contrairement aux brackets/pronos) ;
+appartenance à PLUSIEURS ligues simultanément ; création ouverte à
+n'importe quel joueur ACTIVE, depuis Profil (un futur onglet "Autre" est
+évoqué mais hors périmètre). Adhésion par CODE généré aléatoirement à la
+création (pas un mot de passe choisi) ; rang dans la vue filtrée
+RECALCULÉ dans le groupe, pas le rang général conservé. Bien distinct du
+code compétition (qui a le droit de JOUER), écarté d'y toucher — voir
+`nba_pronos_PREP_SPEC_TECHNIQUE_V1.md` §C4.
+
+Migration #16 (`leagues` / `league_secrets` / `league_memberships`) : le
+code de ligue est sorti de `leagues` dès la conception (même correctif que
+`competition_secrets`, T3 §3, mais posé du premier coup ici). RLS : visible
+des seuls membres. Écriture via 2 fonctions SECURITY DEFINER
+(`create_league`/`join_league`, même patron que
+`request_prediction_correction`) — seule façon d'écrire le code sans jamais
+l'exposer par un INSERT ouvert. Quitter une ligue reste un DELETE direct
+(RLS suffit).
+
+**Bug réel trouvé en testant en conditions réelles, PAS en relisant le
+code** (script jetable, 2 comptes créés/supprimés à la volée, jamais le
+compte réel de l'utilisateur) : récursion infinie sur la policy
+`league_memberships_select` — sa propre sous-requête sur `league_memberships`
+se re-déclenchait à l'infini, cassant du même coup toute lecture de
+`leagues`/`league_secrets` (elles l'interrogent via `EXISTS`). Corrigé par
+migration #17 : fonction `my_league_ids()` (SECURITY DEFINER, même patron
+que `is_admin()`/`is_active()`) qui contourne la RLS pour SA PROPRE lecture
+interne, cassant la boucle. Rejoué après coup : 10/10 assertions passent
+(création, confidentialité du code pour un non-membre, adhésion,
+idempotence, code invalide, départ).
+
+`lib/queries/leagues.ts` (`getMyLeagues`) + `lib/queries/leaderboard.ts`
+étendu (`getLeaderboard(sortKey, leagueId?)`, filtre + rang recalculé,
+retombe silencieusement sur Général si l'id est invalide ou non-membre).
+`lib/actions/leagues.ts` (créer/rejoindre/quitter, formulaires natifs sans
+JS, même patron que `lib/actions/profile.ts`). UI : section "Mes ligues"
+dans Profil ; sélecteur de portée sur Classement
+(`components/leaderboard/LeagueScopeChips.tsx`, même patron que
+`SortChips`).
+
+**Remontée utilisateur en testant** (pas un bug, un choix UX) : le
+sélecteur de ligue héritait de l'état vide global existant (aucune
+compétition active = rien affiché sur Classement) — invisible alors que
+les ligues existaient déjà. Tranché AVEC l'utilisateur (AskUserQuestion) :
+affiché quand même au-dessus de l'état vide (avec l'option "Général"),
+`SortChips` seul reste absent (rien à trier sans classement).
+
+`tsc`/`eslint`/`next build` propres à chaque étape. Committé et poussé en 3
+temps : migration + requêtes/actions/UI (`95edf7e`), correctif recherche/
+récursion déjà inclus dedans (poussé en base avant le commit de code),
+correctif affichage sans compétition active (`d1fde4f`). Confirmé
+fonctionnel par l'utilisateur en conditions réelles (création + adhésion
+depuis un autre compte, sélecteur visible).
 chaque tentative). Détail complet dans `ETAT_ACTUEL.md` §2.47.

@@ -26,12 +26,14 @@
 
 ## Système de ligue
 
-- Groupement d'amis avec mot de passe de ligue, façon MPP. C'est une VUE
-  FILTRÉE sur le classement existant (mêmes pronos, même scoring, même
-  classement global — juste un filtre d'affichage « montre-moi mon
-  groupe »), PAS un système de pronos ou de scoring séparé. Compatible avec
-  0.2.6 sans le rouvrir. Voir aussi `nba_pronos_PREP_SPEC_TECHNIQUE_V1.md`
-  bloc C4 (distinction avec le code compétition).
+- ~~Groupement d'amis avec mot de passe de ligue, façon MPP~~ **FAIT —
+  30/07/2026** (`ETAT_ACTUEL.md` §2.48) : ligue PERMANENTE (indépendante des
+  compétitions), adhésion par CODE généré aléatoirement (pas un mot de passe
+  choisi), appartenance à plusieurs ligues, rang recalculé dans le groupe.
+  VUE FILTRÉE sur le classement existant, comme prévu — aucun système de
+  pronos/scoring séparé. Compatible avec 0.2.6, non rouvert. Voir aussi
+  `nba_pronos_PREP_SPEC_TECHNIQUE_V1.md` bloc C4 (distinction avec le code
+  compétition).
 
 ## Fun / esprit ligue entre potes
 
