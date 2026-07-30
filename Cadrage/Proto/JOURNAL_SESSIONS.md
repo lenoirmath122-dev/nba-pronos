@@ -4288,3 +4288,55 @@ service_role), puis `bracket_deadline` recalculée avec les bonnes heures :
 passe désormais dans le passé, le bracket est verrouillé pour de vrai.
 
 `tsc`/`eslint`/`next build` propres après chaque correctif.
+
+---
+
+## Page "profil joueur" + pseudo cliquable partout (30/07/2026, fin de session)
+
+Suite de la discussion nav : direction actée précédemment (page dédiée
+`/players/[userId]`, nav à 4 onglets inchangée). Construite en 2 temps.
+
+**La page elle-même** (`app/players/[userId]/page.tsx`, `lib/queries/
+player-profile.ts`) : même patron que `/leaderboard`/`/bracket` (route
+physique hors des groupes, visiteur ou joueur connecté). Agrège 4 blocs déjà
+visibles ailleurs par la RLS existante — classement (rang + points),
+bracket complet (après `bracket_deadline_passed`), pronostics de matchs
+verrouillés (« valider = voir »), paris publics (`bet_is_public` : statut
+VALIDATED/WON/LOST ET deadline passée). Filtré dans la requête, pas
+seulement par la RLS, pour que la page reste identique quel que soit le
+visiteur — même le propriétaire du profil cliquant sur son propre pseudo ne
+doit pas voir plus que n'importe qui d'autre (ses propres brouillons par
+exemple). Périmètre V1 : compétition ACTIVE uniquement, pas d'historique
+multi-compétitions (noté dans GAPS_OUVERTS.md).
+
+**Câblage sur TOUTES les pages du site** (demandé explicitement par
+l'utilisateur, pas juste 2-3 écrans) : composant partagé `components/ui/
+PlayerLink.tsx`, posé sur chaque pseudo déjà affiché en lecture seule.
+Obstacle trouvé et traité au cas par cas :
+- **Classement** (`LeaderboardRow.tsx`) : toute la ligne était un seul
+  `<button>` (déplier/replier) — un `<Link>` imbriqué dans un `<button>`
+  est invalide en HTML. Restructuré en `<div role="button" tabIndex={0}>`
+  + gestion clavier manuelle (Entrée/Espace), pseudo en `<Link>` séparé
+  avec `stopPropagation` pour ne pas déclencher le dépli au clic.
+- **Bracket** (`SeriesPickGroup.players`) : type marqué "contrat figé"
+  (§15.2) ne portait que des pseudos (`string[]`), aucun id joueur. Étendu
+  de façon ADDITIVE (nouveau type `SeriesPickPlayer = {userId, pseudo}`,
+  rien retiré) plutôt que de casser le contrat.
+- **Mes pronos**, **écrans admin** (Gestion des joueurs, Résolution,
+  Validation) : l'id joueur était déjà disponible dans les types existants
+  — lien direct, aucune extension nécessaire.
+- **Matchs** (`OtherPrediction`), **Historique des logs** (acteur
+  seulement, pas la cible composite « type · pseudo », jugé pas assez de
+  valeur pour la restructuration que ça demanderait), **Requêtes**,
+  **Historique/superlatifs** (Profil) : id ajouté de façon additive à des
+  types qui n'en portaient pas.
+- Volontairement PAS câblé : `StickyMeBar` (bandeau "toi", lien vers son
+  propre profil sans intérêt) ; les listes d'absents (Matchs/Admin missing
+  restent, elles, câblées — seule la liste "absentees" de Matchs, simple
+  string[], laissée telle quelle, valeur jugée faible).
+
+Vérifié en conditions réelles PAR L'UTILISATEUR : clic sur un pseudo depuis
+plusieurs écrans, page `/players/[userId]` de `Rillettes-31` (bracket
+15/15 réellement rempli sur la compétition "Test", pronostic scoré)
+confirmée fonctionnelle. `tsc`/`eslint`/`next build` propres sur
+l'ensemble du projet (23 fichiers touchés). Committé et poussé (`57cd191`).

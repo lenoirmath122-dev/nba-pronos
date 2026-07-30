@@ -55,9 +55,13 @@
 > dans la VRAIE compétition "Test" de l'utilisateur corrigés rétroactivement.
 > Voir `ETAT_ACTUEL.md`/`JOURNAL_SESSIONS.md` pour le détail.
 >
-> **Direction actée, pas encore spécifiée** : page "profil joueur" dédiée
-> (`/players/[userId]`, nav à 4 onglets inchangée) reliée depuis chaque
-> pseudo déjà affiché — spec à écrire quand l'utilisateur reprend le sujet.
+> **Page "profil joueur" construite et validée le 30/07/2026 (fin de
+> session)** : `/players/[userId]`, nav à 4 onglets inchangée, câblée sur
+> TOUTES les pages du site (Classement, Bracket, Mes pronos, Matchs, 6
+> écrans admin, Historique/superlatifs) via un composant partagé
+> `PlayerLink`. Confirmé fonctionnel par l'utilisateur (bracket 15/15 réel
+> de `Rillettes-31` consultable). **Tout est committé/déployé jusqu'à
+> `57cd191`.**
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 

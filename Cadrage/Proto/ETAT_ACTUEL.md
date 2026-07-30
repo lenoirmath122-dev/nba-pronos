@@ -5,9 +5,22 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **2 bugs réels trouvés et
-> corrigés** en creusant une discussion nav ouverte par l'utilisateur (voir
-> `JOURNAL_SESSIONS.md` pour le détail complet) :
+> Dernière mise à jour : session du 30/07/2026 — **page "profil joueur"
+> construite** (`/players/[userId]`, suite de la discussion nav) : agrège
+> classement/bracket/pronostics/paris déjà visibles ailleurs par la RLS
+> existante, rien de nouveau exposé. Nav INCHANGÉE (toujours 4 onglets) —
+> se rejoint en cliquant un pseudo. **Câblé sur TOUTES les pages du site**
+> (demandé explicitement) via un composant partagé `PlayerLink` : Classement
+> (restructuré bouton→div, un lien imbriqué dans un bouton étant invalide),
+> Bracket (contrat `SeriesPickGroup.players` étendu de façon additive),
+> Mes pronos, Matchs, 6 écrans admin, Historique/superlatifs — 23 fichiers,
+> chaque type étendu additivement (jamais de champ retiré). Confirmé
+> fonctionnel par l'utilisateur (bracket 15/15 réel de `Rillettes-31`
+> consultable). Committé/déployé (`57cd191`).
+>
+> Plus tôt la même session — **2 bugs réels trouvés et corrigés** en
+> creusant cette même discussion nav (voir `JOURNAL_SESSIONS.md` pour le
+> détail complet) :
 > 1. `competitions.bracket_deadline` restait `NULL` à vie — jamais posée
 >    nulle part dans le code réel (ni `createMatch`, ni T4), alors que le
 >    drill-down nominatif du Bracket, le rappel push bracket, le bloc
@@ -27,11 +40,6 @@
 > (créée pour explorer ces sujets) ont été corrigés rétroactivement (-2h),
 > `bracket_deadline` recalculée derrière — passe désormais dans le passé,
 > le bracket est verrouillé pour de vrai.
->
-> Discussion nav (non tranchée, direction actée seulement) : garder les 4
-> onglets tels quels, ajouter une page "profil joueur" dédiée
-> (`/players/[userId]`) reliée depuis chaque pseudo affiché — spec pas
-> encore écrite, l'utilisateur a bifurqué sur les 2 bugs ci-dessus avant.
 >
 > Avant ça, même session — **test au CLIC en
 > conditions réelles FAIT** pour les 2 derniers lots (`/admin/missing` §2.49
@@ -104,7 +112,7 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `7bdffc7` inclus.**
+> **Tout est committé et déployé jusqu'à `57cd191` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
 > (export .ics, courbe d'évolution du classement — le socle existe déjà,
