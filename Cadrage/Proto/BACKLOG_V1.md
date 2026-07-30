@@ -15,6 +15,19 @@
 
 ---
 
+> **Reclassement du 30/07/2026** (décidé avec l'utilisateur, fin de
+> session) : 3 chantiers retenus comme prioritaires parmi ce qui reste,
+> dans cet ORDRE — 1. **refonte visuelle du Bracket** (distinction
+> Est/Ouest, plus lisible — sert aussi de base au point Partage) ;
+> 2. **Tutoriel joueur** ; 3. **"Fun / esprit ligue" REDÉFINI** : plus les
+> superlatifs de clôture (déjà faits), mais des BADGES PERMANENTS visibles
+> en continu PENDANT la compétition (profil joueur et/ou classement,
+> emplacement pas encore tranché) — à spécifier le moment venu. Le reste de
+> ce document (export .ics, courbe d'évolution, classement all-time,
+> Hall of shame, etc.) est reporté après ces 3.
+
+---
+
 ## Tutoriel & notifications
 
 - Tutoriel d'utilisation de l'appli pour le JOUEUR (comprendre que l'app se
@@ -47,6 +60,11 @@
   qui sert aussi de socle pour "courbe d'évolution" ci-dessous (non
   construite). Affiché dans une nouvelle section "Historique" (Profil, pour
   l'instant — voir note ci-dessous).
+- **Badges permanents** (redéfini le 30/07/2026, 3e des chantiers
+  prioritaires) : des titres/badges visibles en CONTINU pendant la
+  compétition (pas seulement révélés à la clôture comme les superlatifs
+  ci-dessus) — emplacement (profil joueur ? classement ?) et liste des
+  badges pas encore tranchés, à spécifier le moment venu.
 - Face-à-face entre deux joueurs précis, match par match / série par série
   — EN OPTION, pas prioritaire, utilité encore incertaine pour
   l'utilisateur.
