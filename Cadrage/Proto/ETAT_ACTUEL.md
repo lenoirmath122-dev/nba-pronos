@@ -5,7 +5,35 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **test au CLIC en
+> Dernière mise à jour : session du 30/07/2026 — **2 bugs réels trouvés et
+> corrigés** en creusant une discussion nav ouverte par l'utilisateur (voir
+> `JOURNAL_SESSIONS.md` pour le détail complet) :
+> 1. `competitions.bracket_deadline` restait `NULL` à vie — jamais posée
+>    nulle part dans le code réel (ni `createMatch`, ni T4), alors que le
+>    drill-down nominatif du Bracket, le rappel push bracket, le bloc
+>    bracket de `/admin/missing` et l'item Accueil en dépendent tous.
+>    Corrigé : recalculée en entier à chaque création de match
+>    (`recomputeBracketDeadline`, `lib/actions/admin-results.ts`) — défini
+>    AVEC l'utilisateur comme "le début du premier match de la compétition,
+>    tous tours confondus". Committé (`e9a4829`).
+> 2. `<input type="datetime-local">` (écran Résultats) interprétait l'heure
+>    saisie par l'admin (Paris) selon le fuseau du SERVEUR (Vercel, UTC) —
+>    décalage de 1h/2h selon la saison, jamais remarqué avant faute d'un
+>    admin qui recoupe l'heure affichée avec l'heure murale réelle. Corrigé
+>    sans librairie (`parisLocalToUtcIso`, `Intl.DateTimeFormat`, décalage
+>    déduit dynamiquement — jamais +1/+2 en dur). Committé (`8bf74d8`).
+>
+> Les 2 matchs déjà saisis dans la VRAIE compétition "Test" de l'utilisateur
+> (créée pour explorer ces sujets) ont été corrigés rétroactivement (-2h),
+> `bracket_deadline` recalculée derrière — passe désormais dans le passé,
+> le bracket est verrouillé pour de vrai.
+>
+> Discussion nav (non tranchée, direction actée seulement) : garder les 4
+> onglets tels quels, ajouter une page "profil joueur" dédiée
+> (`/players/[userId]`) reliée depuis chaque pseudo affiché — spec pas
+> encore écrite, l'utilisateur a bifurqué sur les 2 bugs ci-dessus avant.
+>
+> Avant ça, même session — **test au CLIC en
 > conditions réelles FAIT** pour les 2 derniers lots (`/admin/missing` §2.49
 > et superlatifs/Historique §2.50, jusque-là vérifiés par script jetable
 > seulement) : l'utilisateur a créé lui-même une vraie compétition ACTIVE

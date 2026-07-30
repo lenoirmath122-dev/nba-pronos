@@ -4219,3 +4219,72 @@ archivée (même choix que les 3 autres compétitions TEST), 4 comptes
 TestJoueur1-4 gardés également (au cas où un test similaire soit rejoué).
 Aucun nettoyage nécessaire — rien de committé côté code, uniquement des
 données en base.
+
+---
+
+## Discussion navigation + 2 bugs réels trouvés en creusant (30/07/2026, suite)
+
+Discussion ouverte par l'utilisateur (explicitement PAS une consigne) sur
+une possible réorganisation de la nav : séparer un hub Jouer "pur jeu" d'un
+onglet Classement transformé en visibilité générale (paris/pronos/bracket
+de tout le monde). Recommandation donnée : version légère plutôt que la
+fusion — nav INCHANGÉE (toujours 4 onglets), juste une page "profil joueur"
+dédiée (`/players/[userId]`, choisie par l'utilisateur parmi 3 options
+proposées — popup / page dédiée / accordéon en place) reliée depuis chaque
+pseudo déjà affiché en lecture seule. Confirmé au passage : "Mes pronos"
+gère DÉJÀ l'état MISSING (match verrouillé jamais pronostiqué) sans rien
+coder — juste à mieux le mettre en avant. Direction actée, spec pas encore
+écrite (l'utilisateur a bifurqué sur un point bloquant avant, ci-dessous).
+
+**Bug réel #1 — `bracket_deadline` jamais posée.** L'utilisateur voulait
+tester la comparaison de brackets entre joueurs ("aujourd'hui on n'a rien
+pour comparer") — le mécanisme existe pourtant déjà dans
+`lib/queries/bracket.ts` (drill-down nominatif par série, groupé par pick).
+Trouvé en creusant : `competitions.bracket_deadline` est posée à `NULL` à
+la création (`createCompetition`) et n'est JAMAIS mise à jour nulle part
+dans le code réel (ni `createMatch`, ni la synchro T4, jamais exercée en
+réel) — alors que TOUT en dépend : le drill-down du Bracket
+(`isDeadlinePassed` toujours faux), le rappel push bracket, le bloc bracket
+de `/admin/missing`, l'item Accueil. La spec elle-même dit "inconnu tant
+qu'aucun match n'est saisi", sous-entendant un calcul automatique jamais
+câblé.
+
+Définition retenue AVEC l'utilisateur (plus simple que ma proposition
+initiale "1er tour uniquement", et strictement équivalente en pratique —
+un tour ultérieur ne peut pas être créé avant que le tour précédent y ait
+avancé les 2 équipes, garde déjà existante dans `createMatch`) : le début
+du premier match de la compétition, tous tours confondus. Recalculé en
+ENTIER à chaque création de match (`recomputeBracketDeadline`,
+`lib/actions/admin-results.ts`), jamais "si plus tôt que l'actuel" — un
+admin peut saisir les matchs dans le désordre chronologique. Vérifié en
+isolation (script jetable, ordre de saisie inversé) : le minimum reste
+toujours exact. Committé et poussé (`e9a4829`).
+
+**Bug réel #2 — décalage horaire à la création d'un match, trouvé en
+voulant backfiller la compétition réelle "Test" de l'utilisateur.**
+`<input type="datetime-local">` (écran Résultats, "Ajouter un match")
+renvoie une heure SANS fuseau — l'admin la saisit en heure de Paris, mais
+`new Date(str).toISOString()` l'interprétait selon le fuseau du SERVEUR
+(Vercel, UTC), pas celui de l'admin : chaque match saisi se retrouvait
+décalé de 1h (hiver) ou 2h (été) par rapport à l'heure réellement voulue.
+Même défaut à l'affichage (`toLocaleString` sans `timeZone` explicite).
+Repéré concrètement : l'utilisateur avait saisi 13h13 (heure de Paris,
+été) pensant le match déjà passé, mais `bracket_deadline` backfillée à la
+main affichait encore ce match dans le FUTUR — l'utilisateur a lui-même
+fait le lien avec le fuseau horaire.
+
+Corrigé sans librairie externe (même convention que
+`lib/queries/matches.ts`) : `parisLocalToUtcIso()` déduit le décalage
+Paris/UTC RÉEL à la date saisie via `Intl.DateTimeFormat`, jamais +1/+2
+codé en dur (reste correct été comme hiver, y compris à la transition
+DST). Affichage corrigé symétriquement (`timeZone: "Europe/Paris"`
+explicite). Vérifié en isolation : été (+2h), hiver (+1h), minuit
+(changement de jour) — les 3 cas passent. Committé et poussé (`8bf74d8`).
+
+**Correction rétroactive des données réelles** : la compétition "Test" de
+l'utilisateur (bien réelle, pas un script jetable) avait 2 matchs déjà
+saisis avec l'ancien bug — décalés de -2h chacun (script ponctuel,
+service_role), puis `bracket_deadline` recalculée avec les bonnes heures :
+passe désormais dans le passé, le bracket est verrouillé pour de vrai.
+
+`tsc`/`eslint`/`next build` propres après chaque correctif.

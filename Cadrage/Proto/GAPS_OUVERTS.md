@@ -46,6 +46,18 @@
 > compétition close le jour même). 4 comptes de test jetables
 > (TestJoueur1-4) gardés à la demande de l'utilisateur pour un futur test
 > similaire.
+>
+> **2 bugs réels trouvés et corrigés le 30/07/2026 (même session, en
+> discutant nav)** : `bracket_deadline` jamais posée nulle part dans le code
+> réel (corrigé, recalculée à chaque création de match) ; décalage horaire
+> Paris/UTC à la création d'un match via `<input type="datetime-local">`
+> (corrigé, conversion explicite sans librairie). Les 2 matchs déjà saisis
+> dans la VRAIE compétition "Test" de l'utilisateur corrigés rétroactivement.
+> Voir `ETAT_ACTUEL.md`/`JOURNAL_SESSIONS.md` pour le détail.
+>
+> **Direction actée, pas encore spécifiée** : page "profil joueur" dédiée
+> (`/players/[userId]`, nav à 4 onglets inchangée) reliée depuis chaque
+> pseudo déjà affiché — spec à écrire quand l'utilisateur reprend le sujet.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
