@@ -10,6 +10,7 @@ import { TeamPicker } from "@/components/profile/TeamPicker";
 import { NotificationSettings } from "@/components/profile/NotificationSettings";
 import { ProfileTabs, type ProfileTab } from "@/components/profile/ProfileTabs";
 import { PlayerLink } from "@/components/ui/PlayerLink";
+import { TutorialLink } from "@/components/tutorial/TutorialLink";
 import styles from "./page.module.css";
 
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
@@ -110,6 +111,11 @@ export default async function ProfilePage({
           <section className={styles.section}>
             <h2 className={styles.sectionTitle}>Rappels</h2>
             <NotificationSettings initialPreference={profile.notificationPreference} />
+          </section>
+
+          <section className={styles.section}>
+            <h2 className={styles.sectionTitle}>Aide</h2>
+            <TutorialLink />
           </section>
         </>
       )}

@@ -1,21 +1,33 @@
 import { getHomeData } from "@/lib/queries/home";
+import { getProfileData } from "@/lib/queries/profile";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { TodoList } from "@/components/home/TodoList";
 import { SeriesBetList } from "@/components/home/SeriesBetList";
 import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
+import { TutorialBanner } from "@/components/tutorial/TutorialBanner";
 import styles from "./page.module.css";
 
 // Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « À traiter »
 // (+ bloc admin) + « Paris séries non remplis » + « Ça vient de tomber ».
 // Aucun fetch client, aucune logique métier ici — tout est déjà calculé par
 // lib/queries/home.ts.
+//
+// Bannière du tutoriel joueur (SPEC_TUTORIEL_JOUEUR_V0_1 §1) : affichée
+// indépendamment de la compétition active (un joueur peut s'inscrire alors
+// qu'aucune compétition n'est en cours) — c'est pour ça qu'elle est montée
+// AVANT le early-return "aucune compétition", pas seulement dans la branche
+// pleine ci-dessous.
 export default async function HomePage() {
-  const { competitionId, header, todo, adminTodo, seriesBets, feed } = await getHomeData();
+  const [{ competitionId, header, todo, adminTodo, seriesBets, feed }, profile] =
+    await Promise.all([getHomeData(), getProfileData()]);
+
+  const showTutorialBanner = profile !== null && profile.tutorialSeenAt === null;
 
   if (competitionId === null || header === null) {
     return (
       <div className={styles.page}>
+        {showTutorialBanner && <TutorialBanner />}
         <div className={`${styles.header} hero-banner`}>
           <p className={`${styles.title} hero-banner-title`}>Accueil</p>
         </div>
@@ -26,6 +38,7 @@ export default async function HomePage() {
 
   return (
     <div className={styles.page}>
+      {showTutorialBanner && <TutorialBanner />}
       <HomeHeader header={header} />
 
       <section className={styles.section} aria-label="À traiter">
