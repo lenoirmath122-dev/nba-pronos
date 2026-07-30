@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getProfileData, getTeamOptions } from "@/lib/queries/profile";
 import { getMyLeagues } from "@/lib/queries/leagues";
+import { getCompetitionHistory } from "@/lib/queries/history";
 import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { logout } from "@/lib/auth/actions";
@@ -12,6 +13,12 @@ import styles from "./page.module.css";
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
 // Remplace le stub "à venir" (22/07/2026) et le bouton de déconnexion
 // temporaire (app/(app)/layout.tsx, §5 de la spec).
+
+function formatArchivedDate(iso: string): string {
+  return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric" }).format(
+    new Date(iso)
+  );
+}
 
 type SearchParams = {
   profileError?: string;
@@ -32,6 +39,7 @@ export default async function ProfilePage({
 
   const teams = await getTeamOptions();
   const leagues = await getMyLeagues();
+  const history = await getCompetitionHistory();
 
   return (
     <div className={styles.page}>
@@ -155,6 +163,36 @@ export default async function ProfilePage({
             </button>
           </form>
         </div>
+      </section>
+
+      <section className={styles.section}>
+        <h2 className={styles.sectionTitle}>Historique</h2>
+
+        {history.length === 0 ? (
+          <p className={styles.fieldLabel}>Aucune compétition archivée pour l&apos;instant.</p>
+        ) : (
+          <div className={styles.historyList}>
+            {history.map((entry) => (
+              <div key={entry.competitionId} className={styles.historyRow}>
+                <div className={styles.historyHeader}>
+                  <span className={styles.leagueName}>{entry.name}</span>
+                  {entry.archivedAt && (
+                    <span className={styles.leagueMeta}>{formatArchivedDate(entry.archivedAt)}</span>
+                  )}
+                </div>
+                {entry.superlatives.length > 0 && (
+                  <ul className={styles.superlativeList}>
+                    {entry.superlatives.map((s, i) => (
+                      <li key={`${s.kind}-${i}`} className={styles.superlativeItem}>
+                        <span className={styles.superlativeLabel}>{s.label}</span> — {s.pseudo} ({s.value})
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {profile.isAdmin && (

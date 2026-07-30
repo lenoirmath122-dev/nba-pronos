@@ -1,0 +1,22 @@
+name: Snapshot quotidien du classement
+
+# Appelle /api/snapshots/leaderboard (backlog "Fun / esprit ligue entre
+# potes" — socle pour "plus grosse remontée" + le futur "courbe
+# d'évolution"). Une fois par jour, à 12h UTC (choix arbitraire, milieu de
+# journée US/Europe) — fréquence confirmée avec l'utilisateur, upsert par
+# jour (leaderboard_snapshots) empêche tout doublon si relancé manuellement.
+on:
+  schedule:
+    - cron: "0 12 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/snapshots/leaderboard
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/snapshots/leaderboard"

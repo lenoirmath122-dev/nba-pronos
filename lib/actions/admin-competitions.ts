@@ -7,6 +7,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { logAdminAction } from "@/lib/actions/audit";
 import { assignRanks } from "@/lib/scoring/ranking";
+import { computeSuperlatives } from "@/lib/scoring/superlatives";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -241,11 +242,24 @@ export async function closeCompetition(competitionId: string): Promise<ActionRes
 
     const { error: archiveErr } = await supabase.from("competition_archives").insert(archiveRows);
     if (archiveErr) return { success: false, error: archiveErr.message };
+
+    // Superlatifs (BACKLOG_V1.md « Fun / esprit ligue entre potes »), figés
+    // dans la MÊME clôture que l'archive — jamais recalculés après coup.
+    const superlativeRows = await computeSuperlatives(supabase, competitionId, scoreRows, ranks, pseudoById);
+    if (superlativeRows.length > 0) {
+      const { error: superlativesErr } = await supabase
+        .from("competition_superlatives")
+        .insert(superlativeRows);
+      if (superlativesErr) return { success: false, error: superlativesErr.message };
+    }
   }
 
   const { data: closed, error: closeErr } = await supabase
     .from("competitions")
-    .update({ status: "ARCHIVED" })
+    // archived_at : colonne posée dès le schéma initial (T1) mais jamais
+    // écrite jusqu'ici (trouvé en construisant l'écran Historique, qui en a
+    // besoin pour trier/dater les compétitions closes) — corrigé au passage.
+    .update({ status: "ARCHIVED", archived_at: new Date().toISOString() })
     .eq("id", competitionId)
     .eq("status", "ACTIVE")
     .select("id")
