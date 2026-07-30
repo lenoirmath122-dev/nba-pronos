@@ -76,8 +76,23 @@ body {
   filter: saturate(0.85) brightness(0.82);
 }
 
+.hero-banner {
+  /* Triplet RGB du voile, paramétrable (30/07/2026, couleurs d'équipe sur
+     Profil) — valeur par défaut IDENTIQUE à l'ancien voile fixe (11,14,20),
+     rendu inchangé pour tous les écrans qui ne redéfinissent pas cette
+     variable. Le texte du bandeau reste sur --color-hero-text (fixe,
+     !important) : jamais posé sur la couleur brute, toujours sur ce voile
+     assez sombre en bas pour rester lisible quelle que soit la teinte. */
+  --hero-overlay-rgb: 11, 14, 20;
+}
+
 .hero-banner::after {
-  background: linear-gradient(180deg, rgba(11, 14, 20, 0.12), rgba(11, 14, 20, 0.52), rgba(11, 14, 20, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(var(--hero-overlay-rgb), 0.12),
+    rgba(var(--hero-overlay-rgb), 0.52),
+    rgba(var(--hero-overlay-rgb), 0.92)
+  );
 }
 
 .hero-banner > * {

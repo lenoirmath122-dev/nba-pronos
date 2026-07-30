@@ -11,7 +11,7 @@ import { TeamPicker } from "@/components/profile/TeamPicker";
 import { NotificationSettings } from "@/components/profile/NotificationSettings";
 import { ProfileTabs, type ProfileTab } from "@/components/profile/ProfileTabs";
 import { PlayerLink } from "@/components/ui/PlayerLink";
-import { TEAM_COLORS } from "@/lib/labels/teamColors";
+import { TEAM_COLORS, hexToRgbTriplet } from "@/lib/labels/teamColors";
 import styles from "./page.module.css";
 
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
@@ -57,21 +57,28 @@ export default async function ProfilePage({
   const leagues = activeTab === "ligues" ? await getMyLeagues() : [];
   const history = activeTab === "historique" ? await getCompetitionHistory() : [];
 
-  // Couleurs d'équipe (BACKLOG_V1.md « Personnalisation du profil ») :
-  // recalcule UNIQUEMENT --color-accent-soft/--color-accent-line (jamais
-  // --color-accent lui-même, qui pilote les boutons pleins) à partir de la
-  // couleur d'équipe, avec la MÊME formule color-mix que app/tokens.css —
-  // scoping limité à ce conteneur, sans effet sur le reste du site. Inerte
-  // si aucune équipe favorite n'est choisie ou si le joueur a désactivé
-  // l'option.
+  // Couleurs d'équipe (BACKLOG_V1.md « Personnalisation du profil ») —
+  // renforcé le 30/07/2026 à la demande de l'utilisateur (1re version jugée
+  // trop discrète) : teinte maintenant aussi les FONDS (surface-base/
+  // raised/inset) et le voile du bandeau d'en-tête, scopé à ce seul
+  // conteneur. --color-accent lui-même (boutons pleins) reste INTOUCHÉ —
+  // seul un fond peut porter une teinte arbitraire sans risque de
+  // contraste ; du texte posé directement sur une couleur d'équipe brute
+  // (ex. jaune Lakers/Warriors) pourrait, lui, devenir illisible selon
+  // l'équipe. Inerte si aucune équipe favorite n'est choisie ou si le
+  // joueur a désactivé l'option (bouton "Revenir au thème de base").
   const teamColor =
     profile.favoriteTeamAbbreviation && profile.useTeamColors
       ? TEAM_COLORS[profile.favoriteTeamAbbreviation]
       : undefined;
   const teamColorStyle: CSSProperties | undefined = teamColor
     ? ({
-        "--color-accent-soft": `color-mix(in srgb, ${teamColor} 16%, transparent)`,
-        "--color-accent-line": `color-mix(in srgb, ${teamColor} 55%, transparent)`,
+        "--color-accent-soft": `color-mix(in srgb, ${teamColor} 24%, transparent)`,
+        "--color-accent-line": `color-mix(in srgb, ${teamColor} 65%, transparent)`,
+        "--color-surface-base": `color-mix(in srgb, ${teamColor} 16%, var(--color-surface-base))`,
+        "--color-surface-raised": `color-mix(in srgb, ${teamColor} 14%, var(--color-surface-raised))`,
+        "--color-surface-inset": `color-mix(in srgb, ${teamColor} 20%, var(--color-surface-inset))`,
+        "--hero-overlay-rgb": hexToRgbTriplet(teamColor),
       } as CSSProperties)
     : undefined;
 

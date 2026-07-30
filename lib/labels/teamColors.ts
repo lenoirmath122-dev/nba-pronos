@@ -35,3 +35,13 @@ export const TEAM_COLORS: Record<string, string> = {
   UTA: "#002B5C",
   WAS: "#002B5C",
 };
+
+/** "#RRGGBB" -> "R, G, B" (nécessaire pour rgba(var(--x), alpha) en CSS —
+ *  un custom property ne peut porter qu'UNE valeur, pas un hex complet dans
+ *  un rgba()). Utilisé pour le voile du bandeau (--hero-overlay-rgb). */
+export function hexToRgbTriplet(hex: string): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `${r}, ${g}, ${b}`;
+}
