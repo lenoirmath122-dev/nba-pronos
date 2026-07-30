@@ -80,6 +80,14 @@ export default async function AdminDashboardPage() {
             </span>
           </Link>
         </li>
+        <li>
+          <Link href="/admin/missing" className={styles.linkEntryActive}>
+            Qui manque à l&apos;appel
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
       </ul>
 
       <RecalculateButton disabled={!data.competitionId} />
