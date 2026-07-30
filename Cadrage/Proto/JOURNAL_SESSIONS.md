@@ -4340,3 +4340,37 @@ plusieurs écrans, page `/players/[userId]` de `Rillettes-31` (bracket
 15/15 réellement rempli sur la compétition "Test", pronostic scoré)
 confirmée fonctionnelle. `tsc`/`eslint`/`next build` propres sur
 l'ensemble du projet (23 fichiers touchés). Committé et poussé (`57cd191`).
+
+---
+
+## Réorganisation de Profil en sous-onglets (30/07/2026, fin de session)
+
+Demandé par l'utilisateur juste après : l'écran Profil avait grossi toute
+cette session (Thème, Préférences, Rappels, Mes ligues, Historique,
+Administration, Déconnexion) — plus assez lisible en une seule page.
+Découpage cadré en une question : 3 sous-onglets (Compte/Ligues/
+Historique) proposés, l'utilisateur a demandé un 4e en plus, **Admin**,
+visible seulement pour un admin.
+
+`components/profile/ProfileTabs.tsx` : même patron que `SortChips`/
+`LeagueScopeChips` (Classement) — paramètre d'URL `?tab=`, `<Link>` côté
+serveur, aucun état client, aucune nouvelle dépendance. Repli silencieux
+sur "Compte" si `?tab=admin` est demandé par un non-admin (lien copié,
+statut changé entre-temps) — jamais une page d'erreur, même patron que le
+repli sur le classement Général pour un id de ligue invalide (§2.48).
+**Déconnexion reste volontairement EN DEHORS des onglets**, toujours
+rendue quel que soit l'onglet actif — jamais à chercher.
+
+Chaque requête de données (`getTeamOptions`/`getMyLeagues`/
+`getCompetitionHistory`) n'est désormais lancée QUE si son onglet est
+actif — gain marginal mais gratuit, cohérent avec le reste du projet
+(aucune requête inutile).
+
+Redirections des 3 actions de ligues (`lib/actions/leagues.ts`) mises à
+jour pour inclure `?tab=ligues` — sans ça, après créer/rejoindre/quitter,
+l'utilisateur aurait atterri sur l'onglet "Compte" par défaut sans voir la
+confirmation/erreur qui vient d'être posée sur l'onglet Ligues.
+
+Vérifié en conditions réelles PAR L'UTILISATEUR : les 4 onglets confirmés
+fonctionnels. `tsc`/`eslint`/`next build` propres. Committé et poussé
+(`74de402`).

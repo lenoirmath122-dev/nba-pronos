@@ -5,7 +5,17 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **page "profil joueur"
+> Dernière mise à jour : session du 30/07/2026 — **écran Profil réorganisé
+> en 4 sous-onglets** (Compte/Ligues/Historique/Admin, ce dernier visible
+> seulement pour un admin) : l'écran avait grossi toute la session (Thème,
+> Préférences, Rappels, Mes ligues, Historique, Administration,
+> Déconnexion), demandé par l'utilisateur juste après le lot "profil
+> joueur" ci-dessous. Même patron `?tab=` que `SortChips`/`LeagueScopeChips`
+> (Classement), aucun état client. Déconnexion reste EN DEHORS des onglets,
+> toujours visible. Confirmé fonctionnel par l'utilisateur. Committé/
+> déployé (`74de402`).
+>
+> Plus tôt la même session — **page "profil joueur"
 > construite** (`/players/[userId]`, suite de la discussion nav) : agrège
 > classement/bracket/pronostics/paris déjà visibles ailleurs par la RLS
 > existante, rien de nouveau exposé. Nav INCHANGÉE (toujours 4 onglets) —
@@ -112,7 +122,7 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `57cd191` inclus.**
+> **Tout est committé et déployé jusqu'à `74de402` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
 > (export .ics, courbe d'évolution du classement — le socle existe déjà,

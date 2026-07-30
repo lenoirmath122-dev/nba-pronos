@@ -60,8 +60,14 @@
 > TOUTES les pages du site (Classement, Bracket, Mes pronos, Matchs, 6
 > écrans admin, Historique/superlatifs) via un composant partagé
 > `PlayerLink`. Confirmé fonctionnel par l'utilisateur (bracket 15/15 réel
-> de `Rillettes-31` consultable). **Tout est committé/déployé jusqu'à
-> `57cd191`.**
+> de `Rillettes-31` consultable).
+>
+> **Écran Profil réorganisé en 4 sous-onglets** (Compte/Ligues/Historique/
+> Admin, ce dernier visible seulement pour un admin) — demandé par
+> l'utilisateur juste après, l'écran ayant grossi toute la session. Même
+> patron `?tab=` que le reste du projet, Déconnexion toujours visible hors
+> des onglets. Confirmé fonctionnel par l'utilisateur. **Tout est
+> committé/déployé jusqu'à `74de402`.**
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
