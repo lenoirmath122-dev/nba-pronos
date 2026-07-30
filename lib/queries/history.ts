@@ -18,6 +18,7 @@ const SUPERLATIVE_LABELS: Record<string, string> = {
 export type SuperlativeEntry = {
   kind: string;
   label: string;
+  userId: string; // ajouté le 30/07/2026, lien /players/[userId]
   pseudo: string;
   value: number;
 };
@@ -41,6 +42,7 @@ type CompetitionRow = {
 type SuperlativeRow = {
   competition_id: string;
   kind: string;
+  user_id: string;
   pseudo_snapshot: string;
   value: number;
 };
@@ -66,7 +68,7 @@ export async function getCompetitionHistory(): Promise<CompetitionHistoryEntry[]
   const competitionIds = sorted.map((c) => c.id);
   const { data: superlativesData } = await supabase
     .from("competition_superlatives")
-    .select("competition_id, kind, pseudo_snapshot, value")
+    .select("competition_id, kind, user_id, pseudo_snapshot, value")
     .in("competition_id", competitionIds);
 
   const superlativesByCompetition = new Map<string, SuperlativeEntry[]>();
@@ -75,6 +77,7 @@ export async function getCompetitionHistory(): Promise<CompetitionHistoryEntry[]
     list.push({
       kind: row.kind,
       label: SUPERLATIVE_LABELS[row.kind] ?? row.kind,
+      userId: row.user_id,
       pseudo: row.pseudo_snapshot,
       value: row.value,
     });

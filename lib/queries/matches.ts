@@ -18,6 +18,7 @@ export type PredictionViewStatus = "TODO" | "INCOMPLETE" | "READY" | "VALIDATED"
  *  Mes pronos (§7.1) — harmonise le badge générique d'origine sur le rendu
  *  nominatif « Saisi par X à la demande de Y ». */
 export type OtherPrediction = {
+  userId: string; // ajouté le 30/07/2026 — lien vers /players/[userId] (PlayerLink)
   pseudo: string;
   teamAbbreviation: string;
   margin: number;
@@ -343,6 +344,7 @@ async function getRevealedContent(
       const profile = profileById.get(row.user_id);
       const team = row.predicted_winner_team_id ? teams.get(row.predicted_winner_team_id) : undefined;
       return {
+        userId: row.user_id,
         pseudo: profile?.pseudo ?? "",
         teamAbbreviation: team?.abbreviation ?? "?",
         margin: row.predicted_margin ?? 0,

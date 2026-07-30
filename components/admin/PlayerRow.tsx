@@ -1,5 +1,6 @@
 import type { PlayerRow as PlayerRowData } from "@/lib/queries/admin-players";
 import { setPlayerRoleFormAction, setPlayerStatusFormAction } from "@/lib/actions/admin-players";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./PlayerRow.module.css";
 
 // Une ligne de Gestion des joueurs (SPEC_ECRAN_ADMIN_PLAYERS_V0_1 §2) :
@@ -24,7 +25,7 @@ export function PlayerRow({ player, error }: PlayerRowProps) {
   return (
     <li className={styles.row}>
       <div className={styles.identity}>
-        <span className={styles.pseudo}>{player.pseudo}</span>
+        <PlayerLink userId={player.userId} pseudo={player.pseudo} className={styles.pseudo} />
         <span className={player.role === "ADMIN" ? styles.roleBadgeAdmin : styles.roleBadgePlayer}>
           {player.role === "ADMIN" ? "Admin" : "Joueur"}
         </span>

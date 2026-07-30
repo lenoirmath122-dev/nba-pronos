@@ -1,6 +1,7 @@
 import type { PendingResolutionBet } from "@/lib/queries/admin-resolution";
 import { BET_CATEGORY_OPTIONS, BET_DIFFICULTY_LABELS } from "@/lib/labels/bets";
 import { resolveBetFormAction } from "@/lib/actions/admin-resolution";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./ResolutionBetCard.module.css";
 
 // Une carte de la file de résolution (SPEC_ECRAN_ADMIN_RESOLUTION_V0_1 §2) :
@@ -21,7 +22,9 @@ export function ResolutionBetCard({ bet, error }: ResolutionBetCardProps) {
   return (
     <li className={styles.card}>
       <div className={styles.header}>
-        <p className={styles.player}>{bet.playerPseudo}</p>
+        <p className={styles.player}>
+          <PlayerLink userId={bet.playerUserId} pseudo={bet.playerPseudo} />
+        </p>
         {bet.isContested && <span className={styles.contestedBadge}>Contesté</span>}
       </div>
       <p className={styles.target}>{bet.targetLabel}</p>

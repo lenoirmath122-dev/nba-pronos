@@ -17,17 +17,21 @@ import type { TeamRef } from "@/lib/queries/matches";
 
 const WINDOW_DAYS = 3;
 
+// Ajouté le 30/07/2026 : userId à côté du pseudo, pour le lien
+// /players/[userId] (PlayerLink) — auparavant un simple string.
+export type MissingPlayer = { userId: string; pseudo: string };
+
 export type MissingMatchBlock = {
   matchId: string;
   scheduledAt: string;
   homeTeam: TeamRef;
   awayTeam: TeamRef;
-  missingPseudos: string[]; // ACTIVE, triés alphabétiquement
+  missingPlayers: MissingPlayer[]; // ACTIVE, triés alphabétiquement
 };
 
 export type MissingBracketBlock = {
   deadline: string; // ISO ; ce bloc n'existe que si la deadline est CONNUE et PAS ENCORE PASSÉE
-  missingPseudos: string[];
+  missingPlayers: MissingPlayer[];
 };
 
 export type AdminMissingData = {
@@ -111,18 +115,18 @@ export async function getAdminMissingData(): Promise<AdminMissingData> {
     matchBlocks = matches
       .map((match) => {
         const committed = committedUserIdsByMatch.get(match.id) ?? new Set<string>();
-        const missingPseudos = activeUsers
+        const missingPlayers = activeUsers
           .filter((u) => !committed.has(u.id))
-          .map((u) => u.pseudo);
+          .map((u) => ({ userId: u.id, pseudo: u.pseudo }));
         return {
           matchId: match.id,
           scheduledAt: match.scheduled_at,
           homeTeam: teams.get(match.home_team_id ?? "") ?? { id: "", abbreviation: "?", name: "?" },
           awayTeam: teams.get(match.away_team_id ?? "") ?? { id: "", abbreviation: "?", name: "?" },
-          missingPseudos,
+          missingPlayers,
         };
       })
-      .filter((block) => block.missingPseudos.length > 0);
+      .filter((block) => block.missingPlayers.length > 0);
   }
 
   let bracket: MissingBracketBlock | null = null;
@@ -134,10 +138,12 @@ export async function getAdminMissingData(): Promise<AdminMissingData> {
       .or("is_validated.eq.true,is_auto_validated.eq.true");
 
     const validatedUserIds = new Set((validatedData ?? []).map((row) => row.user_id as string));
-    const missingPseudos = activeUsers.filter((u) => !validatedUserIds.has(u.id)).map((u) => u.pseudo);
+    const missingPlayers = activeUsers
+      .filter((u) => !validatedUserIds.has(u.id))
+      .map((u) => ({ userId: u.id, pseudo: u.pseudo }));
 
-    if (missingPseudos.length > 0) {
-      bracket = { deadline: competition.bracket_deadline, missingPseudos };
+    if (missingPlayers.length > 0) {
+      bracket = { deadline: competition.bracket_deadline, missingPlayers };
     }
   }
 

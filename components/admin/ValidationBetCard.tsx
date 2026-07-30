@@ -1,6 +1,7 @@
 import type { PendingValidationBet } from "@/lib/queries/admin-validation";
 import { BET_CATEGORY_OPTIONS, BET_DIFFICULTY_LABELS } from "@/lib/labels/bets";
 import { validateBetFormAction, rejectBetFormAction } from "@/lib/actions/admin-validation";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./ValidationBetCard.module.css";
 
 // Une carte de la file de validation (SPEC_ECRAN_ADMIN_VALIDATION_V0_1 §2) :
@@ -16,7 +17,9 @@ type ValidationBetCardProps = {
 export function ValidationBetCard({ bet, error }: ValidationBetCardProps) {
   return (
     <li className={styles.card}>
-      <p className={styles.player}>{bet.playerPseudo}</p>
+      <p className={styles.player}>
+        <PlayerLink userId={bet.playerUserId} pseudo={bet.playerPseudo} />
+      </p>
       <p className={styles.target}>{bet.targetLabel}</p>
       <p className={styles.description}>{bet.description}</p>
 

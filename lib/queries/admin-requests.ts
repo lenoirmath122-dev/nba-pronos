@@ -24,6 +24,7 @@ export type TeamOption = { id: string; abbreviation: string };
 
 export type MatchPredictionRequest = {
   requestId: string;
+  requesterUserId: string; // ajouté le 30/07/2026, lien /players/[userId]
   requesterPseudo: string;
   justification: string;
   createdAt: string;
@@ -41,6 +42,7 @@ export type BetStatusValue = "DRAFT" | "SUBMITTED" | "VALIDATED" | "REJECTED" | 
 
 export type BetRequest = {
   requestId: string;
+  requesterUserId: string; // ajouté le 30/07/2026, lien /players/[userId]
   requesterPseudo: string;
   justification: string;
   createdAt: string;
@@ -165,6 +167,7 @@ export async function getPendingCorrectionRequests(): Promise<PendingCorrectionR
 
       results.push({
         requestId: r.id,
+        requesterUserId: r.requester_user_id,
         requesterPseudo,
         justification: r.justification,
         createdAt: r.created_at,
@@ -196,6 +199,7 @@ export async function getPendingCorrectionRequests(): Promise<PendingCorrectionR
 
       results.push({
         requestId: r.id,
+        requesterUserId: r.requester_user_id,
         requesterPseudo,
         justification: r.justification,
         createdAt: r.created_at,

@@ -1,5 +1,6 @@
 import type { PendingCorrectionRequest } from "@/lib/queries/admin-requests";
 import { processCorrectionRequestFormAction, rejectCorrectionRequestFormAction } from "@/lib/actions/admin-requests";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./RequestCard.module.css";
 
 // Une carte de la file des requêtes (SPEC_ECRAN_ADMIN_REQUESTS_V0_1 §2) —
@@ -22,7 +23,9 @@ export function RequestCard({ request, error }: RequestCardProps) {
   return (
     <li className={styles.card}>
       <div className={styles.header}>
-        <p className={styles.player}>{request.requesterPseudo}</p>
+        <p className={styles.player}>
+          <PlayerLink userId={request.requesterUserId} pseudo={request.requesterPseudo} />
+        </p>
         <span className={styles.timestamp}>{formatDate(request.createdAt)}</span>
       </div>
       <p className={styles.target}>{request.targetLabel}</p>

@@ -1,4 +1,5 @@
 import type { RevealedPrediction } from "@/lib/queries/my-predictions";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./RevealPanel.module.css";
 
 // Panneau déplié (§7) — <details> natif, rendu SERVEUR, contenu déjà chargé
@@ -26,7 +27,7 @@ export function RevealPanel({ others, absenteeCount }: RevealPanelProps) {
             <ul className={styles.list}>
               {others.map((other) => (
                 <li key={other.userId} className={styles.item}>
-                  <span className={styles.pseudo}>{other.userName}</span>
+                  <PlayerLink userId={other.userId} pseudo={other.userName} className={styles.pseudo} />
                   <span className={styles.pick}>
                     {other.predictedWinner ? `${other.predictedWinner.abbreviation} −${other.predictedMargin}` : "—"}
                   </span>

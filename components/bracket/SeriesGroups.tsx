@@ -1,4 +1,5 @@
 import type { SeriesPickGroup } from "@/lib/queries/bracket";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./SeriesGroups.module.css";
 
 // Contenu du drill-down (§11) : groupé par pronostic, trié par effectif
@@ -45,7 +46,14 @@ export function SeriesGroups({ groups }: SeriesGroupsProps) {
                 : `${group.count} joueur${group.count > 1 ? "s" : ""}`}
             </span>
           </div>
-          <p className={styles.players}>{group.players.join(" · ")}</p>
+          <p className={styles.players}>
+            {group.players.map((player, i) => (
+              <span key={player.userId}>
+                {i > 0 && " · "}
+                <PlayerLink userId={player.userId} pseudo={player.pseudo} />
+              </span>
+            ))}
+          </p>
         </div>
       ))}
     </div>

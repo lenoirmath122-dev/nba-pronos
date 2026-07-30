@@ -10,6 +10,7 @@ import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 export type PendingResolutionBet = {
   betId: string;
+  playerUserId: string; // ajouté le 30/07/2026, lien /players/[userId]
   playerPseudo: string;
   targetLabel: string;
   description: string;
@@ -114,6 +115,7 @@ export async function getPendingResolutionBets(): Promise<PendingResolutionBet[]
 
     return {
       betId: b.id,
+      playerUserId: b.user_id,
       playerPseudo: pseudoById.get(b.user_id) ?? "—",
       targetLabel,
       description: b.description,

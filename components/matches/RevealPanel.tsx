@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { OtherPrediction } from "@/lib/queries/matches";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./RevealPanel.module.css";
 
 // Panneau « valider = voir » (§8) — sans "use client" propre, rendu par
@@ -35,10 +36,10 @@ export function RevealPanel({ isRevealed, predictedCount, eligibleCount, others,
             <ul className={styles.list}>
               {others.map((other) => (
                 <li
-                  key={other.pseudo}
+                  key={other.userId}
                   className={other.isInactive ? `${styles.item} ${styles.itemInactive}` : styles.item}
                 >
-                  <span className={styles.pseudo}>{other.pseudo}</span>
+                  <PlayerLink userId={other.userId} pseudo={other.pseudo} className={styles.pseudo} />
                   <span className={styles.pick}>
                     {other.teamAbbreviation} −{other.margin}
                   </span>

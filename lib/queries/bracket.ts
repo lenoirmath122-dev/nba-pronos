@@ -12,13 +12,17 @@ import { ROUND_LABELS } from "@/lib/labels/rounds";
 // requêtes bracket_picks/brackets tant que isDeadlinePassed est faux — la
 // confidentialité ne repose jamais sur un `if` de rendu.
 
+/** Un joueur du groupe, avec son id pour le lien /players/[userId] (ajouté
+ *  le 30/07/2026 — auparavant un simple pseudo, string). */
+export type SeriesPickPlayer = { userId: string; pseudo: string };
+
 /** Un groupe de joueurs ayant fait le même pronostic sur une série. */
 export type SeriesPickGroup = {
   teamAbbreviation: string;
   seriesFormat: string | null; // null en NBA Cup (match sec)
   count: number;
   percentage: number | null; // null si ≤ 10 brackets remplis SUR CETTE SÉRIE
-  players: string[]; // pseudos ; VIDE avant la deadline
+  players: SeriesPickPlayer[]; // VIDE avant la deadline
 };
 
 export type BracketNode = {
@@ -300,15 +304,17 @@ async function getFilledPicksAndGroups(
   // décroissant (§11). Clé = série + équipe + format.
   const groupsBySeriesKey = new Map<string, SeriesPickGroup & { seriesId: string }>();
   for (const pick of filledPicks) {
-    const pseudo = pseudoByUserId.get(userIdByBracketId.get(pick.bracket_id) ?? "");
-    if (!pseudo) continue; // pick orphelin (ne devrait pas arriver, garde défensive)
+    const userId = userIdByBracketId.get(pick.bracket_id);
+    const pseudo = userId ? pseudoByUserId.get(userId) : undefined;
+    if (!userId || !pseudo) continue; // pick orphelin (ne devrait pas arriver, garde défensive)
+    const player: SeriesPickPlayer = { userId, pseudo };
 
     const team = teams.get(pick.predicted_winner_team_id!);
     const key = `${pick.series_id}::${pick.predicted_winner_team_id}::${pick.predicted_score_format ?? "-"}`;
     const existing = groupsBySeriesKey.get(key);
     if (existing) {
       existing.count += 1;
-      existing.players.push(pseudo);
+      existing.players.push(player);
     } else {
       groupsBySeriesKey.set(key, {
         seriesId: pick.series_id,
@@ -316,7 +322,7 @@ async function getFilledPicksAndGroups(
         seriesFormat: pick.predicted_score_format,
         count: 1,
         percentage: null, // calculé ci-dessous une fois le dénominateur connu
-        players: [pseudo],
+        players: [player],
       });
     }
   }
@@ -328,7 +334,7 @@ async function getFilledPicksAndGroups(
     const percentage = denominator >= 11 ? Math.round((group.count / denominator) * 100) : null;
     const { seriesId, ...rest } = group;
     const list = groupsBySeriesId.get(seriesId) ?? [];
-    list.push({ ...rest, percentage, players: [...rest.players].sort((a, b) => a.localeCompare(b)) });
+    list.push({ ...rest, percentage, players: [...rest.players].sort((a, b) => a.pseudo.localeCompare(b.pseudo)) });
     groupsBySeriesId.set(seriesId, list);
   }
   for (const list of groupsBySeriesId.values()) {

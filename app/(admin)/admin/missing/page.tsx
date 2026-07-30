@@ -1,4 +1,5 @@
 import { getAdminMissingData } from "@/lib/queries/admin-missing";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./page.module.css";
 
 // "Qui manque à l'appel" (BACKLOG_V1.md « Confort au quotidien ») — vue de
@@ -40,9 +41,9 @@ export default async function AdminMissingPage() {
                 Bracket — deadline {formatDate(data.bracket.deadline)}
               </h2>
               <ul className={styles.pseudoList}>
-                {data.bracket.missingPseudos.map((pseudo) => (
-                  <li key={pseudo} className={styles.pseudo}>
-                    {pseudo}
+                {data.bracket.missingPlayers.map((player) => (
+                  <li key={player.userId} className={styles.pseudo}>
+                    <PlayerLink userId={player.userId} pseudo={player.pseudo} />
                   </li>
                 ))}
               </ul>
@@ -56,9 +57,9 @@ export default async function AdminMissingPage() {
                 {formatDate(match.scheduledAt)}
               </h2>
               <ul className={styles.pseudoList}>
-                {match.missingPseudos.map((pseudo) => (
-                  <li key={pseudo} className={styles.pseudo}>
-                    {pseudo}
+                {match.missingPlayers.map((player) => (
+                  <li key={player.userId} className={styles.pseudo}>
+                    <PlayerLink userId={player.userId} pseudo={player.pseudo} />
                   </li>
                 ))}
               </ul>

@@ -1,4 +1,5 @@
 import type { AuditLogRow as AuditLogRowData } from "@/lib/queries/admin-logs";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./AuditLogRow.module.css";
 
 // Une ligne de l'Historique des logs (SPEC_ECRAN_ADMIN_LOGS_V0_1 §2) —
@@ -23,7 +24,9 @@ export function AuditLogRow({ log }: { log: AuditLogRowData }) {
     <li className={styles.row}>
       <div className={styles.header}>
         <span className={styles.timestamp}>{formatTimestamp(log.createdAt)}</span>
-        <span className={styles.actor}>{log.actorPseudo}</span>
+        <span className={styles.actor}>
+          {log.actorUserId ? <PlayerLink userId={log.actorUserId} pseudo={log.actorPseudo} /> : log.actorPseudo}
+        </span>
         <span className={styles.action}>{log.actionLabel}</span>
         <span className={styles.target}>{targetLabel(log)}</span>
       </div>

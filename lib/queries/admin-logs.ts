@@ -11,6 +11,7 @@ const LOG_LIMIT = 100;
 export type AuditLogRow = {
   id: string;
   createdAt: string;
+  actorUserId: string | null; // null = action système (ajouté le 30/07/2026, lien /players/[userId])
   actorPseudo: string;
   action: string;
   actionLabel: string;
@@ -78,6 +79,7 @@ export async function getAuditLogs(filters: AuditLogFilters): Promise<AuditLogRo
   return logs.map((log) => ({
     id: log.id,
     createdAt: log.created_at,
+    actorUserId: log.actor_user_id,
     actorPseudo: log.actor_user_id ? (pseudoById.get(log.actor_user_id) ?? "—") : "Système",
     action: log.action,
     actionLabel: adminActionLabel(log.action),

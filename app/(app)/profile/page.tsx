@@ -8,6 +8,7 @@ import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } f
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
 import { NotificationSettings } from "@/components/profile/NotificationSettings";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./page.module.css";
 
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
@@ -184,7 +185,8 @@ export default async function ProfilePage({
                   <ul className={styles.superlativeList}>
                     {entry.superlatives.map((s, i) => (
                       <li key={`${s.kind}-${i}`} className={styles.superlativeItem}>
-                        <span className={styles.superlativeLabel}>{s.label}</span> — {s.pseudo} ({s.value})
+                        <span className={styles.superlativeLabel}>{s.label}</span> —{" "}
+                        <PlayerLink userId={s.userId} pseudo={s.pseudo} /> ({s.value})
                       </li>
                     ))}
                   </ul>
