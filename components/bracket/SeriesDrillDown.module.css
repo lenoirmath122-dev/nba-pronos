@@ -19,6 +19,18 @@
   color: var(--color-text-primary);
 }
 
+/* Sous-groupe Ouest/Est à l'intérieur d'un tour à conférence (30/07/2026,
+   refonte lisibilité) — discret, le tour reste le titre principal. */
+.confLabel {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
 .nodeList {
   display: flex;
   flex-direction: column;
