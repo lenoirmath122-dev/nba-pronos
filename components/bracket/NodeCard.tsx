@@ -46,13 +46,26 @@ export function NodeCard({ node, isOpen, disabled, onToggle }: NodeCardProps) {
   const actualWinnerAbbreviation = useLiveWinnerAbbreviation(node.nodeId, node.actualWinnerAbbreviation);
   const isFinal = FINAL_ROUNDS.has(node.round);
   const hasChampion = isFinal && actualWinnerAbbreviation !== null;
+  // Surbrillance de carte demandée par l'utilisateur (30/07/2026) : série
+  // terminée = bordure/fond teintés, en plus du texte déjà coloré du
+  // vainqueur (§17 — vert pour un résultat gagné, or réservé au champion,
+  // jamais de rouge pour l'équipe battue).
+  const isDecided = !isFinal && actualWinnerAbbreviation !== null;
+
+  const cardClassName = [
+    styles.card,
+    isDecided && styles.cardDecided,
+    hasChampion && styles.cardChampion,
+    isOpen && styles.cardOpen,
+    disabled && styles.cardDisabled,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <button
       type="button"
-      className={
-        disabled ? `${styles.card} ${styles.cardDisabled}` : isOpen ? `${styles.card} ${styles.cardOpen}` : styles.card
-      }
+      className={cardClassName}
       onClick={disabled ? undefined : onToggle}
       aria-expanded={isOpen}
       aria-disabled={disabled || undefined}

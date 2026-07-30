@@ -22,6 +22,21 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Série terminée : carte teintée en plus du texte du vainqueur déjà coloré
+   (§17 — vert = gagné, jamais de rouge pour l'équipe battue). Déclarées
+   AVANT .cardOpen : au tap sur une série déjà décidée, la bordure d'état
+   "ouvert" (accent) reste prioritaire sur la teinte de résultat. */
+.cardDecided {
+  border-color: var(--color-win);
+  background: color-mix(in srgb, var(--color-win) 10%, var(--color-surface-raised));
+}
+
+/* Champion (finale décidée) : or, réservé à ce cas (§17). */
+.cardChampion {
+  border-color: var(--color-champion);
+  background: color-mix(in srgb, var(--color-champion) 12%, var(--color-surface-raised));
+}
+
 .cardOpen {
   border-color: var(--color-accent-line);
 }
