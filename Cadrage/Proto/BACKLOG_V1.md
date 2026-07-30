@@ -103,8 +103,8 @@
   fonds/bandeau teintés), puis entièrement retirée (code + migration).
   Détail dans `JOURNAL_SESSIONS.md`. Ne pas retenter sans qu'il le demande
   explicitement.
-- Remplacer la liste longue de sélection d'équipe favorite (actuellement
-  `components/profile/TeamPicker.tsx`, une liste de 30 boutons radio) par
-  un **menu déroulant** (28/07/2026) — accès plus rapide, moins de
-  défilement. Compatible avec les 30 logos existants (à voir si le menu
-  déroulant les affiche ou reste texte seul, en spec technique).
+- ~~Remplacer la liste longue de sélection d'équipe favorite par un menu
+  déroulant~~ **FAIT — 30/07/2026** (`TeamPicker.tsx`) : déclencheur
+  logo+nom, menu flottant ouvert au clic, toujours de vrais radios (logos
+  conservés). 1 bug réel corrigé en testant (sélection perdue à
+  l'enregistrement, radios sortis du DOM à la fermeture).

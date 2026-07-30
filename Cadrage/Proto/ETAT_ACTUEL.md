@@ -5,7 +5,17 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **« Couleurs d'équipe sur
+> Dernière mise à jour : session du 30/07/2026 — **sélecteur d'équipe
+> favorite transformé en menu déroulant** (`TeamPicker.tsx`, BACKLOG_V1.md
+> « Personnalisation du profil ») : la liste fixe des 30 boutons radio
+> prenait trop de place, remplacée par un menu flottant fermé par défaut.
+> **Bug réel trouvé en testant** : fermer le menu retirait le radio coché
+> du DOM avant la soumission — la sélection revenait systématiquement à
+> "Aucune" en enregistrant. Corrigé : la liste reste toujours montée, seule
+> sa visibilité CSS change. Confirmé fonctionnel par l'utilisateur.
+> Committé/déployé (`917d324`, `6a1e7a8`).
+>
+> Plus tôt la même session — **« Couleurs d'équipe sur
 > Profil » essayée puis ABANDONNÉE le jour même** par l'utilisateur ("je ne
 > pense pas que ça ait d'importance"). Construite en 2 passes (accents
 > doux, puis fonds + bandeau teintés), entièrement retirée ensuite : revert
@@ -133,7 +143,7 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `33c9574` inclus.**
+> **Tout est committé et déployé jusqu'à `6a1e7a8` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
 > (export .ics, courbe d'évolution du classement — le socle existe déjà,

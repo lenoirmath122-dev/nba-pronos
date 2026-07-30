@@ -66,8 +66,18 @@
 > Admin, ce dernier visible seulement pour un admin) — demandé par
 > l'utilisateur juste après, l'écran ayant grossi toute la session. Même
 > patron `?tab=` que le reste du projet, Déconnexion toujours visible hors
-> des onglets. Confirmé fonctionnel par l'utilisateur. **Tout est
-> committé/déployé jusqu'à `74de402`.**
+> des onglets. Confirmé fonctionnel par l'utilisateur.
+>
+> **« Couleurs d'équipe sur Profil » essayée puis ABANDONNÉE** le jour même
+> par l'utilisateur — revert complet (code + migration), aucune trace
+> restante. Voir `JOURNAL_SESSIONS.md`.
+>
+> **Sélecteur d'équipe favorite transformé en menu déroulant** (`TeamPicker.
+> tsx`) — la liste fixe des 30 radios prenait trop de place. 1 bug réel
+> trouvé et corrigé en testant : fermer le menu retirait la sélection du
+> formulaire avant l'enregistrement (radios sortis du DOM) — corrigé,
+> confirmé fonctionnel par l'utilisateur. **Tout est committé/déployé
+> jusqu'à `6a1e7a8`.**
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 

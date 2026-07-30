@@ -4403,3 +4403,30 @@ correspondance avec l'historique distant, erreur
 `LegacyDbPushMissingLocalError` rencontrée puis corrigée). État final :
 aucune trace de la feature dans le code, colonne retirée en base,
 `tsc`/`eslint`/`next build` propres. Committé et poussé (`33c9574`).
+
+---
+
+## Sélecteur d'équipe favorite en menu déroulant (30/07/2026, fin de session)
+
+Backlog « Personnalisation du profil », 2e point. Demandé par
+l'utilisateur : la liste fixe des 30 boutons radio (`TeamPicker.tsx`)
+prenait trop de place sur la page. Transformée en menu déroulant fermé
+par défaut — déclencheur affichant logo + nom de l'équipe choisie, liste
+flottante (`position: absolute`, ne repousse pas le reste du formulaire)
+ouverte au clic. Toujours pas de `<select>` natif (ne peut pas afficher
+de logo, §2.15 ETAT_ACTUEL.md) : la liste ouverte reste de vrais
+`<input type="radio">`. `"use client"` posé directement sur le composant
+(même patron que `TeamLogo.tsx`, §2.9) puisque son parent reste serveur.
+
+**Bug réel trouvé en testant** : fermer le menu retirait la liste (donc
+le radio coché) du DOM AVANT la soumission du formulaire — le champ
+`favoriteTeamId` était alors absent du `FormData`, systématiquement
+traité comme "Aucune" côté serveur (sélection perdue à chaque
+enregistrement). Corrigé : la liste reste TOUJOURS montée dans le DOM,
+seule sa visibilité (classe CSS `.hidden`, jamais un retrait React) suit
+l'état ouvert/fermé — les radios restent donc dans le formulaire en
+permanence, cochés ou non.
+
+`tsc`/`eslint`/`next build` propres. Committé et poussé en 2 temps :
+menu déroulant (`917d324`), correctif de perte de sélection (`6a1e7a8`).
+Confirmé fonctionnel par l'utilisateur après le correctif.
