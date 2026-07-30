@@ -3,13 +3,6 @@
   flex-direction: column;
   gap: var(--space-5);
   padding: var(--space-4);
-  /* Explicite (pas juste hérité) : nécessaire pour que la teinte d'équipe
-     (--color-surface-base recalculée en ligne, page.tsx) se voie vraiment
-     sur ce conteneur — sans effet quand elle n'est pas redéfinie, puisque
-     var(--color-surface-base) vaut alors la même chose que l'arrière-plan
-     hérité. */
-  background: var(--color-surface-base);
-  min-height: 100%;
 }
 
 .header {
