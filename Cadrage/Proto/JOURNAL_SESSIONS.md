@@ -4482,3 +4482,46 @@ confirmés fonctionnels) :
 3 temps : réordonnancement Est/Ouest (`ac36ce8`), centrage vertical
 (`3a43455`), surbrillance du vainqueur (`95381ce`). Les 3 confirmés
 fonctionnels par l'utilisateur en conditions réelles (compétition "Test").
+
+---
+
+## Filtre par ligue sur Mes pronos + Bracket, replis "Plus d'options" (30/07/2026, fin de session)
+
+Demandé par l'utilisateur : "Mes pronos" et le Bracket global montraient
+toujours TOUS les joueurs, sans façon de se limiter à sa ligue (contrairement
+à Classement, §2.48). Même patron partout : chips "Général"/une par ligue,
+`?ligue=` dans l'URL.
+
+**Extrait `resolveLeagueScope()`** dans `lib/queries/leagues.ts` — jusque-là
+dupliqué en dur dans `lib/queries/leaderboard.ts`, refactoré pour l'utiliser,
+même leçon que `lib/dates/paris.ts` (éviter une 3e implémentation
+divergente). Réutilisé par les 3 écrans (Classement, Mes pronos, Bracket).
+
+- **Mes pronos** (`lib/queries/my-predictions.ts`) : `others`/`absenteeCount`/
+  `otherBets` (pronos ET paris des autres, par match ET par série via
+  `getSeriesBetHeader`) filtrés sur les membres de la ligue. Portée
+  préservée à travers segments/filtres date-série via `buildViewPath`
+  (`components/my-predictions/urls.ts` étendu) — nécessite de threader
+  `leagueId` dans `SegmentTabs`/`FilterBar` (dont un `<input type="hidden">`
+  dans le formulaire natif GET, qui sinon remplace toute la query string).
+- **Bracket** (`lib/queries/bracket.ts`) : `groups`/`players` filtrés, ET
+  le %/dénominateur (`filledBySeriesId`) recalculé sur la ligue — confirmé
+  AVEC l'utilisateur avant de coder (sinon un "80%" à côté de 2 noms
+  paraîtrait faux). Portée préservée avec l'état vue A/B (`?arbre=`).
+
+Dans les deux cas : mon propre prono/pari n'est JAMAIS filtré ; un id de
+ligue invalide ou dont je ne suis pas membre retombe silencieusement sur
+"Général" (RLS `league_memberships_select`, même garde que Classement).
+`tsc`/`eslint`/`next build` propres. Committé et poussé (`fc06837`).
+
+**Replis "Plus d'options" (Mes pronos)** : demandé juste après par
+l'utilisateur — "Voir les paris des autres joueurs", "Demander une
+correction" et "Voir les pronos des autres" prenaient chacun une ligne
+visible en PERMANENCE sur CHAQUE match, même si leur propre contenu était
+déjà replié (popup pour le premier, `<details>` pour les 2 autres).
+Regroupés sous un `<details>` "Plus d'options" unique par ligne
+(`MatchRowStatic.tsx`), fermé par défaut — forcé ouvert uniquement en
+retour d'une requête de correction en erreur sur CE match précis (sinon le
+message d'erreur resterait invisible). `tsc`/`eslint`/`next build` propres.
+Committé et poussé (`ec698e9`). Les 2 lots confirmés fonctionnels par
+l'utilisateur en conditions réelles.

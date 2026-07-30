@@ -5,7 +5,20 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **reclassement du backlog**
+> Dernière mise à jour : session du 30/07/2026 — **filtre par ligue ajouté
+> sur Mes pronos + Bracket** (demandé par l'utilisateur, même patron chips
+> `?ligue=` que Classement) : `resolveLeagueScope()` extrait dans
+> `lib/queries/leagues.ts` (jusque-là dupliqué, refactoré depuis
+> `leaderboard.ts`) — filtre others/absenteeCount/otherBets (Mes pronos) et
+> groups/players + %/dénominateur recalculé (Bracket, confirmé avec
+> l'utilisateur). Mon propre prono/pari n'est jamais filtré. **+ replis
+> "Plus d'options"** sur Mes pronos (Voir les paris des autres/Demander une
+> correction/Voir les pronos des autres regroupés sous un seul `<details>`
+> par match, fermé par défaut — ces 3 lignes restaient visibles en
+> permanence sur chaque match). Les 2 lots confirmés fonctionnels par
+> l'utilisateur. Committé/déployé (`fc06837`, `ec698e9`).
+>
+> Plus tôt la même session — **reclassement du backlog**
 > (3 chantiers retenus dans l'ordre : refonte Bracket → Tutoriel joueur →
 > "Fun/esprit ligue" redéfini en badges PERMANENTS visibles en continu, pas
 > seulement à la clôture ; le reste reporté) **+ refonte lisibilité du
@@ -158,7 +171,7 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `95381ce` inclus.**
+> **Tout est committé et déployé jusqu'à `ec698e9` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
 > (export .ics, courbe d'évolution du classement — le socle existe déjà,

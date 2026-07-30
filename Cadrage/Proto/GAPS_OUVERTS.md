@@ -89,8 +89,15 @@
 > scindée en sous-groupes, Vue B réordonnée en poster miroir Ouest-gauche/
 > Finale-centre/Est-droite, Playoffs uniquement, sans trait de connexion)
 > + colonnes centrées en hauteur + carte surlignée quand une série est
-> terminée. Les 3 confirmés fonctionnels par l'utilisateur. **Tout est
-> committé/déployé jusqu'à `95381ce`.**
+> terminée. Les 3 confirmés fonctionnels par l'utilisateur.
+>
+> **Filtre par ligue sur Mes pronos + Bracket — FAIT** (même patron que
+> Classement, `resolveLeagueScope()` désormais partagé) : others/
+> absenteeCount/otherBets (Mes pronos) et groups/players + %/dénominateur
+> (Bracket) filtrés sur la ligue choisie. **+ replis "Plus d'options" sur
+> Mes pronos — FAIT** (3 lignes toujours visibles par match regroupées
+> sous un seul déclencheur fermé par défaut). Les 2 confirmés fonctionnels
+> par l'utilisateur. **Tout est committé/déployé jusqu'à `ec698e9`.**
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
