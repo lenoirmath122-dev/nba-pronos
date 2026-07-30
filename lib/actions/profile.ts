@@ -38,6 +38,33 @@ export async function updateThemePreference(formData: FormData): Promise<void> {
   redirect("/profile");
 }
 
+/** Couleurs d'équipe sur Profil (BACKLOG_V1.md « Personnalisation du
+ *  profil ») : bascule persistée, même patron que updateThemePreference —
+ *  un seul champ, soumission immédiate. Sans effet réel tant qu'aucune
+ *  équipe favorite n'est choisie (la page ne montre ce bouton que dans ce
+ *  cas), mais rien n'empêche la valeur d'exister en base avant. */
+export async function updateTeamColorsPreference(formData: FormData): Promise<void> {
+  const useTeamColors = String(formData.get("useTeamColors") ?? "") === "true";
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("users")
+    .update({ use_team_colors: useTeamColors })
+    .eq("id", user!.id);
+
+  if (error) {
+    redirect(`/profile?profileError=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/profile");
+  redirect("/profile");
+}
+
 /** Équipe favorite + bio (§3) : un seul formulaire, bouton « Enregistrer ». */
 export async function updateProfile(formData: FormData): Promise<void> {
   const favoriteTeamIdRaw = String(formData.get("favoriteTeamId") ?? "");

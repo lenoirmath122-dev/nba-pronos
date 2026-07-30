@@ -8,6 +8,8 @@ export type ProfileData = {
   pseudo: string;
   isAdmin: boolean;
   favoriteTeamId: string | null;
+  favoriteTeamAbbreviation: string | null; // ajouté le 30/07/2026 (couleurs d'équipe)
+  useTeamColors: boolean; // ajouté le 30/07/2026 — sans effet si favoriteTeamId est null
   bio: string;
   theme: "LIGHT" | "DARK";
   notificationPreference: "NONE" | "PUSH" | "EMAIL";
@@ -29,7 +31,9 @@ export async function getProfileData(): Promise<ProfileData | null> {
 
   const { data, error } = await supabase
     .from("users")
-    .select("pseudo, role, favorite_team_id, bio, theme_preference, notification_preference")
+    .select(
+      "pseudo, role, favorite_team_id, bio, theme_preference, notification_preference, use_team_colors, teams:favorite_team_id(abbreviation)"
+    )
     .eq("id", user.id)
     .single<{
       pseudo: string;
@@ -38,6 +42,8 @@ export async function getProfileData(): Promise<ProfileData | null> {
       bio: string | null;
       theme_preference: "LIGHT" | "DARK";
       notification_preference: "NONE" | "PUSH" | "EMAIL";
+      use_team_colors: boolean;
+      teams: { abbreviation: string } | null;
     }>();
 
   if (error || !data) return null;
@@ -46,6 +52,8 @@ export async function getProfileData(): Promise<ProfileData | null> {
     pseudo: data.pseudo,
     isAdmin: data.role === "ADMIN",
     favoriteTeamId: data.favorite_team_id,
+    favoriteTeamAbbreviation: data.teams?.abbreviation ?? null,
+    useTeamColors: data.use_team_colors,
     bio: data.bio ?? "",
     theme: data.theme_preference,
     notificationPreference: data.notification_preference,
