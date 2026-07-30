@@ -88,6 +88,8 @@ export async function createMatch(input: {
     .single<{ id: string }>();
   if (error || !match) return { success: false, error: error?.message ?? "Échec de la création du match." };
 
+  await recomputeBracketDeadline(service, series.competition_id);
+
   await logAdminAction(supabase, {
     actorUserId: user.id,
     action: "CREATE_MATCH",
@@ -98,6 +100,36 @@ export async function createMatch(input: {
 
   revalidateAffectedScreens();
   return { success: true };
+}
+
+// Deadline de remplissage du bracket (BACKLOG_V1.md — trouvé en creusant
+// pourquoi le bracket ne se comparait jamais entre joueurs, 30/07/2026) :
+// « le début du premier match qui commence dans la compétition » (définition
+// de l'utilisateur, plus simple que "1er tour uniquement" et strictement
+// équivalente en pratique — un match d'un tour ultérieur ne peut de toute
+// façon pas être créé avant que le tour précédent y ait avancé les 2
+// équipes, cf. la garde plus haut dans createMatch).
+//
+// Recalculée en ENTIER (jamais "si plus tôt que l'actuel") à chaque création
+// de match : un admin peut saisir les matchs dans n'importe quel ordre, donc
+// seul un recalcul complet du minimum reste exact à coup sûr.
+async function recomputeBracketDeadline(
+  service: ReturnType<typeof getServiceClient>,
+  competitionId: string
+): Promise<void> {
+  const { data: earliest } = await service
+    .from("matches")
+    .select("scheduled_at")
+    .eq("competition_id", competitionId)
+    .not("scheduled_at", "is", null)
+    .order("scheduled_at", { ascending: true })
+    .limit(1)
+    .maybeSingle<{ scheduled_at: string }>();
+
+  await service
+    .from("competitions")
+    .update({ bracket_deadline: earliest?.scheduled_at ?? null })
+    .eq("id", competitionId);
 }
 
 export async function saveMatchResult(input: {
