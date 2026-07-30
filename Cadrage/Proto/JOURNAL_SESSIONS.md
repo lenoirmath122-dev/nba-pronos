@@ -4430,3 +4430,55 @@ permanence, cochés ou non.
 `tsc`/`eslint`/`next build` propres. Committé et poussé en 2 temps :
 menu déroulant (`917d324`), correctif de perte de sélection (`6a1e7a8`).
 Confirmé fonctionnel par l'utilisateur après le correctif.
+
+---
+
+## Reclassement du backlog + refonte lisibilité du Bracket (30/07/2026, fin de session)
+
+L'utilisateur a reclassé ce qui reste du backlog : 3 chantiers retenus, dans
+cet ordre — 1. refonte visuelle du Bracket (ce lot) ; 2. Tutoriel joueur ;
+3. "Fun/esprit ligue" REDÉFINI en badges PERMANENTS (visibles en continu
+pendant la compétition, pas seulement à la clôture comme les superlatifs
+déjà faits — emplacement et liste pas encore tranchés). Le reste (export
+.ics, courbe d'évolution, classement all-time, Hall of shame) reporté après
+ces 3. Documenté dans `BACKLOG_V1.md`.
+
+**Refonte du Bracket** — demande initiale : "Est et Ouest mélangés, pas
+lisible". Trouvé en lisant le code : la distinction existait déjà dans les
+DONNÉES (tri Est-puis-Ouest à l'intérieur de chaque tour, `lib/queries/
+bracket.ts`, jamais touché) mais rien ne la montrait visuellement — les
+deux conférences étaient listées à la suite, sans titre ni séparation.
+2 questions posées avant de coder (profondeur de la Vue B, avec ou sans
+traits de connexion) : l'utilisateur a choisi le "poster classique en
+miroir" SANS traits de connexion (scope réduit explicitement, un chantier
+à part si besoin plus tard) — et a corrigé le sens : **Ouest à GAUCHE, Est
+à DROITE** (pas l'inverse proposé initialement).
+
+`components/bracket/SeriesDrillDown.tsx` réécrit :
+- Vue A (résumé) : chaque tour à conférence se scinde en 2 sous-groupes
+  "Ouest" puis "Est" — Finale NBA et tours NBA Cup (jamais de conférence,
+  D6/schéma) restent une liste simple, inchangés.
+- Vue B (arbre plein écran) : colonnes réordonnées en miroir pour les
+  PLAYOFFS uniquement (`hasConferences`, la Cup n'a pas de conférence,
+  rien à miroiter) — Ouest (1er tour → demies → finale de conf.), Finale
+  NBA au centre, Est (finale de conf. → demies → 1er tour) en ordre
+  inversé côté droit. Aucun trait de connexion, juste un réordonnancement
+  + des libellés de colonne explicites.
+
+**2 ajustements demandés par l'utilisateur après avoir testé** (les 2
+confirmés fonctionnels) :
+- Colonnes de la Vue B centrées en hauteur (`justify-content: center` sur
+  `.treeColumn`) — les colonnes courtes (finale de conférence, finale NBA,
+  1 carte) restaient collées en haut au lieu d'être alignées sur le centre
+  des colonnes plus longues (1er tour, 4 cartes).
+- Carte entière mise en surbrillance quand une série est terminée
+  (`NodeCard.tsx`/`.module.css`, nouvelles classes `.cardDecided`/
+  `.cardChampion`) — auparavant seul le TEXTE du nom d'équipe vainqueur
+  changeait de couleur, pas assez visible. Vert = série gagnée, or =
+  champion (finale), jamais de rouge pour l'équipe battue (§17, déjà en
+  place, non rouvert).
+
+`tsc`/`eslint`/`next build` propres à chaque étape. Committé et poussé en
+3 temps : réordonnancement Est/Ouest (`ac36ce8`), centrage vertical
+(`3a43455`), surbrillance du vainqueur (`95381ce`). Les 3 confirmés
+fonctionnels par l'utilisateur en conditions réelles (compétition "Test").

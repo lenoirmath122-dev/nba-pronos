@@ -5,7 +5,22 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **sélecteur d'équipe
+> Dernière mise à jour : session du 30/07/2026 — **reclassement du backlog**
+> (3 chantiers retenus dans l'ordre : refonte Bracket → Tutoriel joueur →
+> "Fun/esprit ligue" redéfini en badges PERMANENTS visibles en continu, pas
+> seulement à la clôture ; le reste reporté) **+ refonte lisibilité du
+> Bracket** (`SeriesDrillDown.tsx`/`NodeCard.tsx`) : distinction Est/Ouest
+> jusque-là invisible (existait dans les données, jamais montrée) —
+> Vue A scindée en sous-groupes Ouest/Est par tour ; Vue B (arbre plein
+> écran) réordonnée en poster miroir pour les Playoffs (Ouest à GAUCHE,
+> Finale au CENTRE, Est à DROITE — sens confirmé/corrigé par l'utilisateur),
+> sans trait de connexion (scope réduit, acté avec l'utilisateur). 2
+> ajustements demandés après test, tous deux confirmés : colonnes centrées
+> en hauteur, carte entière surlignée quand une série est terminée (vert
+> gagné / or champion, jamais de rouge). Committé/déployé (`ac36ce8`,
+> `3a43455`, `95381ce`).
+>
+> Plus tôt la même session — **sélecteur d'équipe
 > favorite transformé en menu déroulant** (`TeamPicker.tsx`, BACKLOG_V1.md
 > « Personnalisation du profil ») : la liste fixe des 30 boutons radio
 > prenait trop de place, remplacée par un menu flottant fermé par défaut.
@@ -143,7 +158,7 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `6a1e7a8` inclus.**
+> **Tout est committé et déployé jusqu'à `95381ce` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
 > (export .ics, courbe d'évolution du classement — le socle existe déjà,

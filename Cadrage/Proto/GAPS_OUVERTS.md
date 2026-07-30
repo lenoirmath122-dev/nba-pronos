@@ -76,8 +76,21 @@
 > tsx`) — la liste fixe des 30 radios prenait trop de place. 1 bug réel
 > trouvé et corrigé en testant : fermer le menu retirait la sélection du
 > formulaire avant l'enregistrement (radios sortis du DOM) — corrigé,
-> confirmé fonctionnel par l'utilisateur. **Tout est committé/déployé
-> jusqu'à `6a1e7a8`.**
+> confirmé fonctionnel par l'utilisateur.
+>
+> **Reclassement du backlog** (décidé avec l'utilisateur) : 3 chantiers
+> retenus dans l'ordre — refonte Bracket (FAITE, voir ci-dessous) → Tutoriel
+> joueur → "Fun/esprit ligue" redéfini en badges PERMANENTS (visibles en
+> continu pendant la compétition, pas seulement à la clôture). Le reste du
+> backlog (export .ics, courbe d'évolution, classement all-time, Hall of
+> shame) reporté après ces 3.
+>
+> **Refonte lisibilité du Bracket — FAITE** : distinction Est/Ouest (Vue A
+> scindée en sous-groupes, Vue B réordonnée en poster miroir Ouest-gauche/
+> Finale-centre/Est-droite, Playoffs uniquement, sans trait de connexion)
+> + colonnes centrées en hauteur + carte surlignée quand une série est
+> terminée. Les 3 confirmés fonctionnels par l'utilisateur. **Tout est
+> committé/déployé jusqu'à `95381ce`.**
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 

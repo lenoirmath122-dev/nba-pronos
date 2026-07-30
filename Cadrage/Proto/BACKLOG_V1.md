@@ -17,8 +17,11 @@
 
 > **Reclassement du 30/07/2026** (décidé avec l'utilisateur, fin de
 > session) : 3 chantiers retenus comme prioritaires parmi ce qui reste,
-> dans cet ORDRE — 1. **refonte visuelle du Bracket** (distinction
-> Est/Ouest, plus lisible — sert aussi de base au point Partage) ;
+> dans cet ORDRE — 1. ~~refonte visuelle du Bracket~~ **FAITE le
+> 30/07/2026** (distinction Est/Ouest, Vue A scindée en sous-groupes, Vue B
+> réordonnée en poster miroir Ouest-gauche/Finale-centre/Est-droite, sans
+> trait de connexion, + colonnes centrées en hauteur + carte surlignée sur
+> série terminée — voir `ETAT_ACTUEL.md`/`JOURNAL_SESSIONS.md`) ;
 > 2. **Tutoriel joueur** ; 3. **"Fun / esprit ligue" REDÉFINI** : plus les
 > superlatifs de clôture (déjà faits), mais des BADGES PERMANENTS visibles
 > en continu PENDANT la compétition (profil joueur et/ou classement,
