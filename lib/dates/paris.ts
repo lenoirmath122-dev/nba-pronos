@@ -16,6 +16,16 @@ export function parisDayBoundsUtc(dateStr: string): { startIso: string; endIsoEx
   return { startIso: new Date(startMs).toISOString(), endIsoExclusive: new Date(endMs).toISOString() };
 }
 
+/** Convertit une heure MURALE Paris (ex. valeur brute d'un <input
+ *  type="datetime-local">, "YYYY-MM-DDTHH:mm", SANS fuseau) en instant UTC
+ *  réel. Décalage déduit dynamiquement (jamais +1/+2 codé en dur) — reste
+ *  correct été comme hiver, y compris à la bascule DST. */
+export function parisLocalToUtcIso(localValue: string): string {
+  const naiveMs = Date.parse(`${localValue}:00.000Z`); // traite (à tort) les chiffres saisis comme déjà UTC
+  const offsetMinutes = parisOffsetMinutesAt(naiveMs);
+  return new Date(naiveMs - offsetMinutes * 60 * 1000).toISOString();
+}
+
 function parisOffsetMinutesAt(atMs: number): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: DAY_TIMEZONE,
