@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 import { getServerClient } from "@/lib/supabase/server";
 import styles from "./layout.module.css";
 
@@ -32,6 +33,12 @@ export default async function AdminLayout({
       <header className={styles.header}>
         <span className={styles.tag}>admin</span>
         <h1 className={styles.title}>Administration</h1>
+        {/* Remonté par l'utilisateur en testant (30/07/2026) : aucun moyen de
+            sortir du panneau admin vers l'app joueur depuis sa création
+            (§2.20). Lien partagé, présent sur TOUTES les pages admin. */}
+        <Link href="/home" className={styles.exitLink}>
+          ← Retour à l&apos;app
+        </Link>
       </header>
       <main className={styles.content}>{children}</main>
     </div>
