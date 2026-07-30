@@ -5,9 +5,26 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **4e point du BACKLOG codé
-> ET validé en conditions RÉELLES : superlatifs de fin de compétition +
-> écran Historique** (§2.50). Nostradamus, Sniper, Meilleur bracket,
+> Dernière mise à jour : session du 30/07/2026 — **test au CLIC en
+> conditions réelles FAIT** pour les 2 derniers lots (`/admin/missing` §2.49
+> et superlatifs/Historique §2.50, jusque-là vérifiés par script jetable
+> seulement) : l'utilisateur a créé lui-même une vraie compétition ACTIVE
+> de test (« Test 30 juillet 2026 »), 8 matchs + 4 comptes de test préparés
+> entre les deux, résultats saisis PAR L'UTILISATEUR via le vrai écran
+> Résultats (`recomputeMatch` réellement exécuté). `/admin/missing` confirmé
+> exact — trouvaille en cours de route : l'utilisateur a lui-même déposé un
+> vrai prono sur son compte réel, correctement exclu de la liste en temps
+> réel. Clôture réelle ensuite : les 3 superlatifs attendus générés
+> (Nostradamus/Sniper/Meilleur 1er tour, tous à TestJoueur1), les 2 cas
+> limites confirmés (Meilleur bracket absent, Plus grosse remontée absente
+> faute de snapshot). Compétition + les 4 comptes de test GARDÉS à la
+> demande de l'utilisateur (même choix que les 3 autres compétitions TEST).
+> Aucun code changé dans cette étape, uniquement des données réelles créées
+> en base — voir `JOURNAL_SESSIONS.md` pour le détail complet.
+>
+> Avant ça, même session — **4e point du BACKLOG codé ET validé (par
+> script) en conditions RÉELLES : superlatifs de fin de compétition + écran
+> Historique** (§2.50). Nostradamus, Sniper, Meilleur bracket,
 > Meilleur 1er tour, Plus grosse remontée — calculés et figés à la clôture,
 > tous les ex-aequo crédités, aucun titre décerné si la valeur max est
 > nulle. "Plus grosse remontée" nécessitait un historique de classement qui
@@ -75,10 +92,13 @@
 > test à la demande explicite de l'utilisateur — SANS superlatifs (closes
 > avant que ce mécanisme existe, non recalculé rétroactivement, pas demandé).
 >
-> **État de la base** (30/07/2026) : `Demo_Amis`/`Rillettes-31` intacts,
-> plus une ligue de test créée puis rejointe par l'utilisateur lui-même
-> (nom choisi par lui en testant, non nettoyée — légitime, pas un artefact
-> jetable). Aucune compétition ACTIVE en ce moment (voir §2.48).
+> **État de la base** (30/07/2026, fin de session) : `Demo_Amis`/
+> `Rillettes-31` intacts, plus une ligue de test créée puis rejointe par
+> l'utilisateur lui-même (non nettoyée, légitime). **4e compétition
+> ARCHIVÉE** : « Test 30 juillet 2026 » (4 comptes `TestJoueur1-4` gardés
+> avec elle, décision explicite de l'utilisateur — même famille que les 3
+> compétitions TEST déjà archivées, voir plus bas). Aucune compétition
+> ACTIVE en ce moment.
 
 ---
 

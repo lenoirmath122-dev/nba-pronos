@@ -34,12 +34,18 @@
 > **Prochaine étape, à confirmer avec l'utilisateur** : la suite du backlog
 > (`BACKLOG_V1.md`).
 >
-> **Résidu** : `/admin/missing` (§2.49) et la section Historique de Profil
-> (§2.50, superlatifs) vérifiés par scripts jetables en base réelle, mais
-> jamais cliqués dans un vrai navigateur (aucune compétition active pour le
-> faire, et les 3 compétitions déjà archivées n'ont pas de superlatifs —
-> closes avant que ce mécanisme existe) — à tester au clic à la prochaine
-> vraie clôture de compétition.
+> **Test au clic FAIT le 30/07/2026 (fin de session)** : l'utilisateur a créé
+> lui-même une VRAIE compétition ACTIVE de test (« Test 30 juillet 2026 »,
+> gardée archivée, même choix que les 3 autres compétitions TEST) —
+> `/admin/missing` confirmé exact avec de vrais pronostics variés (dont un
+> déposé par l'utilisateur lui-même sur son compte réel, en dehors de tout
+> script) ; clôture réelle via le bouton admin → les 3 superlatifs attendus
+> générés correctement (Nostradamus/Sniper/Meilleur 1er tour, tous à
+> TestJoueur1) et les 2 cas limites confirmés en conditions réelles
+> (Meilleur bracket absent, Plus grosse remontée absente faute de snapshot —
+> compétition close le jour même). 4 comptes de test jetables
+> (TestJoueur1-4) gardés à la demande de l'utilisateur pour un futur test
+> similaire.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 

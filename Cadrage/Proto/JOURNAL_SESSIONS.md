@@ -4177,3 +4177,45 @@ pour la vue admin "Qui manque à l'appel", le rendu réel de la section
 Historique (avec de vrais titres, pas juste la liste vide des 3
 compétitions test déjà archivées) reste à observer à la prochaine vraie
 clôture de compétition.
+
+---
+
+## Test au clic en conditions réelles — missing + superlatifs/Historique (30/07/2026, fin de session)
+
+Demandé par l'utilisateur avant de passer à la suite : construire une VRAIE
+compétition de test (pas un script jetable nettoyé après coup) pour cliquer
+lui-même sur `/admin/missing` puis sur la clôture. Répartition des rôles
+actée avec l'utilisateur : lui crée la compétition (`/admin/competitions/new`)
+et saisit les résultats (`/admin/competitions/results`, vrai moteur de
+scoring) ; moi je prépare les matchs/comptes de test entre les deux.
+
+8 matchs créés (1 par série ROUND_1, service_role — aucune UI n'existe pour
+ça), échéances étalées sur J+0 à J+3 (le 1er dans <4h, risque de rappel push
+réel accepté explicitement par l'utilisateur) ; 4 comptes de test jetables
+(TestJoueur1-4) avec des pronostics volontairement variés (certains matchs
+complets, d'autres partiels, 4 laissés totalement vides pour peupler
+`/admin/missing`). L'utilisateur a saisi 4 résultats réels via l'écran
+Résultats — `recomputeMatch` a tourné pour de vrai (TestJoueur1 : 43 pts,
+3 bons vainqueurs, 2 écarts exacts ; TestJoueur3 : 26 pts, 2 bons vainqueurs).
+
+**Trouvaille en cours de route, pas un bug** : l'utilisateur a lui-même
+déposé un vrai pronostic sur son compte réel (`Rillettes-31`) sur le match
+qui approchait — `/admin/missing` l'a correctement exclu de la liste des
+manquants pour CE match précis en temps réel, confirmant le calcul par
+match plutôt qu'un état mis en cache.
+
+`/admin/missing` vérifié au clic : les 4 blocs à pronostics partiels/vides
+correspondent exactement aux prédictions déposées (BKN-CHA : 4 manquants ;
+CHI-CLE : 3 manquants ; DET-IND : 2 manquants ; les 4 matchs vides : tout le
+monde manquant). Clôture réelle ensuite (bouton admin, irréversible) : les
+3 superlatifs attendus générés (Nostradamus/Sniper/Meilleur 1er tour, tous
+à TestJoueur1) ; les 2 cas limites anticipés confirmés en conditions
+RÉELLES cette fois (Meilleur bracket absent — aucun bracket rempli ; Plus
+grosse remontée absente — compétition créée et close le même jour, avant
+le premier passage du cron quotidien de snapshot).
+
+Décision de l'utilisateur : compétition "Test 30 juillet 2026" gardée
+archivée (même choix que les 3 autres compétitions TEST), 4 comptes
+TestJoueur1-4 gardés également (au cas où un test similaire soit rejoué).
+Aucun nettoyage nécessaire — rien de committé côté code, uniquement des
+données en base.
