@@ -27,12 +27,14 @@ export async function createLeagueFormAction(formData: FormData): Promise<void> 
     .single<{ id: string; name: string; code: string }>();
 
   if (error || !data) {
-    redirect(`/profile?leagueError=${encodeURIComponent(error?.message ?? "Échec de la création.")}`);
+    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(error?.message ?? "Échec de la création.")}`);
   }
 
   revalidatePath("/profile");
   revalidatePath("/leaderboard"); // nouvelle ligue disponible dans le sélecteur de portée
-  redirect(`/profile?newLeagueName=${encodeURIComponent(data.name)}&newLeagueCode=${encodeURIComponent(data.code)}`);
+  redirect(
+    `/profile?tab=ligues&newLeagueName=${encodeURIComponent(data.name)}&newLeagueCode=${encodeURIComponent(data.code)}`
+  );
 }
 
 export async function joinLeagueFormAction(formData: FormData): Promise<void> {
@@ -49,12 +51,12 @@ export async function joinLeagueFormAction(formData: FormData): Promise<void> {
     .single<{ id: string; name: string }>();
 
   if (error || !data) {
-    redirect(`/profile?leagueError=${encodeURIComponent(error?.message ?? "Code invalide.")}`);
+    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(error?.message ?? "Code invalide.")}`);
   }
 
   revalidatePath("/profile");
   revalidatePath("/leaderboard");
-  redirect(`/profile?leagueJoined=${encodeURIComponent(data.name)}`);
+  redirect(`/profile?tab=ligues&leagueJoined=${encodeURIComponent(data.name)}`);
 }
 
 export async function leaveLeagueFormAction(formData: FormData): Promise<void> {
@@ -73,10 +75,10 @@ export async function leaveLeagueFormAction(formData: FormData): Promise<void> {
     .eq("user_id", user!.id);
 
   if (error) {
-    redirect(`/profile?leagueError=${encodeURIComponent(error.message)}`);
+    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(error.message)}`);
   }
 
   revalidatePath("/profile");
   revalidatePath("/leaderboard");
-  redirect("/profile");
+  redirect("/profile?tab=ligues");
 }
