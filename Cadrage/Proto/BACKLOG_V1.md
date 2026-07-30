@@ -37,11 +37,16 @@
 
 ## Fun / esprit ligue entre potes
 
-- Superlatifs de fin de compétition (généré automatiquement à la clôture —
-  s'appuie sur `competition_archives` déjà existant). Ex : « meilleur 1er
-  tour », « plus grosse remontée au classement ».
-- Badges / titres honorifiques (gamification légère, aucun impact sur le
-  scoring réel). Ex : « Nostradamus » (le plus de bons vainqueurs).
+- ~~Superlatifs de fin de compétition~~ / ~~Badges / titres honorifiques~~
+  **FAIT — 30/07/2026** (`ETAT_ACTUEL.md` §2.50) : Nostradamus (le plus de
+  bons vainqueurs), Sniper (le plus d'écarts exacts), Meilleur bracket,
+  Meilleur 1er tour, Plus grosse remontée — calculés et figés à la clôture
+  (`closeCompetition`), ex-aequo tous crédités, aucun titre décerné si la
+  valeur max est nulle. "Plus grosse remontée" a nécessité de construire
+  d'abord un snapshot quotidien du classement (`leaderboard_snapshots`),
+  qui sert aussi de socle pour "courbe d'évolution" ci-dessous (non
+  construite). Affiché dans une nouvelle section "Historique" (Profil, pour
+  l'instant — voir note ci-dessous).
 - Face-à-face entre deux joueurs précis, match par match / série par série
   — EN OPTION, pas prioritaire, utilité encore incertaine pour
   l'utilisateur.
@@ -63,7 +68,9 @@
 ## Historique & stats
 
 - Courbe d'évolution du classement dans le temps (pas juste l'état figé
-  actuel).
+  actuel). **Socle de données posé le 30/07/2026** (`leaderboard_snapshots`,
+  1 snapshot/jour, voir "Fun / esprit ligue entre potes" ci-dessus) — reste
+  à construire l'écran/graphique lui-même, pas fait ici.
 - Classement all-time toutes compétitions archivées confondues, en plus du
   classement par compétition. **Garde-fou à ne pas oublier en conception** :
   nécessite que le barème de scoring reste identique d'une compétition à

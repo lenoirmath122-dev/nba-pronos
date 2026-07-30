@@ -5,29 +5,44 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **3e point du BACKLOG codé
-> ET validé en conditions RÉELLES : vue admin "Qui manque à l'appel"**
-> (§2.49, `/admin/missing`). Lecture seule, en complément des rappels push
-> automatiques : un bloc par échéance à venir (matchs dans la fenêtre 3
-> jours de l'écran Matchs, bracket si sa deadline approche), liste
-> nominative des joueurs ACTIVE manquants — PAR match, pas une liste
-> agrégée. Aucune compétition n'étant active pour tester, vérifié par un
-> script jetable créant une compétition ACTIVE TEMPORAIRE avec des matchs
-> planifiés à J+2 (délibérément hors des fenêtres de rappel push 4h/24h,
-> pour ne JAMAIS risquer de déclencher une vraie notification pendant le
-> test) et un compte ADMIN JETABLE pour la lecture (jamais le vrai compte
-> `Rillettes-31`) — 6/6 assertions passent, base revérifiée identique après
-> nettoyage. Test au clic dans un vrai navigateur reporté à la prochaine
-> compétition réellement active. **Committé et déployé** (`e934085`).
+> Dernière mise à jour : session du 30/07/2026 — **4e point du BACKLOG codé
+> ET validé en conditions RÉELLES : superlatifs de fin de compétition +
+> écran Historique** (§2.50). Nostradamus, Sniper, Meilleur bracket,
+> Meilleur 1er tour, Plus grosse remontée — calculés et figés à la clôture,
+> tous les ex-aequo crédités, aucun titre décerné si la valeur max est
+> nulle. "Plus grosse remontée" nécessitait un historique de classement qui
+> n'existait pas : ajout d'un snapshot QUOTIDIEN (`leaderboard_snapshots`,
+> nouveau cron, socle réutilisable pour le futur "courbe d'évolution").
+> **Correctif trouvé en construisant** : `competitions.archived_at` posée
+> depuis le schéma initial (T1) mais jamais écrite — remplie désormais à la
+> clôture. Vérifié en conditions réelles par script jetable (compétition
+> ACTIVE temporaire, scores construits à la main pour couvrir ex-aequo,
+> absence de titre, ET une vraie inversion de classement) : 12/12
+> assertions passent, base revérifiée identique après nettoyage. Rendu réel
+> de la section Historique (avec de vrais titres) reste à observer à la
+> prochaine clôture — même réserve que §2.49. **Committé et déployé**
+> (`7bdffc7`).
 >
-> Plus tôt la même session (§2.48, CLOS) : **2e point du backlog, Système
-> de ligue** — groupement d'amis façon MPP (vue filtrée sur le classement,
-> aucun système de scoring séparé), ligue PERMANENTE, appartenance à
-> plusieurs ligues, adhésion par code généré aléatoirement, rang recalculé
-> dans le groupe. Migration #16 + migration #17 (correctif d'une récursion
-> RLS trouvée en testant, PAS en relisant le code). Confirmé fonctionnel par
-> l'utilisateur avec 2 vrais comptes. Committé/déployé (`95edf7e`,
-> `d1fde4f`).
+> Plus tôt la même session : **petit correctif remonté par l'utilisateur en
+> testant** — aucun moyen de sortir du panneau admin vers `/home`/`/profile`
+> depuis sa création (§2.20). Lien "← Retour à l'app" ajouté au layout admin
+> partagé. Committé/déployé (`0e7c233`).
+>
+> Avant ça (§2.49, CLOS) : **3e point du backlog, vue admin "Qui manque à
+> l'appel"** (`/admin/missing`) — lecture seule, un bloc par échéance à
+> venir (matchs fenêtre 3 jours, bracket si sa deadline approche), liste
+> nominative des joueurs manquants PAR match. Vérifié par script jetable
+> (compétition ACTIVE temporaire, matchs à J+2 pour écarter tout risque de
+> rappel push réel pendant le test) — 6/6 assertions passent. Committé/
+> déployé (`e934085`).
+>
+> Avant ça (§2.48, CLOS) : **2e point du backlog, Système de ligue** —
+> groupement d'amis façon MPP (vue filtrée sur le classement, aucun système
+> de scoring séparé), ligue PERMANENTE, appartenance à plusieurs ligues,
+> adhésion par code généré aléatoirement, rang recalculé dans le groupe.
+> Migration #16 + migration #17 (correctif d'une récursion RLS trouvée en
+> testant, PAS en relisant le code). Confirmé fonctionnel par l'utilisateur
+> avec 2 vrais comptes. Committé/déployé (`95edf7e`, `d1fde4f`).
 >
 > Avant ça (29/07/2026, fin de journée, §2.46/§2.47, CLOS) : **1er point du
 > backlog, Rappels ciblés (canal Push)** — infra Web Push complète + 2
@@ -44,19 +59,21 @@
 > Realtime activé sur `series` (migration #14) — détail §2.38→§2.45,
 > `JOURNAL_SESSIONS.md`.
 >
-> **Tout est committé et déployé jusqu'à `e934085` inclus.**
+> **Tout est committé et déployé jusqu'à `7bdffc7` inclus.**
 >
 > Prochaine étape à confirmer avec l'utilisateur : la suite du backlog
-> (export .ics, historique/stats, fun/esprit ligue entre potes, etc. — voir
-> `BACKLOG_V1.md`), ou un nettoyage mineur (3 abonnements Apple dupliqués
-> sur `Demo_Amis`, sans conséquence — voir §2.47).
+> (export .ics, courbe d'évolution du classement — le socle existe déjà,
+> face-à-face entre joueurs, personnalisation du profil, partage, etc. —
+> voir `BACKLOG_V1.md`), ou un nettoyage mineur (3 abonnements Apple
+> dupliqués sur `Demo_Amis`, sans conséquence — voir §2.47).
 >
 > **Trouvailles distinctes des sessions précédentes, toujours vraies** : les
 > emails `@nba-pronos.test` des comptes de seed sont REJETÉS par le
 > validateur Supabase Auth (TLD `.test` non accepté) ; **3 compétitions
 > ARCHIVÉES** (« TEST NBA CUP », « TEST playoff 28/07/2026 », « TEST T4 sync
 > — Playoffs 2026 (réel) ») restent en base, gardées comme historique de
-> test à la demande explicite de l'utilisateur.
+> test à la demande explicite de l'utilisateur — SANS superlatifs (closes
+> avant que ce mécanisme existe, non recalculé rétroactivement, pas demandé).
 >
 > **État de la base** (30/07/2026) : `Demo_Amis`/`Rillettes-31` intacts,
 > plus une ligue de test créée puis rejointe par l'utilisateur lui-même
@@ -4386,4 +4403,115 @@ séparée : les 3 compétitions archivées inchangées, seuls `Rillettes-31`
 noté dans `GAPS_OUVERTS.md`** : test au CLIC dans un vrai navigateur
 reporté à la prochaine compétition réellement active — le script jetable
 vérifie la logique de calcul et la RLS, pas le rendu visuel réel de l'écran.
+```
+
+### 2.49bis Correctif — lien de sortie du panneau admin (session du 30/07/2026)
+
+```text
+Remonté par l'utilisateur en testant : « quand on est dans le panneau
+admin, on n'a aucun moyen de revenir sur la page d'accueil ou profil ».
+Vérifié par grep : aucun lien vers /home ni /profile nulle part dans
+app/(admin)/admin/ (une seule occurrence de "Retour", propre à l'écran
+Compétitions, qui ne sort jamais du panneau admin) — le trou existe depuis
+la création du lot Admin (§2.20, 25/07/2026), jamais remarqué avant.
+
+Corrigé au niveau du LAYOUT partagé (app/(admin)/admin/layout.tsx), donc en
+un seul endroit pour toutes les pages admin : lien "← Retour à l'app" ajouté
+dans l'en-tête (`styles.exitLink`, nouveau dans layout.module.css), aligné à
+droite (`margin-left: auto`), vers /home. `tsc`/`eslint`/`next build`
+propres. Committé et poussé (`0e7c233`).
+```
+
+### 2.50 Superlatifs de fin de compétition + écran Historique (session du 30/07/2026, suite)
+
+```text
+4e point du backlog codé, même session (BACKLOG_V1.md « Fun / esprit ligue
+entre potes »). Périmètre plus large que prévu au premier abord : "plus
+grosse remontée au classement" s'est révélé INCALCULABLE sans historique de
+classement dans le temps — l'app ne gardait que l'état figé FINAL
+(`competition_archives`), jamais d'instantané intermédiaire. 2 choix cadrés
+AVEC l'utilisateur avant de coder (2 AskUserQuestion) plutôt que
+d'abandonner ce titre ou de trancher seul : construire d'abord ce socle
+(plutôt que de le sauter) ; afficher les titres dans une section
+"Historique" de Profil pour l'instant (confirmé explicitement réorganisable
+plus tard en sous-onglets sans verrou structurel — les couches requêtes/
+actions restent indépendantes de l'emplacement d'affichage, même remarque
+que pour les ligues, §2.48).
+
+**Migration #18** (`leaderboard_snapshots` + `competition_superlatives`,
+2 tables neuves, rien d'existant modifié) :
+- `leaderboard_snapshots` : un instantané (rang, points totaux) par
+  (compétition, joueur, jour) — fréquence confirmée AVEC l'utilisateur :
+  1x/jour, largement suffisant pour une remontée/courbe sans accumuler une
+  ligne par recalcul de score. RLS `using (true)` : même classe d'info que
+  `user_scores`/`competition_archives` (agrégats, jamais une ligne
+  individuelle privée), déjà universellement visible (migration #5).
+  AUCUNE policy insert/update/delete pour les joueurs — écrit UNIQUEMENT
+  par le cron (service_role).
+- `competition_superlatives` : titres FIGÉS à la clôture, même patron que
+  `competition_archives` (`insert with check (is_admin())`, écrit dans la
+  MÊME session admin que l'archive, jamais service_role, jamais recalculé
+  après coup). Plusieurs lignes possibles par (compétition, kind) : TOUS
+  les ex-aequo sont crédités, aucun tie-break arbitraire inventé.
+
+**Infra du cron** : `lib/snapshots/leaderboardSnapshot.ts`
+(`runLeaderboardSnapshot`, service_role, même famille que
+`lib/reminders/*.ts`) ; `/api/snapshots/leaderboard` (même garde Bearer
+`SYNC_SECRET` que `/api/sync/*`/`/api/reminders/*`, AUCUN nouveau secret
+GitHub requis) ; `.github/workflows/snapshot-leaderboard.yml` (cron `0 12
+* * *`, 12h UTC). Upsert sur `(competition_id, user_id, snapshot_date)` : un
+2e déclenchement le même jour MET À JOUR la ligne du jour au lieu d'en
+créer une seconde.
+
+**Correctif trouvé en construisant, PAS un bug préexistant signalé** :
+`competitions.archived_at` posée dès le schéma initial (T1, migration #1)
+mais jamais écrite nulle part dans le code — trouvé en construisant l'écran
+Historique, qui en a besoin pour trier/dater les compétitions closes.
+Corrigé directement dans `closeCompetition()`
+(`lib/actions/admin-competitions.ts`) au passage, commenté comme tel.
+
+**`lib/scoring/superlatives.ts`** (`computeSuperlatives`, appelé UNE SEULE
+FOIS par `closeCompetition`, dans la même transaction logique que l'écriture
+de `competition_archives`) — 5 titres :
+- NOSTRADAMUS (le plus de bons vainqueurs, `correct_match_winners`) ;
+- SNIPER (le plus d'écarts exacts, `exact_margins`) ;
+- BRACKET_KING (le plus de points bracket, `bracket_points`) ;
+- BEST_ROUND1 (le plus de points gagnés sur les matchs du 1er tour
+  UNIQUEMENT — pas une colonne de `user_scores`, qui agrège TOUS les tours :
+  requête dédiée, série ROUND_1 -> matchs -> `match_predictions.points_awarded`) ;
+- BIGGEST_CLIMB (delta entre le rang du PREMIER snapshot disponible et le
+  rang final déjà calculé par `closeCompetition`, même départage que le
+  classement live) — IGNORÉ si aucun snapshot n'existe encore (compétition
+  close le jour même de sa création, avant le premier passage du cron :
+  jamais une erreur, juste un titre non décerné cette fois-là).
+
+Un titre à valeur maximale NULLE n'est JAMAIS décerné (ex. personne n'a de
+points bracket cette saison-là -> pas de "Meilleur bracket", `pickTopTied`
+renvoie un tableau vide si `max <= 0`).
+
+**Vérifié en conditions réelles**, même précaution que §2.49 (compétition
+ACTIVE temporaire, compte ADMIN JETABLE, jamais le vrai compte
+`Rillettes-31`) : scores construits À LA MAIN (pas de vrai match résolu, les
+colonnes `is_winner_correct`/`margin_diff`/`winner_points`/
+`margin_bonus_points` posées directement — non générées, seul
+`points_awarded` l'est) pour couvrir délibérément 3 cas limites : ex-aequo
+RÉEL (Sniper, 1 écart exact chacun) ; absence de titre (Bracket, 0 partout,
+aucune ligne insérée) ; une VRAIE inversion de classement entre un snapshot
+"d'hier" (Demo_Amis 1er, Rillettes-31 2e) et le rang final recalculé
+(Rillettes-31 1er, Demo_Amis 2e — climb de Rillettes-31 = +1 confirmé,
+climb négatif de Demo_Amis bien exclu). RLS confirmée dans les deux sens :
+un admin PEUT insérer des superlatifs, un appelant NON-admin (client
+anonyme) est BLOQUÉ ; lecture publique confirmée (même client anonyme, sans
+session, voit les lignes insérées). Upsert du snapshot rejoué deux fois le
+même jour : toujours 2 lignes, jamais 4 (contrainte unique respectée).
+12/12 assertions passent. Nettoyage complet (superlatifs → snapshots →
+pronos → matchs → série → compétition → compte de test), base revérifiée
+IDENTIQUE à l'avant-test par une requête séparée.
+
+`tsc`/`eslint`/`next build` propres. Committé et poussé (`7bdffc7`).
+**Résidu, même nature que §2.49** : le rendu RÉEL de la section Historique
+avec de VRAIS titres (pas juste la liste vide des 3 compétitions test déjà
+archivées, closes avant que ce mécanisme existe) reste à observer à la
+prochaine vraie clôture de compétition — le script jetable vérifie la
+logique de calcul et la RLS, pas le rendu visuel.
 ```

@@ -4104,3 +4104,76 @@ active).
 clic dans un vrai navigateur reporté à la prochaine compétition réellement
 active (l'état vide "Aucune compétition en cours." est, lui, déjà le
 rendu actuel réel du site).
+
+---
+
+## Petit correctif — lien de sortie du panneau admin (30/07/2026)
+
+Remonté par l'utilisateur en testant : aucun moyen de sortir du panneau
+admin vers `/home`/`/profile` depuis sa création (§2.20) — le layout admin
+n'avait qu'un en-tête "Administration", jamais de nav de sortie. Ajouté un
+lien "← Retour à l'app" dans `app/(admin)/admin/layout.tsx`, partagé par
+toutes les pages admin (un seul fichier à changer). `tsc`/`eslint`/`next
+build` propres. Committé et poussé (`0e7c233`).
+
+---
+
+## Superlatifs de fin de compétition + écran Historique (30/07/2026)
+
+4e point du backlog codé, même session (« Fun / esprit ligue entre
+potes »). Plus gros que prévu au départ : "plus grosse remontée au
+classement" s'est révélé INCALCULABLE sans historique de classement dans
+le temps (l'app ne gardait que l'état figé final, `competition_archives`).
+Décidé AVEC l'utilisateur (2 questions posées avant de coder) : construire
+d'abord ce socle plutôt que d'abandonner ce titre ; afficher les titres
+dans une section "Historique" de Profil pour l'instant (confirmé
+explicitement réorganisable plus tard en sous-onglets, sans verrou
+structurel — les couches requêtes/actions restent indépendantes de
+l'emplacement d'affichage, même remarque que pour les ligues).
+
+**Migration #18** (`leaderboard_snapshots` + `competition_superlatives`,
+2 tables neuves) : snapshots RLS `using (true)` (même classe d'info que
+`user_scores`/`competition_archives`, aucune ligne individuelle privée),
+écrits UNIQUEMENT par le cron (aucune policy insert joueur). Superlatifs :
+même patron que `competition_archives` (`insert with check (is_admin())`,
+écrit par `closeCompetition()` en session admin normale, jamais
+service_role). Fréquence du snapshot confirmée AVEC l'utilisateur : 1x/jour
+(`lib/snapshots/leaderboardSnapshot.ts`, `/api/snapshots/leaderboard`,
+`.github/workflows/snapshot-leaderboard.yml` — 12h UTC, même patron Bearer
+`SYNC_SECRET` que les rappels/sync, AUCUN nouveau secret GitHub requis).
+
+**Correctif trouvé en construisant, pas un bug de ce lot** :
+`competitions.archived_at` posée dès le schéma initial (T1) mais jamais
+écrite nulle part — l'écran Historique en a besoin pour trier/dater les
+compétitions closes. Corrigé dans `closeCompetition()` au passage.
+
+`lib/scoring/superlatives.ts` (`computeSuperlatives`) : 5 titres — NOSTRADAMUS
+(bons vainqueurs), SNIPER (écarts exacts), BRACKET_KING (points bracket),
+BEST_ROUND1 (points gagnés sur les matchs du 1er tour uniquement, requête
+dédiée — pas une colonne de `user_scores`, qui agrège tous les tours),
+BIGGEST_CLIMB (delta entre le rang du 1er snapshot disponible et le rang
+final déjà calculé par `closeCompetition`). TOUS les ex-aequo crédités
+(aucun tie-break arbitraire) ; un titre à valeur nulle n'est JAMAIS décerné
+(ex. personne n'a de points bracket -> pas de "Meilleur bracket" cette
+saison-là) ; `BIGGEST_CLIMB` ignoré si aucun snapshot n'existe encore
+(compétition close le jour même de sa création). Appelé UNE SEULE FOIS dans
+`closeCompetition`, jamais recalculé après coup.
+
+**Vérifié en conditions réelles** : même précaution que le lot précédent
+(compétition ACTIVE temporaire, compte admin jetable, jamais le vrai
+compte). Scores construits à la main pour couvrir délibérément les 3 cas
+limites : ex-aequo réel (Sniper, 1 écart exact chacun), absence de titre
+(Bracket, 0 partout), et une VRAIE inversion de classement entre un
+snapshot "d'hier" et le rang final (Demo_Amis 1er hier, Rillettes-31 1er
+aujourd'hui → climb de Rillettes-31 confirmé, climb négatif de Demo_Amis
+bien exclu). RLS confirmée : un admin peut insérer des superlatifs, un
+appelant non-admin est bloqué, la lecture reste publique. Upsert du
+snapshot rejoué deux fois le même jour : pas de doublon (contrainte unique
+`competition_id, user_id, snapshot_date`). 12/12 assertions passent,
+nettoyage complet, base revérifiée identique après coup.
+
+`tsc`/`eslint`/`next build` propres. Committé et poussé (`7bdffc7`). Comme
+pour la vue admin "Qui manque à l'appel", le rendu réel de la section
+Historique (avec de vrais titres, pas juste la liste vide des 3
+compétitions test déjà archivées) reste à observer à la prochaine vraie
+clôture de compétition.

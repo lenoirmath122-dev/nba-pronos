@@ -17,10 +17,15 @@
 > (sélecteur visible même sans compétition active) ; **3e point : vue admin
 > "Qui manque à l'appel"** (§2.49, `/admin/missing`, lecture seule) — vérifié
 > par script jetable (compétition ACTIVE temporaire + matchs à J+2 pour
-> écarter tout risque de déclencher un vrai rappel push pendant le test),
-> test au clic reporté à la prochaine compétition réellement active — voir
-> `ETAT_ACTUEL.md` pour le détail complet. **Tout est committé/déployé
-> jusqu'à `e934085`.**
+> écarter tout risque de déclencher un vrai rappel push pendant le test) ;
+> **petit correctif remonté en testant** : lien de sortie ajouté au panneau
+> admin (§2.49bis) ; **4e point : superlatifs de fin de compétition + écran
+> Historique** (§2.50) — a nécessité de construire d'abord un snapshot
+> quotidien du classement (`leaderboard_snapshots`), vérifié par script
+> jetable couvrant ex-aequo/absence de titre/inversion de classement, 12/12
+> assertions. Tests au clic (missing + historique) reportés à la prochaine
+> compétition réellement active — voir `ETAT_ACTUEL.md` pour le détail
+> complet. **Tout est committé/déployé jusqu'à `7bdffc7`.**
 >
 > **Résidu mineur, non bloquant** : le compte `Demo_Amis` a 3 abonnements
 > push Apple dupliqués (Safari en recrée un à chaque tentative) — à
@@ -29,10 +34,12 @@
 > **Prochaine étape, à confirmer avec l'utilisateur** : la suite du backlog
 > (`BACKLOG_V1.md`).
 >
-> **Résidu** : `/admin/missing` (§2.49) vérifié par script jetable en base
-> réelle, mais jamais cliqué dans un vrai navigateur (aucune compétition
-> active pour le faire) — à tester au clic dès qu'une compétition redevient
-> active.
+> **Résidu** : `/admin/missing` (§2.49) et la section Historique de Profil
+> (§2.50, superlatifs) vérifiés par scripts jetables en base réelle, mais
+> jamais cliqués dans un vrai navigateur (aucune compétition active pour le
+> faire, et les 3 compétitions déjà archivées n'ont pas de superlatifs —
+> closes avant que ce mécanisme existe) — à tester au clic à la prochaine
+> vraie clôture de compétition.
 
 ## Audit structurel T1→T8 / D1-D6 : CLOS (28/07/2026)
 
@@ -521,3 +528,31 @@
     l'invariant préexistant « aucune active = état vide global » du
     Classement) — tranché AVEC l'utilisateur, `SortChips` seul reste absent
     (rien à trier sans classement).
+- **Superlatifs de fin de compétition + écran Historique (session du
+  30/07/2026, `BACKLOG_V1.md`, migration #18,
+  `lib/scoring/superlatives.ts`, `lib/snapshots/leaderboardSnapshot.ts`,
+  `lib/queries/history.ts`)** :
+  - **AUCUNE spec n'existait** — "plus grosse remontée au classement"
+    s'est révélé incalculable sans historique de classement dans le temps
+    (seul l'état figé final existait, `competition_archives`). Décidé AVEC
+    l'utilisateur (2 questions posées avant de coder) : construire d'abord
+    un snapshot quotidien (`leaderboard_snapshots`) plutôt que d'abandonner
+    ce titre ; section "Historique" dans Profil pour l'instant, réorganisation
+    future en sous-onglets explicitement non bloquante (couches requêtes/
+    actions indépendantes de l'emplacement d'affichage, même remarque que
+    pour les ligues) ;
+  - tous les ex-aequo sont crédités pour un titre (aucun tie-break
+    arbitraire) ; un titre à valeur maximale NULLE n'est jamais décerné
+    (ex. personne n'a de points bracket -> pas de "Meilleur bracket") ;
+  - `BIGGEST_CLIMB` ignoré si aucun snapshot n'existe encore pour la
+    compétition (close le jour même de sa création, avant le premier
+    passage du cron quotidien) — jamais une erreur, juste un titre non
+    décerné cette fois-là ;
+  - correctif trouvé EN CONSTRUISANT (pas un bug préexistant signalé) :
+    `competitions.archived_at`, posée dès le schéma initial (T1) mais
+    jamais écrite, corrigée directement dans `closeCompetition()` ;
+  - les 3 compétitions de TEST déjà archivées (`GAPS_OUVERTS.md` ci-dessus)
+    n'ont délibérément AUCUN superlatif : closes avant que ce mécanisme
+    existe, non recalculé rétroactivement (pas demandé, et reconstituer des
+    scores/snapshots a posteriori pour de la donnée de test n'aurait aucun
+    sens).
