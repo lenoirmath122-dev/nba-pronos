@@ -5,7 +5,28 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 30/07/2026 — **filtre par ligue ajouté
+> Dernière mise à jour : session du 31/07/2026 — **tutoriel joueur codé,
+> capturé et déployé** (§2.51, `SPEC_TUTORIEL_JOUEUR_V0_1.md`) : 2e des 3
+> chantiers prioritaires retenus le 30/07/2026 (après la refonte du Bracket),
+> avant les badges permanents (toujours non cadrés). Cadré en séance avec
+> l'utilisateur (3 tours d'`AskUserQuestion` : déclenchement/format/contenu,
+> puis ajout des paris MATCH+SÉRIE à l'étape 3, puis code-vs-note-de-cadrage
+> avant d'écrire une ligne) — bannière de proposition à la 1re connexion
+> (flag `users.tutorial_seen_at`, migration #21) + wizard modal 7 étapes,
+> lien permanent « Comment jouer ? » dans Profil > Compte. Les 5 dernières
+> étapes portent de VRAIES captures d'écran de l'interface (`public/
+> tutorial/*.png`), capturées via Playwright (installé temporairement en
+> dev dependency puis retiré) sur le compte de test `TestJoueur1`
+> (mot de passe désormais connu : `TutoTest2026!`, posé par l'utilisateur
+> lui-même — le classificateur de permissions bloque cette action pour
+> Claude). Matchs/Bracket n'avaient rien à montrer (aucun match proche, `
+> bracket_deadline` passée) : la VRAIE compétition ACTIVE de l'utilisateur
+> (« Test ») a été temporairement ajustée (1 match ajouté, deadline reculée)
+> puis EXACTEMENT restaurée juste après (vérifié par relecture séparée).
+> Committé et déployé (`34e179a`, Vercel production `nba-pronos.vercel.app`
+> vérifiée `200` après build). Détail complet dans `JOURNAL_SESSIONS.md`.
+>
+> Plus tôt (session du 30/07/2026) — **filtre par ligue ajouté
 > sur Mes pronos + Bracket** (demandé par l'utilisateur, même patron chips
 > `?ligue=` que Classement) : `resolveLeagueScope()` extrait dans
 > `lib/queries/leagues.ts` (jusque-là dupliqué, refactoré depuis
@@ -4629,4 +4650,78 @@ avec de VRAIS titres (pas juste la liste vide des 3 compétitions test déjà
 archivées, closes avant que ce mécanisme existe) reste à observer à la
 prochaine vraie clôture de compétition — le script jetable vérifie la
 logique de calcul et la RLS, pas le rendu visuel.
+```
+
+### 2.51 Tutoriel joueur (session du 31/07/2026)
+
+```text
+2e des 3 chantiers prioritaires du reclassement du 30/07/2026 (après la
+refonte du Bracket, voir `JOURNAL_SESSIONS.md`), avant les badges permanents
+(non cadrés). AUCUNE spec ne préexistait — seule une ligne dans BACKLOG_V1.md
+(« Tutoriel & notifications »). Contrairement aux lots précédents sans spec
+(Bracket personnel, Système de ligue), l'utilisateur a explicitement demandé
+de « beaucoup réfléchir avant de coder » — rédigée EN SÉANCE
+(`SPEC_TUTORIEL_JOUEUR_V0_1.md`, `Cadrage/V1/Spec visuelle/`), 3 tours
+d'`AskUserQuestion` avant la 1re ligne de code : (1) déclenchement/format/
+contenu ; (2) ajout des paris MATCH+SÉRIE à l'étape 3 (demandé après
+relecture de la 1re proposition) ; (3) choix explicite d'écrire la note de
+cadrage avant de coder (plutôt que coder directement), même réflexe que
+Bracket personnel/Ligues.
+
+**Mécanique** (§4 de la spec) : `users.tutorial_seen_at timestamptz null`
+(migration #21, `20260730130000_tutorial_seen_at.sql`) — écriture directe
+via `users_update_self` (aucune fonction SECURITY DEFINER nécessaire, le
+trigger `enforce_users_invariants` ne garde que role/status). Posé au
+PREMIER des 3 événements de sortie (Découvrir/Plus tard/fermeture), pas
+seulement à la complétion des 7 étapes — sinon un joueur qui ferme tôt
+reverrait la bannière en boucle.
+
+**Composants** (`components/tutorial/`) : `TutorialModal.tsx` (wizard 7
+étapes, contenu 100 % statique, `use client`, état d'étape en `useState`
+local — PAS dans l'URL, c'est un overlay ponctuel, pas une page) ;
+`TutorialBanner.tsx` (Accueil, montée uniquement si `tutorialSeenAt ===
+null`, AVANT le early-return "aucune compétition active" — un joueur peut
+s'inscrire sans compétition en cours) ; `TutorialLink.tsx` (lien permanent
+« Comment jouer ? », Profil > Compte). Écart assumé avec la note de
+cadrage : §6 prévoyait le style `hero-banner` (photo parquet) pour la
+bannière, remplacé en codant par une carte simple (même style que les
+sections Accueil existantes) pour éviter 2 bandeaux photo empilés — signalé
+explicitement à l'utilisateur, pas encore retranché.
+
+**Captures d'écran réelles** (ajout demandé par l'utilisateur APRÈS le 1er
+test manuel, pas dans le cadrage initial) — étapes 1/2 (conceptuelles)
+restent texte seul, étapes 3→7 illustrées (`public/tutorial/*.png`, recadrées
+serré via `sharp`, ~480px de large). Chaîne complète pour les obtenir, le
+classificateur de permissions bloquant toute mutation de compte pour Claude
+(y compris un mot de passe de test) :
+1. L'utilisateur a lui-même posé un mot de passe connu (`TutoTest2026!`) sur
+   `TestJoueur1` (`scripts/tmp_set_tutorial_test_password.mjs`, jetable,
+   supprimé après usage) — Claude ne peut pas muter un compte, mais une
+   simple soumission du VRAI formulaire /login n'est pas une action
+   privilégiée.
+2. Playwright installé temporairement en dev dependency (`npm install -D
+   playwright`, désinstallé juste après — `package.json`/`package-lock.json`
+   revérifiés identiques par `git status`), capture des 5 écrans via le
+   serveur `next dev` déjà lancé par l'utilisateur (port 3001).
+3. Matchs/Bracket n'avaient rien à montrer (aucun match dans la fenêtre 3
+   jours, `bracket_deadline` déjà passée) — la contrainte DB « une seule
+   compétition ACTIVE à la fois » interdisait d'en créer une jetable à côté.
+   Décidé AVEC l'utilisateur (AskUserQuestion) : ajustement RÉVERSIBLE de sa
+   VRAIE compétition ACTIVE (« Test », id `941a63da-...`) — 1 match SCHEDULED
+   ajouté sur une série existante sans match, `bracket_deadline` reculée à
+   +72h, capture, PUIS suppression du match ajouté et restauration EXACTE de
+   la deadline d'origine (`2026-07-30T11:13:00+00:00`), revérifié par lecture
+   séparée après coup. Aucune trace résiduelle.
+
+**Vérifié** : `tsc`/`eslint`/`next build` propres à chaque étape. Committé
+et poussé sur `main` (`34e179a`), déploiement Vercel automatique (intégration
+GitHub) suivi via `vercel inspect` jusqu'à `Ready`, `https://
+nba-pronos.vercel.app/login` revérifiée `200` en production.
+
+**Résidu, signalé à l'utilisateur, pas bloquant** : les captures sont des
+images figées de l'interface actuelle — la DA n'étant pas stabilisée (ex.
+renommage Classement → « Hall of shame » reporté), elles se périmeront si
+l'UI change. L'utilisateur prévoit de les refaire lui-même plus tard (mêmes
+noms de fichiers dans `public/tutorial/`, aucun changement de code requis
+pour les remplacer).
 ```

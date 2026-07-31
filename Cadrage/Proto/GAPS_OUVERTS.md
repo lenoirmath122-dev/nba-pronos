@@ -4,6 +4,22 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 31/07/2026** — **Tutoriel joueur codé, capturé et déployé**
+> (`SPEC_TUTORIEL_JOUEUR_V0_1.md`, `ETAT_ACTUEL.md` §2.51) : 2e des 3
+> chantiers prioritaires du reclassement du 30/07/2026 (après la refonte du
+> Bracket), avant les badges permanents (toujours non cadrés). Bannière de
+> proposition à la 1re connexion (flag `tutorial_seen_at`) + wizard modal 7
+> étapes, dont les 5 dernières illustrées par de VRAIES captures d'écran —
+> capturées via Playwright (compte `TestJoueur1`, mot de passe de test
+> désormais connu : `TutoTest2026!`) après avoir dû ajuster PUIS restaurer
+> exactement la vraie compétition ACTIVE de l'utilisateur (« Test ») pour
+> obtenir un match/bracket déverrouillés à photographier — vérifié après
+> coup, aucune trace résiduelle. Committé et déployé (`34e179a`, Vercel
+> production vérifiée `200`).
+>
+> **Reste du reclassement du 30/07/2026** : badges permanents (3e chantier,
+> non cadrés — emplacement/liste à spécifier le moment venu).
+>
 > **État au 30/07/2026** — Audit structurel T1→T8/D1-D6 CLOS (28/07/2026, 7
 > écarts corrigés) ; Realtime `series` comblé (T6c, §2.44) ; 4 points UI
 > mineurs + bandeau parquet sur les 10 écrans joueur (§2.45) ; **1er point du
@@ -80,10 +96,10 @@
 >
 > **Reclassement du backlog** (décidé avec l'utilisateur) : 3 chantiers
 > retenus dans l'ordre — refonte Bracket (FAITE, voir ci-dessous) → Tutoriel
-> joueur → "Fun/esprit ligue" redéfini en badges PERMANENTS (visibles en
-> continu pendant la compétition, pas seulement à la clôture). Le reste du
-> backlog (export .ics, courbe d'évolution, classement all-time, Hall of
-> shame) reporté après ces 3.
+> joueur (FAIT — 31/07/2026, voir tout en haut) → "Fun/esprit ligue" redéfini
+> en badges PERMANENTS (visibles en continu pendant la compétition, pas
+> seulement à la clôture — reste à cadrer). Le reste du backlog (export .ics,
+> courbe d'évolution, classement all-time, Hall of shame) reporté après ces 3.
 >
 > **Refonte lisibilité du Bracket — FAITE** : distinction Est/Ouest (Vue A
 > scindée en sous-groupes, Vue B réordonnée en poster miroir Ouest-gauche/

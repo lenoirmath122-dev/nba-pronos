@@ -33,10 +33,13 @@
 
 ## Tutoriel & notifications
 
-- Tutoriel d'utilisation de l'appli pour le JOUEUR (comprendre que l'app se
-  reset à chaque nouvelle compétition) — à distinguer du « mini-tuto outils
-  Next.js/Supabase/Vercel » du proto (0.2.10), qui reste un document séparé
-  et différent.
+- ~~Tutoriel d'utilisation de l'appli pour le JOUEUR~~ **FAIT — 31/07/2026**
+  (`SPEC_TUTORIEL_JOUEUR_V0_1.md`, `ETAT_ACTUEL.md` §2.51) : bannière de
+  proposition à la 1re connexion + wizard modal 7 étapes (dont la règle du
+  reset à chaque nouvelle compétition, le point demandé ici), lien permanent
+  « Comment jouer ? » dans Profil > Compte. Étapes 3→7 illustrées par de
+  vraies captures d'écran. Distinct du « mini-tuto outils Next.js/Supabase/
+  Vercel » du proto (0.2.10), qui reste un document séparé.
 - Notifications journalières programmées (contenu, canal, horaire exacts à
   définir en spec technique).
 

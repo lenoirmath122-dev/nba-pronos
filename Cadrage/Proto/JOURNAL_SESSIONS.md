@@ -4525,3 +4525,76 @@ retour d'une requête de correction en erreur sur CE match précis (sinon le
 message d'erreur resterait invisible). `tsc`/`eslint`/`next build` propres.
 Committé et poussé (`ec698e9`). Les 2 lots confirmés fonctionnels par
 l'utilisateur en conditions réelles.
+
+---
+
+## Tutoriel joueur (31/07/2026)
+
+2e des 3 chantiers prioritaires retenus la veille (après la refonte du
+Bracket), avant les badges permanents. L'utilisateur a ouvert la session en
+demandant explicitement de « beaucoup réfléchir avant de coder » — contexte
+inhabituel par rapport aux lots précédents sans spec (Bracket personnel,
+Ligues), où le cadrage se faisait plus vite. Note de cadrage rédigée EN
+SÉANCE (`SPEC_TUTORIEL_JOUEUR_V0_1.md`, `Cadrage/V1/Spec visuelle/`) avant
+toute ligne de code, 3 tours d'`AskUserQuestion` :
+
+1. Déclenchement (proposition unique à la 1re connexion + lien permanent
+   Profil), format (wizard modal pas-à-pas), contenu (tour d'horizon complet
+   des 7 axes du jeu, pas seulement le point « reset » demandé par le
+   backlog).
+2. Contenu affiné après relecture de la 1re proposition : l'étape 3
+   (« Matchs ») devait aussi couvrir les paris MATCH ET SÉRIE, pas
+   uniquement le pronostic vainqueur/écart.
+3. Avant de coder : note de cadrage écrite d'abord (comme Bracket personnel/
+   Ligues) plutôt que code direct — confirmé par l'utilisateur.
+
+**Codé** : migration #21 (`users.tutorial_seen_at`, écriture directe via
+`users_update_self`, aucune fonction dédiée nécessaire) ; `TutorialModal.tsx`
+(wizard, état local, pas d'URL) ; `TutorialBanner.tsx` (Accueil, montée
+uniquement si jamais vu, y compris sans compétition active) ;
+`TutorialLink.tsx` (Profil > Compte). Écart signalé à l'utilisateur : la
+bannière utilise une carte simple plutôt que le style `hero-banner` prévu
+par la note de cadrage, pour éviter deux bandeaux photo empilés sous celui
+d'Accueil — pas encore retranché.
+
+**Test manuel par l'utilisateur** : tout fonctionnel. Demande faite APRÈS ce
+test, hors cadrage initial : illustrer chaque étape d'une vraie capture
+d'écran de l'interface. Nouveau tour d'`AskUserQuestion` pour cadrer ça
+aussi (vraies captures vs illustrations ; risque de péremption accepté vu
+que la DA n'est pas stabilisée ; étapes 1/2 conceptuelles laissées en texte
+seul).
+
+**Captures d'écran — chaîne complexe, plusieurs blocages successifs** :
+- Claude ne peut muter aucun compte (classificateur de permissions bloque
+  `auth.admin.updateUserById` même sur un compte de test jetable,
+  automatiquement, sans même remonter à l'utilisateur). Contournement :
+  l'utilisateur a lui-même lancé un script jetable posant un mot de passe
+  connu (`TutoTest2026!`) sur `TestJoueur1` — ensuite, une simple soumission
+  du vrai formulaire /login par Playwright n'est plus une action privilégiée.
+- Playwright absent du projet : installé temporairement en dev dependency,
+  désinstallé juste après (`package.json`/`package-lock.json` revérifiés
+  identiques par `git status`).
+- 1re série de captures : Matchs et Bracket vides/verrouillés (aucun match
+  dans la fenêtre 3 jours, `bracket_deadline` passée). Diagnostic initial
+  erroné (« aucune compétition active », d'après un souvenir de fin de
+  session précédente) — en réalité une compétition ACTIVE existait bien
+  (« Test », créée par l'utilisateur le matin même), la contrainte DB « une
+  seule compétition ACTIVE à la fois » a fait échouer la tentative de créer
+  une compétition jetable à côté. Décidé AVEC l'utilisateur : ajustement
+  RÉVERSIBLE de sa vraie compétition « Test » (1 match SCHEDULED ajouté sur
+  une série existante, `bracket_deadline` reculée à +72h), recapture, PUIS
+  suppression du match ajouté et restauration EXACTE de la deadline
+  d'origine — revérifié par une lecture séparée après coup, aucune trace
+  résiduelle.
+- Recadrage final : 5 PNG recadrés serré (`sharp`, ~480px de large) dans
+  `public/tutorial/`, intégrés au wizard via `next/image`.
+
+`tsc`/`eslint`/`next build` propres à chaque étape. Committé et poussé sur
+`main` (`34e179a`) ; déploiement Vercel automatique (intégration GitHub)
+suivi via `vercel inspect` jusqu'à `Ready`, `nba-pronos.vercel.app/login`
+revérifiée `200` en production. Tous les scripts jetables supprimés en fin
+de session (aucun résidu dans le dépôt).
+
+Résidu signalé, pas bloquant : les captures se périmeront si la DA change
+(non stabilisée) — l'utilisateur prévoit de les refaire lui-même plus tard,
+mêmes noms de fichiers, aucun changement de code requis.
