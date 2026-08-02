@@ -5,7 +5,27 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 31/07/2026 — **tutoriel joueur codé,
+> Dernière mise à jour : session du 31/07/2026, suite — **création de
+> compétition NBA Cup construite et vérifiée en conditions réelles** (§2.52,
+> correctif post-validation `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` §10) :
+> mini-bracket 4 quarts/2 demies/finale (topologie bottom-up identique aux
+> Playoffs, mais SANS conférence — le schéma T1 le prévoyait déjà ainsi),
+> demandé par l'utilisateur (« retravailler sur la création de compétition et
+> importation des matchs »). Dry-run réel en 2 passes successives
+> (`scripts/dryrun-cup-sync-test.mjs`, conservé dans le dépôt) sur la vraie
+> compétition ACTIVE temporairement archivée : prouve pour la 1re fois que la
+> synchro capture les matchs Cup AU FUR ET À MESURE (pas tout d'un coup) et
+> qu'une série à 1 seul match (agrégat Cup, jamais exercé bout-en-bout avant
+> ce jour) passe bien à `FINISHED` et propage son vainqueur automatiquement,
+> sur 2 tours d'affilée (quarts→demies→finale). Incident de nettoyage trouvé
+> et corrigé (un vrai bracket joueur créé pendant le test bloquait la
+> suppression par FK, erreurs de `.delete()` pas vérifiées jusque-là) ;
+> compétition réelle restaurée en ACTIVE, vérifiée intacte. `SYNC_SECRET`
+> exposé en clair dans le chat par l'utilisateur (même famille que les
+> incidents précédents) — régénération recommandée, pas encore confirmée
+> faite. PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+>
+> Plus tôt (session du 31/07/2026) — **tutoriel joueur codé,
 > capturé et déployé** (§2.51, `SPEC_TUTORIEL_JOUEUR_V0_1.md`) : 2e des 3
 > chantiers prioritaires retenus le 30/07/2026 (après la refonte du Bracket),
 > avant les badges permanents (toujours non cadrés). Cadré en séance avec
@@ -4724,4 +4744,130 @@ renommage Classement → « Hall of shame » reporté), elles se périmeront si
 l'UI change. L'utilisateur prévoit de les refaire lui-même plus tard (mêmes
 noms de fichiers dans `public/tutorial/`, aucun changement de code requis
 pour les remplacer).
+```
+
+### 2.52 Création de compétition NBA Cup + dry-run réel de la synchro (session du 31/07/2026, suite)
+
+```text
+Objet : demande directe de l'utilisateur (« retravailler sur la création de
+compétition et importation des matchs »). Deux volets, clarifiés par
+AskUserQuestion avant de coder : (1) construire la création NBA Cup,
+explicitement hors périmètre de SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md depuis
+sa validation du 27/07/2026 ; (2) vérifier en conditions réelles que la
+synchro capture bien les matchs Cup au fur et à mesure et que les scores
+s'y saisissent automatiquement.
+
+**Volet 1 — Création NBA Cup (correctif post-validation)**
+
+Réouverture d'un point validé, flaguée et confirmée AVANT de coder (même
+réflexe que les correctifs précédents, ex. §2.10bis) : topologie bottom-up
+identique aux Playoffs (§2.30) — 4 CUP_QUARTERS → 2 CUP_SEMIS → 1 CUP_FINAL
+— mais SANS conférence (`series.conference` NULL sur toute la Cup, déjà
+prévu par le schéma T1 dès le 18/07/2026, jamais exploité jusqu'ici).
+L'admin choisit librement les 8 équipes qualifiées en 4 affiches, aucune
+contrainte Est/Ouest contrairement aux Playoffs.
+
+Code : `lib/actions/admin-competitions.ts` (`createCupBracket`, nouvelle
+fonction, même patron `insertSeries` que `createPlayoffBracket` ; validation
+serveur : 4 affiches, 8 équipes distinctes et existantes, pas de contrôle de
+conférence) ; `app/(admin)/admin/competitions/new/page.tsx` (2e fieldset
+« Quarts NBA Cup », même patron « formulaire unique, champs non pertinents
+ignorés côté serveur selon le type soumis » que Playoffs). Détail complet
+dans `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` §10 (correctif).
+
+**Trouvaille de conception** (avant de coder, en relisant le code existant) :
+AUCUN autre changement de code n'était nécessaire — `lib/queries/
+admin-results.ts` (CUP_ROUNDS), `lib/labels/rounds.ts`, la synchro T4
+(`lib/sync/schedule.ts`/`results.ts`, attache déterministe par paire
+d'équipes, round-agnostique) et le moteur de scoring T5 (barème Cup,
+`deriveSeriesOutcome`) géraient déjà la Cup de façon générique depuis leur
+construction respective — jamais exercés bout-en-bout faute d'une
+compétition Cup réelle avec des séries peuplées.
+
+Vérifié : `npx tsc --noEmit`, `npx eslint .`, `npx vitest run` (37/37),
+`npx next build` tous propres, 34 routes sans conflit.
+
+**Volet 2 — Dry-run réel de la synchro (script `scripts/
+dryrun-cup-sync-test.mjs`, jetable mais conservé dans le dépôt pour un futur
+test similaire — sous-commandes `setup`/`verify`/`simulate-upcoming`/
+`teardown`)**
+
+Contrainte découverte en route : Claude ne peut pas écrire directement en
+production (classificateur de permissions bloque toute mutation, même sur
+une compétition de TEST isolée — même famille de blocage que les mots de
+passe de test des sessions précédentes). Le script a donc été préparé PAR
+Claude mais EXÉCUTÉ PAR l'utilisateur, étape par étape, dans son propre
+terminal (PowerShell) — Claude guidait, lisait les résultats collés dans le
+chat, et faisait les vérifications en base en LECTURE SEULE (jamais bloquées).
+
+Déroulé réel :
+1. `setup` : compétition réelle ACTIVE (« Test ») archivée temporairement
+   (flip de statut brut, PAS `closeCompetition` — aucun snapshot/superlatif
+   réel généré) ; compétition Cup de test créée avec 4 quarts — 2 VRAIS
+   matchs (NYK-TOR, MIA-ORL, tous deux réellement joués le 09/12/2025,
+   repérés par 3 appels API en amont) + 2 placeholders (BOS-PHI, DEN-LAL)
+   jamais synchronisés dans ce test.
+2. **Passe 1 (`?date=2025-12-09`)** : `schedule` puis `results`. Les 2 vrais
+   matchs capturés et scorés (117-101 NYK, 117-108 ORL), les 2 séries
+   passent `FINISHED`, et — point CLÉ jamais vérifié avant ce jour — leurs
+   vainqueurs se propagent AUTOMATIQUEMENT dans la demi-finale (agrégat de
+   série Cup = 1 seul match, mécanique distincte du format 4-victoires des
+   Playoffs déjà éprouvé le 28/07/2026). Les 3 autres vrais matchs du jour
+   correctement ignorés (aucune série candidate).
+3. **Passe 2 (`?date=2025-12-13`)**, décidée après coup à la demande de
+   l'utilisateur (« je veux voir que les matchs se remplissent au fur et à
+   mesure, pas tout d'un coup ») : un vrai match NYK-ORL du 13/12/2025,
+   repéré dès le 1er repérage de dates, correspond exactement à la
+   demi-finale — capturé tout seul (`created: 1`), aucun des 14 autres vrais
+   matchs du jour mal attaché. Score synchronisé, demi-finale `FINISHED`,
+   vainqueur (NYK) propagé dans la finale (`CUP_FINAL#0` posé à NYK,
+   2e slot en attente du tour parallèle jamais joué dans ce test).
+
+**Point volontairement PAS vérifié** : le rendu « à pronostiquer » d'un
+match Cup encore `SCHEDULED` côté Hub Jouer/Accueil. Tous les vrais matchs
+disponibles pour cette fenêtre (déc. 2025) sont dans le PASSÉ par rapport à
+aujourd'hui — les écrans joueur filtrent sur `scheduled_at > maintenant
+réel`, jamais affichable sans décalage artificiel (même contrainte que le
+dry-run Playoffs du 28/07/2026). Tentative de trouver un vrai match encore
+`SCHEDULED` sur la saison 2026-27 : **0 match trouvé sur 5 dates d'octobre
+2026 sondées** — calendrier pas encore publié côté API à ce jour. Décidé
+AVEC l'utilisateur : point abandonné pour l'instant, à reprendre une fois le
+calendrier réel 2026-27 publié (voir `GAPS_OUVERTS.md`). Une commande
+`simulate-upcoming` (match manuel, PAS un vrai match Highlightly, scheduled_at
+= +2 jours) a été ajoutée au script si ce test redevient utile plus tard,
+mais N'A PAS été utilisée cette fois (l'utilisateur l'a explicitement écartée).
+
+**Incident de nettoyage, trouvé et corrigé** : le 1er `teardown` a supprimé
+la compétition de test mais échoué SILENCIEUSEMENT à restaurer « Test » en
+ACTIVE (`uniq_one_active_competition` — les `.delete()` du script
+n'avaient pas leur erreur vérifiée). Diagnostic en lecture seule : un VRAI
+bracket joueur (7 `bracket_picks` + 1 ligne `brackets`) s'était créé pendant
+le test — l'utilisateur (ou un compte réel) a consulté `/play/bracket`
+pendant que la compétition de test était ACTIVE, ce qui bloquait la
+suppression de `series` par FK. Nettoyé manuellement (bets → bracket_picks →
+brackets → series → competition_secrets → competitions, dans cet ordre) et
+« Test » restaurée en ACTIVE, revérifiée intacte. **Script corrigé en
+conséquence** : chaque étape de `teardown` lève désormais une erreur
+explicite au lieu d'échouer en silence, et le nettoyage inclut
+`bets`/`bracket_picks`/`brackets` avant `series`/`competitions`.
+
+**Incident de sécurité, sans lien avec le code** : le `SYNC_SECRET` réel est
+apparu PLUSIEURS FOIS en clair dans la conversation (l'utilisateur l'a collé
+lui-même dans des commandes `curl`/`Invoke-WebRequest`, une fois aussi visible
+via une sélection IDE) — même famille que les 2 incidents précédents sur des
+mots de passe de test. Régénération recommandée (`.env.local` +
+secret GitHub Actions `SYNC_SECRET`) — PAS encore confirmée faite par
+l'utilisateur à ce stade.
+
+**Runbook opérationnel clarifié avec l'utilisateur** (pas du code, une
+synthèse demandée explicitement) : au lancement réel, admin crée la
+compétition (Cup une fois les 8 qualifiés connus ~fin novembre, Playoffs une
+fois les 8 affiches du 1er tour connues) — tout le reste (synchro
+quotidienne du calendrier, synchro des scores toutes les 30 min, recalcul,
+avancement automatique de tour en tour) tourne seul jusqu'à la clôture
+manuelle en fin de compétition. Seule action de fond récurrente : surveiller
+`/admin/logs` de temps en temps, rattraper à la main via `/admin/competitions/
+results` si l'API rate un match.
+
+PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
 ```

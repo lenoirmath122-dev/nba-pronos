@@ -26,10 +26,19 @@ export type ActionResult = { success: true } | { success: false; error: string }
 // ROUND_1 dans l'ordre E1..E4, W1..W4, jamais choisie par l'admin.
 const ROUND1_SLOTS = ["e1", "e2", "e3", "e4", "w1", "w2", "w3", "w4"] as const;
 
+// Topologie FIXE du mini-bracket NBA Cup (correctif post-validation
+// SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md §3/§8, session du 31/07/2026) — 4
+// quarts choisis LIBREMENT par l'admin (le schéma T1 ne porte aucune
+// conférence pour la Cup, `series.conference` NULL sur toute la phase,
+// contrairement aux Playoffs) → 2 demies → 1 finale, même cascade
+// bottom-up que createPlayoffBracket, sans logique de conférence.
+const CUP_QUARTER_SLOTS = ["q1", "q2", "q3", "q4"] as const;
+
 export async function createCompetition(input: {
   name: string;
   type: "PLAYOFFS" | "NBA_CUP";
   round1Matchups?: [string, string][]; // 8 paires, ordre ROUND1_SLOTS — Playoffs uniquement
+  cupQuarterMatchups?: [string, string][]; // 4 paires, ordre CUP_QUARTER_SLOTS — NBA Cup uniquement
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   const {
@@ -51,7 +60,6 @@ export async function createCompetition(input: {
     return { success: false, error: "Une compétition est déjà active — clôture-la avant d'en créer une nouvelle." };
   }
 
-  let teamConferenceById: Map<string, "EAST" | "WEST"> | null = null;
   if (input.type === "PLAYOFFS") {
     const matchups = input.round1Matchups;
     if (!matchups || matchups.length !== 8) {
@@ -63,7 +71,7 @@ export async function createCompetition(input: {
     }
 
     const { data: teamsData } = await supabase.from("teams").select("id, conference").in("id", allTeamIds);
-    teamConferenceById = new Map((teamsData ?? []).map((t) => [t.id as string, t.conference as "EAST" | "WEST"]));
+    const teamConferenceById = new Map((teamsData ?? []).map((t) => [t.id as string, t.conference as "EAST" | "WEST"]));
     if (teamConferenceById.size !== 16) {
       return { success: false, error: "Une équipe sélectionnée est introuvable." };
     }
@@ -73,6 +81,24 @@ export async function createCompetition(input: {
       if (teamConferenceById.get(teamA) !== expectedConference || teamConferenceById.get(teamB) !== expectedConference) {
         return { success: false, error: `Les 2 équipes de l'affiche ${ROUND1_SLOTS[i].toUpperCase()} doivent être en conférence ${expectedConference === "EAST" ? "Est" : "Ouest"}.` };
       }
+    }
+  }
+
+  if (input.type === "NBA_CUP") {
+    const matchups = input.cupQuarterMatchups;
+    if (!matchups || matchups.length !== 4) {
+      return { success: false, error: "Les 4 affiches des quarts sont obligatoires pour la NBA Cup." };
+    }
+    const allTeamIds = matchups.flat();
+    if (new Set(allTeamIds).size !== 8) {
+      return { success: false, error: "Chaque équipe ne peut être sélectionnée qu'une seule fois." };
+    }
+    const { count: teamsCount } = await supabase
+      .from("teams")
+      .select("id", { count: "exact", head: true })
+      .in("id", allTeamIds);
+    if ((teamsCount ?? 0) !== 8) {
+      return { success: false, error: "Une équipe sélectionnée est introuvable." };
     }
   }
 
@@ -92,6 +118,14 @@ export async function createCompetition(input: {
   if (input.type === "PLAYOFFS" && input.round1Matchups) {
     try {
       await createPlayoffBracket(competition.id, input.round1Matchups);
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Échec de la création du bracket." };
+    }
+  }
+
+  if (input.type === "NBA_CUP" && input.cupQuarterMatchups) {
+    try {
+      await createCupBracket(competition.id, input.cupQuarterMatchups);
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Échec de la création du bracket." };
     }
@@ -154,6 +188,43 @@ async function createPlayoffBracket(competitionId: string, matchups: [string, st
   );
 }
 
+async function createCupBracket(competitionId: string, matchups: [string, string][]): Promise<void> {
+  const supabase = getServiceClient();
+
+  const insertSeries = async (rows: Record<string, unknown>[]) => {
+    const { data, error } = await supabase.from("series").insert(rows).select("id");
+    if (error) throw new Error(`Création du bracket échouée : ${error.message}`);
+    return (data ?? []) as { id: string }[];
+  };
+
+  // Bottom-up, même patron que createPlayoffBracket, sans conférence
+  // (série.conference NULL sur toute la Cup, §0 du correctif de spec).
+  const [finalRow] = await insertSeries([
+    { competition_id: competitionId, round: "CUP_FINAL", conference: null, slot_index: 0 },
+  ]);
+
+  const [semi0Row, semi1Row] = await insertSeries([
+    { competition_id: competitionId, round: "CUP_SEMIS", conference: null, slot_index: 0, next_series_id: finalRow.id, next_series_slot: 1 },
+    { competition_id: competitionId, round: "CUP_SEMIS", conference: null, slot_index: 1, next_series_id: finalRow.id, next_series_slot: 2 },
+  ]);
+
+  const semisBySlot = [semi0Row, semi0Row, semi1Row, semi1Row];
+  const nextSlotBySlot = [1, 2, 1, 2];
+
+  await insertSeries(
+    CUP_QUARTER_SLOTS.map((_, i) => ({
+      competition_id: competitionId,
+      round: "CUP_QUARTERS",
+      conference: null,
+      slot_index: i,
+      team1_id: matchups[i][0],
+      team2_id: matchups[i][1],
+      next_series_id: semisBySlot[i].id,
+      next_series_slot: nextSlotBySlot[i],
+    }))
+  );
+}
+
 /**
  * Variante `<form action={...}>` NATIVE : FormData brut, appel de
  * l'action, puis REDIRECTION en cas d'erreur (le succès redirige déjà
@@ -172,7 +243,16 @@ export async function createCompetitionFormAction(formData: FormData): Promise<v
     });
   }
 
-  const result = await createCompetition({ name, type, round1Matchups });
+  let cupQuarterMatchups: [string, string][] | undefined;
+  if (type === "NBA_CUP") {
+    cupQuarterMatchups = CUP_QUARTER_SLOTS.map((slot) => {
+      const a = String(formData.get(`cup_${slot}_a`) ?? "");
+      const b = String(formData.get(`cup_${slot}_b`) ?? "");
+      return [a, b] as [string, string];
+    });
+  }
+
+  const result = await createCompetition({ name, type, round1Matchups, cupQuarterMatchups });
 
   if (!result.success) {
     redirect(`/admin/competitions/new?competitionError=${encodeURIComponent(result.error)}`);

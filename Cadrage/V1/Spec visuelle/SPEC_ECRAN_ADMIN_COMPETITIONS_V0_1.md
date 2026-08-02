@@ -14,6 +14,10 @@
 > `app/(admin)/admin/competitions/new/page.tsx` (création). PAS la
 > clôture (bouton visible mais renvoyé au lot 3, même patron que le bouton
 > Recalculer omis puis ajouté).
+>
+> **Correctif post-validation (31/07/2026)** : le mini-bracket NBA Cup,
+> explicitement exclu par la version originale de ce document (§3/§8), a été
+> construit et vérifié en conditions réelles — voir §10.
 
 ---
 
@@ -205,10 +209,85 @@ Nom vide, équipe dupliquée, conférences incohérentes sur une affiche :
 - Clôture et archivage (lot 3, séparé) — VOIR §9 CI-DESSOUS (ajouté le
   27/07/2026, suite, débloqué par un besoin réel : impossible de créer une
   2e compétition tant que la 1re reste ACTIVE sans mécanisme de clôture).
-- Mini-bracket NBA Cup (monté une fois les 8 qualifiés connus — lot 2 ou
-  un lot dédié, pas tranché ici).
+- Mini-bracket NBA Cup — CONSTRUIT, voir §10 CI-DESSOUS (correctif
+  post-validation, 31/07/2026).
 - Mapping automatique A7 (pré-remplissage depuis la synchro T4) — la
   saisie manuelle reste le seul chemin tant que T4 n'existe pas.
+```
+
+---
+
+## 10. Correctif post-validation — mini-bracket NBA Cup (31/07/2026)
+
+```text
+Ce lot avait explicitement exclu la Cup (§3 : « la compétition est créée
+SANS série, mini-bracket monté plus tard »). Repris à la demande de
+l'utilisateur (session du 31/07/2026, « retravailler sur la création de
+compétition et importation des matchs ») — flagué comme réouverture d'un
+point validé AVANT de coder, confirmé par l'utilisateur (AskUserQuestion).
+
+**Topologie retenue** : même patron bottom-up que les Playoffs (§5), mais
+SANS conférence — `series.conference` reste NULL sur toute la Cup (T1,
+`20260718090000_initial_schema.sql` l'avait déjà prévu ainsi, jamais
+exploité jusqu'ici). L'admin choisit LIBREMENT les 8 équipes qualifiées
+réparties en 4 affiches de quarts (aucune contrainte Est/Ouest, contrairement
+aux Playoffs) :
+
+  4 CUP_QUARTERS (slot 0-3, équipes saisies) →
+  2 CUP_SEMIS (slot 0 = quarts 0+1, slot 1 = quarts 2+3) →
+  1 CUP_FINAL
+
+Code : `lib/actions/admin-competitions.ts` (`createCupBracket`, même
+fonction `insertSeries` que `createPlayoffBracket`, validation serveur : 4
+affiches, 8 équipes distinctes, existence en base — pas de contrôle de
+conférence) ; `app/(admin)/admin/competitions/new/page.tsx` (2e fieldset
+« Quarts NBA Cup », même patron « un seul formulaire, champs non pertinents
+ignorés côté serveur » que Playoffs).
+
+**Aucun autre code nécessaire** : `lib/queries/admin-results.ts` (CUP_ROUNDS),
+`lib/labels/rounds.ts`, la synchro T4 (`lib/sync/schedule.ts`/`results.ts`)
+et le moteur de scoring (T5) géraient déjà la Cup de façon générique
+(round-agnostique) — jamais exercés bout-en-bout avant ce correctif faute de
+compétition Cup réelle avec des séries peuplées.
+
+**Vérifié en conditions réelles** (dry-run, `scripts/dryrun-cup-sync-test.mjs`,
+script jetable conservé dans le dépôt pour un futur test similaire) : la
+vraie compétition ACTIVE de l'utilisateur (« Test ») archivée temporairement,
+une compétition Cup de test créée (4 quarts, dont 2 vrais matchs réels du
+09/12/2025 — NYK-TOR, MIA-ORL — et 2 placeholders jamais synchronisés).
+`/api/sync/schedule`/`/api/sync/results` appelés avec l'override `?date=`
+(dev/test) en DEUX passes successives (09/12 puis 13/12/2025, pas une seule
+passe rétroactive) pour prouver la capture AU FUR ET À MESURE, comme le
+ferait le cron réel :
+- passe 1 (09/12) : 2 quarts capturés et scorés, tous deux `FINISHED`,
+  vainqueurs (NYK, ORL) propagés AUTOMATIQUEMENT dans la demi-finale — point
+  clé jamais prouvé avant ce jour (agrégat de série Cup = 1 seul match,
+  contrairement au format 4-victoires des Playoffs déjà éprouvé) ;
+- passe 2 (13/12, vrai match NYK-ORL trouvé pour l'occasion) : la demi-finale
+  (dont les 2 équipes n'étaient connues qu'APRÈS la passe 1) capture son vrai
+  match tout seul, aucun autre des 14 vrais matchs du jour mal attaché ;
+  vainqueur (NYK) propagé dans la finale.
+
+**Incident de nettoyage, corrigé dans le script** : le premier `teardown` a
+laissé « Test » archivée plus longtemps que prévu — un vrai bracket (7
+`bracket_picks` + 1 `brackets`) s'est créé pendant le test (l'utilisateur a
+consulté /play/bracket pendant que la compétition de test était ACTIVE),
+bloquant la suppression de `series` par FK. Les `.delete()` du script
+n'avaient pas leur erreur vérifiée jusque-là (silencieux) — corrigé :
+chaque étape lève désormais une erreur explicite, et `bets`/`bracket_picks`/
+`brackets` sont nettoyés dans le bon ordre avant `series`/`competitions`.
+Compétition réelle restaurée en ACTIVE, vérifiée intacte après coup.
+
+**Point volontairement PAS vérifié** : l'affichage d'un match Cup encore
+`SCHEDULED` (« à pronostiquer ») côté Hub Jouer/Accueil — tous les vrais
+matchs disponibles pour ce test sont dans le passé (déc. 2025), et le
+calendrier réel 2026-27 n'est pas encore publié côté API (0 match trouvé sur
+5 dates d'octobre 2026 sondées). Reporté à plus tard (voir GAPS_OUVERTS.md).
+
+**Incident sécurité, sans lien avec le code** : le `SYNC_SECRET` réel est
+apparu en clair dans la conversation (l'utilisateur l'a collé lui-même dans
+des commandes `curl`/`Invoke-WebRequest`) — même famille que les incidents
+précédents. Régénération recommandée (`.env.local` + secret GitHub Actions).
 ```
 
 ---

@@ -4598,3 +4598,74 @@ de session (aucun résidu dans le dépôt).
 Résidu signalé, pas bloquant : les captures se périmeront si la DA change
 (non stabilisée) — l'utilisateur prévoit de les refaire lui-même plus tard,
 mêmes noms de fichiers, aucun changement de code requis.
+
+## Création de compétition NBA Cup + dry-run réel de la synchro (31/07/2026, suite)
+
+Demande directe de l'utilisateur : « retravailler sur la création de
+compétition et importation des matchs ». Clarifié par `AskUserQuestion`
+avant de coder (le périmètre était ambigu — plusieurs pistes possibles
+d'après l'état du projet) : construire la création NBA Cup ET vérifier en
+conditions réelles que la synchro capture les matchs/scores automatiquement.
+
+**Création NBA Cup** — réouverture assumée d'un point validé le 27/07/2026
+(`SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` §3 excluait explicitement la Cup).
+Flaguée et confirmée AVANT de coder (AskUserQuestion) : topologie identique
+aux Playoffs (bottom-up, 4 quarts → 2 demies → finale) mais SANS conférence
+(le schéma T1 ne la modélise pas pour la Cup — trouvaille en relisant le
+schéma plutôt qu'une supposition). `createCupBracket` (`lib/actions/
+admin-competitions.ts`) + 2e fieldset sur le formulaire de création. Aucun
+autre code nécessaire : la synchro T4 et le moteur de scoring T5 géraient
+déjà la Cup de façon générique, jamais exercés bout-en-bout avant ce jour.
+`tsc`/`eslint`/`vitest` (37/37)/`next build` propres.
+
+**Dry-run réel** — Claude ne peut pas écrire en production (classificateur
+de permissions bloque toute mutation, même sur une compétition de test
+isolée). Script préparé par Claude (`scripts/dryrun-cup-sync-test.mjs`),
+EXÉCUTÉ PAR L'UTILISATEUR étape par étape dans son terminal, Claude guidant
+et vérifiant en base en lecture seule (jamais bloquée) :
+1. `setup` : « Test » (vraie compétition ACTIVE) archivée temporairement ;
+   compétition Cup de test créée, 2 vrais matchs (NYK-TOR, MIA-ORL, réels du
+   09/12/2025, repérés via 3 appels API) + 2 placeholders.
+2. Passe 1 (`?date=2025-12-09`, PowerShell — plusieurs allers-retours sur la
+   syntaxe `Invoke-WebRequest` vs `curl` natif) : 2 matchs capturés et
+   scorés, séries `FINISHED`, vainqueurs propagés AUTOMATIQUEMENT dans la
+   demi-finale — jamais vérifié avant ce jour pour une série Cup à 1 seul
+   match (mécanique distincte du format 4-victoires Playoffs déjà éprouvé).
+3. Passe 2 (`?date=2025-12-13`), ajoutée à la demande explicite de
+   l'utilisateur après avoir vu la passe 1 (« on n'a pas pu tester que les
+   matchs se remplissaient au fur et à mesure ») : un vrai match NYK-ORL de
+   cette date, repéré dès le 1er sondage, correspond exactement à la
+   demi-finale déjà propagée — capturé seul parmi 15 vrais matchs du jour,
+   scoré, vainqueur propagé dans la finale. Prouve la capture incrémentale
+   jour par jour, pas seulement une résolution rétroactive en un coup.
+
+Piste explorée puis abandonnée avec l'utilisateur : trouver un vrai match
+Cup encore `SCHEDULED` (pas joué) pour vérifier le rendu « à pronostiquer »
+côté Hub Jouer/Accueil. 0 match trouvé sur 5 dates d'octobre 2026 sondées —
+calendrier 2026-27 pas encore publié côté API. Reporté (voir
+`GAPS_OUVERTS.md`), pas remplacé par un match fabriqué (l'utilisateur l'a
+explicitement écarté malgré la commande `simulate-upcoming` déjà prête).
+
+**Bug trouvé et corrigé en testant** : le 1er `teardown` a supprimé la
+compétition de test mais échoué SILENCIEUSEMENT à restaurer « Test » en
+ACTIVE (`.delete()` sans vérification d'erreur dans le script) — un vrai
+bracket joueur (7 `bracket_picks` + 1 `brackets`) créé pendant le test
+(consultation de `/play/bracket` pendant que la compétition de test était
+active) bloquait la suppression de `series` par FK. Diagnostiqué en lecture
+seule, nettoyé manuellement dans le bon ordre, « Test » restaurée et
+revérifiée intacte. Script corrigé : chaque étape de `teardown` lève
+désormais une erreur explicite, nettoyage étendu à `bets`/`bracket_picks`/
+`brackets`.
+
+**Incident sécurité, sans lien avec le code** : le `SYNC_SECRET` réel est
+apparu plusieurs fois en clair dans le chat (l'utilisateur l'a collé dans
+des commandes PowerShell, une fois via une sélection IDE) — même famille que
+2 incidents précédents sur des mots de passe de test. Régénération
+recommandée, pas encore confirmée faite.
+
+Documentation mise à jour en miroir : `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md`
+§10 (correctif) ; `ETAT_ACTUEL.md` §2.52 ; `GAPS_OUVERTS.md` (mini-bracket
+Cup retiré des gaps, 2 nouveaux gaps ajoutés : rendu « à venir » Cup, et
+régénération `SYNC_SECRET`).
+
+PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).

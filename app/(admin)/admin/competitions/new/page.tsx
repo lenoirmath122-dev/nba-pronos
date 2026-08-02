@@ -18,6 +18,16 @@ const ROUND1_SLOTS = [
   { key: "w4", label: "Ouest — Affiche 4" },
 ] as const;
 
+// Mini-bracket NBA Cup (correctif post-validation, session du 31/07/2026) —
+// 4 affiches de quarts, équipes choisies librement (pas de conférence pour
+// la Cup, voir lib/actions/admin-competitions.ts).
+const CUP_QUARTER_SLOTS = [
+  { key: "q1", label: "Quart 1" },
+  { key: "q2", label: "Quart 2" },
+  { key: "q3", label: "Quart 3" },
+  { key: "q4", label: "Quart 4" },
+] as const;
+
 type SearchParams = { competitionError?: string };
 
 export default async function NewCompetitionPage({
@@ -88,6 +98,38 @@ export default async function NewCompetitionPage({
               </div>
             );
           })}
+        </div>
+
+        <div className={styles.playoffsSection}>
+          <p className={styles.sectionNote}>
+            Affiches des quarts de finale — utilisées uniquement si « NBA Cup » est sélectionné ci-dessus. Les 8
+            équipes qualifiées peuvent être choisies librement (pas de contrainte Est/Ouest).
+          </p>
+          {CUP_QUARTER_SLOTS.map((slot) => (
+            <div key={slot.key} className={styles.matchup}>
+              <span className={styles.matchupLabel}>{slot.label}</span>
+              <select name={`cup_${slot.key}_a`} className={styles.select} defaultValue="">
+                <option value="" disabled>
+                  Équipe A…
+                </option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.abbreviation} — {team.name}
+                  </option>
+                ))}
+              </select>
+              <select name={`cup_${slot.key}_b`} className={styles.select} defaultValue="">
+                <option value="" disabled>
+                  Équipe B…
+                </option>
+                {teams.map((team) => (
+                  <option key={team.id} value={team.id}>
+                    {team.abbreviation} — {team.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          ))}
         </div>
 
         <button type="submit" className={styles.submit}>

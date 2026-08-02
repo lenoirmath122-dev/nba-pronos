@@ -4,6 +4,18 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 31/07/2026 (suite)** — **Création de compétition NBA Cup
+> construite et vérifiée en conditions réelles** (`ETAT_ACTUEL.md` §2.52,
+> `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` §10) : mini-bracket 4 quarts/2
+> demies/finale, dry-run réel en 2 passes successives (déc. 2025) prouvant
+> la capture au fur et à mesure ET l'avancement automatique d'une série Cup
+> à 1 seul match (jamais vérifié avant ce jour). **2 points restent ouverts
+> de ce chantier**, détaillés plus bas dans ce fichier : rendu « à
+> pronostiquer » d'un match Cup encore `SCHEDULED` jamais vérifié (calendrier
+> 2026-27 pas encore publié côté API) ; régénération du `SYNC_SECRET` (exposé
+> en clair dans le chat plusieurs fois) pas encore confirmée faite. PAS
+> committé ni déployé à ce stade.
+>
 > **État au 31/07/2026** — **Tutoriel joueur codé, capturé et déployé**
 > (`SPEC_TUTORIEL_JOUEUR_V0_1.md`, `ETAT_ACTUEL.md` §2.51) : 2e des 3
 > chantiers prioritaires du reclassement du 30/07/2026 (après la refonte du
@@ -209,8 +221,16 @@
   un vrai besoin utilisateur — sans lui, impossible de créer une 2e
   compétition) tous FAITS, VÉRIFIÉS et testés EN CONDITIONS RÉELLES par
   l'utilisateur lui-même (§2.33 `ETAT_ACTUEL.md` pour le détail complet).
-  - Hors périmètre des 3 lots, non tranché : mini-bracket NBA Cup (monté
-    une fois les 8 qualifiés connus, ~27/11) ; mapping automatique A7
+  - **Mini-bracket NBA Cup — CONSTRUIT et VÉRIFIÉ le 31/07/2026** (retiré
+    d'ici, voir `ETAT_ACTUEL.md` §2.52 et `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md`
+    §10, correctif post-validation) : l'admin saisit les 8 équipes qualifiées
+    en 4 affiches de quarts à la création (aucune contrainte de conférence,
+    le schéma ne la modélise pas pour la Cup), topologie bottom-up identique
+    aux Playoffs. Dry-run réel (2 passes successives sur des vraies dates de
+    déc. 2025) : synchro, scores, ET avancement automatique (agrégat de
+    série à 1 seul match, jamais exercé avant ce jour) tous vérifiés en
+    conditions réelles.
+  - Toujours hors périmètre, non tranché : mapping automatique A7
     (pré-remplissage depuis T4, quand elle existera) ; onglet Historique
     côté Profil joueur (`decisions_multi_competitions_historique.md` §4).
     **Reformulé le 28/07/2026** suite à une question directe de
@@ -384,6 +404,27 @@
   SQL uniquement, jamais exercé en live faute d'une compétition NBA Cup de
   test. À vérifier en conditions réelles si/quand un jeu de données NBA Cup
   existe.
+- **Rendu « à pronostiquer » d'un match Cup encore `SCHEDULED` — jamais
+  vérifié** (31/07/2026, dry-run `ETAT_ACTUEL.md` §2.52) : tous les vrais
+  matchs Cup disponibles pour le test (déc. 2025) sont dans le passé par
+  rapport à aujourd'hui — les écrans joueur (Hub Jouer, Accueil) filtrent
+  sur `scheduled_at > maintenant réel`, jamais affichable sans décalage
+  artificiel. Tentative de trouver un vrai match encore `SCHEDULED` sur la
+  saison 2026-27 : 0 match trouvé sur 5 dates d'octobre 2026 sondées via
+  l'API — calendrier pas encore publié à ce jour. Reporté, décidé AVEC
+  l'utilisateur : à reprendre une fois le calendrier réel 2026-27 publié
+  côté Highlightly (une commande `simulate-upcoming` existe dans
+  `scripts/dryrun-cup-sync-test.mjs` si un test avec un match manuel
+  redevient acceptable, mais l'utilisateur l'a explicitement écartée cette
+  fois — préfère un vrai match si possible).
+- **`SYNC_SECRET` exposé en clair dans le chat, régénération pas confirmée**
+  (31/07/2026, `ETAT_ACTUEL.md` §2.52) : apparu plusieurs fois lors du
+  dry-run de synchro Cup (l'utilisateur a collé la vraie valeur dans des
+  commandes `curl`/`Invoke-WebRequest`, une fois via une sélection IDE) —
+  même famille que 2 incidents précédents sur des mots de passe de test.
+  Recommandé : nouvelle valeur dans `.env.local` ET dans le secret GitHub
+  Actions `SYNC_SECRET` (les 2 doivent rester synchronisés, sinon les crons
+  de synchro renvoient 401). Pas encore fait à ce jour.
 - **3 abonnements Apple dupliqués sur `Demo_Amis`** (trouvé le 29/07/2026 en
   testant les rappels ciblés en conditions réelles, `ETAT_ACTUEL.md` §2.47) :
   Safari (iOS) crée un NOUVEL abonnement à chaque tentative plutôt que de
