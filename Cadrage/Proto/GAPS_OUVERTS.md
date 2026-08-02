@@ -4,6 +4,18 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 02/08/2026** — **Stepper d'écart repensé sous l'équipe vainqueur,
+> écran Matchs** (`ETAT_ACTUEL.md` §2.53, `SPEC_ECRAN_MATCHS_V0_1.md` §22,
+> correctif post-validation) : demandé par l'utilisateur, `−`/valeur/`+`
+> désormais rendus sous la colonne de l'équipe déjà choisie comme vainqueur
+> (2 colonnes alignées sur le `TeamPicker`) au lieu d'un stepper flottant
+> séparé — règles de §6 inchangées (case vide, bornes 1-50, pavé numérique).
+> Aller-retour dans la session (le `−` retiré puis réintroduit à la demande
+> de l'utilisateur), testé au clic en conditions réelles aux 2 étapes
+> (`TestJoueur1`). **Aucun gap ouvert par ce chantier** — demande entièrement
+> traitée, confirmée fonctionnelle par l'utilisateur. Committé/déployé en 2
+> temps (`939f3f9`, `139de16`).
+>
 > **État au 31/07/2026 (suite)** — **Création de compétition NBA Cup
 > construite et vérifiée en conditions réelles** (`ETAT_ACTUEL.md` §2.52,
 > `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` §10) : mini-bracket 4 quarts/2
@@ -13,8 +25,9 @@
 > de ce chantier**, détaillés plus bas dans ce fichier : rendu « à
 > pronostiquer » d'un match Cup encore `SCHEDULED` jamais vérifié (calendrier
 > 2026-27 pas encore publié côté API) ; régénération du `SYNC_SECRET` (exposé
-> en clair dans le chat plusieurs fois) pas encore confirmée faite. PAS
-> committé ni déployé à ce stade.
+> en clair dans le chat plusieurs fois) pas encore confirmée faite. Committé
+> et poussé depuis (`6f591b0`, 02/08/2026) — déploiement Vercel automatique
+> attendu, pas revérifié en production à ce stade.
 >
 > **État au 31/07/2026** — **Tutoriel joueur codé, capturé et déployé**
 > (`SPEC_TUTORIEL_JOUEUR_V0_1.md`, `ETAT_ACTUEL.md` §2.51) : 2e des 3

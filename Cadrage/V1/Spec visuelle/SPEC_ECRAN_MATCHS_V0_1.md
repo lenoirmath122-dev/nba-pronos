@@ -617,3 +617,32 @@ l'écran affichait une sélection complète. Repéré sur un vrai test mobile
   T6b §4) : c'est un clic explicite sur un bouton dont le libellé annonce
   précisément qu'il enregistre et valide à la fois — le joueur choisit ce
   chemin en connaissance de cause, il n'est jamais déclenché sans action.
+
+## 22. Amendement post-implémentation — positionnement du stepper d'écart (02/08/2026)
+
+> Rédigé après coup, à la demande explicite de l'utilisateur (« gérer
+> l'écart pronostiqué par un bouton + disponible sous chaque équipe ») — pas
+> une réouverture des règles de §6, un correctif de **positionnement** du
+> même stepper.
+
+**Avant** : le stepper `−/+` de §6 était rendu comme un bloc unique, sous le
+sélecteur de vainqueur (`TeamPicker`) mais sans lien visuel avec l'une ou
+l'autre équipe.
+
+**Acté** : le stepper est désormais scindé sur les 2 colonnes du
+`TeamPicker` (même `grid-template-columns: 1fr 1fr`) — `−`/valeur/`+`
+n'apparaissent QUE sous la colonne de l'équipe déjà choisie comme vainqueur ;
+l'autre colonne reste vide. Toutes les règles de §6 restent **inchangées** :
+case vide au départ, jamais de pré-remplissage, `−` inactif tant que vide ou
+à 1, `+` sur case vide pose 1, tap sur la valeur ouvre le pavé numérique,
+bornes 1..50. Changer de vainqueur fait juste basculer le stepper de colonne
+— la valeur déjà posée est conservée (elle ne s'est jamais rattachée à un
+camp précis en base, `predicted_margin` reste un entier unique).
+
+**Aller-retour en session** : l'utilisateur a d'abord demandé de retirer le
+`−` (« seulement le + »), confirmé par `AskUserQuestion` avant de coder ;
+puis, une fois le nouveau positionnement validé à l'usage, a demandé de le
+réintroduire (« j'aime bien comment c'est actuellement, il manque juste le
+bouton − ») — remis à l'identique de §6, toujours sous la colonne du
+vainqueur. Les deux passes sont committées séparément (`939f3f9` puis
+`139de16`).

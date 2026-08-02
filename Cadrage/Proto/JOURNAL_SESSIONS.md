@@ -4668,4 +4668,77 @@ Documentation mise à jour en miroir : `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md`
 Cup retiré des gaps, 2 nouveaux gaps ajoutés : rendu « à venir » Cup, et
 régénération `SYNC_SECRET`).
 
+---
+
+## Commit/push du chantier NBA Cup (02/08/2026)
+
+Confirmé par l'utilisateur en tout début de session — le chantier du
+31/07/2026 (création NBA Cup, dry-run réel) était resté en attente de
+confirmation avant commit (`ETAT_ACTUEL.md` §2.52). Aucun changement de code
+depuis le dry-run. Committé et poussé (`6f591b0`).
+
+Rappel explicite fait à l'utilisateur : régénération du `SYNC_SECRET`
+toujours pas confirmée faite (exposé en clair pendant le dry-run,
+31/07/2026) — mis de côté à sa demande (« oublie sync_secret pour le
+moment »), toujours listé dans `GAPS_OUVERTS.md`.
+
+---
+
+## Stepper d'écart repensé sous l'équipe vainqueur, écran Matchs (02/08/2026, suite)
+
+Demande directe de l'utilisateur sur l'écran Matchs : « gérer l'écart
+pronostiqué par un bouton + disponible sous chaque équipe [...] pour
+incrémenter de 1 pour une des équipes ». Phrase ambiguë entre 2 lectures
+structurelles — clarifiée par `AskUserQuestion` avant de coder plutôt que
+devinée (même réflexe que les chantiers précédents) :
+1. un compteur indépendant par équipe (score à la volée : chaque équipe part
+   de 0, le vainqueur/écart se déduisent de la différence) — changement
+   profond, fusionne `TeamPicker` et `MarginStepper` ;
+2. le `TeamPicker` existant inchangé (sélection du vainqueur par tap sur le
+   logo), seul le `+` du stepper d'écart se déplace sous la colonne de
+   l'équipe déjà choisie.
+
+L'utilisateur a choisi la 2e lecture, plus proche de l'écran actuel.
+
+**Code** : `MarginStepper.tsx` prend 3 nouvelles props (`winnerTeamId`,
+`homeTeamId`, `awayTeamId`), retourne `null` tant qu'aucun vainqueur n'est
+choisi, puis rend un grid 2 colonnes (même patron que
+`TeamPicker.module.css`) où les contrôles n'apparaissent que dans la colonne
+du vainqueur. `PredictionForm.tsx` lui passe le `winner` déjà en state local
+plus les 2 ids d'équipe du match. Aucun changement de contrat serveur ni de
+migration — `predicted_margin` reste un entier unique.
+
+**2e question `AskUserQuestion`**, posée dans la foulée de la 1re : fallait-il
+garder un bouton `−` à côté du `+` ? L'utilisateur a choisi de le retirer
+(« seulement le + »). Committé/poussé (`939f3f9`).
+
+**Testé au clic en conditions réelles** (compte `TestJoueur1`, mot de passe
+`TutoTest2026!` déjà connu depuis le tutoriel joueur §2.51) : Playwright
+réinstallé temporairement en dev dependency (même patron que §2.51),
+script jetable écrit, exécuté, supprimé ; désinstallation de Playwright
+revérifiée par `git diff package.json package-lock.json` (aucune trace).
+Vérifié : sélection domicile ET visiteur, aucune erreur console.
+
+**Trouvaille en testant, sans lien avec le code applicatif** : au lancement
+de `npm run dev`, 2 serveurs Next.js tournaient déjà en local sans avoir été
+démarrés par Claude — un `next dev --port 3001` et un `next start` (build de
+PRODUCTION) sur le port 3000, tous deux répondants. Le 1er essai a tapé par
+erreur sur le port 3000 et a montré l'ANCIEN rendu malgré le code déjà
+corrigé — diagnostiqué en lisant les lignes de commande des process
+(`Get-CimInstance Win32_Process`, PowerShell), pas en supposant. Basculé sur
+le port 3001 (vrai dev server) pour la suite. Les 2 process pré-existants
+n'ont jamais été arrêtés (origine inconnue, risque de couper une session de
+l'utilisateur — signalé explicitement).
+
+**Retour utilisateur après un tour d'usage réel** : « j'aime bien comment
+c'est actuellement, il manque juste le bouton − ». Réintroduit à l'identique
+des règles de §6 (mêmes gardes de désactivation vide/1/50), sous la même
+colonne que le `+`. Re-testé au clic (même compte, Playwright réinstallé
+puis re-désinstallé une 2e fois). Committé/poussé séparément (`139de16`),
+pas un amendement du 1er commit.
+
+Documentation mise à jour en miroir : `SPEC_ECRAN_MATCHS_V0_1.md` §22
+(amendement post-implémentation, §6 non rouvert) ; `ETAT_ACTUEL.md` §2.53 ;
+`GAPS_OUVERTS.md` (aucun gap ouvert par ce chantier).
+
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).

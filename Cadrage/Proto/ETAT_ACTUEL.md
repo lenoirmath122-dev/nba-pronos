@@ -5,7 +5,35 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 31/07/2026, suite — **création de
+> Dernière mise à jour : session du 02/08/2026 — **stepper d'écart repensé
+> sous l'équipe vainqueur, écran Matchs** (§2.53, correctif post-validation
+> `SPEC_ECRAN_MATCHS_V0_1.md` §22) : demandé par l'utilisateur (« gérer
+> l'écart pronostiqué par un bouton + disponible sous chaque équipe, pour
+> incrémenter de 1 pour une des équipes »). Choix structurel clarifié par
+> `AskUserQuestion` avant de coder : le vainqueur reste choisi via le
+> `TeamPicker` existant (pas un compteur indépendant par équipe, l'autre
+> lecture possible de la demande) — seul le stepper `−/+` de §6 change de
+> forme, scindé sur les 2 colonnes du `TeamPicker`, `−`/valeur/`+`
+> n'apparaissant plus que sous la colonne du vainqueur déjà choisi. Toutes
+> les règles de §6 inchangées (case vide, bornes 1-50, pavé numérique au
+> tap). Aller-retour dans la même session : le `−` d'abord retiré à la
+> demande de l'utilisateur (« seulement le + »), puis réintroduit à
+> l'identique une fois le nouveau positionnement validé à l'usage (« il
+> manque juste le bouton − »). Testé au CLIC en conditions réelles à chaque
+> étape (compte `TestJoueur1`, Playwright réinstallé temporairement puis
+> retiré à chaque fois, même patron que le tutoriel joueur §2.51) : domicile
+> ET visiteur, bascule de colonne en changeant de vainqueur avec valeur
+> conservée, aucune erreur console. `tsc`/`eslint` propres. Committé et
+> poussé en 2 temps (`939f3f9` puis `139de16`).
+>
+> Plus tôt (session du 02/08/2026) — **création de compétition NBA Cup
+> (§2.52) committée et poussée** (`6f591b0`) : chantier construit et vérifié
+> en conditions réelles la session précédente (31/07/2026, resté en attente
+> de confirmation avant commit) — confirmé par l'utilisateur en tout début
+> de cette session, aucun changement de code depuis le dry-run. Détail
+> complet ci-dessous, inchangé.
+>
+> Plus tôt (session du 31/07/2026, suite) — **création de
 > compétition NBA Cup construite et vérifiée en conditions réelles** (§2.52,
 > correctif post-validation `SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1.md` §10) :
 > mini-bracket 4 quarts/2 demies/finale (topologie bottom-up identique aux
@@ -23,7 +51,8 @@
 > compétition réelle restaurée en ACTIVE, vérifiée intacte. `SYNC_SECRET`
 > exposé en clair dans le chat par l'utilisateur (même famille que les
 > incidents précédents) — régénération recommandée, pas encore confirmée
-> faite. PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+> faite (toujours vrai, voir `GAPS_OUVERTS.md`). ~~PAS committé ni déployé à
+> ce stade~~ — committé et poussé depuis, voir plus haut (`6f591b0`).
 >
 > Plus tôt (session du 31/07/2026) — **tutoriel joueur codé,
 > capturé et déployé** (§2.51, `SPEC_TUTORIEL_JOUEUR_V0_1.md`) : 2e des 3
@@ -4869,5 +4898,72 @@ manuelle en fin de compétition. Seule action de fond récurrente : surveiller
 `/admin/logs` de temps en temps, rattraper à la main via `/admin/competitions/
 results` si l'API rate un match.
 
-PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+Committé et poussé le 02/08/2026, confirmé par l'utilisateur en début de
+session (`6f591b0`) — voir §2.53 pour la suite de la session.
+```
+
+### 2.53 Stepper d'écart repensé sous l'équipe vainqueur, écran Matchs (session du 02/08/2026)
+
+```text
+Objet : demande directe de l'utilisateur sur l'écran Matchs (« gérer l'écart
+pronostiqué par un bouton + disponible sous chaque équipe ? Comme ça on
+clique sur un des + en dessous d'une des équipes pour incrémenter de 1 pour
+une des équipes »). Deux lectures possibles de cette phrase, clarifiées par
+`AskUserQuestion` avant de coder : (a) un compteur indépendant par équipe
+(score à la volée, vainqueur/écart dérivés) — changement structurel profond
+(TeamPicker + MarginStepper fusionnés, contrat local à réinventer) ; (b) le
+TeamPicker existant inchangé, seul le "+" se déplace sous l'équipe déjà
+choisie comme vainqueur. L'utilisateur a choisi (b), plus proche de l'écran
+actuel.
+
+**Code** : `components/matches/MarginStepper.tsx` reçoit 3 nouvelles props
+(`winnerTeamId`, `homeTeamId`, `awayTeamId`) — rend `null` tant qu'aucun
+vainqueur n'est choisi (règle "case vide" de §6 étendue au stepper lui-même,
+pas seulement à sa valeur) ; sinon un grid 2 colonnes identique à celui de
+`TeamPicker.module.css` (`1fr 1fr`), les contrôles (`−`/valeur/`+`) rendus
+uniquement dans la colonne dont l'id correspond à `winnerTeamId`.
+`components/matches/PredictionForm.tsx` lui passe désormais `winner` (déjà
+en state local) et les 2 ids d'équipe du match. Aucun changement de contrat
+serveur, aucune migration : `predicted_margin` reste un entier unique, non
+rattaché à une équipe en base — seul le rendu change.
+
+**Aller-retour en 2 commits, dans la même session** :
+1. 1re demande : "+" sous l'équipe vainqueur. Le bouton "−" a été retiré à
+   la demande explicite de l'utilisateur, confirmée par une 2e question
+   `AskUserQuestion` ("seulement le +"). Committé/poussé (`939f3f9`).
+2. Après un tour d'usage réel, l'utilisateur a demandé de le réintroduire
+   ("j'aime bien comment c'est actuellement, il manque juste le bouton −")
+   — remis à l'identique des règles de §6 (mêmes gardes de désactivation),
+   sous la même colonne que le "+". Committé/poussé séparément (`139de16`),
+   pas un amendement du 1er commit.
+
+**Testé au CLIC en conditions réelles, aux 2 étapes** (compte `TestJoueur1`,
+mot de passe `TutoTest2026!` déjà connu depuis §2.51) : Playwright réinstallé
+temporairement en dev dependency à chaque fois (`npm install -D playwright`
++ `npx playwright install chromium`), désinstallé juste après
+(`package.json`/`package-lock.json` revérifiés identiques par `git diff`,
+même patron que §2.51) — script jetable supprimé en fin d'usage, aucun
+résidu dans le dépôt. Vérifié : sélection domicile ET visiteur, bascule de
+colonne en changeant de vainqueur avec la valeur conservée, aucune erreur
+console (`page.on("console")`/`page.on("pageerror")` surveillés).
+
+**Trouvaille en testant, sans lien avec le code applicatif** : au moment de
+lancer un `npm run dev` pour le test, 2 serveurs Next.js tournaient déjà en
+local sans que Claude les ait démarrés — un `next dev --port 3001` et un
+`next start` (build de PRODUCTION) sur le port 3000, tous deux répondant.
+Le tout premier essai de test a tapé par erreur sur le port 3000 (production,
+ancien build) et a montré l'ANCIEN rendu du stepper malgré le code déjà
+corrigé sur disque — diagnostiqué en inspectant les lignes de commande des
+process (`Get-CimInstance Win32_Process`), pas en supposant. Reporté sur le
+port 3001 (vrai dev server, HMR à jour) pour le reste des tests ; les 2
+process pré-existants n'ont jamais été arrêtés (origine inconnue, risque de
+couper une session de l'utilisateur).
+
+Documentation mise à jour en miroir : `SPEC_ECRAN_MATCHS_V0_1.md` §22
+(amendement post-implémentation) ; `ETAT_ACTUEL.md` (ce paragraphe) ;
+`GAPS_OUVERTS.md` (aucun nouveau gap — demande entièrement traitée,
+confirmée fonctionnelle par l'utilisateur).
+
+Committé et poussé, 2 commits (`939f3f9`, `139de16`). Déploiement Vercel
+automatique attendu, pas revérifié en production à ce stade.
 ```
