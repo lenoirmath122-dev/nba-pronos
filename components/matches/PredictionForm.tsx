@@ -172,7 +172,13 @@ export function PredictionForm({ match }: PredictionFormProps) {
     <div className={styles.form}>
       <TeamPicker homeTeam={match.homeTeam} awayTeam={match.awayTeam} selectedTeamId={winner} onSelect={setWinner} />
 
-      <MarginStepper value={margin} onChange={setMargin} />
+      <MarginStepper
+        value={margin}
+        onChange={setMargin}
+        winnerTeamId={winner}
+        homeTeamId={match.homeTeam.id}
+        awayTeamId={match.awayTeam.id}
+      />
 
       <RevealPanel
         isRevealed={match.isRevealed}

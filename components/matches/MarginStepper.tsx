@@ -1,26 +1,31 @@
 import { useState } from "react";
 import styles from "./MarginStepper.module.css";
 
-// Stepper d'écart (§6, acté 23/07/2026) — sans directive "use client" propre :
-// rendu exclusivement par PredictionForm, mais il porte son propre état local
-// (bascule affichage/saisie libre), ce qui est permis pour un composant
-// transitivement bundlé côté client (même mécanisme que NodeCard/RotateInvite).
+// Stepper d'écart (§6, acté 23/07/2026 ; revu le 02/08/2026 à la demande de
+// l'utilisateur) — sans directive "use client" propre : rendu exclusivement
+// par PredictionForm, même mécanisme que NodeCard/RotateInvite.
 //
-// Règles non négociables : case VIDE au départ (jamais 0, jamais pré-rempli) ;
-// "−" inactif tant que vide OU à 1 ; "+" sur case vide pose 1 ; tap sur la
-// valeur (vide ou non) ouvre la saisie libre — implémentée ici via un <input
-// type="number" inputMode="numeric">, qui déclenche le pavé numérique natif
-// sur mobile (interprétation du "pavé numérique" de la spec : pas de grille
-// de touches maison, le clavier système suffit et reste accessible).
+// "+" positionné sous l'équipe déjà choisie comme vainqueur par TeamPicker
+// (2 colonnes alignées sur celles de TeamPicker) — plus de bouton "−" ni de
+// stepper flottant séparé, sur demande explicite de l'utilisateur.
+//
+// Règles non négociables inchangées : case VIDE au départ (jamais 0, jamais
+// pré-rempli) ; rien ne s'affiche tant qu'aucun vainqueur n'est choisi ; "+"
+// sur case vide pose 1 ; tap sur la valeur ouvre la saisie libre (pavé
+// numérique natif, <input type="number" inputMode="numeric">).
 type MarginStepperProps = {
   value: number | null;
   onChange: (next: number | null) => void;
+  winnerTeamId: string | null;
+  homeTeamId: string;
+  awayTeamId: string;
 };
 
-export function MarginStepper({ value, onChange }: MarginStepperProps) {
+export function MarginStepper({ value, onChange, winnerTeamId, homeTeamId, awayTeamId }: MarginStepperProps) {
   const [isEditing, setIsEditing] = useState(false);
 
-  const minusDisabled = value === null || value <= 1;
+  if (winnerTeamId === null) return null;
+
   const plusDisabled = value !== null && value >= 50;
 
   function commit(raw: string) {
@@ -31,18 +36,8 @@ export function MarginStepper({ value, onChange }: MarginStepperProps) {
     setIsEditing(false);
   }
 
-  return (
-    <div className={styles.stepper}>
-      <button
-        type="button"
-        className={styles.btn}
-        disabled={minusDisabled}
-        onClick={() => value !== null && onChange(value - 1)}
-        aria-label="Diminuer l'écart"
-      >
-        −
-      </button>
-
+  const controls = (
+    <div className={styles.controls}>
       {isEditing ? (
         <input
           type="number"
@@ -78,6 +73,13 @@ export function MarginStepper({ value, onChange }: MarginStepperProps) {
       >
         +
       </button>
+    </div>
+  );
+
+  return (
+    <div className={styles.stepper}>
+      <div className={styles.slot}>{winnerTeamId === homeTeamId && controls}</div>
+      <div className={styles.slot}>{winnerTeamId === awayTeamId && controls}</div>
     </div>
   );
 }
