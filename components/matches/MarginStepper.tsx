@@ -5,8 +5,8 @@ import styles from "./MarginStepper.module.css";
 // l'utilisateur) — sans directive "use client" propre : rendu exclusivement
 // par PredictionForm, même mécanisme que NodeCard/RotateInvite.
 //
-// "+" positionné sous l'équipe déjà choisie comme vainqueur par TeamPicker
-// (2 colonnes alignées sur celles de TeamPicker) — plus de bouton "−" ni de
+// "−"/"+" positionnés sous l'équipe déjà choisie comme vainqueur par
+// TeamPicker (2 colonnes alignées sur celles de TeamPicker) — plus de
 // stepper flottant séparé, sur demande explicite de l'utilisateur.
 //
 // Règles non négociables inchangées : case VIDE au départ (jamais 0, jamais
@@ -26,6 +26,7 @@ export function MarginStepper({ value, onChange, winnerTeamId, homeTeamId, awayT
 
   if (winnerTeamId === null) return null;
 
+  const minusDisabled = value === null || value <= 1;
   const plusDisabled = value !== null && value >= 50;
 
   function commit(raw: string) {
@@ -38,6 +39,16 @@ export function MarginStepper({ value, onChange, winnerTeamId, homeTeamId, awayT
 
   const controls = (
     <div className={styles.controls}>
+      <button
+        type="button"
+        className={styles.btn}
+        disabled={minusDisabled}
+        onClick={() => value !== null && onChange(value - 1)}
+        aria-label="Diminuer l'écart"
+      >
+        −
+      </button>
+
       {isEditing ? (
         <input
           type="number"
