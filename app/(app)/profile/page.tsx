@@ -1,6 +1,9 @@
+import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { getProfileData, getTeamOptions } from "@/lib/queries/profile";
+import { TEAM_COLORS } from "@/lib/labels/teamColors";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { getCompetitionHistory } from "@/lib/queries/history";
 import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
@@ -56,11 +59,61 @@ export default async function ProfilePage({
   const leagues = activeTab === "ligues" ? await getMyLeagues() : [];
   const history = activeTab === "historique" ? await getCompetitionHistory() : [];
 
+  // Bandeau personnalisé par équipe favorite (04/08/2026, spec validée par
+  // maquettes — cf. lib/labels/teamColors.ts). Rien ne change si aucune
+  // équipe favorite n'est choisie.
+  const teamColors = profile.favoriteTeam ? TEAM_COLORS[profile.favoriteTeam.abbreviation] : null;
+
   return (
     <div className={styles.page}>
-      <header className={`${styles.header} hero-banner`}>
-        <h1 className={`${styles.pseudo} hero-banner-title`}>{profile.pseudo}</h1>
-        {profile.isAdmin && <span className={styles.adminBadge}>Admin</span>}
+      {/* Liseré blanc du blason (filter: url(#profile-crest-outline), CSS
+          module) : silhouette dilatée + composée en blanc, PAS un simple
+          border (ne suivrait pas le contour du blason). Un seul filtre pour
+          l'écran, peu importe l'équipe (le SVG source change, pas le filtre). */}
+      {teamColors && (
+        <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
+          <defs>
+            <filter id="profile-crest-outline" x="-40%" y="-40%" width="180%" height="180%">
+              <feMorphology in="SourceAlpha" operator="dilate" radius="2.5" result="dilated" />
+              <feFlood floodColor="#ffffff" result="white" />
+              <feComposite in="white" in2="dilated" operator="in" result="outline" />
+              <feMerge>
+                <feMergeNode in="outline" />
+                <feMergeNode in="SourceGraphic" />
+              </feMerge>
+            </filter>
+          </defs>
+        </svg>
+      )}
+      <header
+        className={teamColors ? `${styles.header} ${styles.headerTeam} hero-banner` : `${styles.header} hero-banner`}
+        style={
+          teamColors
+            ? ({ "--team-primary": teamColors.primary, "--team-secondary": teamColors.secondary } as CSSProperties)
+            : undefined
+        }
+      >
+        {teamColors && <span className={styles.textScrim} aria-hidden="true" />}
+        {teamColors && profile.favoriteTeam && (
+          <Image
+            src={`/logos/teams/${profile.favoriteTeam.abbreviation}.svg`}
+            alt={profile.favoriteTeam.name}
+            width={200}
+            height={200}
+            unoptimized
+            className={styles.crestBadge}
+          />
+        )}
+        <div className={styles.headerText}>
+          <h1 className={`${styles.pseudo}${teamColors ? ` ${styles.pseudoTeam}` : ""} hero-banner-title`}>
+            {profile.pseudo}
+          </h1>
+          {profile.isAdmin && (
+            <span className={teamColors ? `${styles.adminBadge} ${styles.adminBadgeTeam}` : styles.adminBadge}>
+              Admin
+            </span>
+          )}
+        </div>
       </header>
 
       <ProfileTabs active={activeTab} isAdmin={profile.isAdmin} />

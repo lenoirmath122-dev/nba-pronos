@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import type { TeamRef } from "@/lib/queries/matches";
 
 // Lecture de l'écran Profil (SPEC_ECRAN_PROFIL_V0_1 §9). Composants serveur
 // uniquement, RLS seule autorité (users_select : `using (true)`, aucune
@@ -8,6 +9,10 @@ export type ProfileData = {
   pseudo: string;
   isAdmin: boolean;
   favoriteTeamId: string | null;
+  /** Résolu en plus de favoriteTeamId (même patron que
+   *  lib/queries/player-profile.ts::fetchTeam) — sert à la personnalisation
+   *  du bandeau par équipe favorite (04/08/2026, cf. lib/labels/teamColors.ts). */
+  favoriteTeam: TeamRef | null;
   bio: string;
   theme: "LIGHT" | "DARK";
   notificationPreference: "NONE" | "PUSH" | "EMAIL";
@@ -46,15 +51,26 @@ export async function getProfileData(): Promise<ProfileData | null> {
 
   if (error || !data) return null;
 
+  const favoriteTeam = data.favorite_team_id ? await fetchTeam(supabase, data.favorite_team_id) : null;
+
   return {
     pseudo: data.pseudo,
     isAdmin: data.role === "ADMIN",
     favoriteTeamId: data.favorite_team_id,
+    favoriteTeam,
     bio: data.bio ?? "",
     theme: data.theme_preference,
     notificationPreference: data.notification_preference,
     tutorialSeenAt: data.tutorial_seen_at,
   };
+}
+
+async function fetchTeam(
+  supabase: Awaited<ReturnType<typeof getServerClient>>,
+  teamId: string
+): Promise<TeamRef | null> {
+  const { data } = await supabase.from("teams").select("id, abbreviation, name").eq("id", teamId).maybeSingle();
+  return data ? { id: data.id, abbreviation: data.abbreviation, name: data.name } : null;
 }
 
 // Référentiel global des 30 équipes (D6, jamais scopé par compétition) — pour

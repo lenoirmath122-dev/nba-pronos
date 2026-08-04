@@ -19,6 +19,81 @@
   color: var(--color-text-primary);
 }
 
+/* ============================================================================
+   Bandeau personnalisé par équipe favorite (04/08/2026, spec validée par
+   maquettes — cf. lib/labels/teamColors.ts, ETAT_ACTUEL.md). Seul le bandeau
+   change ; le reste de l'écran (onglets, fonds, boutons) reste neutre. Rien
+   ne s'affiche si l'utilisateur n'a pas de favorite team.
+   ============================================================================ */
+
+/* Duotone : photo du bandeau désaturée puis recolorée en 2 tons de l'équipe
+   (mode de fusion "color"), en écrasant les pseudo-éléments PARTAGÉS de
+   .hero-banner (app/globals.css) — via une sélectivité plus forte (2 classes
+   locales au module), donc SANS affecter les autres écrans qui composent
+   .hero-banner (Accueil, Bracket, Matchs, hub Jouer...). */
+.headerTeam::before {
+  filter: grayscale(1) contrast(1.15) brightness(0.95);
+}
+.headerTeam::after {
+  background: linear-gradient(135deg, var(--team-primary) 0%, var(--team-secondary) 100%);
+  mix-blend-mode: color;
+}
+
+/* Voile de lisibilité additionnel — élément RÉEL (pas un 3e pseudo-élément,
+   .hero-banner n'en offre que 2) : promu au-dessus des pseudo-éléments par
+   la règle globale ".hero-banner > * { z-index: 1 }", rendu AVANT le blason/
+   texte dans le DOM pour rester en dessous d'eux. */
+.textScrim {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(200deg, rgba(0, 0, 0, 0.55) 0%, transparent 50%);
+}
+
+.headerTeam {
+  align-items: stretch;
+  gap: 0;
+  padding: var(--space-4);
+  height: 128px;
+}
+
+.crestBadge {
+  align-self: stretch;
+  flex-shrink: 0;
+  height: 100%;
+  width: auto;
+  margin-left: calc(-1 * var(--space-4));
+  /* Liseré blanc FIN autour de la silhouette (filtre SVG dilate + composite,
+     défini inline dans page.tsx — un simple `border` ne suit pas le contour
+     d'un blason). */
+  filter: url(#profile-crest-outline);
+}
+
+.headerText {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: flex-end;
+  gap: var(--space-1);
+  flex: 1;
+  min-width: 0;
+}
+
+.pseudoTeam {
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-bold);
+  text-align: right;
+}
+
+/* Fixé en clair, comme hero-banner-title/-subtitle (§15.7 tokens.css : le
+   bandeau reste sombre dans les 2 thèmes, texte toujours clair) — scope
+   volontairement limité à CETTE variante (.adminBadge par défaut, non
+   touché, garde --color-text-primary). */
+.adminBadgeTeam {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #f5f7fa;
+}
+
 .adminBadge {
   padding: var(--space-1) var(--space-2);
   border-radius: var(--radius-full);
