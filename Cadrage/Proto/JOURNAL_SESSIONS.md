@@ -4840,4 +4840,94 @@ l'ancien comportement restent valides et affichés (cas (c) ci-dessus).
 Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
 `vitest run` (37/37, aucune régression). Point retiré de `GAPS_OUVERTS.md`.
 
+---
+
+## Écran Nouveau pari : carte de saisie masquée tant qu'aucune cible n'est choisie (04/08/2026)
+
+**Demandé par l'utilisateur** : la carte de saisie (énoncé/catégorie/
+difficulté), fixée en bas du viewport depuis le 27/07/2026 pour rester
+visible pendant le défilement du sélecteur série/match, restait affichée en
+PERMANENCE dès l'arrivée sur l'écran — même avant tout choix de série/match —
+« gênant qu'elle reste tout le temps ».
+
+**Code** : `BetForm.tsx` — le bloc `.stickyContent` (énoncé, catégorie,
+difficulté, actions) n'est désormais rendu que si `hasTarget` (variable déjà
+existante, calculée : série choisie en scope SÉRIE, série ET match choisis en
+scope MATCH). Les gardes `!hasTarget` des boutons Enregistrer/Soumettre
+retirées (devenues inutiles : le bloc entier est déjà gardé par `hasTarget`).
+`BetForm.module.css` — la marge basse réservée (`padding-bottom: 45vh`, pour
+que le sélecteur reste défilable au-dessus du bandeau fixe) déplacée dans une
+classe séparée `.formReserveBottom`, appliquée seulement quand le bandeau est
+affiché (sinon le sélecteur laissait un grand vide en bas avant tout choix).
+
+Aucun changement pour l'édition (`mode="EDIT"`) ni pour le raccourci depuis
+Matchs (`FROM_MATCH`, match déjà présélectionné) : dans les 2 cas `hasTarget`
+est déjà vrai dès le montage, la carte reste visible immédiatement comme
+avant.
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression). Pas encore confirmé visuellement par
+l'utilisateur dans son navigateur.
+
+**Retour utilisateur après test réel** : « ça marche mais une fois qu'on a
+cliqué sur un match il reste affiché le panneau ». Ambigu — clarifié par
+`AskUserQuestion` avant de recoder plutôt que deviné : gêne = le panneau
+complet, une fois affiché, prend trop de place et cache le sélecteur,
+empêchant de choisir facilement un AUTRE match/série sans le refermer
+d'abord.
+
+**Code (2e passe)** : `BetForm.tsx` — nouvel état `isExpanded` (toujours vrai
+en édition, faux par défaut en création). Une fois une cible choisie
+(`hasTarget`) mais le panneau replié, une BARRE COMPACTE apparaît (libellé de
+la cible + bouton « Rédiger le pari », `.selectionBar`) au lieu du panneau
+complet ; celui-ci (`.stickyContent`) ne s'affiche qu'au tap sur cette barre
+(`showFullPanel = hasTarget && isExpanded`), avec un bouton « Réduire » en
+en-tête pour revenir à la barre compacte sans perdre la saisie déjà tapée
+(state conservé, juste masqué). Changer de série/scope/match (`handleScopeChange`,
+`handleSeriesSelect`, nouveau `handleMatchSelect`) replie automatiquement le
+panneau (`setIsExpanded(false)`) pour toujours redonner la vue complète du
+sélecteur après un nouveau choix. `BetForm.module.css` : marge basse réservée
+sur `.form` désormais à 3 états (aucune/`.formReserveBottomCompact`/
+`.formReserveBottom`) au lieu de 2, pour ne réserver que la hauteur réellement
+occupée par la barre ou le panneau.
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression).
+
+---
+
+## Raccourci « Parier sur cette série » depuis le Bracket global (04/08/2026)
+
+**Demandé par l'utilisateur** dans la foulée : pouvoir saisir un pari
+directement en cliquant sur une série dans le Bracket global (`/bracket`,
+vue de consultation partagée visiteur/joueur, `lib/queries/bracket.ts`),
+même principe que le raccourci déjà existant depuis Matchs (`?matchId=`).
+
+**Code** : `lib/queries/bets.ts` — `NewBetContext` gagne un 3e mode
+`FROM_SERIES` (à côté de `FROM_MATCH`/`FREE`) ; `getNewBetFormData` accepte
+un 2e paramètre `seriesIdParam`, résolu avec la MÊME garde que
+`isSeriesSelectable` de `BetForm.tsx` (`seriesBetOpen && !seriesSlotTaken`) —
+sinon retombe sur `FREE` avec `shortcutClosed: "SERIES"` (jamais une erreur
+bloquante, même patron que le raccourci match). `shortcutClosed` généralisé
+de `boolean` à `"MATCH" | "SERIES" | null` pour distinguer le message adapté
+au raccourci concerné. `app/(app)/play/bets/new/page.tsx` lit `?seriesId=` en
+plus de `?matchId=`. `BetForm.tsx::resolveInitialTarget` gère `FROM_SERIES`
+(scope SÉRIE, série préremplie).
+
+Affichage du lien : `/bracket` est un écran PARTAGÉ visiteur/joueur — le
+lien « Parier sur cette série » n'apparaît QUE pour un joueur connecté ET en
+compétition PLAYOFFS (paris séries absents en NBA Cup, même garde que
+`BracketFillBoard.tsx`), calculé UNE FOIS dans `BracketSummary.tsx`
+(`showBetLink`) et redescendu à `TreeView`/`SeriesDrillDown` (vue A ET vue
+B). Rendu dans le détail DÉPLIÉ d'une série (à côté de `SeriesGroups`, pas
+sur la carte elle-même — la carte entière est déjà un `<button>` qui bascule
+le drill-down, imbriquer un 2e bouton aurait été invalide) : cliquer une
+série ouvre son détail comme avant (comportement existant inchangé), un lien
+« Parier sur cette série » y apparaît en plus si les 2 équipes réelles sont
+connues.
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression). Pas encore confirmé visuellement par
+l'utilisateur dans son navigateur.
+
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
