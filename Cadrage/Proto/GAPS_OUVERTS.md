@@ -4,6 +4,25 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 04/08/2026** — **Bug corrigé (2 lots) : « Paris séries » proposait
+> les affiches du bracket personnel, pas les vraies affiches qualifiées**
+> (`JOURNAL_SESSIONS.md`, section dédiée). **Lot 1** : `getSeriesBetsTodo`
+> (`home.ts`) et `getBracketCard` (`play-hub.ts`) réutilisaient à tort la
+> cascade de picks de `bracket-fill.ts` (correcte pour l'écran de remplissage
+> `/play/bracket`, pas pour un pari série qui reste ouvert après le tour
+> précédent réellement terminé) — nouveau module dédié
+> `lib/queries/series-bets.ts`, lisant les VRAIES équipes
+> (`series.team1_id/team2_id`). **Lot 2** (demandé dans la foulée par
+> l'utilisateur) : même correctif sur `/play/bracket` lui-même —
+> `BracketFillSeries` gagne `realTeamA`/`realTeamB` (vraies équipes, distinct
+> de `teamA`/`teamB` qui restent la cascade de picks, INCHANGÉE) ;
+> `BracketFillBoard.tsx` ne propose plus l'`InlineBetForm` d'un pari série de
+> tour 2+ tant que les 2 vraies équipes ne sont pas connues (sauf pari déjà
+> posé avant ce correctif, toujours affiché), avec un label dédié « Pari sur
+> la vraie série : X vs Y » distinct des boutons de pronostic. Bug purement
+> d'affichage (aucun risque d'intégrité, `bets` n'a pas de colonne équipe).
+> **Aucun point ouvert restant** de ce chantier.
+>
 > **État au 02/08/2026** — **Stepper d'écart repensé sous l'équipe vainqueur,
 > écran Matchs** (`ETAT_ACTUEL.md` §2.53, `SPEC_ECRAN_MATCHS_V0_1.md` §22,
 > correctif post-validation) : demandé par l'utilisateur, `−`/valeur/`+`

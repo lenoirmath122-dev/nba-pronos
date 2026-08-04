@@ -4741,4 +4741,103 @@ Documentation mise à jour en miroir : `SPEC_ECRAN_MATCHS_V0_1.md` §22
 (amendement post-implémentation, §6 non rouvert) ; `ETAT_ACTUEL.md` §2.53 ;
 `GAPS_OUVERTS.md` (aucun gap ouvert par ce chantier).
 
+---
+
+## Bug « Paris séries » Accueil/hub Jouer : affiches du bracket personnel au lieu des vraies affiches (04/08/2026)
+
+**Signalé par l'utilisateur** : la section « Paris séries non remplis » de
+l'Accueil (ajoutée le 28/07/2026) proposait des paris sur les affiches issues
+de SON propre bracket rempli, pas sur les vraies affiches qualifiées pour les
+demies/finales de conférence/finale NBA.
+
+**Cause racine** : `getSeriesBetsTodo` (`lib/queries/home.ts`) et
+`getBracketCard` (`lib/queries/play-hub.ts`) réutilisaient
+`getRemainingSeriesBets(data)`/`getBracketFillData()`
+(`lib/queries/bracket-fill.ts`), dont `computeCandidateTeamIds` dérive
+TOUJOURS les candidats de tour 2+ des PICKS du joueur, jamais du résultat
+officiel — une RÈGLE NON NÉGOCIABLE, correcte et volontaire pour l'écran de
+remplissage `/play/bracket` (verrouillé avant le 1er match des playoffs,
+donc avant tout résultat réel de tour 2+, cf. §0/§3 de
+`SPEC_ECRAN_BRACKET_PERSONNEL_V0_1.md`). Mais un pari SÉRIE, lui, reste
+ouvert jusqu'au coup d'envoi RÉEL de la série — donc potentiellement après
+que le tour précédent soit réellement terminé. La réutilisation (actée le
+28/07/2026, `play-hub.ts` §« EXCEPTION assumée ») n'avait pas anticipé ce
+cas, jamais rencontré avant que les playoffs avancent réellement à un tour
+2+.
+
+Vérifié avant de coder : bug purement d'AFFICHAGE, pas d'intégrité — un pari
+SÉRIE n'est rattaché qu'à `series_id` en base (`bets`, `save_bet`,
+`bets_insert` RLS), jamais à une paire d'équipes figée ; aucune colonne
+team1/team2 sur `bets`.
+
+**Confirmé avec l'utilisateur avant de coder** (`AskUserQuestion`, conflit
+entre un garde-fou déjà validé et un usage différent qui s'en trouve faux) :
+corriger Accueil ET la carte Bracket du hub Jouer, sans toucher à l'écran
+`/play/bracket` (remplissage) lui-même, dont la règle reste correcte pour son
+propre usage.
+
+**Code** : nouveau module `lib/queries/series-bets.ts`, `getRemainingSeriesBets()`
+(sans argument, DISTINCT de l'ancienne fonction pure du même nom dans
+`bracket-fill.ts`, supprimée) — lit DIRECTEMENT `series.team1_id/team2_id`
+(mêmes colonnes que `lib/queries/bracket.ts`, tenues à jour par le cascade
+admin `lib/scoring/advancement.ts` au fur et à mesure des résultats réels),
+jamais les picks. `home.ts::getSeriesBetsTodo` et
+`play-hub.ts::getBracketCard` branchés dessus. Nettoyage en miroir dans
+`bracket-fill.ts` : champ `isBetDeadlinePassed` retiré (devenu mort, ne
+servait qu'à l'ancienne fonction supprimée) ; `earliestKickoffBySeries`
+revenu à son calcul conditionnel NBA Cup uniquement (comme avant l'ajout des
+paris séries) puisque plus rien en Playoffs n'en dépend dans ce fichier.
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression).
+
+**Point ouvert signalé à l'utilisateur, PAS corrigé dans ce lot** : le même
+souci d'affichage existe potentiellement sur `/play/bracket` lui-même — la
+carte de série y affiche `series.teamA/teamB` (picks) juste au-dessus de
+l'`<InlineBetForm scope="SERIES">` qui sert à poser le VRAI pari série
+(`BracketFillBoard.tsx`). Une fois le tour précédent réellement terminé, ces
+noms d'équipe peuvent diverger des vraies affiques alors que le pari, lui,
+porte bien sur la vraie série. Distinct du bug corrigé ici (scope confirmé :
+Accueil + hub Jouer seulement) — nécessiterait une décision produit propre
+(afficher les 2 affiches — pick ET réelle — sur la même carte, ou autre) avant
+de coder. Ajouté à `GAPS_OUVERTS.md`.
+
+**Suite immédiate demandée par l'utilisateur** : « Oui je veux bien » — corriger
+aussi `/play/bracket`. Décision de conception prise (pas reposée à
+l'utilisateur, décision d'implémentation directe) : la carte de série garde
+SA cascade de picks INCHANGÉE pour la partie pronostic (teamA/teamB,
+score) — c'est ce que protège la RÈGLE NON NÉGOCIABLE (§0/§3 de
+`SPEC_ECRAN_BRACKET_PERSONNEL_V0_1.md`), pas rouverte. Seule la partie PARI
+(`InlineBetForm`) change :
+
+**Code** : `BracketFillSeries` (`bracket-fill.ts`) gagne 2 champs
+`realTeamA`/`realTeamB` — lus DIRECTEMENT sur `row.team1_id`/`team2_id` (déjà
+en mémoire, aucune requête supplémentaire), jamais dérivés de la cascade de
+picks, gardés bien séparés de `teamA`/`teamB` par un commentaire explicite.
+`BracketFillBoard.tsx` : nouvelle fonction `canOfferSeriesBet(series)` — le
+pari série n'est proposé que si (a) ROUND_1 (les vraies équipes y sont
+TOUJOURS connues, tour racine = colonnes officielles), OU (b) les 2 vraies
+équipes de tour 2+ sont connues, OU (c) un pari existe déjà sur cette série
+(posé AVANT ce correctif, sous l'ancienne règle moins stricte — affiché tel
+quel, jamais masqué rétroactivement). Sinon : placeholder « Pari série : les
+2 équipes réelles ne sont pas encore connues. », pas de bouton d'action.
+Quand le pari est proposable sur un tour 2+, un label dédié apparaît
+au-dessus du formulaire : « Pari sur la vraie série : X vs Y » (vraies
+équipes), visuellement distinct des boutons de pronostic juste au-dessus
+(picks, inchangés) — pas de label redondant en ROUND_1 (les 2 informations y
+sont toujours identiques).
+
+**Effet de bord positif, pas cherché mais constaté en concevant le
+correctif** : avant ce lot, un pari série de tour 2+ pouvait être proposé dès
+que le joueur avait rempli SES PROPRES picks des 2 séries qui alimentent
+celle-ci — potentiellement bien avant que les vraies équipes soient connues
+(aucun match réel encore synchronisé pour cette série ⇒
+`bet_deadline_open` toujours "ouvert"). `canOfferSeriesBet` ferme cette
+fenêtre pour tout NOUVEAU pari (un pari SÉRIE de tour 2+ n'est plus proposable
+tant que les 2 vraies équipes ne sont pas connues) — les paris déjà posés sous
+l'ancien comportement restent valides et affichés (cas (c) ci-dessus).
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression). Point retiré de `GAPS_OUVERTS.md`.
+
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
