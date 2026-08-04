@@ -4,6 +4,25 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 04/08/2026 (suite)** — **Couleurs d'équipe sur Profil, reprise
+> ET codée** (`BACKLOG_V1.md` § Personnalisation du profil,
+> `lib/labels/teamColors.ts`, `app/(app)/profile/page.tsx`,
+> `JOURNAL_SESSIONS.md` section dédiée) : essai du 30/07/2026 abandonné le
+> jour même, redemandé explicitement cette fois avec la consigne de cadrer
+> AVANT de coder — cadré par plusieurs itérations de maquettes (artifact)
+> validées avec l'utilisateur (portée réduite au SEUL bandeau, traitement
+> duotone plutôt qu'une voile teintée classique, blason à gauche avec liseré
+> fin, pseudo agrandi à droite) avant d'écrire la moindre ligne de code
+> applicatif. Aucune migration (couleurs en constante de code, déclenchement
+> automatique dès `favorite_team_id` renseigné, pas de toggle). Vérifié en
+> conditions réelles (compte `TestJoueur1`, dark ET clair), compte de test
+> restauré après coup. **1 trouvaille distincte notée, hors périmètre** :
+> un rechargement manuel semble nécessaire après `updateProfile`/
+> `updateThemePreference` pour voir le changement reflété (`revalidatePath`
+> + `redirect`, déjà en place) — reproduit sur les 2 actions à l'identique,
+> probablement un comportement Next.js préexistant, pas une régression de ce
+> lot. Pas encore creusé.
+>
 > **État au 04/08/2026** — **Bug corrigé (2 lots) : « Paris séries » proposait
 > les affiches du bracket personnel, pas les vraies affiches qualifiées**
 > (`JOURNAL_SESSIONS.md`, section dédiée). **Lot 1** : `getSeriesBetsTodo`

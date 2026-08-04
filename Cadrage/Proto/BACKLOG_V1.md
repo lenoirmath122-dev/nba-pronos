@@ -122,11 +122,21 @@
 ## Personnalisation du profil
 
 - ~~Couleurs de l'interface du Profil adaptées à l'équipe favorite choisie~~
-  **ESSAYÉE PUIS ABANDONNÉE le 30/07/2026** par l'utilisateur ("je ne pense
-  pas que ça ait d'importance") — construite (2 passes : accents doux, puis
-  fonds/bandeau teintés), puis entièrement retirée (code + migration).
-  Détail dans `JOURNAL_SESSIONS.md`. Ne pas retenter sans qu'il le demande
-  explicitement.
+  **REESSAYÉE ET FAITE — 04/08/2026** (`lib/labels/teamColors.ts`,
+  `app/(app)/profile/page.tsx`) : 1er essai (30/07/2026, accents doux puis
+  fonds/bandeau teintés sur TOUT l'écran) abandonné le jour même ("je ne
+  pense pas que ça ait d'importance"), entièrement retiré (code + migration).
+  Redemandé explicitement le 04/08/2026 — cette fois cadré par plusieurs
+  maquettes (artifact) validées AVANT le code : scope réduit au SEUL bandeau
+  d'en-tête (fonds/onglets/boutons neutres, inchangés), photo désaturée puis
+  recolorée en 2 tons de l'équipe (mode de fusion CSS `color`, pas une voile
+  translucide "comme d'habitude" — jugée trop conventionnelle), blason plein
+  à gauche (liseré blanc fin, filtre SVG dilate+composite) et pseudo agrandi
+  à droite. Aucune migration : pas de colonne base, pas de toggle
+  opt-in/opt-out — s'applique automatiquement dès qu'une équipe favorite est
+  choisie (`favorite_team_id` déjà existant), rien ne change sinon. Détail
+  complet (itérations de maquette, découverte du bug de `viewBox` SVG,
+  vérification en conditions réelles) dans `JOURNAL_SESSIONS.md`.
 - ~~Remplacer la liste longue de sélection d'équipe favorite par un menu
   déroulant~~ **FAIT — 30/07/2026** (`TeamPicker.tsx`) : déclencheur
   logo+nom, menu flottant ouvert au clic, toujours de vrais radios (logos

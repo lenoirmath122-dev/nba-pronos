@@ -4985,4 +4985,115 @@ Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
 `vitest run` (37/37, aucune régression). Pas encore confirmé visuellement par
 l'utilisateur dans son navigateur.
 
+---
+
+## Couleurs d'équipe sur Profil — reprise cadrée par maquettes, cette fois codée (04/08/2026)
+
+**Demandé par l'utilisateur** : « On peut repartir sur une spec plus solide
+pour les couleurs qui personnalisent les profils ? » — reprise explicite du
+point `BACKLOG_V1.md` § Personnalisation du profil, essayé puis abandonné le
+30/07/2026 ("je ne pense pas que ça ait d'importance"), avec la consigne
+« ne pas retenter sans qu'il le demande explicitement » (`GAPS_OUVERTS.md`,
+[[nba-pronos-collab-style]]). Cette fois la consigne du 30/07 était de
+cadrer AVANT de coder, pas de redeviner.
+
+**Cadrage (`AskUserQuestion`, avant tout code)** :
+- Portée : Profil uniquement (pas étendu au Classement/carte joueur), comme
+  la 1re fois.
+- Intensité : « à définir ensemble en revoyant des maquettes » — pas
+  tranchée à l'avance.
+
+**Itérations de maquette (artifact HTML, reconstruit via un script Node
+`build-mockup.js` qui injecte les VRAIS blasons SVG (5 équipes,
+`public/logos/teams/*.svg`, classes `cls-N` namespacées par équipe pour
+éviter les collisions) et la vraie photo de bandeau en base64 — jamais de
+placeholder générique, jamais de lorem)** :
+1. 3 pistes (A accents doux / B bandeau signature / C immersion complète),
+   reprenant les 2 intensités du 1er essai + 1 nouvelle — **B choisie**
+   (bandeau seul teinté, reste de l'écran neutre).
+2. Bandeau B jugé « trop conventionnel » (voile dégradé sur photo) →
+   2 nouvelles pistes plus tranchées : **duotone** (photo désaturée
+   recolorée en 2 tons via `mix-blend-mode: color`, PAS un calque
+   transparent) et **bloc diagonal** (aplats coupés net, esprit maillot) —
+   **duotone choisi**.
+3. Affinages successifs du bandeau duotone, chacun redéployé sur le MÊME
+   artifact (même URL) : retrait du petit badge rond + pseudo agrandi aligné
+   à droite ; réintroduction d'un grand blason en filigrane (repris du bloc
+   diagonal) derrière le pseudo ; blason déplacé à gauche, plein (sans
+   transparence), liseré blanc autour de la silhouette (filtre SVG
+   `feMorphology`/`feComposite`/`feMerge`, PAS un `border`) ; liseré affiné,
+   blason agrandi pleine hauteur ; blason+pseudo groupés à gauche puis
+   RETRANSFORMÉS en 2 extrémités opposées du bandeau (blason tout à gauche,
+   pseudo tout à droite) sur demande finale.
+
+**Bug trouvé PENDANT le maquettage, pas dans le code réel** : après avoir
+calé le blason au bord gauche (marge négative annulant le padding), un écart
+persistait — signalé par l'utilisateur avec une capture d'écran. Cause :
+le `<svg>` conteneur (technique `<use>` + sprite `<symbol>`, propre à
+l'artifact pour éviter de dupliquer les gros SVG) n'avait pas de `viewBox`
+propre → ratio par défaut 2:1 du navigateur, `<use>` centré/réduit en
+préservant SES propres proportions → vide interne à l'image, invisible à
+tout réglage de marge CSS. Corrigé en injectant le VRAI `viewBox` de chaque
+équipe via le script de build. **Ce bug n'existe pas dans l'implémentation
+réelle** (`next/image`/`<img>` utilise nativement le bon ratio intrinsèque
+d'un fichier SVG externe — le problème était spécifique à la technique
+`<use>` de l'artifact, pas au mécanisme CSS lui-même).
+
+**Décisions actées pour la spec** (pas un fichier `SPEC_ECRAN_*` séparé —
+le cadrage par maquettes validées tient lieu de spec ici, proportionné à la
+taille du changement) :
+- Source des couleurs : nouvelle constante de code `lib/labels/teamColors.ts`
+  (primaire + secondaire des 30 franchises, mêmes clés `abbreviation` que
+  `TeamRef`) — PAS une colonne base, même choix que `lib/labels/rounds.ts`.
+- Déclenchement : automatique dès que `favorite_team_id` est renseigné
+  (déjà existant) — **aucune migration, aucun toggle opt-in/opt-out**
+  (le 1er essai avait `users.use_team_colors`, retiré avec tout le reste).
+  Rien n'est modifié pour un joueur sans équipe favorite.
+- Portée : uniquement le bandeau d'en-tête du Profil (`app/(app)/profile/
+  page.tsx`) — fonds, onglets, boutons, texte restent 100% inchangés.
+
+**Code** : `lib/queries/profile.ts` — `ProfileData` gagne `favoriteTeam:
+TeamRef | null`, résolu par un `fetchTeam` local (même patron que
+`lib/queries/player-profile.ts`). `app/(app)/profile/page.tsx` — le
+`<header>` compose une classe `.headerTeam` + variables CSS
+`--team-primary`/`--team-secondary` UNIQUEMENT si `teamColors` est résolu ;
+un filtre SVG caché (`#profile-crest-outline`, `feMorphology` dilate +
+`feComposite` + `feMerge`) rendu conditionnellement fournit le liseré blanc
+fin, réutilisé par `next/image` (le blason, `unoptimized` comme
+`TeamLogo.tsx`) via `filter: url(#profile-crest-outline)` en CSS.
+`app/(app)/profile/page.module.css` — `.headerTeam::before`/`::after`
+écrasent LOCALEMENT les pseudo-éléments partagés de `.hero-banner`
+(`app/globals.css`) par spécificité (2 classes du module > 1 classe globale)
+— AUCUN autre écran composant `.hero-banner` (Accueil, Bracket, Matchs, hub
+Jouer) n'est affecté. Un voile de lisibilité additionnel (`.textScrim`) est
+un VRAI enfant du bandeau (pas un 3e pseudo-élément, `.hero-banner` n'en a
+que 2), promu par la règle globale `.hero-banner > * { z-index: 1 }`.
+
+**Vérifié en conditions RÉELLES** (compte `TestJoueur1`, mot de passe déjà
+connu `TutoTest2026!` — email retrouvé via `supabase.auth.admin.getUserById`,
+JAMAIS affiché en clair dans le terminal cette fois, contrairement à
+l'incident du 04/08/2026 plus tôt cette session ; Playwright réinstallé
+temporairement en dev dependency puis retiré, même patron que les sessions
+précédentes) : équipe favorite réglée sur Lakers via la vraie action serveur
+`updateProfile`, bandeau duotone violet/or + blason avec liseré + pseudo
+agrandi confirmés à l'écran, EXACTEMENT conforme à la dernière maquette
+validée, en thème sombre ET clair (bandeau toujours sombre dans les 2 cas,
+conforme à la règle déjà actée du design system, `tokens.css` §15.7). Compte
+de test restauré à son état d'origine après coup (`favorite_team_id: null`,
+`theme_preference: DARK`).
+
+**Trouvaille distincte, sans rapport avec ce lot, PAS corrigée** : après
+« Enregistrer » (équipe favorite) OU après bascule de thème, l'écran ne
+reflète pas immédiatement le changement sans un rechargement complet de la
+page (`revalidatePath` + `redirect`, pourtant déjà en place sur les 2
+actions) — observé en testant, reproductible sur les 2 actions à l'identique
+(donc probablement un comportement Next.js App Router déjà présent AVANT ce
+lot, pas une régression introduite ici). Hors périmètre de ce chantier, pas
+d'investigation plus poussée à ce stade — à garder en tête si un utilisateur
+réel signale la même chose.
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression), test en conditions réelles ci-dessus.
+Pas encore committé.
+
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
