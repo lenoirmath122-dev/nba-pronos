@@ -5096,4 +5096,99 @@ Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
 `vitest run` (37/37, aucune régression), test en conditions réelles ci-dessus.
 Pas encore committé.
 
+---
+
+## Nouvel onglet Stats — Profil (04/08/2026)
+
+**Demandé par l'utilisateur** : « prochain chantier, l'onglet stats et les
+badges » — reprise de 2 points du backlog (`BACKLOG_V1.md` § "Historique &
+stats" / "Fun / esprit ligue entre potes") : la courbe d'évolution n'avait
+qu'un socle de données posé le 30/07/2026 (`leaderboard_snapshots`), aucun
+écran ; les "badges permanents" étaient explicitement "pas encore tranchés,
+à spécifier".
+
+**Cadrage avant le code** (même discipline que les couleurs d'équipe plus
+tôt cette session) :
+- `AskUserQuestion` : emplacement (nouvel onglet Profil, confirmé) et
+  contenu (choix multiple parmi 4 propositions — les 4 ont été choisies :
+  courbe d'évolution, précision des pronos, bilan des paris, comparaison
+  aux autres joueurs). Badges : juste une catégorie placeholder, "on verra
+  après" — aucune liste à concevoir maintenant.
+- **Mode Plan** utilisé pour la 1re fois cette session (chantier data/
+  requêtes plus que design pur) : 1 agent Explore (queries existantes,
+  aucune librairie de graphes dans le projet, tokens couleur disponibles) +
+  1 agent Plan (validation du schéma de requêtes, types, géométrie SVG),
+  puis plan écrit et détaillé à la demande explicite de l'utilisateur
+  (« détailles moi le plan, fais moi une maquette »).
+- **Maquette artifact** (comme les couleurs d'équipe) demandée en plus du
+  plan écrit — chiffres d'exemple, réplique de l'en-tête/onglets réels,
+  ordre des 5 blocs (Précision → Comparaison → Évolution → Paris → Badges)
+  et géométrie du graphe SVG déjà conforme au plan. Validée avec un seul
+  ajustement demandé : **filtre Général/Ligue sur la Comparaison**
+  (rang + moyenne), même mécanisme que Classement/Bracket
+  (`resolveLeagueScope`) — ajouté au plan ET à la maquette avant validation
+  finale, puis plan approuvé via `ExitPlanMode`.
+
+**Code** :
+- `lib/queries/stats.ts` (nouveau) — `getProfileStats(leagueId?)`, union
+  discriminée sur `hasActiveCompetition` (même esprit que `emptyData()` de
+  `leaderboard.ts`/`bracket.ts`). 6 requêtes (1 compétition active + 5 en
+  parallèle) : `user_scores` (UNE fois pour ma ligne/rang/nombre de joueurs/
+  moyenne des autres — simplification par rapport à `player-profile.ts`, qui
+  refait 2 requêtes `user_scores` redondantes, PAS reproduit ici),
+  dénominateur de précision via l'idiome `count: "exact", head: true` déjà
+  établi ailleurs (`lib/queries/admin-dashboard.ts` etc.), 1re lecture de
+  `leaderboard_snapshots` PAR UTILISATEUR (jusqu'ici seul lecteur :
+  `computeBiggestClimb`, `lib/scoring/superlatives.ts`, qui agrège TOUS les
+  joueurs pour ne garder que le 1er rang de chacun — logique différente,
+  pas réutilisable telle quelle), mes paris résolus, et
+  `resolveLeagueScope` (déjà factorisé dans `lib/queries/leagues.ts`,
+  commentaire de tête : conçu pour être réutilisé par tout écran filtrant
+  par ligue — rien à écrire de neuf pour le filtre lui-même).
+- `components/profile/RankEvolutionChart.tsx` (nouveau) — SVG fait main,
+  composant SERVEUR, aucune librairie de graphes (aucune dans le projet,
+  une seule courbe ne le justifie pas). Rang projeté DIRECTEMENT sur l'axe y
+  (rang 1 = haut de l'écran) — pas d'inversion à coder, juste un domaine
+  `[min-1, max+1]` pour respirer. Seul le dernier point est étiqueté
+  (rang actuel), 2 dates en repère, `stroke: var(--color-trend)` (token
+  déjà réservé "tendance", jamais win/loss, règle R-COL7 du design system —
+  pas `--color-accent`).
+- `components/profile/LeagueScopeChips.tsx` (nouveau) — même patron que
+  `components/bracket/LeagueScopeChips.tsx`/`components/leaderboard/
+  LeagueScopeChips.tsx` : une copie dédiée par écran (`href` en dur vers
+  `/profile?tab=stats&ligue=X`), convention déjà établie dans ce projet
+  plutôt qu'un composant générique partagé.
+- `components/bracket/ProgressBar.tsx` — nouveau prop optionnel `label?`
+  (défaut inchangé) pour réutiliser le composant sur "Précision" sans lui
+  faire annoncer le mauvais texte en lecteur d'écran ("Progression : X sur
+  Y" ne convenait pas à un contexte de précision de pronos).
+- `components/profile/ProfileTabs.tsx` / `app/(app)/profile/page.tsx` /
+  `page.module.css` — 5e onglet "Stats" (après "Compte"), branché sur le
+  même patron que les 4 onglets existants (`?tab=`, fetch conditionnel,
+  bloc JSX sibling). Filtre ligue scope UNIQUEMENT `rank`/`comparison` — la
+  courbe d'évolution reste le classement GÉNÉRAL quel que soit le filtre
+  actif (recalculer un rang par ligue jour par jour aurait demandé de
+  ré-agréger tous les snapshots de tous les joueurs, hors de proportion
+  pour ce lot — décision actée dans le plan, précisée dans la légende du
+  graphe pour ne pas laisser croire le contraire). Delta de comparaison en
+  texte NEUTRE, jamais vert/rouge (`--color-win`/`--color-loss` réservés
+  aux résultats de jeu réels, pas à un écart de classement — évite une
+  collision sémantique non couverte par les règles de couleur déjà actées).
+  Aucune migration.
+
+**Vérifié en conditions RÉELLES** (compte `TestJoueur1`, Playwright
+réinstallé temporairement puis retiré, même patron que les lots
+précédents) : onglet visible dark ET clair, tous les états vides corrects
+(aucun match scoré, aucun pari résolu, "reviens dans quelques jours" quand
+moins de 2 snapshots — le cas réel de la compétition de test). Pour vérifier
+le graphe lui-même (code neuf, le plus à risque de ce lot), 4 lignes
+`leaderboard_snapshots` insérées TEMPORAIREMENT via script jetable
+(service_role) pour `TestJoueur1` sur la compétition de test — courbe
+rendue correctement (montées/descentes, dernier point étiqueté `#3`, dates
+aux 2 extrémités) en dark ET clair, **puis les 4 lignes supprimées** après
+vérification (aucune trace laissée en base).
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression). Pas encore committé.
+
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).

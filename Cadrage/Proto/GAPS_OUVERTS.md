@@ -4,6 +4,18 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 04/08/2026 (suite 2)** — **Nouvel onglet Stats, Profil**
+> (`BACKLOG_V1.md` § Historique & stats / Fun esprit ligue,
+> `lib/queries/stats.ts`, `components/profile/RankEvolutionChart.tsx`,
+> `JOURNAL_SESSIONS.md` section dédiée) : courbe d'évolution du rang
+> (`leaderboard_snapshots`, SVG fait main, aucune librairie de graphes),
+> précision des pronos, bilan des paris, comparaison à la moyenne des
+> autres joueurs filtrable Général/Ligue (même mécanisme que Classement/
+> Bracket), catégorie Badges en placeholder. Cadré par `AskUserQuestion` +
+> mode Plan (1er usage cette session) + maquette artifact AVANT le code.
+> Aucune migration. Vérifié en conditions réelles (compte `TestJoueur1`,
+> dark/clair, graphe validé avec des données temporaires puis nettoyées).
+>
 > **État au 04/08/2026 (suite)** — **Couleurs d'équipe sur Profil, reprise
 > ET codée** (`BACKLOG_V1.md` § Personnalisation du profil,
 > `lib/labels/teamColors.ts`, `app/(app)/profile/page.tsx`,

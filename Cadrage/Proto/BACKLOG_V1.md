@@ -69,8 +69,11 @@
 - **Badges permanents** (redéfini le 30/07/2026, 3e des chantiers
   prioritaires) : des titres/badges visibles en CONTINU pendant la
   compétition (pas seulement révélés à la clôture comme les superlatifs
-  ci-dessus) — emplacement (profil joueur ? classement ?) et liste des
-  badges pas encore tranchés, à spécifier le moment venu.
+  ci-dessus). **Emplacement tranché le 04/08/2026** : catégorie dédiée dans
+  le nouvel onglet Stats du Profil (voir "Historique & stats" ci-dessous) —
+  posée en PLACEHOLDER ("Bientôt disponible") en même temps que le reste de
+  l'onglet, la LISTE des badges elle-même reste à spécifier ("on verra
+  après", décision explicite de l'utilisateur).
 - Face-à-face entre deux joueurs précis, match par match / série par série
   — EN OPTION, pas prioritaire, utilité encore incertaine pour
   l'utilisateur.
@@ -91,10 +94,19 @@
 
 ## Historique & stats
 
-- Courbe d'évolution du classement dans le temps (pas juste l'état figé
-  actuel). **Socle de données posé le 30/07/2026** (`leaderboard_snapshots`,
-  1 snapshot/jour, voir "Fun / esprit ligue entre potes" ci-dessus) — reste
-  à construire l'écran/graphique lui-même, pas fait ici.
+- ~~Courbe d'évolution du classement dans le temps~~ **FAIT — 04/08/2026**
+  (`lib/queries/stats.ts`, `components/profile/RankEvolutionChart.tsx`) :
+  nouvel onglet **Stats** dans Profil (cadré par maquette avant le code,
+  comme les couleurs d'équipe le même jour) — courbe d'évolution du rang
+  (SVG fait main, aucune librairie de graphes introduite), précision des
+  pronos (% bons vainqueurs/écarts exacts, répartition des points), bilan
+  des paris perso (taux de réussite, plus gros coup gagné), comparaison à la
+  moyenne des autres joueurs (filtrable Général/Ligue, même mécanisme que
+  Classement/Bracket), et une catégorie Badges en placeholder (voir "Fun /
+  esprit ligue entre potes" ci-dessus). Aucune migration : tout lit des
+  données déjà existantes (`user_scores`, `leaderboard_snapshots`, `bets`,
+  `match_predictions`). Portée : compétition ACTIVE uniquement, comme
+  Classement/Bracket.
 - Classement all-time toutes compétitions archivées confondues, en plus du
   classement par compétition. **Garde-fou à ne pas oublier en conception** :
   nécessite que le barème de scoring reste identique d'une compétition à
