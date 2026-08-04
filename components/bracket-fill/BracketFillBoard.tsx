@@ -14,6 +14,14 @@ import styles from "./BracketFillBoard.module.css";
 
 const SCORE_FORMATS: BetSeriesFormat[] = ["4-0", "4-1", "4-2", "4-3"];
 
+// ROUND_1 : realTeamA/realTeamB toujours connues dès que la série existe
+// (tour racine, colonnes officielles). Tour 2+ : le pari série n'est proposé
+// qu'une fois les 2 VRAIES équipes connues, sauf pari déjà posé avant ce
+// correctif (04/08/2026) — celui-là reste affiché tel quel plutôt que masqué.
+function canOfferSeriesBet(series: BracketFillSeries): boolean {
+  return series.round === "ROUND_1" || (series.realTeamA !== null && series.realTeamB !== null) || series.hasBet;
+}
+
 type BracketFillBoardProps = {
   series: BracketFillSeries[];
   competitionType: "PLAYOFFS" | "NBA_CUP";
@@ -166,17 +174,35 @@ function SeriesPickCard({ series, competitionType, onError }: SeriesPickCardProp
           qui reste réservé aux paris MATCH. NBA Cup exclu : une "série" y est
           1 seul match (T1), le pari SÉRIE y est de toute façon refusé par
           save_bet (migration #10) — pas la peine d'offrir une action vouée à
-          l'échec. */}
-      {competitionType === "PLAYOFFS" && (
-        <InlineBetForm
-          scope="SERIES"
-          matchId={null}
-          seriesId={series.seriesId}
-          hasBet={series.hasBet}
-          triggerLabel="Proposer un pari"
-          myBet={series.myBet}
-        />
-      )}
+          l'échec.
+
+          Porte sur la VRAIE série (series.realTeamA/realTeamB), jamais sur le
+          pronostic du joueur (series.teamA/teamB, cascade de picks ci-dessus)
+          — pour un tour 2+ pas encore joué en réalité, ces 2 informations
+          peuvent diverger. Tant que les 2 vraies équipes ne sont pas
+          connues : pas de nouveau pari proposé (placeholder), sauf pour un
+          pari déjà posé avant ce correctif (04/08/2026) — celui-ci reste
+          affiché tel quel. */}
+      {competitionType === "PLAYOFFS" &&
+        (canOfferSeriesBet(series) ? (
+          <div className={styles.seriesBet}>
+            {series.round !== "ROUND_1" && series.realTeamA && series.realTeamB && (
+              <p className={styles.seriesBetLabel}>
+                Pari sur la vraie série : {series.realTeamA.abbreviation} vs {series.realTeamB.abbreviation}
+              </p>
+            )}
+            <InlineBetForm
+              scope="SERIES"
+              matchId={null}
+              seriesId={series.seriesId}
+              hasBet={series.hasBet}
+              triggerLabel="Proposer un pari"
+              myBet={series.myBet}
+            />
+          </div>
+        ) : (
+          <p className={styles.pending}>Pari série : les 2 équipes réelles ne sont pas encore connues.</p>
+        ))}
     </div>
   );
 }
