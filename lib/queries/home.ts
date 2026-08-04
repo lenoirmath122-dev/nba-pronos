@@ -1,5 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
-import { getBracketFillData, getRemainingSeriesBets } from "@/lib/queries/bracket-fill";
+import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
@@ -113,16 +113,16 @@ export async function getHomeData(): Promise<HomeData> {
 // « Paris séries » (demandé par l'utilisateur 28/07/2026) — liste chaque
 // série où un pari reste possible et pas encore posé ; section RETIRÉE dès
 // que la liste est vide (jamais un état vide affiché, contrairement à « À
-// traiter »/« Ça vient de tomber »). Réutilise getBracketFillData() +
-// getRemainingSeriesBets() (lib/queries/bracket-fill.ts) — même logique que
+// traiter »/« Ça vient de tomber »). Réutilise getRemainingSeriesBets()
+// (lib/queries/series-bets.ts, VRAIES équipes qualifiées) — même logique que
 // la carte Bracket du hub Jouer, jamais recalculée deux fois.
 // ============================================================================
 
 async function getSeriesBetsTodo(): Promise<SeriesBetTodoItem[]> {
-  const data = await getBracketFillData();
-  return getRemainingSeriesBets(data).map((series) => ({
+  const remaining = await getRemainingSeriesBets();
+  return remaining.map((series) => ({
     seriesId: series.seriesId,
-    title: `${ROUND_LABELS[series.round] ?? series.round} — ${series.teamA?.abbreviation} vs ${series.teamB?.abbreviation}`,
+    title: `${ROUND_LABELS[series.round] ?? series.round} — ${series.teamA.abbreviation} vs ${series.teamB.abbreviation}`,
     href: `/play/bracket#series-${series.seriesId}`,
   }));
 }

@@ -48,12 +48,16 @@ export type BracketFillSeries = {
    *  même patron que betSlot/myBet de l'écran Matchs pour les paris MATCH). */
   hasBet: boolean;
   myBet: MySeriesBet | null;
-  /** Reproduit public.bet_deadline_open(SERIES, ...) (T3 §2) : coup d'envoi
-   *  du 1er match de la série — true si AUCUN match n'est encore programmé
-   *  (deadline toujours ouverte). Sert au décompte "paris séries restants"
-   *  (hub Jouer, Accueil — demandé par l'utilisateur 28/07/2026), PAS de
-   *  garde d'écriture ici (déjà portée par la fonction SQL save_bet). */
-  isBetDeadlinePassed: boolean;
+  /** Vraies équipes qualifiées pour CETTE série (series.team1_id/team2_id LUS
+   *  DIRECTEMENT, jamais dérivées des picks) — sert UNIQUEMENT au pari SÉRIE
+   *  (qui porte sur la vraie série, pas sur le pronostic du joueur), jamais à
+   *  la cascade de picks (teamA/teamB ci-dessus, inchangés). NULL tant que
+   *  l'une des 2 n'est pas connue EN VRAI — peut rester NULL alors que
+   *  teamA/teamB (picks) sont déjà remplis, pour un tour 2+ pas encore joué
+   *  en réalité. Bug corrigé le 04/08/2026, même famille que
+   *  lib/queries/series-bets.ts (Accueil/hub Jouer). */
+  realTeamA: BracketFillCandidate;
+  realTeamB: BracketFillCandidate;
 };
 
 export type BracketFillRound = { key: string; label: string; series: BracketFillSeries[] };
@@ -259,14 +263,13 @@ export async function getBracketFillData(): Promise<BracketFillData> {
 
   const candidatesBySeriesId = computeCandidateTeamIds(series, myWinnerBySeriesId, competition.type);
 
-  // Coup d'envoi le plus tôt par série — sert à l'ordre d'affichage en NBA
-  // Cup (slot_index seul ne reflète pas l'ordre réel des demies/finale) ET à
-  // la deadline des paris SÉRIE (public.bet_deadline_open, T3 §2 : "min(
-  // scheduled_at) des matchs de la série"), pour les DEUX types de
-  // compétition — plus seulement conditionné à NBA_CUP comme avant l'ajout
-  // des paris séries (28/07/2026).
+  // Coup d'envoi le plus tôt par série — sert UNIQUEMENT à l'ordre d'affichage
+  // en NBA Cup (slot_index seul ne reflète pas l'ordre réel des demies/
+  // finale) ; la deadline des paris SÉRIE, elle, vit désormais dans
+  // lib/queries/series-bets.ts (VRAIES équipes qualifiées, pas les picks du
+  // joueur — bug corrigé le 04/08/2026).
   const earliestKickoffBySeries = new Map<string, number>();
-  {
+  if (competition.type === "NBA_CUP") {
     const { data: matches } = await supabase
       .from("matches")
       .select("series_id, scheduled_at")
@@ -301,7 +304,6 @@ export async function getBracketFillData(): Promise<BracketFillData> {
         const teamB = candidates.teamBId ? resolveTeam(teams, candidates.teamBId) : null;
         const seriesBet = seriesBetBySeriesId.get(row.id);
         const isBetEditable = seriesBet?.status === "DRAFT" || seriesBet?.status === "SUBMITTED";
-        const earliestKickoffMs = earliestKickoffBySeries.get(row.id);
         return {
           seriesId: row.id,
           round: row.round,
@@ -321,7 +323,8 @@ export async function getBracketFillData(): Promise<BracketFillData> {
                   difficulty: seriesBet.proposed_difficulty,
                 }
               : null,
-          isBetDeadlinePassed: earliestKickoffMs !== undefined && earliestKickoffMs <= Date.now(),
+          realTeamA: row.team1_id ? resolveTeam(teams, row.team1_id) : null,
+          realTeamB: row.team2_id ? resolveTeam(teams, row.team2_id) : null,
         };
       });
 
@@ -347,19 +350,6 @@ export async function getBracketFillData(): Promise<BracketFillData> {
     filledCount,
     totalCount: series.length,
   };
-}
-
-/** Séries où un pari SÉRIE reste POSSIBLE et pas encore posé — "restants",
- *  demandé par l'utilisateur (28/07/2026) pour la carte Bracket du hub Jouer
- *  et la section Accueil dédiée. NBA Cup exclue (pas de paris séries, une
- *  "série" y est 1 seul match). Fonction PURE, réutilisée par
- *  lib/queries/play-hub.ts et lib/queries/home.ts — jamais recalculée deux
- *  fois avec une logique divergente. */
-export function getRemainingSeriesBets(data: BracketFillData): BracketFillSeries[] {
-  if (data.competitionType !== "PLAYOFFS") return [];
-  return data.rounds
-    .flatMap((round) => round.series)
-    .filter((s) => s.isSelectable && !s.hasBet && !s.isBetDeadlinePassed);
 }
 
 function resolveTeam(teams: Map<string, { name: string; abbreviation: string }>, teamId: string): BracketFillCandidate {

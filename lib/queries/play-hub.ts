@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
-import { getBracketFillData, getRemainingSeriesBets } from "@/lib/queries/bracket-fill";
+import { getBracketFillData } from "@/lib/queries/bracket-fill";
+import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 
 // Lecture du hub Jouer (SPEC_ECRAN_HUB_JOUER_V0_1 §2/§4). Un instantané TRÈS
 // LÉGER par carte — pas de réutilisation des requêtes complètes des écrans
@@ -7,12 +8,14 @@ import { getBracketFillData, getRemainingSeriesBets } from "@/lib/queries/bracke
 // (others/absentees, historique complet, quotas détaillés...).
 //
 // EXCEPTION assumée : la carte Bracket réutilise directement
-// getBracketFillData() plutôt qu'une requête dédiée — la dérivation des
-// candidats de tour 2+ (computeCandidateTeamIds) est une logique non triviale
-// déjà correcte et testée (leçon retenue, SPEC_ECRAN_BRACKET_PERSONNEL §0) ;
-// la dupliquer ici pour économiser quelques colonnes créerait un vrai risque
-// de divergence pour un gain de perf négligeable (une seule compétition, 15
-// séries au plus).
+// getBracketFillData() pour filledCount/totalCount/deadline plutôt qu'une
+// requête dédiée — logique non triviale déjà correcte et testée (leçon
+// retenue, SPEC_ECRAN_BRACKET_PERSONNEL §0) ; la dupliquer ici pour économiser
+// quelques colonnes créerait un vrai risque de divergence pour un gain de
+// perf négligeable (une seule compétition, 15 séries au plus). En revanche
+// remainingSeriesBets vient de lib/queries/series-bets.ts (VRAIES équipes
+// qualifiées, pas les picks du joueur) — bug corrigé le 04/08/2026, voir ce
+// module pour le détail.
 
 const MATCHES_WINDOW_DAYS = 3;
 const BRACKET_NEAR_DEADLINE_MS = 2 * 24 * 60 * 60 * 1000; // 2 jours, même seuil que §2.3 de la spec
@@ -149,7 +152,7 @@ async function getPredictionsCard(
 }
 
 async function getBracketCard(): Promise<PlayHubBracketCard> {
-  const data = await getBracketFillData();
+  const [data, remainingSeriesBets] = await Promise.all([getBracketFillData(), getRemainingSeriesBets()]);
   const isActionable = data.competitionId !== null && data.isStructureKnown && !data.isDeadlinePassed;
   const isNearDeadline =
     isActionable && data.deadline !== null && Date.parse(data.deadline) - Date.now() < BRACKET_NEAR_DEADLINE_MS;
@@ -160,7 +163,7 @@ async function getBracketCard(): Promise<PlayHubBracketCard> {
     deadline: data.deadline,
     isNearDeadline,
     isActionable,
-    remainingSeriesBets: getRemainingSeriesBets(data).length,
+    remainingSeriesBets: remainingSeriesBets.length,
   };
 }
 
