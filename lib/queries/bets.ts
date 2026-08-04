@@ -14,8 +14,14 @@ import type { TeamRef } from "@/lib/queries/matches";
 
 export type { TeamRef, BetCategory, BetDifficulty };
 
-// Contexte d'entrée résolu côté page serveur (§2/§10).
-export type NewBetContext = { mode: "FROM_MATCH"; matchId: string } | { mode: "FREE" };
+// Contexte d'entrée résolu côté page serveur (§2/§10). FROM_SERIES ajouté le
+// 04/08/2026 (demandé par l'utilisateur) : raccourci depuis le Bracket global
+// (`/bracket`, vue de consultation partagée visiteur/joueur), même patron que
+// FROM_MATCH depuis Matchs.
+export type NewBetContext =
+  | { mode: "FROM_MATCH"; matchId: string }
+  | { mode: "FROM_SERIES"; seriesId: string }
+  | { mode: "FREE" };
 
 export type MatchOption = {
   matchId: string;
@@ -59,9 +65,10 @@ export type NewBetFormData = {
   competitionId: string | null; // null = aucune compétition active
   bootstrap: BetFormBootstrap | null;
   context: NewBetContext;
-  // Raccourci vers un match hors compétition, déjà commencé, ou inexistant
-  // (§2) : retombe sur FREE, message discret, jamais une erreur bloquante.
-  shortcutClosed: boolean;
+  // Raccourci (match OU série) hors compétition, fermé, déjà pris, ou
+  // inexistant (§2) : retombe sur FREE, message discret adapté au type de
+  // raccourci concerné, jamais une erreur bloquante.
+  shortcutClosed: "MATCH" | "SERIES" | null;
 };
 
 export type EditBetFormData = {
@@ -103,7 +110,10 @@ type OwnBetRow = {
   status: string;
 };
 
-export async function getNewBetFormData(matchIdParam: string | null): Promise<NewBetFormData> {
+export async function getNewBetFormData(
+  matchIdParam: string | null,
+  seriesIdParam: string | null = null
+): Promise<NewBetFormData> {
   const supabase = await getServerClient();
 
   const {
@@ -111,7 +121,7 @@ export async function getNewBetFormData(matchIdParam: string | null): Promise<Ne
   } = await supabase.auth.getUser();
   if (!user) {
     // Ne devrait pas se produire : le layout (app) garde déjà la session.
-    return { competitionId: null, bootstrap: null, context: { mode: "FREE" }, shortcutClosed: false };
+    return { competitionId: null, bootstrap: null, context: { mode: "FREE" }, shortcutClosed: null };
   }
 
   const { data: competition } = await supabase
@@ -121,31 +131,49 @@ export async function getNewBetFormData(matchIdParam: string | null): Promise<Ne
     .maybeSingle<CompetitionRow>();
 
   if (!competition) {
-    return { competitionId: null, bootstrap: null, context: { mode: "FREE" }, shortcutClosed: false };
+    return { competitionId: null, bootstrap: null, context: { mode: "FREE" }, shortcutClosed: null };
   }
 
   const bootstrap = await buildBootstrap(supabase, user.id, competition);
 
-  if (!matchIdParam) {
-    return { competitionId: competition.id, bootstrap, context: { mode: "FREE" }, shortcutClosed: false };
+  if (matchIdParam) {
+    const targetMatch = bootstrap.seriesOptions
+      .flatMap((series) => series.matchOptions)
+      .find((match) => match.matchId === matchIdParam);
+
+    if (!targetMatch || !targetMatch.matchBetOpen) {
+      // Match inexistant/hors compétition active, non identifié, ou déjà
+      // commencé (§2) : retombe sur le contexte libre, pas une erreur bloquante.
+      return { competitionId: competition.id, bootstrap, context: { mode: "FREE" }, shortcutClosed: "MATCH" };
+    }
+
+    return {
+      competitionId: competition.id,
+      bootstrap,
+      context: { mode: "FROM_MATCH", matchId: matchIdParam },
+      shortcutClosed: null,
+    };
   }
 
-  const targetMatch = bootstrap.seriesOptions
-    .flatMap((series) => series.matchOptions)
-    .find((match) => match.matchId === matchIdParam);
+  if (seriesIdParam) {
+    // Raccourci depuis le Bracket global (04/08/2026, demandé par
+    // l'utilisateur), même garde que le sélecteur SeriesPicker
+    // (isSeriesSelectable, BetForm.tsx) : ouverte ET pas déjà prise.
+    const targetSeries = bootstrap.seriesOptions.find((series) => series.seriesId === seriesIdParam);
 
-  if (!targetMatch || !targetMatch.matchBetOpen) {
-    // Match inexistant/hors compétition active, non identifié, ou déjà
-    // commencé (§2) : retombe sur le contexte libre, pas une erreur bloquante.
-    return { competitionId: competition.id, bootstrap, context: { mode: "FREE" }, shortcutClosed: true };
+    if (!targetSeries || !targetSeries.seriesBetOpen || targetSeries.seriesSlotTaken) {
+      return { competitionId: competition.id, bootstrap, context: { mode: "FREE" }, shortcutClosed: "SERIES" };
+    }
+
+    return {
+      competitionId: competition.id,
+      bootstrap,
+      context: { mode: "FROM_SERIES", seriesId: seriesIdParam },
+      shortcutClosed: null,
+    };
   }
 
-  return {
-    competitionId: competition.id,
-    bootstrap,
-    context: { mode: "FROM_MATCH", matchId: matchIdParam },
-    shortcutClosed: false,
-  };
+  return { competitionId: competition.id, bootstrap, context: { mode: "FREE" }, shortcutClosed: null };
 }
 
 export async function getEditBetFormData(betId: string): Promise<EditBetFormData | null> {

@@ -30,7 +30,20 @@ type SeriesDrillDownProps = {
   rounds: BracketRound[];
   isDeadlinePassed: boolean;
   view: "A" | "B";
+  /** Affiche un lien « Parier sur cette série » dans le détail déplié
+   *  (04/08/2026, demandé par l'utilisateur) — déjà réduit par l'appelant à
+   *  joueur connecté + PLAYOFFS. */
+  showBetLink: boolean;
 };
+
+function BetLink({ node }: { node: BracketNode }) {
+  if (node.teamA === null || node.teamB === null) return null;
+  return (
+    <a className={styles.betLink} href={`/play/bets/new?seriesId=${node.nodeId}`}>
+      Parier sur cette série
+    </a>
+  );
+}
 
 type Column = { key: string; label: string; nodes: BracketNode[] };
 
@@ -65,7 +78,7 @@ function buildMirroredColumns(rounds: BracketRound[]): Column[] {
   return [...west, center, ...east];
 }
 
-export function SeriesDrillDown({ rounds, isDeadlinePassed, view }: SeriesDrillDownProps) {
+export function SeriesDrillDown({ rounds, isDeadlinePassed, view, showBetLink }: SeriesDrillDownProps) {
   const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
 
   function handleToggle(nodeId: string) {
@@ -94,6 +107,7 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view }: SeriesDrillD
         {node.nodeId === openSeriesId && (
           <div className={styles.inlineDetail}>
             <SeriesGroups groups={node.groups} />
+            {showBetLink && <BetLink node={node} />}
           </div>
         )}
       </div>
@@ -139,6 +153,7 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view }: SeriesDrillD
                 </button>
               </div>
               <SeriesGroups groups={openNode.groups} />
+              {showBetLink && <BetLink node={openNode} />}
             </div>
           </>
         )}

@@ -17,9 +17,16 @@ type BracketSummaryProps = {
   initialShowTree: boolean;
   liveSeed: SeriesLiveSeed[];
   myLeagues: MyLeague[];
+  /** Joueur connecté (pas un simple visiteur) — écran partagé visiteur/joueur
+   *  (§9). Conditionne UNIQUEMENT le raccourci « Parier sur cette série »
+   *  (04/08/2026, demandé par l'utilisateur), rien d'autre sur cet écran. */
+  canBet: boolean;
 };
 
-export function BracketSummary({ data, competitionName, initialShowTree, liveSeed, myLeagues }: BracketSummaryProps) {
+export function BracketSummary({ data, competitionName, initialShowTree, liveSeed, myLeagues, canBet }: BracketSummaryProps) {
+  // Paris SÉRIE : PLAYOFFS uniquement (NBA Cup les refuse déjà côté
+  // save_bet/migration #10 — même garde que BracketFillBoard.tsx).
+  const showBetLink = canBet && data.competitionType === "PLAYOFFS";
   return (
     <LiveSeriesSubscriber seed={liveSeed}>
       <div className={styles.page}>
@@ -36,7 +43,7 @@ export function BracketSummary({ data, competitionName, initialShowTree, liveSee
 
         <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} showTree={initialShowTree} />
 
-        <TreeView data={data} initialShow={initialShowTree} />
+        <TreeView data={data} initialShow={initialShowTree} showBetLink={showBetLink} />
 
         {/* Avant la deadline (§13) : structure seule, compte à rebours, ni
             tendance ni nom. Les groupes sont déjà vides côté serveur : le tap
@@ -57,7 +64,7 @@ export function BracketSummary({ data, competitionName, initialShowTree, liveSee
           </div>
         )}
 
-        <SeriesDrillDown rounds={data.rounds} isDeadlinePassed={data.isDeadlinePassed} view="A" />
+        <SeriesDrillDown rounds={data.rounds} isDeadlinePassed={data.isDeadlinePassed} view="A" showBetLink={showBetLink} />
       </div>
     </LiveSeriesSubscriber>
   );

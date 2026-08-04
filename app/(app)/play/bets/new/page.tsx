@@ -8,13 +8,15 @@ import styles from "./page.module.css";
 // lib/queries/bets.ts et passé en props à la SEULE feuille cliente (BetForm).
 //
 // searchParams est une Promise en Next.js 16 (AGENTS.md) — attendue avant
-// lecture. `matchId` = raccourci depuis Matchs (§2, contexte A) ; absent =
-// hub Mes paris (§2, contexte B).
-type SearchParams = { matchId?: string };
+// lecture. `matchId` = raccourci depuis Matchs (§2, contexte A) ; `seriesId`
+// = raccourci depuis le Bracket global (04/08/2026, demandé par
+// l'utilisateur, même patron) ; aucun des deux = hub Mes paris (§2,
+// contexte B).
+type SearchParams = { matchId?: string; seriesId?: string };
 
 export default async function NewBetPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const sp = await searchParams;
-  const data = await getNewBetFormData(sp.matchId ?? null);
+  const data = await getNewBetFormData(sp.matchId ?? null, sp.seriesId ?? null);
 
   if (data.competitionId === null || data.bootstrap === null) {
     return (

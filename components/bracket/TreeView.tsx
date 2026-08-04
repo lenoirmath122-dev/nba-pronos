@@ -25,9 +25,11 @@ type TreeViewProps = {
   data: BracketData;
   /** `?arbre=1` déjà lu côté serveur par app/bracket/page.tsx. */
   initialShow: boolean;
+  /** Cf. BracketSummary — raccourci « Parier sur cette série » (04/08/2026). */
+  showBetLink: boolean;
 };
 
-export function TreeView({ data, initialShow }: TreeViewProps) {
+export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
   const router = useRouter();
   const [visible, setVisible] = useState(initialShow);
   const [showInvite, setShowInvite] = useState(false);
@@ -117,7 +119,7 @@ export function TreeView({ data, initialShow }: TreeViewProps) {
             × Quitter
           </button>
         </div>
-        <SeriesDrillDown rounds={data.rounds} isDeadlinePassed={data.isDeadlinePassed} view="B" />
+        <SeriesDrillDown rounds={data.rounds} isDeadlinePassed={data.isDeadlinePassed} view="B" showBetLink={showBetLink} />
       </div>
     );
   }

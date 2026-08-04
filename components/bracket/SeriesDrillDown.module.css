@@ -42,6 +42,31 @@
   padding: var(--space-3);
   background: var(--color-surface-inset);
   border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* Raccourci « Parier sur cette série » (04/08/2026, demandé par
+   l'utilisateur) — dans le détail déplié d'une série, vue A (ci-dessus) ET
+   vue B (feuille .sheet, ci-dessous). */
+.betLink {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.betLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* Vue B : poster à géométrie fixe, défilement horizontal, une colonne par

@@ -59,6 +59,7 @@ export default async function BracketPage({ searchParams }: BracketPageProps) {
           initialShowTree={initialShowTree}
           liveSeed={liveSeed}
           myLeagues={myLeagues}
+          canBet={user !== null}
         />
       )}
     </ScreenShell>
