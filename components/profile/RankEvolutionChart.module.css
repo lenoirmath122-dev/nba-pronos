@@ -1,0 +1,27 @@
+.chart {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.line {
+  stroke: var(--color-trend);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.dot {
+  fill: var(--color-trend);
+}
+
+.rankLabel {
+  font-size: 12px;
+  font-weight: var(--font-weight-bold);
+  fill: var(--color-text-primary);
+}
+
+.axisLabel {
+  font-size: 10px;
+  fill: var(--color-text-muted);
+}

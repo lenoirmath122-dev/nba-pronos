@@ -7,10 +7,11 @@ import styles from "./ProfileTabs.module.css";
 // patron que SortChips/LeagueScopeChips (Classement) : paramètre d'URL
 // `?tab=`, <Link> côté serveur, aucun état client. Déconnexion reste EN
 // DEHORS de ces onglets (toujours visible, jamais à chercher).
-export type ProfileTab = "compte" | "ligues" | "historique" | "admin";
+export type ProfileTab = "compte" | "stats" | "ligues" | "historique" | "admin";
 
 const BASE_TABS: { key: ProfileTab; label: string }[] = [
   { key: "compte", label: "Compte" },
+  { key: "stats", label: "Stats" },
   { key: "ligues", label: "Ligues" },
   { key: "historique", label: "Historique" },
 ];
