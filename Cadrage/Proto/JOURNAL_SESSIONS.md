@@ -4896,6 +4896,61 @@ Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
 
 ---
 
+## Projet Supabase mis en pause après 7 jours : cause racine trouvée et corrigée (04/08/2026)
+
+**Signalé par l'utilisateur** : le projet Supabase avait été mis en pause
+(plan gratuit, 7 jours d'inactivité), alors qu'un heartbeat anti-pause
+(`app/api/heartbeat`, `.github/workflows/heartbeat.yml`, 1x/jour) existait
+déjà depuis le chantier T8 (28/07/2026).
+
+**Diagnostic** : `vercel ls`/`vercel inspect` montraient le déploiement
+Vercel sain ; `supabase projects list` (CLI, déjà authentifié) montrait le
+projet en statut `ACTIVE_HEALTHY` — donc déjà ressorti de pause tout seul (un
+appel Management API suffit à réveiller un projet en pause), rien à
+« réparer » côté Supabase lui-même. Cause racine trouvée en comparant
+`heartbeat.yml` aux 6 autres workflows planifiés (`sync-teams`,
+`sync-schedule`, `sync-results`, `reminder-bracket`, `reminder-matches`,
+`snapshot-leaderboard`) : TOUS appellent leur route en `curl -X POST`, et
+leurs routes exportent bien `GET`/`POST` (`export const GET = handle; export
+const POST = handle;`) — SAUF `app/api/heartbeat/route.ts`, qui n'exportait
+QUE `GET`. Confirmé en clair : `curl -X POST .../api/heartbeat` → `405`,
+`curl -X GET` (sans token) → `401` (attendu, juste pour distinguer 405 de «
+route existe mais refuse la méthode »). Le heartbeat échouait donc en 405 à
+CHAQUE exécution quotidienne depuis sa création, jamais remarqué (personne
+ne consultait l'onglet Actions du dépôt) — jusqu'à la pause réelle.
+
+**Incident annexe, signalé immédiatement** : en diagnostiquant, une commande
+`supabase projects api-keys` (inutile — `projects list` avait déjà répondu
+sur le statut) a affiché en clair les clés `anon` et `service_role` (legacy)
+dans le terminal, donc dans cette conversation. Rotation proposée via
+`AskUserQuestion` ; **déclinée par l'utilisateur** (« pas nécessaire cette
+fois »). Mémoire de collaboration mise à jour en conséquence : la réaction
+« toujours régénérer après exposition » des 2 incidents précédents (juillet)
+n'est pas une règle absolue, à reproposer sans forcer la main la prochaine
+fois.
+
+**Code** : `app/api/heartbeat/route.ts` — passage de `export async function
+GET(...)` à `async function handle(...)` + `export const GET = handle;
+export const POST = handle;`, même patron que les 6 autres routes. Aucun
+changement fonctionnel du ping lui-même (toujours `SELECT count` léger sur
+`teams`, toujours un simple log `HEARTBEAT`).
+
+Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
+`vitest run` (37/37, aucune régression). Committé (`db7731d`), poussé,
+déployé sur Vercel (auto, GitHub → Vercel), **testé en conditions réelles en
+production** : `curl -X POST` avec le vrai `SYNC_SECRET` (jamais affiché,
+lu dans une variable shell locale) → `200 {"ok":true}`. Le prochain passage
+planifié (`0 6 * * *`, cron GitHub Actions) confirmera le fonctionnement
+sans intervention.
+
+**Limite connue, déjà documentée dans `heartbeat.yml` lui-même, pas reprise
+ici en détail** : GitHub désactive un workflow planifié après 60 jours SANS
+AUCUNE activité sur le dépôt (pas le déclenchement du workflow) — un creux de
+saison NBA (juin→novembre) pourrait dépasser ce seuil. Aucune automatisation
+prévue pour ce cas à ce stade (cf. commentaire du fichier).
+
+---
+
 ## Raccourci « Parier sur cette série » depuis le Bracket global (04/08/2026)
 
 **Demandé par l'utilisateur** dans la foulée : pouvoir saisir un pari
