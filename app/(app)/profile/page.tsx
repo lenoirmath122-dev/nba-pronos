@@ -188,6 +188,11 @@ export default async function ProfilePage({
             </section>
           ) : (
             <>
+              <div className={styles.totalHero}>
+                <span className={styles.totalHeroValue}>{stats.pointsBreakdown.totalPoints}</span>
+                <span className={styles.totalHeroLabel}>points cette compétition</span>
+              </div>
+
               <section className={styles.section}>
                 <h2 className={styles.sectionTitle}>Précision</h2>
                 {stats.accuracy.totalScoredPredictions === 0 ? (
@@ -218,10 +223,6 @@ export default async function ProfilePage({
                   <div className={styles.statCard}>
                     <span className={styles.statCardLabel}>Points paris</span>
                     <span className={styles.statCardValue}>{stats.pointsBreakdown.betsPoints}</span>
-                  </div>
-                  <div className={styles.statCard}>
-                    <span className={styles.statCardLabel}>Total</span>
-                    <span className={styles.statCardValue}>{stats.pointsBreakdown.totalPoints}</span>
                   </div>
                 </div>
               </section>
