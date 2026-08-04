@@ -25,7 +25,7 @@ import styles from "./BetForm.module.css";
 // déclencher les server actions, qui recalculent tout à l'écriture (brief §4).
 
 export type BetFormProps =
-  | { mode: "CREATE"; bootstrap: BetFormBootstrap; context: NewBetContext; shortcutClosed: boolean }
+  | { mode: "CREATE"; bootstrap: BetFormBootstrap; context: NewBetContext; shortcutClosed: "MATCH" | "SERIES" | null }
   | { mode: "EDIT"; bootstrap: BetFormBootstrap; bet: EditableBet };
 
 type Target = { scope: "SERIES" | "MATCH"; seriesId: string | null; matchId: string | null };
@@ -38,6 +38,9 @@ function resolveInitialTarget(props: BetFormProps): Target {
     const targetMatchId = props.context.matchId;
     const series = props.bootstrap.seriesOptions.find((s) => s.matchOptions.some((m) => m.matchId === targetMatchId));
     return { scope: "MATCH", seriesId: series?.seriesId ?? null, matchId: targetMatchId };
+  }
+  if (props.context.mode === "FROM_SERIES") {
+    return { scope: "SERIES", seriesId: props.context.seriesId, matchId: null };
   }
   return { scope: "MATCH", seriesId: null, matchId: null };
 }
@@ -63,6 +66,13 @@ export function BetForm(props: BetFormProps) {
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Panneau de saisie replié par défaut derrière une barre compacte, dépliée
+  // seulement au tap (demandé par l'utilisateur 04/08/2026 : le panneau
+  // complet, une fois affiché, prenait trop de place et cachait le
+  // sélecteur — impossible de choisir facilement un AUTRE match/série sans
+  // le refermer d'abord). Toujours déplié en édition (pas de sélecteur à
+  // dégager, rien à cacher).
+  const [isExpanded, setIsExpanded] = useState(isEdit);
 
   const seriesById = useMemo(
     () => new Map(props.bootstrap.seriesOptions.map((s) => [s.seriesId, s])),
@@ -75,11 +85,18 @@ export function BetForm(props: BetFormProps) {
   function handleScopeChange(next: "SERIES" | "MATCH") {
     setScope(next);
     setMatchId(null);
+    setIsExpanded(false);
   }
 
   function handleSeriesSelect(series: SeriesOption) {
     setSeriesId(series.seriesId);
     setMatchId(null);
+    setIsExpanded(false);
+  }
+
+  function handleMatchSelect(match: MatchOption) {
+    setMatchId(match.matchId);
+    setIsExpanded(false);
   }
 
   function targetPayload() {
@@ -125,11 +142,30 @@ export function BetForm(props: BetFormProps) {
   const hasTarget = scope === "SERIES" ? seriesId !== null : seriesId !== null && matchId !== null;
   const descriptionEmpty = description.trim().length === 0;
   const isSubmittedBet = isEdit && props.bet.status === "SUBMITTED";
+  const showFullPanel = hasTarget && isExpanded;
+  const targetLabel = hasTarget
+    ? scope === "MATCH" && matchId
+      ? `${selectedSeries?.label ?? ""} — ${selectedSeries?.matchOptions.find((m) => m.matchId === matchId)?.label ?? ""}`
+      : (selectedSeries?.label ?? "")
+    : "";
 
   return (
-    <div className={styles.form}>
-      {props.mode === "CREATE" && props.shortcutClosed && (
+    <div
+      className={
+        showFullPanel
+          ? `${styles.form} ${styles.formReserveBottom}`
+          : hasTarget
+            ? `${styles.form} ${styles.formReserveBottomCompact}`
+            : styles.form
+      }
+    >
+      {props.mode === "CREATE" && props.shortcutClosed === "MATCH" && (
         <p className={styles.notice}>Ce match n&rsquo;est plus ouvert au pari.</p>
+      )}
+      {props.mode === "CREATE" && props.shortcutClosed === "SERIES" && (
+        <p className={styles.notice}>
+          Cette série n&rsquo;est plus ouverte au pari, ou tu as déjà un pari dessus.
+        </p>
       )}
 
       {!isEdit && !isCup && (
@@ -183,7 +219,7 @@ export function BetForm(props: BetFormProps) {
                 <MatchPicker
                   matchOptions={selectedSeries.matchOptions}
                   selectedMatchId={matchId}
-                  onSelect={(m) => setMatchId(m.matchId)}
+                  onSelect={handleMatchSelect}
                 />
               )}
             </>
@@ -191,83 +227,105 @@ export function BetForm(props: BetFormProps) {
         </>
       )}
 
+      {/* Barre compacte : cible choisie mais panneau replié (état par défaut
+          après un clic sur un match/série, demandé 04/08/2026 — le panneau
+          complet cachait trop le sélecteur pour changer d'avis facilement).
+          Un tap déplie le panneau complet ci-dessous. */}
+      {!isEdit && hasTarget && !isExpanded && (
+        <button type="button" className={styles.selectionBar} onClick={() => setIsExpanded(true)}>
+          <span className={styles.selectionLabel}>{targetLabel}</span>
+          <span className={styles.selectionExpand}>Rédiger le pari</span>
+        </button>
+      )}
+
       {/* Contenu du pari — fixé en bas du viewport (demandé 27/07/2026) :
           toujours visible pendant que le sélecteur série/match ci-dessus
-          défile, plutôt qu'à atteindre en scrollant en bas de page. */}
-      <div className={styles.stickyContent}>
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Énoncé</span>
-          <textarea
-            className={styles.textarea}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="Ex. Match 2 : Jaylen Brown marque 50+"
-            rows={3}
-          />
-        </label>
+          défile, plutôt qu'à atteindre en scrollant en bas de page. N'apparaît
+          qu'une fois une cible choisie ET le panneau déplié (`showFullPanel`
+          — demandé 04/08/2026, en 2 temps : d'abord masqué tant que rien
+          n'est choisi, puis replié derrière la barre compacte ci-dessus une
+          fois choisi, pour ne jamais cacher le sélecteur sans action
+          explicite de l'utilisateur). */}
+      {showFullPanel && (
+        <div className={styles.stickyContent}>
+          {!isEdit && (
+            <div className={styles.stickyHeader}>
+              <span className={styles.selectionLabel}>{targetLabel}</span>
+              <button type="button" className={styles.collapseButton} onClick={() => setIsExpanded(false)}>
+                Réduire
+              </button>
+            </div>
+          )}
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Catégorie</span>
-          <select
-            className={styles.select}
-            value={category}
-            onChange={(e) => setCategory(e.target.value as BetCategory)}
-          >
-            {BET_CATEGORY_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Énoncé</span>
+            <textarea
+              className={styles.textarea}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Ex. Match 2 : Jaylen Brown marque 50+"
+              rows={3}
+            />
+          </label>
 
-        <label className={styles.field}>
-          <span className={styles.fieldLabel}>Difficulté</span>
-          <select
-            className={styles.select}
-            value={difficulty}
-            onChange={(e) => setDifficulty(Number(e.target.value) as BetDifficulty)}
-          >
-            {([1, 2, 3, 4, 5] as BetDifficulty[]).map((level) => (
-              <option key={level} value={level}>
-                {level} — {BET_DIFFICULTY_LABELS[level]}
-              </option>
-            ))}
-          </select>
-        </label>
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Catégorie</span>
+            <select
+              className={styles.select}
+              value={category}
+              onChange={(e) => setCategory(e.target.value as BetCategory)}
+            >
+              {BET_CATEGORY_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        {error && (
-          <p className={styles.error} role="alert">
-            {error}
-          </p>
-        )}
+          <label className={styles.field}>
+            <span className={styles.fieldLabel}>Difficulté</span>
+            <select
+              className={styles.select}
+              value={difficulty}
+              onChange={(e) => setDifficulty(Number(e.target.value) as BetDifficulty)}
+            >
+              {([1, 2, 3, 4, 5] as BetDifficulty[]).map((level) => (
+                <option key={level} value={level}>
+                  {level} — {BET_DIFFICULTY_LABELS[level]}
+                </option>
+              ))}
+            </select>
+          </label>
 
-        <div className={styles.actions}>
-          {!isSubmittedBet && (
+          {error && (
+            <p className={styles.error} role="alert">
+              {error}
+            </p>
+          )}
+
+          <div className={styles.actions}>
+            {!isSubmittedBet && (
+              <button type="button" className={styles.secondary} onClick={handleSaveDraft} disabled={isPending}>
+                Enregistrer le brouillon
+              </button>
+            )}
             <button
               type="button"
-              className={styles.secondary}
-              onClick={handleSaveDraft}
-              disabled={isPending || !hasTarget}
+              className={styles.primary}
+              onClick={handleSubmit}
+              disabled={isPending || descriptionEmpty}
             >
-              Enregistrer le brouillon
+              {isSubmittedBet ? "Soumettre les modifications" : "Soumettre à validation"}
             </button>
-          )}
-          <button
-            type="button"
-            className={styles.primary}
-            onClick={handleSubmit}
-            disabled={isPending || !hasTarget || descriptionEmpty}
-          >
-            {isSubmittedBet ? "Soumettre les modifications" : "Soumettre à validation"}
-          </button>
-          {isSubmittedBet && (
-            <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>
-              Revenir en brouillon
-            </button>
-          )}
+            {isSubmittedBet && (
+              <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>
+                Revenir en brouillon
+              </button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

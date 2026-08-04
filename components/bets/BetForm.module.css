@@ -3,9 +3,20 @@
   flex-direction: column;
   gap: var(--space-4);
   padding: var(--space-4);
-  /* Marge généreuse : garantit que le sélecteur série/match reste défilable
-     jusqu'au bout, sans jamais rester coincé sous le bandeau fixe ci-dessous. */
+}
+
+/* Réservée UNIQUEMENT quand le bandeau fixe (.stickyContent) est affiché
+   (une cible est choisie) : marge généreuse garantissant que le sélecteur
+   série/match reste défilable jusqu'au bout, sans jamais rester coincé
+   dessous. */
+.formReserveBottom {
   padding-bottom: 45vh;
+}
+
+/* Panneau replié (barre compacte .selectionBar) : marge bien plus fine, juste
+   la hauteur de la barre elle-même. */
+.formReserveBottomCompact {
+  padding-bottom: calc(var(--tap-target-min) + var(--space-6) + env(safe-area-inset-bottom, 0px) + var(--space-4));
 }
 
 /* Contenu du pari (énoncé/catégorie/difficulté/actions) — FIXE en bas du
@@ -33,6 +44,79 @@
   box-shadow: var(--elevation-raised);
   max-height: 60vh;
   overflow-y: auto;
+}
+
+/* Barre compacte (panneau replié) — même positionnement fixe que
+   .stickyContent, mais une seule ligne : garde le sélecteur série/match
+   dégagé tant que l'utilisateur n'a pas explicitement demandé à rédiger. */
+.selectionBar {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--tap-target-min) + var(--space-6) + env(safe-area-inset-bottom, 0px));
+  z-index: 5;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  min-height: var(--tap-target-min);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-surface-raised);
+  border: none;
+  border-top: 1px solid var(--color-border-subtle);
+  box-shadow: var(--elevation-raised);
+  cursor: pointer;
+  text-align: left;
+}
+
+.selectionBar:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.selectionLabel {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.selectionExpand {
+  flex-shrink: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+}
+
+.stickyHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.collapseButton {
+  flex-shrink: 0;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  cursor: pointer;
+}
+
+.collapseButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .notice {
