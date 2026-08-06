@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { saveBracketPick, validateBracket } from "@/lib/actions/bracket-fill";
 import type { BetSeriesFormat, BracketFillSeries } from "@/lib/queries/bracket-fill";
@@ -67,32 +68,43 @@ export function BracketFillBoard({ series, competitionType, isValidated, isAutoV
         )}
       </div>
 
-      {showConfirm && (
-        <div className={styles.backdrop} role="presentation">
-          <div className={styles.dialog} role="alertdialog" aria-modal="true" aria-labelledby="validate-bracket-title">
-            <p id="validate-bracket-title" className={styles.dialogTitle}>
-              Valider ton bracket ?
-            </p>
-            <p className={styles.dialogBody}>
-              Ton bracket reste modifiable jusqu&rsquo;à la deadline, même après validation — tu peux revenir corriger
-              un pick à tout moment avant ça.
-            </p>
-            <div className={styles.dialogActions}>
-              <button
-                type="button"
-                className={styles.dialogCancel}
-                onClick={() => setShowConfirm(false)}
-                disabled={isPending}
-              >
-                Annuler
-              </button>
-              <button type="button" className={styles.dialogConfirm} onClick={handleValidate} disabled={isPending}>
-                Valider
-              </button>
+      {showConfirm &&
+        // Portail vers document.body (05/08/2026) : l'écran Bracket personnel
+        // isole son fond photo dans son propre contexte d'empilement
+        // (.photo-page, globals.css) — sans ce portail, ce backdrop y serait
+        // piégé et ne couvrirait plus toute la page (TabBar comprise).
+        createPortal(
+          <div className={styles.backdrop} role="presentation">
+            <div
+              className={styles.dialog}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby="validate-bracket-title"
+            >
+              <p id="validate-bracket-title" className={styles.dialogTitle}>
+                Valider ton bracket ?
+              </p>
+              <p className={styles.dialogBody}>
+                Ton bracket reste modifiable jusqu&rsquo;à la deadline, même après validation — tu peux revenir
+                corriger un pick à tout moment avant ça.
+              </p>
+              <div className={styles.dialogActions}>
+                <button
+                  type="button"
+                  className={styles.dialogCancel}
+                  onClick={() => setShowConfirm(false)}
+                  disabled={isPending}
+                >
+                  Annuler
+                </button>
+                <button type="button" className={styles.dialogConfirm} onClick={handleValidate} disabled={isPending}>
+                  Valider
+                </button>
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
@@ -110,7 +122,7 @@ function SeriesPickCard({ series, competitionType, onError }: SeriesPickCardProp
 
   if (!series.isSelectable) {
     return (
-      <div id={`series-${series.seriesId}`} className={styles.card}>
+      <div id={`series-${series.seriesId}`} className={`${styles.card} glass-card`}>
         <p className={styles.pending}>Équipe à définir — complète les séries précédentes.</p>
       </div>
     );
@@ -131,7 +143,7 @@ function SeriesPickCard({ series, competitionType, onError }: SeriesPickCardProp
   }
 
   return (
-    <div id={`series-${series.seriesId}`} className={styles.card}>
+    <div id={`series-${series.seriesId}`} className={`${styles.card} glass-card`}>
       <div className={styles.teams}>
         {[series.teamA, series.teamB].map((team) => {
           if (!team) return null;

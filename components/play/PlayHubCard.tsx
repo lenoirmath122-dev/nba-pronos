@@ -15,7 +15,7 @@ export type PlayHubCardProps = {
 
 export function PlayHubCard({ title, href, badge, lines }: PlayHubCardProps) {
   return (
-    <Link href={href} className={styles.card}>
+    <Link href={href} className={`${styles.card} glass-card`}>
       <div className={styles.header}>
         <span className={styles.title}>{title}</span>
         {badge !== undefined && badge > 0 && <span className={styles.badge}>{badge}</span>}

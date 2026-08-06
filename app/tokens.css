@@ -229,6 +229,30 @@
      (§15.7 — même bande sombre dans les deux thèmes) — pas dans les overrides
      [data-theme="light"] ci-dessous. */
   --color-hero-text: #F5F7FA;
+
+  /* ======================================================================
+     Fond photo plein écran (05/08/2026) — variante généralisée de
+     --hero-image/.hero-banner, pour les écrans migrés vers .photo-page +
+     .glass-card (globals.css). MURAL = valeur par défaut de :root — voir
+     les overrides [data-bg="hoop"|"hk"] juste en dessous pour les 2 autres
+     choix (06/08/2026, SPEC_ECRAN_PROFIL_V0_1 « Fond d'écran »).
+     ====================================================================== */
+  --photo-page-image: url("/brand/hero-mural.jpg");
+}
+
+/* ==========================================================================
+   Fond d'écran par joueur (06/08/2026) — redéfinit --photo-page-image
+   ci-dessus selon l'attribut data-bg posé sur <html> par app/layout.tsx
+   (lu depuis users.background_theme, cf. lib/actions/profile.ts). Pas de
+   bloc [data-bg="mural"] : MURAL est déjà la valeur de :root, layout.tsx ne
+   pose même pas l'attribut dans ce cas (cf. son commentaire).
+   ========================================================================== */
+[data-bg="hoop"] {
+  --photo-page-image: url("/brand/hero-hoop.jpg");
+}
+
+[data-bg="hk"] {
+  --photo-page-image: url("/brand/hero-hk.jpg");
 }
 
 

@@ -15,6 +15,11 @@ export type ProfileData = {
   favoriteTeam: TeamRef | null;
   bio: string;
   theme: "LIGHT" | "DARK";
+  /** Fond d'écran plein page (§.photo-page, app/globals.css) — même patron
+   *  que `theme`, lu ici pour l'écran Profil ; app/layout.tsx fait sa PROPRE
+   *  lecture pour poser l'attribut data-bg sur <html> (même redondance
+   *  assumée que theme_preference, cf. commentaire de getTheme()). */
+  backgroundTheme: "MURAL" | "HOOP" | "HK";
   notificationPreference: "NONE" | "PUSH" | "EMAIL";
   tutorialSeenAt: string | null;
 };
@@ -36,7 +41,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "pseudo, role, favorite_team_id, bio, theme_preference, notification_preference, tutorial_seen_at"
+      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, tutorial_seen_at"
     )
     .eq("id", user.id)
     .single<{
@@ -45,6 +50,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
       favorite_team_id: string | null;
       bio: string | null;
       theme_preference: "LIGHT" | "DARK";
+      background_theme: "MURAL" | "HOOP" | "HK";
       notification_preference: "NONE" | "PUSH" | "EMAIL";
       tutorial_seen_at: string | null;
     }>();
@@ -60,6 +66,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
     favoriteTeam,
     bio: data.bio ?? "",
     theme: data.theme_preference,
+    backgroundTheme: data.background_theme,
     notificationPreference: data.notification_preference,
     tutorialSeenAt: data.tutorial_seen_at,
   };

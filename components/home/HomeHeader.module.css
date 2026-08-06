@@ -1,28 +1,31 @@
+/* Fond/bordure verre : voir la classe globale .glass-card (app/globals.css),
+   posée via className à côté de .card (qui ne porte plus que la géométrie). */
 .card {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
   margin: var(--space-4);
   padding: var(--space-4);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   box-shadow: var(--elevation-raised);
 }
 
-/* Bandeau parquet (§15.7) : bleed hors du padding de .card pour occuper toute
-   sa largeur, coins arrondis alignés sur ceux de la carte (haut uniquement) —
-   le reste de la carte (stats/forme) garde son fond normal. */
+/* Ex-bandeau parquet (§15.7) : gardait une photo en fond, remplacée ici par
+   un simple voile accent (l'image a migré en fond de page). Bleed hors du
+   padding de .card pour occuper toute sa largeur, coins arrondis alignés sur
+   ceux de la carte (haut uniquement). */
 .greetingBlock {
   margin: calc(-1 * var(--space-4)) calc(-1 * var(--space-4)) 0;
   padding: var(--space-5) var(--space-4);
   border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background-image: radial-gradient(120% 140% at 100% 0%, rgba(255, 106, 43, 0.16), transparent 60%);
 }
 
 .greeting {
   font-size: var(--font-size-md);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .pseudo {
@@ -32,6 +35,7 @@
 .competition {
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .stats {

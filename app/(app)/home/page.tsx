@@ -26,10 +26,10 @@ export default async function HomePage() {
 
   if (competitionId === null || header === null) {
     return (
-      <div className={styles.page}>
+      <div className={`${styles.page} photo-page`}>
         {showTutorialBanner && <TutorialBanner />}
-        <div className={`${styles.header} hero-banner`}>
-          <p className={`${styles.title} hero-banner-title`}>Accueil</p>
+        <div className={`${styles.header} glass-card`}>
+          <p className={styles.title}>Accueil</p>
         </div>
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
@@ -37,11 +37,11 @@ export default async function HomePage() {
   }
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} photo-page`}>
       {showTutorialBanner && <TutorialBanner />}
       <HomeHeader header={header} />
 
-      <section className={styles.section} aria-label="À traiter">
+      <section className={`${styles.section} glass-card`} aria-label="À traiter">
         <h2 className={styles.sectionTitle}>À traiter</h2>
         {todo.length > 0 ? (
           <TodoList items={todo} />
@@ -51,7 +51,7 @@ export default async function HomePage() {
       </section>
 
       {adminTodo.length > 0 && (
-        <section className={styles.section} aria-label="À traiter (admin)">
+        <section className={`${styles.section} glass-card`} aria-label="À traiter (admin)">
           <h2 className={styles.sectionTitle}>À traiter (admin)</h2>
           <TodoList items={adminTodo} />
         </section>
@@ -61,13 +61,13 @@ export default async function HomePage() {
           28/07/2026) — jamais d'état vide affiché ici, contrairement aux 2
           sections ci-dessus. */}
       {seriesBets.length > 0 && (
-        <section className={styles.section} aria-label="Paris séries non remplis">
+        <section className={`${styles.section} glass-card`} aria-label="Paris séries non remplis">
           <h2 className={styles.sectionTitle}>Paris séries non remplis</h2>
           <SeriesBetList items={seriesBets} />
         </section>
       )}
 
-      <section className={styles.section} aria-label="Ça vient de tomber">
+      <section className={`${styles.section} glass-card`} aria-label="Ça vient de tomber">
         <h2 className={styles.sectionTitle}>Ça vient de tomber</h2>
         {feed.length > 0 ? (
           <Feed items={feed} />

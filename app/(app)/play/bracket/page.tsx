@@ -21,9 +21,9 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
 
   if (data.competitionId === null) {
     return (
-      <div className={styles.page}>
-        <div className={`${styles.header} hero-banner`}>
-          <h1 className={`${styles.title} hero-banner-title`}>Mon bracket</h1>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <h1 className={styles.title}>Mon bracket</h1>
         </div>
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
@@ -33,9 +33,9 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
   if (!data.isStructureKnown) {
     const isCup = data.competitionType === "NBA_CUP";
     return (
-      <div className={styles.page}>
-        <div className={`${styles.header} hero-banner`}>
-          <h1 className={`${styles.title} hero-banner-title`}>Mon bracket</h1>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <h1 className={styles.title}>Mon bracket</h1>
         </div>
         <EmptyState
           title={isCup ? "La phase finale n'est pas encore définie" : "Le 1er tour n'est pas encore officiel"}
@@ -52,9 +52,9 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
   const activeRound = data.rounds.find((round) => round.key === activeRoundKey);
 
   return (
-    <div className={styles.page}>
-      <div className={`${styles.header} hero-banner`}>
-        <h1 className={`${styles.title} hero-banner-title`}>Mon bracket</h1>
+    <div className={`${styles.page} photo-page`}>
+      <div className={`${styles.header} glass-card`}>
+        <h1 className={styles.title}>Mon bracket</h1>
       </div>
       <ProgressBar filledCount={data.filledCount} totalCount={data.totalCount} />
       <RoundTabs rounds={data.rounds} activeKey={activeRoundKey} />

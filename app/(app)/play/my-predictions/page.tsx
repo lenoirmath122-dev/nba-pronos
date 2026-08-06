@@ -44,9 +44,9 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
 
   if (!data) {
     return (
-      <div className={styles.page}>
-        <div className={`${styles.header} hero-banner`}>
-          <h1 className={`${styles.title} hero-banner-title`}>Mes pronos</h1>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <h1 className={styles.title}>Mes pronos</h1>
         </div>
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
@@ -64,9 +64,9 @@ export default async function MyPredictionsPage({ searchParams }: { searchParams
   });
 
   return (
-    <div className={styles.page}>
-      <div className={`${styles.header} hero-banner`}>
-        <h1 className={`${styles.title} hero-banner-title`}>Mes pronos</h1>
+    <div className={`${styles.page} photo-page`}>
+      <div className={`${styles.header} glass-card`}>
+        <h1 className={styles.title}>Mes pronos</h1>
       </div>
       <LeagueScopeChips
         myLeagues={myLeagues}

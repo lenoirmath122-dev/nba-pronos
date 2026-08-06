@@ -7,7 +7,7 @@ import { TEAM_COLORS } from "@/lib/labels/teamColors";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { getCompetitionHistory } from "@/lib/queries/history";
 import { getProfileStats } from "@/lib/queries/stats";
-import { updateThemePreference, updateProfile } from "@/lib/actions/profile";
+import { updateThemePreference, updateBackgroundTheme, updateProfile } from "@/lib/actions/profile";
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
@@ -23,6 +23,16 @@ import styles from "./page.module.css";
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
 // Remplace le stub "à venir" (22/07/2026) et le bouton de déconnexion
 // temporaire (app/(app)/layout.tsx, §5 de la spec).
+
+// Options du sélecteur « Fond d'écran » (06/08/2026) — miroir de
+// background_theme (enum Postgres, migration 20260806090000). Étendre plus
+// tard = 1 nouvel item ici + 1 valeur d'enum + 1 override [data-bg="..."]
+// dans app/tokens.css + les 2 assets (hero-<x>.jpg, hero-<x>-thumb.jpg).
+const BACKGROUND_THEMES: { value: "MURAL" | "HOOP" | "HK"; label: string; thumb: string }[] = [
+  { value: "MURAL", label: "Fresque streetball", thumb: "/brand/hero-mural-thumb.jpg" },
+  { value: "HOOP", label: "Panier vu du dessus", thumb: "/brand/hero-hoop-thumb.jpg" },
+  { value: "HK", label: "Terrain à Hong Kong", thumb: "/brand/hero-hk-thumb.jpg" },
+];
 
 function formatArchivedDate(iso: string): string {
   return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric" }).format(
@@ -72,7 +82,7 @@ export default async function ProfilePage({
   const teamColors = profile.favoriteTeam ? TEAM_COLORS[profile.favoriteTeam.abbreviation] : null;
 
   return (
-    <div className={styles.page}>
+    <div className={`${styles.page} photo-page`}>
       {/* Liseré blanc du blason (filter: url(#profile-crest-outline), CSS
           module) : silhouette dilatée + composée en blanc, PAS un simple
           border (ne suivrait pas le contour du blason). Un seul filtre pour
@@ -133,7 +143,7 @@ export default async function ProfilePage({
             </p>
           )}
 
-          <section className={styles.section}>
+          <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Thème</h2>
             <form action={updateThemePreference}>
               <input type="hidden" name="theme" value={profile.theme === "DARK" ? "LIGHT" : "DARK"} />
@@ -143,7 +153,37 @@ export default async function ProfilePage({
             </form>
           </section>
 
-          <section className={styles.section}>
+          <section className={`${styles.section} glass-card`}>
+            <h2 className={styles.sectionTitle}>Fond d&rsquo;écran</h2>
+            <div className={styles.bgPicker}>
+              {BACKGROUND_THEMES.map((bg) => {
+                const isActive = profile.backgroundTheme === bg.value;
+                return (
+                  <form key={bg.value} action={updateBackgroundTheme}>
+                    <input type="hidden" name="backgroundTheme" value={bg.value} />
+                    <button
+                      type="submit"
+                      className={isActive ? `${styles.bgOption} ${styles.bgOptionActive}` : styles.bgOption}
+                      aria-pressed={isActive}
+                      disabled={isActive}
+                    >
+                      <Image
+                        src={bg.thumb}
+                        alt=""
+                        width={96}
+                        height={96}
+                        unoptimized
+                        className={styles.bgThumb}
+                      />
+                      <span className={styles.bgLabel}>{bg.label}</span>
+                    </button>
+                  </form>
+                );
+              })}
+            </div>
+          </section>
+
+          <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Préférences</h2>
             <form action={updateProfile} className={styles.preferencesForm}>
               <label className={styles.field}>
@@ -168,12 +208,12 @@ export default async function ProfilePage({
             </form>
           </section>
 
-          <section className={styles.section}>
+          <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Rappels</h2>
             <NotificationSettings initialPreference={profile.notificationPreference} />
           </section>
 
-          <section className={styles.section}>
+          <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Aide</h2>
             <TutorialLink />
           </section>
@@ -183,7 +223,7 @@ export default async function ProfilePage({
       {activeTab === "stats" && stats && (
         <>
           {!stats.hasActiveCompetition ? (
-            <section className={styles.section}>
+            <section className={`${styles.section} glass-card`}>
               <p className={styles.fieldLabel}>Aucune compétition en cours.</p>
             </section>
           ) : (
@@ -193,7 +233,7 @@ export default async function ProfilePage({
                 <span className={styles.totalHeroLabel}>points cette compétition</span>
               </div>
 
-              <section className={styles.section}>
+              <section className={`${styles.section} glass-card`}>
                 <h2 className={styles.sectionTitle}>Précision</h2>
                 {stats.accuracy.totalScoredPredictions === 0 ? (
                   <p className={styles.fieldLabel}>Pas encore de match scoré cette compétition.</p>
@@ -227,7 +267,7 @@ export default async function ProfilePage({
                 </div>
               </section>
 
-              <section className={styles.section}>
+              <section className={`${styles.section} glass-card`}>
                 <h2 className={styles.sectionTitle}>Comparaison</h2>
                 <LeagueScopeChips myLeagues={statsLeagues} activeLeagueId={stats.comparison.scopeLeagueId} />
                 <div className={styles.compareRow}>
@@ -244,7 +284,7 @@ export default async function ProfilePage({
                 </div>
               </section>
 
-              <section className={styles.section}>
+              <section className={`${styles.section} glass-card`}>
                 <h2 className={styles.sectionTitle}>Évolution du classement</h2>
                 {stats.evolution.series.length >= 2 ? (
                   <>
@@ -262,7 +302,7 @@ export default async function ProfilePage({
                 )}
               </section>
 
-              <section className={styles.section}>
+              <section className={`${styles.section} glass-card`}>
                 <h2 className={styles.sectionTitle}>Paris</h2>
                 {stats.betRecord.resolvedCount === 0 ? (
                   <p className={styles.fieldLabel}>Aucun pari résolu pour l&rsquo;instant.</p>
@@ -295,7 +335,7 @@ export default async function ProfilePage({
                 )}
               </section>
 
-              <section className={styles.section}>
+              <section className={`${styles.section} glass-card`}>
                 <h2 className={styles.sectionTitle}>Badges</h2>
                 <p className={styles.badgesPlaceholder}>Bientôt disponible.</p>
               </section>
@@ -305,7 +345,7 @@ export default async function ProfilePage({
       )}
 
       {activeTab === "ligues" && (
-        <section className={styles.section}>
+        <section className={`${styles.section} glass-card`}>
           {sp.leagueError && (
             <p className={styles.error} role="alert">
               {sp.leagueError}
@@ -376,7 +416,7 @@ export default async function ProfilePage({
       )}
 
       {activeTab === "historique" && (
-        <section className={styles.section}>
+        <section className={`${styles.section} glass-card`}>
           {history.length === 0 ? (
             <p className={styles.fieldLabel}>Aucune compétition archivée pour l&apos;instant.</p>
           ) : (
@@ -407,14 +447,14 @@ export default async function ProfilePage({
       )}
 
       {activeTab === "admin" && profile.isAdmin && (
-        <section className={styles.section}>
+        <section className={`${styles.section} glass-card`}>
           <Link href="/admin" className={styles.adminLink}>
             Tableau de bord admin
           </Link>
         </section>
       )}
 
-      <section className={styles.section}>
+      <section className={`${styles.section} glass-card`}>
         <form action={logout}>
           <button type="submit" className={styles.logoutButton}>
             Déconnexion

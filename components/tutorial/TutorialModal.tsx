@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import Image from "next/image";
 import styles from "./TutorialModal.module.css";
 
@@ -77,7 +78,10 @@ export function TutorialModal({ open, onClose }: TutorialModalProps) {
     onClose();
   }
 
-  return (
+  // Portail vers document.body (05/08/2026) : l'écran Accueil isole son fond
+  // photo dans son propre contexte d'empilement (page.module.css) — sans ce
+  // portail, ce backdrop y serait piégé et ne couvrirait plus la TabBar.
+  return createPortal(
     <div className={styles.backdrop} role="presentation" onClick={handleClose}>
       <div
         className={styles.dialog}
@@ -134,6 +138,7 @@ export function TutorialModal({ open, onClose }: TutorialModalProps) {
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

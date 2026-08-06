@@ -12,7 +12,7 @@ type SeriesBetHeaderProps = { header: SeriesBetHeaderData };
 
 export function SeriesBetHeader({ header }: SeriesBetHeaderProps) {
   return (
-    <div className={styles.wrap}>
+    <div className={`${styles.wrap} glass-card`}>
       <p className={styles.label}>
         Ton pari sur cette série : <span className={styles.series}>{header.seriesLabel}</span>
       </p>

@@ -33,7 +33,7 @@ type MatchRowStaticProps = {
 
 export function MatchRowStatic({ row, returnTo, forceOpenCorrectionForm, correctionError }: MatchRowStaticProps) {
   return (
-    <div className={styles.row}>
+    <div className={`${styles.row} glass-card`}>
       <div className={styles.header}>
         <span className={styles.teams}>
           <TeamLogo abbreviation={row.home.abbreviation} alt={row.home.name} size={24} />

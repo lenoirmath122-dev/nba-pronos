@@ -56,9 +56,9 @@ export default async function PlayPage() {
   const data = await getPlayHubData();
 
   return (
-    <div className={styles.page}>
-      <div className={`${styles.header} hero-banner`}>
-        <h1 className={`${styles.title} hero-banner-title`}>Jouer</h1>
+    <div className={`${styles.page} photo-page`}>
+      <div className={`${styles.header} glass-card`}>
+        <h1 className={styles.title}>Jouer</h1>
       </div>
       <div className={styles.grid}>
         <PlayHubCard

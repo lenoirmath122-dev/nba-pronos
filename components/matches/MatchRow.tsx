@@ -104,7 +104,7 @@ export function MatchRow({ match }: MatchRowProps) {
   const recap = match.viewStatus === "VALIDATED" ? winnerAbbreviation(match) : null;
 
   return (
-    <div className={styles.row}>
+    <div className={`${styles.row} glass-card`}>
       <button type="button" className={styles.header} onClick={() => setIsOpen((v) => !v)} aria-expanded={isOpen}>
         <span className={styles.split}>
           <span className={styles.teamAbbr}>

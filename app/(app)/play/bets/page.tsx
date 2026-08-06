@@ -20,9 +20,9 @@ export default async function MyBetsPage({ searchParams }: { searchParams: Promi
 
   if (!data.competitionId) {
     return (
-      <div className={styles.page}>
-        <div className={`${styles.header} hero-banner`}>
-          <h1 className={`${styles.title} hero-banner-title`}>Mes paris</h1>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <h1 className={styles.title}>Mes paris</h1>
         </div>
         <p className={styles.empty}>Aucune compétition en cours.</p>
       </div>
@@ -33,9 +33,9 @@ export default async function MyBetsPage({ searchParams }: { searchParams: Promi
 
   if (!hasAnyBet) {
     return (
-      <div className={styles.page}>
-        <div className={`${styles.header} hero-banner`}>
-          <h1 className={`${styles.title} hero-banner-title`}>Mes paris</h1>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <h1 className={styles.title}>Mes paris</h1>
         </div>
         <p className={styles.empty}>Tu n&rsquo;as encore aucun pari.</p>
         <Link href="/play/bets/new" className={styles.newLink}>
@@ -48,9 +48,9 @@ export default async function MyBetsPage({ searchParams }: { searchParams: Promi
   const bets = segment === "ONGOING" ? data.ongoing : data.finished;
 
   return (
-    <div className={styles.page}>
-      <header className={`${styles.header} hero-banner`}>
-        <h1 className={`${styles.title} hero-banner-title`}>Mes paris</h1>
+    <div className={`${styles.page} photo-page`}>
+      <header className={`${styles.header} glass-card`}>
+        <h1 className={styles.title}>Mes paris</h1>
         <Link href="/play/bets/new" className={styles.newLink}>
           Créer un pari
         </Link>

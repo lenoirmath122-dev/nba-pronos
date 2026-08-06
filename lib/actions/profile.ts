@@ -38,6 +38,33 @@ export async function updateThemePreference(formData: FormData): Promise<void> {
   redirect("/profile");
 }
 
+/** Fond d'écran (§.photo-page) : soumission immédiate, un seul champ, même
+ *  patron que updateThemePreference ci-dessus. */
+export async function updateBackgroundTheme(formData: FormData): Promise<void> {
+  const backgroundTheme = String(formData.get("backgroundTheme") ?? "");
+  if (backgroundTheme !== "MURAL" && backgroundTheme !== "HOOP" && backgroundTheme !== "HK") {
+    redirect("/profile?profileError=Fond%20d%27%C3%A9cran%20invalide.");
+  }
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("users")
+    .update({ background_theme: backgroundTheme })
+    .eq("id", user!.id);
+
+  if (error) {
+    redirect(`/profile?profileError=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/", "layout"); // app/layout.tsx (racine) relit background_theme
+  redirect("/profile");
+}
+
 /** Équipe favorite + bio (§3) : un seul formulaire, bouton « Enregistrer ». */
 export async function updateProfile(formData: FormData): Promise<void> {
   const favoriteTeamIdRaw = String(formData.get("favoriteTeamId") ?? "");

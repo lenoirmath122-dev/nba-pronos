@@ -1,3 +1,6 @@
+/* Fond photo plein écran + cartes verre : voir .photo-page/.glass-card
+   (app/globals.css), posées via className à côté de ces classes locales
+   (.page, .header, .section ne portent plus que la géométrie). */
 .page {
   display: flex;
   flex-direction: column;
@@ -6,9 +9,8 @@
   padding-bottom: var(--space-6);
 }
 
-/* Bandeau parquet (§15.7) affiché même sans compétition active — repli
-   quand HomeHeader (carte rang/points, nécessite une compétition) n'a rien
-   à afficher. */
+/* Repli affiché même sans compétition active — quand HomeHeader (carte
+   rang/points, nécessite une compétition) n'a rien à afficher. */
 .header {
   margin: 0 var(--space-4);
   padding: var(--space-5) var(--space-4);
@@ -20,12 +22,11 @@
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .section {
   margin: 0 var(--space-4);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   overflow: hidden;
 }

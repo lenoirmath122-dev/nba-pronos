@@ -20,9 +20,9 @@ export default async function NewBetPage({ searchParams }: { searchParams: Promi
 
   if (data.competitionId === null || data.bootstrap === null) {
     return (
-      <div className={styles.page}>
-        <div className={`${styles.header} hero-banner`}>
-          <h1 className={`${styles.title} hero-banner-title`}>Nouveau pari</h1>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <h1 className={styles.title}>Nouveau pari</h1>
         </div>
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
@@ -30,9 +30,9 @@ export default async function NewBetPage({ searchParams }: { searchParams: Promi
   }
 
   return (
-    <div className={styles.page}>
-      <div className={`${styles.header} hero-banner`}>
-        <h1 className={`${styles.title} hero-banner-title`}>Nouveau pari</h1>
+    <div className={`${styles.page} photo-page`}>
+      <div className={`${styles.header} glass-card`}>
+        <h1 className={styles.title}>Nouveau pari</h1>
       </div>
       <BetForm mode="CREATE" bootstrap={data.bootstrap} context={data.context} shortcutClosed={data.shortcutClosed} />
     </div>

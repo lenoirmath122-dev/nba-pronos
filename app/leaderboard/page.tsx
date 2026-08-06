@@ -49,11 +49,11 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
 
   return (
     <ScreenShell authenticated={user !== null}>
-      <div className={styles.page}>
+      <div className={`${styles.page} photo-page`}>
         {data.competitionId === null ? (
           <>
-            <div className={`${styles.header} hero-banner`}>
-              <p className={`${styles.title} hero-banner-title`}>Classement</p>
+            <div className={`${styles.header} glass-card`}>
+              <p className={styles.title}>Classement</p>
             </div>
             {/* Sélecteur affiché même sans compétition active (demandé par
                 l'utilisateur, 30/07/2026) : confirme que les ligues existent
@@ -64,9 +64,9 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
           </>
         ) : (
           <>
-            <div className={`${styles.header} hero-banner`}>
-              <p className={`${styles.title} hero-banner-title`}>Classement</p>
-              <p className={`${styles.competitionName} hero-banner-subtitle`}>
+            <div className={`${styles.header} glass-card`}>
+              <p className={styles.title}>Classement</p>
+              <p className={styles.competitionName}>
                 {data.competitionName}
                 {data.scopeLeagueName ? ` — ${data.scopeLeagueName}` : ""}
               </p>

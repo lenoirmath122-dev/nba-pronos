@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import type { OtherBet } from "@/lib/queries/my-predictions";
 import styles from "./OtherBetsModal.module.css";
 
@@ -22,8 +23,13 @@ export function OtherBetsModal({ bets }: OtherBetsModalProps) {
         Voir les paris des autres joueurs
       </button>
 
-      {open && (
-        <div className={styles.backdrop} role="presentation" onClick={() => setOpen(false)}>
+      {open &&
+        // Portail vers document.body (05/08/2026) : les écrans migrés vers
+        // .photo-page isolent leur fond photo dans leur propre contexte
+        // d'empilement (globals.css) — sans ce portail, ce backdrop y serait
+        // piégé et ne couvrirait plus toute la page (TabBar comprise).
+        createPortal(
+          <div className={styles.backdrop} role="presentation" onClick={() => setOpen(false)}>
           <div
             className={styles.dialog}
             role="dialog"
@@ -60,7 +66,8 @@ export function OtherBetsModal({ bets }: OtherBetsModalProps) {
               Fermer
             </button>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

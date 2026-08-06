@@ -98,3 +98,74 @@ body {
   opacity: 0.85;
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
 }
+
+/* ============================================================================
+   Fond photo PLEIN ÉCRAN + cartes verre (05/08/2026) — variante généralisée
+   de .hero-banner ci-dessus, essayée sur Accueil puis étendue aux écrans où
+   l'utilisateur a validé le résultat : Accueil, hub Jouer, Matchs, Mes paris,
+   Nouveau pari, Mes pronos, Bracket personnel, Classement, Profil (06/08 —
+   bandeau EXCLU, cf. note ci-dessous). Au lieu d'une image confinée au
+   bandeau, .photo-page pose l'image en fond de TOUTE la page (fixe, cadrée
+   sur la largeur de la colonne --layout-max-width comme body ci-dessus), et
+   .glass-card remplace le fond plein de chaque carte par un verre translucide
+   qui laisse voir le fond au travers.
+   Profil (06/08/2026) : SEUL écran migré qui garde .hero-banner sur son
+   <header> (photo bandeau + couleurs d'équipe favorite, futurs badges) — le
+   reste de l'écran (sections Thème/Préférences/Stats/...) passe en
+   .photo-page/.glass-card comme les autres. Écran PAS migré du tout : Bracket
+   global /bracket (format horizontal, image dédiée à venir).
+   Image variable par joueur (06/08/2026, SPEC_ECRAN_PROFIL_V0_1 « Fond
+   d'écran ») : --photo-page-image (app/tokens.css) est redéfini par
+   [data-bg="hoop"|"hk"] posé sur <html> par app/layout.tsx — MURAL reste la
+   valeur par défaut de :root, aucun attribut nécessaire pour lui.
+   ============================================================================ */
+.photo-page {
+  position: relative;
+  /* Contexte d'empilement LOCAL, comme .hero-banner plus haut mais à
+     l'échelle de la page entière : sans lui, le z-index négatif ci-dessous
+     s'échappe jusqu'à la racine et se retrouve sous le fond opaque de .shell
+     (layout.module.css), pas seulement sous les cartes de cette page.
+     Contrepartie assumée : un position:fixed voulant couvrir TOUTE la page
+     (pas seulement cet écran) depuis un descendant doit passer par un
+     portail React vers document.body — voir components/tutorial/TutorialModal.tsx. */
+  isolation: isolate;
+}
+
+.photo-page::before,
+.photo-page::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  /* Même mécanique que body { max-width: var(--layout-max-width) } plus
+     haut : le fond reste cadré sur la largeur des cartes plutôt que déborder
+     jusqu'aux bords du viewport sur desktop. position:fixed plutôt que
+     background-attachment:fixed (peu fiable en scroll sur iOS Safari). */
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+}
+
+.photo-page::before {
+  z-index: -2;
+  background-image: var(--photo-page-image);
+  background-size: cover;
+  background-position: center 25%;
+  filter: saturate(1) brightness(0.92);
+}
+
+.photo-page::after {
+  z-index: -1;
+  background: linear-gradient(
+    180deg,
+    rgba(11, 14, 20, 0.22),
+    rgba(11, 14, 20, 0.4) 30%,
+    rgba(11, 14, 20, 0.62) 68%,
+    rgba(11, 14, 20, 0.78)
+  );
+}
+
+.glass-card {
+  background: rgba(22, 27, 37, 0.38);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+}

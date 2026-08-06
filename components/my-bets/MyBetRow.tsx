@@ -44,7 +44,7 @@ export function MyBetRow({ bet, forceOpenCorrection, correctionError }: MyBetRow
   const isEditable = bet.status === "DRAFT" || bet.status === "SUBMITTED";
 
   return (
-    <div className={styles.row}>
+    <div className={`${styles.row} glass-card`}>
       <p className={styles.target}>{bet.targetLabel}</p>
       <p className={isCancelled ? `${styles.description} ${styles.descriptionCancelled}` : styles.description}>
         {bet.description}
