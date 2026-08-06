@@ -4,6 +4,54 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
+> (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2
+> premiers points ouverts du rattrapage de suivi ci-dessous sont
+> **RÉSOLUS** — voir le détail complet dans l'entrée dédiée :
+> - Contraste du thème Clair : **corrigé**. Sombre/Clair/Photo fusionnés en
+>   un seul réglage à 3 choix mutuellement exclusifs (2 migrations) ; Photo
+>   n'est plus jamais combiné avec Clair, `.glass-card` retrouve un rendu
+>   solide (mêmes tokens dark/light que le reste du site) hors thème Photo.
+> - Vérification en conditions réelles : **faite** (compte `TestJoueur1`,
+>   captures d'écran des 3 thèmes sur Profil + Accueil). A révélé un **vrai
+>   bug** au passage (pas une régression de ce lot, présent depuis `fc6fc43`
+>   le matin même) : les pseudo-éléments décoratifs de `.photo-page`
+>   interceptaient les clics sur les 9 écrans migrés, tous thèmes confondus —
+>   corrigé (`pointer-events: none`), reconfirmé par un 2e test au clic.
+> Le 3e point (aucune trace de cadrage écrit pour `fc6fc43`) reste ouvert
+> tel quel — ce chantier-ci a son propre cadrage (2 `AskUserQuestion` + mode
+> Plan), mais ne documente pas rétroactivement `fc6fc43` lui-même.
+> Migrations (`20260806100000_theme_photo_enum.sql`,
+> `20260806110000_migrate_photo_theme.sql`) poussées sur la base réelle
+> (`npx supabase db push`) après confirmation explicite.
+> **Incident sans lien avec le code** : un `VERCEL_OIDC_TOKEN` (courte durée,
+> 12h) affiché en clair dans le terminal par un filtre `grep` incomplet,
+> signalé immédiatement à l'utilisateur — voir `JOURNAL_SESSIONS.md`.
+> `tsc`/`eslint`/`vitest`/`next build` propres. Pas encore committé.
+>
+> **État au 06/08/2026** — **Rattrapage de suivi : 2 commits non documentés
+> trouvés** (`ETAT_ACTUEL.md` §2.56/§2.57, `JOURNAL_SESSIONS.md` entrées
+> dédiées) : en réponse à « où en est-on dans le projet ? » en tout début de
+> session, `git log` a révélé que `de24964` (Stats : total de points en
+> grand, 05/08/2026) et surtout `fc6fc43` (DA : fond photo plein écran +
+> cartes en verre sur 9 écrans + fond personnalisable, 06/08/2026) avaient
+> été codés/committés APRÈS la dernière mise à jour de ces 3 fichiers de
+> suivi (arrêtée au 04/08/2026, onglet Stats) — sans qu'aucun des 3 ne soit
+> mis à jour à l'époque. Signalé explicitement à l'utilisateur avant de
+> documenter quoi que ce soit ; confirmation reçue de reconstruire l'entrée
+> a posteriori à partir du code (le déroulé réel de cadrage n'est pas connu
+> pour `fc6fc43`, voir l'entrée du journal). `tsc`/`eslint`/`vitest`/
+> `next build` revérifiés propres sur l'état actuel du dépôt à cette
+> occasion. **1 point reste ouvert de ce rattrapage** (les 2 autres résolus
+> le jour même, voir l'entrée ci-dessus) :
+> - **Aucune trace de cadrage écrit pour `fc6fc43`** (pas de fichier
+>   `SPEC_ECRAN_*`, pas d'entrée de journal contemporaine, pas de maquette
+>   artifact retrouvée) — seuls des assets photo (`Cadrage/DA/*.zip`, non
+>   suivis par git) et les commentaires du code lui-même en gardent la trace.
+>   Rien à corriger, juste à savoir si une reprise future de ce chantier a
+>   besoin d'un vrai cadrage écrit (même remarque que pour les couleurs
+>   d'équipe avant leur reprise du 04/08/2026).
+>
 > **État au 04/08/2026 (suite 2)** — **Nouvel onglet Stats, Profil**
 > (`BACKLOG_V1.md` § Historique & stats / Fun esprit ligue,
 > `lib/queries/stats.ts`, `components/profile/RankEvolutionChart.tsx`,

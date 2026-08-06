@@ -5191,4 +5191,184 @@ vérification (aucune trace laissée en base).
 Vérifié : `tsc --noEmit`, `eslint`, `next build` (36 routes, aucun conflit),
 `vitest run` (37/37, aucune régression). Pas encore committé.
 
+---
+
+## Stats : total de points en grand (05/08/2026)
+
+**Demandé par l'utilisateur**, ajustement sur l'onglet Stats posé la veille
+(entrée précédente) : le total de points apparaissait deux fois — une fois
+noyé dans la grille de répartition « Points pronos / Points paris / Total »,
+sans mise en avant. Sorti de la grille (qui passe de 4 à 3 colonnes) et
+affiché en grand tout en premier (`.totalHero`/`.totalHeroValue`/
+`.totalHeroLabel`, `app/(app)/profile/page.tsx` + `page.module.css`).
+Changement d'affichage pur, aucune requête ni migration touchée.
+
+Committé (`de24964`).
+
+---
+
+## DA : fond photo plein écran + cartes en verre, fond personnalisable (05-06/08/2026)
+
+**Rattrapage de suivi (06/08/2026)** — cette entrée est écrite APRÈS coup,
+en tout début de la session du 06/08/2026 où l'utilisateur a demandé « où en
+est-on dans le projet ? ». `git log` a révélé 2 commits (celui ci-dessus et
+celui-ci) postérieurs à la dernière entrée de ce journal, jamais documentés
+ici ni dans `ETAT_ACTUEL.md`/`GAPS_OUVERTS.md` au moment où ils ont été
+faits. **Le déroulé réel de la session qui a produit ce chantier (cadrage,
+itérations, allers-retours avec l'utilisateur) n'est pas connu** — cette
+entrée est reconstruite à partir du code, de ses commentaires (`app/
+globals.css`, `app/tokens.css`) et de `public/brand/README.md`, pas d'une
+mémoire de session. Signalé explicitement à l'utilisateur avant d'écrire
+quoi que ce soit ; confirmation reçue de documenter a posteriori sur cette
+base.
+
+**Constat (commit `fc6fc43`, 06/08/2026 02:08)** : remplace le bandeau photo
+étroit (`.hero-banner`) par un fond de page fixe plein écran (`.photo-page`)
+derrière des cartes translucides (`.glass-card`) — d'après les commentaires
+de code, essayé sur Accueil le 05/08/2026 puis généralisé le 06/08/2026 aux
+écrans validés : Accueil, hub Jouer, Matchs, Mes paris, Nouveau pari, Mes
+pronos, Bracket personnel, Classement, Profil (Profil garde son `<header>`
+en `.hero-banner`, bandeau équipe/badges de la session du 04/08 — seul le
+reste de l'écran migre). Bracket global `/bracket` non migré (format
+horizontal, image dédiée envisagée mais pas faite selon le commentaire).
+
+**Fond personnalisable** : sélecteur « Fond d'écran » ajouté dans Profil >
+Compte, 3 choix (« Fresque streetball » MURAL par défaut, « Panier vu du
+dessus » HOOP, « Terrain à Hong Kong » HK) — 3 photos Unsplash fournies par
+l'utilisateur (licence Unsplash, `Cadrage/DA/*.zip`, recompressées 1080px/q68
+plein écran + 220px/q62 vignette, `public/brand/hero-{mural,hoop,hk}
+(-thumb).jpg`). Persisté via nouvelle colonne `users.background_theme`
+(migration `20260806090000_background_theme.sql`, enum `MURAL|HOOP|HK`,
+défaut `MURAL` — aucune policy RLS dédiée, `users_update_self` + le trigger
+`enforce_users_invariants` couvrent déjà toute nouvelle colonne). Action
+`updateBackgroundTheme` (`lib/actions/profile.ts`), même patron que
+`updateThemePreference` déjà en place. Lu à la racine dans `app/layout.tsx`
+(`getSitePreferences`, thème + fond fusionnés en 1 seule requête au lieu de
+2) et posé comme attribut `data-bg` sur `<html>` (absent pour MURAL, déjà la
+valeur de `:root`) ; `--photo-page-image` (`app/tokens.css`) redéfini par
+`[data-bg="hoop"|"hk"]`.
+
+**Détail technique notable** (d'après les commentaires de `app/globals.css`) :
+`.photo-page` pose `isolation: isolate` pour que le fond reste contenu dans
+son propre contexte d'empilement (sinon le `z-index` négatif du fond
+s'échappe jusqu'à la racine, sous `.shell`) ; le fond est en `position:
+fixed` plutôt que `background-attachment: fixed`, jugé peu fiable en scroll
+sur iOS Safari. Conséquence directe sur du code existant :
+`components/tutorial/TutorialModal.tsx` doit désormais se rendre via
+`createPortal(..., document.body)` pour continuer à couvrir toute la page
+depuis un écran migré (sans le portail, son backdrop resterait piégé dans le
+contexte d'empilement du `.photo-page` parent).
+
+**Vérifié PAR CE RATTRAPAGE (06/08/2026), pas par la session d'origine** :
+`npx tsc --noEmit`, `npx eslint`, `npx vitest run` (37/37), `npx next build`
+(36 routes, aucun conflit) — tous propres sur l'état actuel du dépôt.
+**Aucune trace de vérification « en conditions réelles » dans un navigateur**
+pour ce lot n'a été trouvée (ni commit, ni fichier de suivi, ni script
+jetable) — contrairement à la quasi-totalité des autres chantiers de ce
+journal. Reporté comme gap ouvert dans `GAPS_OUVERTS.md`.
+
+Committé (`fc6fc43`). Documenté ici et dans `ETAT_ACTUEL.md` §2.57 le
+06/08/2026.
+
+---
+
+## Thème à 3 choix : Sombre / Clair / Photo (06/08/2026, suite)
+
+**Demandé par l'utilisateur**, testé juste après le rattrapage de suivi
+ci-dessus : « le thème clair ne fonctionne pas car on ne voit pas grand
+chose ». Cause déjà identifiée pendant le rattrapage (`GAPS_OUVERTS.md`) :
+`.glass-card`/`.photo-page::after` n'ont aucun override
+`[data-theme="light"]`. Question ouverte à l'utilisateur : proposer un
+thème sombre / clair / photo plutôt que de patcher le clair — retenu.
+
+**Cadrage (`AskUserQuestion`)** : (1) un seul sélecteur à 3 choix
+mutuellement exclusifs, qui remplace le toggle Clair/Sombre existant
+(retenu) plutôt que garder 2 sélecteurs séparés avec un rendu sombre forcé
+sous photo ; (2) les joueurs ayant déjà choisi HOOP/HK (pas le défaut
+MURAL) sont basculés automatiquement en thème Photo à la migration (retenu)
+plutôt que remis sur Sombre par défaut. **Mode Plan** utilisé pour cadrer
+l'implémentation technique (exploration directe du code, pas d'agent Explore
+— fichiers déjà connus du rattrapage précédent) : plan écrit et approuvé
+via `ExitPlanMode` avant de coder.
+
+**Trouvaille de conception (avant de coder, en relisant `fc6fc43`)** :
+`.photo-page`/`.glass-card` sont des classes GLOBALES posées de façon
+identique et inconditionnelle dans les 9 écrans migrés — et ce même commit
+avait RETIRÉ le fond/bordure solide que chaque `.section` avait avant lui.
+Conséquence : tout le correctif tient dans `app/globals.css` (rendre ces 2
+classes sensibles à `[data-theme="photo"]`, avec un repli solide par
+défaut reprenant EXACTEMENT l'ancien rendu retiré), **zéro changement
+nécessaire dans les 9 écrans/composants** qui posent déjà ces classes, ni
+dans `tokens.css` (le mode Photo réutilise la palette sombre de `:root`
+telle quelle, même choix déjà acté pour le duotone d'équipe, §2.54).
+
+**Migrations** — `supabase/migrations/20260806100000_theme_photo_enum.sql`
+(`alter type theme_preference add value 'PHOTO';`, SEUL contenu du
+fichier) puis `20260806110000_migrate_photo_theme.sql`
+(`update users set theme_preference = 'PHOTO' where background_theme <>
+'MURAL';`) : séparées en 2 fichiers parce que PostgreSQL interdit d'utiliser
+une valeur d'enum dans la transaction qui l'ajoute — même prudence que
+l'incident de migration #19/#20 déjà rencontré sur ce projet. Poussées via
+`npx supabase db push` sur la base réelle après confirmation explicite de
+l'utilisateur (`AskUserQuestion`).
+
+**Code** :
+- `app/globals.css` : `[data-theme="photo"] .photo-page::before/::after`
+  et `[data-theme="photo"] .glass-card` portent désormais l'image/le
+  dégradé/le verre flouté (identiques à avant) ; `.glass-card` par défaut
+  (Sombre, ou `[data-theme="light"]`) retrouve
+  `background: var(--color-surface-raised); border: 1px solid
+  var(--color-border-subtle);` — mêmes tokens que le reste du site, déjà
+  dotés de leurs 2 variantes dark/light.
+- `app/layout.tsx` : `SitePreferences.theme` → `"LIGHT" | "DARK" | "PHOTO"`,
+  `data-theme` gagne la valeur `"photo"`, `data-bg` ne se pose plus que si
+  `theme === "PHOTO"`.
+- `lib/queries/profile.ts` / `lib/actions/profile.ts` : types et validation
+  élargis à `"PHOTO"`.
+- `app/(app)/profile/page.tsx` / `page.module.css` : le toggle à 1 bouton
+  remplacé par 3 boutons Sombre/Clair/Photo (`.themePicker`/`.themeOption`,
+  même patron de petit formulaire par choix que `.bgPicker`) ; le
+  sous-sélecteur de 3 photos (inchangé) nesté dans la même section
+  « Thème », affiché seulement si `profile.theme === "PHOTO"`.
+
+**BUG RÉEL trouvé en testant au clic — 1er test en conditions réelles du
+chantier photo depuis sa création le matin même (`fc6fc43`)** : les
+pseudo-éléments `.photo-page::before`/`::after` (décoratifs, `position:
+fixed`, plein viewport, z-index négatif, sous `isolation: isolate`)
+interceptaient les clics sur TOUS les boutons des 9 écrans migrés — reproduit
+identiquement sur les 3 thèmes (Sombre, Clair, Photo), donc pas une
+régression de ce lot mais un bug déjà présent depuis `fc6fc43`, jamais
+détecté faute de test réel (gap ouvert la veille dans `GAPS_OUVERTS.md`).
+Diagnostiqué avec `document.elementFromPoint` (script Playwright jetable) :
+au point exact du bouton « Clair », l'élément résolu était le DIV
+`.page.photo-page` lui-même, pas le bouton. Corrigé par `pointer-events:
+none` sur les 2 pseudo-éléments — fix standard pour un calque décoratif
+plein écran, qui ne doit jamais capter d'événement pointeur. Reconfirmé par
+un 2e passage du même test, sans `force: true` cette fois : les 3 clics
+natifs passent normalement.
+
+**Vérifié en conditions RÉELLES** (compte `TestJoueur1`, Playwright
+réinstallé temporairement en dev dependency puis retiré, script jetable
+supprimé après usage — même patron que les sessions précédentes) : email du
+compte récupéré via `supabase.auth.admin.getUserById` sans l'afficher en
+clair (même précaution que la session du 04/08). Les 3 boutons de thème
+cliqués un par un via formulaires natifs réels ; captures d'écran Profil +
+Accueil pour chacun : Sombre et Clair affichent des cartes SOLIDES
+lisibles, Photo réaffiche le rendu existant (image + verre flouté) et fait
+apparaître le sous-sélecteur, changement de photo (HOOP) pendant que Photo
+est actif confirmé fonctionnel. Compte de test restauré à son état
+d'origine après coup (`theme_preference: DARK`, `background_theme: MURAL`).
+
+**Incident, sans lien avec le code** : une commande de diagnostic a affiché
+un `VERCEL_OIDC_TOKEN` en clair dans le terminal (filtre `grep` incomplet,
+ne couvrait pas "TOKEN"). Signalé immédiatement à l'utilisateur. Risque jugé
+faible (token Vercel CLI de courte durée, 12h entre `iat` et `exp` du JWT,
+pas une clé longue durée) — pas la même famille que les incidents
+précédents sur des clés Supabase/mots de passe.
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (36 routes,
+aucun conflit) tous propres, revérifiés après le correctif pointer-events.
+
+Pas encore committé. Documenté ici et dans `ETAT_ACTUEL.md` §2.58.
+
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).

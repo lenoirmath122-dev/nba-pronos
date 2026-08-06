@@ -5,7 +5,36 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 02/08/2026 — **stepper d'écart repensé
+> Dernière mise à jour : session du 06/08/2026, suite — **thème à 3 choix
+> Sombre/Clair/Photo** (§2.58) : le thème Clair, testé juste après le
+> rattrapage de suivi ci-dessous, s'est révélé illisible sur les 9 écrans
+> photo/verre — corrigé en fusionnant Sombre/Clair/Photo en un seul réglage
+> à 3 choix mutuellement exclusifs (2 migrations, `AskUserQuestion` + mode
+> Plan) plutôt que d'inventer une variante claire du style photo. **Bug réel
+> trouvé en testant** : les pseudo-éléments décoratifs de `.photo-page`
+> interceptaient les clics sur les 9 écrans migrés, tous thèmes confondus,
+> depuis leur création le matin même — corrigé (`pointer-events: none`),
+> confirmé par un nouveau test au clic. Migrations poussées sur la vraie
+> base après confirmation explicite. `tsc`/`eslint`/`vitest`/`next build`
+> propres. Pas encore committé.
+>
+> Plus tôt (rattrapage de suivi du 06/08/2026) — **§2.54→§2.57
+> documentés a posteriori** : couleurs d'équipe sur Profil (§2.54, reprise
+> cadrée par maquettes), nouvel onglet Stats (§2.55), total de points en
+> grand (§2.56), et **DA fond photo plein écran + cartes en verre sur 9
+> écrans + fond personnalisable** (§2.57, `fc6fc43`) — ces 4 chantiers avaient
+> été codés/committés entre le 04/08 et le 06/08/2026 SANS que ce fichier ni
+> `JOURNAL_SESSIONS.md`/`GAPS_OUVERTS.md` ne soient mis à jour. Repéré en
+> recoupant `git log` avec ces 3 fichiers en tout début de la session du
+> 06/08/2026 (l'utilisateur demandait juste « où en est-on dans le projet ? »).
+> §2.54/§2.55 documentés à partir du détail déjà présent dans
+> `JOURNAL_SESSIONS.md` (donc fiables) ; §2.56/§2.57 documentés directement à
+> partir du code et de ses commentaires, faute de tout autre historique — le
+> cadrage réel de §2.57 en particulier n'est pas connu, voir §2.57 et
+> `GAPS_OUVERTS.md`. `tsc`/`eslint`/`vitest`/`next build` revérifiés propres
+> sur l'état actuel du dépôt à cette occasion.
+>
+> Plus tôt (session du 02/08/2026) — **stepper d'écart repensé
 > sous l'équipe vainqueur, écran Matchs** (§2.53, correctif post-validation
 > `SPEC_ECRAN_MATCHS_V0_1.md` §22) : demandé par l'utilisateur (« gérer
 > l'écart pronostiqué par un bouton + disponible sous chaque équipe, pour
@@ -4966,4 +4995,258 @@ confirmée fonctionnelle par l'utilisateur).
 
 Committé et poussé, 2 commits (`939f3f9`, `139de16`). Déploiement Vercel
 automatique attendu, pas revérifié en production à ce stade.
+```
+
+### 2.54 Couleurs d'équipe sur Profil — reprise cadrée par maquettes, cette fois codée (session du 04/08/2026)
+
+```text
+Objet : « On peut repartir sur une spec plus solide pour les couleurs qui
+personnalisent les profils ? » — reprise explicite du point `BACKLOG_V1.md`
+§ Personnalisation du profil, essayé puis ABANDONNÉ le 30/07/2026 (« je ne
+pense pas que ça ait d'importance »), avec la consigne de cadrer AVANT de
+coder cette fois plutôt que de redeviner.
+
+Cadrage (`AskUserQuestion` avant tout code) : portée limitée au bandeau
+Profil (pas étendue au Classement/carte joueur, comme le 1er essai) ;
+intensité « à définir ensemble en revoyant des maquettes », pas tranchée à
+l'avance.
+
+Itérations de maquette (artifact HTML, script `build-mockup.js` qui injecte
+les VRAIS blasons SVG et la vraie photo de bandeau — jamais de placeholder) :
+3 pistes (accents doux / bandeau signature / immersion complète) → bandeau B
+choisi ; jugé « trop conventionnel » → duotone (photo désaturée recolorée en
+2 tons via `mix-blend-mode: color`) retenu contre un bloc diagonal ;
+affinages successifs (retrait badge rond, blason en filigrane, blason à
+gauche avec liseré blanc `feMorphology`/`feComposite`/`feMerge`, blason tout
+à gauche + pseudo tout à droite en 2 extrémités du bandeau).
+
+Décisions actées (pas de fichier `SPEC_ECRAN_*` séparé, le cadrage par
+maquettes validées tient lieu de spec, proportionné à la taille du
+changement) : couleurs en constante de code (`lib/labels/teamColors.ts`,
+PAS une colonne base, même choix que `lib/labels/rounds.ts`) ; déclenchement
+automatique dès `favorite_team_id` renseigné (aucune migration, aucun
+toggle — le 1er essai avait `users.use_team_colors`, retiré avec tout le
+reste) ; portée strictement limitée au `<header>` du Profil.
+
+Code : `lib/queries/profile.ts` (`ProfileData.favoriteTeam`) ; `app/(app)/
+profile/page.tsx` (`--team-primary`/`--team-secondary` posées seulement si
+résolues, filtre SVG `#profile-crest-outline` pour le liseré) ; `page.module.
+css` (`.headerTeam::before/::after` écrasent LOCALEMENT les pseudo-éléments
+de `.hero-banner` par spécificité, aucun autre écran affecté).
+
+Vérifié en conditions RÉELLES (compte `TestJoueur1`, équipe Lakers réglée via
+la vraie action `updateProfile`) : bandeau duotone violet/or + blason avec
+liseré + pseudo agrandi conformes à la maquette validée, dark ET clair ;
+compte de test restauré après coup. `tsc`/`eslint`/`next build` (36 routes)/
+`vitest` (37/37) propres.
+
+Trouvaille distincte, hors périmètre, PAS corrigée : après « Enregistrer »
+(équipe favorite) ou bascule de thème, l'écran ne reflète pas immédiatement
+le changement sans rechargement complet (`revalidatePath`+`redirect` déjà en
+place) — reproduit à l'identique sur les 2 actions, probablement un
+comportement Next.js App Router préexistant, pas une régression de ce lot.
+
+Committé (`c72b1f8` code, `b1460b2` doc). Déploiement Vercel automatique
+attendu, pas revérifié en production à ce stade.
+```
+
+### 2.55 Nouvel onglet Stats — Profil (session du 04/08/2026, suite)
+
+```text
+Objet : « prochain chantier, l'onglet stats et les badges » — reprise de 2
+points du backlog (`BACKLOG_V1.md` § Historique & stats / Fun-esprit ligue) :
+la courbe d'évolution n'avait qu'un socle de données (`leaderboard_snapshots`,
+30/07/2026), aucun écran ; les « badges permanents » restaient à spécifier.
+
+Cadrage avant le code (même discipline que §2.54) : `AskUserQuestion` pour
+l'emplacement (nouvel onglet Profil) et le contenu (4 propositions, les 4
+retenues : courbe d'évolution, précision des pronos, bilan des paris,
+comparaison aux autres joueurs — Badges en simple catégorie placeholder,
+aucune liste à concevoir maintenant). Mode Plan utilisé pour la 1re fois
+cette session (1 agent Explore + 1 agent Plan) puis maquette artifact
+demandée en plus du plan écrit — 1 ajustement demandé et intégré avant
+validation : filtre Général/Ligue sur la Comparaison (même mécanisme que
+Classement/Bracket). Plan approuvé via `ExitPlanMode`.
+
+Code : `lib/queries/stats.ts` (nouveau, `getProfileStats(leagueId?)`, 6
+requêtes dont 1 lecture par utilisateur de `leaderboard_snapshots`) ;
+`components/profile/RankEvolutionChart.tsx` (nouveau, SVG fait main,
+composant SERVEUR, aucune librairie de graphes — rang projeté directement
+sur l'axe y, `stroke: var(--color-trend)`) ; `components/profile/
+LeagueScopeChips.tsx` (nouveau, même patron qu'une copie par écran déjà
+établie) ; `components/bracket/ProgressBar.tsx` (prop `label?` optionnel,
+réutilisé pour « Précision ») ; 5e onglet « Stats » sur `ProfileTabs.tsx`/
+`page.tsx` (`?tab=`, même patron que les 4 onglets existants). Filtre ligue
+sur `rank`/`comparison` UNIQUEMENT — la courbe d'évolution reste le
+classement GÉNÉRAL (ré-agréger tous les snapshots par ligue jugé hors de
+proportion pour ce lot, décision actée dans le plan). Delta de comparaison en
+texte neutre, jamais vert/rouge (`--color-win`/`--color-loss` réservés aux
+résultats de jeu réels). Aucune migration.
+
+Vérifié en conditions RÉELLES (compte `TestJoueur1`) : onglet visible dark
+ET clair, tous les états vides corrects. Graphe vérifié via 4 lignes
+`leaderboard_snapshots` insérées TEMPORAIREMENT (script jetable
+service_role) puis supprimées après coup (aucune trace laissée en base).
+`tsc`/`eslint`/`next build` (36 routes)/`vitest` (37/37) propres.
+
+Committé (`6c56abb` code, `24e84ef` doc).
+```
+
+### 2.56 Stats : total de points en grand (session du 05/08/2026)
+
+```text
+Objet : ajustement demandé sur l'onglet Stats (§2.55) — le total de points
+apparaissait deux fois (dans la grille de répartition « Points pronos/Points
+paris/Total » ET nulle part ailleurs de façon proéminente). Sorti de la
+grille (qui passe à 3 colonnes) et affiché en grand tout en premier
+(`.totalHero`/`.totalHeroValue`/`.totalHeroLabel`, `app/(app)/profile/
+page.tsx` + `page.module.css`). Changement d'affichage pur, aucune requête
+ni migration touchée.
+
+Committé (`de24964`). Rattrapage de suivi le 06/08/2026 : ce commit n'avait
+pas été documenté dans `ETAT_ACTUEL.md`/`JOURNAL_SESSIONS.md`/
+`GAPS_OUVERTS.md` au moment où il a été fait — repéré et documenté a
+posteriori en recoupant `git log` avec ces 3 fichiers (voir §2.57 et
+`GAPS_OUVERTS.md`).
+```
+
+### 2.57 DA : fond photo plein écran + cartes en verre sur 9 écrans, fond personnalisable (session du 05-06/08/2026)
+
+```text
+Objet : chantier de direction artistique — remplace le bandeau photo étroit
+(`.hero-banner`) par un fond de page fixe plein écran (`.photo-page`)
+derrière des cartes translucides (`.glass-card`), essayé sur Accueil le
+05/08/2026 puis étendu le 06/08/2026 aux écrans où le résultat a été validé :
+Accueil, hub Jouer, Matchs, Mes paris, Nouveau pari, Mes pronos, Bracket
+personnel, Classement, Profil (ce dernier garde SON `<header>` en
+`.hero-banner` — bandeau équipe/badges §2.54 — seul le reste de l'écran
+passe en `.photo-page`/`.glass-card`). Écran PAS migré : Bracket global
+`/bracket` (format horizontal, image dédiée envisagée, pas faite).
+
+**Rattrapage de suivi (06/08/2026)** : ce chantier — comme §2.56 — a été
+codé, committé (`fc6fc43`) et poussé SANS mise à jour de `ETAT_ACTUEL.md`/
+`JOURNAL_SESSIONS.md`/`GAPS_OUVERTS.md` au moment où il a été fait. Repéré le
+06/08/2026 en recoupant `git log` avec ces 3 fichiers (qui s'arrêtaient tous
+au 04/08/2026, §2.55) et documenté a posteriori à partir du code, des
+commentaires qu'il contient et de `public/brand/README.md` — PAS d'une
+mémoire de session. Conséquence directe : contrairement au reste de ce
+fichier, **le détail du cadrage réel (itérations, allers-retours avec
+l'utilisateur) n'est pas connu** — seul le résultat final dans le code l'est.
+Aucune trace de vérification « en conditions réelles » dans le navigateur
+pour ce lot précis (contrairement à la quasi-totalité des autres entrées de
+ce fichier) — voir `GAPS_OUVERTS.md`.
+
+Fond personnalisable : sélecteur « Fond d'écran » dans Profil > Compte, 3
+choix (`BACKGROUND_THEMES` dans `app/(app)/profile/page.tsx`) — « Fresque
+streetball » (MURAL, défaut), « Panier vu du dessus » (HOOP), « Terrain à
+Hong Kong » (HK). Persisté via `users.background_theme` (migration
+`20260806090000_background_theme.sql`, enum, défaut `MURAL`, aucune policy
+RLS dédiée nécessaire — `users_update_self` + le trigger
+`enforce_users_invariants` couvrent déjà toute nouvelle colonne) ; action
+`updateBackgroundTheme` (`lib/actions/profile.ts`, même patron que
+`updateThemePreference`) ; lu à la racine dans `app/layout.tsx`
+(`getSitePreferences`, fusion theme+background en 1 seule requête) et posé
+comme attribut `data-bg` sur `<html>` (absent pour MURAL, déjà la valeur de
+`:root`) ; `--photo-page-image` (`app/tokens.css`) redéfini par
+`[data-bg="hoop"|"hk"]`. Les 3 photos + vignettes (`public/brand/hero-{mural,
+hoop,hk}(-thumb).jpg`) sont des photos Unsplash fournies par l'utilisateur
+(licence Unsplash, recompressées 1080px/q68 plein écran, 220px/q62 vignette).
+
+Détail technique notable (commentaires `app/globals.css`) : `.photo-page`
+pose `isolation: isolate` pour contenir son propre contexte d'empilement (le
+fond ne doit pas fuiter sous `.shell`) ; le fond est en `position: fixed`
+plutôt que `background-attachment: fixed` (peu fiable en scroll sur iOS
+Safari) ; conséquence directe — `components/tutorial/TutorialModal.tsx` doit
+désormais se rendre via `createPortal(..., document.body)` pour continuer à
+couvrir toute la page (sans quoi son backdrop serait piégé dans le contexte
+d'empilement d'un `.photo-page` parent).
+
+Vérifié par ce rattrapage de suivi (06/08/2026, PAS par la session d'origine) :
+`npx tsc --noEmit`, `npx eslint`, `npx vitest run` (37/37), `npx next build`
+(36 routes, aucun conflit) — tous propres sur l'état actuel du dépôt.
+
+Committé (`fc6fc43`). Déploiement Vercel automatique attendu, pas
+revérifié en production. Points ouverts trouvés pendant ce rattrapage : voir
+`GAPS_OUVERTS.md`.
+```
+
+### 2.58 Thème à 3 choix : Sombre / Clair / Photo (session du 06/08/2026, suite)
+
+```text
+Objet : testé juste après le rattrapage de suivi (§2.57) — le thème Clair
+était illisible sur les 9 écrans .photo-page/.glass-card (aucun override
+[data-theme="light"], rgba() sombres fixes). Plutôt que d'inventer une
+variante claire du style photo/verre (jamais pensé pour ça — même les
+couleurs d'équipe du bandeau Profil §2.54 restent volontairement sombres
+dans les 2 thèmes, tokens.css §15.7), décidé AVEC l'utilisateur (2 tours
+d'AskUserQuestion, mode Plan) : fusionner Sombre/Clair/Photo en un SEUL
+réglage à 3 choix mutuellement exclusifs, plutôt que garder 2 axes
+indépendants (thème × fond) en forçant un rendu sombre sous photo.
+
+**Trouvaille de conception (avant de coder)** : `.photo-page`/`.glass-card`
+sont des classes GLOBALES posées de façon identique et inconditionnelle
+dans les 9 écrans — et `fc6fc43` avait RETIRÉ le fond/bordure solide que
+chaque `.section` avait avant. Conséquence : tout le correctif tient dans
+`app/globals.css`, ZÉRO changement nécessaire dans les 9 écrans/composants
+qui posent déjà ces classes, ni dans `tokens.css` (le mode Photo réutilise
+la palette sombre de `:root` telle quelle, même choix que le duotone
+d'équipe).
+
+**Migrations** (`20260806100000_theme_photo_enum.sql`,
+`20260806110000_migrate_photo_theme.sql`) : `theme_preference` gagne une 3e
+valeur d'enum `PHOTO`, dans un fichier SÉPARÉ de celui qui l'utilise
+(Postgres interdit d'utiliser une valeur d'enum dans la transaction qui
+l'ajoute — même prudence que l'incident migration #19/#20 déjà rencontré).
+2e fichier : `update users set theme_preference = 'PHOTO' where
+background_theme <> 'MURAL'` — bascule automatique des joueurs ayant déjà
+choisi HOOP/HK, décidée AVEC l'utilisateur plutôt que de les remettre sur
+Sombre par défaut. Poussées avec `npx supabase db push` après confirmation
+explicite (même patron que les migrations précédentes).
+
+**Code** : `app/globals.css` — `.photo-page::before`/`::after` (image +
+dégradé) et le style translucide de `.glass-card` déplacés sous
+`[data-theme="photo"]` ; `.glass-card` par défaut (Sombre, ou
+`[data-theme="light"]`) retrouve le rendu solide retiré par `fc6fc43`
+(`--color-surface-raised`/`--color-border-subtle`, déjà dotés de leurs 2
+variantes dark/light). `app/layout.tsx` — `SitePreferences.theme` passe à
+`"LIGHT" | "DARK" | "PHOTO"`, `data-theme="photo"` posé sur `<html>` en plus
+de `"light"` existant, `data-bg` désormais conditionné à `theme === "PHOTO"`
+(sans effet sinon). `lib/queries/profile.ts` / `lib/actions/profile.ts` —
+types et validation élargis à `"PHOTO"`. `app/(app)/profile/page.tsx` — le
+toggle à 1 bouton (« Passer en thème clair/sombre ») remplacé par 3 boutons
+Sombre/Clair/Photo (même patron de petits formulaires que le sélecteur de
+fond) ; le sous-sélecteur de 3 photos (inchangé) ne s'affiche plus que si
+`profile.theme === "PHOTO"`, nesté dans la même section « Thème » au lieu
+d'une section séparée.
+
+**BUG RÉEL trouvé en testant au clic — 1er test en conditions réelles de ce
+chantier photo depuis sa création ce matin** : les pseudo-éléments
+`.photo-page::before`/`::after` (décoratifs, `position: fixed`, plein
+viewport, z-index négatif) INTERCEPTAIENT les clics sur TOUS les boutons
+des 9 écrans migrés — reproduit sur les 3 thèmes (pas spécifique à Photo),
+donc présent depuis `fc6fc43` (06/08 matin), jamais détecté faute de test
+réel (cf. gap ouvert la veille dans `GAPS_OUVERTS.md`). Diagnostiqué par
+`document.elementFromPoint` (Playwright) : le clic sur le bouton « Clair »
+résolvait sur le DIV `.page.photo-page` lui-même. Corrigé par
+`pointer-events: none` sur les 2 pseudo-éléments (fix standard pour un
+calque décoratif plein écran) — confirmé résolu par un nouveau passage du
+même test après correctif.
+
+**Vérifié en conditions RÉELLES** (compte `TestJoueur1`, Playwright
+réinstallé temporairement en dev dependency puis retiré, script jetable
+supprimé après usage — même patron que les sessions précédentes) : les 3
+boutons Sombre/Clair/Photo cliqués un par un (formulaires natifs réels, pas
+de `force: true` une fois le bug ci-dessus corrigé) ; captures d'écran
+Profil + Accueil pour chaque thème : Sombre et Clair affichent des cartes
+SOLIDES lisibles (plus de flou/photo hérité) ; Photo réaffiche le rendu
+existant (image + verre flouté) et fait apparaître le sous-sélecteur de 3
+photos, changement de photo (HOOP) pendant que Photo est actif confirmé
+fonctionnel. Compte de test restauré à son état d'origine après coup
+(`theme_preference: DARK`, `background_theme: MURAL`) via le même client
+`service_role` que le script.
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (36 routes,
+aucun conflit) tous propres, revérifiés après le correctif pointer-events.
+
+Pas encore committé.
 ```
