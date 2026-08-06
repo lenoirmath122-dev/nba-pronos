@@ -120,13 +120,53 @@
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
+/* Sélecteur « Thème » (06/08/2026, remplace l'ancien toggle Clair/Sombre à
+   1 bouton) — 3 choix mutuellement exclusifs, même patron sans-JS que
+   .bgPicker juste en dessous (1 <form> par choix, pas un vrai groupe radio
+   pour rester soumissible nativement) mais en pilules texte, pas en
+   vignettes. */
+.themePicker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.themeOption {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.themeOption:disabled {
+  cursor: default;
+}
+
+.themeOption:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.themeOptionActive {
+  border-color: var(--color-accent);
+  color: var(--color-accent);
+  background: var(--color-accent-soft);
+}
+
 /* Sélecteur « Fond d'écran » (06/08/2026) — 3 vignettes cliquables, chacune
    un <form> à 1 champ (même patron sans-JS que le toggle Thème juste
-   au-dessus), pas un vrai groupe radio pour rester soumissible nativement. */
+   au-dessus), pas un vrai groupe radio pour rester soumissible nativement.
+   N'apparaît plus que si le thème Photo est actif (page.tsx). */
 .bgPicker {
   display: flex;
   flex-wrap: wrap;
   gap: var(--space-3);
+  margin-top: var(--space-3);
 }
 
 .bgOption {

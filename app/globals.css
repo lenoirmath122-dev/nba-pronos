@@ -100,24 +100,36 @@ body {
 }
 
 /* ============================================================================
-   Fond photo PLEIN ÉCRAN + cartes verre (05/08/2026) — variante généralisée
-   de .hero-banner ci-dessus, essayée sur Accueil puis étendue aux écrans où
-   l'utilisateur a validé le résultat : Accueil, hub Jouer, Matchs, Mes paris,
-   Nouveau pari, Mes pronos, Bracket personnel, Classement, Profil (06/08 —
-   bandeau EXCLU, cf. note ci-dessous). Au lieu d'une image confinée au
-   bandeau, .photo-page pose l'image en fond de TOUTE la page (fixe, cadrée
-   sur la largeur de la colonne --layout-max-width comme body ci-dessus), et
-   .glass-card remplace le fond plein de chaque carte par un verre translucide
-   qui laisse voir le fond au travers.
-   Profil (06/08/2026) : SEUL écran migré qui garde .hero-banner sur son
-   <header> (photo bandeau + couleurs d'équipe favorite, futurs badges) — le
-   reste de l'écran (sections Thème/Préférences/Stats/...) passe en
-   .photo-page/.glass-card comme les autres. Écran PAS migré du tout : Bracket
-   global /bracket (format horizontal, image dédiée à venir).
-   Image variable par joueur (06/08/2026, SPEC_ECRAN_PROFIL_V0_1 « Fond
-   d'écran ») : --photo-page-image (app/tokens.css) est redéfini par
-   [data-bg="hoop"|"hk"] posé sur <html> par app/layout.tsx — MURAL reste la
-   valeur par défaut de :root, aucun attribut nécessaire pour lui.
+   Fond photo PLEIN ÉCRAN + cartes verre — 3e THÈME (06/08/2026, révisé) :
+   variante généralisée de .hero-banner ci-dessus, posée de façon identique
+   et inconditionnelle dans 9 écrans (Accueil, hub Jouer, Matchs, Mes paris,
+   Nouveau pari, Mes pronos, Bracket personnel, Classement, Profil — bandeau
+   EXCLU sur Profil, cf. note ci-dessous ; Bracket global /bracket PAS migré,
+   format horizontal, image dédiée à venir).
+   Essayée le 05/08/2026 puis généralisée le 06/08/2026 en la rendant
+   TOUJOURS active — ce qui a cassé le thème clair (aucun override
+   [data-theme="light"] pour .glass-card/.photo-page::after, rgba() sombres
+   fixes, illisible). Corrigé le même jour en fusionnant Sombre/Clair/Photo
+   en un SEUL réglage à 3 choix mutuellement exclusifs (theme_preference,
+   migrations 20260806100000/20260806110000) plutôt que 2 axes indépendants
+   (thème × fond) : Photo n'est donc plus jamais combiné avec Clair. Les
+   déclarations ci-dessous ne s'appliquent donc plus QUE sous
+   [data-theme="photo"] ; par défaut (Sombre, ou [data-theme="light"]),
+   .glass-card retrouve le rendu solide qu'avait chaque carte AVANT ce
+   chantier (mêmes tokens --color-surface-raised/--color-border-subtle,
+   déjà dotés de leurs 2 variantes dark/light) et .photo-page ne pose aucune
+   image — pas besoin de toucher les 9 écrans qui posent déjà ces classes,
+   ni tokens.css (le mode Photo réutilise la palette sombre de :root telle
+   quelle, même choix que le duotone d'équipe, §15.7).
+   Profil : SEUL écran migré qui garde .hero-banner sur son <header> (photo
+   bandeau + couleurs d'équipe favorite, futurs badges) — le reste de
+   l'écran (sections Thème/Préférences/Stats/...) suit .photo-page/
+   .glass-card comme les autres.
+   Image variable par joueur (SPEC_ECRAN_PROFIL_V0_1 « Fond d'écran ») :
+   --photo-page-image (app/tokens.css) est redéfini par [data-bg="hoop"|"hk"]
+   posé sur <html> par app/layout.tsx UNIQUEMENT quand le thème est Photo
+   (l'attribut n'a aucun effet sinon) — MURAL reste la valeur par défaut de
+   :root, aucun attribut nécessaire pour lui.
    ============================================================================ */
 .photo-page {
   position: relative;
@@ -127,7 +139,9 @@ body {
      (layout.module.css), pas seulement sous les cartes de cette page.
      Contrepartie assumée : un position:fixed voulant couvrir TOUTE la page
      (pas seulement cet écran) depuis un descendant doit passer par un
-     portail React vers document.body — voir components/tutorial/TutorialModal.tsx. */
+     portail React vers document.body — voir components/tutorial/TutorialModal.tsx.
+     Posé inconditionnellement (même hors thème Photo) : structurel, sans
+     effet visuel tant que ::before/::after ci-dessous n'ont pas de fond. */
   isolation: isolate;
 }
 
@@ -142,9 +156,17 @@ body {
      background-attachment:fixed (peu fiable en scroll sur iOS Safari). */
   max-width: var(--layout-max-width);
   margin-inline: auto;
+  /* BUG RÉEL trouvé le 06/08/2026 en testant au clic (1er test en
+     conditions réelles de ce chantier) : malgré leur z-index négatif et
+     l'isolation posée sur .photo-page, ces pseudo-éléments position:fixed
+     interceptaient les clics sur TOUT bouton des 9 écrans migrés — le
+     hit-testing de position:fixed ne suit pas fidèlement l'ordre de
+     stacking-context attendu ici. Corrigé en les rendant inertes au
+     pointeur : purement décoratifs, ne doivent jamais capter d'événement. */
+  pointer-events: none;
 }
 
-.photo-page::before {
+[data-theme="photo"] .photo-page::before {
   z-index: -2;
   background-image: var(--photo-page-image);
   background-size: cover;
@@ -152,7 +174,7 @@ body {
   filter: saturate(1) brightness(0.92);
 }
 
-.photo-page::after {
+[data-theme="photo"] .photo-page::after {
   z-index: -1;
   background: linear-gradient(
     180deg,
@@ -163,7 +185,14 @@ body {
   );
 }
 
+/* Repli SOLIDE (Sombre par défaut, [data-theme="light"] en clair) : rendu
+   exact des cartes avant ce chantier — mêmes tokens que le reste du site. */
 .glass-card {
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-subtle);
+}
+
+[data-theme="photo"] .glass-card {
   background: rgba(22, 27, 37, 0.38);
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);

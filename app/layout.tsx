@@ -19,17 +19,17 @@ export const metadata: Metadata = {
 };
 
 type SitePreferences = {
-  theme: "LIGHT" | "DARK";
+  theme: "LIGHT" | "DARK" | "PHOTO";
   backgroundTheme: "MURAL" | "HOOP" | "HK";
 };
 
-// Thème clair/sombre (SPEC_ECRAN_PROFIL_V0_1 §4) + fond d'écran personnalisable
-// (§.photo-page, app/globals.css, 06/08/2026) : câblage explicitement laissé
-// en attente par app/tokens.css pour le thème (« la bascule est un lot
-// séparé ») ; même logique reprise pour le fond. Lus ENSEMBLE ICI (racine,
-// hors des deux route groups, une seule requête) car [data-theme="light"] et
-// [data-bg="..."] s'appliquent à TOUT le site, visiteur non connecté inclus
-// (/login, /leaderboard...). Un visiteur sans session reste sur les défauts
+// Thème Sombre/Clair/Photo (SPEC_ECRAN_PROFIL_V0_1 §4, 3e valeur ajoutée le
+// 06/08/2026 — cf. migrations 20260806100000/20260806110000) : câblage
+// explicitement laissé en attente par app/tokens.css pour le thème (« la
+// bascule est un lot séparé »). Lus ENSEMBLE ICI (racine, hors des deux
+// route groups, une seule requête) car [data-theme="..."] et [data-bg="..."]
+// s'appliquent à TOUT le site, visiteur non connecté inclus (/login,
+// /leaderboard...). Un visiteur sans session reste sur les défauts
 // (DARK / MURAL, mêmes valeurs que les défauts colonne ET CSS sur :root) —
 // aucune préférence à lire pour lui.
 async function getSitePreferences(): Promise<SitePreferences> {
@@ -45,7 +45,7 @@ async function getSitePreferences(): Promise<SitePreferences> {
     .from("users")
     .select("theme_preference, background_theme")
     .eq("id", user.id)
-    .single<{ theme_preference: "LIGHT" | "DARK"; background_theme: "MURAL" | "HOOP" | "HK" }>();
+    .single<{ theme_preference: "LIGHT" | "DARK" | "PHOTO"; background_theme: "MURAL" | "HOOP" | "HK" }>();
 
   if (!data) return DEFAULTS;
   return { theme: data.theme_preference, backgroundTheme: data.background_theme };
@@ -61,8 +61,8 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      data-theme={theme === "LIGHT" ? "light" : undefined}
-      data-bg={backgroundTheme !== "MURAL" ? backgroundTheme.toLowerCase() : undefined}
+      data-theme={theme === "LIGHT" ? "light" : theme === "PHOTO" ? "photo" : undefined}
+      data-bg={theme === "PHOTO" && backgroundTheme !== "MURAL" ? backgroundTheme.toLowerCase() : undefined}
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">{children}</body>

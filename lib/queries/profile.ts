@@ -14,7 +14,11 @@ export type ProfileData = {
    *  du bandeau par équipe favorite (04/08/2026, cf. lib/labels/teamColors.ts). */
   favoriteTeam: TeamRef | null;
   bio: string;
-  theme: "LIGHT" | "DARK";
+  /** 3e valeur PHOTO ajoutée le 06/08/2026 (migrations 20260806100000/
+   *  20260806110000) : Sombre/Clair/Photo sont désormais 3 choix
+   *  mutuellement exclusifs, `backgroundTheme` ci-dessous n'a plus d'effet
+   *  visuel que si `theme === "PHOTO"` (app/globals.css). */
+  theme: "LIGHT" | "DARK" | "PHOTO";
   /** Fond d'écran plein page (§.photo-page, app/globals.css) — même patron
    *  que `theme`, lu ici pour l'écran Profil ; app/layout.tsx fait sa PROPRE
    *  lecture pour poser l'attribut data-bg sur <html> (même redondance
@@ -49,7 +53,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
       role: "PLAYER" | "ADMIN";
       favorite_team_id: string | null;
       bio: string | null;
-      theme_preference: "LIGHT" | "DARK";
+      theme_preference: "LIGHT" | "DARK" | "PHOTO";
       background_theme: "MURAL" | "HOOP" | "HK";
       notification_preference: "NONE" | "PUSH" | "EMAIL";
       tutorial_seen_at: string | null;

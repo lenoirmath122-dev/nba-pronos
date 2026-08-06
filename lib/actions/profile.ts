@@ -12,10 +12,11 @@ import { getServerClient } from "@/lib/supabase/server";
 // (lib/actions/corrections.ts) — une erreur est portée par l'URL de
 // redirection, jamais par un état client (pas de useActionState ici).
 
-/** Toggle thème (§4) : soumission immédiate, un seul champ. */
+/** Thème Sombre/Clair/Photo (§4, 3e valeur PHOTO le 06/08/2026) : soumission
+ *  immédiate, un seul champ. */
 export async function updateThemePreference(formData: FormData): Promise<void> {
   const theme = String(formData.get("theme") ?? "");
-  if (theme !== "LIGHT" && theme !== "DARK") {
+  if (theme !== "LIGHT" && theme !== "DARK" && theme !== "PHOTO") {
     redirect("/profile?profileError=Th%C3%A8me%20invalide.");
   }
 
