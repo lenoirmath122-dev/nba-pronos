@@ -7,6 +7,7 @@ import { TEAM_COLORS } from "@/lib/labels/teamColors";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { getCompetitionHistory } from "@/lib/queries/history";
 import { getProfileStats } from "@/lib/queries/stats";
+import { getProfileBadges } from "@/lib/queries/badges";
 import { updateThemePreference, updateBackgroundTheme, updateProfile } from "@/lib/actions/profile";
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { logout } from "@/lib/auth/actions";
@@ -15,6 +16,7 @@ import { NotificationSettings } from "@/components/profile/NotificationSettings"
 import { ProfileTabs, type ProfileTab } from "@/components/profile/ProfileTabs";
 import { LeagueScopeChips } from "@/components/profile/LeagueScopeChips";
 import { RankEvolutionChart } from "@/components/profile/RankEvolutionChart";
+import { BadgesSection } from "@/components/profile/BadgesSection";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import { TutorialLink } from "@/components/tutorial/TutorialLink";
@@ -85,6 +87,11 @@ export default async function ProfilePage({
   const history = activeTab === "historique" ? await getCompetitionHistory() : [];
   const stats = activeTab === "stats" ? await getProfileStats(sp.ligue) : null;
   const statsLeagues = activeTab === "stats" ? await getMyLeagues() : [];
+  // Badges permanents (09/08/2026, phase 1) — à VIE, indépendants d'une
+  // compétition active, cf. SPEC_BADGES_PERMANENTS_V0_1.md. Fetch séparé de
+  // getProfileStats (scopée à la compétition ACTIVE), même déclencheur
+  // d'onglet.
+  const badges = activeTab === "stats" ? await getProfileBadges() : null;
 
   // Bandeau personnalisé par équipe favorite (04/08/2026, spec validée par
   // maquettes — cf. lib/labels/teamColors.ts). Rien ne change si aucune
@@ -355,12 +362,14 @@ export default async function ProfilePage({
                   </>
                 )}
               </section>
-
-              <section className={`${styles.section} glass-card`}>
-                <h2 className={styles.sectionTitle}>Badges</h2>
-                <p className={styles.badgesPlaceholder}>Bientôt disponible.</p>
-              </section>
             </>
+          )}
+
+          {badges && (
+            <section className={`${styles.section} glass-card`}>
+              <h2 className={styles.sectionTitle}>Badges</h2>
+              <BadgesSection data={badges} />
+            </section>
           )}
         </>
       )}

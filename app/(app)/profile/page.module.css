@@ -629,13 +629,3 @@
   color: var(--color-text-secondary);
 }
 
-.badgesPlaceholder {
-  margin: 0;
-  padding: var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-inset);
-  border: 1px dashed var(--color-border-subtle);
-  color: var(--color-text-muted);
-  font-size: var(--font-size-sm);
-  text-align: center;
-}

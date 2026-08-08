@@ -1,0 +1,43 @@
+/* Badges permanents (09/08/2026, phase 1) — cf.
+   Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md. Rendu visuel
+   volontairement neutre (spec §7 : le rendu visuel des badges — icônes,
+   couleurs par palier — est explicitement hors périmètre, à cadrer
+   séparément). */
+
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.category {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.categoryTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
+  gap: var(--space-2);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-inset);
+  border: 1px dashed var(--color-border-subtle);
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  text-align: center;
+}
