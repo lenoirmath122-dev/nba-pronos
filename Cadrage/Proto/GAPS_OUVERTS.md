@@ -4,136 +4,34 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 08/08/2026** — **Badges permanents : cadrage EN COURS**
-> (`BACKLOG_V1.md` § "Fun / esprit ligue entre potes", chantier ouvert le
-> 30/07/2026, jamais cadré jusqu'ici — 3e des chantiers prioritaires du
-> reclassement du 30/07). Démarré en s'appuyant sur un tableur manuel fourni
-> par l'utilisateur, `Cadrage/DA/🏀 NBA Pronos - 22_04_2026 (réponses)
-> (1).xlsx` (ancien suivi pré-appli, converti en CSV via un script Node
-> jetable — `xlsx`, non commité au dépôt) : taxonomie des paris perso,
-> recaps humoristiques par soirée ("Tableau d'honneur"/"Salle des
-> brancards"/"Zone Maïno"/"Bilan des points bonus"). Confirmé que le
-> `bet_category` réel de l'app (9 valeurs, migration initiale du 18/07)
-> recoupe quasi mot pour mot la taxonomie du tableur — les badges dérivés
-> des catégories de paris perso sont donc calculables sur de la vraie
-> donnée structurée, pas une reconstruction a posteriori.
+> **État au 08/08/2026** — **Badges permanents : cadrage CLOS, reste à
+> coder** (`BACKLOG_V1.md` § "Fun / esprit ligue entre potes", chantier
+> ouvert le 30/07/2026, 3e des chantiers prioritaires du reclassement du
+> 30/07/2026, après Bracket personnel et Tutoriel joueur — voir
+> `Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md` pour le détail
+> complet). Cadré en séance à partir d'un tableur manuel pré-appli fourni
+> par l'utilisateur (taxonomie des paris perso, quasi identique au
+> `bet_category` réel de l'app) et du schéma réel (`match_predictions`/
+> `bracket_picks`/`bets`/`user_scores`/`leaderboard_snapshots`).
 >
-> **Inventaire EXHAUSTIF des axes badges, validé avec l'utilisateur** (pas
-> encore transcrit dans un fichier de spec dédié, cadrage toujours en
-> cours, à reprendre en séance) :
-> - **I. Pronostics de match** (`match_predictions`) : vainqueur correct
->   (volume cumulé), écart exact (volume cumulé), écart proche non exact
->   type `margin_diff` ≤2 (volume cumulé, axe distinct de l'écart exact —
->   récompense la lecture fine du match plutôt que le coup de chance du
->   chiffre pile), série de bons vainqueurs d'affilée (streak), participation
->   sans absence, nombre total de matchs pronostiqués (pur volume, badge de
->   familiarisation).
-> - **II. Bracket personnel** (`bracket_picks`/`brackets`) : vainqueur de
->   série correct (volume cumulé), score de série exact `is_score_exact`
->   (volume cumulé), affiche correctement anticipée `is_matchup_correct`
->   (volume cumulé), bracket rempli à 100% (badge de déverrouillage/
->   onboarding), perfection sur un tour — nombre de tours sans erreur
->   cumulés (potentiellement inter-compétitions).
-> - **III. Paris perso** (`bets`) : par catégorie (les 9 `bet_category`,
->   paris gagnés), par difficulté 1-5 (tentés et/ou gagnés, avec un nom
->   rigolo par palier à trouver plus tard — prudent/joueur/risqué...), par
->   scope MATCH vs SERIES, volume total posé peu importe le résultat, paris
->   `FUN_OFF_COURT` posés peu importe le résultat.
-> - **IV. Classement global** (`user_scores`/`leaderboard_snapshots`) :
->   paliers de points cumulés (TOTAL et PAR catégorie de points — matches/
->   bracket/bets séparément, pas juste le total), progression de rang sur
->   une fenêtre de temps, temps passé dans une zone du classement type top 3
->   (gardé, mais reste le plus complexe à calculer — pas de colonne dédiée,
->   à dériver de `leaderboard_snapshots`).
-> - **V. Fidélité/régularité** (transverse) : série de participations sans
->   absence, nombre de compétitions jouées depuis l'inscription
->   (`competition_archives`), ancienneté du compte.
-> - **VI. Ligues** (`leagues`/`league_memberships`) : appartenance à une/
->   plusieurs ligues, création d'une ligue — gardé dans le scope malgré la
->   nature plus sociale qu'orientée perf de jeu.
+> Résumé : inventaire de ~30 badges répartis sur 6 axes (pronostics de
+> match, bracket personnel, paris perso, classement global, fidélité,
+> ligues), tous cumulés À VIE (toutes compétitions confondues), permanents
+> une fois débloqués (aucune régression), calculés en LECTURE PURE via
+> une/des vue(s) SQL (même patron que `user_scores`, pas de nouvelle table
+> de state). Noms et seuils Bronze/Argent/Or/Platine/Diamant validés un par
+> un avec l'utilisateur (détail exhaustif dans la spec).
 >
-> **Décision actée** : tous les badges restent acquis pour toujours une
-> fois débloqués, aucune régression possible — y compris les 2 seuls axes
-> réellement "streak" (bons vainqueurs d'affilée, participation sans
-> absence), dont le palier se base sur le RECORD personnel jamais atteint
-> (max cumulé, ne peut que monter), pas sur l'état courant. Choisi pour
-> garder un mécanisme unique à tous les badges (aucun cas "réversible" à
-> gérer à part) et pour rester cohérent avec le ton bienveillant du
-> tableur — personne ne se fait reprendre un trophée déjà gagné.
+> **Reportés/écartés explicitement** (détail et raisons dans la spec, §4/§5
+> /§7) : badge Grimpeur (progression de rang — mécanisme déjà pensé en % du
+> classement si repris) ; axe "fan de tel joueur" (référentiel joueurs
+> inexistant, chantier séparé) ; notification de déblocage ; affichage de
+> la série en cours comme stat live distincte du badge.
 >
-> **Axe "fan de tel joueur" écarté de cet inventaire, reporté en chantier
-> séparé** (proposé par l'utilisateur en cours de séance) : aucune donnée
-> structurée sur les joueurs NBA n'existe aujourd'hui (`bets.description`
-> en texte libre, pas de table `players` référentielle contrairement à
-> `teams`, jamais synchronisée) — nécessiterait un référentiel joueurs
-> synchronisé + une retouche du formulaire de pari, aucun backfill possible
-> sur les paris déjà posés en texte libre. Cadré plus tard le moment venu,
-> même patron que Bracket personnel ou Ligues en leur temps.
->
-> **Paliers Bronze/Argent/Or/Platine/Diamant, validés avec l'utilisateur
-> le 08/08/2026** (« tout est bon pour moi pour le moment ») — compteurs
-> cumulés À VIE (toutes compétitions confondues, cohérent avec la
-> permanence actée ci-dessus), croissance approx. ×2.5/×2/×2/×1.7 entre
-> paliers. **Estimations de départ, jamais calibrées sur une compétition
-> allée au bout en conditions réelles — à ajuster à l'usage.**
->
-> *I. Pronostics de match* — vainqueurs corrects (cumulé) : 10/25/50/100/200 ;
-> écarts exacts (cumulé) : 3/8/15/30/50 ; écarts proches non exacts
-> `margin_diff` ≤2 (cumulé) : 8/20/40/75/150 ; série de bons vainqueurs
-> d'affilée (RECORD, cf. règle de permanence) : 3/5/8/12/20 ; participation
-> sans absence (record de série) : 5/15/30/50/80 ; nombre total de matchs
-> pronostiqués (volume) : 5/15/35/70/120.
->
-> *II. Bracket personnel* — vainqueur de série correct (cumulé) :
-> 3/8/15/30/50 ; score de série exact (cumulé) : 2/5/10/20/35 ; affiche
-> correctement anticipée (cumulé) : 1/3/6/12/20 ; tours sans erreur
-> (cumulés) : 1/3/6/12/20. **Bracket rempli à 100% : confirmé badge UNIQUE,
-> pas de palier** (badge de déverrouillage/onboarding).
->
-> *III. Paris perso* — paris gagnés par catégorie (×9 `bet_category`
-> ) : 3/8/15/25/40 ; paris tentés par difficulté (×5 niveaux, peu importe
-> le résultat, noms de palier "prudent/joueur/risqué..." à trouver plus
-> tard) : 3/8/15/25/40 ; paris MATCH gagnés (cumulé) : 5/15/30/50/80 ; paris
-> SERIES gagnés (cumulé, plus rares) : 2/5/10/20/35 ; volume total posé peu
-> importe le résultat : 5/15/35/70/120 ; paris `FUN_OFF_COURT` posés peu
-> importe le résultat : 2/5/10/20/35.
->
-> *IV. Classement global* — points totaux cumulés (toutes sources) :
-> 100/500/1500/4000/10000 ; points cumulés par source (matches/bracket/bets
-> séparément) : 50/200/600/1500/3500 ; jours cumulés passés dans le top 3 :
-> 3/10/25/50/100.
->
-> *V. Fidélité/régularité* — participation globale sans absence (record de
-> série, tous engagements confondus) : 5/15/30/50/80 ; compétitions jouées
-> depuis l'inscription : 1/2/4/6/10 ; ancienneté du compte : 1 mois/3
-> mois/6 mois/1 an/2 ans.
->
-> *VI. Ligues* — **confirmé badge UNIQUE, pas de palier** (appartenance ou
-> création).
->
-> **Reporté à plus tard, explicitement (décision de l'utilisateur)** :
-> - **Badge Grimpeur (progression de rang)** : mécanisme déjà réfléchi si
->   besoin à la reprise — paliers en % du classement traversé plutôt qu'en
->   places absolues (`places gagnées / (nb joueurs classés − 1)`, seuils
->   20/35/50/70/90%), pour rester valable quel que soit le nombre de
->   joueurs dans la compétition (contrairement à un seuil de places fixe,
->   impossible à atteindre pour un petit groupe genre 6-8 joueurs). Pas
->   retenu pour cette 1re passe, l'utilisateur préférant avancer sur le
->   reste d'abord.
-> - **Noms définitifs des badges** : volontairement pas abordés (« on ne va
->   pas tout de suite donner des noms aux badges »).
-> - **Affichage de la série de bons vainqueurs EN COURS** (valeur live,
->   distincte du badge qui reste sur le record) : l'utilisateur veut
->   l'afficher spécifiquement quand elle constitue « la plus longue série
->   en cours » — formulation à clarifier en séance (vraisemblablement :
->   mise en avant seulement quand elle égale/dépasse le record déjà affiché
->   par le badge, plutôt qu'un compteur live systématique).
->
-> **Reste à trancher pour clore ce chantier** : les noms de badges (cf.
-> ci-dessus) ; l'implémentation technique (mécanisme de calcul/stockage des
-> compteurs cumulés à vie, pas encore pensé — aucune spec technique T-quelque
-> chose ne couvre les badges à ce jour) ; l'emplacement d'affichage détaillé
-> dans l'onglet Stats (déjà posé en placeholder, §04/08/2026).
+> **Reste à trancher pour clore ce chantier** : rien côté cadrage — reste
+> uniquement l'implémentation (§6 de la spec : vues SQL, constantes de
+> seuils, requêtes, composant de rendu) et le rendu visuel dans l'onglet
+> Stats (hors périmètre de la spec fonctionnelle, à cadrer séparément).
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2

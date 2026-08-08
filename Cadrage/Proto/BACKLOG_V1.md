@@ -72,12 +72,10 @@
   ci-dessus). **Emplacement tranché le 04/08/2026** : catégorie dédiée dans
   le nouvel onglet Stats du Profil (voir "Historique & stats" ci-dessous) —
   posée en PLACEHOLDER ("Bientôt disponible") en même temps que le reste de
-  l'onglet, la LISTE des badges elle-même reste à spécifier ("on verra
-  après", décision explicite de l'utilisateur). **Cadrage démarré le
-  08/08/2026** (voir `GAPS_OUVERTS.md` pour le détail complet) : inventaire
-  exhaustif des axes badges validé, règle de permanence tranchée (aucune
-  régression, streaks basés sur le record personnel) — paliers concrets et
-  noms de badges restent à définir.
+  l'onglet. **Cadrage CLOS le 08/08/2026** — voir
+  `Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md` (~30 badges,
+  6 axes, paliers Bronze→Diamant, noms validés, approche technique en
+  lecture pure via vue SQL). Reste à coder.
 - Face-à-face entre deux joueurs précis, match par match / série par série
   — EN OPTION, pas prioritaire, utilité encore incertaine pour
   l'utilisateur.
