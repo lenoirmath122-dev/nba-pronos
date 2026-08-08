@@ -73,7 +73,11 @@
   le nouvel onglet Stats du Profil (voir "Historique & stats" ci-dessous) —
   posée en PLACEHOLDER ("Bientôt disponible") en même temps que le reste de
   l'onglet, la LISTE des badges elle-même reste à spécifier ("on verra
-  après", décision explicite de l'utilisateur).
+  après", décision explicite de l'utilisateur). **Cadrage démarré le
+  08/08/2026** (voir `GAPS_OUVERTS.md` pour le détail complet) : inventaire
+  exhaustif des axes badges validé, règle de permanence tranchée (aucune
+  régression, streaks basés sur le record personnel) — paliers concrets et
+  noms de badges restent à définir.
 - Face-à-face entre deux joueurs précis, match par match / série par série
   — EN OPTION, pas prioritaire, utilité encore incertaine pour
   l'utilisateur.
