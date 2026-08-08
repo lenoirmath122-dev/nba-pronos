@@ -27,7 +27,9 @@
 > **Incident sans lien avec le code** : un `VERCEL_OIDC_TOKEN` (courte durée,
 > 12h) affiché en clair dans le terminal par un filtre `grep` incomplet,
 > signalé immédiatement à l'utilisateur — voir `JOURNAL_SESSIONS.md`.
-> `tsc`/`eslint`/`vitest`/`next build` propres. Pas encore committé.
+> `tsc`/`eslint`/`vitest`/`next build` propres. **Committé et poussé**
+> (`e35f7b0`/`1e8d296`, retrouvé déjà fait en tout début de la session du
+> 08/08/2026 — voir `ETAT_ACTUEL.md`).
 >
 > **État au 06/08/2026** — **Rattrapage de suivi : 2 commits non documentés
 > trouvés** (`ETAT_ACTUEL.md` §2.56/§2.57, `JOURNAL_SESSIONS.md` entrées

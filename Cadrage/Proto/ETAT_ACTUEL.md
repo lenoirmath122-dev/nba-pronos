@@ -16,7 +16,11 @@
 > depuis leur création le matin même — corrigé (`pointer-events: none`),
 > confirmé par un nouveau test au clic. Migrations poussées sur la vraie
 > base après confirmation explicite. `tsc`/`eslint`/`vitest`/`next build`
-> propres. Pas encore committé.
+> propres. **Committé et poussé** (`e35f7b0` puis `1e8d296` pour la
+> documentation) — retrouvé déjà fait via `git log`/`git status` en tout
+> début de la session du 08/08/2026, alors que ce fichier disait encore
+> « pas encore committé » (mention laissée obsolète en fin de session
+> précédente).
 >
 > Plus tôt (rattrapage de suivi du 06/08/2026) — **§2.54→§2.57
 > documentés a posteriori** : couleurs d'équipe sur Profil (§2.54, reprise
