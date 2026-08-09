@@ -65,15 +65,15 @@ export function BadgeCard({ badge }: { badge: BadgeDisplay }) {
       <div className={`${styles.flipInner} ${flipped ? styles.flipped : ""}`}>
         <div className={`${faceClass} ${styles.front}`} data-tier={tierAttr} aria-hidden={flipped}>
           <div className={styles.header}>
-            <Icon className={styles.icon} aria-hidden="true" />
             <span className={styles.label}>{badge.label}</span>
+            <Icon className={styles.icon} aria-hidden="true" />
           </div>
           <FrontFace badge={badge} />
         </div>
         <div className={`${faceClass} ${styles.back}`} data-tier={tierAttr} aria-hidden={!flipped}>
           <div className={styles.header}>
-            <Icon className={styles.icon} aria-hidden="true" />
             <span className={styles.label}>{badge.label}</span>
+            <Icon className={styles.icon} aria-hidden="true" />
           </div>
           <span className={styles.description}>{badge.description}</span>
         </div>
