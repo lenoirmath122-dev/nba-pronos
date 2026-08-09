@@ -14,10 +14,18 @@
 > dans `Cadrage/DA/` (voir "Après génération" en bas de ce fichier).
 >
 > **1er essai (10/08/2026, badge Chirurgien)** : résultat concluant —
-> silhouette lisible, fond transparent propre. Bords légèrement irréguliers
-> (rendu peint, pas du vectoriel net) : confirme qu'on repart sur un PNG
-> figé en couleur neutre plutôt qu'un SVG recolorable comme les icônes
-> lucide actuelles (cf. "Contrainte technique" ci-dessous, déjà anticipée).
+> silhouette lisible, fond transparent propre (le rendu partagé en aparté
+> avait un fond blanc, mais c'était un export de partage — le fichier
+> source est bien transparent). Bords légèrement irréguliers (rendu peint,
+> pas du vectoriel net) : confirme qu'on repart sur un PNG figé en couleur
+> neutre plutôt qu'un SVG recolorable comme les icônes lucide actuelles
+> (cf. "Contrainte technique" ci-dessous, déjà anticipée).
+>
+> **2e essai, même badge, nouveau style** : icône encadrée dans un blason/
+> bouclier plutôt que l'icône seule — VALIDÉ par l'utilisateur pour ce
+> badge. **Le cadre n'est PAS une règle fixe pour les 36** : décidé au cas
+> par cas selon ce qui rend bien pour chaque badge, pas de contrainte
+> d'uniformité à respecter en générant les 35 suivants.
 
 ## Contrainte technique à garder en tête
 
