@@ -5495,3 +5495,34 @@ définition encore ouverte) ; rendu visuel par palier (couleurs/bandes
 selon Bronze→Diamant — demandé par l'utilisateur juste après ce lot,
 chantier suivant).
 ```
+
+## Badges permanents — couleurs par palier (09/08/2026, suite immédiate)
+
+```text
+Demandé par l'utilisateur juste après la phase 1 : que la carte change de
+couleur (ou de bandes) selon le palier Bronze/Argent/Or/Platine/Diamant
+où en est le badge, plutôt que le rendu neutre livré en phase 1.
+
+5 tokens sémantiques ajoutés à `app/tokens.css` (`--color-tier-bronze/
+argent/or/platine/diamant`, dark ET clair, même patron d'assombrissement/
+saturation que `--color-accent`/`--color-champion` déjà en place) — Or
+réutilise `--color-champion`, Diamant réutilise `--c-blue-300`, tous deux
+déjà existants dans la palette, seuls Bronze et Platine sont de nouveaux
+tons de raw palette (`--c-bronze-*`, `--c-platinum-*`). `BadgeCard` porte
+un attribut `data-tier` (le palier atteint, absent si aucun palier) lu en
+CSS pur : bande de gauche 3px + fond légèrement teinté (`color-mix`,
+même patron que `--color-accent-soft`) + libellé de palier coloré, en
+plus du style `.unlocked`/`.locked` générique déjà en place (toujours le
+seul repli pour les badges binaires/ladderStep sans palier).
+
+Vérifié au clic (Playwright réinstallé temporairement, retiré après
+usage) : compte `TestJoueur1`, carte Vétéran (seul badge Bronze de ce
+compte à ce jour) affiche bien la bande/teinte cuivrée attendue, aucune
+erreur console. `tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes)
+propres. Committé et poussé (`59570e6`).
+
+**Icônes/visuels dédiés par badge évoqués par l'utilisateur dans la
+foulée, REPORTÉS explicitement** : aucun asset graphique par badge
+n'existe à ce jour (contrairement aux logos d'équipe déjà en place) — à
+reprendre une fois les visuels fournis, pas avant.
+```

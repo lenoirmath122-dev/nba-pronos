@@ -19,9 +19,13 @@
 > l'onglet Badges hors saison — corrigé avant de coder. Vérifié en
 > conditions réelles (vue + rendu au clic, Playwright temporaire).
 > `tsc`/`eslint`/`vitest`/`next build` propres. Committé et poussé
-> (`08aa817`, `fa48beb`, `12b5444`, `2a76d8c`). Restent : phase 2
-> (Métronome/Pilier), phase 3 (Fidèle, définition ouverte), rendu visuel par
-> palier (couleurs/bandes — en cours, voir §2.60 une fois fait).
+> (`08aa817`, `fa48beb`, `12b5444`, `2a76d8c`). **Rendu visuel par palier
+> ajouté dans la foulée** (couleurs/bandes selon Bronze→Diamant, tokens
+> `--color-tier-*` dans `app/tokens.css`, attribut `data-tier` sur
+> `BadgeCard`) — committé et poussé (`59570e6`). Icônes/visuels dédiés par
+> badge évoqués mais REPORTÉS (aucun asset graphique n'existe encore).
+> Restent : phase 2 (Métronome/Pilier), phase 3 (Fidèle, définition
+> ouverte).
 >
 > Plus tôt (session du 06/08/2026, suite) — **thème à 3 choix
 > Sombre/Clair/Photo** (§2.58) : le thème Clair, testé juste après le
@@ -5358,10 +5362,27 @@ Admin (`VerifBadges2026!`, compte de test jetable). `tsc`/`eslint`/
 `vitest` (37/37)/`next build` (36 routes) propres. Committé et poussé
 (`2a76d8c`).
 
+**Rendu visuel par palier — FAIT (09/08/2026, suite immédiate)** : 5
+tokens sémantiques `--color-tier-bronze/argent/or/platine/diamant`
+ajoutés à `app/tokens.css` (dark + clair, même patron d'assombrissement/
+saturation que `--color-accent`/`--color-champion`) — Or réutilise
+`--color-champion`, Diamant réutilise `--c-blue-300`, tous deux déjà
+existants, seuls Bronze/Platine sont de nouveaux tons. `BadgeCard` porte
+un attribut `data-tier` (palier atteint, absent si aucun palier) piloté
+en CSS : bande de gauche 3px + fond légèrement teinté (`color-mix`) +
+libellé de palier coloré, en plus du style `.unlocked`/`.locked`
+générique déjà en place. Vérifié au clic (Playwright temporaire,
+`TestJoueur1`) : carte Vétéran (seul badge Bronze de ce compte)
+visuellement distincte confirmée. `tsc`/`eslint`/`vitest`/`next build`
+propres. Committé et poussé (`59570e6`).
+
+**Icônes/visuels dédiés par badge — évoqués par l'utilisateur, REPORTÉS
+explicitement** : aucun asset graphique par badge n'existe à ce jour
+(contrairement aux logos d'équipe déjà en place) — à reprendre une fois
+les visuels fournis par l'utilisateur, pas avant.
+
 **Reste à faire** : phase 2 (Métronome, Pilier — 1er usage de
 gaps-and-islands SQL dans ce dépôt) ; phase 3 (Fidèle, définition du
-"sans absence combiné" encore à trancher) ; rendu visuel par palier
-(couleurs/bandes selon Bronze→Diamant, voir §2.60) ; noms définitifs
-(déjà faits en réalité, décision explicite de ne pas y toucher davantage
-pour l'instant).
+"sans absence combiné" encore à trancher) ; icônes/visuels par badge
+(ci-dessus, en attente des assets).
 ```

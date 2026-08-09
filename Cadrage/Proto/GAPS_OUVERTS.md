@@ -34,11 +34,23 @@
 > inexistant, chantier séparé) ; notification de déblocage ; affichage de
 > la série en cours comme stat live distincte du badge.
 >
+> **Rendu visuel par palier — FAIT le 09/08/2026** (couleurs/bandes selon
+> Bronze→Diamant, demandé par l'utilisateur juste après la phase 1) : 5
+> tokens sémantiques `--color-tier-*` ajoutés à `app/tokens.css` (dark +
+> clair — Or réutilise `--color-champion`, Diamant réutilise `--c-blue-300`,
+> déjà existants), `BadgeCard` porte un attribut `data-tier` piloté en CSS
+> (bande de gauche + fond teinté + libellé de palier coloré). Vérifié au
+> clic (Playwright temporaire) sur `TestJoueur1` — carte Vétéran (Bronze)
+> confirmée visuellement distincte. `tsc`/`eslint`/`vitest`/`next build`
+> propres. Committé et poussé (`59570e6`).
+>
 > **Reste à faire** : phase 2 (Métronome/Pilier — 1er usage de
 > gaps-and-islands SQL dans ce dépôt) ; phase 3 (Fidèle, définition du
-> "sans absence combiné" encore ouverte) ; rendu visuel par palier
-> (couleurs/bandes selon Bronze→Diamant — EN COURS, chantier suivant
-> immédiat, demandé par l'utilisateur juste après ce lot).
+> "sans absence combiné" encore ouverte) ; **icônes/visuels dédiés par
+> badge** — évoqués par l'utilisateur le 09/08/2026 mais volontairement
+> REPORTÉS, les assets graphiques n'existent pas encore (aucune icône par
+> badge créée à ce jour, contrairement aux logos d'équipe déjà en place) —
+> à reprendre une fois les visuels fournis, pas avant.
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2
