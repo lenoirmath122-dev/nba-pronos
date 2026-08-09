@@ -5463,11 +5463,20 @@ dépendance de prod), pas un dessin sur-mesure ni un asset externe à
 fournir — pertinent ici car ce sont des icônes originales à l'appli, sans
 la contrainte de licence de marque des logos d'équipe. `lib/badges/icons.tsx`
 : mapping 1:1 des 36 badges (aucune répétition), échelle Prudent→Fou
-furieux sur les faces de dé `Dice1`→`Dice5`. Icône affichée à côté du
+furieux sur les faces de dé `Dice1`→`Dice5`. Icône affichée sous le
 libellé sur les 2 faces de `BadgeCard`, colorée selon le palier atteint.
 Vérifié au clic (Playwright temporaire) : 72 `<svg>` rendus, aucune erreur
 console, `tsc` confirme les 36 noms d'icônes. `eslint`/`vitest`/`next
 build` propres. Committé et poussé (`8834596`).
+
+**Icône agrandie + réordonnée (10/08/2026, suite immédiate)** :
+l'utilisateur signale que ces icônes serviront un jour dans le bandeau du
+profil joueur — l'icône devient donc l'info visuelle principale de la
+carte (taille doublée, 1rem→1.75rem) plutôt qu'une décoration à côté du
+texte, puis réordonnée sur demande (titre au-dessus, icône en dessous).
+Committé et poussé (`e65808d`, `d5e18fe`). **Piste future notée, pas
+cadrée** : afficher une sélection de badges dans le bandeau du profil
+(critère de sélection et emplacement exact restent à trancher).
 
 **Reste hors périmètre, volontairement** : badge Grimpeur (progression de
 rang) — seul point non traité du catalogue initial.

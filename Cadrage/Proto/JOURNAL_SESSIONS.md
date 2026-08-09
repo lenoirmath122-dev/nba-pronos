@@ -5750,3 +5750,36 @@ icônes — tout est fait, vérifié et déployé. Seul le badge Grimpeur
 (progression de rang) reste hors périmètre, écarté par choix explicite
 dès le cadrage du 08/08/2026.
 ```
+
+## Badges permanents — icône agrandie et réordonnée (10/08/2026, suite)
+
+```text
+L'utilisateur signale, juste après la clôture du chantier, une
+information nouvelle qui change la priorité visuelle de la carte : ces
+icônes serviront un jour à afficher les badges dans le bandeau du profil
+de chaque joueur (idée mentionnée en passant, pas une demande de
+construire cet affichage maintenant). Conséquence directe demandée :
+l'icône doit devenir « l'info principale » de la carte plutôt qu'une
+petite décoration à côté du texte.
+
+2 ajustements successifs, chacun vérifié séparément (Playwright
+temporaire) :
+1. Icône agrandie de 1rem à 1.75rem, empilée verticalement avec le
+   libellé (au lieu d'une ligne icône+texte côte à côte) — `min-height`
+   de `.flipContainer` ajustée en conséquence (7.5rem → 8.5rem) pour
+   éviter que le contenu ne déborde. Committé (`e65808d`).
+2. Ordre inversé sur demande explicite : titre AU-DESSUS, icône EN
+   DESSOUS (l'inverse de ce que Claude avait posé par défaut à l'étape
+   précédente) — simple échange de 2 lignes JSX dans `BadgeCard.tsx`, le
+   CSS `flex-direction: column` déjà en place s'occupe du reste. Committé
+   (`d5e18fe`).
+
+**Piste future notée dans `GAPS_OUVERTS.md`/`ETAT_ACTUEL.md`, PAS
+cadrée** : afficher une sélection de badges dans le bandeau du profil
+joueur. Rien de plus précisé par l'utilisateur à ce stade — combien de
+badges, quel critère de sélection parmi les 36, emplacement exact dans
+`app/(app)/profile/page.tsx` restent à trancher le jour où ce chantier
+sera repris.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` propres aux 2 étapes.
+```

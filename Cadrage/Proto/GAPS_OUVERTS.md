@@ -70,12 +70,32 @@
 > dépendance de prod. `lib/badges/icons.tsx` — mapping 1:1 des 36 badges,
 > aucune icône répétée ; l'échelle Prudent→Fou furieux reprend les faces de
 > dé `Dice1`→`Dice5` (correspondance littérale avec le niveau). Icône
-> affichée à côté du libellé sur les 2 faces de `BadgeCard`, colorée selon
+> affichée sous le libellé sur les 2 faces de `BadgeCard`, colorée selon
 > le palier (mêmes tokens `--color-tier-*`). Vérifié au clic (Playwright
 > temporaire) : 72 `<svg>` rendus (36 badges × 2 faces), aucune erreur
 > console ; `tsc` confirme au passage que les 36 noms d'icônes existent
 > bien dans la lib. `eslint`/`vitest` (37/37)/`next build` (36 routes)
 > propres. Committé et poussé (`8834596`).
+>
+> **Icône agrandie + réordonnée, le 10/08/2026 (suite immédiate)** :
+> l'utilisateur signale que ces icônes serviront un jour dans le bandeau du
+> profil joueur (voir piste future ci-dessous) — l'icône doit donc dominer
+> visuellement la carte plutôt que rester une petite décoration à côté du
+> texte. Taille doublée (1rem → 1.75rem), empilée verticalement avec le
+> libellé au lieu d'une ligne icône+texte côte à côte, puis ordre inversé
+> sur demande explicite (titre AU-DESSUS, icône EN DESSOUS). Vérifié au
+> clic à chaque étape (Playwright temporaire), aucune erreur console.
+> `tsc`/`eslint`/`vitest`/`next build` propres. Committé et poussé
+> (`e65808d` taille, `d5e18fe` ordre).
+>
+> **Piste future notée, PAS cadrée** : afficher (une sélection de ?) ces
+> badges dans le bandeau du profil de chaque joueur — mentionné par
+> l'utilisateur comme motivation pour agrandir l'icône, mais rien de plus
+> précisé. Reste à trancher le moment venu : combien de badges affichés,
+> quel critère de sélection parmi les 36 (les plus hauts paliers ? les plus
+> récents débloqués ? un choix manuel du joueur ?), emplacement exact dans
+> le bandeau (`app/(app)/profile/page.tsx`, déjà personnalisé par équipe
+> favorite depuis le 04/08/2026, §2.54).
 >
 > **Chantier badges permanents entièrement clos** (spec, 3 phases, couleurs
 > par palier, carte retournée, astuce, icônes). Seul le badge Grimpeur
