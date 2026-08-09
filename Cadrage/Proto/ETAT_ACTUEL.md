@@ -23,10 +23,11 @@
 > tranché avec l'utilisateur). Le 10/08/2026, **interaction "carte
 > retournée" au clic** ajoutée (`BadgeCard` passe en `"use client"`, décrit
 > désormais sa description au dos plutôt qu'en permanence sur la face
-> avant). Toutes les étapes vérifiées en conditions réelles (décomptes
-> manuels concordants, rendu au clic via Playwright temporaire).
+> avant), suivie d'une astuce textuelle sous le titre Badges pour signaler
+> l'interaction. Toutes les étapes vérifiées en conditions réelles
+> (décomptes manuels concordants, rendu au clic via Playwright temporaire).
 > `tsc`/`eslint`/`vitest`/`next build` propres tout du long. Committé et
-> poussé (`08aa817` → `ee820d7`, 8 commits). Restent hors périmètre,
+> poussé (`08aa817` → `a209f22`, 9 commits). Restent hors périmètre,
 > volontairement : badge Grimpeur, icônes/visuels par badge (assets pas
 > fournis).
 >
@@ -5455,6 +5456,12 @@ existants. Vérifié au clic (Playwright temporaire) : bascule d'état
 confirmée (`aria-pressed` false→true→false), description correcte au
 dos, aucune erreur console. `tsc`/`eslint`/`vitest`/`next build`
 propres. Committé et poussé (`ee820d7`).
+
+**Astuce ajoutée (10/08/2026, suite immédiate)** : « Astuce : clique sur
+une carte pour voir sa description. » sous le titre Badges, avant les
+catégories — pour signaler l'interaction carte retournée, pas évidente
+sans indice visuel. Vérifiée au clic (Playwright temporaire). Committée
+et poussée (`a209f22`).
 
 **Reste hors périmètre, volontairement** : badge Grimpeur (progression
 de rang) ; icônes/visuels dédiés par badge (aucun asset graphique

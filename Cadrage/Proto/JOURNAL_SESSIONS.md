@@ -5681,3 +5681,18 @@ Avec ce lot, il ne reste plus que 2 points volontairement hors périmètre
 sur le chantier badges : le badge Grimpeur et les icônes/visuels dédiés
 par badge (en attente d'assets non encore fournis).
 ```
+
+## Badges permanents — astuce de découverte du clic (10/08/2026, suite)
+
+```text
+Demande directe de l'utilisateur juste après le lot précédent : la
+nouvelle interaction carte retournée n'a aucun indice visuel — rien ne
+signale qu'une carte est cliquable. Ajout d'une ligne « Astuce : clique
+sur une carte pour voir sa description. » sous le titre Badges
+(`BadgesSection.tsx`), au-dessus de toutes les catégories, même registre
+que les autres textes discrets du module (`.chartCaption` de
+`page.module.css` réutilisé comme référence de style, pas littéralement
+partagé). Vérifié au clic (Playwright temporaire) : astuce visible au bon
+endroit, aucune erreur console. `tsc`/`eslint`/`vitest`/`next build`
+propres. Committé et poussé (`a209f22`).
+```

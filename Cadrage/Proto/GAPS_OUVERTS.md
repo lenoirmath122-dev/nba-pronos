@@ -57,6 +57,11 @@
 > description correcte au dos, aucune erreur console. `tsc`/`eslint`/
 > `vitest`/`next build` propres. Committé et poussé (`ee820d7`).
 >
+> **Astuce ajoutée le 10/08/2026** : « Astuce : clique sur une carte pour
+> voir sa description. » sous le titre Badges, avant les catégories — pour
+> signaler l'interaction carte retournée ci-dessus, pas évidente sans
+> indice visuel. Committé et poussé (`a209f22`).
+>
 > **Reste hors périmètre du chantier badges** : icônes/visuels dédiés par
 > badge (en attente des assets).
 
