@@ -5696,3 +5696,57 @@ partagé). Vérifié au clic (Playwright temporaire) : astuce visible au bon
 endroit, aucune erreur console. `tsc`/`eslint`/`vitest`/`next build`
 propres. Committé et poussé (`a209f22`).
 ```
+
+## Badges permanents — icônes par badge, chantier clos (10/08/2026, suite)
+
+```text
+L'utilisateur relance : « on va commencer à créer des logos. comment
+faire ? ». Avant de se lancer, Claude vérifie comment les autres assets
+visuels du projet ont été intégrés (`public/logos/teams/README.md`,
+`public/brand/README.md`) : dans les deux cas (logos d'équipe, photos de
+fond), la source vient de l'utilisateur (licence/possession pour les
+logos, Unsplash fourni via zip pour les photos), Claude ne fait que
+l'intégration technique. Mais les icônes de badges sont un cas différent
+— du contenu ORIGINAL à l'appli, sans contrainte de licence de marque —
+donc 3 chemins possibles proposés à l'utilisateur (`AskUserQuestion`) :
+dessin SVG sur-mesure par Claude, sourcing externe par l'utilisateur
+(même patron que les photos), ou bibliothèque d'icônes sous licence.
+**Choix : bibliothèque sous licence.**
+
+`lucide-react` (ISC) retenue et installée comme dépendance de PRODUCTION
+(contrairement à Playwright, réinstallé/retiré à chaque vérification —
+lucide-react reste dans le bundle final). `lib/badges/icons.tsx` : un
+mapping direct `BadgeId -> icône`, choisi pour coller au concept de
+chaque badge autant que possible (ex. Chirurgien -> `Crosshair`, Horloger
+-> `Clock`, Duelliste -> `Swords`, Collectionneur -> `Gem`) — aucune
+icône répétée sur les 36 badges. Trouvaille pendant la construction du
+mapping : l'échelle de difficulté Prudent -> Fou furieux (5 badges) colle
+naturellement aux faces de dé `Dice1` -> `Dice5` déjà présentes dans la
+lib, correspondance littérale avec le niveau 1 à 5 plutôt qu'un choix
+arbitraire.
+
+Intégration dans `BadgeCard.tsx` : icône affichée à côté du libellé, sur
+les 2 faces (avant/arrière) de la carte retournable — colorée avec les
+mêmes tokens `--color-tier-*` que la bande/le fond déjà en place, aucun
+nouveau token nécessaire.
+
+**Vérification de choix pragmatique** : plutôt que de vérifier chaque nom
+d'icône un par un contre la doc lucide (36 imports nommés), Claude a
+choisi les 36 noms sur sa connaissance de la lib et laissé `tsc --noEmit`
+faire office de garde-fou immédiat — un import nommé inexistant aurait
+échoué à la compilation. Les 36 noms se sont révélés corrects du premier
+coup, aucune correction nécessaire.
+
+**Vérifié en conditions RÉELLES** (Playwright temporaire, retiré après
+usage) : 72 `<svg>` comptés sur la page (36 badges × 2 faces), capture
+d'écran confirmant un rendu visuel cohérent avec le design minimaliste
+existant, aucune erreur console. `tsc --noEmit`, `eslint`, `vitest run`
+(37/37), `next build` (36 routes) tous propres. Committé et poussé
+(`8834596`).
+
+**Avec ce lot, le chantier badges permanents est ENTIÈREMENT CLOS** :
+spec, 3 phases de code, couleurs par palier, carte retournée, astuce,
+icônes — tout est fait, vérifié et déployé. Seul le badge Grimpeur
+(progression de rang) reste hors périmètre, écarté par choix explicite
+dès le cadrage du 08/08/2026.
+```

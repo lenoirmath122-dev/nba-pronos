@@ -62,8 +62,24 @@
 > signaler l'interaction carte retournée ci-dessus, pas évidente sans
 > indice visuel. Committé et poussé (`a209f22`).
 >
-> **Reste hors périmètre du chantier badges** : icônes/visuels dédiés par
-> badge (en attente des assets).
+> **Icônes de badges — FAITES le 10/08/2026 : chantier badges CLOS dans son
+> intégralité.** Décision prise avec l'utilisateur (3 options proposées :
+> dessin SVG sur-mesure par Claude, assets fournis par l'utilisateur —
+> même patron que les photos de fond Unsplash, ou bibliothèque sous
+> licence) : **bibliothèque `lucide-react`** (ISC), installée comme
+> dépendance de prod. `lib/badges/icons.tsx` — mapping 1:1 des 36 badges,
+> aucune icône répétée ; l'échelle Prudent→Fou furieux reprend les faces de
+> dé `Dice1`→`Dice5` (correspondance littérale avec le niveau). Icône
+> affichée à côté du libellé sur les 2 faces de `BadgeCard`, colorée selon
+> le palier (mêmes tokens `--color-tier-*`). Vérifié au clic (Playwright
+> temporaire) : 72 `<svg>` rendus (36 badges × 2 faces), aucune erreur
+> console ; `tsc` confirme au passage que les 36 noms d'icônes existent
+> bien dans la lib. `eslint`/`vitest` (37/37)/`next build` (36 routes)
+> propres. Committé et poussé (`8834596`).
+>
+> **Chantier badges permanents entièrement clos** (spec, 3 phases, couleurs
+> par palier, carte retournée, astuce, icônes). Seul le badge Grimpeur
+> (progression de rang) reste hors périmètre, écarté par choix explicite.
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2

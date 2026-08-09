@@ -6,30 +6,23 @@
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
 > Dernière mise à jour : sessions du 08-10/08/2026 — **badges permanents :
-> cadrage complet + catalogue de base ENTIÈREMENT CODÉ + interaction carte
-> retournée** (§2.59) : 3e et dernier chantier prioritaire du reclassement
-> du 30/07/2026, jusque-là non cadré. Spec dédiée
-> (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md`) : ~30 badges
+> CHANTIER ENTIÈREMENT CLOS** (§2.59) : 3e et dernier chantier prioritaire
+> du reclassement du 30/07/2026, jusque-là non cadré. Spec dédiée
+> (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md`) : 36 badges
 > sur 6 axes, paliers Bronze→Diamant, principe de permanence (aucune
-> régression). 3 phases codées et poussées le 09/08/2026 : **phase 1** (25
-> badges hors streaks, migration #25, vue `user_badges_lifetime` —
-> remplace le placeholder de l'onglet Stats, corrige au passage un bug
-> structurel qui aurait fait disparaître l'onglet hors saison) ; **rendu
-> visuel par palier** (tokens `--color-tier-*`, attribut `data-tier` sur
-> `BadgeCard`) ; **phase 2** (Métronome/Pilier, migration #26, vue
-> `user_competition_streaks` — 1er usage de gaps-and-islands SQL dans ce
-> dépôt) ; **phase 3** (Fidèle, migration #27 — règle d'union pronostic OU
-> pari MATCH rattaché au match précis, un pari SÉRIE ne compte jamais,
-> tranché avec l'utilisateur). Le 10/08/2026, **interaction "carte
-> retournée" au clic** ajoutée (`BadgeCard` passe en `"use client"`, décrit
-> désormais sa description au dos plutôt qu'en permanence sur la face
-> avant), suivie d'une astuce textuelle sous le titre Badges pour signaler
-> l'interaction. Toutes les étapes vérifiées en conditions réelles
-> (décomptes manuels concordants, rendu au clic via Playwright temporaire).
+> régression). Codé et poussé du 09 au 10/08/2026 : **3 phases** (phase 1 —
+> 25 badges hors streaks, migration #25, vue `user_badges_lifetime` ;
+> phase 2 — Métronome/Pilier, migration #26, 1er usage de gaps-and-islands
+> SQL dans ce dépôt ; phase 3 — Fidèle, migration #27, règle d'union
+> pronostic OU pari MATCH rattaché au match précis) ; **rendu visuel par
+> palier** (tokens `--color-tier-*`) ; **interaction "carte retournée" au
+> clic** (`BadgeCard` en `"use client"`) + astuce de découverte ; **icône
+> par badge** (`lucide-react`, `lib/badges/icons.tsx`, mapping 1:1 des 36
+> badges). Toutes les étapes vérifiées en conditions réelles (décomptes
+> manuels concordants, rendu au clic via Playwright temporaire).
 > `tsc`/`eslint`/`vitest`/`next build` propres tout du long. Committé et
-> poussé (`08aa817` → `a209f22`, 9 commits). Restent hors périmètre,
-> volontairement : badge Grimpeur, icônes/visuels par badge (assets pas
-> fournis).
+> poussé (`08aa817` → `8834596`, 10 commits). Seul le badge Grimpeur
+> (progression de rang) reste hors périmètre, écarté par choix explicite.
 >
 > Plus tôt (session du 06/08/2026, suite) — **thème à 3 choix
 > Sombre/Clair/Photo** (§2.58) : le thème Clair, testé juste après le
@@ -5463,7 +5456,19 @@ catégories — pour signaler l'interaction carte retournée, pas évidente
 sans indice visuel. Vérifiée au clic (Playwright temporaire). Committée
 et poussée (`a209f22`).
 
-**Reste hors périmètre, volontairement** : badge Grimpeur (progression
-de rang) ; icônes/visuels dédiés par badge (aucun asset graphique
-n'existe à ce jour).
+**Icônes de badges — FAITES (10/08/2026, suite immédiate) : CHANTIER
+BADGES ENTIÈREMENT CLOS.** Décision prise avec l'utilisateur (3 options
+proposées, cf. `GAPS_OUVERTS.md`) : bibliothèque `lucide-react` (ISC,
+dépendance de prod), pas un dessin sur-mesure ni un asset externe à
+fournir — pertinent ici car ce sont des icônes originales à l'appli, sans
+la contrainte de licence de marque des logos d'équipe. `lib/badges/icons.tsx`
+: mapping 1:1 des 36 badges (aucune répétition), échelle Prudent→Fou
+furieux sur les faces de dé `Dice1`→`Dice5`. Icône affichée à côté du
+libellé sur les 2 faces de `BadgeCard`, colorée selon le palier atteint.
+Vérifié au clic (Playwright temporaire) : 72 `<svg>` rendus, aucune erreur
+console, `tsc` confirme les 36 noms d'icônes. `eslint`/`vitest`/`next
+build` propres. Committé et poussé (`8834596`).
+
+**Reste hors périmètre, volontairement** : badge Grimpeur (progression de
+rang) — seul point non traité du catalogue initial.
 ```
