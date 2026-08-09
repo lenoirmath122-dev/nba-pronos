@@ -5372,3 +5372,126 @@ aucun conflit) tous propres, revérifiés après le correctif pointer-events.
 Pas encore committé. Documenté ici et dans `ETAT_ACTUEL.md` §2.58.
 
 PAS committé ni déployé à ce stade (à confirmer avec l'utilisateur).
+
+## Badges permanents — cadrage complet + code phase 1 (08-09/08/2026)
+
+```text
+3e et dernier chantier prioritaire du reclassement du 30/07/2026 (après
+Bracket personnel et Tutoriel joueur), jusque-là non cadré. Ouvert par la
+question directe de l'utilisateur en tout début de session du 08/08 :
+« on va faire la liste complète de toutes les catégories qui peuvent
+donner lieu à la création d'un badge ».
+
+**Matière première** : l'utilisateur a fourni un tableur manuel pré-appli
+(`Cadrage/DA/🏀 NBA Pronos - 22_04_2026 (réponses) (1).xlsx`, personnel,
+non commité) — suivi manuel des pronos entre amis avant que l'appli
+existe, avec une taxonomie de paris perso construite par classification
+IA a posteriori et des recaps humoristiques par soirée ("Tableau
+d'honneur"/"Salle des brancards"/"Zone Maïno"/"Bilan des points bonus").
+Converti en CSV via un script Node jetable (paquet `xlsx` installé
+temporairement dans le scratchpad, jamais dans le dépôt). Trouvaille
+utile : le `bet_category` réel de l'app (9 valeurs, migration initiale)
+recoupe quasi mot pour mot cette taxonomie — les badges par catégorie de
+pari sont donc calculables sur de la vraie donnée structurée, pas une
+reconstruction a posteriori.
+
+**Cadrage fonctionnel, par étapes successives avec l'utilisateur** :
+1. Inventaire EXHAUSTIF des axes (pas encore les noms) — 6 catégories (I.
+   Pronostics de match, II. Bracket personnel, III. Paris perso, IV.
+   Classement global, V. Fidélité/régularité, VI. Ligues), repris/ajusté
+   par l'utilisateur point par point (ajouts : volume de matchs
+   pronostiqués, volume de scores de série exacts ; clarification écart
+   proche vs exact).
+2. Axe "fan de tel joueur" proposé par l'utilisateur en cours de séance —
+   écarté après avoir signalé qu'aucun référentiel joueurs NBA n'existe
+   dans le schéma (contrairement à `teams`, synchronisée) : nécessiterait
+   un chantier structurel à part (référentiel + formulaire de pari
+   retouché), reporté à plus tard.
+3. Question "badge réversible ou permanent" tranchée AVANT les paliers,
+   à la demande de l'utilisateur : tous les badges restent acquis pour
+   toujours (aucune régression), y compris les 2 axes streak (bons
+   vainqueurs d'affilée, participation sans absence), dont le palier se
+   base sur le RECORD personnel jamais atteint. Choisi pour un mécanisme
+   unique et pour rester cohérent avec le ton bienveillant du tableur
+   (personne ne se fait reprendre un trophée déjà gagné). Nuance ajoutée
+   par l'utilisateur : la série EN COURS doit quand même s'afficher
+   quelque part si elle égale/dépasse le record — détail d'affichage
+   resté ouvert.
+4. Paliers Bronze/Argent/Or/Platine/Diamant proposés par Claude (grille
+   générique ×2.5/×2/×2/×1.7) puis chiffrés axe par axe, validés en bloc
+   (« tout est bon pour moi pour le moment »). Badge Grimpeur (progression
+   de rang) mis de côté par l'utilisateur après avoir buté sur comment
+   l'ajuster à la taille variable du groupe — mécanisme en % du
+   classement traversé proposé et noté pour une reprise future, jamais
+   codé.
+5. Noms des badges : demande explicite de l'utilisateur de d'abord finir
+   l'inventaire des catégories avant de nommer quoi que ce soit («on ne
+   va pas tout de suite donner des noms aux badges »). Une fois les
+   paliers validés, 1er jet de noms proposé par Claude (ton "Tableau
+   d'honneur"), repris et ajusté par l'utilisateur badge par badge
+   (simplification en un seul mot la plupart du temps — Chirurgien,
+   Horloger, Duelliste, Maïno (hommage direct au joueur du tableur)...).
+   Axe "scope MATCH vs SERIES des paris perso" retiré à ce stade — pas
+   assez parlant pour l'utilisateur une fois expliqué, aucun nom ne
+   convenait.
+
+**Spec dédiée écrite** (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS
+_V0_1.md`, même patron que le Tutoriel joueur ou Bracket personnel en
+leur temps) plutôt que de laisser le cadrage éparpillé dans
+`GAPS_OUVERTS.md`, qui grossissait trop pour son rôle de "points
+ouverts". Catalogue complet ~30 badges, principe de permanence, axes
+écartés/reportés, fichiers prévus pour le code. Committé/poussé
+(`08aa817` doc suivi, `fa48beb` spec).
+
+**Cadrage technique (mode Plan, 08/08/2026 suite)** : 2 agents Explore en
+parallèle (câblage de l'onglet Stats/placeholder Badges ; schéma exact
+nécessaire aux vues d'agrégation à vie) puis 1 agent Plan pour concevoir
+l'implémentation. 3 questions structurantes tranchées AVEC l'utilisateur
+avant le plan final (`AskUserQuestion`) : Sans-faute = vainqueurs de
+série du tour uniquement (pas les 3 composantes) ; statuts "posé/tenté" =
+tout sauf DRAFT et CANCELLED, précision de l'utilisateur au passage — un
+DRAFT auto-validé à la deadline doit quand même compter (déjà couvert
+par la lecture du statut ACTUEL, pas de logique supplémentaire
+nécessaire). Plan approuvé (`ExitPlanMode`) : vue SQL en lecture pure
+(`user_badges_lifetime`, même patron non matérialisé que `user_scores`,
+scopée user_id seul au lieu de competition_id), seuils en constantes
+TypeScript, découpage en 3 phases (25 badges non-streak d'abord — 1er
+usage de gaps-and-islands SQL dans ce dépôt jamais tenté avant, reporté
+aux 2 badges streak calculables sans ambiguïté ; Fidèle isolé en phase 3
+distincte, sa définition du "sans absence combiné" restant un problème de
+design produit non résolu, signalé par la spec elle-même).
+
+**Code — phase 1 (09/08/2026)** : migration #25
+(`20260809090000_badges_lifetime_view.sql`), `lib/badges/thresholds.ts`,
+`lib/badges/labels.ts`, `lib/queries/badges.ts` (`getProfileBadges`,
+sans paramètre de scope ligue — aucune comparaison entre joueurs sur un
+accomplissement personnel), `components/profile/BadgesSection.tsx`/
+`BadgeCard.tsx` (+ CSS, réutilise `ProgressBar` existant). **Correctif
+structurel trouvé en lisant `page.tsx` avant de coder** (pas un bug
+préexistant signalé par l'utilisateur, repéré par Claude pendant
+l'exploration) : le placeholder Badges était niché à l'intérieur de la
+branche `!stats.hasActiveCompetition`, ce qui aurait fait disparaître
+l'onglet Badges hors saison — contradiction avec le principe même de
+badges PERMANENTS. Sorti en section sœur avant même d'écrire le premier
+composant.
+
+**Vérifié en conditions RÉELLES** : vue vérifiée par script jetable
+service_role (décompte manuel `match_correct_winners` comparé à la vue
+sur les 6 comptes actifs, tous concordants). Rendu vérifié au clic
+(Playwright réinstallé temporairement en dev dependency, retiré après
+usage, même patron que les sessions précédentes) : compte `TestJoueur1`,
+6 catégories affichées, valeurs cohérentes avec la vue, aucune erreur
+console. **Incident mineur sans lien avec les données réelles** : le mot
+de passe connu de `TestJoueur1` (posé lors du tutoriel joueur, §2.51 de
+l'époque) ne fonctionnait plus — réinitialisé via l'API Admin
+(`auth.admin.updateUserById`) plutôt que redemandé à l'utilisateur en
+chat, compte de test jetable sans conséquence.
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (36 routes)
+tous propres. Committé et poussé (`2a76d8c`).
+
+**Reste à faire** : phase 2 (Métronome, Pilier) ; phase 3 (Fidèle,
+définition encore ouverte) ; rendu visuel par palier (couleurs/bandes
+selon Bronze→Diamant — demandé par l'utilisateur juste après ce lot,
+chantier suivant).
+```

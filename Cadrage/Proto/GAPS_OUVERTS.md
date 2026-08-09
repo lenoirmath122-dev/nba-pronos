@@ -4,23 +4,29 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 08/08/2026** — **Badges permanents : cadrage CLOS, reste à
-> coder** (`BACKLOG_V1.md` § "Fun / esprit ligue entre potes", chantier
-> ouvert le 30/07/2026, 3e des chantiers prioritaires du reclassement du
-> 30/07/2026, après Bracket personnel et Tutoriel joueur — voir
-> `Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md` pour le détail
-> complet). Cadré en séance à partir d'un tableur manuel pré-appli fourni
-> par l'utilisateur (taxonomie des paris perso, quasi identique au
-> `bet_category` réel de l'app) et du schéma réel (`match_predictions`/
-> `bracket_picks`/`bets`/`user_scores`/`leaderboard_snapshots`).
->
-> Résumé : inventaire de ~30 badges répartis sur 6 axes (pronostics de
-> match, bracket personnel, paris perso, classement global, fidélité,
-> ligues), tous cumulés À VIE (toutes compétitions confondues), permanents
-> une fois débloqués (aucune régression), calculés en LECTURE PURE via
-> une/des vue(s) SQL (même patron que `user_scores`, pas de nouvelle table
-> de state). Noms et seuils Bronze/Argent/Or/Platine/Diamant validés un par
-> un avec l'utilisateur (détail exhaustif dans la spec).
+> **État au 09/08/2026** — **Badges permanents : phase 1 CODÉE et
+> VÉRIFIÉE en conditions réelles** (`BACKLOG_V1.md` § "Fun / esprit ligue
+> entre potes", chantier ouvert le 30/07/2026, 3e des chantiers
+> prioritaires du reclassement, après Bracket personnel et Tutoriel joueur
+> — voir `Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md` et
+> `ETAT_ACTUEL.md` §2.59 pour le détail complet). Cadrage fonctionnel +
+> technique CLOS le 08/08/2026 ; 25 des ~30 badges du catalogue (tout SAUF
+> les 3 streaks Métronome/Pilier/Fidèle) codés et poussés le 09/08/2026 :
+> migration #25 (vue `user_badges_lifetime`, lecture pure, agrégats à vie
+> toutes compétitions confondues, même patron que `user_scores`),
+> `lib/badges/thresholds.ts`/`labels.ts`, `lib/queries/badges.ts`,
+> `components/profile/BadgesSection.tsx`/`BadgeCard.tsx` — remplacent le
+> placeholder de l'onglet Stats. **Correctif structurel trouvé en lisant le
+> code avant de coder** (pas signalé par l'utilisateur, repéré en
+> explorant) : le placeholder était niché dans la branche "compétition
+> active", ce qui aurait fait disparaître l'onglet Badges hors saison —
+> corrigé. Vérifié en conditions réelles : vue comparée à un décompte
+> manuel sur les 6 comptes actifs (tous concordants), rendu vérifié au
+> clic (Playwright temporaire, compte `TestJoueur1`). Mot de passe de
+> `TestJoueur1` expiré, réinitialisé via l'API Admin sans redemander à
+> l'utilisateur (compte de test jetable). `tsc`/`eslint`/`vitest`
+> (37/37)/`next build` (36 routes) propres. Committé et poussé (`08aa817`,
+> `fa48beb`, `12b5444`, `2a76d8c`).
 >
 > **Reportés/écartés explicitement** (détail et raisons dans la spec, §4/§5
 > /§7) : badge Grimpeur (progression de rang — mécanisme déjà pensé en % du
@@ -28,10 +34,11 @@
 > inexistant, chantier séparé) ; notification de déblocage ; affichage de
 > la série en cours comme stat live distincte du badge.
 >
-> **Reste à trancher pour clore ce chantier** : rien côté cadrage — reste
-> uniquement l'implémentation (§6 de la spec : vues SQL, constantes de
-> seuils, requêtes, composant de rendu) et le rendu visuel dans l'onglet
-> Stats (hors périmètre de la spec fonctionnelle, à cadrer séparément).
+> **Reste à faire** : phase 2 (Métronome/Pilier — 1er usage de
+> gaps-and-islands SQL dans ce dépôt) ; phase 3 (Fidèle, définition du
+> "sans absence combiné" encore ouverte) ; rendu visuel par palier
+> (couleurs/bandes selon Bronze→Diamant — EN COURS, chantier suivant
+> immédiat, demandé par l'utilisateur juste après ce lot).
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2
