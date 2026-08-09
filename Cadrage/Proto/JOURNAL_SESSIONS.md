@@ -5526,3 +5526,59 @@ foulée, REPORTÉS explicitement** : aucun asset graphique par badge
 n'existe à ce jour (contrairement aux logos d'équipe déjà en place) — à
 reprendre une fois les visuels fournis, pas avant.
 ```
+
+## Badges permanents — phase 2 : Métronome + Pilier (09/08/2026, suite)
+
+```text
+L'utilisateur relance la séance en demandant un rappel de ce que
+recouvraient les phases 2 et 3 (question directe, pas de mémoire
+implicite supposée). Claude recommande d'attaquer la phase 2 seule
+(Métronome/Pilier techniquement prêts) plutôt que de tout regrouper avec
+Fidèle (question produit non tranchée) — recommandation suivie sans
+discussion. Au lancement, l'utilisateur ajoute une demande distincte :
+noter (pas coder) une interaction "carte retournée au clic" pour afficher
+la description au dos du badge — ajoutée à `GAPS_OUVERTS.md`/
+`ETAT_ACTUEL.md`, non cadrée en détail, même famille que les icônes.
+
+**Migration #26** (`20260809100000_badges_streaks_view.sql`) : vue
+`user_competition_streaks`, grain `(user_id, competition_id)` — 1er
+usage de gaps-and-islands SQL dans ce dépôt (confirmé par grep : aucune
+migration précédente n'utilise `row_number()`/`partition by`). Métronome
+: technique gaps-and-islands classique sur les pronostics figés, ordonnés
+par `matches.scheduled_at`. Pilier : plus dur, une absence est un match
+du calendrier SANS pronostic figé — il faut donc croiser TOUS les matchs
+éligibles de la compétition (`matches`) avec chaque joueur ayant
+participé, pas seulement grouper les lignes `match_predictions`
+existantes.
+
+**Point flagué à l'utilisateur avant de pousser (AskUserQuestion
+implicite en texte, pas l'outil)** : quels matchs comptent comme
+"exigibles" pour Pilier ? Proposé et confirmé sans changement : coup
+d'envoi déjà passé (un match futur n'est pas encore une absence) et ni
+CANCELLED ni POSTPONED (même neutralisation que le moteur de scoring,
+`lib/scoring/engine.ts` §5 — personne n'est pénalisé pour un match
+annulé). Migration poussée après confirmation explicite.
+
+Le RECORD à vie affiché par le badge (max de toutes les compétitions
+jamais jouées) reste réduit côté TypeScript (`lib/queries/badges.ts`),
+pas en SQL — choix déjà acté pendant le cadrage technique du 08/08,
+plus simple sur ce 1er usage de la technique. `lib/badges/thresholds.ts`
+/`labels.ts` étendus (Métronome/Pilier rejoignent la catégorie I).
+
+**Vérifié en conditions RÉELLES** : script jetable service_role
+recalculant le gaps-and-islands en JS pur, comparé à la vue sur les 9
+lignes (joueur, compétition) existantes en base — toutes concordantes
+pour Métronome. Vérification manuelle dédiée pour Pilier (plus complexe,
+croisement de calendrier) sur `TestJoueur1` : `pilier_streak = 3`
+confirmé à la main sur 8 matchs éligibles pour sa compétition. Rendu
+vérifié au clic (Playwright temporaire, retiré après usage) : Métronome
+affiche Bronze (3/5, bande colorée comme les autres badges à palier),
+Pilier sans palier (3/5, sous le seuil Bronze) — comportement attendu,
+aucune erreur console. `tsc --noEmit`, `eslint`, `vitest run` (37/37),
+`next build` (36 routes) tous propres. Committé et poussé (`ec97ef3`).
+
+**Reste à faire** : phase 3 (Fidèle — définition du "sans absence
+combiné" pronos+paris toujours pas tranchée) ; icônes/visuels par badge
+et interaction "carte retournée" (notées, en attente d'assets/de
+cadrage, pas bloquantes).
+```

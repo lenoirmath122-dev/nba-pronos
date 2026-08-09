@@ -44,13 +44,33 @@
 > confirmée visuellement distincte. `tsc`/`eslint`/`vitest`/`next build`
 > propres. Committé et poussé (`59570e6`).
 >
-> **Reste à faire** : phase 2 (Métronome/Pilier — 1er usage de
-> gaps-and-islands SQL dans ce dépôt) ; phase 3 (Fidèle, définition du
-> "sans absence combiné" encore ouverte) ; **icônes/visuels dédiés par
-> badge** — évoqués par l'utilisateur le 09/08/2026 mais volontairement
-> REPORTÉS, les assets graphiques n'existent pas encore (aucune icône par
-> badge créée à ce jour, contrairement aux logos d'équipe déjà en place) —
-> à reprendre une fois les visuels fournis, pas avant.
+> **Interaction "carte retournée" évoquée par l'utilisateur (09/08/2026),
+> NOTÉE mais PAS codée** : au clic sur un badge, la carte se retourne (flip)
+> pour afficher sa description au dos, plutôt que la description toujours
+> visible comme aujourd'hui. Idée UI, pas encore cadrée en détail (quand
+> déclencher : clic/tap uniquement, ou aussi survol desktop ? tous les
+> badges ou seulement les `tiered` ?) — à reprendre plus tard, en même temps
+> que les icônes/visuels par badge probablement (même famille de chantier
+> "polish visuel").
+>
+> **Phase 2 (Métronome + Pilier) — FAITE le 09/08/2026** : migration #26
+> (vue `user_competition_streaks`, grain user+compétition — 1er usage de
+> gaps-and-islands SQL dans ce dépôt), record à vie réduit côté TypeScript.
+> Hypothèse sur les matchs "éligibles" pour Pilier confirmée avec
+> l'utilisateur : coup d'envoi déjà passé, ni CANCELLED ni POSTPONED (même
+> neutralisation que le moteur de scoring). Vérifié en conditions réelles :
+> vue comparée à un décompte manuel (gaps-and-islands en JS) sur les 9
+> lignes (joueur, compétition) existantes, toutes concordantes — Métronome
+> ET Pilier. Rendu vérifié au clic. `tsc`/`eslint`/`vitest`/`next build`
+> propres. Committé et poussé (`ec97ef3`).
+>
+> **Reste à faire** : phase 3 (Fidèle, définition du "sans absence
+> combiné" encore ouverte) ; **icônes/visuels dédiés par badge** — évoqués
+> par l'utilisateur le 09/08/2026 mais volontairement REPORTÉS, les assets
+> graphiques n'existent pas encore (aucune icône par badge créée à ce jour,
+> contrairement aux logos d'équipe déjà en place) — à reprendre une fois
+> les visuels fournis, pas avant ; **interaction "carte retournée" au clic**
+> (ci-dessus), idée notée mais pas cadrée en détail.
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2
