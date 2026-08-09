@@ -1,3 +1,43 @@
+/* Carte retournable au clic/tap (10/08/2026) — face avant = état courant
+   (palier/progression ou verrouillé-débloqué), face arrière = description.
+   .flipContainer réinitialise les styles par défaut du <button> qui porte
+   l'interaction (accessible au clavier, contrairement à un <div onClick>). */
+.flipContainer {
+  display: block;
+  width: 100%;
+  min-height: 7.5rem;
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  perspective: 1000px;
+}
+
+.flipInner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform var(--motion-flip-duration) ease;
+  transform-style: preserve-3d;
+}
+
+.flipInner.flipped {
+  transform: rotateY(180deg);
+}
+
+.face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+
+.back {
+  transform: rotateY(180deg);
+}
+
 .card {
   display: flex;
   flex-direction: column;

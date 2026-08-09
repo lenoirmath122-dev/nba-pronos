@@ -220,6 +220,7 @@
   --motion-flash-duration:  1200ms;
   --motion-flash-easing:    cubic-bezier(0.2, 0, 0, 1);     /* ease-out : pic immédiat, retour doux */
   --motion-pulse-duration:  1500ms;                          /* pulse du point live (dérivé §7.1) */
+  --motion-flip-duration:   400ms;                           /* retournement carte badge (09/08/2026) */
 
 
   /* ========================================================================
@@ -344,5 +345,6 @@
   :root {
     --motion-flash-duration: 0ms;
     --motion-pulse-duration: 0ms;
+    --motion-flip-duration:  0ms;
   }
 }
