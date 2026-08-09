@@ -46,6 +46,7 @@ export const BADGE_LABELS: Record<BadgeId, string> = {
   PARIS_PERSOS_MASTER: "Paris Persos Master",
   PODIUMISTA: "Podiumista",
 
+  FIDELE: "Fidèle",
   VETERAN: "Vétéran",
   DOYEN: "Doyen",
 
@@ -89,6 +90,7 @@ export const BADGE_DESCRIPTIONS: Record<BadgeId, string> = {
   PARIS_PERSOS_MASTER: "Points cumulés issus des paris perso",
   PODIUMISTA: "Jours cumulés passés dans le top 3 du classement",
 
+  FIDELE: "Record de participation sans absence, pronostics et paris confondus",
   VETERAN: "Compétitions distinctes jouées depuis l'inscription",
   DOYEN: "Ancienneté du compte",
 
@@ -136,7 +138,7 @@ export const BADGE_CATEGORIES: { id: BadgeCategoryId; title: string; badges: Bad
   {
     id: "LOYALTY",
     title: "Fidélité / régularité",
-    badges: ["VETERAN", "DOYEN"],
+    badges: ["FIDELE", "VETERAN", "DOYEN"],
   },
   {
     id: "LEAGUES",

@@ -6,10 +6,9 @@
 // lib/labels/bets.ts (BET_DIFFICULTY_POINTS notamment) — un badge et un
 // libellé de formulaire ne portent jamais la même signification (spec §0).
 //
-// Phase 1 (25 badges) + phase 2 (Métronome, Pilier — 09/08/2026). Fidèle
-// (streak transverse pronos+paris) et Grimpeur (progression de rang) ne sont
-// toujours pas implémentés, cf. §7 de la spec — Fidèle reste bloqué par une
-// définition produit encore ouverte ("sans absence combiné").
+// Phase 1 (25 badges) + phase 2 (Métronome, Pilier) + phase 3 (Fidèle —
+// 09/08/2026, catalogue de base désormais complet). Seul Grimpeur
+// (progression de rang) reste hors périmètre, cf. §7 de la spec.
 
 export type BadgeTier = "BRONZE" | "ARGENT" | "OR" | "PLATINE" | "DIAMANT";
 
@@ -45,6 +44,7 @@ export type TieredBadgeId =
   | "PARIS_PERSOS_MASTER"
   | "PODIUMISTA"
   // V. Fidélité / régularité
+  | "FIDELE"
   | "VETERAN"
   | "DOYEN";
 
@@ -90,6 +90,13 @@ export const TIERED_BADGE_THRESHOLDS: Record<TieredBadgeId, TierThresholds> = {
   BRACKET_MASTER: [50, 200, 600, 1500, 3500],
   PARIS_PERSOS_MASTER: [50, 200, 600, 1500, 3500],
   PODIUMISTA: [3, 10, 25, 50, 100],
+
+  // Record personnel de la plus longue série sans absence, pronostics ET
+  // paris confondus (union — un pari MATCH rattaché au match précis compte
+  // autant qu'un pronostic ; un pari SÉRIE ne compte jamais, cf. migration
+  // #27). Streak à l'intérieur d'une compétition, max réduit côté
+  // TypeScript entre compétitions, même patron que Métronome/Pilier.
+  FIDELE: [5, 15, 30, 50, 80],
 
   VETERAN: [1, 2, 4, 6, 10],
   // Ancienneté du compte en JOURS (1 mois/3 mois/6 mois/1 an/2 ans,
