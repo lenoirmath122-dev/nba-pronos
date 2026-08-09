@@ -14,6 +14,7 @@ export function BadgesSection({ data }: { data: ProfileBadgesData }) {
 
   return (
     <div className={styles.wrapper}>
+      <p className={styles.hint}>Astuce : clique sur une carte pour voir sa description.</p>
       {data.categories.map((category) => (
         <div key={category.id} className={styles.category}>
           <h3 className={styles.categoryTitle}>{category.title}</h3>

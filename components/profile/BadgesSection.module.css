@@ -1,13 +1,17 @@
-/* Badges permanents (09/08/2026, phase 1) — cf.
-   Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md. Rendu visuel
-   volontairement neutre (spec §7 : le rendu visuel des badges — icônes,
-   couleurs par palier — est explicitement hors périmètre, à cadrer
-   séparément). */
+/* Badges permanents — cf. Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md.
+   Icônes/visuels dédiés par badge toujours hors périmètre (aucun asset
+   graphique fourni à ce jour). */
 
 .wrapper {
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 .category {
