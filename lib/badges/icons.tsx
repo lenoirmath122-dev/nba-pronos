@@ -1,0 +1,91 @@
+import {
+  Crosshair,
+  Clock,
+  Eye,
+  Repeat,
+  Columns3,
+  Cpu,
+  Target,
+  Percent,
+  Sparkles,
+  BadgeCheck,
+  ShieldCheck,
+  Binoculars,
+  Calculator,
+  Compass,
+  Timer,
+  Swords,
+  Watch,
+  Puzzle,
+  Search,
+  PartyPopper,
+  Layers,
+  Drama,
+  Dice1,
+  Dice2,
+  Dice3,
+  Dice4,
+  Dice5,
+  Gem,
+  TrendingUp,
+  Trophy,
+  Coins,
+  Medal,
+  Heart,
+  History,
+  Hourglass,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
+import type { BadgeId } from "./thresholds";
+
+// Icônes de badges (10/08/2026) — bibliothèque sous licence (lucide-react,
+// ISC), plutôt qu'un dessin sur-mesure ou un asset fourni par l'utilisateur
+// (décision explicite : cf. GAPS_OUVERTS.md). Un mapping 1:1, aucune icône
+// répétée entre badges. L'échelle de difficulté (Prudent → Fou furieux)
+// reprend volontairement les faces de dé Dice1→Dice5 : correspondance
+// littérale et lisible avec le niveau 1 à 5.
+
+export const BADGE_ICONS: Record<BadgeId, LucideIcon> = {
+  CHIRURGIEN: Crosshair,
+  HORLOGER: Clock,
+  OEIL_DE_LYNX: Eye,
+  METRONOME: Repeat,
+  PILIER: Columns3,
+  MACHINE_A_PRONOS: Cpu,
+
+  CHIRURGIEN_SERIE: Target,
+  SCOREUR_SERIE: Percent,
+  VISIONNAIRE: Sparkles,
+  COMPLETISTE: BadgeCheck,
+  SANS_FAUTE: ShieldCheck,
+
+  SCOUT: Binoculars,
+  COMPTABLE: Calculator,
+  TACTICIEN: Compass,
+  MINUTEUR: Timer,
+  DUELLISTE: Swords,
+  CHRONOMETRE: Watch,
+  ASSEMBLEUR: Puzzle,
+  LIMIER: Search,
+  FANTAISISTE: PartyPopper,
+  ACCRO_DU_PARI: Layers,
+  MAINO: Drama,
+  PRUDENT: Dice1,
+  JOUEUR: Dice2,
+  CASSE_COU: Dice3,
+  KAMIKAZE: Dice4,
+  FOU_FURIEUX: Dice5,
+
+  COLLECTIONNEUR: Gem,
+  PRONOS_MASTER: TrendingUp,
+  BRACKET_MASTER: Trophy,
+  PARIS_PERSOS_MASTER: Coins,
+  PODIUMISTA: Medal,
+
+  FIDELE: Heart,
+  VETERAN: History,
+  DOYEN: Hourglass,
+
+  SOCIABLE: Users,
+};

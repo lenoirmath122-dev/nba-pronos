@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
+import { BADGE_ICONS } from "@/lib/badges/icons";
 import type { BadgeDisplay } from "@/lib/queries/badges";
 import type { BadgeTier } from "@/lib/badges/thresholds";
 import styles from "./BadgeCard.module.css";
@@ -11,7 +12,8 @@ import styles from "./BadgeCard.module.css";
 // clic/tap pour afficher la description au dos — la seule raison de sortir
 // du composant serveur par défaut de ce module. Réutilise le ProgressBar
 // existant (components/bracket/ProgressBar.tsx) plutôt que d'inventer un 2e
-// composant de barre de progression.
+// composant de barre de progression. Icônes (10/08/2026) : lib/badges/icons.tsx
+// (lucide-react, mapping 1:1 par badge).
 
 const TIER_LABELS: Record<BadgeTier, string> = {
   BRONZE: "Bronze",
@@ -50,6 +52,7 @@ export function BadgeCard({ badge }: { badge: BadgeDisplay }) {
   const unlocked = isUnlocked(badge);
   const tierAttr = badge.kind === "tiered" ? (badge.tier ?? undefined) : undefined;
   const faceClass = `${styles.face} ${styles.card} ${unlocked ? styles.unlocked : styles.locked}`;
+  const Icon = BADGE_ICONS[badge.id];
 
   return (
     <button
@@ -61,11 +64,17 @@ export function BadgeCard({ badge }: { badge: BadgeDisplay }) {
     >
       <div className={`${styles.flipInner} ${flipped ? styles.flipped : ""}`}>
         <div className={`${faceClass} ${styles.front}`} data-tier={tierAttr} aria-hidden={flipped}>
-          <span className={styles.label}>{badge.label}</span>
+          <div className={styles.header}>
+            <Icon className={styles.icon} aria-hidden="true" />
+            <span className={styles.label}>{badge.label}</span>
+          </div>
           <FrontFace badge={badge} />
         </div>
         <div className={`${faceClass} ${styles.back}`} data-tier={tierAttr} aria-hidden={!flipped}>
-          <span className={styles.label}>{badge.label}</span>
+          <div className={styles.header}>
+            <Icon className={styles.icon} aria-hidden="true" />
+            <span className={styles.label}>{badge.label}</span>
+          </div>
           <span className={styles.description}>{badge.description}</span>
         </div>
       </div>

@@ -83,6 +83,24 @@
   background: color-mix(in srgb, var(--color-tier-diamant) 14%, var(--color-surface-inset));
 }
 
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.icon {
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+}
+[data-tier="BRONZE"] .icon   { color: var(--color-tier-bronze); }
+[data-tier="ARGENT"] .icon   { color: var(--color-tier-argent); }
+[data-tier="OR"] .icon       { color: var(--color-tier-or); }
+[data-tier="PLATINE"] .icon  { color: var(--color-tier-platine); }
+[data-tier="DIAMANT"] .icon  { color: var(--color-tier-diamant); }
+
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
