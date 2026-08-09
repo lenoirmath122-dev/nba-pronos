@@ -17,6 +17,32 @@
   border: 1px solid var(--color-accent-line);
 }
 
+/* Paliers de badges (09/08/2026) — bande de gauche + fond teinté dans la
+   couleur du palier ATTEINT, en plus du style .unlocked générique ci-dessus
+   (qui reste le repli pour les badges binaires/ladderStep sans palier).
+   Tokens --color-tier-* définis dans app/tokens.css (dark + clair), Or/
+   Diamant réutilisent des tokens déjà existants (champion/bleu de jeu). */
+.card[data-tier="BRONZE"] {
+  border-left: 3px solid var(--color-tier-bronze);
+  background: color-mix(in srgb, var(--color-tier-bronze) 14%, var(--color-surface-inset));
+}
+.card[data-tier="ARGENT"] {
+  border-left: 3px solid var(--color-tier-argent);
+  background: color-mix(in srgb, var(--color-tier-argent) 14%, var(--color-surface-inset));
+}
+.card[data-tier="OR"] {
+  border-left: 3px solid var(--color-tier-or);
+  background: color-mix(in srgb, var(--color-tier-or) 14%, var(--color-surface-inset));
+}
+.card[data-tier="PLATINE"] {
+  border-left: 3px solid var(--color-tier-platine);
+  background: color-mix(in srgb, var(--color-tier-platine) 14%, var(--color-surface-inset));
+}
+.card[data-tier="DIAMANT"] {
+  border-left: 3px solid var(--color-tier-diamant);
+  background: color-mix(in srgb, var(--color-tier-diamant) 14%, var(--color-surface-inset));
+}
+
 .label {
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-bold);
@@ -33,8 +59,12 @@
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--color-win);
 }
+[data-tier="BRONZE"] .tier   { color: var(--color-tier-bronze); }
+[data-tier="ARGENT"] .tier   { color: var(--color-tier-argent); }
+[data-tier="OR"] .tier       { color: var(--color-tier-or); }
+[data-tier="PLATINE"] .tier  { color: var(--color-tier-platine); }
+[data-tier="DIAMANT"] .tier  { color: var(--color-tier-diamant); }
 
 .status {
   font-size: var(--font-size-xs);

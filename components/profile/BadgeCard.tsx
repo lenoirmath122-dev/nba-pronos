@@ -42,7 +42,10 @@ export function BadgeCard({ badge }: { badge: BadgeDisplay }) {
   const progressTotal = badge.nextThreshold ?? Math.max(badge.value, 1);
 
   return (
-    <div className={`${styles.card} ${badge.tier ? styles.unlocked : styles.locked}`}>
+    <div
+      className={`${styles.card} ${badge.tier ? styles.unlocked : styles.locked}`}
+      data-tier={badge.tier ?? undefined}
+    >
       <span className={styles.label}>{badge.label}</span>
       <span className={styles.description}>{badge.description}</span>
       {tierLabel && <span className={styles.tier}>{tierLabel}</span>}

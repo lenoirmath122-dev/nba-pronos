@@ -57,6 +57,13 @@
   /* Champion / mise en avant rare */
   --c-gold-500: #F5C451;  --c-gold-400: #FFD777;  --c-gold-700: #C9971F; /* or clair */
 
+  /* Paliers de badges (09/08/2026) — bronze/argent/platine, Or réutilise
+     --c-gold-*, Diamant réutilise --c-blue-300 (ci-dessous). *-700 = variante
+     clair, même patron d'assombrissement/saturation que l'accent/l'or. */
+  --c-bronze-500: #C9793D;  --c-bronze-700: #9A5B27;
+  --c-platinum-500: #CFE6EC;  --c-platinum-700: #3E7C8A;
+  --c-diamond-700: #2F5FD9;
+
   /* Sémantiques de jeu */
   --c-green-500: #2FBF71;  --c-green-600: #1E9E58; /* gagné dark / clair */
   --c-red-500:   #E5484D;  --c-red-600:   #C7443F; /* perdu dark / clair */
@@ -100,6 +107,15 @@
 
   /* --- Champion (§3 / R-COL5) --- */
   --color-champion:        var(--c-gold-500);
+
+  /* --- Paliers de badges permanents (09/08/2026, SPEC_BADGES_PERMANENTS_V0_1) ---
+     Or réutilise --color-champion (même sémantique de mise en avant rare),
+     Diamant réutilise --c-blue-300 déjà défini plus bas dans ce bloc. */
+  --color-tier-bronze:   var(--c-bronze-500);
+  --color-tier-argent:   var(--c-slate-100);
+  --color-tier-or:       var(--color-champion);
+  --color-tier-platine:  var(--c-platinum-500);
+  --color-tier-diamant:  var(--c-blue-300);
 
   /* --- Sémantiques de jeu (§3.2 / §3.4) --- */
   --color-win:          var(--c-green-500);
@@ -292,6 +308,13 @@
 
   /* Champion (§3.3) */
   --color-champion:        var(--c-gold-700);
+
+  /* Paliers de badges — assombris/saturés pour le contraste sur clair (09/08/2026) */
+  --color-tier-bronze:   var(--c-bronze-700);
+  --color-tier-argent:   var(--c-navy-500);
+  --color-tier-or:       var(--color-champion);
+  --color-tier-platine:  var(--c-platinum-700);
+  --color-tier-diamant:  var(--c-diamond-700);
 
   /* Sémantiques de jeu (§3.3 / §15.6) */
   --color-win:          var(--c-green-600);
