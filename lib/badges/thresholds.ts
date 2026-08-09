@@ -6,9 +6,10 @@
 // lib/labels/bets.ts (BET_DIFFICULTY_POINTS notamment) — un badge et un
 // libellé de formulaire ne portent jamais la même signification (spec §0).
 //
-// Phase 1 uniquement (25 badges) : Métronome/Pilier/Fidèle (streaks) et
-// Grimpeur (progression de rang) ne sont pas encore implémentés, cf. §7 de
-// la spec et le plan d'implémentation.
+// Phase 1 (25 badges) + phase 2 (Métronome, Pilier — 09/08/2026). Fidèle
+// (streak transverse pronos+paris) et Grimpeur (progression de rang) ne sont
+// toujours pas implémentés, cf. §7 de la spec — Fidèle reste bloqué par une
+// définition produit encore ouverte ("sans absence combiné").
 
 export type BadgeTier = "BRONZE" | "ARGENT" | "OR" | "PLATINE" | "DIAMANT";
 
@@ -17,6 +18,8 @@ export type TieredBadgeId =
   | "CHIRURGIEN"
   | "HORLOGER"
   | "OEIL_DE_LYNX"
+  | "METRONOME"
+  | "PILIER"
   | "MACHINE_A_PRONOS"
   // II. Bracket personnel
   | "CHIRURGIEN_SERIE"
@@ -58,6 +61,11 @@ export const TIERED_BADGE_THRESHOLDS: Record<TieredBadgeId, TierThresholds> = {
   CHIRURGIEN: [10, 25, 50, 100, 200],
   HORLOGER: [3, 8, 15, 30, 50],
   OEIL_DE_LYNX: [8, 20, 40, 75, 150],
+  // Record personnel de la plus longue série jamais obtenue (streak à
+  // l'intérieur d'une compétition, max réduit côté TypeScript entre
+  // compétitions — jamais de régression, cf. lib/queries/badges.ts).
+  METRONOME: [3, 5, 8, 12, 20],
+  PILIER: [5, 15, 30, 50, 80],
   MACHINE_A_PRONOS: [5, 15, 35, 70, 120],
 
   CHIRURGIEN_SERIE: [3, 8, 15, 30, 50],

@@ -12,11 +12,12 @@ import {
 import { BADGE_CATEGORIES, BADGE_LABELS, BADGE_DESCRIPTIONS, type BadgeCategoryId } from "@/lib/badges/labels";
 import type { BetCategory } from "@/lib/labels/bets";
 
-// Onglet Stats > Badges (SPEC_BADGES_PERMANENTS_V0_1.md, phase 1 — 25 des
-// ~30 badges du catalogue). Contrairement à getProfileStats (lib/queries/
-// stats.ts), lecture À VIE (toutes compétitions confondues, pas seulement
-// la compétition ACTIVE) et SANS paramètre de scope ligue — aucune
-// comparaison entre joueurs sur un accomplissement personnel (spec §1).
+// Onglet Stats > Badges (SPEC_BADGES_PERMANENTS_V0_1.md, phase 1 + phase 2 —
+// 27 des ~30 badges du catalogue, dont Métronome/Pilier). Contrairement à
+// getProfileStats (lib/queries/stats.ts), lecture À VIE (toutes compétitions
+// confondues, pas seulement la compétition ACTIVE) et SANS paramètre de
+// scope ligue — aucune comparaison entre joueurs sur un accomplissement
+// personnel (spec §1).
 
 export type BadgeDisplay =
   | { kind: "tiered"; id: TieredBadgeId; label: string; description: string; value: number; tier: BadgeTier | null; nextThreshold: number | null }
@@ -51,6 +52,17 @@ type UserBadgesLifetimeRow = {
   has_league_membership: boolean;
 };
 
+// Une ligne par (compétition, joueur) — le RECORD à vie affiché par le
+// badge (Métronome/Pilier) est le max de ces lignes, réduit ici plutôt
+// qu'en SQL (spec §2, choisi pour rester simple sur ce 1er usage de
+// gaps-and-islands dans ce dépôt).
+type UserCompetitionStreakRow = {
+  user_id: string;
+  competition_id: string;
+  metronome_streak: number;
+  pilier_streak: number;
+};
+
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 export async function getProfileBadges(): Promise<ProfileBadgesData> {
@@ -61,9 +73,14 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
   } = await supabase.auth.getUser();
   if (!user) return { categories: [] };
 
-  const [{ data: badgeRow }, { data: profileRow }] = await Promise.all([
+  const [{ data: badgeRow }, { data: profileRow }, { data: streakRows }] = await Promise.all([
     supabase.from("user_badges_lifetime").select("*").eq("user_id", user.id).maybeSingle<UserBadgesLifetimeRow>(),
     supabase.from("users").select("created_at").eq("id", user.id).single<{ created_at: string }>(),
+    supabase
+      .from("user_competition_streaks")
+      .select("user_id, competition_id, metronome_streak, pilier_streak")
+      .eq("user_id", user.id)
+      .returns<UserCompetitionStreakRow[]>(),
   ]);
 
   // Aucune ligne dans la vue = joueur sans aucune activité à vie (jamais
@@ -98,10 +115,15 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
     ? Math.floor((Date.now() - new Date(profileRow.created_at).getTime()) / MS_PER_DAY)
     : 0;
 
+  const metronomeRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.metronome_streak), 0);
+  const pilierRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.pilier_streak), 0);
+
   const tieredValues: Record<TieredBadgeId, number> = {
     CHIRURGIEN: row.match_correct_winners,
     HORLOGER: row.match_exact_margins,
     OEIL_DE_LYNX: row.match_close_margins,
+    METRONOME: metronomeRecord,
+    PILIER: pilierRecord,
     MACHINE_A_PRONOS: row.match_predictions_committed,
 
     CHIRURGIEN_SERIE: row.bracket_correct_winners,

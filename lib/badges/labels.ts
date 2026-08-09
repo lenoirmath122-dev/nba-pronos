@@ -13,6 +13,8 @@ export const BADGE_LABELS: Record<BadgeId, string> = {
   CHIRURGIEN: "Chirurgien",
   HORLOGER: "Horloger",
   OEIL_DE_LYNX: "Œil de lynx",
+  METRONOME: "Métronome",
+  PILIER: "Pilier",
   MACHINE_A_PRONOS: "Machine à pronos",
 
   CHIRURGIEN_SERIE: "Chirurgien (série)",
@@ -54,6 +56,8 @@ export const BADGE_DESCRIPTIONS: Record<BadgeId, string> = {
   CHIRURGIEN: "Pronostics vainqueur corrects",
   HORLOGER: "Écarts exacts",
   OEIL_DE_LYNX: "Écarts proches (à 1 ou 2 points près)",
+  METRONOME: "Record de bons vainqueurs d'affilée",
+  PILIER: "Record de participation sans absence",
   MACHINE_A_PRONOS: "Pronostics soumis, peu importe le résultat",
 
   CHIRURGIEN_SERIE: "Vainqueurs de série corrects au bracket",
@@ -95,7 +99,7 @@ export const BADGE_CATEGORIES: { id: BadgeCategoryId; title: string; badges: Bad
   {
     id: "MATCH",
     title: "Pronostics de match",
-    badges: ["CHIRURGIEN", "HORLOGER", "OEIL_DE_LYNX", "MACHINE_A_PRONOS"],
+    badges: ["CHIRURGIEN", "HORLOGER", "OEIL_DE_LYNX", "METRONOME", "PILIER", "MACHINE_A_PRONOS"],
   },
   {
     id: "BRACKET",
