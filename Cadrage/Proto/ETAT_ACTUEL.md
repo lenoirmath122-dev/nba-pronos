@@ -5,33 +5,27 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : sessions du 08-09/08/2026 — **badges permanents,
-> cadrage complet + code de la phase 1** (§2.59) : 3e et dernier chantier
-> prioritaire du reclassement du 30/07/2026, jusque-là non cadré. Inventaire
-> exhaustif de ~30 badges sur 6 axes, paliers Bronze→Diamant, principe de
-> permanence (aucune régression), rédigé dans une vraie spec dédiée
-> (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md`) plutôt que
-> laissé dans `GAPS_OUVERTS.md`. 25 des ~30 badges CODÉS (vue SQL en lecture
-> pure `user_badges_lifetime`, `lib/badges/*`, `lib/queries/badges.ts`,
-> `BadgesSection`/`BadgeCard`) — remplace le placeholder de l'onglet Stats.
-> **Correctif structurel trouvé en lisant le code** : le placeholder était
-> niché dans la branche "compétition active", ce qui aurait fait disparaître
-> l'onglet Badges hors saison — corrigé avant de coder. Vérifié en
-> conditions réelles (vue + rendu au clic, Playwright temporaire).
-> `tsc`/`eslint`/`vitest`/`next build` propres. Committé et poussé
-> (`08aa817`, `fa48beb`, `12b5444`, `2a76d8c`). **Rendu visuel par palier
-> ajouté dans la foulée** (couleurs/bandes selon Bronze→Diamant, tokens
-> `--color-tier-*` dans `app/tokens.css`, attribut `data-tier` sur
-> `BadgeCard`) — committé et poussé (`59570e6`). Icônes/visuels dédiés par
-> badge évoqués mais REPORTÉS (aucun asset graphique n'existe encore).
-> **Phase 2 codée dans la foulée** (Métronome, Pilier — 1er usage de
-> gaps-and-islands SQL dans ce dépôt, vue `user_competition_streaks`,
-> migration #26) : hypothèse sur les matchs "éligibles" pour Pilier
-> confirmée avec l'utilisateur (coup d'envoi passé, ni annulé ni reporté).
-> Vérifié en conditions réelles (décompte manuel concordant sur 9 lignes).
-> Committé et poussé (`ec97ef3`). Restent : phase 3 (Fidèle, définition
-> ouverte), icônes/visuels par badge, interaction "carte retournée" au
-> clic (idée notée, pas cadrée).
+> Dernière mise à jour : sessions du 08-09/08/2026 — **badges permanents :
+> cadrage complet + catalogue de base ENTIÈREMENT CODÉ** (§2.59) : 3e et
+> dernier chantier prioritaire du reclassement du 30/07/2026, jusque-là non
+> cadré. Spec dédiée (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1
+> .md`) : ~30 badges sur 6 axes, paliers Bronze→Diamant, principe de
+> permanence (aucune régression). 3 phases codées et poussées le
+> 09/08/2026 : **phase 1** (25 badges hors streaks, migration #25, vue
+> `user_badges_lifetime` — remplace le placeholder de l'onglet Stats,
+> corrige au passage un bug structurel qui aurait fait disparaître l'onglet
+> hors saison) ; **rendu visuel par palier** (tokens `--color-tier-*`,
+> attribut `data-tier` sur `BadgeCard`) ; **phase 2** (Métronome/Pilier,
+> migration #26, vue `user_competition_streaks` — 1er usage de
+> gaps-and-islands SQL dans ce dépôt) ; **phase 3** (Fidèle, migration #27
+> — règle d'union pronostic OU pari MATCH rattaché au match précis, un pari
+> SÉRIE ne compte jamais, tranché avec l'utilisateur). Toutes phases
+> vérifiées en conditions réelles (décomptes manuels concordants, rendu au
+> clic via Playwright temporaire). `tsc`/`eslint`/`vitest`/`next build`
+> propres tout du long. Committé et poussé (`08aa817` → `ae6569c`, 7
+> commits). Restent hors périmètre, volontairement : badge Grimpeur,
+> icônes/visuels par badge (assets pas fournis), interaction "carte
+> retournée" au clic (idée notée, pas cadrée).
 >
 > Plus tôt (session du 06/08/2026, suite) — **thème à 3 choix
 > Sombre/Clair/Photo** (§2.58) : le thème Clair, testé juste après le
@@ -5422,7 +5416,29 @@ Métronome affiche Bronze (3/5, bande colorée), Pilier sans palier (3/5,
 sous le seuil Bronze) — comportement attendu. `tsc`/`eslint`/`vitest`
 (37/37)/`next build` (36 routes) propres. Committé et poussé (`ec97ef3`).
 
-**Reste à faire** : phase 3 (Fidèle, définition du "sans absence
-combiné" encore à trancher) ; icônes/visuels par badge (en attente des
-assets) ; interaction "carte retournée" (ci-dessus, pas cadrée).
+**Phase 3 — Fidèle CODÉE (09/08/2026, suite immédiate) : catalogue de
+base ENTIÈREMENT COUVERT.** Définition tranchée AVEC l'utilisateur (seule
+question restée ouverte depuis le 08/08) : règle d'UNION — un match
+compte "présent" si un pronostic figé existe OU un pari perso RATTACHÉ À
+CE MATCH PRÉCIS (`bets.scope = 'MATCH'`, `match_id` = ce match) existe.
+**Écarté explicitement par l'utilisateur** : un pari SÉRIE (jamais
+rattaché à un match précis) ne compte pas — jugé "trop facile" (un seul
+pari série créditerait toute la série). Migration #27
+(`20260809110000_badges_fidele_streak.sql`) : redéfinition complète de
+`user_competition_streaks` (même geste que la migration #5 sur
+`user_scores`) avec `fidele_streak` en plus, réutilise le calendrier
+`user_match_grid` déjà construit pour Pilier.
+
+**Vérifié en conditions RÉELLES** : invariant `fidele_streak >=
+pilier_streak` confirmé sur les 9 lignes existantes (le critère de
+présence de Fidèle est un sur-ensemble de celui de Pilier, ne peut donc
+jamais être plus strict). Rendu vérifié au clic (Playwright temporaire) :
+catégorie "Fidélité / régularité" complète (Fidèle, Vétéran, Doyen),
+aucune erreur console. `tsc`/`eslint`/`vitest` (37/37)/`next build` (36
+routes) propres. Committé et poussé (`ae6569c`).
+
+**Reste hors périmètre, volontairement** : badge Grimpeur (progression
+de rang) ; icônes/visuels dédiés par badge (aucun asset graphique
+n'existe à ce jour) ; interaction "carte retournée" au clic (idée notée,
+pas cadrée en détail).
 ```

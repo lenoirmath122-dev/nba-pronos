@@ -4,73 +4,50 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 09/08/2026** — **Badges permanents : phase 1 CODÉE et
-> VÉRIFIÉE en conditions réelles** (`BACKLOG_V1.md` § "Fun / esprit ligue
-> entre potes", chantier ouvert le 30/07/2026, 3e des chantiers
-> prioritaires du reclassement, après Bracket personnel et Tutoriel joueur
-> — voir `Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md` et
-> `ETAT_ACTUEL.md` §2.59 pour le détail complet). Cadrage fonctionnel +
-> technique CLOS le 08/08/2026 ; 25 des ~30 badges du catalogue (tout SAUF
-> les 3 streaks Métronome/Pilier/Fidèle) codés et poussés le 09/08/2026 :
-> migration #25 (vue `user_badges_lifetime`, lecture pure, agrégats à vie
-> toutes compétitions confondues, même patron que `user_scores`),
-> `lib/badges/thresholds.ts`/`labels.ts`, `lib/queries/badges.ts`,
-> `components/profile/BadgesSection.tsx`/`BadgeCard.tsx` — remplacent le
-> placeholder de l'onglet Stats. **Correctif structurel trouvé en lisant le
-> code avant de coder** (pas signalé par l'utilisateur, repéré en
-> explorant) : le placeholder était niché dans la branche "compétition
-> active", ce qui aurait fait disparaître l'onglet Badges hors saison —
-> corrigé. Vérifié en conditions réelles : vue comparée à un décompte
-> manuel sur les 6 comptes actifs (tous concordants), rendu vérifié au
-> clic (Playwright temporaire, compte `TestJoueur1`). Mot de passe de
-> `TestJoueur1` expiré, réinitialisé via l'API Admin sans redemander à
-> l'utilisateur (compte de test jetable). `tsc`/`eslint`/`vitest`
-> (37/37)/`next build` (36 routes) propres. Committé et poussé (`08aa817`,
-> `fa48beb`, `12b5444`, `2a76d8c`).
+> **État au 09/08/2026** — **Badges permanents : catalogue de BASE
+> ENTIÈREMENT CODÉ et VÉRIFIÉ en conditions réelles** (`BACKLOG_V1.md` §
+> "Fun / esprit ligue entre potes", chantier ouvert le 30/07/2026, 3e des
+> chantiers prioritaires du reclassement, après Bracket personnel et
+> Tutoriel joueur — voir `Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS
+> _V0_1.md` et `ETAT_ACTUEL.md` §2.59 pour le détail complet). Cadrage
+> fonctionnel + technique CLOS le 08/08/2026 ; les 3 phases codées et
+> poussées le 09/08/2026 :
+> - **Phase 1** (25 badges hors streaks) : migration #25, vue
+>   `user_badges_lifetime` (lecture pure, agrégats à vie toutes
+>   compétitions confondues, même patron que `user_scores`). **Correctif
+>   structurel trouvé en lisant le code avant de coder** : le placeholder
+>   Badges était niché dans la branche "compétition active", ce qui
+>   l'aurait fait disparaître hors saison — corrigé. Committé (`08aa817`,
+>   `fa48beb`, `12b5444`, `2a76d8c`).
+> - **Rendu visuel par palier** : 5 tokens `--color-tier-*` (dark + clair,
+>   `app/tokens.css`), attribut `data-tier` sur `BadgeCard` (bande +
+>   fond teinté + libellé coloré). Committé (`59570e6`).
+> - **Phase 2** (Métronome, Pilier) : migration #26, vue
+>   `user_competition_streaks` (grain user+compétition) — 1er usage de
+>   gaps-and-islands SQL dans ce dépôt. Matchs "éligibles" pour Pilier =
+>   coup d'envoi passé, ni CANCELLED ni POSTPONED (confirmé avec
+>   l'utilisateur). Committé (`ec97ef3`).
+> - **Phase 3** (Fidèle) : migration #27, `fidele_streak` ajouté à la même
+>   vue. Définition tranchée AVEC l'utilisateur — règle d'UNION : un match
+>   compte "présent" si un pronostic figé OU un pari perso RATTACHÉ À CE
+>   MATCH PRÉCIS (scope MATCH) existe ; un pari SÉRIE ne compte JAMAIS
+>   (jugé "trop facile" de créditer toute une série via un seul pari).
+>   Committé (`ae6569c`).
 >
-> **Reportés/écartés explicitement** (détail et raisons dans la spec, §4/§5
-> /§7) : badge Grimpeur (progression de rang — mécanisme déjà pensé en % du
+> Toutes les phases vérifiées en conditions réelles (décomptes manuels
+> concordants, invariant `fidele_streak >= pilier_streak` confirmé, rendu
+> vérifié au clic via Playwright temporaire à chaque étape).
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres tout du
+> long. Mot de passe de `TestJoueur1` expiré, réinitialisé via l'API Admin
+> sans redemander à l'utilisateur (compte de test jetable).
+>
+> **Reportés/écartés explicitement** (détail et raisons dans la spec) :
+> badge Grimpeur (progression de rang — mécanisme déjà pensé en % du
 > classement si repris) ; axe "fan de tel joueur" (référentiel joueurs
-> inexistant, chantier séparé) ; notification de déblocage ; affichage de
-> la série en cours comme stat live distincte du badge.
->
-> **Rendu visuel par palier — FAIT le 09/08/2026** (couleurs/bandes selon
-> Bronze→Diamant, demandé par l'utilisateur juste après la phase 1) : 5
-> tokens sémantiques `--color-tier-*` ajoutés à `app/tokens.css` (dark +
-> clair — Or réutilise `--color-champion`, Diamant réutilise `--c-blue-300`,
-> déjà existants), `BadgeCard` porte un attribut `data-tier` piloté en CSS
-> (bande de gauche + fond teinté + libellé de palier coloré). Vérifié au
-> clic (Playwright temporaire) sur `TestJoueur1` — carte Vétéran (Bronze)
-> confirmée visuellement distincte. `tsc`/`eslint`/`vitest`/`next build`
-> propres. Committé et poussé (`59570e6`).
->
-> **Interaction "carte retournée" évoquée par l'utilisateur (09/08/2026),
-> NOTÉE mais PAS codée** : au clic sur un badge, la carte se retourne (flip)
-> pour afficher sa description au dos, plutôt que la description toujours
-> visible comme aujourd'hui. Idée UI, pas encore cadrée en détail (quand
-> déclencher : clic/tap uniquement, ou aussi survol desktop ? tous les
-> badges ou seulement les `tiered` ?) — à reprendre plus tard, en même temps
-> que les icônes/visuels par badge probablement (même famille de chantier
-> "polish visuel").
->
-> **Phase 2 (Métronome + Pilier) — FAITE le 09/08/2026** : migration #26
-> (vue `user_competition_streaks`, grain user+compétition — 1er usage de
-> gaps-and-islands SQL dans ce dépôt), record à vie réduit côté TypeScript.
-> Hypothèse sur les matchs "éligibles" pour Pilier confirmée avec
-> l'utilisateur : coup d'envoi déjà passé, ni CANCELLED ni POSTPONED (même
-> neutralisation que le moteur de scoring). Vérifié en conditions réelles :
-> vue comparée à un décompte manuel (gaps-and-islands en JS) sur les 9
-> lignes (joueur, compétition) existantes, toutes concordantes — Métronome
-> ET Pilier. Rendu vérifié au clic. `tsc`/`eslint`/`vitest`/`next build`
-> propres. Committé et poussé (`ec97ef3`).
->
-> **Reste à faire** : phase 3 (Fidèle, définition du "sans absence
-> combiné" encore ouverte) ; **icônes/visuels dédiés par badge** — évoqués
-> par l'utilisateur le 09/08/2026 mais volontairement REPORTÉS, les assets
-> graphiques n'existent pas encore (aucune icône par badge créée à ce jour,
-> contrairement aux logos d'équipe déjà en place) — à reprendre une fois
-> les visuels fournis, pas avant ; **interaction "carte retournée" au clic**
-> (ci-dessus), idée notée mais pas cadrée en détail.
+> inexistant, chantier séparé) ; notification de déblocage ; icônes/
+> visuels dédiés par badge (aucun asset graphique n'existe à ce jour) ;
+> interaction "carte retournée" au clic (idée notée, pas cadrée en
+> détail).
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2

@@ -5582,3 +5582,53 @@ combiné" pronos+paris toujours pas tranchée) ; icônes/visuels par badge
 et interaction "carte retournée" (notées, en attente d'assets/de
 cadrage, pas bloquantes).
 ```
+
+## Badges permanents — phase 3 : Fidèle, catalogue de base complet (09/08/2026, suite)
+
+```text
+L'utilisateur demande si on laisse la phase 3 de côté ou si on l'attaque
+maintenant. Claude recommande de l'attaquer tout de suite MAIS en
+commençant par la définition (pas le code) — le seul vrai blocage,
+d'autant que la technique gaps-and-islands est encore fraîche depuis
+Pilier. Recommandation suivie.
+
+**Définition proposée par Claude et affinée par l'utilisateur.** 1re
+proposition (rejetée) : un pari SÉRIE compterait comme "présent" pour
+TOUS les matchs de sa série (pas seulement celui auquel il est
+techniquement rattaché), pour éviter de vérifier finement le timing entre
+pari et match. **Corrigée par l'utilisateur** : « il faut que le pari
+perso soit rattaché au match en question sinon c'est trop facile » — un
+pari SÉRIE ne compte JAMAIS, seul un pari MATCH rattaché au match précis
+compte, au même titre qu'un pronostic figé sur ce match (règle d'UNION,
+option retenue dès le message précédent parmi 2 proposées : union
+simple vs deux streaks séparées qui se combinent).
+
+**Migration #27** (`20260809110000_badges_fidele_streak.sql`) :
+redéfinition COMPLÈTE de `user_competition_streaks` (`create or replace
+view`, même geste non destructif que la migration #5 sur `user_scores`)
+avec une colonne `fidele_streak` en plus. Réutilise intégralement le
+calendrier `user_match_grid` déjà construit pour Pilier (matchs éligibles
+× joueurs participants) — seul le critère de présence change (union
+pronostic OU pari MATCH rattaché, au lieu de pronostic seul).
+
+**Vérifié en conditions RÉELLES** : plutôt qu'un décompte manuel complet
+(déjà fait 2 fois pour Métronome/Pilier), un invariant logique plus
+rapide à vérifier — `fidele_streak >= pilier_streak` doit être vrai sur
+CHAQUE ligne, puisque le critère de présence de Fidèle est un
+sur-ensemble strict de celui de Pilier (ne peut donc jamais produire une
+streak plus courte). Confirmé sur les 9 lignes (joueur, compétition)
+existantes en base, script jetable service_role. Rendu vérifié au clic
+(Playwright temporaire, retiré après usage) : catégorie "Fidélité /
+régularité" désormais complète (Fidèle, Vétéran, Doyen) sur
+`TestJoueur1`, aucune erreur console. `tsc --noEmit`, `eslint`, `vitest
+run` (37/37), `next build` (36 routes) tous propres. Committé et poussé
+(`ae6569c`).
+
+**Le catalogue de base des badges permanents (~30 badges, spec
+`SPEC_BADGES_PERMANENTS_V0_1.md`) est désormais ENTIÈREMENT codé, vérifié
+et déployé.** Seul le badge Grimpeur (progression de rang) reste hors
+périmètre, écarté par choix explicite dès le cadrage du 08/08/2026. Restent
+en attente, non bloquantes : icônes/visuels dédiés par badge (assets pas
+fournis) et interaction "carte retournée" au clic (idée notée, pas
+cadrée).
+```
