@@ -5,27 +5,30 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : sessions du 08-09/08/2026 — **badges permanents :
-> cadrage complet + catalogue de base ENTIÈREMENT CODÉ** (§2.59) : 3e et
-> dernier chantier prioritaire du reclassement du 30/07/2026, jusque-là non
-> cadré. Spec dédiée (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1
-> .md`) : ~30 badges sur 6 axes, paliers Bronze→Diamant, principe de
-> permanence (aucune régression). 3 phases codées et poussées le
-> 09/08/2026 : **phase 1** (25 badges hors streaks, migration #25, vue
-> `user_badges_lifetime` — remplace le placeholder de l'onglet Stats,
-> corrige au passage un bug structurel qui aurait fait disparaître l'onglet
-> hors saison) ; **rendu visuel par palier** (tokens `--color-tier-*`,
-> attribut `data-tier` sur `BadgeCard`) ; **phase 2** (Métronome/Pilier,
-> migration #26, vue `user_competition_streaks` — 1er usage de
-> gaps-and-islands SQL dans ce dépôt) ; **phase 3** (Fidèle, migration #27
-> — règle d'union pronostic OU pari MATCH rattaché au match précis, un pari
-> SÉRIE ne compte jamais, tranché avec l'utilisateur). Toutes phases
-> vérifiées en conditions réelles (décomptes manuels concordants, rendu au
-> clic via Playwright temporaire). `tsc`/`eslint`/`vitest`/`next build`
-> propres tout du long. Committé et poussé (`08aa817` → `ae6569c`, 7
-> commits). Restent hors périmètre, volontairement : badge Grimpeur,
-> icônes/visuels par badge (assets pas fournis), interaction "carte
-> retournée" au clic (idée notée, pas cadrée).
+> Dernière mise à jour : sessions du 08-10/08/2026 — **badges permanents :
+> cadrage complet + catalogue de base ENTIÈREMENT CODÉ + interaction carte
+> retournée** (§2.59) : 3e et dernier chantier prioritaire du reclassement
+> du 30/07/2026, jusque-là non cadré. Spec dédiée
+> (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md`) : ~30 badges
+> sur 6 axes, paliers Bronze→Diamant, principe de permanence (aucune
+> régression). 3 phases codées et poussées le 09/08/2026 : **phase 1** (25
+> badges hors streaks, migration #25, vue `user_badges_lifetime` —
+> remplace le placeholder de l'onglet Stats, corrige au passage un bug
+> structurel qui aurait fait disparaître l'onglet hors saison) ; **rendu
+> visuel par palier** (tokens `--color-tier-*`, attribut `data-tier` sur
+> `BadgeCard`) ; **phase 2** (Métronome/Pilier, migration #26, vue
+> `user_competition_streaks` — 1er usage de gaps-and-islands SQL dans ce
+> dépôt) ; **phase 3** (Fidèle, migration #27 — règle d'union pronostic OU
+> pari MATCH rattaché au match précis, un pari SÉRIE ne compte jamais,
+> tranché avec l'utilisateur). Le 10/08/2026, **interaction "carte
+> retournée" au clic** ajoutée (`BadgeCard` passe en `"use client"`, décrit
+> désormais sa description au dos plutôt qu'en permanence sur la face
+> avant). Toutes les étapes vérifiées en conditions réelles (décomptes
+> manuels concordants, rendu au clic via Playwright temporaire).
+> `tsc`/`eslint`/`vitest`/`next build` propres tout du long. Committé et
+> poussé (`08aa817` → `ee820d7`, 8 commits). Restent hors périmètre,
+> volontairement : badge Grimpeur, icônes/visuels par badge (assets pas
+> fournis).
 >
 > Plus tôt (session du 06/08/2026, suite) — **thème à 3 choix
 > Sombre/Clair/Photo** (§2.58) : le thème Clair, testé juste après le
@@ -5437,8 +5440,23 @@ catégorie "Fidélité / régularité" complète (Fidèle, Vétéran, Doyen),
 aucune erreur console. `tsc`/`eslint`/`vitest` (37/37)/`next build` (36
 routes) propres. Committé et poussé (`ae6569c`).
 
+**Interaction "carte retournée" au clic — FAITE (10/08/2026, suite
+immédiate)** : au clic/tap sur une carte de badge, elle se retourne
+(`rotateY` CSS) pour afficher sa description au dos — la face avant se
+concentre désormais sur l'état courant (palier/progression, ou
+verrouillé/débloqué), la description n'y est plus affichée en
+permanence. `BadgeCard` passe en `"use client"` (seule raison de sortir
+du composant serveur par défaut) : état local `isFlipped`, `<button>`
+accessible au clavier (`aria-pressed`, `aria-hidden` sur la face non
+visible) plutôt qu'un `<div onClick>`. Nouveau token
+`--motion-flip-duration` (`app/tokens.css`), zéro sous
+`prefers-reduced-motion` — même patron que les tokens de motion
+existants. Vérifié au clic (Playwright temporaire) : bascule d'état
+confirmée (`aria-pressed` false→true→false), description correcte au
+dos, aucune erreur console. `tsc`/`eslint`/`vitest`/`next build`
+propres. Committé et poussé (`ee820d7`).
+
 **Reste hors périmètre, volontairement** : badge Grimpeur (progression
 de rang) ; icônes/visuels dédiés par badge (aucun asset graphique
-n'existe à ce jour) ; interaction "carte retournée" au clic (idée notée,
-pas cadrée en détail).
+n'existe à ce jour).
 ```

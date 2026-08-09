@@ -45,9 +45,20 @@
 > badge Grimpeur (progression de rang — mécanisme déjà pensé en % du
 > classement si repris) ; axe "fan de tel joueur" (référentiel joueurs
 > inexistant, chantier séparé) ; notification de déblocage ; icônes/
-> visuels dédiés par badge (aucun asset graphique n'existe à ce jour) ;
-> interaction "carte retournée" au clic (idée notée, pas cadrée en
-> détail).
+> visuels dédiés par badge (aucun asset graphique n'existe à ce jour).
+>
+> **Interaction "carte retournée" au clic — FAITE le 10/08/2026** : au
+> clic/tap, la carte de badge se retourne (`rotateY` CSS) pour afficher sa
+> description au dos — `BadgeCard` passe en `"use client"` (état local
+> `isFlipped`, `<button>` accessible clavier avec `aria-pressed`/
+> `aria-hidden`), nouveau token `--motion-flip-duration` (zéro sous
+> `prefers-reduced-motion`, même patron que les autres tokens de motion).
+> Vérifié au clic (Playwright temporaire) : bascule d'état confirmée,
+> description correcte au dos, aucune erreur console. `tsc`/`eslint`/
+> `vitest`/`next build` propres. Committé et poussé (`ee820d7`).
+>
+> **Reste hors périmètre du chantier badges** : icônes/visuels dédiés par
+> badge (en attente des assets).
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2

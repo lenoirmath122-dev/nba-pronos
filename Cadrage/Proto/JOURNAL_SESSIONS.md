@@ -5632,3 +5632,52 @@ en attente, non bloquantes : icônes/visuels dédiés par badge (assets pas
 fournis) et interaction "carte retournée" au clic (idée notée, pas
 cadrée).
 ```
+
+## Badges permanents — interaction "carte retournée" au clic (10/08/2026)
+
+```text
+Reprise de la note laissée en suspens le 09/08/2026. L'utilisateur
+confirme vouloir traiter ce point maintenant, en laissant le reste
+(icônes/visuels, Grimpeur) pour plus tard.
+
+Les 2 questions restées ouvertes lors de la note initiale (déclencheur
+clic/tap seul ou aussi survol desktop ; tous les badges ou seulement les
+`tiered`) sont tranchées par défaut sans repasser par l'utilisateur, choix
+jugés suffisamment mineurs pour ne pas justifier une pause : clic/tap
+uniquement (cohérent avec une appli mobile-first, le survol n'existe pas
+sur tactile) et TOUS les badges de façon uniforme (la description était
+déjà visible en permanence sur les 3 formes — tiered/binary/ladderStep —
+la retirer sélectivement aurait cassé la cohérence visuelle de la
+grille).
+
+**Conséquence architecturale** : `BadgeCard` passe de composant serveur à
+`"use client"` — première fois que ce module sort de ce patron, mais
+cohérent avec les autres composants réellement interactifs du dépôt
+(`LoginForm`, `NotificationSettings`, etc.). État local `isFlipped`
+(`useState`), racine `<button>` plutôt qu'un `<div onClick>` pour rester
+accessible au clavier (`aria-pressed` reflète l'état, `aria-hidden`
+bascule sur la face actuellement non visible).
+
+**CSS** : nouveau token `--motion-flip-duration` (`app/tokens.css`, 400ms
+par défaut, 0ms sous `prefers-reduced-motion` — même patron que
+`--motion-flash-duration`/`--motion-pulse-duration` déjà en place, R-MOT1/
+R-MOT2). Flip 3D classique (`perspective`, `transform-style: preserve-3d`,
+`rotateY(180deg)`, `backface-visibility: hidden`) — les 2 faces occupent
+la même zone en position absolue, `.flipContainer` porte un `min-height`
+fixe pour éviter que le conteneur ne s'effondre (les enfants absolus ne
+contribuent pas à la hauteur du parent). Réutilise intégralement les
+styles `.card`/`.locked`/`.unlocked`/`[data-tier=...]` déjà en place —
+chaque face est aussi une `.card`, rien de dupliqué côté palette.
+
+**Vérifié en conditions réelles** (Playwright temporaire, retiré après
+usage) : `aria-pressed` bascule correctement à 3 clics successifs
+(false→true→false), le dos affiche la bonne description après le 1er
+clic (vérifié sur le badge Chirurgien), aucune erreur console. Capture
+d'écran confirmant visuellement le contenu de chaque face. `tsc --noEmit`,
+`eslint`, `vitest run` (37/37), `next build` (36 routes) tous propres.
+Committé et poussé (`ee820d7`).
+
+Avec ce lot, il ne reste plus que 2 points volontairement hors périmètre
+sur le chantier badges : le badge Grimpeur et les icônes/visuels dédiés
+par badge (en attente d'assets non encore fournis).
+```
