@@ -102,15 +102,41 @@ se cumulent naturellement quand la puce active *est* Total.
 
 - Chiffres **alignés à droite**, `font-variant-numeric: tabular-nums` (sinon les colonnes
   tremblent au changement de tri).
-- **Aucune flèche de tri dans les en-têtes** : les puces portent seules cette information.
-- **Mobile (3 colonnes)** : `Rang/Joueur │ Total ┃ puce active`. Même grammaire, même
-  emplacement du filet — rien à réapprendre entre les formats.
+- **En-têtes cliquables, avec flèche de tri** — **corrigé le 13/08/2026**, annule et remplace
+  la décision d'origine ci-dessous. Chaque en-tête de colonne (Total/Matchs/Bracket/Paris/
+  Forme) est lui-même le déclencheur de tri (chevron ▾ affiché uniquement sur la colonne
+  active). Raison du revirement : la rangée de puces séparée (§5, ancienne version) affichait
+  **les mêmes 5 libellés une seconde fois**, juste au-dessus des en-têtes — redondance visuelle
+  repérée à l'usage, pas anticipée à la rédaction de cette spec.
+  > *Décision d'origine (annulée) :* ~~Aucune flèche de tri dans les en-têtes : les puces
+  > portent seules cette information.~~
+- **Mobile (3 colonnes)** : `Rang/Joueur │ Total ┃ colonne active`. Même grammaire, même
+  emplacement du filet — rien à réapprendre entre les formats. Les en-têtes non actifs étant
+  masqués sur ce format, un sélecteur dédié (`MobileSortSelect`) reste nécessaire pour changer
+  la colonne affichée — cf. §5.
 
-## 5. Puces de tri
+## 5. Tri du classement — **corrigé le 13/08/2026**
 
-`total | matches | bracket | bets | form`. La puce active pilote le **tri des lignes** et la
-**colonne mise en avant**. Elle ne change **jamais** le rang affiché, toujours calculé sur
-Total (interprétation actée). Tri **alphabétique** différé (hors V1).
+`total | matches | bracket | bets | form`. **Les en-têtes de colonnes du tableau portent
+eux-mêmes le tri** (§4.2) — il n'existe plus de rangée de puces séparée au-dessus du tableau
+(`SortChips`, retiré). Sur mobile, où seule la colonne active reste visible parmi les 4 de
+détail, un sélecteur compact (`MobileSortSelect`) occupe la même place que l'en-tête qu'il
+remplace et propose les 4 choix de détail (jamais Total, qui garde sa propre colonne fixe).
+
+La colonne active pilote le **tri des lignes** et la **colonne mise en avant**. Elle ne change
+**jamais** le rang affiché, toujours calculé sur Total (interprétation actée).
+
+**Bascule croissant/décroissant — corrigée le 14/08/2026** (comportement de tableur attendu,
+remonté par l'utilisateur juste après la 1ère version de ce lot). Cliquer un en-tête déjà actif
+inverse le sens (`?ordre=asc`, absent = décroissant, repli habituel) ; cliquer un en-tête
+différent bascule dessus en décroissant. `▾` = décroissant, `▴` = croissant. Sur mobile, un
+bouton dédié à côté de `MobileSortSelect` porte cette bascule pour la colonne de détail active
+(l'en-tête de `Total`, lui, reste un `<Link>` normal même sur mobile — sa bascule s'y fait
+directement).
+> *Décision d'origine (annulée) :* ~~Le tri est toujours décroissant, aucune bascule
+> croissant/décroissant n'existe dans ce projet.~~
+
+Tri **alphabétique** différé (hors V1).
 
 ## 6. Ligne dépliée
 
@@ -444,6 +470,8 @@ partout.
 | 9 | « Jamais joué » absent du classement ; « inactif » conservé et classé | §8 |
 | 10 | Ex-aequo : 1, 2, 2, 4 | §9 |
 | 11 | Pas de Realtime en V1 | §18 |
+| 12 | **Corrigé 13/08/2026** — en-têtes cliquables avec flèche de tri, `SortChips` retiré (doublon visuel avec les en-têtes) | §4.2/§5 |
+| 13 | **Corrigé 14/08/2026** — bascule croissant/décroissant (`?ordre=`), en plus du choix de colonne | §5 |
 
 > Rappel de méthode, pas une question : les **noms de colonnes** et **valeurs de statut** sont
 > à lire dans le schéma réel à l'implémentation. Cette spec décrit l'intention et fige les

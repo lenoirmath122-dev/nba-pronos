@@ -11,6 +11,26 @@ import { resolveLeagueScope } from "@/lib/queries/leagues";
 
 export type SortKey = "total" | "matches" | "bracket" | "bets" | "form";
 
+// Bascule croissant/décroissant (14/08/2026, demandée par l'utilisateur
+// après la migration des puces vers des en-têtes cliquables — comportement
+// de tableur attendu, absent du 1er jet). "desc" = repli par défaut, même
+// affichage qu'avant l'ajout de cette bascule (meilleur en premier).
+export type SortDirection = "asc" | "desc";
+
+// Tendance de rang (13/08/2026, BACKLOG_V1.md « Fun / esprit ligue entre
+// potes ») : compare le rang du jour au dernier snapshot disponible
+// (leaderboard_snapshots, cron quotidien — déjà utilisé par
+// lib/queries/stats.ts::ProfileStatsEvolutionPoint, jamais encore affiché
+// sur cet écran). "unavailable" = aucun snapshot antérieur pour ce joueur
+// (nouveau dans le classement, OU la compétition n'a pas encore de recul) —
+// délibérément PAS labellé "nouveau joueur", on ne peut pas distinguer les
+// deux cas depuis cette seule table.
+export type RankTrend =
+  | { kind: "up"; delta: number; previousRank: number }
+  | { kind: "down"; delta: number; previousRank: number }
+  | { kind: "flat"; previousRank: number }
+  | { kind: "unavailable" };
+
 export type LeaderboardRow = {
   userId: string;
   pseudo: string;
@@ -24,13 +44,19 @@ export type LeaderboardRow = {
   isInactive: boolean; // compte désactivé, points conservés
   adminCorrectionsCount: number; // 0 = aucun badge
   isCurrentUser: boolean; // pilote la barre « toi » collante
+  // null = portée LIGUE active : leaderboard_snapshots ne stocke que le rang
+  // GÉNÉRAL (même limite déjà actée sur RankEvolutionChart, lib/queries/
+  // stats.ts) — comparer un rang de ligue au rang général d'hier n'aurait
+  // aucun sens, donc pas affiché du tout dans ce cas plutôt que trompeur.
+  rankTrend: RankTrend | null;
 };
 
 export type LeaderboardData = {
   competitionId: string | null; // null = aucune compétition active
   competitionName: string | null;
   sortKey: SortKey;
-  rows: LeaderboardRow[]; // déjà triées selon sortKey, rang déjà calculé sur Total
+  sortDirection: SortDirection;
+  rows: LeaderboardRow[]; // déjà triées selon sortKey/sortDirection, rang déjà calculé sur Total
   currentUserRank: number | null; // null = visiteur, ou joueur non classé
   rankedCount: number; // pilote le seuil de 20 de la barre collante
   // Vue filtrée par ligue (BACKLOG_V1.md « Système de ligue », migration #16) :
@@ -41,17 +67,41 @@ export type LeaderboardData = {
   scopeLeagueName: string | null;
 };
 
-function emptyData(sortKey: SortKey): LeaderboardData {
+function emptyData(sortKey: SortKey, sortDirection: SortDirection): LeaderboardData {
   return {
     competitionId: null,
     competitionName: null,
     sortKey,
+    sortDirection,
     rows: [],
     currentUserRank: null,
     rankedCount: 0,
     scopeLeagueId: null,
     scopeLeagueName: null,
   };
+}
+
+const SNAPSHOT_TIMEZONE = "Europe/Paris";
+
+// Même technique que lib/snapshots/leaderboardSnapshot.ts::todayKey
+// (en-CA -> YYYY-MM-DD) — dupliquée plutôt que partagée, même raison que
+// là-bas : fonction privée de 3 lignes, pas de module utilitaire de dates
+// dans ce projet.
+function todayKey(): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: SNAPSHOT_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
+function computeRankTrend(currentRank: number, previousRank: number | undefined): RankTrend {
+  if (previousRank === undefined) return { kind: "unavailable" };
+  const delta = previousRank - currentRank; // positif = a progressé (rang NUMÉRIQUE plus petit)
+  if (delta > 0) return { kind: "up", delta, previousRank };
+  if (delta < 0) return { kind: "down", delta: Math.abs(delta), previousRank };
+  return { kind: "flat", previousRank };
 }
 
 type CompetitionRow = { id: string; name: string };
@@ -77,7 +127,8 @@ const SORT_ACCESSOR: Record<SortKey, (row: LeaderboardRow) => number> = {
 
 export async function getLeaderboard(
   sortKey: SortKey,
-  leagueId?: string | null
+  leagueId?: string | null,
+  sortDirection: SortDirection = "desc"
 ): Promise<LeaderboardData> {
   const supabase = await getServerClient();
 
@@ -97,7 +148,7 @@ export async function getLeaderboard(
     // (demandé par l'utilisateur, 30/07/2026, trouvé en testant) : on
     // renvoie quand même l'id demandé pour que la puce corresponde,
     // même si aucun classement n'existe encore à filtrer.
-    return { ...emptyData(sortKey), scopeLeagueId: leagueId ?? null };
+    return { ...emptyData(sortKey, sortDirection), scopeLeagueId: leagueId ?? null };
   }
 
   // Ligue demandée (BACKLOG_V1.md « Système de ligue ») : un id invalide ou
@@ -133,6 +184,7 @@ export async function getLeaderboard(
       competitionId: competition.id,
       competitionName: competition.name,
       sortKey,
+      sortDirection,
       rows: [],
       currentUserRank: null,
       rankedCount: 0,
@@ -143,13 +195,27 @@ export async function getLeaderboard(
 
   const userIds = scoreRows.map((row) => row.user_id);
 
-  const [{ data: profiles }, { data: forms }] = await Promise.all([
+  // Tendance de rang : seulement en portée GÉNÉRALE (cf. commentaire de
+  // RankTrend/rankTrend ci-dessus) — pas de requête inutile en portée ligue.
+  const lastSnapshotDatePromise = scopeUserIds
+    ? Promise.resolve(null)
+    : supabase
+        .from("leaderboard_snapshots")
+        .select("snapshot_date")
+        .eq("competition_id", competition.id)
+        .lt("snapshot_date", todayKey())
+        .order("snapshot_date", { ascending: false })
+        .limit(1)
+        .maybeSingle<{ snapshot_date: string }>();
+
+  const [{ data: profiles }, { data: forms }, lastSnapshotDateResult] = await Promise.all([
     supabase.from("users").select("id, pseudo, status").in("id", userIds),
     supabase
       .from("user_recent_form")
       .select("user_id, recent_form_points")
       .eq("competition_id", competition.id)
       .in("user_id", userIds),
+    lastSnapshotDatePromise,
   ]);
 
   const profileById = new Map(
@@ -162,14 +228,31 @@ export async function getLeaderboard(
     (forms ?? []).map((row) => [row.user_id as string, row.recent_form_points as number])
   );
 
+  // 2e aller-retour nécessaire (date du dernier snapshot connue seulement
+  // après la 1re requête) : toutes les lignes de CE jour-là, un seul appel
+  // plutôt qu'un par joueur.
+  const previousRankByUser = new Map<string, number>();
+  const lastSnapshotDate = lastSnapshotDateResult?.data?.snapshot_date;
+  if (lastSnapshotDate) {
+    const { data: prevRows } = await supabase
+      .from("leaderboard_snapshots")
+      .select("user_id, rank")
+      .eq("competition_id", competition.id)
+      .eq("snapshot_date", lastSnapshotDate);
+    for (const row of prevRows ?? []) {
+      previousRankByUser.set(row.user_id as string, row.rank as number);
+    }
+  }
+
   const ranks = assignRanks(scoreRows);
 
   const rows: LeaderboardRow[] = scoreRows.map((row) => {
     const profile = profileById.get(row.user_id);
+    const rank = ranks.get(row.user_id)!;
     return {
       userId: row.user_id,
       pseudo: profile?.pseudo ?? "",
-      rank: ranks.get(row.user_id)!,
+      rank,
       totalPoints: row.total_points,
       matchesPoints: row.matches_points,
       bracketPoints: row.bracket_points,
@@ -179,12 +262,17 @@ export async function getLeaderboard(
       isInactive: profile?.isInactive ?? false,
       adminCorrectionsCount: row.admin_corrections_count,
       isCurrentUser: row.user_id === user?.id,
+      rankTrend: scopeUserIds ? null : computeRankTrend(rank, previousRankByUser.get(row.user_id)),
     };
   });
 
-  // La puce active pilote l'ORDRE des lignes, jamais le rang (déjà figé ci-dessus, §5).
+  // La colonne active pilote l'ORDRE des lignes, jamais le rang (déjà figé
+  // ci-dessus, §5). sortDirection (14/08/2026) inverse le comparateur EN
+  // BLOC, départage compris — cliquer 2x sur un en-tête déjà actif inverse
+  // proprement, sans réinventer un 2e critère de départage pour "asc".
+  const directionSign = sortDirection === "asc" ? -1 : 1;
   const sortedRows = [...rows].sort(
-    (a, b) => SORT_ACCESSOR[sortKey](b) - SORT_ACCESSOR[sortKey](a) || b.totalPoints - a.totalPoints
+    (a, b) => directionSign * (SORT_ACCESSOR[sortKey](b) - SORT_ACCESSOR[sortKey](a) || b.totalPoints - a.totalPoints)
   );
 
   const currentUserRow = user ? (rows.find((row) => row.userId === user.id) ?? null) : null;
@@ -193,6 +281,7 @@ export async function getLeaderboard(
     competitionId: competition.id,
     competitionName: competition.name,
     sortKey,
+    sortDirection,
     rows: sortedRows,
     currentUserRank: currentUserRow?.rank ?? null,
     rankedCount: rows.length,

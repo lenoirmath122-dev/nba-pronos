@@ -1,5 +1,30 @@
 .wrapper {
+  position: relative;
   border-bottom: 1px solid var(--color-border-hair);
+}
+
+/* Top 3 (13/08/2026) : filet d'accent en dégradé d'opacité — PAS d'or,
+   --color-champion reste réservé au champion du bracket (§17). */
+.wrapper[data-top-rank]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--color-accent-line);
+}
+
+.wrapper[data-top-rank="1"]::before {
+  opacity: 1;
+}
+
+.wrapper[data-top-rank="2"]::before {
+  opacity: 0.6;
+}
+
+.wrapper[data-top-rank="3"]::before {
+  opacity: 0.35;
 }
 
 .row {
@@ -33,11 +58,44 @@
 }
 
 .colRank {
-  flex: 0 0 2.25rem;
+  flex: 0 0 3.25rem;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
+}
+
+/* Rang du top 3 : plus affirmé, sans changer de couleur (la teinte reste
+   réservée au filet ci-dessus, cf. §4.1 — graisse/taille ≠ teinte). */
+.rankNum {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+/* --- Tendance de rang (13/08/2026) --- */
+.trendUp,
+.trendDown,
+.trendFlat {
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  line-height: 1;
+}
+
+/* --color-trend, JAMAIS win/loss (§17 : vert/rouge = résultat de match
+   uniquement, "jamais pour un statut, une urgence, un tri ou une action" —
+   une tendance de classement n'est aucun de ces résultats). */
+.trendUp,
+.trendDown {
+  color: var(--color-trend);
+}
+
+.trendFlat {
+  color: var(--color-text-muted);
 }
 
 .colPlayer {
@@ -47,6 +105,24 @@
   align-items: center;
   gap: var(--space-2);
   min-width: 0;
+}
+
+/* --- Avatar-initiales (13/08/2026) --- */
+/* Pas d'opacité propre : .rowInactive (posée sur .wrapper, un ancêtre) fait
+   déjà baisser l'opacité de toute la ligne, avatar compris — l'appliquer une
+   2e fois ici la ferait doublement s'estomper. */
+.avatar {
+  flex-shrink: 0;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .pseudo {
@@ -116,16 +192,25 @@
   background: var(--color-accent-soft);
 }
 
+/* flex: 0 0 1rem (largeur FIXE, pas juste flex-shrink:0) : bug réel trouvé
+   le 14/08/2026 — la rangée d'en-tête (LeaderboardTable) n'a pas d'élément
+   équivalent, donc .colPlayer (flex:1) calculait une largeur différente
+   entre les 2 rangées si ce chevron s'auto-dimensionnait à son contenu.
+   L'en-tête compense avec un espace réservé de MÊME largeur (.chevronSpace,
+   LeaderboardTable.module.css). */
 .chevron {
-  flex-shrink: 0;
+  flex: 0 0 1rem;
+  text-align: center;
   color: var(--color-text-muted);
   font-size: var(--font-size-xs);
   line-height: 1;
 }
 
-/* Ligne dépliée (§6) : sous-totaux publics + « dont Écarts » + correction. */
+/* Ligne dépliée (§6) : sous-totaux publics + « dont Écarts » + correction.
+   Indentation recalculée sur la largeur ACTUELLE de .colRank (3.25rem
+   depuis l'ajout de la tendance de rang, 13/08/2026 — était 2.25rem). */
 .detail {
-  padding: var(--space-1) var(--space-4) var(--space-4) calc(2.25rem + var(--space-3) + var(--space-4));
+  padding: var(--space-1) var(--space-4) var(--space-4) calc(3.25rem + var(--space-3) + var(--space-4));
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -168,4 +253,12 @@
   gap: var(--space-2);
   font-size: var(--font-size-xs);
   color: var(--color-trend);
+}
+
+/* Tendance en clair (13/08/2026) : même registre --color-trend que la
+   correction ci-dessus — jamais win/loss (§17). */
+.trendLine {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
 }

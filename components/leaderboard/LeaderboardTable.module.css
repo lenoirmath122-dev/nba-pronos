@@ -1,7 +1,11 @@
 /* Un seul tableau, colonnes dans l'ordre imposé (§4) :
    Rang │ Joueur │ Total ┃ Matchs │ Bracket │ Paris │ Forme
    Implémenté en divs+flex (convention du dépôt, pas de <table>) avec les
-   rôles ARIA d'un tableau pour l'accessibilité. */
+   rôles ARIA d'un tableau pour l'accessibilité.
+
+   En-têtes cliquables (13/08/2026, §4.2 corrigée) : .sortLink neutralise le
+   rendu <Link> par défaut pour qu'un en-tête reste visuellement un en-tête,
+   pas un lien souligné bleu. */
 
 .table {
   display: flex;
@@ -16,8 +20,12 @@
   border-bottom: 1px solid var(--color-border-hair);
 }
 
+/* 3.25rem, PAS 2.25rem : doit matcher exactement .colRank de
+   LeaderboardRow.module.css (élargi le 13/08/2026 pour la tendance de rang)
+   — un écart ici désaligne l'en-tête "Rang" de sa colonne de données
+   (bug réel trouvé le 14/08/2026, cf. aussi .detailHeaders ci-dessous). */
 .colRank {
-  flex: 0 0 2.25rem;
+  flex: 0 0 3.25rem;
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
 }
@@ -48,12 +56,63 @@
   color: var(--color-text-muted);
 }
 
-/* Colonne active (puce) : bande --color-accent-soft, valeur en --color-accent
-   (§4.1) — contextuel, se déplace avec la puce. */
+/* Colonne active (en-tête cliqué) : bande --color-accent-soft, valeur en
+   --color-accent (§4.1) — contextuel, se déplace avec la colonne triée. */
 .colActive {
   color: var(--color-accent);
   font-weight: var(--font-weight-semibold);
   background: var(--color-accent-soft);
+}
+
+/* --- En-têtes cliquables (13/08/2026) --- */
+.sortLink {
+  text-decoration: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  border-radius: var(--radius-sm);
+}
+
+.sortLink:hover {
+  color: var(--color-text-secondary);
+}
+
+.colActive.sortLink:hover {
+  color: var(--color-accent);
+}
+
+.sortLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.caret {
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+/* gap OBLIGATOIRE ici (bug réel trouvé le 14/08/2026) : ce wrapper introduit
+   un niveau de flex supplémentaire entre .headerRow et les 4 en-têtes de
+   détail — sans son propre gap, ses 4 enfants se collent (aucun espace),
+   alors que .row (LeaderboardRow) espace ses .colDetail directement via le
+   gap de son PROPRE conteneur flex. Même valeur (--space-3) des deux côtés. */
+.detailHeaders {
+  display: flex;
+  flex: 0 0 auto;
+  gap: var(--space-3);
+}
+
+/* Sélecteur mobile (MobileSortSelect) : occupe la même place que la colonne
+   de détail active, mais UNIQUEMENT sur mobile (cf. media query plus bas) —
+   en desktop, les 4 en-têtes cliquables suffisent, pas besoin d'un sélecteur. */
+.mobileSortSlot {
+  display: none;
+}
+
+.chevronSpace {
+  flex: 0 0 1rem;
 }
 
 /* Total actif : SEULE la bande s'applique (fond), jamais la teinte — le
@@ -64,11 +123,27 @@
   background: var(--color-accent-soft);
 }
 
-/* Mobile (§4.2) : 3 colonnes max, jamais de scroll horizontal. On masque les
-   3 colonnes de détail non actives — Rang/Joueur restent groupés, Total et
-   la puce active suivent, même grammaire, même emplacement du filet. */
+/* Mobile (§4.2) : 3 colonnes max, jamais de scroll horizontal. Rang/Joueur
+   restent groupés, Total et UNE colonne de détail suivent, même grammaire,
+   même emplacement du filet. La colonne de détail non active est masquée
+   pour les LIGNES de données (LeaderboardRow porte les mêmes classes) ; pour
+   la RANGÉE D'EN-TÊTE, les 4 en-têtes cliquables (desktop) laissent place au
+   sélecteur MobileSortSelect — sans lui, la seule colonne visible resterait
+   figée (rien pour la changer une fois les 3 autres en-têtes masqués). */
 @media (max-width: 767px) {
   .colDetail:not(.colActive) {
     display: none;
+  }
+
+  .headerRow .detailHeaders {
+    display: none;
+  }
+
+  /* Élargi (14/08/2026, était 3.75rem) : porte maintenant le select ET le
+     bouton de bascule croissant/décroissant, pas le select seul. */
+  .mobileSortSlot {
+    display: flex;
+    flex: 0 0 6.25rem;
+    justify-content: flex-end;
   }
 }

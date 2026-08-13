@@ -1,8 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
-import { getLeaderboard, type SortKey } from "@/lib/queries/leaderboard";
+import { getLeaderboard, type SortDirection, type SortKey } from "@/lib/queries/leaderboard";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { ScreenShell } from "@/components/nav/ScreenShell";
-import { SortChips } from "@/components/leaderboard/SortChips";
 import { LeagueScopeChips } from "@/components/leaderboard/LeagueScopeChips";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { StickyMeBar } from "@/components/leaderboard/StickyMeBar";
@@ -21,8 +20,14 @@ function parseSortKey(value: string | string[] | undefined): SortKey {
   return SORT_KEYS.includes(value as SortKey) ? (value as SortKey) : "total";
 }
 
+// Bascule croissant/décroissant (14/08/2026) : `?ordre=asc`, absent = "desc"
+// (repli, même affichage qu'avant l'ajout de cette bascule).
+function parseSortDirection(value: string | string[] | undefined): SortDirection {
+  return value === "asc" ? "asc" : "desc";
+}
+
 type LeaderboardPageProps = {
-  searchParams: Promise<{ tri?: string | string[]; ligue?: string | string[] }>;
+  searchParams: Promise<{ tri?: string | string[]; ligue?: string | string[]; ordre?: string | string[] }>;
 };
 
 function parseLeagueId(value: string | string[] | undefined): string | null {
@@ -31,9 +36,10 @@ function parseLeagueId(value: string | string[] | undefined): string | null {
 }
 
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
-  const { tri, ligue } = await searchParams;
+  const { tri, ligue, ordre } = await searchParams;
   const sortKey = parseSortKey(tri);
   const leagueId = parseLeagueId(ligue);
+  const sortDirection = parseSortDirection(ordre);
 
   const supabase = await getServerClient();
   const {
@@ -42,7 +48,10 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
 
   // getMyLeagues() lit sa propre session (RLS) : rien à filtrer pour un
   // visiteur, elle renvoie déjà [] sans utilisateur authentifié.
-  const [data, myLeagues] = await Promise.all([getLeaderboard(sortKey, leagueId), getMyLeagues()]);
+  const [data, myLeagues] = await Promise.all([
+    getLeaderboard(sortKey, leagueId, sortDirection),
+    getMyLeagues(),
+  ]);
 
   const showStickyBar = data.rankedCount > 20 && data.currentUserRank !== null;
   const currentUserRow = data.rows.find((row) => row.isCurrentUser);
@@ -58,8 +67,9 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             {/* Sélecteur affiché même sans compétition active (demandé par
                 l'utilisateur, 30/07/2026) : confirme que les ligues existent
                 déjà, avant même la prochaine compétition. Rien à filtrer tant
-                qu'il n'y a pas de classement — SortChips reste, lui, absent. */}
-            <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} sortKey={sortKey} />
+                qu'il n'y a pas de classement — le tableau (et ses en-têtes
+                triables) reste, lui, absent. */}
+            <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} sortKey={sortKey} sortDirection={sortDirection} />
             <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
           </>
         ) : (
@@ -72,8 +82,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               </p>
             </div>
 
-            <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} sortKey={sortKey} />
-            <SortChips active={sortKey} />
+            <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} sortKey={sortKey} sortDirection={sortDirection} />
 
             {data.rows.length === 0 ? (
               <EmptyState
@@ -81,7 +90,12 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                 subtitle="Le classement s'affichera dès les premiers pronos."
               />
             ) : (
-              <LeaderboardTable rows={data.rows} sortKey={sortKey} />
+              <LeaderboardTable
+                rows={data.rows}
+                sortKey={sortKey}
+                sortDirection={data.sortDirection}
+                leagueId={data.scopeLeagueId}
+              />
             )}
           </>
         )}
