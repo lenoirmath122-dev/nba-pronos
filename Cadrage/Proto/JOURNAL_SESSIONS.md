@@ -5782,4 +5782,118 @@ badges, quel critère de sélection parmi les 36, emplacement exact dans
 sera repris.
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` propres aux 2 étapes.
+
+## Badges permanents — remplacement des icônes stopgap par des visuels IA (10/08/2026, suite) : EN COURS, MIS EN PAUSE
+
+```text
+Aucun code applicatif touché dans cette entrée — travail entièrement
+côté `Cadrage/DA/` et `Cadrage/V1/Spec visuelle/`, en dehors du dépôt
+pour la génération elle-même (outils IA externes).
+
+Point de départ : `Cadrage/DA/BADGES.pdf` (tableau fourni par
+l'utilisateur, nom actuel/nom souhaité/description souhaitée/idée de
+visuel). Clarifié avec l'utilisateur qu'une cellule vide en "nom souhaité"
+ou "description souhaitée" signifie "garde la valeur actuelle", pas
+"reste à définir" — mauvaise lecture initiale corrigée.
+
+**Comptage des badges réconcilié à 35** (pas 36, pas 25) : le PDF liste 36
+lignes, mais Pilier et Fidèle ont été fusionnés en un seul badge nommé
+Fidèle (migration `20260810090000_badges_merge_pilier_into_fidele.sql`,
+déjà faite plus tôt dans la journée) — 36 - 1 = 35.
+
+**Comparatif de styles d'illustration** : artifact HTML créé (rendu
+canvas de 7 styles — flat, glossy, blason/varsity, sticker, néon, jeton
+3D, pixel — appliqués à Buzzer-beater et Victorieux), affiné une fois sur
+demande explicite de rendu "plus réaliste" (ombres portées, anses de
+trophée fermées, chiffres façon afficheur 7 segments, etc.). Classement
+de l'utilisateur : Blason Varsity > Flat minimaliste > Glossy trophée.
+
+**Catégorisation en 3 groupes actée** (confirmée par l'utilisateur, axe
+"prestige" plutôt que les 6 catégories fonctionnelles officielles de
+`lib/badges/labels.ts`) :
+- Groupe A, Glossy trophée (3) : Pronos Master, Bracket Master, Paris
+  Persos Master.
+- Groupe B, Blason Varsity (9) : Métronome, Fidèle, Sans-faute,
+  Visionnaire, Avant-gardiste, Victorieux (série), Buzzer-beater (série),
+  Vétéran, Doyen.
+- Groupe C, Flat minimaliste (23) : le reste.
+Recoupé avec les vraies mécaniques (`SPEC_BADGES_PERMANENTS_V0_1.md`,
+`lib/badges/thresholds.ts`) une fois découvertes en cours de route (voir
+plus bas) — aucun badge n'a eu besoin de changer de groupe.
+
+**Contrainte technique déjà actée retrouvée en cours de route** (pas
+créée cette session, déjà dans `PROMPTS_BADGES_ICONES.md` avant cette
+entrée) : icônes en PNG figé, linework clair neutre, palier géré par la
+carte CSS, PAS par l'image — reconfirmé explicitement avec l'utilisateur
+(1 image par badge, pas 5 par palier) plutôt que de partir sur un chantier
+5x plus gros.
+
+**`PROMPTS_BADGES_ICONES.md` mis à jour** avec 3 familles de composition
+(l'add-on Blason/Glossy vient s'ajouter au même bloc de style de base, la
+famille Flat reste sans ajout) ; tableaux I-VI retaggés par groupe ;
+6 "Subject" réécrits car le jeu de mots reposait sur l'ANCIEN nom du badge
+(Victorieux, Money-time, Avant-gardiste, Victorieux (série), Pronos
+Master, Paris Persos Master — ce dernier duo aussi aligné en forme de
+coupe pour rejoindre Bracket Master dans le groupe Glossy). Deux points
+flagués sans être tranchés : Victorieux a déjà un rendu Blason validé
+alors qu'il tombe en groupe Flat par mécanique (gardé en exception
+documentée) ; un commentaire dans `lib/badges/icons.tsx` mentionne un
+nouveau concept pour Casse-cou/Kamikaze/Fou furieux non repris dans ce
+fichier de prompts.
+
+**Nouveau fichier créé** : `PROMPTS_BADGES_GEMINI_PRETS.md` — les 35
+prompts entièrement compilés (bloc de style + add-on de groupe + Subject),
+prêts à copier-coller un par un, avec case à cocher par badge. Fichier
+dérivé, pas la source de vérité (`PROMPTS_BADGES_ICONES.md` reste la
+référence si un Subject change).
+
+**Essai de génération** : Recraft essayé en premier (style personnalisé
+figé depuis une génération raster) — jugé "pas assez précis/net/joli" par
+l'utilisateur. Bascule sur **Gemini (Nano Banana)** avec les mêmes
+prompts texte : nettement mieux sur les 2 premiers pilotes (Métronome,
+Victorieux avec cadre Blason) — confirmé par l'utilisateur. Défaut trouvé
+sur le 3e pilote (Bracket Master, groupe Glossy) : rendu en silhouette
+pleine au lieu d'un contour — correctif ajouté au bloc de style commun
+("pure stroke-based outline art, do not render as a solid filled
+silhouette") + rappel redondant dans le Subject des 3 badges Glossy.
+
+**Décision explicite de l'utilisateur : mise en pause du chantier ici**
+("trop complexe pour le moment"), après 3/35 badges pilotés (Métronome
+généré et validé ; Victorieux généré avec cadre Blason, validé plus tôt ;
+Bracket Master généré mais à refaire — silhouette pleine). Scout, groupe
+Flat sans cadre, jamais généré — le pilote sur les 3 groupes de
+composition n'est donc pas complet. Aucune régénération faite après le
+correctif "outline only". Reprise à date non fixée.
+```
+```
+
+## Rattrapage de suivi : reprise après la pause du 10/08/2026, migration #28 poussée (13/08/2026)
+
+```text
+L'utilisateur redémarre simplement par « Tu peux retourner dans le projet
+NBA pronos ? ». `git status` révèle que le dernier bloc de travail de la
+session du 10/08/2026 (suite) n'avait jamais été committé ni poussé :
+fusion Pilier -> Fidèle (migration #28 + `lib/badges/*` + `lib/queries/
+badges.ts`), renommages de badges (Chirurgien -> Victorieux, Horloger ->
+Buzzer-beater, Œil de lynx -> Money-time, Complétiste -> Avant-gardiste,
+etc.), puces couleur d'équipe + logo en filigrane sur `MatchRow` (écran
+Matchs), et `RevealPanel` redescendu en bas de carte dans
+`PredictionForm`. Signalé explicitement à l'utilisateur avant d'agir
+(3 options proposées : committer/pousser directement, revérifier au clic
+d'abord, ou reprendre plutôt le chantier des visuels IA en pause) —
+**choix : committer et pousser directement.**
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (36 routes)
+revérifiés propres sur l'état non commité AVANT tout push.
+
+**Bug réel trouvé en poussant la migration #28** : `npx supabase db push`
+échoue (`SQLSTATE 42P16 — cannot drop columns from view`). Le commentaire
+de la migration affirmait à tort suivre "le même geste non destructif que
+#26/#27" — mais ces 2 précédentes ne faisaient qu'AJOUTER des colonnes,
+alors que #28 RETIRE `pilier_streak`, ce que Postgres refuse via
+`CREATE OR REPLACE VIEW`. Corrigé en `DROP VIEW IF EXISTS` puis
+`CREATE VIEW` (grep des migrations : aucune autre vue/fonction ne dépend
+de `user_competition_streaks`, sans risque). Repoussée avec succès,
+`npx supabase migration list` confirme `local`/`remote` synchronisés sur
+`20260810090000`. `vitest run` revérifié propre après le push (37/37).
 ```

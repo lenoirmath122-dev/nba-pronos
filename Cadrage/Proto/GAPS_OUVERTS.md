@@ -100,6 +100,24 @@
 > **Chantier badges permanents entièrement clos** (spec, 3 phases, couleurs
 > par palier, carte retournée, astuce, icônes). Seul le badge Grimpeur
 > (progression de rang) reste hors périmètre, écarté par choix explicite.
+>
+> **Remplacement des icônes stopgap (`lucide-react`) par des visuels IA —
+> EN COURS, MIS EN PAUSE le 10/08/2026** (`JOURNAL_SESSIONS.md`, entrée
+> dédiée ; `Cadrage/V1/Spec visuelle/PROMPTS_BADGES_ICONES.md` +
+> `PROMPTS_BADGES_GEMINI_PRETS.md`) : les icônes `lucide-react` actuelles
+> restent en place dans le code (rien changé côté appli), c'est un chantier
+> visuel externe au dépôt (génération IA, PNG à intégrer plus tard). 3/35
+> badges pilotés : Métronome (Blason) et Victorieux (Blason, exception —
+> gardé même si sa mécanique le classerait en Flat) générés et validés via
+> Gemini/Nano Banana ; Bracket Master (Glossy) généré mais à refaire
+> (silhouette pleine au lieu d'un contour, correctif déjà ajouté aux
+> prompts, pas encore régénéré). Scout (Flat, sans cadre) jamais généré —
+> le pilote sur les 3 familles de composition n'est pas complet. Outil
+> retenu : Gemini/Nano Banana (Recraft essayé en premier, jugé pas assez
+> net). 2 points non tranchés, flagués dans `PROMPTS_BADGES_ICONES.md` :
+> l'exception Victorieux (Blason vs Flat) et le concept dé de Casse-cou/
+> Kamikaze/Fou furieux (peut-être obsolète selon un commentaire dans
+> `lib/badges/icons.tsx`). Reprise à date non fixée.
 
 > **État au 06/08/2026 (suite)** — **Thème à 3 choix Sombre/Clair/Photo**
 > (`ETAT_ACTUEL.md` §2.58, `JOURNAL_SESSIONS.md` entrée dédiée) : les 2

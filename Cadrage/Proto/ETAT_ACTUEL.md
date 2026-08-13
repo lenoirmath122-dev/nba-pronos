@@ -5,7 +5,24 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : sessions du 08-10/08/2026 — **badges permanents :
+> Dernière mise à jour : session du 13/08/2026 — **rattrapage de suivi :
+> reprise après la pause du 10/08/2026, dernier bloc de travail committé et
+> poussé** (`JOURNAL_SESSIONS.md`, entrée dédiée) : `git status` en tout
+> début de session a révélé que la fusion Pilier→Fidèle (migration #28,
+> `lib/badges/*`/`lib/queries/badges.ts`), les renommages de badges
+> (Chirurgien→Victorieux, Horloger→Buzzer-beater, Œil de lynx→Money-time,
+> Complétiste→Avant-gardiste, etc.), les puces couleur d'équipe + logo en
+> filigrane sur l'écran Matchs (`MatchRow.tsx`), et le `RevealPanel`
+> redescendu en bas de carte (`PredictionForm.tsx`) — tout ça codé lors de
+> la session du 10/08/2026 (suite) — n'avaient jamais été committés ni
+> poussés. Signalé explicitement à l'utilisateur avant d'agir ; choix :
+> committer et pousser directement. `tsc`/`eslint`/`vitest`/`next build`
+> revérifiés propres. **Bug réel trouvé en poussant la migration #28** :
+> `CREATE OR REPLACE VIEW` refusé par Postgres (SQLSTATE 42P16, retire une
+> colonne) — corrigé en `DROP VIEW` + `CREATE VIEW`, repoussé avec succès,
+> `migration list` confirme `local`/`remote` synchronisés.
+>
+> Plus tôt (sessions du 08-10/08/2026) — **badges permanents :
 > CHANTIER ENTIÈREMENT CLOS** (§2.59) : 3e et dernier chantier prioritaire
 > du reclassement du 30/07/2026, jusque-là non cadré. Spec dédiée
 > (`Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md`) : 36 badges

@@ -13,11 +13,15 @@ import { BADGE_CATEGORIES, BADGE_LABELS, BADGE_DESCRIPTIONS, type BadgeCategoryI
 import type { BetCategory } from "@/lib/labels/bets";
 
 // Onglet Stats > Badges (SPEC_BADGES_PERMANENTS_V0_1.md, phases 1+2+3 —
-// catalogue de base complet, Métronome/Pilier/Fidèle inclus ; seul Grimpeur
-// reste hors périmètre). Contrairement à getProfileStats (lib/queries/
-// stats.ts), lecture À VIE (toutes compétitions confondues, pas seulement
-// la compétition ACTIVE) et SANS paramètre de scope ligue — aucune
-// comparaison entre joueurs sur un accomplissement personnel (spec §1).
+// catalogue de base complet, Métronome/Fidèle inclus ; seul Grimpeur reste
+// hors périmètre). Contrairement à getProfileStats (lib/queries/stats.ts),
+// lecture À VIE (toutes compétitions confondues, pas seulement la
+// compétition ACTIVE) et SANS paramètre de scope ligue — aucune comparaison
+// entre joueurs sur un accomplissement personnel (spec §1).
+//
+// Pilier RETIRÉ le 10/08/2026 (migration #28, fusionné dans Fidèle — sa
+// description révisée était identique à la définition déjà codée de
+// Fidèle, cf. lib/badges/thresholds.ts).
 
 export type BadgeDisplay =
   | { kind: "tiered"; id: TieredBadgeId; label: string; description: string; value: number; tier: BadgeTier | null; nextThreshold: number | null }
@@ -53,14 +57,13 @@ type UserBadgesLifetimeRow = {
 };
 
 // Une ligne par (compétition, joueur) — le RECORD à vie affiché par le
-// badge (Métronome/Pilier/Fidèle) est le max de ces lignes, réduit ici
-// plutôt qu'en SQL (spec §2, choisi pour rester simple sur ce 1er usage de
+// badge (Métronome/Fidèle) est le max de ces lignes, réduit ici plutôt
+// qu'en SQL (spec §2, choisi pour rester simple sur ce 1er usage de
 // gaps-and-islands dans ce dépôt).
 type UserCompetitionStreakRow = {
   user_id: string;
   competition_id: string;
   metronome_streak: number;
-  pilier_streak: number;
   fidele_streak: number;
 };
 
@@ -79,7 +82,7 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
     supabase.from("users").select("created_at").eq("id", user.id).single<{ created_at: string }>(),
     supabase
       .from("user_competition_streaks")
-      .select("user_id, competition_id, metronome_streak, pilier_streak, fidele_streak")
+      .select("user_id, competition_id, metronome_streak, fidele_streak")
       .eq("user_id", user.id)
       .returns<UserCompetitionStreakRow[]>(),
   ]);
@@ -117,7 +120,6 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
     : 0;
 
   const metronomeRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.metronome_streak), 0);
-  const pilierRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.pilier_streak), 0);
   const fideleRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.fidele_streak), 0);
 
   const tieredValues: Record<TieredBadgeId, number> = {
@@ -125,7 +127,6 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
     HORLOGER: row.match_exact_margins,
     OEIL_DE_LYNX: row.match_close_margins,
     METRONOME: metronomeRecord,
-    PILIER: pilierRecord,
     MACHINE_A_PRONOS: row.match_predictions_committed,
 
     CHIRURGIEN_SERIE: row.bracket_correct_winners,

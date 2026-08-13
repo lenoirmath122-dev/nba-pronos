@@ -4,23 +4,28 @@
 // "Duelliste" (badge) ne doit jamais être confondu avec "Comparaison / duel"
 // (libellé sérieux du formulaire de pari, même catégorie bet_category
 // sous-jacente).
+//
+// Renommages du 10/08/2026 (révision de l'utilisateur, tableau PDF) :
+// Chirurgien->Victorieux, Horloger->Buzzer-beater, Œil de lynx->Money-time,
+// Chirurgien (série)->Victorieux (série), Scoreur (série)->Buzzer-beater
+// (série), Complétiste->Avant-gardiste. Pilier RETIRÉ (fusionné dans
+// Fidèle, migration #28 — cf. thresholds.ts).
 
 import type { BadgeId } from "./thresholds";
 
 export type BadgeCategoryId = "MATCH" | "BRACKET" | "BETS" | "RANKING" | "LOYALTY" | "LEAGUES";
 
 export const BADGE_LABELS: Record<BadgeId, string> = {
-  CHIRURGIEN: "Chirurgien",
-  HORLOGER: "Horloger",
-  OEIL_DE_LYNX: "Œil de lynx",
+  CHIRURGIEN: "Victorieux",
+  HORLOGER: "Buzzer-beater",
+  OEIL_DE_LYNX: "Money-time",
   METRONOME: "Métronome",
-  PILIER: "Pilier",
   MACHINE_A_PRONOS: "Machine à pronos",
 
-  CHIRURGIEN_SERIE: "Chirurgien (série)",
-  SCOREUR_SERIE: "Scoreur (série)",
+  CHIRURGIEN_SERIE: "Victorieux (série)",
+  SCOREUR_SERIE: "Buzzer-beater (série)",
   VISIONNAIRE: "Visionnaire",
-  COMPLETISTE: "Complétiste",
+  COMPLETISTE: "Avant-gardiste",
   SANS_FAUTE: "Sans-faute",
 
   SCOUT: "Scout",
@@ -54,15 +59,14 @@ export const BADGE_LABELS: Record<BadgeId, string> = {
 };
 
 export const BADGE_DESCRIPTIONS: Record<BadgeId, string> = {
-  CHIRURGIEN: "Pronostics vainqueur corrects",
-  HORLOGER: "Écarts exacts",
-  OEIL_DE_LYNX: "Écarts proches (à 1 ou 2 points près)",
+  CHIRURGIEN: "Bons vainqueurs pronostiqués",
+  HORLOGER: "Écarts exacts trouvés",
+  OEIL_DE_LYNX: "Écarts proches trouvés",
   METRONOME: "Record de bons vainqueurs d'affilée",
-  PILIER: "Record de participation sans absence",
   MACHINE_A_PRONOS: "Pronostics soumis, peu importe le résultat",
 
-  CHIRURGIEN_SERIE: "Vainqueurs de série corrects au bracket",
-  SCOREUR_SERIE: "Scores de série exacts au bracket",
+  CHIRURGIEN_SERIE: "Bons vainqueurs de série pronostiqués",
+  SCOREUR_SERIE: "Scores de série exacts",
   VISIONNAIRE: "Affiches de série correctement anticipées",
   COMPLETISTE: "Bracket rempli à 100% au moins une fois",
   SANS_FAUTE: "Tours de bracket sans aucune erreur de vainqueur",
@@ -101,7 +105,7 @@ export const BADGE_CATEGORIES: { id: BadgeCategoryId; title: string; badges: Bad
   {
     id: "MATCH",
     title: "Pronostics de match",
-    badges: ["CHIRURGIEN", "HORLOGER", "OEIL_DE_LYNX", "METRONOME", "PILIER", "MACHINE_A_PRONOS"],
+    badges: ["CHIRURGIEN", "HORLOGER", "OEIL_DE_LYNX", "METRONOME", "MACHINE_A_PRONOS"],
   },
   {
     id: "BRACKET",

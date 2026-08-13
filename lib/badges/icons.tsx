@@ -3,7 +3,6 @@ import {
   Clock,
   Eye,
   Repeat,
-  Columns3,
   Cpu,
   Target,
   Percent,
@@ -45,13 +44,20 @@ import type { BadgeId } from "./thresholds";
 // répétée entre badges. L'échelle de difficulté (Prudent → Fou furieux)
 // reprend volontairement les faces de dé Dice1→Dice5 : correspondance
 // littérale et lisible avec le niveau 1 à 5.
+//
+// STOPGAP : ce mapping sera remplacé par des visuels générés par IA une
+// fois prêts (cf. Cadrage/V1/Spec visuelle/PROMPTS_BADGES_ICONES.md) — pas
+// mis à jour pour coller aux nouveaux concepts visuels choisis par
+// l'utilisateur le 10/08/2026 (échelle Casse-cou/Kamikaze/Fou furieux
+// notamment, qui abandonne les dés aux 2 derniers paliers), pour éviter un
+// double travail. Seul PILIER a été retiré (fusionné dans FIDELE,
+// migration #28) — sinon le mapping n'était plus valide (type manquant).
 
 export const BADGE_ICONS: Record<BadgeId, LucideIcon> = {
   CHIRURGIEN: Crosshair,
   HORLOGER: Clock,
   OEIL_DE_LYNX: Eye,
   METRONOME: Repeat,
-  PILIER: Columns3,
   MACHINE_A_PRONOS: Cpu,
 
   CHIRURGIEN_SERIE: Target,

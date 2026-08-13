@@ -9,6 +9,11 @@
 // Phase 1 (25 badges) + phase 2 (Métronome, Pilier) + phase 3 (Fidèle —
 // 09/08/2026, catalogue de base désormais complet). Seul Grimpeur
 // (progression de rang) reste hors périmètre, cf. §7 de la spec.
+//
+// Pilier RETIRÉ le 10/08/2026 (migration #28) : sa description révisée par
+// l'utilisateur ("participation d'affilée, prono ou pari") s'est révélée
+// identique à la définition déjà codée de Fidèle (union pronostic OU pari
+// MATCH) — fusionnés en un seul badge, Fidèle garde le nom et le visuel.
 
 export type BadgeTier = "BRONZE" | "ARGENT" | "OR" | "PLATINE" | "DIAMANT";
 
@@ -18,7 +23,6 @@ export type TieredBadgeId =
   | "HORLOGER"
   | "OEIL_DE_LYNX"
   | "METRONOME"
-  | "PILIER"
   | "MACHINE_A_PRONOS"
   // II. Bracket personnel
   | "CHIRURGIEN_SERIE"
@@ -65,7 +69,6 @@ export const TIERED_BADGE_THRESHOLDS: Record<TieredBadgeId, TierThresholds> = {
   // l'intérieur d'une compétition, max réduit côté TypeScript entre
   // compétitions — jamais de régression, cf. lib/queries/badges.ts).
   METRONOME: [3, 5, 8, 12, 20],
-  PILIER: [5, 15, 30, 50, 80],
   MACHINE_A_PRONOS: [5, 15, 35, 70, 120],
 
   CHIRURGIEN_SERIE: [3, 8, 15, 30, 50],
@@ -95,7 +98,8 @@ export const TIERED_BADGE_THRESHOLDS: Record<TieredBadgeId, TierThresholds> = {
   // paris confondus (union — un pari MATCH rattaché au match précis compte
   // autant qu'un pronostic ; un pari SÉRIE ne compte jamais, cf. migration
   // #27). Streak à l'intérieur d'une compétition, max réduit côté
-  // TypeScript entre compétitions, même patron que Métronome/Pilier.
+  // TypeScript entre compétitions, même patron que Métronome. Absorbe
+  // l'ancien badge Pilier depuis le 10/08/2026 (migration #28, fusion).
   FIDELE: [5, 15, 30, 50, 80],
 
   VETERAN: [1, 2, 4, 6, 10],

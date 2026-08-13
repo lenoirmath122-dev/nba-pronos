@@ -62,13 +62,6 @@ export function PredictionForm({ match }: PredictionFormProps) {
         <p className={styles.validatedRecap}>
           Ton prono : {winnerAbbreviation(match)} −{match.myMargin}
         </p>
-        <RevealPanel
-          isRevealed={match.isRevealed}
-          predictedCount={match.predictedCount}
-          eligibleCount={match.eligibleCount}
-          others={match.others}
-          absentees={match.absentees}
-        />
         {/* Le prono et le pari sont deux entités indépendantes (match_predictions
             vs bets) — valider le prono en premier ne doit pas priver l'accès au
             pari associé, sans quoi seul l'écran Paris dédié reste utilisable
@@ -80,6 +73,15 @@ export function PredictionForm({ match }: PredictionFormProps) {
           hasBet={match.betSlot.hasBetOnThisMatch}
           triggerLabel={triggerLabelFor(match.betSlot)}
           myBet={match.myBet}
+        />
+        {/* RevealPanel descendu en bas de carte (demandé par l'utilisateur,
+            10/08/2026) — auparavant juste après le recap, avant le pari. */}
+        <RevealPanel
+          isRevealed={match.isRevealed}
+          predictedCount={match.predictedCount}
+          eligibleCount={match.eligibleCount}
+          others={match.others}
+          absentees={match.absentees}
         />
       </div>
     );
@@ -180,14 +182,6 @@ export function PredictionForm({ match }: PredictionFormProps) {
         awayTeamId={match.awayTeam.id}
       />
 
-      <RevealPanel
-        isRevealed={match.isRevealed}
-        predictedCount={match.predictedCount}
-        eligibleCount={match.eligibleCount}
-        others={match.others}
-        absentees={match.absentees}
-      />
-
       {error && (
         <p className={styles.error} role="alert">
           {error}
@@ -220,6 +214,17 @@ export function PredictionForm({ match }: PredictionFormProps) {
         myBet={match.myBet}
         hideSubmit={isComplete && betFields !== null}
         onFieldsChange={setBetFields}
+      />
+
+      {/* RevealPanel descendu en bas de carte, sous « Valider le prono » et le
+          pari inline (demandé par l'utilisateur, 10/08/2026) — auparavant
+          juste après MarginStepper, avant les actions. */}
+      <RevealPanel
+        isRevealed={match.isRevealed}
+        predictedCount={match.predictedCount}
+        eligibleCount={match.eligibleCount}
+        others={match.others}
+        absentees={match.absentees}
       />
 
       {/* Dialogue de VALIDATION — distinct du dialogue C2 de perte de saisie
