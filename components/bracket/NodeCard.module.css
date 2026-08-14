@@ -41,6 +41,17 @@
   border-color: var(--color-accent-line);
 }
 
+/* Série EN COURS (14/08/2026) : même teinte accent que .cardOpen (registre
+   "attention" déjà établi par ce token) — pas de conflit puisqu'une série en
+   cours n'est jamais aussi "décidée"/"champion" (isLive et isDecided/
+   hasChampion s'excluent déjà par construction, cf. NodeCard.tsx). Déclarée
+   AVANT .cardOpen dans la liste de classes : le clic (ouverture du détail)
+   garde la priorité visuelle, comme pour .cardDecided/.cardChampion. */
+.cardLive {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
 .cardDisabled {
   cursor: default;
 }
@@ -107,4 +118,76 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
+}
+
+/* --- Série EN COURS : tag "En cours" + score par équipe (14/08/2026) --- */
+.liveMatchup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.liveTag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-accent);
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+
+/* --motion-pulse-duration (tokens.css) : réservé pour "le pulse du point
+   live" depuis §7.1 mais jamais consommé jusqu'ici — 1er usage réel.
+   Animation neutralisée sous prefers-reduced-motion : la keyframe n'est même
+   pas déclarée hors de ce bloc (R-MOT2), même patron que RotateInvite. */
+@media (prefers-reduced-motion: no-preference) {
+  .liveDot {
+    animation: node-card-live-pulse var(--motion-pulse-duration) ease-in-out infinite;
+  }
+}
+
+@keyframes node-card-live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.liveTeamRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+/* Score de série EN COURS : --color-trend (neutre), JAMAIS --color-win —
+   "qui mène" n'est pas un résultat (§17 : vert/rouge réservés au résultat
+   FINAL d'un match/série, "jamais pour un statut, une urgence, un tri ou une
+   action"). Même raisonnement déjà appliqué à la tendance de rang du
+   Classement (LeaderboardRow.module.css). Égalité : ni l'une ni l'autre. */
+.liveScore {
+  font-size: var(--font-size-sm);
+  font-variant-numeric: tabular-nums;
+  font-family: var(--font-numeric);
+  color: var(--color-text-muted);
+  font-weight: var(--font-weight-medium);
+  min-width: 1ch;
+  text-align: right;
+}
+
+.liveScoreLeading {
+  color: var(--color-trend);
+  font-weight: var(--font-weight-semibold);
 }

@@ -119,7 +119,13 @@ export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
             × Quitter
           </button>
         </div>
-        <SeriesDrillDown rounds={data.rounds} isDeadlinePassed={data.isDeadlinePassed} view="B" showBetLink={showBetLink} />
+        <SeriesDrillDown
+          rounds={data.rounds}
+          isDeadlinePassed={data.isDeadlinePassed}
+          view="B"
+          competitionType={data.competitionType}
+          showBetLink={showBetLink}
+        />
       </div>
     );
   }

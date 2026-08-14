@@ -19,23 +19,51 @@
   color: var(--color-text-primary);
 }
 
-/* Sous-groupe Ouest/Est à l'intérieur d'un tour à conférence (30/07/2026,
-   refonte lisibilité) — discret, le tour reste le titre principal. */
-.confLabel {
-  margin: 0;
-  padding: 0 var(--space-4);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
 .nodeList {
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: 0 var(--space-4);
+}
+
+/* 2 colonnes Ouest | Est par tour (14/08/2026) — 1er breakpoint de cet
+   écran (Vue A était fluide à toutes les tailles jusqu'ici) : colonnes
+   conservées même sur mobile (cartes déjà compactes, pas de scroll
+   horizontal — jamais autorisé sur ce projet), demandé explicitement par
+   l'utilisateur plutôt que de les empiler. */
+.cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  padding: 0 var(--space-4);
+}
+
+.column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.column .nodeList {
+  padding: 0;
+}
+
+/* Finale NBA / tour sans conférence (Playoffs uniquement, Cup exclue plus
+   haut) : centrée plutôt qu'étalée sur toute la largeur des 2 colonnes. */
+.centerWrap {
+  display: flex;
+  justify-content: center;
+  padding: 0 var(--space-4);
+}
+
+.centerCol {
+  width: 100%;
+  max-width: 20rem;
+}
+
+.centerCol .nodeList {
+  padding: 0;
 }
 
 .inlineDetail {

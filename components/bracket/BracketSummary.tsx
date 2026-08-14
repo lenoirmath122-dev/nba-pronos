@@ -64,7 +64,13 @@ export function BracketSummary({ data, competitionName, initialShowTree, liveSee
           </div>
         )}
 
-        <SeriesDrillDown rounds={data.rounds} isDeadlinePassed={data.isDeadlinePassed} view="A" showBetLink={showBetLink} />
+        <SeriesDrillDown
+          rounds={data.rounds}
+          isDeadlinePassed={data.isDeadlinePassed}
+          view="A"
+          competitionType={data.competitionType}
+          showBetLink={showBetLink}
+        />
       </div>
     </LiveSeriesSubscriber>
   );

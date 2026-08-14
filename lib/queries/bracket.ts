@@ -26,6 +26,17 @@ export type SeriesPickGroup = {
   players: SeriesPickPlayer[]; // VIDE avant la deadline
 };
 
+// Statut réel d'une série (14/08/2026, demandé par l'utilisateur — layout
+// 2 colonnes + séries EN COURS mises en avant, le reste replié) — reflète
+// directement series.official_status (déjà en base, déjà la seule source
+// de vérité côté scoring, lib/scoring/engine.ts).
+export type BracketSeriesStatus = "SCHEDULED" | "IN_PROGRESS" | "FINISHED" | "POSTPONED" | "CANCELLED";
+
+/** Score EN DIRECT (victoires par équipe) — non-null UNIQUEMENT si status
+ *  === "IN_PROGRESS". Snapshot au chargement de la page (pas de push
+ *  Realtime ici, §18 : le live reste réservé à l'écran Matchs). */
+export type BracketLiveScore = { teamAWins: number; teamBWins: number };
+
 export type BracketNode = {
   nodeId: string;
   round: string;
@@ -33,6 +44,9 @@ export type BracketNode = {
   teamA: { abbreviation: string; name: string } | null; // null = pas encore déterminé
   teamB: { abbreviation: string; name: string } | null;
   actualWinnerAbbreviation: string | null; // état réel
+  status: BracketSeriesStatus;
+  liveScore: BracketLiveScore | null;
+  finalScoreFormat: string | null; // non-null uniquement si status === "FINISHED" (Playoffs)
   filledBracketsCount: number;
   groups: SeriesPickGroup[]; // VIDE avant la deadline
 };
@@ -90,7 +104,9 @@ type SeriesRow = {
   slot_index: number;
   team1_id: string | null;
   team2_id: string | null;
+  official_status: BracketSeriesStatus;
   official_winner_team_id: string | null;
+  official_score_format: string | null;
 };
 
 type TeamRow = { id: string; name: string; abbreviation: string };
@@ -117,7 +133,7 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
 
   const { data: seriesData } = await supabase
     .from("series")
-    .select("id, round, conference, slot_index, team1_id, team2_id, official_winner_team_id")
+    .select("id, round, conference, slot_index, team1_id, team2_id, official_status, official_winner_team_id, official_score_format")
     .eq("competition_id", competition.id);
 
   const series = (seriesData ?? []) as SeriesRow[];
@@ -167,6 +183,35 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
     }
   }
 
+  // Score EN DIRECT des séries IN_PROGRESS (14/08/2026) — victoires par
+  // équipe, comptées depuis les matchs FINISHED de la série (même logique
+  // de comptage que deriveSeriesOutcome, lib/scoring/engine.ts, mais on a
+  // besoin ici du DÉTAIL par équipe, pas seulement de l'agrégat déjà écrit
+  // dans official_*). Une seule requête, uniquement s'il y a au moins une
+  // série IN_PROGRESS.
+  const inProgressSeriesIds = series.filter((row) => row.official_status === "IN_PROGRESS").map((row) => row.id);
+  const liveScoreBySeriesId = new Map<string, BracketLiveScore>();
+  if (inProgressSeriesIds.length > 0) {
+    const { data: liveMatches } = await supabase
+      .from("matches")
+      .select("series_id, home_team_id, away_team_id, home_score, away_score")
+      .in("series_id", inProgressSeriesIds)
+      .eq("status", "FINISHED");
+    const seriesById = new Map(series.map((row) => [row.id, row]));
+    for (const match of liveMatches ?? []) {
+      const homeScore = match.home_score as number | null;
+      const awayScore = match.away_score as number | null;
+      if (homeScore === null || awayScore === null || homeScore === awayScore) continue; // anomalie, ignorée (§4)
+      const winnerTeamId = homeScore > awayScore ? match.home_team_id : match.away_team_id;
+      const parentSeries = seriesById.get(match.series_id as string);
+      if (!winnerTeamId || !parentSeries) continue;
+      const current = liveScoreBySeriesId.get(parentSeries.id) ?? { teamAWins: 0, teamBWins: 0 };
+      if (winnerTeamId === parentSeries.team1_id) current.teamAWins += 1;
+      else if (winnerTeamId === parentSeries.team2_id) current.teamBWins += 1;
+      liveScoreBySeriesId.set(parentSeries.id, current);
+    }
+  }
+
   // Drill-down nominatif (§11) : uniquement après la deadline. Les requêtes
   // ne sont même pas lancées avant — la confidentialité n'est jamais un `if`
   // de rendu.
@@ -196,6 +241,9 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
         actualWinnerAbbreviation: row.official_winner_team_id
           ? (teams.get(row.official_winner_team_id)?.abbreviation ?? null)
           : null,
+        status: row.official_status,
+        liveScore: row.official_status === "IN_PROGRESS" ? (liveScoreBySeriesId.get(row.id) ?? { teamAWins: 0, teamBWins: 0 }) : null,
+        finalScoreFormat: row.official_status === "FINISHED" ? row.official_score_format : null,
         filledBracketsCount: filledBySeriesId.get(row.id) ?? 0,
         groups: groupsBySeriesId.get(row.id) ?? [],
       }));
