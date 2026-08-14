@@ -49,8 +49,14 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 
 const DRY_RUN = !process.argv.includes("--confirm");
 
-const TEST_COMPETITION_NAMES = ["Playoffs NBA (test)", "Test UI Matchs"];
-const SEED_PSEUDOS = ["Amine92", "Chloe_B", "Yanis44", "Sofia_Admin", "Marco_D", "Nina_R", "Tariq_M"];
+// "Playoffs NBA (simulation)" + les 4 pseudos additionnels ajoutés le
+// 14/08/2026 (scripts/seed-playoffs-simulation.mjs — 10 bots, plusieurs
+// pseudos réutilisés intentionnellement depuis le seed d'origine ci-dessus).
+const TEST_COMPETITION_NAMES = ["Playoffs NBA (test)", "Test UI Matchs", "Playoffs NBA (simulation)"];
+const SEED_PSEUDOS = [
+  "Amine92", "Chloe_B", "Yanis44", "Sofia_Admin", "Marco_D", "Nina_R", "Tariq_M",
+  "Lucas_P", "Emma_K", "Karim_T", "Zoe_L",
+];
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
   auth: { autoRefreshToken: false, persistSession: false },
