@@ -78,6 +78,16 @@ export function BetForm(props: BetFormProps) {
     () => new Map(props.bootstrap.seriesOptions.map((s) => [s.seriesId, s])),
     [props.bootstrap.seriesOptions]
   );
+  // Une série dont les 2 équipes ne sont pas encore connues ne peut rien dire
+  // de concret une fois choisie (récapitulatif réduit au nom du tour, ex.
+  // "Finales de conférence" — les 2 conférences y sont indiscernables l'une
+  // de l'autre). Retirée de la liste (15/08/2026, demandé par l'utilisateur)
+  // — jamais du bootstrap serveur, qui reste correct pour TOUTES les séries
+  // (quotas), seulement de ce qui est proposé au clic ici.
+  const knownSeriesOptions = useMemo(
+    () => props.bootstrap.seriesOptions.filter((s) => s.team1Abbr !== null && s.team2Abbr !== null),
+    [props.bootstrap.seriesOptions]
+  );
   const selectedSeries = seriesId ? seriesById.get(seriesId) ?? null : null;
   const capReached =
     scope === "MATCH" && !isCup && selectedSeries !== null && selectedSeries.matchSlotsUsed >= MATCH_SLOT_CAP;
@@ -198,11 +208,12 @@ export function BetForm(props: BetFormProps) {
         </p>
       ) : (
         <>
-          {props.bootstrap.seriesOptions.length === 0 ? (
+          {knownSeriesOptions.length === 0 ? (
             <p className={styles.notice}>Aucune série n&rsquo;est ouverte au pari pour l&rsquo;instant.</p>
           ) : (
             <SeriesPicker
-              seriesOptions={props.bootstrap.seriesOptions}
+              key={scope}
+              seriesOptions={knownSeriesOptions}
               scope={scope}
               selectedSeriesId={seriesId}
               onSelect={handleSeriesSelect}
@@ -217,6 +228,7 @@ export function BetForm(props: BetFormProps) {
                 <p className={styles.notice}>Aucun match identifié et à venir dans cette série.</p>
               ) : (
                 <MatchPicker
+                  key={selectedSeries.seriesId}
                   matchOptions={selectedSeries.matchOptions}
                   selectedMatchId={matchId}
                   onSelect={handleMatchSelect}
@@ -250,7 +262,12 @@ export function BetForm(props: BetFormProps) {
         <div className={styles.stickyContent}>
           {!isEdit && (
             <div className={styles.stickyHeader}>
-              <span className={styles.selectionLabel}>{targetLabel}</span>
+              {/* PAS .selectionLabel ici (15/08/2026) : cette classe tronque
+                  sur 1 ligne pour la barre compacte, où c'est nécessaire
+                  (hauteur fixe) — mais coupait "Match 1 — 16/08 20:00" en
+                  plein milieu de la date une fois le panneau déplié, alors
+                  que la place ne manque pas ici. */}
+              <span className={styles.stickyHeaderLabel}>{targetLabel}</span>
               <button type="button" className={styles.collapseButton} onClick={() => setIsExpanded(false)}>
                 Réduire
               </button>
@@ -337,10 +354,21 @@ type SeriesPickerProps = {
   onSelect: (series: SeriesOption) => void;
 };
 
+// Repliées par défaut (15/08/2026, demandé par l'utilisateur — la liste
+// était dominée par des options indisponibles, il fallait traverser un mur
+// de lignes mortes pour trouver la seule pariable). `key={scope}` posé par
+// l'appelant : ce composant se remonte à chaque bascule Série/Match, l'état
+// "tout afficher" ne doit pas survivre à un changement de portée.
 function SeriesPicker({ seriesOptions, scope, selectedSeriesId, onSelect }: SeriesPickerProps) {
+  const [showAll, setShowAll] = useState(false);
+  const isVisible = (series: SeriesOption) =>
+    showAll || isSeriesSelectable(series, scope) || series.seriesId === selectedSeriesId;
+  const visible = seriesOptions.filter(isVisible);
+  const hiddenCount = seriesOptions.length - visible.length;
+
   return (
     <div className={styles.pickerList} role="radiogroup" aria-label="Série">
-      {seriesOptions.map((series) => {
+      {visible.map((series) => {
         const selectable = isSeriesSelectable(series, scope);
         const isSelected = series.seriesId === selectedSeriesId;
         const reason =
@@ -370,6 +398,11 @@ function SeriesPicker({ seriesOptions, scope, selectedSeriesId, onSelect }: Seri
           </button>
         );
       })}
+      {!showAll && hiddenCount > 0 && (
+        <button type="button" className={styles.showAllButton} onClick={() => setShowAll(true)}>
+          Voir {hiddenCount} indisponible{hiddenCount > 1 ? "s" : ""}
+        </button>
+      )}
     </div>
   );
 }
@@ -380,11 +413,20 @@ type MatchPickerProps = {
   onSelect: (match: MatchOption) => void;
 };
 
+// Même repli par défaut que SeriesPicker (voir son commentaire). `key`
+// posée par l'appelant sur la série sélectionnée : remontée à chaque
+// changement de série, l'état "tout afficher" ne doit pas survivre.
 function MatchPicker({ matchOptions, selectedMatchId, onSelect }: MatchPickerProps) {
+  const [showAll, setShowAll] = useState(false);
+  const isSelectable = (match: MatchOption) => match.matchBetOpen && !match.matchSlotTaken;
+  const isVisible = (match: MatchOption) => showAll || isSelectable(match) || match.matchId === selectedMatchId;
+  const visible = matchOptions.filter(isVisible);
+  const hiddenCount = matchOptions.length - visible.length;
+
   return (
     <div className={styles.pickerList} role="radiogroup" aria-label="Match">
-      {matchOptions.map((match) => {
-        const selectable = match.matchBetOpen && !match.matchSlotTaken;
+      {visible.map((match) => {
+        const selectable = isSelectable(match);
         const isSelected = match.matchId === selectedMatchId;
         const reason = !match.isIdentified
           ? "Date à venir"
@@ -408,6 +450,11 @@ function MatchPicker({ matchOptions, selectedMatchId, onSelect }: MatchPickerPro
           </button>
         );
       })}
+      {!showAll && hiddenCount > 0 && (
+        <button type="button" className={styles.showAllButton} onClick={() => setShowAll(true)}>
+          Voir {hiddenCount} indisponible{hiddenCount > 1 ? "s" : ""}
+        </button>
+      )}
     </div>
   );
 }
