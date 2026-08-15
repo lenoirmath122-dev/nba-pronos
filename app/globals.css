@@ -44,12 +44,17 @@ body {
    indépendants (aujourd'hui : Bracket global, Profil, page joueur publique —
    `grep hero-banner *.tsx` fait foi, la plupart des autres écrans ont depuis
    migré vers .glass-card simple). Photo --hero-image RETIRÉE (15/08/2026,
-   demandé par l'utilisateur, sur les 4 écrans qui composent encore cette
-   classe) : fond uni fixe à la place, --hero-image/app/tokens.css n'est plus
-   consommée nulle part mais restent en place (asset encore présent) au cas
-   où un bandeau photo reviendrait ailleurs. Toujours 2 pseudo-éléments pour
-   ne pas casser la structure (empilement du texte via .hero-banner > *) —
-   ::after neutralisé (plus rien à dégrader en dessous d'une couleur plate).
+   demandé par l'utilisateur), puis le fond RE-ALIGNÉ sur celui des cartes
+   (.glass-card ci-dessous, même session, demandé juste après) : même token
+   --color-surface-raised, même bordure --color-border-subtle — donc
+   désormais THEME-AWARE (ne reste plus "toujours sombre" comme du temps de
+   la photo, §15.7 obsolète sur ce point précis) — [data-theme="photo"] suit
+   aussi la bascule verre translucide de .glass-card (oublié à la 1ère passe,
+   corrigé juste après). --hero-image/app/tokens.css n'est plus consommée
+   nulle part mais reste en place (asset encore présent) au cas où un bandeau
+   photo reviendrait ailleurs. Toujours 2 pseudo-éléments pour ne pas casser
+   la structure (empilement du texte via .hero-banner > *) — ::after
+   neutralisé (plus rien à dégrader en dessous d'une couleur plate).
    ============================================================================ */
 .hero-banner {
   /* Purement visuel : la mise en page interne (flex/gap/justify) reste
@@ -59,6 +64,7 @@ body {
   position: relative;
   isolation: isolate;
   overflow: hidden;
+  border: 1px solid var(--color-border-subtle);
 }
 
 .hero-banner::before,
@@ -70,10 +76,7 @@ body {
 }
 
 .hero-banner::before {
-  /* Fixe, comme l'était la photo (§15.7 : bandeau toujours sombre dans les
-     2 thèmes) — primitive brute (--c-navy-raised), pas un token sémantique
-     qui basculerait en clair avec le thème. */
-  background: var(--c-navy-raised);
+  background: var(--color-surface-raised);
 }
 
 .hero-banner > * {
@@ -81,19 +84,12 @@ body {
   z-index: 1;
 }
 
-/* !important : la couleur figée du texte (§15.7) doit toujours l'emporter sur
-   la couleur --color-text-* propre à chaque écran (CSS Module), quel que soit
-   l'ordre de bundling entre ce fichier global et les modules de page. */
-.hero-banner-title {
-  color: var(--color-hero-text) !important;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
-}
-
-.hero-banner-subtitle {
-  color: var(--color-hero-text) !important;
-  opacity: 0.85;
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
-}
+/* Texte du bandeau (15/08/2026) : plus de couleur/ombre figées — le fond
+   n'est plus une photo sombre constante, chaque écran garde donc la couleur
+   theme-aware déjà posée sur son propre titre (--color-text-primary/
+   -secondary, CSS Module), exactement comme un glass-card ordinaire. Classes
+   ci-dessous laissées dans le HTML des 4 écrans (marqueurs sans effet), pas
+   nettoyées ici — hors-sujet de cette demande. */
 
 /* ============================================================================
    Fond photo PLEIN ÉCRAN + cartes verre — 3e THÈME (06/08/2026, révisé) :
@@ -193,4 +189,17 @@ body {
   backdrop-filter: blur(20px) saturate(160%);
   -webkit-backdrop-filter: blur(20px) saturate(160%);
   border: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+/* .hero-banner suit la même bascule (15/08/2026) : oublié à la 1ère passe
+   (thème Photo pas testé) — sans ça, les cartes deviennent en verre
+   translucide mais le bandeau restait plein, seule tache opaque de l'écran. */
+[data-theme="photo"] .hero-banner {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+[data-theme="photo"] .hero-banner::before {
+  background: rgba(22, 27, 37, 0.38);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
 }

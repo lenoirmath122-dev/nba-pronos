@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
@@ -93,9 +92,12 @@ export default async function ProfilePage({
   // d'onglet.
   const badges = activeTab === "stats" ? await getProfileBadges() : null;
 
-  // Bandeau personnalisé par équipe favorite (04/08/2026, spec validée par
-  // maquettes — cf. lib/labels/teamColors.ts). Rien ne change si aucune
-  // équipe favorite n'est choisie.
+  // Personnalisation par équipe favorite (04/08/2026, spec validée par
+  // maquettes — cf. lib/labels/teamColors.ts) : réduite au blason depuis le
+  // 15/08/2026 (demandé par l'utilisateur — le bandeau doit avoir le même
+  // fond que les autres cartes, cf. commentaire .hero-banner globals.css ;
+  // le dégradé aux couleurs de l'équipe masquait ce fond, retiré). Rien ne
+  // s'affiche si aucune équipe favorite n'est choisie.
   const teamColors = profile.favoriteTeam ? TEAM_COLORS[profile.favoriteTeam.abbreviation] : null;
 
   return (
@@ -121,13 +123,7 @@ export default async function ProfilePage({
       )}
       <header
         className={teamColors ? `${styles.header} ${styles.headerTeam} hero-banner` : `${styles.header} hero-banner`}
-        style={
-          teamColors
-            ? ({ "--team-primary": teamColors.primary, "--team-secondary": teamColors.secondary } as CSSProperties)
-            : undefined
-        }
       >
-        {teamColors && <span className={styles.textScrim} aria-hidden="true" />}
         {teamColors && profile.favoriteTeam && (
           <Image
             src={`/logos/teams/${profile.favoriteTeam.abbreviation}.svg`}
@@ -142,11 +138,7 @@ export default async function ProfilePage({
           <h1 className={`${styles.pseudo}${teamColors ? ` ${styles.pseudoTeam}` : ""} hero-banner-title`}>
             {profile.pseudo}
           </h1>
-          {profile.isAdmin && (
-            <span className={teamColors ? `${styles.adminBadge} ${styles.adminBadgeTeam}` : styles.adminBadge}>
-              Admin
-            </span>
-          )}
+          {profile.isAdmin && <span className={styles.adminBadge}>Admin</span>}
         </div>
       </header>
 
