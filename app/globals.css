@@ -39,14 +39,17 @@ body {
 }
 
 /* ============================================================================
-   Bandeau de section « parquet » (SPEC_DESIGN_SYSTEM_V0_1.md §15.7) — classe
-   GLOBALE (pas un CSS Module) exprès : posée sur le titre de page de plusieurs
-   écrans indépendants (Accueil, Classement, Bracket, Matchs, Mes pronos,
-   Nouveau pari, Bracket personnel, Mes paris, Profil), « une seule variable à
-   éditer » (--hero-image, app/tokens.css) doit rester vraie pour tous en même
-   temps. Traitement en 2 pseudo-éléments : ::before porte l'image + le filtre
-   (assombri/désaturé), ::after porte le voile dégradé — pour que le filtre ne
-   s'applique jamais au texte réel, qui reste un enfant direct normal.
+   Bandeau de section (SPEC_DESIGN_SYSTEM_V0_1.md §15.7) — classe GLOBALE (pas
+   un CSS Module) exprès : posée sur le titre de page de plusieurs écrans
+   indépendants (aujourd'hui : Bracket global, Profil, page joueur publique —
+   `grep hero-banner *.tsx` fait foi, la plupart des autres écrans ont depuis
+   migré vers .glass-card simple). Photo --hero-image RETIRÉE (15/08/2026,
+   demandé par l'utilisateur, sur les 4 écrans qui composent encore cette
+   classe) : fond uni fixe à la place, --hero-image/app/tokens.css n'est plus
+   consommée nulle part mais restent en place (asset encore présent) au cas
+   où un bandeau photo reviendrait ailleurs. Toujours 2 pseudo-éléments pour
+   ne pas casser la structure (empilement du texte via .hero-banner > *) —
+   ::after neutralisé (plus rien à dégrader en dessous d'une couleur plate).
    ============================================================================ */
 .hero-banner {
   /* Purement visuel : la mise en page interne (flex/gap/justify) reste
@@ -67,17 +70,10 @@ body {
 }
 
 .hero-banner::before {
-  background-image: var(--hero-image);
-  background-size: cover;
-  /* Point focal réglable (§15.7) : recentré plus bas pour montrer le
-     parquet + la ligne de terrain, pas seulement le ballon en gros plan
-     (retour utilisateur sur hero-parquet.jpg, 29/07/2026). */
-  background-position: center 75%;
-  filter: saturate(0.85) brightness(0.82);
-}
-
-.hero-banner::after {
-  background: linear-gradient(180deg, rgba(11, 14, 20, 0.12), rgba(11, 14, 20, 0.52), rgba(11, 14, 20, 0.92));
+  /* Fixe, comme l'était la photo (§15.7 : bandeau toujours sombre dans les
+     2 thèmes) — primitive brute (--c-navy-raised), pas un token sémantique
+     qui basculerait en clair avec le thème. */
+  background: var(--c-navy-raised);
 }
 
 .hero-banner > * {
