@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
+import { getRemainingMatchBets } from "@/lib/queries/match-bets";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
@@ -41,17 +42,21 @@ export type FeedItem = {
   occurredAt: string;
 };
 
-/** Un item de la section « Paris séries » (demandée par l'utilisateur
- *  28/07/2026) — LISTE chaque série individuellement (contrairement à
- *  TodoItem, qui agrège), donc un type dédié plutôt qu'un TodoItem détourné. */
-export type SeriesBetTodoItem = { seriesId: string; title: string; href: string };
+/** Un item de la section « Paris » (demandée par l'utilisateur 28/07/2026
+ *  pour les séries, généralisée aux matchs le 15/08/2026) — LISTE chaque
+ *  série/match individuellement (contrairement à TodoItem, qui agrège), donc
+ *  un type dédié plutôt qu'un TodoItem détourné. Scope-agnostique : rien en
+ *  dehors de ce fichier/components/home/BetsAccordionList.tsx ne dépend d'un
+ *  nom de champ spécifique à une série. */
+export type BetTodoItem = { id: string; title: string; href: string };
 
 export type HomeData = {
   competitionId: string | null;
   header: HomeHeader | null;
   todo: TodoItem[];
   adminTodo: TodoItem[];
-  seriesBets: SeriesBetTodoItem[];
+  seriesBets: BetTodoItem[];
+  matchBets: BetTodoItem[];
   feed: FeedItem[];
 };
 
@@ -65,6 +70,7 @@ const EMPTY_HOME_DATA: HomeData = {
   todo: [],
   adminTodo: [],
   seriesBets: [],
+  matchBets: [],
   feed: [],
 };
 
@@ -98,32 +104,43 @@ export async function getHomeData(): Promise<HomeData> {
     return EMPTY_HOME_DATA;
   }
 
-  const [header, todo, adminTodo, seriesBets, feed] = await Promise.all([
+  const [header, todo, adminTodo, seriesBets, matchBets, feed] = await Promise.all([
     getHeader(supabase, competition, user.id),
     getTodo(supabase, competition, user.id),
     getAdminTodo(supabase, competition.id),
     getSeriesBetsTodo(),
+    getMatchBetsTodo(),
     getFeed(supabase, competition.id, user.id),
   ]);
 
-  return { competitionId: competition.id, header, todo, adminTodo, seriesBets, feed };
+  return { competitionId: competition.id, header, todo, adminTodo, seriesBets, matchBets, feed };
 }
 
 // ============================================================================
-// « Paris séries » (demandé par l'utilisateur 28/07/2026) — liste chaque
-// série où un pari reste possible et pas encore posé ; section RETIRÉE dès
-// que la liste est vide (jamais un état vide affiché, contrairement à « À
-// traiter »/« Ça vient de tomber »). Réutilise getRemainingSeriesBets()
-// (lib/queries/series-bets.ts, VRAIES équipes qualifiées) — même logique que
-// la carte Bracket du hub Jouer, jamais recalculée deux fois.
+// « Paris » (demandé par l'utilisateur 28/07/2026 pour les séries, généralisé
+// aux matchs le 15/08/2026) — liste chaque série/match où un pari reste
+// possible et pas encore posé ; groupe RETIRÉ dès qu'il est vide (jamais un
+// état vide affiché, contrairement à « À traiter »/« Ça vient de tomber »).
+// Réutilise getRemainingSeriesBets()/getRemainingMatchBets() — même logique
+// que la carte Bracket du hub Jouer pour les séries, jamais recalculée deux
+// fois.
 // ============================================================================
 
-async function getSeriesBetsTodo(): Promise<SeriesBetTodoItem[]> {
+async function getSeriesBetsTodo(): Promise<BetTodoItem[]> {
   const remaining = await getRemainingSeriesBets();
   return remaining.map((series) => ({
-    seriesId: series.seriesId,
+    id: series.seriesId,
     title: `${ROUND_LABELS[series.round] ?? series.round} — ${series.teamA.abbreviation} vs ${series.teamB.abbreviation}`,
     href: `/play/bracket#series-${series.seriesId}`,
+  }));
+}
+
+async function getMatchBetsTodo(): Promise<BetTodoItem[]> {
+  const remaining = await getRemainingMatchBets();
+  return remaining.map((match) => ({
+    id: match.matchId,
+    title: match.label,
+    href: `/play/matches#match-${match.matchId}`,
   }));
 }
 
@@ -397,7 +414,7 @@ async function getBetsTodo(
         ? matchDeadline.get((bet.match_id as string) ?? "") ?? null
         : seriesFirstMatch.get(bet.series_id as string) ?? null;
     if (!deadline || Date.parse(deadline) <= nowMs) return [];
-    return [{ deadline }];
+    return [{ deadline, status: bet.status as string }];
   });
 
   if (openBets.length === 0) return null;
@@ -407,13 +424,23 @@ async function getBetsTodo(
     openBets[0].deadline
   );
 
+  // Un DRAFT se modifie sur /play/bets (§ isEditable, MyBetRow.tsx) : la liste
+  // reste la bonne destination. S'il ne reste QUE des REJECTED, il n'y a rien
+  // à éditer là-bas (REJECTED va dans « Terminés », spec §6, sans lien
+  // d'action avant le 15/08/2026) — direct vers Nouveau pari plutôt que de
+  // faire chercher le joueur dans un onglet Terminés (trouvé en confirmant
+  // avec l'utilisateur que l'Accueil et Mes paris divergeaient ici).
+  const hasDraft = openBets.some((bet) => bet.status === "DRAFT");
+
   return {
     kind: "bets",
     title: `${openBets.length} pari${openBets.length > 1 ? "s" : ""} à finaliser`,
-    subtitle: "Brouillons ou paris à reproposer avant leur deadline.",
+    subtitle: hasDraft
+      ? "Brouillons ou paris à reproposer avant leur deadline."
+      : `Pari${openBets.length > 1 ? "s" : ""} refusé${openBets.length > 1 ? "s" : ""}, encore reproposable${openBets.length > 1 ? "s" : ""} avant leur deadline.`,
     deadline: nearestDeadline,
     count: openBets.length,
-    href: "/play/bets",
+    href: hasDraft ? "/play/bets" : "/play/bets/new",
   };
 }
 

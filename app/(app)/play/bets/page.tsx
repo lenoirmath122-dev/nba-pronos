@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getMyBets } from "@/lib/queries/my-bets";
 import { SegmentTabs } from "@/components/my-bets/SegmentTabs";
 import { QuotaBanner } from "@/components/my-bets/QuotaBanner";
@@ -7,8 +6,14 @@ import styles from "./page.module.css";
 
 // Écran Mes paris (SPEC_ECRAN_MES_PARIS_V0_1, CLOSE) — 8ème écran du hub
 // joueur, consultation PERSONNELLE uniquement (§2 de la spec). Index de
-// /play/bets — new/ et [id]/edit/ (Nouveau pari) restent inchangés,
-// cet écran ne fait QUE lier vers eux.
+// /play/bets — new/ et [id]/edit/ (Nouveau pari) restent inchangés.
+//
+// PUREMENT consultatif (15/08/2026, demandé par l'utilisateur) : plus de CTA
+// « Créer un pari » ici — proposer un pari se fait désormais depuis Matchs
+// (paris MATCH, InlineBetForm) ou le bouton compact sur chaque carte série du
+// Bracket (paris SÉRIE, NodeCard.tsx). Seule exception : « Modifier » reste
+// sur MyBetRow.tsx pour un brouillon déjà commencé (DRAFT/SUBMITTED) — ce
+// n'est pas une NOUVELLE proposition, juste la poursuite d'une existante.
 
 type SearchParams = { segment?: string; betError?: string; betId?: string };
 
@@ -37,10 +42,9 @@ export default async function MyBetsPage({ searchParams }: { searchParams: Promi
         <div className={`${styles.header} glass-card`}>
           <h1 className={styles.title}>Mes paris</h1>
         </div>
-        <p className={styles.empty}>Tu n&rsquo;as encore aucun pari.</p>
-        <Link href="/play/bets/new" className={styles.newLink}>
-          Créer un pari
-        </Link>
+        <p className={styles.empty}>
+          Tu n&rsquo;as encore aucun pari. Propose-en un depuis Matchs ou le Bracket.
+        </p>
       </div>
     );
   }
@@ -51,9 +55,6 @@ export default async function MyBetsPage({ searchParams }: { searchParams: Promi
     <div className={`${styles.page} photo-page`}>
       <header className={`${styles.header} glass-card`}>
         <h1 className={styles.title}>Mes paris</h1>
-        <Link href="/play/bets/new" className={styles.newLink}>
-          Créer un pari
-        </Link>
       </header>
 
       <SegmentTabs active={segment} />

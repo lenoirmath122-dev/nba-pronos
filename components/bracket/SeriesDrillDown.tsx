@@ -43,15 +43,6 @@ type SeriesDrillDownProps = {
   showBetLink: boolean;
 };
 
-function BetLink({ node }: { node: BracketNode }) {
-  if (node.teamA === null || node.teamB === null) return null;
-  return (
-    <a className={styles.betLink} href={`/play/bets/new?seriesId=${node.nodeId}`}>
-      Parier sur cette série
-    </a>
-  );
-}
-
 type Column = { key: string; label: string; nodes: BracketNode[] };
 
 const PLAYOFF_ROUND_ORDER = ["ROUND_1", "CONF_SEMIS", "CONF_FINALS"] as const;
@@ -114,6 +105,7 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
         isOpen={node.nodeId === openSeriesId}
         disabled={!isDeadlinePassed && node.groups.length === 0}
         onToggle={() => handleToggle(node.nodeId)}
+        showBetLink={showBetLink}
       />
     );
   }
@@ -128,7 +120,6 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
         {node.nodeId === openSeriesId && (
           <div className={styles.inlineDetail}>
             <SeriesGroups groups={node.groups} />
-            {showBetLink && <BetLink node={node} />}
           </div>
         )}
       </div>
@@ -174,7 +165,6 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
                 </button>
               </div>
               <SeriesGroups groups={openNode.groups} />
-              {showBetLink && <BetLink node={openNode} />}
             </div>
           </>
         )}

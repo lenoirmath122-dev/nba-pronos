@@ -57,6 +57,11 @@ export function MyBetRow({ bet, forceOpenCorrection, correctionError }: MyBetRow
       {bet.pointsAwarded !== null && <span className={styles.points}>{bet.pointsAwarded} pts</span>}
 
       {bet.status === "REJECTED" && bet.refusalReason && <p className={styles.reason}>Motif du refus : {bet.refusalReason}</p>}
+      {bet.reproposeHref && (
+        <Link href={bet.reproposeHref} className={styles.editLink}>
+          Reproposer
+        </Link>
+      )}
       {(bet.status === "WON" || bet.status === "LOST") && bet.resolutionReason && (
         <p className={styles.reason}>{bet.resolutionReason}</p>
       )}

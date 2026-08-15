@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { EmptyState } from "@/components/home/EmptyState";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
@@ -47,6 +47,14 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
     );
   }
 
+  // Verrouillé (15/08/2026, demandé par l'utilisateur) : plus de message
+  // inerte avec un lien à part — on atterrit directement sur le Bracket
+  // global, qui porte déjà (via getBracket()) la mise en avant des paris du
+  // joueur sur chaque série, très voyante (NodeCard.tsx).
+  if (data.isDeadlinePassed) {
+    redirect("/bracket");
+  }
+
   const activeRoundKey =
     sp.round && data.rounds.some((round) => round.key === sp.round) ? sp.round : data.rounds[0]?.key;
   const activeRound = data.rounds.find((round) => round.key === activeRoundKey);
@@ -59,22 +67,13 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
       <ProgressBar filledCount={data.filledCount} totalCount={data.totalCount} />
       <RoundTabs rounds={data.rounds} activeKey={activeRoundKey} />
 
-      {data.isDeadlinePassed ? (
-        <div className={styles.locked}>
-          <p>Ton bracket est verrouillé.</p>
-          <Link href="/bracket" className={styles.lockedLink}>
-            Voir le bracket global
-          </Link>
-        </div>
-      ) : (
-        activeRound && (
-          <BracketFillBoard
-            series={activeRound.series}
-            competitionType={data.competitionType}
-            isValidated={data.isValidated}
-            isAutoValidated={data.isAutoValidated}
-          />
-        )
+      {activeRound && (
+        <BracketFillBoard
+          series={activeRound.series}
+          competitionType={data.competitionType}
+          isValidated={data.isValidated}
+          isAutoValidated={data.isAutoValidated}
+        />
       )}
     </div>
   );

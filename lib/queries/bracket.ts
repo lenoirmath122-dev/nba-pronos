@@ -37,6 +37,29 @@ export type BracketSeriesStatus = "SCHEDULED" | "IN_PROGRESS" | "FINISHED" | "PO
  *  Realtime ici, §18 : le live reste réservé à l'écran Matchs). */
 export type BracketLiveScore = { teamAWins: number; teamBWins: number };
 
+/** Le PRONOSTIC de bracket du joueur connecté sur ce nœud (15/08/2026,
+ *  demandé par l'utilisateur — mise en avant très voyante directement sur la
+ *  carte de série, cf. NodeCard.tsx ; distinct du PARI personnalisé, qui
+ *  reste affiché sur Mes pronos, pas ici). Même garde de confidentialité que
+ *  `groups` (§15.2) : UNIQUEMENT peuplé après la deadline, jamais avant —
+ *  un pronostic non révélé aux autres ne doit pas non plus s'afficher en
+ *  avant-première au joueur lui-même sur CET écran partagé. null pour un
+ *  visiteur non connecté, ou un joueur sans pronostic complet sur ce nœud. */
+export type BracketMyPick = {
+  teamAbbreviation: string;
+  seriesFormat: string | null; // null en NBA Cup (match sec)
+};
+
+/** Pilote le petit bouton « Parier »/« Modifier » sur chaque carte série
+ *  (15/08/2026, demandé par l'utilisateur — Mes paris devient consultation
+ *  seule, la proposition d'un pari SÉRIE se fait ici). PAS soumis à la garde
+ *  de confidentialité de `groups`/`myPick` : mon propre pari m'est toujours
+ *  visible, indépendamment de `bracket_deadline` (qui ne régit que les
+ *  PRONOSTICS de bracket, pas les paris personnalisés). REJECTED/CANCELLED
+ *  libèrent toujours le slot (0.2.4 §6, même règle que my-bets.ts) → PROPOSE.
+ *  null = pari déjà VALIDATED/WON/LOST — engagé, rien à proposer ni modifier. */
+export type BracketMyBetAction = { kind: "PROPOSE" } | { kind: "EDIT"; betId: string };
+
 export type BracketNode = {
   nodeId: string;
   round: string;
@@ -49,6 +72,8 @@ export type BracketNode = {
   finalScoreFormat: string | null; // non-null uniquement si status === "FINISHED" (Playoffs)
   filledBracketsCount: number;
   groups: SeriesPickGroup[]; // VIDE avant la deadline
+  myPick: BracketMyPick | null; // VIDE avant la deadline, même garde que groups
+  myBetAction: BracketMyBetAction | null;
 };
 
 export type BracketRound = { key: string; label: string; nodes: BracketNode[] };
@@ -111,8 +136,14 @@ type SeriesRow = {
 
 type TeamRow = { id: string; name: string; abbreviation: string };
 
+type OwnSeriesBetRow = { id: string; series_id: string; status: string };
+
 export async function getBracket(leagueId?: string | null): Promise<BracketData> {
   const supabase = await getServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   const scope = await resolveLeagueScope(supabase, leagueId);
   const scopeLeagueId = scope?.id ?? null;
@@ -156,13 +187,40 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
     };
   }
 
-  const { data: teamsData } = await supabase.from("teams").select("id, name, abbreviation");
+  const seriesIds = series.map((row) => row.id);
+
+  const [{ data: teamsData }, { data: ownBetsData }] = await Promise.all([
+    supabase.from("teams").select("id, name, abbreviation"),
+    user
+      ? supabase
+          .from("bets")
+          .select("id, series_id, status")
+          .eq("user_id", user.id)
+          .eq("competition_id", competition.id)
+          .eq("scope", "SERIES")
+          .in("series_id", seriesIds)
+      : Promise.resolve({ data: [] as OwnSeriesBetRow[] }),
+  ]);
   const teams = new Map(
     ((teamsData ?? []) as TeamRow[]).map((team) => [
       team.id,
       { name: team.name, abbreviation: team.abbreviation },
     ])
   );
+
+  // Bouton Parier/Modifier (15/08/2026) : contrainte unique en base
+  // (uniq_active_series_bet) → au plus UN pari actif (non libéré) par série.
+  // REJECTED/CANCELLED sont exclus d'emblée (toujours libérés, 0.2.4 §6) —
+  // absent de cette map = aucun pari actif = bouton "Parier" par défaut plus
+  // bas ; présent = DRAFT/SUBMITTED (éditable, bouton "Modifier") ou
+  // VALIDATED/WON/LOST (engagé, pas de bouton du tout).
+  const RELEASED_SERIES_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
+  const EDITABLE_SERIES_BET_STATUSES = new Set(["DRAFT", "SUBMITTED"]);
+  const activeBetBySeriesId = new Map<string, { betId: string; status: string }>();
+  for (const row of (ownBetsData ?? []) as OwnSeriesBetRow[]) {
+    if (RELEASED_SERIES_BET_STATUSES.has(row.status)) continue;
+    activeBetBySeriesId.set(row.series_id, { betId: row.id, status: row.status });
+  }
 
   // Ordre des nœuds en NBA Cup : « matchs ordonnés par coup d'envoi » (§14) —
   // besoin du 1er coup d'envoi par série (Cup = match sec, 1 match/série).
@@ -214,10 +272,16 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
 
   // Drill-down nominatif (§11) : uniquement après la deadline. Les requêtes
   // ne sont même pas lancées avant — la confidentialité n'est jamais un `if`
-  // de rendu.
-  const { filledBySeriesId, groupsBySeriesId } = isDeadlinePassed
-    ? await getFilledPicksAndGroups(supabase, competition.id, competition.type, teams, scope?.memberUserIds ?? null)
-    : { filledBySeriesId: new Map<string, number>(), groupsBySeriesId: new Map<string, SeriesPickGroup[]>() };
+  // de rendu. myPicksBySeriesId (15/08/2026) suit la MÊME garde : le
+  // pronostic du joueur ne s'affiche pas en avant-première sur cet écran
+  // partagé, même si lui seul le connaît déjà.
+  const { filledBySeriesId, groupsBySeriesId, myPicksBySeriesId } = isDeadlinePassed
+    ? await getFilledPicksAndGroups(supabase, competition.id, competition.type, teams, scope?.memberUserIds ?? null, user?.id ?? null)
+    : {
+        filledBySeriesId: new Map<string, number>(),
+        groupsBySeriesId: new Map<string, SeriesPickGroup[]>(),
+        myPicksBySeriesId: new Map<string, BracketMyPick>(),
+      };
 
   const roundOrder = competition.type === "PLAYOFFS" ? PLAYOFFS_ROUNDS : CUP_ROUNDS;
 
@@ -246,6 +310,14 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
         finalScoreFormat: row.official_status === "FINISHED" ? row.official_score_format : null,
         filledBracketsCount: filledBySeriesId.get(row.id) ?? 0,
         groups: groupsBySeriesId.get(row.id) ?? [],
+        myPick: myPicksBySeriesId.get(row.id) ?? null,
+        myBetAction: (() => {
+          const activeBet = activeBetBySeriesId.get(row.id);
+          if (!activeBet) return { kind: "PROPOSE" as const };
+          return EDITABLE_SERIES_BET_STATUSES.has(activeBet.status)
+            ? { kind: "EDIT" as const, betId: activeBet.betId }
+            : null;
+        })(),
       }));
 
       return { key: roundKey, label: ROUND_LABELS[roundKey], nodes };
@@ -328,10 +400,12 @@ async function getFilledPicksAndGroups(
   competitionId: string,
   competitionType: "PLAYOFFS" | "NBA_CUP",
   teams: Map<string, { name: string; abbreviation: string }>,
-  scopeMemberUserIds: Set<string> | null
+  scopeMemberUserIds: Set<string> | null,
+  currentUserId: string | null
 ): Promise<{
   filledBySeriesId: Map<string, number>;
   groupsBySeriesId: Map<string, SeriesPickGroup[]>;
+  myPicksBySeriesId: Map<string, BracketMyPick>;
 }> {
   const [{ data: picksData }, { data: bracketsData }] = await Promise.all([
     supabase
@@ -377,6 +451,26 @@ async function getFilledPicksAndGroups(
     filledBySeriesId.set(pick.series_id, (filledBySeriesId.get(pick.series_id) ?? 0) + 1);
   }
 
+  // Mon propre pronostic (15/08/2026, demandé par l'utilisateur — affichage
+  // très voyant, NodeCard.tsx) : cherché dans filledPicksAll, JAMAIS
+  // filledPicks (qui reste filtré par la portée ligue — mon pronostic
+  // s'affiche quelle que soit la ligue consultée, cf. commentaire d'en-tête
+  // de BracketData.scopeLeagueId).
+  const myBracketId = currentUserId
+    ? [...userIdByBracketId.entries()].find(([, userId]) => userId === currentUserId)?.[0]
+    : undefined;
+  const myPicksBySeriesId = new Map<string, BracketMyPick>();
+  if (myBracketId) {
+    for (const pick of filledPicksAll) {
+      if (pick.bracket_id !== myBracketId) continue;
+      const team = teams.get(pick.predicted_winner_team_id!);
+      myPicksBySeriesId.set(pick.series_id, {
+        teamAbbreviation: team?.abbreviation ?? "?",
+        seriesFormat: pick.predicted_score_format,
+      });
+    }
+  }
+
   // Regroupement par pronostic (vainqueur + format), trié par effectif
   // décroissant (§11). Clé = série + équipe + format.
   const groupsBySeriesKey = new Map<string, SeriesPickGroup & { seriesId: string }>();
@@ -418,5 +512,5 @@ async function getFilledPicksAndGroups(
     list.sort((a, b) => b.count - a.count);
   }
 
-  return { filledBySeriesId, groupsBySeriesId };
+  return { filledBySeriesId, groupsBySeriesId, myPicksBySeriesId };
 }

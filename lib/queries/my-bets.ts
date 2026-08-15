@@ -26,6 +26,11 @@ export type MyBet = {
   pointsAwarded: number | null;
   isForgottenResolution: boolean; // VALIDATED + cible FINISHED, éligible §7
   hasPendingCorrectionRequest: boolean;
+  /** REJECTED + deadline (targetDate) pas encore passée → slot reproposable
+   *  (0.2.4 §6, même règle que getBetsTodo/lib/queries/home.ts). null sinon —
+   *  aucun lien à afficher. Pointe vers /play/bets/new avec le raccourci
+   *  matchId/seriesId déjà supporté par cet écran (§2 SPEC_NOUVEAU_PARI). */
+  reproposeHref: string | null;
 };
 
 export type QuotaSummary =
@@ -157,6 +162,14 @@ export async function getMyBets(): Promise<MyBetsData> {
 
     const targetFinished = b.scope === "MATCH" ? m?.status === "FINISHED" : s?.official_status === "FINISHED";
 
+    const deadlineOpen = targetDate !== null && Date.parse(targetDate) > Date.now();
+    const reproposeHref =
+      b.status === "REJECTED" && deadlineOpen
+        ? b.scope === "MATCH"
+          ? `/play/bets/new?matchId=${b.match_id}`
+          : `/play/bets/new?seriesId=${b.series_id}`
+        : null;
+
     return {
       betId: b.id,
       scope: b.scope,
@@ -173,6 +186,7 @@ export async function getMyBets(): Promise<MyBetsData> {
       pointsAwarded: b.points_awarded,
       isForgottenResolution: b.status === "VALIDATED" && Boolean(targetFinished),
       hasPendingCorrectionRequest: pendingBetIds.has(b.id),
+      reproposeHref,
     };
   });
 

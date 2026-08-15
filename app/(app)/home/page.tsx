@@ -2,14 +2,15 @@ import { getHomeData } from "@/lib/queries/home";
 import { getProfileData } from "@/lib/queries/profile";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { TodoList } from "@/components/home/TodoList";
-import { SeriesBetList } from "@/components/home/SeriesBetList";
+import { BetsAccordionList } from "@/components/home/BetsAccordionList";
 import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
 import { TutorialBanner } from "@/components/tutorial/TutorialBanner";
 import styles from "./page.module.css";
 
 // Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « À traiter »
-// (+ bloc admin) + « Paris séries non remplis » + « Ça vient de tomber ».
+// (+ bloc admin) + « Paris » (accordéon Séries/Matchs, 15/08/2026 — remplace
+// l'ancienne section « Paris séries non remplis ») + « Ça vient de tomber ».
 // Aucun fetch client, aucune logique métier ici — tout est déjà calculé par
 // lib/queries/home.ts.
 //
@@ -19,7 +20,7 @@ import styles from "./page.module.css";
 // AVANT le early-return "aucune compétition", pas seulement dans la branche
 // pleine ci-dessous.
 export default async function HomePage() {
-  const [{ competitionId, header, todo, adminTodo, seriesBets, feed }, profile] =
+  const [{ competitionId, header, todo, adminTodo, seriesBets, matchBets, feed }, profile] =
     await Promise.all([getHomeData(), getProfileData()]);
 
   const showTutorialBanner = profile !== null && profile.tutorialSeenAt === null;
@@ -58,12 +59,12 @@ export default async function HomePage() {
       )}
 
       {/* Retirée entièrement dès que rien ne reste (demandé par l'utilisateur
-          28/07/2026) — jamais d'état vide affiché ici, contrairement aux 2
-          sections ci-dessus. */}
-      {seriesBets.length > 0 && (
-        <section className={`${styles.section} glass-card`} aria-label="Paris séries non remplis">
-          <h2 className={styles.sectionTitle}>Paris séries non remplis</h2>
-          <SeriesBetList items={seriesBets} />
+          28/07/2026, généralisé aux matchs le 15/08/2026) — jamais d'état
+          vide affiché ici, contrairement aux 2 sections ci-dessus. */}
+      {(seriesBets.length > 0 || matchBets.length > 0) && (
+        <section className={`${styles.section} glass-card`} aria-label="Paris">
+          <h2 className={styles.sectionTitle}>Paris</h2>
+          <BetsAccordionList seriesBets={seriesBets} matchBets={matchBets} />
         </section>
       )}
 
