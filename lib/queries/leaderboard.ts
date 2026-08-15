@@ -41,6 +41,9 @@ export type LeaderboardRow = {
   betsPoints: number;
   formPoints: number; // 7 jours glissants
   exactMarginsCount: number; // « dont Écarts » — expansion uniquement
+  betsAttempted: number; // paris WON+LOST (résolus) — expansion uniquement, cf. scoreBet
+  betsWon: number;
+  betsAvgDifficulty: number | null; // moyenne de validated_difficulty sur les paris résolus ; null si betsAttempted = 0
   isInactive: boolean; // compte désactivé, points conservés
   adminCorrectionsCount: number; // 0 = aucun badge
   isCurrentUser: boolean; // pilote la barre « toi » collante
@@ -208,15 +211,39 @@ export async function getLeaderboard(
         .limit(1)
         .maybeSingle<{ snapshot_date: string }>();
 
-  const [{ data: profiles }, { data: forms }, lastSnapshotDateResult] = await Promise.all([
+  const [{ data: profiles }, { data: forms }, { data: betsRows }, lastSnapshotDateResult] = await Promise.all([
     supabase.from("users").select("id, pseudo, status").in("id", userIds),
     supabase
       .from("user_recent_form")
       .select("user_id, recent_form_points")
       .eq("competition_id", competition.id)
       .in("user_id", userIds),
+    // Paris résolus uniquement (WON/LOST, cf. scoreBet §8) : DRAFT/SUBMITTED/
+    // VALIDATED/REJECTED ne sont pas encore jugés, CANCELLED n'a jamais eu
+    // lieu — aucun des 3 ne compte comme « tenté » pour ce ratio (expansion).
+    supabase
+      .from("bets")
+      .select("user_id, status, validated_difficulty, proposed_difficulty")
+      .eq("competition_id", competition.id)
+      .in("user_id", userIds)
+      .in("status", ["WON", "LOST"]),
     lastSnapshotDatePromise,
   ]);
+
+  type BetStat = { attempted: number; won: number; difficultySum: number };
+  const betStatsByUser = new Map<string, BetStat>();
+  for (const row of betsRows ?? []) {
+    const userId = row.user_id as string;
+    const stat = betStatsByUser.get(userId) ?? { attempted: 0, won: 0, difficultySum: 0 };
+    stat.attempted += 1;
+    if (row.status === "WON") stat.won += 1;
+    // « validée fait foi », repli sur la proposée sinon (même convention que
+    // my-bets.ts/stats.ts/player-profile.ts) : un LOST peut ne jamais avoir
+    // été validé (recompute.test.ts) — proposed_difficulty, seule NOT NULL
+    // en base, garantit qu'aucun pari résolu n'est perdu pour la moyenne.
+    stat.difficultySum += (row.validated_difficulty as number | null) ?? (row.proposed_difficulty as number);
+    betStatsByUser.set(userId, stat);
+  }
 
   const profileById = new Map(
     (profiles ?? []).map((row) => [
@@ -249,6 +276,7 @@ export async function getLeaderboard(
   const rows: LeaderboardRow[] = scoreRows.map((row) => {
     const profile = profileById.get(row.user_id);
     const rank = ranks.get(row.user_id)!;
+    const betStat = betStatsByUser.get(row.user_id);
     return {
       userId: row.user_id,
       pseudo: profile?.pseudo ?? "",
@@ -259,6 +287,9 @@ export async function getLeaderboard(
       betsPoints: row.bets_points,
       formPoints: formByUser.get(row.user_id) ?? 0,
       exactMarginsCount: row.exact_margins,
+      betsAttempted: betStat?.attempted ?? 0,
+      betsWon: betStat?.won ?? 0,
+      betsAvgDifficulty: betStat && betStat.attempted > 0 ? betStat.difficultySum / betStat.attempted : null,
       isInactive: profile?.isInactive ?? false,
       adminCorrectionsCount: row.admin_corrections_count,
       isCurrentUser: row.user_id === user?.id,

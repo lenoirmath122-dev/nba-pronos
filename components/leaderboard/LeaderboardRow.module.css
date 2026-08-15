@@ -3,6 +3,16 @@
   border-bottom: 1px solid var(--color-border-hair);
 }
 
+/* Zébrage (15/08/2026, demandé après coup, accentué le même jour — un cran
+   au-dessus de --color-border-hair jugé trop discret) : 1 ligne sur 2
+   teintée avec --color-border-subtle (voile ~9-10%, palier suivant du même
+   système de bordures) plutôt que --color-surface-inset — ce dernier reste
+   réservé au hover/focus juste en dessous (.row:hover), qui doit rester
+   visiblement plus marqué que le zébrage au repos. */
+.wrapper:nth-child(even) {
+  background: var(--color-border-subtle);
+}
+
 /* Top 3 (13/08/2026) : filet d'accent en dégradé d'opacité — PAS d'or,
    --color-champion reste réservé au champion du bracket (§17). */
 .wrapper[data-top-rank]::before {
@@ -216,16 +226,34 @@
   gap: var(--space-2);
 }
 
+/* Sous-totaux : redite pure sur desktop (les 4 colonnes de détail sont déjà
+   visibles en permanence dans la ligne, cf. .colDetail) — masquée entière au
+   dessus de 767px, ne laissant dans le bandeau que ce qui est inédit
+   (écarts exacts, tendance, correction). Sur mobile la grille reste utile
+   (3 des 4 colonnes sont masquées dans la ligne, cf. .colDetail:not(.colActive)
+   plus bas) : auto-fit pour ne pas laisser un 4e emplacement vide quand
+   .subtotalActive retire le sous-total déjà surligné dans la ligne. Règle de
+   base AVANT la media query : même spécificité, l'ordre source tranche. */
 .subtotals {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(4.5rem, 1fr));
   gap: var(--space-3);
+}
+
+@media (min-width: 768px) {
+  .subtotals {
+    display: none;
+  }
 }
 
 .subtotal {
   display: flex;
   flex-direction: column;
   gap: var(--space-1);
+}
+
+.subtotalActive {
+  display: none;
 }
 
 .subtotalLabel {
@@ -241,7 +269,9 @@
   color: var(--color-text-primary);
 }
 
-.exactMargins {
+/* Partagé entre « dont Écarts » et le ratio de paris (15/08/2026) : même
+   registre visuel, ligne de détail secondaire inédite de l'expansion. */
+.detailLine {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }

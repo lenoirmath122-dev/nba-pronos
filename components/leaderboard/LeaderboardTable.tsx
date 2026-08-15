@@ -1,12 +1,13 @@
 import Link from "next/link";
 import type { LeaderboardRow as RowData, SortDirection, SortKey } from "@/lib/queries/leaderboard";
-import { LeaderboardRow } from "./LeaderboardRow";
+import { LeaderboardRowList } from "./LeaderboardRowList";
 import { MobileSortSelect } from "./MobileSortSelect";
 import styles from "./LeaderboardTable.module.css";
 
 // Tableau du classement (§3/§4) : ordre des colonnes et rang déjà figés par
 // lib/queries/leaderboard.ts, ce composant ne fait que rendre l'en-tête et
-// déléguer chaque ligne à LeaderboardRow (seule feuille client, expand/repli).
+// déléguer les lignes à LeaderboardRowList (client, accordéon — 15/08/2026,
+// cf. son commentaire d'en-tête).
 //
 // En-têtes CLIQUABLES (13/08/2026, corrige §4.2 — décision reconnue erronée
 // par l'utilisateur) : remplacent l'ancienne rangée SortChips séparée, qui
@@ -105,11 +106,7 @@ export function LeaderboardTable({ rows, sortKey, sortDirection, leagueId }: Lea
         <span className={styles.chevronSpace} aria-hidden="true" />
       </div>
 
-      <div role="rowgroup">
-        {rows.map((row) => (
-          <LeaderboardRow key={row.userId} row={row} sortKey={sortKey} />
-        ))}
-      </div>
+      <LeaderboardRowList rows={rows} sortKey={sortKey} />
     </div>
   );
 }

@@ -1,23 +1,34 @@
 "use client";
 
-import { useState } from "react";
 import type { LeaderboardRow as RowData, RankTrend, SortKey } from "@/lib/queries/leaderboard";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./LeaderboardRow.module.css";
 
-// Une ligne du classement (§6/§7) : SEULE responsabilité client de cet écran
-// avec StickyMeBar — expansion/repli, rien d'autre. Le badge de correction
-// porte l'infobulle native du navigateur (`title`) sur desktop ; sur mobile
-// il n'y a pas de hover, donc pas d'infobulle : le tap déplie déjà la ligne
-// via le bouton (§7, aucune logique dédiée nécessaire). Même patron repris
-// pour le badge de tendance de rang (13/08/2026, ci-dessous).
+// Une ligne du classement (§6/§7). Composant CONTRÔLÉ depuis LeaderboardRowList
+// (15/08/2026, était un useState local ici avant l'accordéon — cf. son
+// commentaire d'en-tête pour la raison du déplacement). Le badge de
+// correction porte l'infobulle native du navigateur (`title`) sur desktop ;
+// sur mobile il n'y a pas de hover, donc pas d'infobulle : le tap déplie déjà
+// la ligne via le bouton (§7, aucune logique dédiée nécessaire). Même patron
+// repris pour le badge de tendance de rang (13/08/2026, ci-dessous).
 type LeaderboardRowProps = {
   row: RowData;
   sortKey: SortKey;
+  expanded: boolean;
+  onToggle: () => void;
 };
 
 function detailColClass(column: SortKey, sortKey: SortKey): string {
   return column === sortKey ? `${styles.colDetail} ${styles.colActive}` : styles.colDetail;
+}
+
+// Même comparaison que detailColClass, appliquée aux sous-totaux du bandeau
+// déplié (15/08/2026) : sur desktop TOUTE la grille est masquée en CSS (déjà
+// visible dans la ligne, cf. .subtotals) ; sur mobile seul le sous-total qui
+// correspond à la colonne triée fait doublon avec la ligne (colActive y reste
+// visible même en dessous de 768px) — les 3 autres restent inédits.
+function subtotalClass(column: SortKey, sortKey: SortKey): string {
+  return column === sortKey ? `${styles.subtotal} ${styles.subtotalActive}` : styles.subtotal;
 }
 
 function plural(count: number, word: string): string {
@@ -26,6 +37,19 @@ function plural(count: number, word: string): string {
 
 function pluralExactMargins(count: number): string {
   return count > 1 ? `${count} écarts exacts` : `${count} écart exact`;
+}
+
+// Ratio paris réussis/tentés + difficulté moyenne entre parenthèses
+// (15/08/2026, demandé après coup — même registre que « dont Écarts » :
+// inédit, expansion uniquement). "Tenté" = résolu (WON/LOST, cf.
+// betsAttempted/lib/queries/leaderboard.ts) — un pari encore en attente de
+// résolution n'est pas encore un essai jugé.
+function betsSuccessLine(attempted: number, won: number, avgDifficulty: number | null): string {
+  if (attempted === 0) return "Aucun pari résolu";
+  const ratio = `${won}/${attempted} pari${attempted > 1 ? "s" : ""} réussi${attempted > 1 ? "s" : ""}`;
+  if (avgDifficulty === null) return ratio;
+  const difficultyText = avgDifficulty.toFixed(1).replace(".", ",");
+  return `${ratio} (difficulté moyenne ${difficultyText})`;
 }
 
 function ordinal(rank: number): string {
@@ -92,9 +116,7 @@ function TrendBadge({ trend }: { trend: RankTrend }) {
   );
 }
 
-export function LeaderboardRow({ row, sortKey }: LeaderboardRowProps) {
-  const [expanded, setExpanded] = useState(false);
-
+export function LeaderboardRow({ row, sortKey, expanded, onToggle }: LeaderboardRowProps) {
   const correctionTitle =
     row.adminCorrectionsCount > 0
       ? `${plural(row.adminCorrectionsCount, "élément")} corrigé${row.adminCorrectionsCount > 1 ? "s" : ""} par un admin, sur requête`
@@ -123,11 +145,11 @@ export function LeaderboardRow({ row, sortKey }: LeaderboardRowProps) {
         id={row.isCurrentUser ? "me-row" : undefined}
         className={styles.row}
         aria-expanded={expanded}
-        onClick={() => setExpanded((current) => !current)}
+        onClick={onToggle}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") {
             event.preventDefault();
-            setExpanded((current) => !current);
+            onToggle();
           }
         }}
       >
@@ -170,26 +192,32 @@ export function LeaderboardRow({ row, sortKey }: LeaderboardRowProps) {
       {expanded && (
         <div className={styles.detail}>
           <div className={styles.subtotals}>
-            <div className={styles.subtotal}>
+            <div className={subtotalClass("matches", sortKey)}>
               <span className={styles.subtotalLabel}>Matchs</span>
               <span className={styles.subtotalValue}>{row.matchesPoints}</span>
             </div>
-            <div className={styles.subtotal}>
+            <div className={subtotalClass("bracket", sortKey)}>
               <span className={styles.subtotalLabel}>Bracket</span>
               <span className={styles.subtotalValue}>{row.bracketPoints}</span>
             </div>
-            <div className={styles.subtotal}>
+            <div className={subtotalClass("bets", sortKey)}>
               <span className={styles.subtotalLabel}>Paris</span>
               <span className={styles.subtotalValue}>{row.betsPoints}</span>
             </div>
-            <div className={styles.subtotal}>
+            <div className={subtotalClass("form", sortKey)}>
               <span className={styles.subtotalLabel}>Forme (7 j)</span>
               <span className={styles.subtotalValue}>{row.formPoints}</span>
             </div>
           </div>
 
           {/* « dont Écarts » vit dans l'expansion, pas en 6e puce (§6). */}
-          <p className={styles.exactMargins}>dont {pluralExactMargins(row.exactMarginsCount)}</p>
+          <p className={styles.detailLine}>dont {pluralExactMargins(row.exactMarginsCount)}</p>
+
+          {/* Ratio paris + difficulté moyenne (15/08/2026) : même raison que
+              ci-dessus, aucun équivalent affiché dans la ligne repliée. */}
+          <p className={styles.detailLine}>
+            {betsSuccessLine(row.betsAttempted, row.betsWon, row.betsAvgDifficulty)}
+          </p>
 
           {/* Tendance en clair (13/08/2026) : même raison que la correction
               ci-dessous — le title du badge n'existe pas au tap mobile. */}
