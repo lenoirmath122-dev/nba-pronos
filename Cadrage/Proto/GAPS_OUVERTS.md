@@ -7,17 +7,17 @@
 > **État au 16/08/2026** — **Audit UX + code, détail complet dans
 > `AUDIT_UX_16_08_2026.md`.** Points actionnables restants (le bug
 > d'inscription silencieuse sur email déjà pris a déjà été corrigé et
-> poussé, `1f4847a` ; la désync `isLive`/`isDecided` du Bracket a aussi été
-> corrigée et poussée, voir `JOURNAL_SESSIONS.md` — les deux retirés de cette
-> liste) :
+> poussé, `1f4847a` ; la désync `isLive`/`isDecided` du Bracket et le bouton
+> "Parier" trompeur sur série terminée ont aussi été corrigés et poussés,
+> voir `JOURNAL_SESSIONS.md` — les trois retirés de cette liste). **SMTP
+> laissé en pause explicitement** (décision à reprendre plus tard, pas
+> urgent) :
 > - **Décision produit à prendre** : SMTP Resend configuré en mode
 >   bac-à-sable pendant l'audit (ne peut livrer qu'à l'adresse du compte
 >   Resend) — pas viable en l'état pour de vrais joueurs. Choisir entre
 >   domaine vérifié chez Resend (~1-3€/an) ou retour au service intégré
 >   Supabase (2 emails/heure, fixe). Clé API Resend exposée 2x dans le chat
 >   pendant le dépannage — à régénérer côté Resend.
-> - Bouton "Parier" affiché sur une série terminée/annulée (pas exploitable,
->   juste trompeur) — `lib/queries/bracket.ts::myBetAction`.
 > - Erreur d'hydratation React sur Profil (`NotificationSettings`), trouvée
 >   en marge de l'audit, pas encore investiguée.
 > - Reste : libellé "Hier" du Classement potentiellement obsolète si le cron

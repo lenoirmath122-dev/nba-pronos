@@ -6057,4 +6057,39 @@ commités.
 `next build` (36 routes) propres avant ET après le test en conditions
 réelles.
 ```
+
+## Correctif : bouton "Parier" trompeur sur série terminée (16/08/2026)
+
+```text
+Suite immédiate de la même session : SMTP explicitement laissé en pause par
+l'utilisateur (« on laisse pour plus tard »), 2e point technique de l'audit
+traité — le bouton "Parier" (`lib/queries/bracket.ts`).
+
+**Cause** : `myBetAction` retombait sur `{ kind: "PROPOSE" }` par défaut dès
+qu'aucun pari actif n'existait pour la série, sans jamais regarder
+`official_status`. `BetForm.tsx::isSeriesSelectable` refusait déjà la série
+une fois dans le formulaire (deadline = 1er match commencé), donc pas
+exploitable pour de vrai — mais le bouton restait affiché sur la carte,
+trompeur.
+
+**Correctif** : `myBetAction` renvoie maintenant `null` d'emblée si
+`official_status` est FINISHED, POSTPONED ou CANCELLED (nouvel ensemble
+`NON_BETTABLE_SERIES_STATUSES`), avant même de regarder s'il existe un pari
+actif — s'applique aussi bien au cas PROPOSE qu'au cas EDIT (un pari
+DRAFT/SUBMITTED resté ouvert sur une série entre-temps terminée ne doit pas
+non plus proposer "Modifier").
+
+**Vérifié en conditions réelles** : mot de passe d'un compte bot de la
+simulation du 14/08 réinitialisé via `service_role` (email de test, pas de
+vraie boîte mail, aucun risque) pour se connecter réellement — Playwright
+temporaire, `/play/bracket`, les 4 bandeaux "séries repliées" dépliés.
+Confirmé à l'écran : les 3 séries terminées (OKC vs SAS 4-2, BOS vs MIA 4-1,
+NYK vs ATL 4-2) n'affichent AUCUN bouton "Parier" ; les séries encore
+ouvertes (à venir ou en cours, ex. LAL vs HOU, BOS vs NYK) l'affichent
+toujours normalement — pas de régression sur le cas nominal.
+
+`tsc --noEmit`, `eslint` (`lib/queries/bracket.ts`), `vitest run` (37/37),
+`next build` (36 routes) propres avant ET après le test en conditions
+réelles. Script + capture jetables, supprimés en fin de session.
+```
 ```

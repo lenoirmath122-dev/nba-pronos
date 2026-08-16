@@ -57,7 +57,9 @@ export type BracketMyPick = {
  *  visible, indépendamment de `bracket_deadline` (qui ne régit que les
  *  PRONOSTICS de bracket, pas les paris personnalisés). REJECTED/CANCELLED
  *  libèrent toujours le slot (0.2.4 §6, même règle que my-bets.ts) → PROPOSE.
- *  null = pari déjà VALIDATED/WON/LOST — engagé, rien à proposer ni modifier. */
+ *  null = pari déjà VALIDATED/WON/LOST — engagé, rien à proposer ni modifier —
+ *  OU série FINISHED/POSTPONED/CANCELLED (16/08/2026, bug d'audit corrigé) :
+ *  n'accepte plus de pari, quel que soit l'état du pari existant. */
 export type BracketMyBetAction = { kind: "PROPOSE" } | { kind: "EDIT"; betId: string };
 
 export type BracketNode = {
@@ -222,6 +224,13 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
     activeBetBySeriesId.set(row.series_id, { betId: row.id, status: row.status });
   }
 
+  // Correctif (16/08/2026, bug trouvé en audit) : une série TERMINÉE/
+  // ANNULÉE/REPORTÉE n'accepte plus de pari — `BetForm.tsx::isSeriesSelectable`
+  // le refuse déjà côté formulaire, mais `myBetAction` retombait quand même
+  // sur PROPOSE par défaut ici, affichant un bouton "Parier" trompeur sur la
+  // carte (cliquable, mais qui échoue une fois dans le formulaire).
+  const NON_BETTABLE_SERIES_STATUSES = new Set<BracketSeriesStatus>(["FINISHED", "POSTPONED", "CANCELLED"]);
+
   // Ordre des nœuds en NBA Cup : « matchs ordonnés par coup d'envoi » (§14) —
   // besoin du 1er coup d'envoi par série (Cup = match sec, 1 match/série).
   const earliestKickoffBySeries = new Map<string, number>();
@@ -312,6 +321,7 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
         groups: groupsBySeriesId.get(row.id) ?? [],
         myPick: myPicksBySeriesId.get(row.id) ?? null,
         myBetAction: (() => {
+          if (NON_BETTABLE_SERIES_STATUSES.has(row.official_status)) return null;
           const activeBet = activeBetBySeriesId.get(row.id);
           if (!activeBet) return { kind: "PROPOSE" as const };
           return EDITABLE_SERIES_BET_STATUSES.has(activeBet.status)
