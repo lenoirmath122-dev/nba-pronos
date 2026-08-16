@@ -27,12 +27,15 @@
 >   classes CSS mortes `.hero-banner-title`/`.hero-banner-subtitle`,
 >   `LeaderboardRow` non mémoïsé, quelques regroupements de requêtes
 >   possibles (`getBracket()`, `getHomeData()`).
-> - **Avis produit qualitatif à reprendre ensemble** : `AVIS_EXPERT_16_08_2026.md`
->   (nouveau) — aspect/fonctionnalités/fluidité vs. HoopCall/
->   Scorecast/ParidAmis, 4 questions ouvertes en fin de fichier (bracket en
->   arbre visuel, duel hebdo vs boosters, chat in-app utile ou pas,
->   priorité vs. les correctifs techniques encore ouverts). Rien de
->   tranché, à discuter à la prochaine session.
+> - **Avis produit qualitatif — 4 questions tranchées** (`AVIS_EXPERT_16_08_2026.md`,
+>   voir `JOURNAL_SESSIONS.md` pour le détail) : (1) bracket en arbre visuel
+>   connecté — **fait et poussé** cette session (`components/bracket/
+>   TreeConnectors.tsx`) ; (2) mécanique récurrente — ni duel hebdo ni
+>   boosters, l'utilisateur préfère un **système de notifications/popups à
+>   la connexion** (résumé depuis la dernière visite, badges débloqués, actus)
+>   — **pas encore cadré ni codé** ; (3) **chat/couche sociale in-app** —
+>   jugé utile, à construire — **pas encore cadré ni codé** ; (4) priorité —
+>   pistes produit d'abord, SMTP reste en pause (cf. ci-dessus).
 
 > **État au 09/08/2026** — **Badges permanents : catalogue de BASE
 > ENTIÈREMENT CODÉ et VÉRIFIÉ en conditions réelles** (`BACKLOG_V1.md` §

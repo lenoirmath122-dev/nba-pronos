@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { BracketNode, BracketRound } from "@/lib/queries/bracket";
 import { NodeCard } from "./NodeCard";
 import { useLiveSeriesMap } from "./LiveSeriesSubscriber";
 import { SeriesGroups } from "./SeriesGroups";
 import { RoundBanner } from "./RoundBanner";
+import { TreeConnectors } from "./TreeConnectors";
 import styles from "./SeriesDrillDown.module.css";
 
 // Drill-down d'une série (§11) : nominatif, groupé par pronostic, UNE SEULE
@@ -27,12 +28,13 @@ import styles from "./SeriesDrillDown.module.css";
 // garde l'ancien rendu (liste simple, toutes les séries visibles, jamais de
 // bandeau) — d'où le nouveau prop `competitionType`.
 //
-// Vue B (inchangée depuis le 30/07/2026) : pour les Playoffs UNIQUEMENT, les
+// Vue B (poster depuis le 30/07/2026) : pour les Playoffs UNIQUEMENT, les
 // colonnes sont réordonnées en "poster" — Ouest à GAUCHE (1er tour → demies
 // → finale de conf.), Finale NBA au CENTRE, Est à DROITE (finale de conf. →
-// demies → 1er tour). Aucun trait de connexion entre les séries (scope
-// réduit, acté avec l'utilisateur) : uniquement un réordonnancement + des
-// libellés de colonne explicites.
+// demies → 1er tour). Traits de connexion entre séries (16/08/2026, chantier
+// « bracket en arbre visuel connecté » — le réordonnancement seul, sans
+// trait, était un scope réduit acté le 30/07/2026, revu depuis) : voir
+// TreeConnectors.tsx.
 type SeriesDrillDownProps = {
   rounds: BracketRound[];
   isDeadlinePassed: boolean;
@@ -44,7 +46,12 @@ type SeriesDrillDownProps = {
   showBetLink: boolean;
 };
 
-type Column = { key: string; label: string; nodes: BracketNode[] };
+// `side` (16/08/2026, chantier arbre connecté) : direction du trait de
+// connexion vers la colonne suivante — "west" pousse vers la droite (1er
+// tour -> Finale), "east" vers la gauche (miroir du poster), voir
+// TreeConnectors.tsx. Le centre (Finale NBA) n'a pas de colonne suivante
+// (nextSeriesId toujours null en finale), son `side` n'est donc jamais lu.
+type Column = { key: string; label: string; nodes: BracketNode[]; side: "west" | "east" };
 
 const PLAYOFF_ROUND_ORDER = ["ROUND_1", "CONF_SEMIS", "CONF_FINALS"] as const;
 
@@ -58,6 +65,7 @@ function buildMirroredColumns(rounds: BracketRound[]): Column[] {
       key: `${key}-WEST`,
       label: round ? `${round.label} — Ouest` : "Ouest",
       nodes: round?.nodes.filter((n) => n.conference === "WEST") ?? [],
+      side: "west" as const,
     };
   });
 
@@ -69,10 +77,16 @@ function buildMirroredColumns(rounds: BracketRound[]): Column[] {
         key: `${key}-EAST`,
         label: round ? `${round.label} — Est` : "Est",
         nodes: round?.nodes.filter((n) => n.conference === "EAST") ?? [],
+        side: "east" as const,
       };
     });
 
-  const center: Column = { key: "NBA_FINALS", label: finals?.label ?? "Finale NBA", nodes: finals?.nodes ?? [] };
+  const center: Column = {
+    key: "NBA_FINALS",
+    label: finals?.label ?? "Finale NBA",
+    nodes: finals?.nodes ?? [],
+    side: "west",
+  };
 
   return [...west, center, ...east];
 }
@@ -90,6 +104,19 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
   // mise en page, pas le détail nominatif d'une série (§11 ne s'applique
   // qu'à openSeriesId).
   const [openBanners, setOpenBanners] = useState<Set<string>>(new Set());
+
+  // Vue B uniquement (16/08/2026, chantier arbre connecté) : conteneur de
+  // mesure pour TreeConnectors.tsx + Map des nœuds DOM des cartes montées,
+  // remplie via `registerCard` ci-dessous au montage/démontage de chaque
+  // carte. Map mutable en dehors de React (pas un state) — TreeConnectors
+  // la lit directement dans son effet, aucun re-rendu n'est nécessaire ici
+  // quand une carte s'enregistre.
+  const treeContainerRef = useRef<HTMLDivElement | null>(null);
+  const cardRefsMap = useRef<Map<string, HTMLElement>>(new Map());
+  function registerCard(nodeId: string, el: HTMLElement | null) {
+    if (el) cardRefsMap.current.set(nodeId, el);
+    else cardRefsMap.current.delete(nodeId);
+  }
 
   // Ancre `#round-X` du chargement (16/08/2026, correctif de la redirection
   // `/play/bracket?round=X` -> `/bracket#round-X`) : constaté en testant que
@@ -153,17 +180,24 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
     const openNode = rounds.flatMap((round) => round.nodes).find((node) => node.nodeId === openSeriesId);
     const columns: Column[] = hasConferences
       ? buildMirroredColumns(rounds)
-      : rounds.map((round) => ({ key: round.key, label: round.label, nodes: round.nodes }));
+      : rounds.map((round) => ({ key: round.key, label: round.label, nodes: round.nodes, side: "west" as const }));
 
     return (
       <>
         <div className={styles.roundsB}>
-          {columns.map((column) => (
-            <div key={column.key} className={styles.treeColumn}>
-              <p className={styles.roundLabel}>{column.label}</p>
-              {column.nodes.map(renderNode)}
-            </div>
-          ))}
+          <div ref={treeContainerRef} className={styles.roundsBInner}>
+            {columns.map((column) => (
+              <div key={column.key} className={styles.treeColumn}>
+                <p className={styles.roundLabel}>{column.label}</p>
+                {column.nodes.map((node) => (
+                  <div key={node.nodeId} ref={(el) => registerCard(node.nodeId, el)}>
+                    {renderNode(node)}
+                  </div>
+                ))}
+              </div>
+            ))}
+            <TreeConnectors columns={columns} containerRef={treeContainerRef} cardRefs={cardRefsMap} />
+          </div>
         </div>
 
         {openNode && (

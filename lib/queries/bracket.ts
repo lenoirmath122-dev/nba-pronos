@@ -77,6 +77,15 @@ export type BracketNode = {
   groups: SeriesPickGroup[]; // VIDE avant la deadline
   myPick: BracketMyPick | null; // VIDE avant la deadline, même garde que groups
   myBetAction: BracketMyBetAction | null;
+  /** Cascade d'avancement (16/08/2026, chantier arbre visuel connecté) —
+   *  même colonne que lib/queries/bracket-fill.ts::CascadeSeriesRow, jamais
+   *  exposée jusqu'ici sur l'écran de consultation globale. `null` en
+   *  finale (rien à alimenter). Sert à TreeConnectors.tsx à savoir quelle
+   *  série alimente quelle série ; jamais utilisée pour dériver un résultat
+   *  (contrairement à bracket-fill.ts, ce module reste purement en lecture
+   *  du réel, `official_winner_team_id`, jamais des picks joueur). */
+  nextSeriesId: string | null;
+  nextSeriesSlot: 1 | 2 | null;
 };
 
 export type BracketRound = { key: string; label: string; nodes: BracketNode[] };
@@ -135,6 +144,8 @@ type SeriesRow = {
   official_status: BracketSeriesStatus;
   official_winner_team_id: string | null;
   official_score_format: string | null;
+  next_series_id: string | null;
+  next_series_slot: 1 | 2 | null;
 };
 
 type TeamRow = { id: string; name: string; abbreviation: string };
@@ -167,7 +178,9 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
 
   const { data: seriesData } = await supabase
     .from("series")
-    .select("id, round, conference, slot_index, team1_id, team2_id, official_status, official_winner_team_id, official_score_format")
+    .select(
+      "id, round, conference, slot_index, team1_id, team2_id, official_status, official_winner_team_id, official_score_format, next_series_id, next_series_slot"
+    )
     .eq("competition_id", competition.id);
 
   const series = (seriesData ?? []) as SeriesRow[];
@@ -328,6 +341,8 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
             ? { kind: "EDIT" as const, betId: activeBet.betId }
             : null;
         })(),
+        nextSeriesId: row.next_series_id,
+        nextSeriesSlot: row.next_series_slot,
       }));
 
       return { key: roundKey, label: ROUND_LABELS[roundKey], nodes };

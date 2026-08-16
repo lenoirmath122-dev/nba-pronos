@@ -6174,4 +6174,111 @@ regroupements de requêtes `getBracket()`/`getHomeData()`) — laissés dans
 correctif et à la fin. Scripts + captures Playwright jetables, supprimés en
 fin de session, jamais commités.
 ```
+
+## Discussion produit : les 4 questions de l'avis expert (16/08/2026)
+
+```text
+Suite de la même session : les 4 questions ouvertes de
+`AVIS_EXPERT_16_08_2026.md` tranchées par `AskUserQuestion` avant de coder
+quoi que ce soit (§ méthodologie habituelle de ce projet).
+
+**Décisions** :
+1. Bracket en arbre visuel connecté — **oui, ça vaut le chantier** (choisi
+   comme priorité n°1 des 3 pistes retenues, codé dans la foulée cette
+   session, voir entrée suivante).
+2. Mécanique récurrente — **ni duel hebdo ni boosters** : l'utilisateur
+   préfère un système de notifications/popups à la connexion. Contenu
+   précisé par un 2e tour de questions (multi-choix) : résumé depuis la
+   dernière visite, nouveaux badges/récompenses débloqués, et « des actus »
+   (annonces, pas davantage précisé). **Non cadré ni codé cette session** —
+   reste une piste ouverte, à cadrer avant de coder (statut différent du
+   point 1 : pas encore de plan validé).
+3. Chat/couche sociale in-app — **utile, à construire**. Pas cadré ni codé
+   cette session.
+4. Priorité SMTP vs pistes produit — **pistes produit d'abord**, SMTP reste
+   explicitement en pause (déjà noté dans `GAPS_OUVERTS.md`).
+
+Rien d'autre tranché sur les points 2/3 (pas de cadrage détaillé demandé ni
+fait) — seul le point 1 a été repris immédiatement.
+```
+
+## Bracket en arbre visuel connecté (Vue B) — 1er chantier produit (16/08/2026)
+
+```text
+Suite immédiate de la discussion ci-dessus. Chantier significatif (nouveau
+composant, mesure DOM dynamique) : passé par `EnterPlanMode`/`ExitPlanMode`
+avant de coder — plan approuvé sans modification, sauvegardé dans
+`C:\Users\lenoi\.claude\plans\refactored-soaring-jellyfish.md` (hors dépôt).
+
+**Contexte** : Vue B (« Plein écran ↗ », poster à géométrie fixe Ouest →
+Finale → Est) réordonnait déjà les tours en poster depuis le 30/07/2026,
+mais SANS aucun trait de connexion entre les séries — scope réduit acté à
+l'époque, revu ce jour suite à l'avis qualitatif (« le plus gros écart
+d'effet waouh avec ESPN »).
+
+**Implémentation** :
+- `lib/queries/bracket.ts` : `BracketNode` expose désormais `nextSeriesId`/
+  `nextSeriesSlot` (colonnes `next_series_id`/`next_series_slot`, déjà en
+  base depuis la migration initiale, déjà utilisées par
+  `bracket-fill.ts::CascadeSeriesRow` pour l'écran de remplissage — jamais
+  exposées jusqu'ici sur l'écran de consultation globale).
+- Nouveau `components/bracket/TreeConnectors.tsx` : SVG à la main (pas de
+  librairie de graphes, même choix que `RankEvolutionChart.tsx`), mesure
+  DOM réelle (`getBoundingClientRect`) des cartes plutôt qu'un calcul
+  géométrique a priori — la hauteur des cartes n'est PAS fixe
+  (`NodeCard.module.css` : en cours/terminé/pronostic/bouton Parier la font
+  varier). `ResizeObserver` sur le conteneur ET chaque carte + dépendance
+  sur `useLiveSeriesMap()` : une carte peut changer de hauteur SANS que son
+  conteneur ne change de taille (ex. bascule EN_COURS -> TERMINÉ en direct,
+  cf. le correctif Realtime de cette même session). Connecteurs en coude à
+  3 segments, 2 traits indépendants par merge 2->1 (pas de jonction en Y
+  fusionnée — plus simple). Couleur `--color-border-strong` (token neutre
+  déjà theme-aware, jamais une couleur sémantique, §17).
+- `SeriesDrillDown.tsx` (Vue B) : `.roundsB` scindé en 2 niveaux (scroll
+  extérieur + `.roundsBInner` en `position: relative`, portant la mise en
+  page ET le SVG en position absolue — doit couvrir tout le contenu
+  scrollable, pas juste le viewport visible). Chaque carte enveloppée d'un
+  petit div `ref` qui s'enregistre dans une `Map` tenue par
+  `SeriesDrillDown` (pas de changement à `NodeCard.tsx`, moins de
+  couplage). `Column` porte désormais un `side: "west" | "east"` (dérivé
+  dans `buildMirroredColumns` : Ouest pousse le trait à droite, Est à
+  gauche — miroir du poster, convergent vers la Finale NBA centrale).
+
+**2 bugs réels trouvés en implémentant** (avant même de tester en
+conditions réelles, via `eslint`) :
+- `react-hooks/refs` : passer `cardRefsMap.current` (déjà déréférencé) en
+  prop pendant le rendu est interdit par cette règle — corrigé en passant
+  le `RefObject` lui-même à `TreeConnectors`, déréférencé SEULEMENT dans
+  son propre effet.
+
+**1 bug réel trouvé en conditions réelles** (aucun trait ne s'affichait du
+tout, malgré des données/refs a priori correctes) : `containerRef.current`
+restait `null` au 1er passage de l'effet de `TreeConnectors`, alors que la
+garantie React habituelle ("le ref est posé avant que les effets ne
+s'exécutent") aurait dû l'exclure — confirmé par un test délibéré
+(`setTimeout` de 50ms dans l'effet : le ref était bien peuplé peu après).
+Cause exacte non élucidée (probablement une particularité d'hydratation
+Next.js sur cet arbre profond) ; corrigé pragmatiquement par une boucle de
+réessai (`requestAnimationFrame`) au lieu d'abandonner au 1er passage —
+pattern robuste indépendamment de la cause exacte.
+
+**Vérifié en conditions réelles** (Playwright authentifié, compétition
+sandbox, `/bracket?arbre=1`) :
+- Traits visibles et correctement positionnés entre 1er tour → demies →
+  finale de conférence → Finale NBA, thèmes Sombre ET Clair (Photo rendu
+  identique à Sombre sur cet écran précis — l'écran Bracket/arbre ne fait
+  pas partie des 9 écrans migrés au style photo/verre, pas une régression).
+- Clic sur une carte traversée visuellement par un trait : le détail
+  s'ouvre normalement (`pointer-events: none` sur le SVG respecté).
+- Bascule EN_COURS -> TERMINÉ en direct (`service_role`, même technique que
+  le correctif Realtime plus tôt cette session) : les traits se redessinent
+  correctement (chemins SVG confirmés différents avant/après par
+  comparaison programmatique).
+- Aucune erreur console à aucune étape.
+
+`tsc --noEmit`, `eslint .` (0 erreur, mêmes 4 warnings pré-existants hors
+app), `vitest run` (37/37), `next build` (36 routes) propres. Scripts de
+debug + captures Playwright jetables, supprimés en fin de session, jamais
+commités.
+```
 ```

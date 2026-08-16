@@ -38,6 +38,14 @@
   padding: 0 var(--space-4);
 }
 
+/* Ouest | Finale NBA | Est, poster à géométrie fixe (30/07/2026) — zoom
+   natif (pincer) uniquement, jamais de bouton +/- maison. Scindé en 2
+   niveaux depuis le chantier arbre connecté (16/08/2026) : `.roundsB` porte
+   le SEUL scroll horizontal, `.roundsBInner` porte la mise en page ET les
+   traits SVG (TreeConnectors.tsx) en position absolue — le SVG doit hériter
+   de la taille du contenu scrollable ENTIER, pas juste du viewport visible,
+   d'où `position: relative` posé ici plutôt que sur le conteneur de scroll. */
+
 .column {
   display: flex;
   flex-direction: column;
@@ -78,11 +86,17 @@
 /* Vue B : poster à géométrie fixe, défilement horizontal, une colonne par
    tour (§10.1) — zoom natif (pincer), aucun bouton +/- maison. */
 .roundsB {
+  overflow-x: auto;
+  height: 100%;
+}
+
+.roundsBInner {
+  position: relative;
   display: flex;
   gap: var(--space-5);
   padding: var(--space-4);
-  overflow-x: auto;
   height: 100%;
+  width: fit-content;
 }
 
 .treeColumn {

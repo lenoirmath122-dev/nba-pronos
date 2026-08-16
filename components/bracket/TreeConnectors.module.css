@@ -1,0 +1,19 @@
+/* Décoratif pur : jamais d'interception de clic (§10.1 — même discipline
+   que le bug réel des pseudo-éléments .photo-page du 06/08/2026, qui
+   interceptaient les clics sur les cartes en dessous). */
+.connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/* Couleur neutre/structurelle (--color-border-strong, déjà theme-aware
+   Sombre/Clair/Photo) — jamais une couleur sémantique (§17 : vert/or/orange
+   réservés au résultat réel d'une série, jamais du pur décor). */
+.connectorPath {
+  fill: none;
+  stroke: var(--color-border-strong);
+  stroke-width: 1.5;
+}
