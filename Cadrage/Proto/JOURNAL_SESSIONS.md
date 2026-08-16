@@ -5946,3 +5946,54 @@ nouveau `scripts/seed-playoffs-simulation.mjs`, script jetable hors app),
 `vitest run` (37/37), `next build` (36 routes) tous revérifiés propres sur
 l'état ACTUEL du dépôt à cette occasion.
 ```
+
+## Audit UX + code : parcours réel + revue multi-agents (16/08/2026)
+
+```text
+Demande de l'utilisateur : « comment auditer entièrement l'appli » puis
+précisé « une mise à l'épreuve face à un potentiel joueur », comparer à des
+applis de pronostics/bracket entre amis existantes. Détail complet dans
+`AUDIT_UX_16_08_2026.md` (nouveau fichier dédié, pas fondu dans
+`ETAT_ACTUEL.md` — nature ponctuelle, pas un instantané d'état).
+
+**Revue de code** (`/code-review`, 9 commits du 14-15/08) : 6 angles en
+parallèle (correctness x3, réutilisation, efficacité, altitude/
+conventions). Trouvaille la plus solide : désync `isLive`/`isDecided` sur
+le Bracket (Realtime vs instantané SSR), trouvée indépendamment par 2
+agents.
+
+**Parcours au clic** — bloqué longtemps sur la création d'un compte de test
+100% neuf : le mot de passe de `TestJoueur1` était perdu et ce compte n'a
+pas de vraie boîte mail (email de test), donc aucune réinitialisation
+possible. Basculé sur une inscription publique fraîche
+(`/signup`), qui a buté sur le quota d'emails FIXE de Supabase (2/h,
+service intégré) — contournement en configurant un SMTP Resend en direct
+avec l'utilisateur (2 bugs de config trouvés et corrigés en route : username
+`Resend` au lieu de `resend`, port `465` au lieu de `587`). Clé API Resend
+collée en clair dans le chat à 2 reprises pendant le dépannage — signalé,
+régénération prévue par l'utilisateur après l'audit.
+
+**Bug réel trouvé en marge** : une inscription sur un email déjà pris
+échouait en silence (protection anti-énumération de Supabase, aucune
+erreur renvoyée) — repéré en re-testant avec le vrai email de l'utilisateur
+après une 1re "inscription" qui semblait réussir à tort. Confirmé avec
+l'utilisateur qu'aucun doublon de compte n'était réellement créé (contrainte
+unique Postgres intacte), seul le message d'erreur manquait. **Corrigé,
+vérifié en conditions réelles, committé et poussé** (`1f4847a`).
+
+Parcours terminé avec le vrai compte de l'utilisateur (`Rillettes-31`,
+identifiants donnés en séance) en lecture seule — aucun clic sur un bouton
+de soumission de pronostic/pari réel. Bug distinct trouvé en marge : erreur
+d'hydratation React sur Profil (`NotificationSettings`), pas creusée
+(hors périmètre des 9 commits).
+
+**Comparaison concurrentielle** (recherche web) : HoopCall, Scorecast,
+ParidAmis identifiés comme concurrents directs (pronostics NBA/multi-sport
+entre amis). nba-pronos nettement en avance sur les badges et le support de
+bracket ; en retard sur le chat intégré (Scorecast), les boosters
+(ParidAmis) et le format duel hebdomadaire (HoopCall) — pistes notées, rien
+de tranché.
+
+Nettoyage : scripts Playwright jetables (`scripts/tmp-audit-*.mjs`)
+supprimés en fin de session, jamais committés.
+```

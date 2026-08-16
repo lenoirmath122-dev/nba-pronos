@@ -4,6 +4,35 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 16/08/2026** — **Audit UX + code, détail complet dans
+> `AUDIT_UX_16_08_2026.md`.** Points actionnables restants (le bug
+> d'inscription silencieuse sur email déjà pris a déjà été corrigé et
+> poussé, `1f4847a`, retiré de cette liste) :
+> - **Décision produit à prendre** : SMTP Resend configuré en mode
+>   bac-à-sable pendant l'audit (ne peut livrer qu'à l'adresse du compte
+>   Resend) — pas viable en l'état pour de vrais joueurs. Choisir entre
+>   domaine vérifié chez Resend (~1-3€/an) ou retour au service intégré
+>   Supabase (2 emails/heure, fixe). Clé API Resend exposée 2x dans le chat
+>   pendant le dépannage — à régénérer côté Resend.
+> - Désync `isLive`/`isDecided` sur une carte du Bracket global quand une
+>   série passe `IN_PROGRESS` → `FINISHED` en direct pendant que la page est
+>   ouverte (reste bloquée en "En cours" avec score figé jusqu'au rechargement) —
+>   `components/bracket/NodeCard.tsx`/`SeriesDrillDown.tsx`.
+> - Bouton "Parier" affiché sur une série terminée/annulée (pas exploitable,
+>   juste trompeur) — `lib/queries/bracket.ts::myBetAction`.
+> - Erreur d'hydratation React sur Profil (`NotificationSettings`), trouvée
+>   en marge de l'audit, pas encore investiguée.
+> - Reste : libellé "Hier" du Classement potentiellement obsolète si le cron
+>   snapshot rate un jour, nœud sans conférence silencieusement supprimé du
+>   Bracket (dormant), redirection `/play/bracket` → `/bracket` qui perd
+>   `?round=`, quelques duplications de code (formatage de date, statuts de
+>   pari "libérés", motif ligne cliquable) — détail et fichiers exacts dans
+>   `AUDIT_UX_16_08_2026.md` §3.
+> - **Piste produit non tranchée** : un format "duel de la semaine" ou des
+>   "boosters" ponctuels rapprocheraient nba-pronos de ce que proposent déjà
+>   HoopCall/ParidAmis, identifié en comparant à la concurrence — à discuter
+>   si ça intéresse l'utilisateur, rien d'engagé.
+
 > **État au 09/08/2026** — **Badges permanents : catalogue de BASE
 > ENTIÈREMENT CODÉ et VÉRIFIÉ en conditions réelles** (`BACKLOG_V1.md` §
 > "Fun / esprit ligue entre potes", chantier ouvert le 30/07/2026, 3e des
