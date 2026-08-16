@@ -5,27 +5,28 @@
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
 > **État au 16/08/2026** — **Audit UX + code, détail complet dans
-> `AUDIT_UX_16_08_2026.md`.** Points actionnables restants (le bug
-> d'inscription silencieuse sur email déjà pris a déjà été corrigé et
-> poussé, `1f4847a` ; la désync `isLive`/`isDecided` du Bracket et le bouton
-> "Parier" trompeur sur série terminée ont aussi été corrigés et poussés,
-> voir `JOURNAL_SESSIONS.md` — les trois retirés de cette liste). **SMTP
-> laissé en pause explicitement** (décision à reprendre plus tard, pas
-> urgent) :
+> `AUDIT_UX_16_08_2026.md`.** Tous les points actionnables techniques
+> traités et poussés SAUF SMTP (mis en pause explicitement, décision à
+> reprendre plus tard, pas urgent) : bug d'inscription silencieuse
+> (`1f4847a`), désync `isLive`/`isDecided` du Bracket, bouton "Parier"
+> trompeur sur série terminée, erreur d'hydratation `NotificationSettings`,
+> libellé "Hier" du Classement, nœud sans conférence silencieusement
+> supprimé du Bracket, redirection `/play/bracket` → `/bracket` qui perdait
+> `?round=`, et les 3 duplications de code repérées (formatage de date,
+> statuts de pari "libérés", motif ligne cliquable) — voir
+> `JOURNAL_SESSIONS.md` pour le détail de chaque correctif.
 > - **Décision produit à prendre** : SMTP Resend configuré en mode
 >   bac-à-sable pendant l'audit (ne peut livrer qu'à l'adresse du compte
 >   Resend) — pas viable en l'état pour de vrais joueurs. Choisir entre
 >   domaine vérifié chez Resend (~1-3€/an) ou retour au service intégré
 >   Supabase (2 emails/heure, fixe). Clé API Resend exposée 2x dans le chat
 >   pendant le dépannage — à régénérer côté Resend.
-> - Erreur d'hydratation React sur Profil (`NotificationSettings`), trouvée
->   en marge de l'audit, pas encore investiguée.
-> - Reste : libellé "Hier" du Classement potentiellement obsolète si le cron
->   snapshot rate un jour, nœud sans conférence silencieusement supprimé du
->   Bracket (dormant), redirection `/play/bracket` → `/bracket` qui perd
->   `?round=`, quelques duplications de code (formatage de date, statuts de
->   pari "libérés", motif ligne cliquable) — détail et fichiers exacts dans
->   `AUDIT_UX_16_08_2026.md` §3.
+> - Reste, non traité (hors du périmètre demandé cette fois — a11y/nettoyage
+>   mineur, cf. `AUDIT_UX_16_08_2026.md` §3 Correctness points 6/7 et
+>   Efficacité) : lien "Parier" atteignable dans une carte `aria-disabled`,
+>   classes CSS mortes `.hero-banner-title`/`.hero-banner-subtitle`,
+>   `LeaderboardRow` non mémoïsé, quelques regroupements de requêtes
+>   possibles (`getBracket()`, `getHomeData()`).
 > - **Avis produit qualitatif à reprendre ensemble** : `AVIS_EXPERT_16_08_2026.md`
 >   (nouveau) — aspect/fonctionnalités/fluidité vs. HoopCall/
 >   Scorecast/ParidAmis, 4 questions ouvertes en fin de fichier (bracket en

@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
 
@@ -80,11 +81,6 @@ const WINDOW_DAYS = 3;
 // n'existe encore ailleurs dans le code ; Europe/Paris choisi explicitement
 // plutôt que le fuseau machine du serveur, qui peut être UTC en hébergement).
 const DAY_TIMEZONE = "Europe/Paris";
-// Statuts de pari qui LIBÈRENT le slot (§10) — REJECTED toujours libéré ici :
-// aucune colonne ne capture la date de rejet (pas de rejectBet codé, lot
-// « Paris »), et sealDeadlines auto-valide tout SUBMITTED à la deadline, donc
-// « rejeté après deadline » est un cas limite hors du fonctionnement normal.
-const RELEASED_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
 
 function emptyData(): MatchesData {
   return {

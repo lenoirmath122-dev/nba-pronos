@@ -26,6 +26,17 @@ export function parisLocalToUtcIso(localValue: string): string {
   return new Date(naiveMs - offsetMinutes * 60 * 1000).toISOString();
 }
 
+/** "JJ/MM HH:mm" en Europe/Paris — même format ré-implémenté 6 fois (extrait
+ *  de lib/queries/match-bets.ts, aussi dupliqué dans admin-requests.ts,
+ *  admin-resolution.ts, admin-validation.ts, bets.ts, my-bets.ts) avant
+ *  cette extraction (16/08/2026, bug d'audit corrigé). */
+export function parisDateTimeLabel(iso: string): string {
+  const date = new Date(iso);
+  const datePart = new Intl.DateTimeFormat("fr-FR", { timeZone: DAY_TIMEZONE, day: "2-digit", month: "2-digit" }).format(date);
+  const timePart = new Intl.DateTimeFormat("fr-FR", { timeZone: DAY_TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(date);
+  return `${datePart} ${timePart}`;
+}
+
 function parisOffsetMinutesAt(atMs: number): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: DAY_TIMEZONE,

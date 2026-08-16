@@ -1,4 +1,5 @@
 import type { BetTodoItem } from "@/lib/queries/home";
+import { clickableRowProps } from "@/lib/hooks/clickableRow";
 import styles from "./BetGroupRow.module.css";
 
 // Une ligne-groupe de la section « Paris » (15/08/2026) : résumé cliquable
@@ -23,19 +24,7 @@ function summary(label: string, count: number, feminine: boolean): string {
 export function BetGroupRow({ label, items, feminine, expanded, onToggle }: BetGroupRowProps) {
   return (
     <div>
-      <div
-        role="button"
-        tabIndex={0}
-        className={styles.summary}
-        aria-expanded={expanded}
-        onClick={onToggle}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onToggle();
-          }
-        }}
-      >
+      <div {...clickableRowProps(onToggle)} className={styles.summary} aria-expanded={expanded}>
         <span className={styles.summaryLabel}>{summary(label, items.length, feminine)}</span>
         <span className={styles.chevron} aria-hidden="true">
           {expanded ? "⌃" : "⌄"}

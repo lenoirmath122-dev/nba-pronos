@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { BracketNode, BracketRound } from "@/lib/queries/bracket";
 import { NodeCard } from "./NodeCard";
 import { useLiveSeriesMap } from "./LiveSeriesSubscriber";
@@ -90,6 +90,18 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
   // mise en page, pas le détail nominatif d'une série (§11 ne s'applique
   // qu'à openSeriesId).
   const [openBanners, setOpenBanners] = useState<Set<string>>(new Set());
+
+  // Ancre `#round-X` du chargement (16/08/2026, correctif de la redirection
+  // `/play/bracket?round=X` -> `/bracket#round-X`) : constaté en testant que
+  // le scroll natif du navigateur vers la cible n'a PAS lieu après une
+  // redirection serveur suivie de l'hydratation Next.js (`window.scrollY`
+  // restait à 0 alors que l'élément existait bien) — reconstitué à la main
+  // au montage plutôt que de compter sur le comportement natif du fragment.
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (!hash) return;
+    document.getElementById(hash.slice(1))?.scrollIntoView({ block: "start" });
+  }, []);
 
   function handleToggle(nodeId: string) {
     setOpenSeriesId((current) => (current === nodeId ? null : nodeId));
@@ -182,11 +194,15 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
   // NBA Cup : pas concernée par la refonte 2 colonnes / bandeau (ses séries
   // n'ont jamais de conférence) — ancien rendu inchangé, toutes les séries
   // toujours visibles.
+  // `id={round-${round.key}}` sur chaque section (16/08/2026, bug d'audit
+  // corrigé) : ancre de scroll pour `/play/bracket?round=X` → `/bracket
+  // #round-X` après la deadline (app/(app)/play/bracket/page.tsx), qui
+  // redirigeait auparavant vers `/bracket` en perdant `round` en route.
   if (competitionType === "NBA_CUP") {
     return (
       <div className={styles.roundsA}>
         {rounds.map((round) => (
-          <div key={round.key} className={styles.roundSection}>
+          <div key={round.key} id={`round-${round.key}`} className={styles.roundSection}>
             <p className={styles.roundLabel}>{round.label}</p>
             <div className={styles.nodeList}>{round.nodes.map(renderNodeWithInlineDetail)}</div>
           </div>
@@ -228,20 +244,32 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
         if (roundHasConference) {
           const west = round.nodes.filter((n) => n.conference === "WEST");
           const east = round.nodes.filter((n) => n.conference === "EAST");
+          // Garde-fou (16/08/2026, bug d'audit corrigé) : un nœud SANS
+          // conférence dans un tour qui en contient par ailleurs (aucun cas
+          // réel aujourd'hui, mais rien ne le garantit côté type/requête)
+          // disparaissait silencieusement — ni dans Ouest ni dans Est.
+          // Rendu à part, centré (même style que la Finale NBA plus bas),
+          // plutôt que perdu.
+          const rest = round.nodes.filter((n) => n.conference === null);
           return (
-            <div key={round.key} className={styles.roundSection}>
+            <div key={round.key} id={`round-${round.key}`} className={styles.roundSection}>
               <p className={styles.roundLabel}>{round.label}</p>
               <div className={styles.cols}>
                 {renderColumn(`${round.key}-WEST`, west)}
                 {renderColumn(`${round.key}-EAST`, east)}
               </div>
+              {rest.length > 0 && (
+                <div className={styles.centerWrap}>
+                  <div className={styles.centerCol}>{renderColumn(`${round.key}-REST`, rest)}</div>
+                </div>
+              )}
             </div>
           );
         }
 
         // Finale NBA (conférence NULL) : centrée, une seule colonne.
         return (
-          <div key={round.key} className={styles.roundSection}>
+          <div key={round.key} id={`round-${round.key}`} className={styles.roundSection}>
             <p className={styles.roundLabel}>{round.label}</p>
             <div className={styles.centerWrap}>
               <div className={styles.centerCol}>{renderColumn(`${round.key}-ALL`, round.nodes)}</div>

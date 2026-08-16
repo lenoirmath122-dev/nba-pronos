@@ -1,18 +1,14 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 
 // Lecture de la file des requêtes admin (SPEC_ECRAN_ADMIN_REQUESTS_V0_1
 // §1/§2) — TOUTES les correction_requests PENDING, MATCH_PREDICTION ET
 // BET (0.2.7 §6 : une seule file, pas de distinction par type de cible).
 
-const MATCH_LABEL_TIMEZONE = "Europe/Paris";
-
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
-  const date = new Date(scheduledAt);
-  const datePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, day: "2-digit", month: "2-digit" }).format(date);
-  const timePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(date);
-  return `Match ${gameNumber} — ${datePart} ${timePart}`;
+  return `Match ${gameNumber} — ${parisDateTimeLabel(scheduledAt)}`;
 }
 
 function seriesLabel(round: string, team1Abbr: string | undefined, team2Abbr: string | undefined): string {

@@ -61,3 +61,10 @@ export const DEFAULT_BET_DIFFICULTY: BetDifficulty = 3;
 // (pas de cap série). Source unique du chiffre, lue par le bootstrap serveur
 // ET par l'affichage client (ex. "2/3 slots").
 export const MATCH_SLOT_CAP = 3;
+
+// Un pari REJECTED/CANCELLED libère toujours son slot (0.2.4 §6) — seuls
+// statuts qui n'occupent pas un slot MATCH/SÉRIE. Extraite ici (16/08/2026,
+// bug d'audit corrigé) : 6e copie identique du même Set, dupliquée dans
+// lib/queries/bets.ts, bracket-fill.ts, bracket.ts, match-bets.ts, matches.ts
+// et series-bets.ts.
+export const RELEASED_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);

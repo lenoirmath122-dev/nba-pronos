@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
+import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 
 // Lecture de l'écran Bracket (vue globale de consultation), composants
 // serveur uniquement — SPEC_ECRAN_CLASSEMENT_BRACKET §15.2. Un seul module,
@@ -216,11 +217,10 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
   // absent de cette map = aucun pari actif = bouton "Parier" par défaut plus
   // bas ; présent = DRAFT/SUBMITTED (éditable, bouton "Modifier") ou
   // VALIDATED/WON/LOST (engagé, pas de bouton du tout).
-  const RELEASED_SERIES_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
   const EDITABLE_SERIES_BET_STATUSES = new Set(["DRAFT", "SUBMITTED"]);
   const activeBetBySeriesId = new Map<string, { betId: string; status: string }>();
   for (const row of (ownBetsData ?? []) as OwnSeriesBetRow[]) {
-    if (RELEASED_SERIES_BET_STATUSES.has(row.status)) continue;
+    if (RELEASED_BET_STATUSES.has(row.status)) continue;
     activeBetBySeriesId.set(row.series_id, { betId: row.id, status: row.status });
   }
 

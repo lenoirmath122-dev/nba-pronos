@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
+import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Lecture de l'écran Bracket personnel (remplissage), composants serveur
@@ -166,12 +167,6 @@ type SeriesBetRow = {
   proposed_difficulty: BetDifficulty;
 };
 
-// Un pari REJECTED/CANCELLED libère toujours son slot (0.2.4 §6, même
-// convention que lib/queries/matches.ts) — ce sont donc les SEULS statuts
-// qu'on exclut ici : au plus une ligne active peut matcher par série
-// (uniq_active_series_bet).
-const RELEASED_SERIES_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
-
 export async function getBracketFillData(): Promise<BracketFillData> {
   const supabase = await getServerClient();
 
@@ -257,7 +252,7 @@ export async function getBracketFillData(): Promise<BracketFillData> {
     );
   const seriesBetBySeriesId = new Map(
     ((seriesBetsData ?? []) as SeriesBetRow[])
-      .filter((row) => !RELEASED_SERIES_BET_STATUSES.has(row.status))
+      .filter((row) => !RELEASED_BET_STATUSES.has(row.status))
       .map((row) => [row.series_id, row])
   );
 

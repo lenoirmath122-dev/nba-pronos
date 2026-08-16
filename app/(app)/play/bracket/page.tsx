@@ -51,8 +51,15 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
   // inerte avec un lien à part — on atterrit directement sur le Bracket
   // global, qui porte déjà (via getBracket()) la mise en avant des paris du
   // joueur sur chaque série, très voyante (NodeCard.tsx).
+  //
+  // `?round=` reporté en ancre (16/08/2026, bug d'audit corrigé) : un lien/
+  // favori vers `/play/bracket?round=X` rebondissait vers `/bracket` en
+  // perdant X silencieusement. `/bracket` (vue globale) n'a pas d'onglet par
+  // tour comme cet écran — toutes les séries y sont déjà visibles — mais
+  // `#round-X` (id posé sur chaque section, SeriesDrillDown.tsx) fait au
+  // moins défiler jusqu'au bon tour au lieu d'atterrir en haut de page.
   if (data.isDeadlinePassed) {
-    redirect("/bracket");
+    redirect(sp.round ? `/bracket#round-${sp.round}` : "/bracket");
   }
 
   const activeRoundKey =

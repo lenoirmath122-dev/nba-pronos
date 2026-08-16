@@ -6092,4 +6092,86 @@ toujours normalement — pas de régression sur le cas nominal.
 `next build` (36 routes) propres avant ET après le test en conditions
 réelles. Script + capture jetables, supprimés en fin de session.
 ```
+
+## Correctifs : hydratation Profil + 4 points mineurs de l'audit (16/08/2026)
+
+```text
+Suite de la même session : l'utilisateur choisit de traiter l'erreur
+d'hydratation ET les points mineurs de `AUDIT_UX_16_08_2026.md` §3 avant la
+discussion produit à 4 questions. 6 correctifs indépendants.
+
+**1. Hydratation `NotificationSettings` (Profil)** — cause : l'état
+`deviceSubscribed` s'initialisait via `pushSupported() ? null : false`
+DANS `useState`, une fonction qui lit `navigator`/`window` (absents côté
+serveur -> toujours `false` en SSR, potentiellement `true` au 1er rendu
+client si le navigateur supporte le Push) — 2 rendus initiaux divergents,
+donc erreur d'hydratation React sur `.deviceNotice` (visible uniquement si
+`preference === "PUSH"`). Corrigé : `null` sur les 2 rendus, la vraie valeur
+déterminée après montage dans l'effet existant. Corollaire trouvé par
+`eslint` (`react-hooks/set-state-in-effect`, règle absente de ce projet
+avant aujourd'hui apparemment) : un `setState` synchrone dans le corps de
+l'effet pour la branche "non supporté" — restructuré en promesse résolue
+immédiatement pour que tout `setState` passe par un `.then()`/`.catch()`.
+**Vérifié en conditions réelles** : `notification_preference` du bot forcé
+à `PUSH` via `service_role` (compte de simulation, restauré après), Push
+autorisé dans le contexte Playwright — le bandeau « Push activé sur ton
+compte, mais pas encore sur cet appareil » s'affiche bien, AUCUN message
+lié à l'hydratation en console (reproduction exacte du scénario de l'audit).
+
+**2. Libellé "Hier" du Classement** — `computeRankTrend()`
+(`lib/queries/leaderboard.ts`) prenait le dernier snapshot AVANT
+aujourd'hui, potentiellement vieux de plusieurs jours si le cron a raté une
+exécution, mais le libellé affichait toujours "Hier". Ajout de `daysAgo`
+(arithmétique sur les clés `YYYY-MM-DD` déjà résolues, `daysBetween()`) au
+type `RankTrend`, consommé par `LeaderboardRow.tsx::dayPrefix()` — "Hier"
+seulement si `daysAgo <= 1`, sinon "Il y a N jours".
+
+**3. Nœud sans conférence silencieusement supprimé** —
+`SeriesDrillDown.tsx::renderColumn` (vue A Playoffs) ne rendait que les
+nœuds Ouest/Est ; un nœud `conference === null` dans un tour par ailleurs à
+conférence disparaissait sans trace. Ajout d'un 3e rendu "rest" centré (même
+style que la Finale NBA), affiché seulement si un tel nœud existe — aucun
+cas réel aujourd'hui, garde-fou pur.
+
+**4. Redirection `/play/bracket?round=X` → `/bracket` qui perdait `round`**
+— `/bracket` (vue globale) n'a pas d'onglet par tour comme l'écran de
+remplissage, donc pas de "round" à restaurer au sens strict ; corrigé en
+ancre (`redirect(`/bracket#round-${sp.round}`)`, `id={`round-${round.key}`}`
+posé sur chaque section de `SeriesDrillDown.tsx`). **Bug distinct trouvé en
+testant** : le scroll natif du navigateur vers l'ancre n'avait PAS lieu
+après la redirection serveur + hydratation Next.js (`window.scrollY` restait
+à 0 alors que l'élément existait) — corrigé par un effet dédié
+(`scrollIntoView` au montage, lu depuis `window.location.hash`). Vérifié en
+conditions réelles (Playwright authentifié) : `scrollY` passe de 0 à 473,
+capture d'écran confirmant l'affichage centré sur "Demi-finales de
+conférence".
+
+**5/6. Dédoublonnage** (3 motifs, `réutilisation` de l'audit) :
+- Formatage `datePart`/`timePart` "JJ/MM HH:mm" (Europe/Paris), dupliqué
+  6 fois à l'identique (`match-bets.ts`, `admin-requests.ts`,
+  `admin-resolution.ts`, `admin-validation.ts`, `bets.ts`, `my-bets.ts`) —
+  extrait en `parisDateTimeLabel()` (`lib/dates/paris.ts`, module déjà
+  dédié aux utilitaires de date Europe/Paris neutres).
+- `RELEASED_*_BET_STATUSES = new Set(["REJECTED", "CANCELLED"])`, 6 copies
+  identiques (`bets.ts`, `bracket-fill.ts`, `bracket.ts`, `match-bets.ts`,
+  `matches.ts`, `series-bets.ts`) — extrait en `RELEASED_BET_STATUSES`
+  (`lib/labels/bets.ts`, déjà la source des autres constantes de paris).
+- Motif "ligne cliquable" (`role="button"` + clavier Entrée/Espace),
+  dupliqué à l'identique dans `NodeCard.tsx`, `LeaderboardRow.tsx`,
+  `BetGroupRow.tsx` — extrait en `clickableRowProps()`
+  (nouveau `lib/hooks/clickableRow.ts`).
+
+Volontairement PAS traités cette fois (hors du périmètre demandé) : lien
+"Parier" atteignable dans une carte `aria-disabled` (point 6 Correctness),
+classes CSS mortes `.hero-banner-title`/`.hero-banner-subtitle` (point 7),
+et toute la section Efficacité de l'audit (mémoïsation `LeaderboardRow`,
+regroupements de requêtes `getBracket()`/`getHomeData()`) — laissés dans
+`GAPS_OUVERTS.md` si repris plus tard.
+
+`tsc --noEmit`, `eslint .` (0 erreur — seuls les 4 warnings pré-existants de
+`scripts/seed-playoffs-simulation.mjs`, script jetable hors app, subsistent),
+`vitest run` (37/37), `next build` (36 routes) propres après chaque
+correctif et à la fin. Scripts + captures Playwright jetables, supprimés en
+fin de session, jamais commités.
+```
 ```

@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { BET_DIFFICULTY_POINTS } from "@/lib/labels/bets";
 import { computeBetDeadlinesPassed } from "@/lib/scoring/bet-deadline";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Lecture de la file de résolution admin (SPEC_ECRAN_ADMIN_RESOLUTION_V0_1
@@ -20,14 +21,9 @@ export type PendingResolutionBet = {
   isContested: boolean; // requête de correction PENDING déjà déposée sur ce pari
 };
 
-const MATCH_LABEL_TIMEZONE = "Europe/Paris";
-
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
-  const date = new Date(scheduledAt);
-  const datePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, day: "2-digit", month: "2-digit" }).format(date);
-  const timePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(date);
-  return `Match ${gameNumber} — ${datePart} ${timePart}`;
+  return `Match ${gameNumber} — ${parisDateTimeLabel(scheduledAt)}`;
 }
 
 function seriesLabel(s: SeriesRow, abbrevById: Map<string, string>): string {

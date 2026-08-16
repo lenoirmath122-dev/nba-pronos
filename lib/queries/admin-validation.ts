@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Lecture de la file de validation admin (SPEC_ECRAN_ADMIN_VALIDATION_V0_1
@@ -18,14 +19,9 @@ export type PendingValidationBet = {
   submittedAt: string;
 };
 
-const MATCH_LABEL_TIMEZONE = "Europe/Paris";
-
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
-  const date = new Date(scheduledAt);
-  const datePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, day: "2-digit", month: "2-digit" }).format(date);
-  const timePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(date);
-  return `Match ${gameNumber} — ${datePart} ${timePart}`;
+  return `Match ${gameNumber} — ${parisDateTimeLabel(scheduledAt)}`;
 }
 
 function seriesLabel(s: SeriesRow, abbrevById: Map<string, string>): string {

@@ -1,6 +1,7 @@
 import type { BracketNode } from "@/lib/queries/bracket";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { useLiveSeriesStatus, useLiveWinnerAbbreviation } from "./LiveSeriesSubscriber";
+import { clickableRowProps } from "@/lib/hooks/clickableRow";
 import styles from "./NodeCard.module.css";
 
 // Carte résumé d'une série. Présentiel pur (pas de "use client") : rendu
@@ -142,25 +143,15 @@ export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: Node
   // Racine passée de <button> à <div role="button"> (15/08/2026) : un pari
   // imbrique maintenant un vrai <a> (bouton Parier/Modifier) dans la carte —
   // un <a> dans un <button> est invalide en HTML, même raison déjà rencontrée
-  // sur LeaderboardRow.tsx (§ pseudo cliquable). Comportement clavier
-  // Entrée/Espace reconstitué à la main, aria-disabled inchangé (jamais
-  // l'attribut natif disabled — déjà le cas avant, la carte reste focusable
-  // même "désactivée").
+  // sur LeaderboardRow.tsx (§ pseudo cliquable). aria-disabled inchangé
+  // (jamais l'attribut natif disabled — déjà le cas avant, la carte reste
+  // focusable même "désactivée").
   const canBet = showBetLink && node.teamA !== null && node.teamB !== null && node.myBetAction !== null;
 
   return (
     <div
-      role="button"
-      tabIndex={0}
+      {...clickableRowProps(onToggle, { disabled })}
       className={cardClassName}
-      onClick={disabled ? undefined : onToggle}
-      onKeyDown={(event) => {
-        if (disabled) return;
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          onToggle();
-        }
-      }}
       aria-expanded={isOpen}
       aria-disabled={disabled || undefined}
     >

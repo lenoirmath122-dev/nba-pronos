@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 
 // Lecture DÉDIÉE aux paris SÉRIES pour l'Accueil et le hub Jouer — DISTINCT de
 // lib/queries/bracket-fill.ts::computeCandidateTeamIds, qui dérive les
@@ -28,11 +29,6 @@ type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id:
 type TeamRow = { id: string; abbreviation: string };
 type SeriesBetRow = { series_id: string; status: string };
 type MatchRow = { series_id: string; scheduled_at: string };
-
-// Un pari REJECTED/CANCELLED libère toujours son slot (0.2.4 §6, même
-// convention que bracket-fill.ts) — ce sont donc les SEULS statuts qui
-// n'occupent pas le slot série.
-const RELEASED_SERIES_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
 
 /** Séries où un pari SÉRIE reste POSSIBLE et pas encore posé, sur les VRAIES
  *  équipes qualifiées — NBA Cup exclue (pas de paris séries, une "série" y
@@ -86,7 +82,7 @@ export async function getRemainingSeriesBets(): Promise<RemainingSeriesBet[]> {
 
   const activeBetSeriesIds = new Set(
     ((betsData ?? []) as SeriesBetRow[])
-      .filter((row) => !RELEASED_SERIES_BET_STATUSES.has(row.status))
+      .filter((row) => !RELEASED_BET_STATUSES.has(row.status))
       .map((row) => row.series_id)
   );
 

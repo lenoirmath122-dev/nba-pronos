@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { MATCH_SLOT_CAP } from "@/lib/labels/bets";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Lecture de l'écran Mes paris (SPEC_ECRAN_MES_PARIS_V0_1 §10). PERSONNEL
@@ -74,14 +75,9 @@ type BetRow = {
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null; official_status: string };
 type MatchRow = { id: string; series_id: string; game_number: number; scheduled_at: string | null; status: string };
 
-const MATCH_LABEL_TIMEZONE = "Europe/Paris";
-
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
-  const date = new Date(scheduledAt);
-  const datePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, day: "2-digit", month: "2-digit" }).format(date);
-  const timePart = new Intl.DateTimeFormat("fr-FR", { timeZone: MATCH_LABEL_TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(date);
-  return `Match ${gameNumber} — ${datePart} ${timePart}`;
+  return `Match ${gameNumber} — ${parisDateTimeLabel(scheduledAt)}`;
 }
 
 // Même construction que lib/queries/bets.ts (team1_id/team2_id de la série,

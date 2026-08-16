@@ -2,6 +2,7 @@
 
 import type { LeaderboardRow as RowData, RankTrend, SortKey } from "@/lib/queries/leaderboard";
 import { PlayerLink } from "@/components/ui/PlayerLink";
+import { clickableRowProps } from "@/lib/hooks/clickableRow";
 import styles from "./LeaderboardRow.module.css";
 
 // Une ligne du classement (§6/§7). Composant CONTRÔLÉ depuis LeaderboardRowList
@@ -67,14 +68,22 @@ function getInitials(pseudo: string): string {
   return pseudo.slice(0, 2).toUpperCase();
 }
 
+// Préfixe temporel (16/08/2026, bug d'audit corrigé) : le dernier snapshot
+// disponible n'est pas forcément celui d'hier (si le cron quotidien a raté
+// un jour) — `daysAgo` (lib/queries/leaderboard.ts) dit la vérité au lieu
+// d'afficher "Hier" à tort.
+function dayPrefix(daysAgo: number): string {
+  return daysAgo <= 1 ? "Hier" : `Il y a ${daysAgo} jours`;
+}
+
 function trendTitle(trend: RankTrend): string {
   switch (trend.kind) {
     case "up":
-      return `Hier : ${ordinal(trend.previousRank)} — a progressé de ${trend.delta} place${trend.delta > 1 ? "s" : ""}`;
+      return `${dayPrefix(trend.daysAgo)} : ${ordinal(trend.previousRank)} — a progressé de ${trend.delta} place${trend.delta > 1 ? "s" : ""}`;
     case "down":
-      return `Hier : ${ordinal(trend.previousRank)} — a reculé de ${trend.delta} place${trend.delta > 1 ? "s" : ""}`;
+      return `${dayPrefix(trend.daysAgo)} : ${ordinal(trend.previousRank)} — a reculé de ${trend.delta} place${trend.delta > 1 ? "s" : ""}`;
     case "flat":
-      return "Même rang qu'hier";
+      return trend.daysAgo <= 1 ? "Même rang qu'hier" : `Même rang il y a ${trend.daysAgo} jours`;
     case "unavailable":
       return "Pas d'historique de rang avant aujourd'hui";
   }
@@ -132,26 +141,17 @@ export function LeaderboardRow({ row, sortKey, expanded, onToggle }: Leaderboard
   // Restructuré le 30/07/2026 (bouton -> div) : le pseudo devient un vrai
   // <Link> vers /players/[userId] (demandé par l'utilisateur, actif sur
   // toutes les pages) — un <a> imbriqué dans un <button> est invalide en
-  // HTML, d'où le passage à un conteneur cliquable non-bouton, avec le
-  // même comportement clavier (Entrée/Espace) reconstitué à la main.
+  // HTML, d'où le passage à un conteneur cliquable non-bouton.
   return (
     <div
       className={row.isInactive ? `${styles.wrapper} ${styles.rowInactive}` : styles.wrapper}
       data-top-rank={topRank}
     >
       <div
-        role="button"
-        tabIndex={0}
+        {...clickableRowProps(onToggle)}
         id={row.isCurrentUser ? "me-row" : undefined}
         className={styles.row}
         aria-expanded={expanded}
-        onClick={onToggle}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") {
-            event.preventDefault();
-            onToggle();
-          }
-        }}
       >
         <span className={styles.colRank}>
           <span className={topRank ? styles.rankNum : undefined}>{row.rank}</span>

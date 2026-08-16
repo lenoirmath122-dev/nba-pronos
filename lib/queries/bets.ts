@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
-import { BET_CATEGORY_OPTIONS, MATCH_SLOT_CAP } from "@/lib/labels/bets";
+import { BET_CATEGORY_OPTIONS, MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/lib/labels/bets";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { TeamRef } from "@/lib/queries/matches";
 
@@ -76,10 +77,6 @@ export type EditBetFormData = {
   bootstrap: BetFormBootstrap;
 };
 
-// Statuts de pari qui LIBÈRENT le slot (§6.3, simplification (b) actée) —
-// même règle que lib/queries/matches.ts (RELEASED_BET_STATUSES) : un REJECTED
-// libère TOUJOURS, faute de rejected_at ; un CANCELLED libère toujours.
-const RELEASED_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
 const EDITABLE_BET_STATUSES = new Set(["DRAFT", "SUBMITTED"]);
 
 export { MATCH_SLOT_CAP };
@@ -354,20 +351,7 @@ function seriesLabel(s: SeriesRow, abbrevById: Map<string, string>): string {
   return team1 && team2 ? `${round} — ${team1} vs ${team2}` : round;
 }
 
-const MATCH_LABEL_TIMEZONE = "Europe/Paris";
-
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
-  const date = new Date(scheduledAt);
-  const datePart = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: MATCH_LABEL_TIMEZONE,
-    day: "2-digit",
-    month: "2-digit",
-  }).format(date);
-  const timePart = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: MATCH_LABEL_TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-  return `Match ${gameNumber} — ${datePart} ${timePart}`;
+  return `Match ${gameNumber} — ${parisDateTimeLabel(scheduledAt)}`;
 }

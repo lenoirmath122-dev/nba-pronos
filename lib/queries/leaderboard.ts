@@ -25,10 +25,16 @@ export type SortDirection = "asc" | "desc";
 // (nouveau dans le classement, OU la compétition n'a pas encore de recul) —
 // délibérément PAS labellé "nouveau joueur", on ne peut pas distinguer les
 // deux cas depuis cette seule table.
+//
+// `daysAgo` (16/08/2026, bug d'audit corrigé) : le dernier snapshot
+// disponible est le plus RÉCENT avant aujourd'hui, pas forcément celui
+// d'hier — si le cron quotidien rate un jour, il peut dater de plusieurs
+// jours. Le label affiché (LeaderboardRow.tsx::trendTitle) prétendait
+// pourtant toujours « Hier » ; `daysAgo` laisse l'UI dire la vérité.
 export type RankTrend =
-  | { kind: "up"; delta: number; previousRank: number }
-  | { kind: "down"; delta: number; previousRank: number }
-  | { kind: "flat"; previousRank: number }
+  | { kind: "up"; delta: number; previousRank: number; daysAgo: number }
+  | { kind: "down"; delta: number; previousRank: number; daysAgo: number }
+  | { kind: "flat"; previousRank: number; daysAgo: number }
   | { kind: "unavailable" };
 
 export type LeaderboardRow = {
@@ -99,12 +105,21 @@ function todayKey(): string {
   }).format(new Date());
 }
 
-function computeRankTrend(currentRank: number, previousRank: number | undefined): RankTrend {
+// `fromKey`/`toKey` : clés YYYY-MM-DD déjà résolues dans SNAPSHOT_TIMEZONE
+// (todayKey()) — comparées comme des dates calendaires pures via Date.UTC,
+// aucun souci de fuseau horaire puisqu'aucune des deux ne porte d'heure.
+function daysBetween(fromKey: string, toKey: string): number {
+  const [fy, fm, fd] = fromKey.split("-").map(Number);
+  const [ty, tm, td] = toKey.split("-").map(Number);
+  return Math.round((Date.UTC(ty, tm - 1, td) - Date.UTC(fy, fm - 1, fd)) / 86_400_000);
+}
+
+function computeRankTrend(currentRank: number, previousRank: number | undefined, daysAgo: number): RankTrend {
   if (previousRank === undefined) return { kind: "unavailable" };
   const delta = previousRank - currentRank; // positif = a progressé (rang NUMÉRIQUE plus petit)
-  if (delta > 0) return { kind: "up", delta, previousRank };
-  if (delta < 0) return { kind: "down", delta: Math.abs(delta), previousRank };
-  return { kind: "flat", previousRank };
+  if (delta > 0) return { kind: "up", delta, previousRank, daysAgo };
+  if (delta < 0) return { kind: "down", delta: Math.abs(delta), previousRank, daysAgo };
+  return { kind: "flat", previousRank, daysAgo };
 }
 
 type CompetitionRow = { id: string; name: string };
@@ -260,6 +275,7 @@ export async function getLeaderboard(
   // plutôt qu'un par joueur.
   const previousRankByUser = new Map<string, number>();
   const lastSnapshotDate = lastSnapshotDateResult?.data?.snapshot_date;
+  const daysAgo = lastSnapshotDate ? daysBetween(lastSnapshotDate, todayKey()) : 0;
   if (lastSnapshotDate) {
     const { data: prevRows } = await supabase
       .from("leaderboard_snapshots")
@@ -293,7 +309,7 @@ export async function getLeaderboard(
       isInactive: profile?.isInactive ?? false,
       adminCorrectionsCount: row.admin_corrections_count,
       isCurrentUser: row.user_id === user?.id,
-      rankTrend: scopeUserIds ? null : computeRankTrend(rank, previousRankByUser.get(row.user_id)),
+      rankTrend: scopeUserIds ? null : computeRankTrend(rank, previousRankByUser.get(row.user_id), daysAgo),
     };
   });
 

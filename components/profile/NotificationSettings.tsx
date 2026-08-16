@@ -67,16 +67,33 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
   // (un <input type="radio"> déjà sélectionné ne déclenche pas onChange),
   // donc impossible d'activer le 2e appareil sans ce statut séparé. Trouvé
   // en testant en conditions réelles (compte partagé PC/iPhone, 29/07/2026).
-  const [deviceSubscribed, setDeviceSubscribed] = useState<boolean | null>(() => (pushSupported() ? null : false));
+  // `null` sur les 2 rendus (serveur ET client, avant hydratation) — jamais
+  // `pushSupported()` dans l'état initial : cette fonction lit `navigator`/
+  // `window`, absents côté serveur, donc `false` en SSR mais potentiellement
+  // `true` au tout premier rendu client. Ça produisait une erreur
+  // d'hydratation React (le HTML serveur et client divergeaient sur
+  // `.deviceNotice`, trouvé en audit le 16/08/2026) : React exige que le 1er
+  // rendu client soit identique au HTML serveur, avant que les effets ne
+  // s'exécutent. La vraie valeur n'est déterminée qu'après montage, dans
+  // l'effet ci-dessous (client uniquement, donc sûr).
+  const [deviceSubscribed, setDeviceSubscribed] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (!pushSupported()) return; // déjà réglé à `false` par l'état initial ci-dessus
+    // `setState` déclenché uniquement dans les callbacks .then()/.catch()
+    // ci-dessous, jamais de façon synchrone dans le corps de l'effet (règle
+    // react-hooks/set-state-in-effect) — la branche "non supporté" passe
+    // donc aussi par une promesse résolue immédiatement plutôt qu'un retour
+    // anticipé avec un setState direct.
     let cancelled = false;
-    navigator.serviceWorker
-      .getRegistration("/sw.js")
-      .then((registration) => registration?.pushManager.getSubscription() ?? null)
+    const supported = pushSupported();
+    const subscriptionPromise = supported
+      ? navigator.serviceWorker
+          .getRegistration("/sw.js")
+          .then((registration) => registration?.pushManager.getSubscription() ?? null)
+      : Promise.resolve(null);
+    subscriptionPromise
       .then((subscription) => {
-        if (!cancelled) setDeviceSubscribed(subscription !== null);
+        if (!cancelled) setDeviceSubscribed(supported && subscription !== null);
       })
       .catch(() => {
         if (!cancelled) setDeviceSubscribed(false);

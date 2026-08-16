@@ -1,4 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
+import { MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 
 // Lecture DÉDIÉE aux paris MATCH pour l'Accueil — miroir de
 // lib/queries/series-bets.ts::getRemainingSeriesBets() pour le scope MATCH.
@@ -9,8 +11,6 @@ import { getServerClient } from "@/lib/supabase/server";
 // n'a donc aucun plafond agrégé ici, même absence de cap "7 au total" que
 // buildBootstrap() (lib/queries/bets.ts) applique déjà aujourd'hui — pas une
 // omission de ce module.
-
-import { MATCH_SLOT_CAP } from "@/lib/labels/bets";
 
 export type RemainingMatchBet = {
   matchId: string;
@@ -28,26 +28,8 @@ type MatchRow = {
 type TeamRow = { id: string; abbreviation: string };
 type OwnBetRow = { match_id: string | null; series_id: string; status: string };
 
-// Un pari REJECTED/CANCELLED libère toujours son slot (0.2.4 §6, même
-// convention que series-bets.ts/bets.ts) — seuls statuts qui n'occupent pas
-// le slot MATCH.
-const RELEASED_MATCH_BET_STATUSES = new Set(["REJECTED", "CANCELLED"]);
-
-const MATCH_LABEL_TIMEZONE = "Europe/Paris";
-
 function matchLabel(homeAbbr: string, awayAbbr: string, scheduledAt: string): string {
-  const date = new Date(scheduledAt);
-  const datePart = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: MATCH_LABEL_TIMEZONE,
-    day: "2-digit",
-    month: "2-digit",
-  }).format(date);
-  const timePart = new Intl.DateTimeFormat("fr-FR", {
-    timeZone: MATCH_LABEL_TIMEZONE,
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-  return `${homeAbbr} vs ${awayAbbr} · ${datePart} ${timePart}`;
+  return `${homeAbbr} vs ${awayAbbr} · ${parisDateTimeLabel(scheduledAt)}`;
 }
 
 /** Matchs où un pari MATCH reste POSSIBLE et pas encore posé — réutilisée par
@@ -102,7 +84,7 @@ export async function getRemainingMatchBets(): Promise<RemainingMatchBet[]> {
 
   const activeMatchBetIds = new Set(
     ownBets
-      .filter((b) => !RELEASED_MATCH_BET_STATUSES.has(b.status) && b.match_id)
+      .filter((b) => !RELEASED_BET_STATUSES.has(b.status) && b.match_id)
       .map((b) => b.match_id as string)
   );
 
@@ -110,7 +92,7 @@ export async function getRemainingMatchBets(): Promise<RemainingMatchBet[]> {
   const matchSlotsUsedBySeries = new Map<string, number>();
   if (competition.type === "PLAYOFFS") {
     for (const bet of ownBets) {
-      if (!RELEASED_MATCH_BET_STATUSES.has(bet.status)) {
+      if (!RELEASED_BET_STATUSES.has(bet.status)) {
         matchSlotsUsedBySeries.set(bet.series_id, (matchSlotsUsedBySeries.get(bet.series_id) ?? 0) + 1);
       }
     }
