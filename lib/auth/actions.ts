@@ -68,7 +68,7 @@ export async function signup(
 
   // Temps 2 — création de l'auth.users ; le trigger handle_new_user (École A,
   // T2 §3) matérialise public.users dans la même transaction.
-  const { error: signUpError } = await supabase.auth.signUp({
+  const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
     options: { data: { pseudo } },
@@ -79,6 +79,16 @@ export async function signup(
       return { error: "Un compte existe déjà avec cet email." };
     }
     return { error: "Impossible de créer le compte. Réessaie." };
+  }
+
+  // Anti-énumération Supabase (bug réel trouvé le 16/08/2026) : pour un email
+  // déjà enregistré ET confirmé, signUp() ne renvoie AUCUNE erreur — data.user
+  // existe mais sans identité rattachée (identities: []) et sans session.
+  // Sans ce garde-fou, le code tombait dans le cas "succès" ci-dessous et
+  // redirigeait vers /home sans jamais avoir ouvert de session, provoquant un
+  // renvoi silencieux vers /login (aucun message d'erreur affiché au joueur).
+  if (!signUpData.session || signUpData.user?.identities?.length === 0) {
+    return { error: "Un compte existe déjà avec cet email." };
   }
 
   // Temps 3 — compte ACTIVE immédiat + session ouverte (C4).
