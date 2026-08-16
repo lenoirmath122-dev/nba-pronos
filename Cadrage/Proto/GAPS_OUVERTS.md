@@ -28,10 +28,12 @@
 >   `?round=`, quelques duplications de code (formatage de date, statuts de
 >   pari "libérés", motif ligne cliquable) — détail et fichiers exacts dans
 >   `AUDIT_UX_16_08_2026.md` §3.
-> - **Piste produit non tranchée** : un format "duel de la semaine" ou des
->   "boosters" ponctuels rapprocheraient nba-pronos de ce que proposent déjà
->   HoopCall/ParidAmis, identifié en comparant à la concurrence — à discuter
->   si ça intéresse l'utilisateur, rien d'engagé.
+> - **Avis produit qualitatif à reprendre ensemble** : `AVIS_EXPERT_16_08_2026.md`
+>   (nouveau) — aspect/fonctionnalités/fluidité vs. HoopCall/
+>   Scorecast/ParidAmis, 4 questions ouvertes en fin de fichier (bracket en
+>   arbre visuel, duel hebdo vs boosters, chat in-app utile ou pas,
+>   priorité vs. les correctifs techniques encore ouverts). Rien de
+>   tranché, à discuter à la prochaine session.
 
 > **État au 09/08/2026** — **Badges permanents : catalogue de BASE
 > ENTIÈREMENT CODÉ et VÉRIFIÉ en conditions réelles** (`BACKLOG_V1.md` §
