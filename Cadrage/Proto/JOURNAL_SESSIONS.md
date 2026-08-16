@@ -6381,4 +6381,118 @@ app), `vitest run` (37/37), `next build` (36 routes) propres. Script +
 captures Playwright jetables, supprimés en fin de session, jamais
 commités.
 ```
+
+## Remplissage du bracket : poster interactif comme mode principal (16/08/2026)
+
+```text
+Suite du chantier « arbre visuel connecté » : après le correctif de
+scroll, l'utilisateur demande si cette vue ne devrait pas devenir
+l'affichage PRINCIPAL du bracket, y compris pour le remplissage et les
+paris. Réponse en 2-3 phrases (question exploratoire, pas de plan
+d'emblée) : la Vue A reste indispensable en portrait mobile (seule vue
+sans scroll horizontal), mais la Vue B peut devenir le défaut sur desktop/
+paysage sans rien casser — voir l'entrée suivante. Le remplissage est un
+chantier à part (composant différent, interaction séquentielle) — accepté
+comme 2e étape.
+
+**Étape 1 : Vue B devient le défaut desktop/paysage** (`TreeView.tsx`) —
+`DESKTOP_QUERY`/`LANDSCAPE_QUERY` fusionnées en une seule media query
+(virgule = OU), écoutée au montage (`useLayoutEffect`) ET aux changements
+ultérieurs — pas seulement à la rotation comme avant. `EnteredBy` élargi de
+`"rotation"|"explicit"|null` à `"auto"|"explicit"|null` : seule une entrée
+"auto" ressort automatiquement au changement de viewport, un choix
+explicite (bouton, lien `?arbre=1`) n'est jamais annulé par un simple
+redimensionnement. Décision INVERSÉE par rapport au commentaire d'origine
+du 30/07/2026 (« jamais l'état constaté au montage, sinon tout visiteur
+desktop atterrirait dans l'arbre ») — désormais recherché. Vérifié en
+conditions réelles (Playwright, 6 scénarios : desktop cold load, Quitter,
+redimensionnement après Quitter, mobile portrait cold load, rotation
+paysage, rotation retour) — aucune régression.
+
+**Étape 2 : remplissage en poster interactif** — 3 options proposées par
+`AskUserQuestion`, l'utilisateur choisit la médiane : « le poster remplace
+les onglets comme mode principal, mais l'appli scrolle/surligne
+automatiquement la prochaine série à compléter » (guidage conservé).
+Chantier significatif (composant radicalement différent de la
+consultation : chaque carte est un FORMULAIRE) — passé par `EnterPlanMode`/
+`ExitPlanMode`, plan approuvé sans modification.
+
+Généralisation (3 pièces réutilisées entre consultation ET remplissage,
+plutôt que dupliquées une 2e fois — l'audit du 16/08 avait déjà signalé
+3 duplications distinctes dans ce projet) :
+- `components/bracket/posterColumns.ts` (nouveau) : géométrie du poster
+  (Ouest ascendant, Est descendant miroir, Finale au centre) extraite de
+  `SeriesDrillDown.tsx::buildMirroredColumns`, généralisée sur une forme
+  neutre `{ key; label; items: T[] }` (propriété `items`, pas `nodes`/
+  `series` — chaque domaine garde son propre nom de champ).
+- `TreeConnectors.tsx` généralisé via `getId`/`getNextId` (extracteurs de
+  fonction) plutôt qu'un nom de champ fixe : `BracketNode` utilise
+  `nodeId`, `BracketFillSeries` utilise `seriesId` — aucun nom commun aux
+  2 domaines, la 1re tentative (type structurel `{ nodeId; nextSeriesId }`)
+  a échoué à la compilation, corrigée avant même les tests réels.
+- `lib/hooks/useImmersiveDefault.ts` (nouveau) : bascule desktop/paysage
+  extraite de `TreeView.tsx`, paramétrée sur `onEnter`/`onExit` (chaque
+  écran garde son propre routing — `/bracket?arbre=1` vs aucun contrat
+  d'URL pour `/play/bracket`) et sur `seenInviteKey` (pas de clé
+  sessionStorage partagée par défaut).
+- `lib/queries/bracket-fill.ts` : `BracketFillSeries` expose désormais
+  `nextSeriesId` (même colonne déjà lue en interne pour la cascade,
+  jamais exposée dans le type public).
+
+Nouveaux composants :
+- `FillSeriesCard.tsx` : contenu de `BracketFillBoard.tsx::SeriesPickCard`
+  extrait et adapté à une colonne de poster étroite (13rem) — équipes
+  empilées en lignes horizontales plutôt qu'une grille 2 colonnes, sinon
+  MÊME logique (pick optimiste + `saveBracketPick`, `InlineBetForm`
+  intégré tel quel).
+- `FillPosterView.tsx` : le poster lui-même — géométrie + traits partagés,
+  guidage automatique (`findNextIncomplete`, parcourt les colonnes dans
+  l'ordre de rendu Ouest→centre→Est, gère naturellement la cascade — une
+  série de tour 2+ pas encore sélectionnable est simplement ignorée
+  jusqu'à ce qu'elle le devienne), bouton de validation + dialogue
+  (déplacés depuis `BracketFillBoard.tsx`, plus liés à un tour précis).
+  **Pas de callback "pick réussi" à remonter** (simplification décidée
+  pendant l'implémentation) : `saveBracketPick` appelle déjà
+  `revalidatePath("/play/bracket")`, qui rafraîchit `data` chez le parent
+  et donc la cible du guidage — le flux normal des props suffit, pas de
+  pont client manuel.
+- `BracketFillView.tsx` (nouveau, dans `components/bracket-fill/`) :
+  orchestrateur bascule flux normal (onglets, portrait)/poster (desktop-
+  paysage), même rôle que `TreeView.tsx` pour la consultation. Pas de
+  contrat `?arbre=` à préserver ici.
+- `app/(app)/play/bracket/page.tsx` : ne rend plus directement `RoundTabs`/
+  `BracketFillBoard`, délègue entièrement à `BracketFillView` (les 2
+  branches "état vide" du haut du fichier restent inchangées, hors du
+  nouveau composant).
+
+**Vérifié en conditions réelles** (Playwright, compte réel `Amine92`,
+compétition sandbox — `bracket_deadline` temporairement repoussée d'un
+mois pour pouvoir tester le remplissage, restaurée à la fin) :
+- Desktop (1440×900) : poster affiché d'emblée, 14 traits de connexion.
+- **Guidage automatique confirmé avec un cas dépendant de la cascade** :
+  2 picks temporairement effacés en base (une série 1er tour + la série de
+  tour 2 qui en dépend), rechargement → la carte ciblée est bien la série
+  du 1er tour (seule sélectionnable au départ) ; pick effectué dessus →
+  après une navigation fraîche, la cible passe correctement à la série de
+  tour 2 (devenue sélectionnable une fois son autre parent aussi résolu).
+  Capture d'écran confirmant visuellement l'accent orange sur la bonne
+  carte. Picks originaux restaurés après le test.
+- Pari série depuis une carte du poster : `InlineBetForm` (composant
+  INCHANGÉ, réutilisé tel quel) s'ouvre, se soumet, et affiche
+  correctement une erreur serveur réelle (« La série a déjà commencé » —
+  limite du jeu de données sandbox, toutes les séries de la simulation ont
+  un coup d'envoi déjà passé, pas un bug) — confirme le câblage sans
+  polluer la base (aucun pari créé, la validation a bloqué la sauvegarde
+  comme attendu).
+- Validation du bracket (bouton + dialogue) fonctionne depuis le poster.
+- Mobile portrait : flux onglets inchangé, nouveau bouton "Vue poster ↗"
+  présent dans l'en-tête pour un accès manuel.
+- Aucune erreur console sur l'ensemble des scénarios.
+
+`tsc --noEmit`, `eslint .` (0 erreur, mêmes 4 warnings pré-existants hors
+app), `vitest run` (37/37), `next build` (36 routes) propres après chaque
+étape et à la fin. Scripts + captures Playwright jetables (dont la
+manipulation temporaire de `bracket_deadline`/`bracket_picks`), supprimés
+et restaurés en fin de session, rien commité.
+```
 ```

@@ -7,6 +7,7 @@ import { useLiveSeriesMap } from "./LiveSeriesSubscriber";
 import { SeriesGroups } from "./SeriesGroups";
 import { RoundBanner } from "./RoundBanner";
 import { TreeConnectors } from "./TreeConnectors";
+import { buildMirroredPosterColumns, type PosterColumn } from "./posterColumns";
 import styles from "./SeriesDrillDown.module.css";
 
 // Drill-down d'une série (§11) : nominatif, groupé par pronostic, UNE SEULE
@@ -45,51 +46,6 @@ type SeriesDrillDownProps = {
    *  joueur connecté + PLAYOFFS. */
   showBetLink: boolean;
 };
-
-// `side` (16/08/2026, chantier arbre connecté) : direction du trait de
-// connexion vers la colonne suivante — "west" pousse vers la droite (1er
-// tour -> Finale), "east" vers la gauche (miroir du poster), voir
-// TreeConnectors.tsx. Le centre (Finale NBA) n'a pas de colonne suivante
-// (nextSeriesId toujours null en finale), son `side` n'est donc jamais lu.
-type Column = { key: string; label: string; nodes: BracketNode[]; side: "west" | "east" };
-
-const PLAYOFF_ROUND_ORDER = ["ROUND_1", "CONF_SEMIS", "CONF_FINALS"] as const;
-
-function buildMirroredColumns(rounds: BracketRound[]): Column[] {
-  const byKey = new Map(rounds.map((r) => [r.key, r]));
-  const finals = byKey.get("NBA_FINALS");
-
-  const west: Column[] = PLAYOFF_ROUND_ORDER.map((key) => {
-    const round = byKey.get(key);
-    return {
-      key: `${key}-WEST`,
-      label: round ? `${round.label} — Ouest` : "Ouest",
-      nodes: round?.nodes.filter((n) => n.conference === "WEST") ?? [],
-      side: "west" as const,
-    };
-  });
-
-  const east: Column[] = [...PLAYOFF_ROUND_ORDER]
-    .reverse()
-    .map((key) => {
-      const round = byKey.get(key);
-      return {
-        key: `${key}-EAST`,
-        label: round ? `${round.label} — Est` : "Est",
-        nodes: round?.nodes.filter((n) => n.conference === "EAST") ?? [],
-        side: "east" as const,
-      };
-    });
-
-  const center: Column = {
-    key: "NBA_FINALS",
-    label: finals?.label ?? "Finale NBA",
-    nodes: finals?.nodes ?? [],
-    side: "west",
-  };
-
-  return [...west, center, ...east];
-}
 
 export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionType, showBetLink }: SeriesDrillDownProps) {
   const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
@@ -178,9 +134,9 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
 
   if (view === "B") {
     const openNode = rounds.flatMap((round) => round.nodes).find((node) => node.nodeId === openSeriesId);
-    const columns: Column[] = hasConferences
-      ? buildMirroredColumns(rounds)
-      : rounds.map((round) => ({ key: round.key, label: round.label, nodes: round.nodes, side: "west" as const }));
+    const columns: PosterColumn<BracketNode>[] = hasConferences
+      ? buildMirroredPosterColumns(rounds.map((round) => ({ key: round.key, label: round.label, items: round.nodes })))
+      : rounds.map((round) => ({ key: round.key, label: round.label, items: round.nodes, side: "west" as const }));
 
     return (
       <>
@@ -189,14 +145,20 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
             {columns.map((column) => (
               <div key={column.key} className={styles.treeColumn}>
                 <p className={styles.roundLabel}>{column.label}</p>
-                {column.nodes.map((node) => (
+                {column.items.map((node) => (
                   <div key={node.nodeId} ref={(el) => registerCard(node.nodeId, el)}>
                     {renderNode(node)}
                   </div>
                 ))}
               </div>
             ))}
-            <TreeConnectors columns={columns} containerRef={treeContainerRef} cardRefs={cardRefsMap} />
+            <TreeConnectors
+              columns={columns}
+              getId={(node) => node.nodeId}
+              getNextId={(node) => node.nextSeriesId}
+              containerRef={treeContainerRef}
+              cardRefs={cardRefsMap}
+            />
           </div>
         </div>
 

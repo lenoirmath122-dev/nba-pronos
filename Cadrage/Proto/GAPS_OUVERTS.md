@@ -30,12 +30,18 @@
 > - **Avis produit qualitatif — 4 questions tranchées** (`AVIS_EXPERT_16_08_2026.md`,
 >   voir `JOURNAL_SESSIONS.md` pour le détail) : (1) bracket en arbre visuel
 >   connecté — **fait et poussé** cette session (`components/bracket/
->   TreeConnectors.tsx`) ; (2) mécanique récurrente — ni duel hebdo ni
->   boosters, l'utilisateur préfère un **système de notifications/popups à
->   la connexion** (résumé depuis la dernière visite, badges débloqués, actus)
->   — **pas encore cadré ni codé** ; (3) **chat/couche sociale in-app** —
->   jugé utile, à construire — **pas encore cadré ni codé** ; (4) priorité —
->   pistes produit d'abord, SMTP reste en pause (cf. ci-dessus).
+>   TreeConnectors.tsx`, `posterColumns.ts`), étendu au remplissage
+>   (`components/bracket-fill/FillPosterView.tsx`, poster interactif avec
+>   guidage automatique vers la prochaine série à compléter) et devenu le
+>   mode par défaut sur desktop/paysage pour les 2 écrans
+>   (`lib/hooks/useImmersiveDefault.ts`) — mobile portrait garde le flux
+>   normal (accordéon / onglets par tour) sur les 2 écrans ; (2) mécanique
+>   récurrente — ni duel hebdo ni boosters, l'utilisateur préfère un
+>   **système de notifications/popups à la connexion** (résumé depuis la
+>   dernière visite, badges débloqués, actus) — **pas encore cadré ni
+>   codé** ; (3) **chat/couche sociale in-app** — jugé utile, à construire —
+>   **pas encore cadré ni codé** ; (4) priorité — pistes produit d'abord,
+>   SMTP reste en pause (cf. ci-dessus).
 
 > **État au 09/08/2026** — **Badges permanents : catalogue de BASE
 > ENTIÈREMENT CODÉ et VÉRIFIÉ en conditions réelles** (`BACKLOG_V1.md` §

@@ -1,18 +1,18 @@
 import { redirect } from "next/navigation";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { EmptyState } from "@/components/home/EmptyState";
-import { ProgressBar } from "@/components/bracket/ProgressBar";
-import { RoundTabs } from "@/components/bracket-fill/RoundTabs";
-import { BracketFillBoard } from "@/components/bracket-fill/BracketFillBoard";
+import { BracketFillView } from "@/components/bracket-fill/BracketFillView";
 import styles from "./page.module.css";
 
 // Écran Bracket personnel — remplissage (SPEC_ECRAN_BRACKET_PERSONNEL_V0_1
 // §1/§2). Composant SERVEUR : cadrage (séries, cascade des candidats, pick du
-// joueur) lu par lib/queries/bracket-fill.ts, passé en props à la seule
-// feuille cliente (BracketFillBoard).
+// joueur) lu par lib/queries/bracket-fill.ts, passé en props à
+// BracketFillView.tsx (orchestrateur client — bascule flux normal/poster,
+// 16/08/2026, chantier « remplissage en poster interactif »).
 //
 // searchParams est une Promise en Next.js 16 (AGENTS.md) — attendue avant
-// lecture. `round` sélectionne le tour affiché (§6).
+// lecture. `round` sélectionne le tour affiché du flux normal (§6, sans effet
+// sur le poster, qui affiche tous les tours et guide automatiquement).
 type SearchParams = { round?: string };
 
 export default async function BracketFillPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -64,24 +64,6 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
 
   const activeRoundKey =
     sp.round && data.rounds.some((round) => round.key === sp.round) ? sp.round : data.rounds[0]?.key;
-  const activeRound = data.rounds.find((round) => round.key === activeRoundKey);
 
-  return (
-    <div className={`${styles.page} photo-page`}>
-      <div className={`${styles.header} glass-card`}>
-        <h1 className={styles.title}>Mon bracket</h1>
-      </div>
-      <ProgressBar filledCount={data.filledCount} totalCount={data.totalCount} />
-      <RoundTabs rounds={data.rounds} activeKey={activeRoundKey} />
-
-      {activeRound && (
-        <BracketFillBoard
-          series={activeRound.series}
-          competitionType={data.competitionType}
-          isValidated={data.isValidated}
-          isAutoValidated={data.isAutoValidated}
-        />
-      )}
-    </div>
-  );
+  return <BracketFillView data={data} activeRoundKey={activeRoundKey} />;
 }

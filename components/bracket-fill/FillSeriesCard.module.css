@@ -1,0 +1,117 @@
+/* Adapté de BracketFillBoard.module.css (16/08/2026, chantier poster
+   interactif) : équipes empilées en lignes horizontales plutôt qu'une
+   grille 2 colonnes — la carte doit tenir dans une colonne de poster
+   étroite (13rem, SeriesDrillDown.module.css::treeColumn). */
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  /* Ancre #series-<id> (Accueil "Paris séries") : évite que la carte visée
+     n'atterrisse masquée sous la nav/en-tête au chargement de la page. */
+  scroll-margin-top: var(--space-6);
+}
+
+/* Carte ciblée par le guidage automatique (16/08/2026) — accent additif,
+   même registre que .cardOpen/.cardHasPick de NodeCard.module.css : jamais
+   une couleur de résultat (§17), juste "c'est ici qu'il faut regarder". */
+.cardTarget {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
+.pending {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.teams {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.team {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: var(--tap-target-min);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-inset);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.team:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.team:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.teamSelected {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
+.teamName {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.scores {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-1);
+}
+
+.scoreButton {
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.scoreButton:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.scoreButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.scoreButtonSelected {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.seriesBet {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.seriesBetLabel {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}

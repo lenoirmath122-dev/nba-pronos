@@ -1,11 +1,11 @@
 "use client";
 
 import { useLayoutEffect, useState, type RefObject } from "react";
-import type { BracketNode } from "@/lib/queries/bracket";
+import type { PosterColumn } from "./posterColumns";
 import { useLiveSeriesMap } from "./LiveSeriesSubscriber";
 import styles from "./TreeConnectors.module.css";
 
-// Traits reliant chaque série à celle qu'elle alimente, Vue B uniquement
+// Traits reliant chaque série à celle qu'elle alimente, poster uniquement
 // (16/08/2026, chantier « bracket en arbre visuel connecté » — jusqu'ici
 // scope réduit, aucun trait, décision du 30/07/2026). La hauteur des cartes
 // n'est PAS fixe (NodeCard.module.css : en cours/terminé/pronostic/bouton
@@ -15,11 +15,18 @@ import styles from "./TreeConnectors.module.css";
 // même choix que RankEvolutionChart.tsx) : SVG à la main, coordonnées en
 // pixels réels (pas de viewBox — le SVG occupe exactement la même boîte que
 // son conteneur `position: relative`, donc 1 unité SVG = 1px CSS).
+//
+// Généralisé sur le TYPE de nœud le 16/08/2026 (chantier « remplissage en
+// poster interactif ») via `getId`/`getNextId` plutôt qu'un nom de champ
+// fixe : BracketNode (lib/queries/bracket.ts) utilise `nodeId`,
+// BracketFillSeries (lib/queries/bracket-fill.ts) utilise `seriesId` — pas
+// de nom commun aux 2 domaines, donc un extracteur plutôt qu'une forme
+// structurelle imposée.
 
-type ConnectorColumn = { nodes: BracketNode[]; side: "west" | "east" };
-
-type TreeConnectorsProps = {
-  columns: ConnectorColumn[];
+type TreeConnectorsProps<T> = {
+  columns: PosterColumn<T>[];
+  getId: (item: T) => string;
+  getNextId: (item: T) => string | null;
   containerRef: RefObject<HTMLDivElement | null>;
   // RefObject, jamais la Map déréférencée (`.current`) au niveau du parent
   // (règle react-hooks/refs — lire `.current` pendant le rendu est interdit,
@@ -29,7 +36,7 @@ type TreeConnectorsProps = {
 
 type ConnectorPath = { id: string; d: string };
 
-export function TreeConnectors({ columns, containerRef, cardRefs }: TreeConnectorsProps) {
+export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, cardRefs }: TreeConnectorsProps<T>) {
   const [paths, setPaths] = useState<ConnectorPath[]>([]);
   // Une carte peut changer de HAUTEUR sans que le conteneur ne change de
   // taille (ex. une série qui bascule EN_COURS -> TERMINÉ en direct, cf. le
@@ -63,10 +70,12 @@ export function TreeConnectors({ columns, containerRef, cardRefs }: TreeConnecto
         const nextPaths: ConnectorPath[] = [];
 
         for (const column of columns) {
-          for (const node of column.nodes) {
-            if (!node.nextSeriesId) continue;
-            const sourceEl = cardsById.get(node.nodeId);
-            const targetEl = cardsById.get(node.nextSeriesId);
+          for (const node of column.items) {
+            const nodeId = getId(node);
+            const nextId = getNextId(node);
+            if (!nextId) continue;
+            const sourceEl = cardsById.get(nodeId);
+            const targetEl = cardsById.get(nextId);
             if (!sourceEl || !targetEl) continue;
 
             const sourceRect = sourceEl.getBoundingClientRect();
@@ -88,7 +97,7 @@ export function TreeConnectors({ columns, containerRef, cardRefs }: TreeConnecto
             // indépendants plutôt qu'une jonction en Y fusionnée (plus
             // simple, toujours lisible comme un arbre connecté).
             nextPaths.push({
-              id: `${node.nodeId}->${node.nextSeriesId}`,
+              id: `${nodeId}->${nextId}`,
               d: `M ${sourceX} ${sourceY} H ${midX} V ${targetY} H ${targetX}`,
             });
           }
@@ -110,7 +119,7 @@ export function TreeConnectors({ columns, containerRef, cardRefs }: TreeConnecto
       cancelled = true;
       observer?.disconnect();
     };
-  }, [columns, containerRef, cardRefs, liveSeriesMap]);
+  }, [columns, containerRef, cardRefs, liveSeriesMap, getId, getNextId]);
 
   return (
     <svg className={styles.connectors} aria-hidden="true">

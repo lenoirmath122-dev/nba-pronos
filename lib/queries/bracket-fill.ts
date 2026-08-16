@@ -59,6 +59,14 @@ export type BracketFillSeries = {
    *  lib/queries/series-bets.ts (Accueil/hub Jouer). */
   realTeamA: BracketFillCandidate;
   realTeamB: BracketFillCandidate;
+  /** Cascade d'avancement (16/08/2026, chantier poster interactif du
+   *  remplissage) — même colonne `next_series_id` déjà lue en interne par
+   *  `CascadeSeriesRow` pour le calcul des candidats, jamais exposée dans
+   *  ce type public jusqu'ici. Sert au poster partagé
+   *  (components/bracket/posterColumns.ts) à savoir quelle série alimente
+   *  quelle série, exactement comme `BracketNode.nextSeriesId`
+   *  (lib/queries/bracket.ts). `null` en finale (rien à alimenter). */
+  nextSeriesId: string | null;
 };
 
 export type BracketFillRound = { key: string; label: string; series: BracketFillSeries[] };
@@ -320,6 +328,7 @@ export async function getBracketFillData(): Promise<BracketFillData> {
               : null,
           realTeamA: row.team1_id ? resolveTeam(teams, row.team1_id) : null,
           realTeamB: row.team2_id ? resolveTeam(teams, row.team2_id) : null,
+          nextSeriesId: row.next_series_id,
         };
       });
 
