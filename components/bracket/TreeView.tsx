@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { BracketData } from "@/lib/queries/bracket";
 import { SeriesDrillDown } from "./SeriesDrillDown";
@@ -9,17 +9,36 @@ import styles from "./TreeView.module.css";
 
 // Vue B « arbre » + bascule (§10). SEULE feuille responsable de : le
 // déclencheur « plein écran ↗ », l'overlay plein viewport, l'écoute de
-// rotation, et l'invitation à tourner (rendue via RotateInvite, sans état
-// propre — §3). Toujours montée (même en vue A) pour pouvoir écouter la
-// rotation sans jamais lire l'orientation au chargement (§10.2).
+// rotation/redimensionnement, et l'invitation à tourner (rendue via
+// RotateInvite, sans état propre — §3). Toujours montée (même en vue A)
+// pour pouvoir écouter les changements de viewport sans jamais lire l'état
+// au tout 1er rendu SERVEUR (qui ignore toujours le viewport réel).
+//
+// Vue B DEFAULT sur desktop/paysage (16/08/2026, demandé par l'utilisateur
+// après le correctif de scroll du 1er tour — « plus raccord avec ce qui se
+// fait dans le monde du basket/NBA ») : jusqu'ici réservée à un
+// événement de rotation ou au bouton explicite, jamais montrée au
+// chargement même sur un viewport qui la supporterait déjà — le
+// commentaire d'origine disait explicitement l'inverse (« jamais l'état
+// constaté au montage, sinon tout visiteur desktop atterrirait dans
+// l'arbre »). Décision inversée ici, sur demande explicite : mobile
+// PORTRAIT reste sur la Vue A (accordéon) — la Vue B suppose un scroll
+// horizontal assumé, jamais permis ailleurs dans ce projet.
 
-// --breakpoint-lg / test d'orientation : littéraux, une media query JS ne
-// lit pas var() (cf. tokens.css §11.2, une media query CSS non plus).
-const DESKTOP_QUERY = "(min-width: 1024px)";
-const LANDSCAPE_QUERY = "(orientation: landscape)";
+// Virgule = OU en media queries : une SEULE liste couvre desktop (largeur)
+// ET paysage (orientation), au montage ET à tout changement ultérieur
+// (redimensionnement de fenêtre, rotation) — remplace les 2 requêtes
+// séparées d'avant (DESKTOP_QUERY/LANDSCAPE_QUERY), fusionnées car
+// traitées identiquement partout dans ce fichier désormais.
+const IMMERSIVE_DEFAULT_QUERY = "(min-width: 1024px), (orientation: landscape)";
 const SEEN_INVITE_KEY = "bracket-tree-seen-anyway";
 
-type EnteredBy = "rotation" | "explicit" | null;
+// "auto" = entré parce que le viewport correspond déjà (nouveau, cf.
+// ci-dessus) ; "explicit" = bouton "Plein écran"/lien `?arbre=1` partagé ou
+// mis en favori. Seule une entrée "auto" ressort automatiquement quand le
+// viewport cesse de correspondre — un choix explicite n'est jamais annulé
+// par un simple redimensionnement.
+type EnteredBy = "auto" | "explicit" | null;
 
 type TreeViewProps = {
   data: BracketData;
@@ -37,13 +56,14 @@ export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
   // jamais capturer une valeur périmée.
   const enteredByRef = useRef<EnteredBy>(initialShow ? "explicit" : null);
 
-  function enter(reason: EnteredBy) {
+  function enter(reason: EnteredBy, options: { replace: boolean }) {
     enteredByRef.current = reason;
     setVisible(true);
     setShowInvite(false);
-    // Historique (§10.2) : entrée par rotation REMPLACE, entrée par bouton
-    // (ou « voir quand même ») AJOUTE — sinon 3 rotations créent 3 retours.
-    if (reason === "rotation") {
+    // Historique (§10.2) : entrée automatique (viewport déjà conforme, ou
+    // rotation) REMPLACE, entrée explicite (bouton, ou « voir quand
+    // même ») AJOUTE — sinon 3 rotations créent 3 retours.
+    if (options.replace) {
       router.replace("/bracket?arbre=1");
     } else {
       router.push("/bracket?arbre=1");
@@ -56,35 +76,35 @@ export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
     router.replace("/bracket");
   }
 
-  useEffect(() => {
-    const orientationQuery = window.matchMedia(LANDSCAPE_QUERY);
+  // `useLayoutEffect` (pas `useEffect`) : bascule avant le 1er paint côté
+  // client, pour limiter au strict minimum le flash Vue A -> Vue B sur
+  // desktop/paysage au chargement — inévitable au tout 1er rendu SERVEUR
+  // (qui ignore toujours le viewport réel), même limite déjà acceptée
+  // ailleurs dans ce projet (ex. NotificationSettings.tsx, hydratation).
+  useLayoutEffect(() => {
+    const query = window.matchMedia(IMMERSIVE_DEFAULT_QUERY);
 
-    function handleOrientationChange(event: MediaQueryListEvent) {
-      // Uniquement sous le point de rupture mobile (§10.2).
-      if (window.matchMedia(DESKTOP_QUERY).matches) return;
-
-      if (event.matches) {
-        // Portrait -> paysage : entre en vue B.
-        enter("rotation");
-      } else if (enteredByRef.current === "rotation") {
-        // Paysage -> portrait : sort SEULEMENT si entré par rotation — un
-        // choix explicite (bouton / « voir quand même ») prime (§10.2).
+    function sync(matches: boolean) {
+      if (matches && enteredByRef.current === null) {
+        enter("auto", { replace: true });
+      } else if (!matches && enteredByRef.current === "auto") {
         exitToSummary();
       }
     }
 
-    // Écoute d'un ÉVÉNEMENT de rotation seulement — jamais l'état constaté
-    // au montage, sinon tout visiteur desktop atterrirait dans l'arbre.
-    orientationQuery.addEventListener("change", handleOrientationChange);
-    return () => orientationQuery.removeEventListener("change", handleOrientationChange);
+    sync(query.matches);
+
+    function handleChange(event: MediaQueryListEvent) {
+      sync(event.matches);
+    }
+    query.addEventListener("change", handleChange);
+    return () => query.removeEventListener("change", handleChange);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function handleTriggerClick() {
-    const isDesktop = window.matchMedia(DESKTOP_QUERY).matches;
-    const isLandscape = window.matchMedia(LANDSCAPE_QUERY).matches;
-    if (isDesktop || isLandscape) {
-      enter("explicit");
+    if (window.matchMedia(IMMERSIVE_DEFAULT_QUERY).matches) {
+      enter("explicit", { replace: false });
       return;
     }
 
@@ -95,7 +115,7 @@ export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
       // Stockage indisponible (navigation privée) : pas bloquant.
     }
     if (alreadySeen) {
-      enter("explicit");
+      enter("explicit", { replace: false });
       return;
     }
     setShowInvite(true);
@@ -107,7 +127,7 @@ export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
     } catch {
       // Idem : simplement pas mémorisé.
     }
-    enter("explicit");
+    enter("explicit", { replace: false });
   }
 
   if (visible) {

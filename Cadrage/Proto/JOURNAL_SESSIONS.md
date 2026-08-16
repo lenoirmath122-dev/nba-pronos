@@ -6323,4 +6323,62 @@ extrémités confirmant visuellement. Aucune erreur console.
 `next build` (36 routes) propres. Script + captures Playwright jetables,
 supprimés en fin de session, jamais commités.
 ```
+
+## Vue B (arbre connecté) devient le défaut desktop/paysage (16/08/2026)
+
+```text
+Suite immédiate du correctif de scroll ci-dessus : l'utilisateur, une fois
+le bug corrigé, demande si cette vue ne mériterait pas de devenir
+l'affichage PRINCIPAL du bracket (« plus raccord avec ce qui se fait dans
+le monde du basket/NBA »), y compris pour le remplissage et les paris.
+Réponse donnée en 2-3 phrases (question exploratoire) : la Vue A reste
+indispensable en portrait mobile (seule vue sans scroll horizontal, règle
+appliquée partout ailleurs dans ce projet), mais la Vue B peut devenir le
+défaut sur desktop/paysage sans rien casser. Le remplissage
+(`/play/bracket`) est un chantier à part (composant différent, interaction
+séquentielle) — accepté par l'utilisateur comme 2e étape, pas traité ici.
+Paris déjà couverts dans les 2 vues (bouton "Parier" déjà présent), rien à
+faire de ce côté.
+
+**Implémentation, `components/bracket/TreeView.tsx` uniquement** :
+`DESKTOP_QUERY`/`LANDSCAPE_QUERY` (2 requêtes séparées, seule la 2e écoutée)
+fusionnées en une seule `IMMERSIVE_DEFAULT_QUERY` (virgule = OU en media
+queries) : desktop (`min-width: 1024px`) OU paysage, traités identiquement
+partout dans ce fichier désormais. `EnteredBy` élargi de `"rotation" |
+"explicit" | null` à `"auto" | "explicit" | null` : "auto" couvre
+maintenant À LA FOIS la rotation ET le cas nouveau (viewport déjà conforme
+dès le chargement) — seule une entrée "auto" ressort automatiquement quand
+le viewport cesse de correspondre, jamais un choix explicite (bouton, lien
+`?arbre=1` partagé/mis en favori).
+
+**Décision inversée sciemment par rapport au commentaire d'origine**
+(« jamais l'état constaté au montage, sinon tout visiteur desktop
+atterrirait dans l'arbre ») : désormais recherché. `useLayoutEffect` (pas
+`useEffect`) pour la détection au montage, afin de limiter au strict
+minimum le flash Vue A -> Vue B sur desktop au chargement (inévitable au
+tout 1er rendu SERVEUR, qui ignore toujours le viewport réel — même limite
+déjà acceptée ailleurs ce projet, cf. NotificationSettings.tsx).
+
+**Vérifié en conditions réelles** (Playwright, 3 contextes de viewport,
+`/bracket` en visiteur non connecté) :
+1. Desktop (1440×900), chargement à froid : Vue B affichée d'emblée, URL
+   remplacée en `?arbre=1` (délai ~1-1.5s, round-trip RSC du `router.
+   replace` — pas un bug, juste plus lent qu'un `waitForTimeout` initial
+   trop court dans le script de test).
+2. Clic "Quitter" sur desktop : retour Vue A, URL nettoyée en `/bracket` ;
+   redimensionnement ensuite vers mobile portrait sans revisite : reste sur
+   Vue A (le choix explicite de fermeture n'est jamais annulé par un
+   redimensionnement).
+3. Mobile portrait (375×667), chargement à froid : Vue A par défaut,
+   inchangé — aucune régression.
+4. Rotation portrait -> paysage sur mobile : entre en Vue B (comme avant,
+   maintenant via la requête fusionnée).
+5. Rotation retour paysage -> portrait : ressort en Vue A (comme avant).
+Aucune erreur console sur les 6 scénarios testés.
+
+`tsc --noEmit`, `eslint .` (0 erreur, mêmes 4 warnings pré-existants hors
+app), `vitest run` (37/37), `next build` (36 routes) propres. Script +
+captures Playwright jetables, supprimés en fin de session, jamais
+commités.
+```
 ```
