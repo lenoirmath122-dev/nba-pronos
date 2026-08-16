@@ -1,6 +1,6 @@
 import type { BracketNode } from "@/lib/queries/bracket";
 import { TeamLogo } from "@/components/ui/TeamLogo";
-import { useLiveWinnerAbbreviation } from "./LiveSeriesSubscriber";
+import { useLiveSeriesStatus, useLiveWinnerAbbreviation } from "./LiveSeriesSubscriber";
 import styles from "./NodeCard.module.css";
 
 // Carte résumé d'une série. Présentiel pur (pas de "use client") : rendu
@@ -104,6 +104,11 @@ function LiveTeamRow({
 
 export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: NodeCardProps) {
   const actualWinnerAbbreviation = useLiveWinnerAbbreviation(node.nodeId, node.actualWinnerAbbreviation);
+  // Statut suivi en direct (16/08/2026, correctif) : avant, `node.status`
+  // restait l'instantané SSR alors que le vainqueur, lui, était déjà mis à
+  // jour en direct — une série qui passait IN_PROGRESS -> FINISHED pendant
+  // que la page était ouverte restait affichée "En cours" indéfiniment.
+  const liveStatus = useLiveSeriesStatus(node.nodeId, node.status);
   const isFinal = FINAL_ROUNDS.has(node.round);
   const hasChampion = isFinal && actualWinnerAbbreviation !== null;
   // Surbrillance de carte demandée par l'utilisateur (30/07/2026) : série
@@ -111,7 +116,7 @@ export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: Node
   // vainqueur (§17 — vert pour un résultat gagné, or réservé au champion,
   // jamais de rouge pour l'équipe battue).
   const isDecided = !isFinal && actualWinnerAbbreviation !== null;
-  const isLive = node.status === "IN_PROGRESS";
+  const isLive = liveStatus === "IN_PROGRESS";
   const isMyPickCorrect =
     node.myPick !== null && actualWinnerAbbreviation !== null && node.myPick.teamAbbreviation === actualWinnerAbbreviation;
 

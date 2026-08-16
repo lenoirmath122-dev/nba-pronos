@@ -5997,3 +5997,64 @@ de tranché.
 Nettoyage : scripts Playwright jetables (`scripts/tmp-audit-*.mjs`)
 supprimés en fin de session, jamais committés.
 ```
+
+## Correctif : désync `isLive`/`isDecided` en direct sur le Bracket (16/08/2026)
+
+```text
+Reprise de session simple (« On reprend ? ») : l'utilisateur choisit de
+traiter en premier le bug le plus solide de l'audit du même jour (2 agents
+de revue de code l'avaient trouvé indépendamment), plutôt que la décision
+SMTP ou la discussion produit de `AVIS_EXPERT_16_08_2026.md`.
+
+**Cause racine** : `LiveSeriesSubscriber.tsx` (souscription Realtime sur
+`series`, migration #14) ne suivait en direct QUE le vainqueur
+(`official_winner_team_id`), jamais le statut (`official_status`) — ce
+dernier restait l'instantané pris au chargement SSR. `NodeCard.tsx`
+calculait `isLive = node.status === "IN_PROGRESS"` sur cet instantané figé,
+et `SeriesDrillDown.tsx::renderColumn` groupait les cartes "en cours" vs
+"repliées" de la même façon — donc une série qui passait EN_COURS ->
+TERMINÉE pendant que la page Bracket était ouverte restait affichée "En
+cours" avec un score figé indéfiniment (jusqu'au rechargement complet).
+
+**Correctif** : le payload Realtime porte maintenant aussi
+`official_status`. `LiveSeriesSubscriber` expose 3 hooks : les 2 existants
+adaptés (`useLiveWinnerAbbreviation`) et un nouveau
+(`useLiveSeriesStatus`, pour `NodeCard`), plus une Map brute
+(`useLiveSeriesMap`, pour `SeriesDrillDown`/`RoundBanner`, où le statut est
+lu dans un `.filter()` — un hook par itération y violerait les règles des
+Hooks). **3 fichiers corrigés**, pas seulement les 2 repérés par l'audit :
+en testant en conditions réelles, l'étiquette de la puce dans
+`RoundBanner.tsx` (bandeau replié) affichait encore "à venir" pour une
+série qui venait de basculer FINISHED — même défaut de fond (lecture de
+`node.status`, l'instantané SSR, au lieu du statut live), trouvé en marge
+et corrigé dans la foulée (même mécanisme, cohérent avec les 2 fichiers
+déjà en cause).
+
+**Limite assumée, signalée dans un commentaire de code** : le format de
+score final (`official_score_format`) n'est PAS diffusé en direct (seuls
+statut et vainqueur le sont) — une série qui vient de terminer affiche donc
+"terminé" sans le score tant que la page n'est pas rechargée. Écart mineur,
+cohérent avec `NodeCard` qui n'affichait déjà aucun score final en direct
+avant ce correctif non plus ; pas traité pour rester dans le périmètre du
+bug réellement trouvé par l'audit.
+
+**Vérifié en conditions réelles, sans compte joueur** (mot de passe des
+comptes bots de la simulation du 14/08 expiré/invalide, pas cherché à le
+réinitialiser — `/bracket` est consultable par un visiteur non connecté,
+suffisant pour ce test) : Playwright temporaire, page `/bracket` ouverte
+sur la compétition "Playoffs NBA (simulation)" actuellement ACTIVE, une
+série EN_COURS (MIL vs CHI, 1er tour Est) basculée en TERMINÉ via
+`service_role` pendant que la page restait ouverte, capture d'écran
+AVANT/APRÈS sans reload. Confirmé à l'écran : la carte MIL/CHI disparaît de
+la colonne "en cours", rejoint le bandeau replié ("3 séries repliées" au
+lieu de "2"), avec l'étiquette correcte "MIL vs CHI · terminé". État de la
+série restauré à IN_PROGRESS juste après (compétition sandbox de
+simulation, pas la compétition réelle — aucune donnée de vrai joueur
+touchée). Script + captures jetables, supprimés en fin de session, jamais
+commités.
+
+`tsc --noEmit`, `eslint` (`components/bracket`), `vitest run` (37/37),
+`next build` (36 routes) propres avant ET après le test en conditions
+réelles.
+```
+```

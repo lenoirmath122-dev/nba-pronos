@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { BracketNode, BracketRound } from "@/lib/queries/bracket";
 import { NodeCard } from "./NodeCard";
+import { useLiveSeriesMap } from "./LiveSeriesSubscriber";
 import { SeriesGroups } from "./SeriesGroups";
 import { RoundBanner } from "./RoundBanner";
 import styles from "./SeriesDrillDown.module.css";
@@ -78,6 +79,12 @@ function buildMirroredColumns(rounds: BracketRound[]): Column[] {
 
 export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionType, showBetLink }: SeriesDrillDownProps) {
   const [openSeriesId, setOpenSeriesId] = useState<string | null>(null);
+  // Même correctif que NodeCard (16/08/2026) : le regroupement "en cours" vs
+  // "replié" doit suivre le statut live, pas l'instantané SSR `node.status`,
+  // sinon une série qui se termine en direct reste coincée dans la colonne
+  // "en cours" jusqu'au rechargement.
+  const liveSeriesMap = useLiveSeriesMap();
+  const liveNodeStatus = (node: BracketNode) => liveSeriesMap.get(node.nodeId)?.status ?? node.status;
   // Bandeaux repliés (14/08/2026) : plusieurs peuvent être ouverts en même
   // temps (contrairement au drill-down ci-dessus) — ce sont des replis de
   // mise en page, pas le détail nominatif d'une série (§11 ne s'applique
@@ -196,8 +203,8 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
   // posée sur CHAQUE carte (NodeCard.tsx, `.conference`), qui reste la
   // seule source de cette info.
   function renderColumn(key: string, nodes: BracketNode[]) {
-    const live = nodes.filter((n) => n.status === "IN_PROGRESS");
-    const rest = nodes.filter((n) => n.status !== "IN_PROGRESS");
+    const live = nodes.filter((n) => liveNodeStatus(n) === "IN_PROGRESS");
+    const rest = nodes.filter((n) => liveNodeStatus(n) !== "IN_PROGRESS");
     return (
       <div key={key} className={styles.column}>
         <div className={styles.nodeList}>
