@@ -5897,3 +5897,52 @@ de `user_competition_streaks`, sans risque). Repoussée avec succès,
 `npx supabase migration list` confirme `local`/`remote` synchronisés sur
 `20260810090000`. `vitest run` revérifié propre après le push (37/37).
 ```
+
+## Rattrapage de suivi : 9 commits des 14-15/08/2026 jamais documentés (16/08/2026)
+
+```text
+L'utilisateur demande simplement « où en est-on dans le projet nba-pronos ? ».
+`git log` recoupé avec `ETAT_ACTUEL.md`/`GAPS_OUVERTS.md` révèle 9 commits
+postérieurs à la dernière mise à jour connue (13/08/2026, `9ed078e`),
+committés ET poussés (`git status` propre), mais absents des 3 fichiers de
+suivi — même pattern que le rattrapage du 06/08/2026.
+
+**Signalé explicitement à l'utilisateur avant d'agir** : 7 des 9 commits
+n'ont pas la mention `Co-Authored-By: Claude Sonnet 5` (seuls `a5c618e` et
+`82952a4`, tous deux du 14/08 après-midi, l'ont). Question posée par
+`AskUserQuestion` (3 options : codé directement par l'utilisateur / fait via
+Claude Code mais mention perdue / mélange des deux) — **réponse : fait via
+Claude Code, la mention a juste sauté**. Cette réponse conditionne le niveau
+de détail écrit dans `ETAT_ACTUEL.md` (mêmes formulations "committé et
+poussé" que les autres entrées, plutôt qu'un simple constat de fait sans
+attribution).
+
+Contenu des 9 commits (détail complet dans `ETAT_ACTUEL.md` §2.60→§2.63,
+pas répété ici) :
+- 14/08 après-midi : script de simulation de playoffs (10 bots) + refonte du
+  Bracket Playoffs en 2 colonnes Ouest/Est avec score en direct sur les
+  séries en cours (`a5c618e`, `82952a4`).
+- 14/08 nuit : refonte du tri du Classement — en-têtes cliquables avec
+  bascule croissant/décroissant, tendance de rang, top 3 (`c55e170`).
+- 15/08 : bandeau du Classement enrichi (ratio paris/difficulté, accordéon,
+  zébrage) puis refonte de la création de paris — déplacée depuis "Mes
+  paris" vers Matchs/Bracket, "Mes paris" devenant un écran de consultation
+  seule ; écran Nouveau pari masquant les options indisponibles (`b173f75`,
+  `8765d60`, `c7fa6ac`).
+- 15/08 soir : bandeau `.hero-banner` — retrait de la photo de fond puis
+  réalignement sur le style carte-verre theme-aware, y compris en thème
+  Photo (`51bdb37`, `e2c63ef`).
+
+**Contrairement aux rattrapages du 06/08 et du 13/08**, aucune trace de
+session en temps réel n'existe pour ces 9 commits (pas d'entrée journal
+correspondante avant celle-ci) : le détail ajouté à `ETAT_ACTUEL.md` est
+reconstruit depuis les commentaires de code et les messages de commit
+(souvent déjà assez précis — dates, décisions, bugs trouvés y sont notés en
+ligne), PAS depuis une méthodologie de session confirmée. Explicitement
+signalé dans chaque entrée ajoutée.
+
+`tsc --noEmit`, `eslint` (4 warnings de variables inutilisées dans le
+nouveau `scripts/seed-playoffs-simulation.mjs`, script jetable hors app),
+`vitest run` (37/37), `next build` (36 routes) tous revérifiés propres sur
+l'état ACTUEL du dépôt à cette occasion.
+```

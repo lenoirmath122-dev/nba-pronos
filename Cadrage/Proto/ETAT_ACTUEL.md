@@ -5,7 +5,36 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 13/08/2026 — **rattrapage de suivi :
+> Dernière mise à jour : session du 16/08/2026 — **rattrapage de suivi :
+> 9 commits des 14 et 15/08/2026, committés et poussés, jamais documentés
+> ici** (même pattern que le rattrapage du 06/08/2026 ci-dessous, ou celui
+> du 13/08/2026 juste en dessous). Repéré en tout début de session à la
+> simple question de l'utilisateur « où en est-on dans le projet ? », en
+> recoupant `git log` avec ce fichier (`git status` : rien en attente, tout
+> committé/poussé). Point notable, vérifié explicitement avec l'utilisateur
+> avant de documenter : 7 des 9 commits n'ont PAS la mention
+> `Co-Authored-By: Claude Sonnet 5` (seuls `a5c618e` et `82952a4` l'ont) —
+> confirmé qu'il s'agit bien de code produit via Claude Code, la mention a
+> juste sauté sur ces 7 commits (pas du code écrit sans Claude). 4 nouvelles
+> entrées ajoutées ci-dessous : **Bracket Playoffs refonte 2 colonnes +
+> score en direct + script de simulation** (§2.60, `a5c618e`/`82952a4`,
+> 14/08 après-midi) ; **refonte du tri du Classement** — en-têtes
+> cliquables, tendance de rang, top 3 (§2.61, `c55e170`, 14/08 nuit) ;
+> **Classement bandeau enrichi + création de paris déplacée vers
+> Matchs/Bracket** (§2.62, `b173f75`/`8765d60`/`c7fa6ac`, 15/08) ; **bandeau
+> `.hero-banner` retiré de sa photo puis réaligné theme-aware** (§2.63,
+> `51bdb37`/`e2c63ef`, 15/08 soir). **Reconstruites à partir des commits et
+> de leurs commentaires de code**, PAS d'une note de session en temps réel
+> — contrairement aux rattrapages précédents (06/08, 13/08) où
+> `JOURNAL_SESSIONS.md` gardait déjà le fil : la méthodologie réelle de
+> cadrage/vérification (tours d'`AskUserQuestion`, test au clic) n'est pas
+> connue pour ces 9 commits et n'est donc PAS affirmée dans le détail
+> ajouté (voir §2.60→§2.63). `tsc`/`eslint` (4 warnings de variables
+> inutilisées dans `scripts/seed-playoffs-simulation.mjs`, script jetable
+> hors app, sinon propre)/`vitest` (37/37)/`next build` (36 routes) tous
+> revérifiés propres sur l'état ACTUEL du dépôt à cette occasion.
+>
+> Plus tôt (session du 13/08/2026) — **rattrapage de suivi :
 > reprise après la pause du 10/08/2026, dernier bloc de travail committé et
 > poussé** (`JOURNAL_SESSIONS.md`, entrée dédiée) : `git status` en tout
 > début de session a révélé que la fusion Pilier→Fidèle (migration #28,
@@ -5497,4 +5526,170 @@ cadrée** : afficher une sélection de badges dans le bandeau du profil
 
 **Reste hors périmètre, volontairement** : badge Grimpeur (progression de
 rang) — seul point non traité du catalogue initial.
+```
+
+### 2.60 Bracket Playoffs — 2 colonnes Ouest/Est, score en direct, script de simulation (session du 14/08/2026, après-midi)
+
+```text
+Rattrapé a posteriori le 16/08/2026 (voir le rattrapage de suivi en tête de
+fichier) — reconstruit à partir des commits et de leurs commentaires de
+code, PAS d'une note de session en temps réel : la méthodologie réelle de
+cadrage/vérification (tours d'`AskUserQuestion`, éventuel test au clic) n'est
+pas connue pour cette entrée et n'est donc pas affirmée ici, contrairement
+aux entrées précédentes.
+
+**Script de simulation de playoffs** (`scripts/seed-playoffs-simulation.mjs`,
+929 lignes, `a5c618e`) : seed une compétition Playoffs complète en
+conditions réalistes — séries terminées/en cours/à venir, 10 comptes joueurs
+de niveaux variés — en réutilisant le VRAI moteur de scoring
+(`lib/scoring/engine.ts`) plutôt que d'inventer des points à la main. Ferme
+la compétition ACTIVE existante au passage (contrainte déjà connue : une
+seule ACTIVE à la fois, §2.30). `scripts/cleanup-test-data.mjs` étendu pour
+nettoyer cette compétition et ces 10 comptes. Probablement le moyen qui a
+servi à peupler des données réalistes pour construire et vérifier
+visuellement le lot Bracket ci-dessous (série `IN_PROGRESS` avec score,
+séries à venir, etc.) — aucun autre jeu de données de ce type n'existait
+dans le dépôt jusqu'ici.
+
+**Bracket : 2 colonnes Ouest/Est + score en direct** (`82952a4`) : remplace
+la liste empilée par tour par 2 colonnes côte à côte — Playoffs UNIQUEMENT,
+la NBA Cup (sans conférence) garde son ancien rendu par tour.
+`lib/queries/bracket.ts` expose désormais `status`/`liveScore`/
+`finalScoreFormat` par nœud (nouveaux champs `BracketNode`, alimentés par
+`series.official_status`/`official_score_format`, déjà en base). Score EN
+DIRECT calculé à la volée pour les séries `IN_PROGRESS` : victoires par
+équipe comptées depuis les matchs `FINISHED` de la série (même logique de
+décompte que `deriveSeriesOutcome`, mais le détail par équipe n'était pas
+encore exposé) — snapshot au chargement de page, PAS de push Realtime ici
+(le live reste réservé à l'écran Matchs). L'équipe qui MÈNE une série en
+cours ressort en `--color-trend`, jamais `--color-win` (règle déjà actée :
+le vert reste réservé au résultat FINAL). Séries terminées ou pas encore
+commencées repliées dans un bandeau par colonne/tour (`RoundBanner.tsx`,
+nouveau), dépliable. En-têtes "Ouest"/"Est" par colonne retirés (redondants
+avec l'étiquette de conférence déjà posée sur chaque carte).
+
+`tsc`/`eslint`/`vitest`/`next build` revérifiés propres sur l'état ACTUEL du
+dépôt le 16/08/2026 (voir rattrapage de suivi) — ne garantit pas qu'ils
+l'étaient déjà au moment du commit, faute de trace. Committé et poussé
+(`a5c618e`, `82952a4`).
+```
+
+### 2.61 Refonte du tri du Classement — en-têtes cliquables, tendance de rang, top 3 (session du 14/08/2026, nuit)
+
+```text
+Rattrapé a posteriori le 16/08/2026, même réserve méthodologique que §2.60.
+
+Remplace la rangée `SortChips` séparée — qui affichait une 2e fois les
+mêmes libellés (Total/Matchs/Bracket/Paris/Forme) juste au-dessus des
+en-têtes — par des en-têtes de colonnes directement cliquables
+(`LeaderboardTable.tsx`). Un commentaire de code date cette redondance du
+13/08/2026 et la qualifie de « décision reconnue erronée par l'utilisateur »
+(§4.2 de `SPEC_ECRAN_CLASSEMENT_BRACKET_V0_1.md`, corrigée en conséquence).
+
+**Bascule croissant/décroissant** (`lib/queries/leaderboard.ts`, nouveau
+type `SortDirection`) : cliquer un en-tête déjà actif inverse le sens ;
+cliquer un en-tête différent bascule dessus en décroissant (comportement
+par défaut inchangé). Portée par l'URL (`?tri=`/`?ordre=asc`), pas de state
+client.
+
+**Tendance de rang** (`RankTrend`, nouveau) : compare le rang du jour au
+dernier `leaderboard_snapshots` disponible (cron quotidien déjà utilisé par
+`ProfileStatsEvolutionPoint`, jamais encore affiché sur cet écran).
+`unavailable` volontairement PAS labellé "nouveau joueur" — un commentaire
+de code précise que les deux cas (joueur nouveau vs compétition sans recul)
+ne sont pas distinguables depuis cette seule table. Non calculée en portée
+LIGUE (les snapshots ne stockent que le rang général — comparer un rang de
+ligue au rang général d'hier n'aurait aucun sens, donc rien n'est affiché
+plutôt que d'induire en erreur).
+
+**Avatar-initiales + mise en avant du top 3** ajoutés à `LeaderboardRow`.
+**`MobileSortSelect.tsx`** (nouveau) remplace `SortChips.tsx` (supprimé) sur
+mobile, où les en-têtes de détail restent masqués sauf l'actif (règle
+préexistante).
+
+**Bug réel signalé par un commentaire de code, daté du 14/08/2026** : sans
+un espace réservé de la largeur du chevron d'expansion dans la rangée
+d'en-tête (`.chevronSpace`), `.colPlayer` (flex:1) calculait une largeur
+différente entre la rangée d'en-tête et les rangées de données — corrigé.
+
+`tsc`/`eslint`/`vitest`/`next build` revérifiés propres le 16/08/2026 (même
+réserve qu'en §2.60). Committé et poussé (`c55e170`).
+```
+
+### 2.62 Classement — bandeau enrichi ; Paris — création déplacée vers Matchs/Bracket (session du 15/08/2026)
+
+```text
+Rattrapé a posteriori le 16/08/2026, même réserve méthodologique que §2.60.
+
+**Classement — bandeau déplié enrichi** (`b173f75`) : le bandeau d'une
+ligne dépliée ne répète plus les colonnes déjà visibles (desktop) ni la
+colonne triée (mobile) — ne garde que l'inédit. Ajoute le ratio paris
+réussis/tentés + la difficulté moyenne. Un seul bandeau déplié à la fois
+(accordéon, état levé dans `LeaderboardRowList.tsx`, nouveau). Zébrage
+discret (1 ligne sur 2, `--color-border-subtle`).
+
+**Paris — création déplacée vers Matchs/Bracket, Mes paris devient de la
+consultation** (`8765d60`, le plus gros lot des 2 sessions rattrapées ici,
+~650 lignes touchées) :
+- Accueil : la section "Paris séries non remplis" devient "Paris" —
+  accordéon Séries/Matchs (`BetsAccordionList.tsx`, remplace
+  `SeriesBetList.tsx`) listant tous les créneaux encore ouverts, matchs
+  compris désormais (pas seulement séries). `lib/queries/match-bets.ts`
+  (nouveau, 133 lignes) miroir de `series-bets.ts` pour le scope MATCH —
+  volontairement PAS de filtre sur le type de compétition (un pari MATCH
+  existe aussi bien en Playoffs qu'en NBA Cup, où une "série" Cup est un
+  seul match), et aucun cap agrégé pour la Cup (même absence de cap "7 au
+  total" déjà actée ailleurs pour ce format).
+- Bracket (Mon bracket + Bracket global) : redirige vers `/bracket` une
+  fois `bracket_deadline` passée ; le pronostic du joueur s'affiche
+  désormais directement sur chaque carte de série (accent, vert si
+  correct) avec un petit bouton Parier/Modifier pour proposer ou reprendre
+  un pari série SANS quitter l'écran Bracket.
+- "Mes paris" perd son CTA "Créer un pari" (devient un écran de
+  consultation permanente) mais garde "Modifier" pour un brouillon déjà
+  commencé ; ajoute le ratio de paris rejetés encore reproposables + un
+  lien direct vers Nouveau pari quand aucun brouillon ne reste à éditer.
+
+**Nouveau pari — masque les options indisponibles** (`c7fa6ac`, suite
+immédiate) : séries/matchs fermés ou déjà pris repliés par défaut derrière
+un bouton "Voir N indisponibles" au lieu d'un mur de lignes mortes à
+traverser ; séries dont les 2 équipes ne sont pas encore connues retirées
+de la liste (doublons "Finales de conférence" indistinguables sinon) ;
+corrige au passage une troncature de date dans le récapitulatif du panneau
+déplié.
+
+`tsc`/`eslint`/`vitest`/`next build` revérifiés propres le 16/08/2026 (même
+réserve qu'en §2.60). Committé et poussé (`b173f75`, `8765d60`, `c7fa6ac`).
+```
+
+### 2.63 Bandeau (.hero-banner) — retrait de la photo puis alignement theme-aware (session du 15/08/2026, soir)
+
+```text
+Rattrapé a posteriori le 16/08/2026, même réserve méthodologique que §2.60.
+2 commits consécutifs le même soir, le 2e corrigeant/complétant le 1er.
+
+**Retrait de la photo de fond** (`51bdb37`) : `.hero-banner` (`globals.css`)
+abandonne la photo parquet/ballon au profit d'un fond uni sombre. Touche
+les 4 écrans qui composaient encore ce bandeau (Bracket global, Profil,
+page joueur publique) — la plupart des autres écrans avaient déjà migré
+vers un en-tête sans photo (cadrage antérieur non identifié précisément,
+voir `GAPS_OUVERTS.md`). Blason d'équipe favorite et teinte duotone du
+bandeau Profil inchangés.
+
+**Alignement theme-aware sur les cartes** (`e2c63ef`, suite immédiate) :
+`.hero-banner` reprend le fond/bordure de `.glass-card`
+(`--color-surface-raised`/`--color-border-subtle`) au lieu du fond fixe
+sombre posé au commit précédent — suit désormais le thème
+(Sombre/Clair/Photo, §2.58) comme le reste de l'app, y compris la bascule
+verre translucide en thème Photo (`[data-theme="photo"] .hero-banner`,
+oubliée à la 1re passe du même soir). Sur Profil, le dégradé aux couleurs
+de l'équipe favorite masquait ce nouveau fond — retiré
+(`.headerTeam::before/::after`, `.textScrim`, `.adminBadgeTeam`), seul le
+blason reste comme personnalisation. Le texte du bandeau (titre/
+sous-titre) perd sa couleur/ombre figées : chaque écran garde désormais la
+couleur theme-aware déjà posée sur son propre titre plutôt qu'une valeur
+dupliquée.
+
+`tsc`/`eslint`/`vitest`/`next build` revérifiés propres le 16/08/2026 (même
+réserve qu'en §2.60). Committé et poussé (`51bdb37`, `e2c63ef`).
 ```
