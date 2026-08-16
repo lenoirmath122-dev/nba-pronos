@@ -6281,4 +6281,46 @@ app), `vitest run` (37/37), `next build` (36 routes) propres. Scripts de
 debug + captures Playwright jetables, supprimés en fin de session, jamais
 commités.
 ```
+
+## Correctif : séries du 1er tour inatteignables au scroll, Vue B paysage (16/08/2026)
+
+```text
+Signalé par l'utilisateur : « quand on penche le téléphone, on ne peut pas
+voir les séries du haut du bracket, on les aperçoit mais impossible de les
+afficher ». Reproduit et corrigé sans étape de cadrage — diagnostic direct
+suffisant, symptôme reconnaissable.
+
+**Cause** : `.treeColumn` (`SeriesDrillDown.module.css`, Vue B) centrait
+verticalement son contenu via `justify-content: center` (demandé le
+30/07/2026, pour qu'une colonne à 1 carte comme la Finale NBA s'aligne au
+centre plutôt qu'en haut). Piège CSS classique : quand le contenu d'un
+conteneur centré déborde (1er tour, jusqu'à 4 cartes — largement plus haut
+que l'espace visible en paysage sur téléphone), il déborde symétriquement
+en haut ET en bas, mais un conteneur scrollable ne peut jamais scroller à
+une position NÉGATIVE — le débordement du haut (avant le point de départ du
+scroll) devient donc définitivement inatteignable, alors qu'il reste
+partiellement visible (d'où « on les aperçoit mais impossible de les
+afficher », description exacte du symptôme).
+
+**Correctif** : `justify-content: center` remplacé par des marges auto sur
+le 1er/dernier enfant de `.treeColumn` (`margin-top: auto` /
+`margin-bottom: auto`) — technique standard pour ce piège précis : centre
+quand la place le permet, mais les marges auto s'effondrent à 0 dès que le
+contenu ne tient plus (ancrage en haut, contenu intégralement atteignable
+au scroll) au lieu de pousser le contenu hors champ.
+
+**Vérifié en conditions réelles** (Playwright, contexte mobile émulé
+`iPhone 13` en paysage, 844×390, `/bracket?arbre=1`) : `scrollHeight` (701)
+largement supérieur à `clientHeight` (321) sur la colonne 1er tour Ouest
+(4 cartes) — confirmé AVANT le correctif que c'était bien la source du
+débordement. Après correctif : à `scrollTop = 0`, la 1ère carte (OKC-SAS)
+est intégralement visible (haut de carte aligné sur le haut du conteneur,
+pas de zone morte) ; en scrollant jusqu'en bas, la 4e et dernière carte
+(LAL-HOU) est elle aussi intégralement visible. Captures d'écran aux 2
+extrémités confirmant visuellement. Aucune erreur console.
+
+`tsc --noEmit`, `eslint` (`components/bracket`), `vitest run` (37/37),
+`next build` (36 routes) propres. Script + captures Playwright jetables,
+supprimés en fin de session, jamais commités.
+```
 ```

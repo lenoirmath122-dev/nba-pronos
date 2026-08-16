@@ -102,14 +102,30 @@
 .treeColumn {
   display: flex;
   flex-direction: column;
-  /* Centré en hauteur (demandé par l'utilisateur, 30/07/2026) : une colonne
-     à 1 carte (Finale, finale de conférence) se retrouve au milieu de la
-     hauteur disponible, alignée sur le centre des colonnes plus longues
-     (1er tour, 4 cartes) — plutôt que collée en haut. */
-  justify-content: center;
   gap: var(--space-3);
   min-width: 13rem;
   flex-shrink: 0;
+}
+
+/* Centrage en hauteur (30/07/2026) via marges auto sur le 1er/dernier
+   enfant plutôt que `justify-content: center` sur le conteneur (corrigé
+   16/08/2026, bug réel signalé par l'utilisateur — téléphone penché en
+   paysage, séries du haut "aperçues mais impossibles à afficher") : avec
+   `justify-content: center`, une colonne plus haute que l'espace visible
+   (1er tour, jusqu'à 4 cartes, sur un écran de téléphone en paysage donc
+   peu haut) déborde À LA FOIS en haut ET en bas, mais le débordement du
+   HAUT devient définitivement inatteignable au scroll — un conteneur
+   scrollable ne peut jamais scroller à une position négative pour révéler
+   ce qui dépasse AVANT le point de départ. Les marges auto, elles,
+   s'effondrent à 0 dès que le contenu ne tient plus (au lieu de pousser le
+   contenu hors champ) : centré si la place le permet, ancré en haut sinon —
+   jamais de zone inatteignable. */
+.treeColumn > :first-child {
+  margin-top: auto;
+}
+
+.treeColumn > :last-child {
+  margin-bottom: auto;
 }
 
 /* Feuille par le bas (§11) : l'arbre (poster) ne bouge jamais, le détail
