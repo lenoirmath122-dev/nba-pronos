@@ -7002,3 +7002,44 @@ Scripts et capture supprimés après vérification.
 Serveur de dev redémarré une 5e fois après ce lot. Rien commité —
 plusieurs lots de la session restent à pousser sur demande de
 l'utilisateur.
+
+**Commit/push** : demandé par l'utilisateur juste après. Commit
+`6396f1d` — pop-up des paris (BetFormModal/ModalDialog partagé,
+InlineBetForm mode "modal") + menu déroulant du score sur le poster.
+Repéré et supprimé AVANT le commit un fichier parasite égaré à la racine
+du repo (`UserslenoiAppData...poster-check2.png`) — résidu d'un bug
+d'échappement de backslashes dans un chemin de script Playwright jetable
+(chemin Windows en simple `\` non reconnu par JS, silencieusement écrit à
+un chemin relatif garbled au lieu du scratchpad prévu) : corrigé en
+passant aux slashes `/` dans tous les scripts jetables suivants.
+
+**Correctif : 404 réel sur `/bracket` et `/play/bracket`** — signalé par
+l'utilisateur juste après le push, confirmé (PAS une histoire de tab
+périmé cette fois) : `curl`/Playwright montraient un vrai 404 (page
+"Create Next App" générique de Next, aucun contenu applicatif), y compris
+authentifié. Cause : cache Turbopack (`.next/`) corrompu après les
+nombreux redémarrages de `next dev` interleaved avec `next build` pendant
+la session (risque déjà identifié plus tôt, pas totalement écarté).
+Corrigé en supprimant `.next/` entièrement avant de relancer `next dev`
+(pas juste `Stop-Process` + relance, insuffisant cette fois) — revérifié
+en conditions réelles (compte de l'utilisateur) : `/play/bracket` répond
+200, 15 cartes de série rendues.
+
+**Correctif : score à droite même côté Est** — signalé par l'utilisateur :
+le menu déroulant du score devait apparaître à gauche du nom d'équipe
+côté Est (vers le centre du poster), pas à droite comme partout. Cause :
+le dernier lot avait retiré le prop `side` de `FillSeriesCard` en passant
+au menu déroulant (plus jugé utile) — mais l'intention « vers le centre »
+du tout 1er lot de ce chantier restait valide, seulement transposée au
+sens gauche/droite DANS la ligne équipe plutôt qu'à la position d'un
+panneau externe. `side` réintroduit ; `teamRow` inverse l'ordre
+bouton/menu selon `side` (Est : menu avant le bouton). Vérifié en
+conditions réelles (compte utilisateur) : `<select>` avant le `<button>`
+dans le DOM pour une série Est (Boston Celtics), confirmant l'affichage à
+gauche.
+
+`tsc`, `eslint`, `vitest run` (37/37) propres pour ces 2 derniers
+correctifs — `next build` sciemment sauté cette fois (risque de
+recorrompre le cache déjà rencontré 2x cette session), remplacé par une
+vérification Playwright directe en conditions réelles, jugée plus fiable
+ici. Rien commité depuis `6396f1d`.

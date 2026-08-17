@@ -126,6 +126,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
                   competitionType={data.competitionType}
                   isTarget={series.seriesId === targetSeriesId}
                   onError={setError}
+                  side={column.side}
                   cardRef={(el) => registerCard(series.seriesId, el)}
                 />
               ))}

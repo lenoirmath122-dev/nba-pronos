@@ -38,12 +38,20 @@ type FillSeriesCardProps = {
   competitionType: "PLAYOFFS" | "NBA_CUP";
   isTarget: boolean;
   onError: (message: string | null) => void;
+  /** Côté de colonne dans le poster (posterColumns.ts) — décide de quel
+   *  côté du nom d'équipe le menu déroulant du score apparaît, VERS le
+   *  centre du poster (17/08/2026, demandé par l'utilisateur : « à gauche
+   *  ou à droite » ; ré-ajouté le même jour après le passage au menu
+   *  déroulant en face de l'équipe — sans ce prop il apparaissait toujours
+   *  à droite, y compris côté Est où le centre du poster est à gauche) :
+   *  à droite pour l'Ouest, à gauche pour l'Est. */
+  side: "west" | "east";
   /** Ref de mesure pour TreeConnectors.tsx (traits de connexion) — posée
    *  sur `.card`, la SEULE boîte bordée de ce composant. */
   cardRef: (el: HTMLElement | null) => void;
 };
 
-export function FillSeriesCard({ series, competitionType, isTarget, onError, cardRef }: FillSeriesCardProps) {
+export function FillSeriesCard({ series, competitionType, isTarget, onError, side, cardRef }: FillSeriesCardProps) {
   // Resynchronise l'état local sur la valeur serveur pendant le rendu, PAS
   // dans un effet (17/08/2026, bug réel corrigé : useState(initialValue) ne
   // se réinitialise qu'au 1er montage — sans ça, une remise à zéro du
@@ -100,37 +108,54 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError, car
         {[series.teamA, series.teamB].map((team) => {
           if (!team) return null;
           const isSelected = winnerTeamId === team.teamId;
+          const teamButton = (
+            <button
+              type="button"
+              className={isSelected ? `${styles.team} ${styles.teamSelected}` : styles.team}
+              onClick={() => pick(team.teamId, scoreFormat)}
+              aria-pressed={isSelected}
+            >
+              <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={28} />
+              <span className={styles.teamName}>{team.name}</span>
+            </button>
+          );
+
+          // Menu déroulant du score (17/08/2026, demandé par l'utilisateur
+          // — avant : 4 boutons empilés à côté de toute la carte) :
+          // seulement en face de l'équipe désignée vainqueur, jamais
+          // l'autre — VERS le centre du poster, donc à droite du nom pour
+          // l'Ouest, à gauche pour l'Est (voir le commentaire sur `side`).
+          const scoreSelect =
+            competitionType === "PLAYOFFS" && isSelected ? (
+              <select
+                className={styles.scoreSelect}
+                value={scoreFormat ?? ""}
+                onChange={(e) => pick(team.teamId, e.target.value as BetSeriesFormat)}
+                aria-label={`Score de la série pour ${team.name}`}
+              >
+                <option value="" disabled>
+                  Score
+                </option>
+                {SCORE_FORMATS.map((format) => (
+                  <option key={format} value={format}>
+                    {format}
+                  </option>
+                ))}
+              </select>
+            ) : null;
+
           return (
             <div key={team.teamId} className={styles.teamRow}>
-              <button
-                type="button"
-                className={isSelected ? `${styles.team} ${styles.teamSelected}` : styles.team}
-                onClick={() => pick(team.teamId, scoreFormat)}
-                aria-pressed={isSelected}
-              >
-                <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={28} />
-                <span className={styles.teamName}>{team.name}</span>
-              </button>
-              {/* Menu déroulant du score (17/08/2026, demandé par
-                  l'utilisateur — avant : 4 boutons empilés à côté de toute
-                  la carte) : seulement en face de l'équipe désignée
-                  vainqueur, jamais l'autre. */}
-              {competitionType === "PLAYOFFS" && isSelected && (
-                <select
-                  className={styles.scoreSelect}
-                  value={scoreFormat ?? ""}
-                  onChange={(e) => pick(team.teamId, e.target.value as BetSeriesFormat)}
-                  aria-label={`Score de la série pour ${team.name}`}
-                >
-                  <option value="" disabled>
-                    Score
-                  </option>
-                  {SCORE_FORMATS.map((format) => (
-                    <option key={format} value={format}>
-                      {format}
-                    </option>
-                  ))}
-                </select>
+              {side === "east" ? (
+                <>
+                  {scoreSelect}
+                  {teamButton}
+                </>
+              ) : (
+                <>
+                  {teamButton}
+                  {scoreSelect}
+                </>
               )}
             </div>
           );
