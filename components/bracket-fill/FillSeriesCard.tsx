@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRef, useState } from "react";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { saveBracketPick } from "@/lib/actions/bracket-fill";
 import type { BetSeriesFormat, BracketFillSeries } from "@/lib/queries/bracket-fill";
@@ -41,9 +41,31 @@ type FillSeriesCardProps = {
 };
 
 export function FillSeriesCard({ series, competitionType, isTarget, onError }: FillSeriesCardProps) {
+  // Resynchronise l'état local sur la valeur serveur pendant le rendu, PAS
+  // dans un effet (17/08/2026, bug réel corrigé : useState(initialValue) ne
+  // se réinitialise qu'au 1er montage — sans ça, une remise à zéro du
+  // bracket, ResetBracketButton, ne se reflétait pas ici tant que le poster
+  // n'était pas démonté/remonté). Patron "adjusting state when a prop
+  // changes" recommandé par React (évite le cascading-render d'un effet,
+  // react-hooks/set-state-in-effect l'interdit ici).
+  const pickSignature = `${series.myPick.winnerTeamId ?? ""}|${series.myPick.scoreFormat ?? ""}`;
+  const [syncedSignature, setSyncedSignature] = useState(pickSignature);
   const [winnerTeamId, setWinnerTeamId] = useState(series.myPick.winnerTeamId);
   const [scoreFormat, setScoreFormat] = useState(series.myPick.scoreFormat);
-  const [isPending, startTransition] = useTransition();
+  if (pickSignature !== syncedSignature) {
+    setSyncedSignature(pickSignature);
+    setWinnerTeamId(series.myPick.winnerTeamId);
+    setScoreFormat(series.myPick.scoreFormat);
+  }
+  // File d'attente des sauvegardes (17/08/2026, latence signalée par
+  // l'utilisateur entre le tap vainqueur et le tap score) : les 2 taps
+  // déclenchent chacun un appel réseau distinct (« vainqueur en 1 tap »,
+  // 0.2.9 §5) ; les boutons ne sont plus désactivés pendant l'aller-retour
+  // (l'état local optimiste ci-dessus est déjà correct), mais les appels à
+  // saveBracketPick DOIVENT rester en série, sinon une réponse en retard du
+  // 1er tap (vainqueur seul) pourrait écraser le score du 2e tap si les
+  // réponses arrivent dans le désordre.
+  const saveChainRef = useRef<Promise<void>>(Promise.resolve());
 
   if (!series.isSelectable) {
     return (
@@ -57,7 +79,7 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError }: F
     setWinnerTeamId(nextWinnerTeamId);
     setScoreFormat(nextScoreFormat);
     onError(null);
-    startTransition(async () => {
+    saveChainRef.current = saveChainRef.current.catch(() => {}).then(async () => {
       const result = await saveBracketPick({
         seriesId: series.seriesId,
         winnerTeamId: nextWinnerTeamId,
@@ -82,7 +104,6 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError }: F
               className={isSelected ? `${styles.team} ${styles.teamSelected}` : styles.team}
               onClick={() => pick(team.teamId, scoreFormat)}
               aria-pressed={isSelected}
-              disabled={isPending}
             >
               <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={28} />
               <span className={styles.teamName}>{team.name}</span>
@@ -91,15 +112,14 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError }: F
         })}
       </div>
 
-      {competitionType === "PLAYOFFS" && (
+      {competitionType === "PLAYOFFS" && winnerTeamId && (
         <div className={styles.scores}>
           {SCORE_FORMATS.map((format) => (
             <button
               key={format}
               type="button"
               className={scoreFormat === format ? `${styles.scoreButton} ${styles.scoreButtonSelected}` : styles.scoreButton}
-              onClick={() => winnerTeamId && pick(winnerTeamId, format)}
-              disabled={isPending || !winnerTeamId}
+              onClick={() => pick(winnerTeamId, format)}
               aria-pressed={scoreFormat === format}
             >
               {format}

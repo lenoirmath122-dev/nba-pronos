@@ -7,6 +7,7 @@ import type { BracketFillData, BracketFillSeries } from "@/lib/queries/bracket-f
 import { buildMirroredPosterColumns, type PosterColumn } from "@/components/bracket/posterColumns";
 import { TreeConnectors } from "@/components/bracket/TreeConnectors";
 import { FillSeriesCard } from "./FillSeriesCard";
+import { ResetBracketButton } from "./ResetBracketButton";
 import styles from "./FillPosterView.module.css";
 
 // Mode principal du remplissage, TOUJOURS l'écran d'arrivée depuis le
@@ -75,8 +76,16 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
     else labelRefsMap.current.delete(columnKey);
   }
 
+  // Guidage au chargement SEULEMENT (17/08/2026 — l'utilisateur a demandé
+  // d'arrêter le saut automatique après chaque pick : « on le laisse là où
+  // il était »). `targetSeriesId` continue d'être recalculé à chaque pick
+  // (pour l'accent visuel .cardTarget ci-dessous), mais le scroll ne
+  // s'exécute plus qu'une fois, au 1er rendu où une cible existe.
+  const hasScrolledOnMountRef = useRef(false);
   useLayoutEffect(() => {
+    if (hasScrolledOnMountRef.current) return;
     if (!targetSeriesId) return;
+    hasScrolledOnMountRef.current = true;
     cardRefsMap.current.get(targetSeriesId)?.scrollIntoView({ block: "center", inline: "center" });
   }, [targetSeriesId]);
 
@@ -149,6 +158,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
             Valider mon bracket
           </button>
         )}
+        <ResetBracketButton onError={setError} />
       </div>
 
       {showConfirm &&

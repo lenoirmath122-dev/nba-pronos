@@ -6709,4 +6709,97 @@ app), `vitest run` (37/37), `next build` (36 routes) propres. Scripts
 Playwright jetables (dont l'octroi temporaire du rôle ADMIN au bot),
 supprimés en fin de session. Serveur de dev laissé actif.
 ```
+
+## Nettoyage des comptes bots de simulation + 2 correctifs remplissage (17/08/2026)
+
+**Nettoyage** : l'utilisateur a archivé lui-même la compétition
+« Playoffs NBA (simulation) » et recréé « Play offs test » pour tester le
+remplissage à neuf ; a demandé de supprimer les 10 comptes bots
+(`seed-sim-*@nba-pronos.test`, créés le 14/08/2026 via
+`scripts/seed-playoffs-simulation.mjs`). Investigation FK au préalable
+(même prudence que `deleteMatch` — aucune de ces tables n'a `on delete
+cascade` sur `user_id`, seuls `push_subscriptions`/`reminder_log` l'ont) :
+supprimé dans l'ordre `audit_logs` (3 lignes — résidu du test Playwright
+`deleteMatch`, le bot Amine92 avait reçu le rôle ADMIN temporairement ce
+jour-là) → `bracket_picks` (150, via les 10 `brackets`) → `brackets` (10)
+→ `bets` (3) → `match_predictions` (273) → `competition_archives` (10) →
+`leaderboard_snapshots` (40) → `competition_superlatives` (8, générées à
+la clôture de la compétition de simulation) → `auth.users` (cascade
+automatique vers `public.users`). Vérifié 0 ligne restante après coup.
+Scripts jetables supprimés en fin de session.
+
+**Correctifs remplissage poster** (retour utilisateur en conditions
+réelles sur la compétition fraîchement recréée) :
+- Boutons de score (4-0/4-1/4-2/4-3) : n'apparaissent plus qu'une fois un
+  vainqueur sélectionné (`FillSeriesCard.tsx` ET `BracketFillBoard.tsx`
+  côté mobile portrait, même correctif dans les 2 — avant : toujours
+  visibles mais désactivés).
+- Guidage automatique (`FillPosterView.tsx`) : ne scrolle plus la vue vers
+  la prochaine série à compléter qu'UNE SEULE fois, au chargement — plus
+  du tout après chaque pick (« on le laisse là où il était »). L'accent
+  visuel `.cardTarget` continue de suivre la cible calculée, seul le
+  `scrollIntoView` est maintenant gardé par un ref `hasScrolledOnMountRef`.
+
+`tsc --noEmit`, `eslint` (fichiers touchés) propres. Serveur de dev laissé
+actif.
 ```
+
+## Nouveau : remise à zéro du bracket personnel (17/08/2026)
+
+Demandé par l'utilisateur pendant ses tests sur la compétition
+fraîchement recréée. Nouveau `resetBracket()`
+(`lib/actions/bracket-fill.ts`) : remet `brackets.is_validated`/
+`is_auto_validated`/`validated_at` à leur état initial PUIS efface
+`predicted_winner_team_id`/`predicted_score_format` de tous les
+`bracket_picks` du bracket (mise à `null`, pas de `DELETE` — RLS n'expose
+aucune policy `bracket_picks_delete`, uniquement `_update`, donc pas de
+service_role nécessaire ici). Verrou deadline déjà porté par la RLS
+existante (`brackets_update`) : détecté via `.select("id")` après l'UPDATE
+des brackets (0 ligne = verrouillé), même patron que `validateBracket`.
+Ordre volontaire (brackets AVANT bracket_picks) : si la deadline bloque le
+1er, on s'arrête avant de toucher aux picks.
+
+`components/bracket-fill/ResetBracketButton.tsx` (nouveau, "use client",
+partagé entre `BracketFillBoard.tsx` et `FillPosterView.tsx` — mêmes 2
+rendus du même écran `/play/bracket`, pas une 4e duplication du patron de
+dialogue) : bouton + dialogue de confirmation portalé vers `document.body`
+(même contrainte `.photo-page` que les dialogues de validation déjà en
+place), teinté `--color-loss` comme `DeleteMatchButton`. Placé à côté du
+bouton « Valider mon bracket » dans les 2 écrans.
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37) propres. Serveur de dev
+laissé actif.
+
+**Correctif same session** : l'utilisateur a signalé qu'il fallait fermer
+puis rouvrir le poster (paysage) pour que la remise à zéro s'affiche.
+Cause réelle : `FillSeriesCard.tsx`/`BracketFillBoard.tsx::SeriesPickCard`
+initialisent `winnerTeamId`/`scoreFormat` via `useState(series.myPick...)`
+— valeur lue UNE SEULE fois au montage ; `revalidatePath` rafraîchit bien
+`data` chez le parent, mais l'instance déjà montée de la carte gardait son
+état local périmé (React ne réinitialise pas un `useState` sur un
+changement de props). 1re tentative de correctif via un `useEffect` de
+resynchronisation → rejetée par `react-hooks/set-state-in-effect` (déjà
+recontré 16/08 sur `NotificationSettings.tsx`). Corrigé avec le patron
+React officiel « adjusting state when a prop changes » : comparaison d'une
+signature `${winnerTeamId}|${scoreFormat}` PENDANT le rendu (pas dans un
+effet), `setState` appelés conditionnellement dans le corps du composant —
+React absorbe le re-rendu immédiat sans commit intermédiaire visible.
+Même correctif dans les 2 fichiers (même bug, même cause). `tsc`,
+`eslint`, `vitest run` (37/37), `next build` (36 routes) propres.
+
+**Correctif same session (2)** : l'utilisateur a signalé une latence entre
+le tap vainqueur et la possibilité de choisir le score. Cause : les
+boutons (équipe ET score) portaient `disabled={isPending}` — un seul
+`useTransition` partagé par les 2 taps, donc les boutons score restaient
+désactivés tout l'aller-retour réseau du tap vainqueur, alors que l'état
+local (optimiste) affichait déjà le bon vainqueur. Le disabled n'était pas
+cosmétique par hasard : il servait à SÉRIALISER les 2 appels
+`saveBracketPick` (vainqueur seul, puis vainqueur+score) pour qu'une
+réponse en retard du 1er n'écrase pas le 2e si elles revenaient dans le
+désordre. Corrigé en séparant les 2 : `disabled` retiré de tous les
+boutons (plus de latence perçue), sauvegarde toujours sérialisée via une
+petite file d'attente manuelle (`saveChainRef`, `Promise` chaînée) —
+l'ordre d'écriture reste garanti sans bloquer l'UI. Même correctif dans
+`FillSeriesCard.tsx` et `BracketFillBoard.tsx::SeriesPickCard`. `tsc`,
+`eslint`, `vitest run` (37/37), `next build` (36 routes) propres. Serveur
+de dev laissé actif.

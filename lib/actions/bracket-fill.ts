@@ -112,6 +112,47 @@ export async function saveBracketPick(input: {
   return { success: true };
 }
 
+export async function resetBracket(): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  const user = await requireUser(supabase);
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { data: competition } = await supabase.from("competitions").select("id").eq("status", "ACTIVE").maybeSingle();
+  if (!competition) return { success: false, error: "Aucune compétition en cours." };
+
+  const { data: bracket } = await supabase
+    .from("brackets")
+    .select("id")
+    .eq("user_id", user.id)
+    .eq("competition_id", competition.id)
+    .maybeSingle();
+  if (!bracket) return { success: true }; // rien à remettre à zéro
+
+  // brackets_update (RLS) bloque déjà l'écriture après la deadline — .select()
+  // ici sert à le détecter (0 ligne = verrouillé), même patron que
+  // validateBracket ci-dessous. Fait AVANT bracket_picks (qui n'a pas de
+  // .select() équivalent) pour ne rien modifier si le bracket est verrouillé.
+  const { error: bracketError, data: bracketData } = await supabase
+    .from("brackets")
+    .update({ is_validated: false, is_auto_validated: false, validated_at: null })
+    .eq("id", bracket.id)
+    .select("id");
+  if (bracketError || !bracketData || bracketData.length === 0) {
+    return { success: false, error: "Impossible de remettre le bracket à zéro (deadline passée ?)." };
+  }
+
+  const { error: picksError } = await supabase
+    .from("bracket_picks")
+    .update({ predicted_winner_team_id: null, predicted_score_format: null })
+    .eq("bracket_id", bracket.id);
+  if (picksError) return { success: false, error: "Impossible de remettre les picks à zéro." };
+
+  revalidatePath("/play/bracket");
+  revalidatePath("/bracket");
+  revalidatePath("/home");
+  return { success: true };
+}
+
 export async function validateBracket(): Promise<ActionResult> {
   const supabase = await getServerClient();
   const user = await requireUser(supabase);
