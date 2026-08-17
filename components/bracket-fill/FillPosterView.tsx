@@ -9,15 +9,15 @@ import { TreeConnectors } from "@/components/bracket/TreeConnectors";
 import { FillSeriesCard } from "./FillSeriesCard";
 import styles from "./FillPosterView.module.css";
 
-// Mode principal du remplissage sur desktop/paysage (16/08/2026, demandé
-// par l'utilisateur — « plus raccord avec ce qui se fait dans le monde du
-// basket/NBA », même chantier que la consultation). Reprend la géométrie
-// de poster ET les traits de connexion déjà généralisés
-// (components/bracket/posterColumns.ts, TreeConnectors.tsx), mais avec des
-// cartes INTERACTIVES (FillSeriesCard.tsx, formulaire de pick) plutôt que
-// de simple lecture (NodeCard.tsx). Rendu par BracketFillView.tsx, qui
-// porte la bascule desktop/paysage (useImmersiveDefault) — ce composant ne
-// s'occupe QUE du poster lui-même.
+// Mode principal du remplissage, TOUJOURS l'écran d'arrivée depuis le
+// 17/08/2026 (16/08/2026 : demandé par l'utilisateur — « plus raccord avec
+// ce qui se fait dans le monde du basket/NBA », même chantier que la
+// consultation). Reprend la géométrie de poster ET les traits de connexion
+// déjà généralisés (components/bracket/posterColumns.ts,
+// TreeConnectors.tsx), mais avec des cartes INTERACTIVES (FillSeriesCard.tsx,
+// formulaire de pick) plutôt que de simple lecture (NodeCard.tsx). Rendu par
+// BracketFillView.tsx, qui porte la bascule poster/flux normal
+// (usePosterToggle) — ce composant ne s'occupe QUE du poster lui-même.
 //
 // Guidage automatique (choisi par l'utilisateur parmi 3 options — « poster
 // comme mode principal, guidage conservé ») : scrolle vers la 1ère série
@@ -65,6 +65,15 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
     if (el) cardRefsMap.current.set(seriesId, el);
     else cardRefsMap.current.delete(seriesId);
   }
+  // Libellés de tour, repositionnés par TreeConnectors.tsx une fois les
+  // cartes alignées — même patron que registerCard ci-dessus (17/08/2026,
+  // bug réel corrigé : un libellé pouvait finir affiché SOUS ou À TRAVERS
+  // la 1re carte de sa propre colonne).
+  const labelRefsMap = useRef<Map<string, HTMLElement>>(new Map());
+  function registerLabel(columnKey: string, el: HTMLElement | null) {
+    if (el) labelRefsMap.current.set(columnKey, el);
+    else labelRefsMap.current.delete(columnKey);
+  }
 
   useLayoutEffect(() => {
     if (!targetSeriesId) return;
@@ -98,7 +107,9 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
         <div ref={containerRef} className={styles.roundsBInner}>
           {columns.map((column) => (
             <div key={column.key} className={styles.treeColumn}>
-              <p className={styles.roundLabel}>{column.label}</p>
+              <p className={styles.roundLabel} ref={(el) => registerLabel(column.key, el)}>
+                {column.label}
+              </p>
               {column.items.map((series) => (
                 <div key={series.seriesId} ref={(el) => registerCard(series.seriesId, el)}>
                   <FillSeriesCard
@@ -117,6 +128,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
             getNextId={(series) => series.nextSeriesId}
             containerRef={containerRef}
             cardRefs={cardRefsMap}
+            labelRefs={labelRefsMap}
           />
         </div>
       </div>

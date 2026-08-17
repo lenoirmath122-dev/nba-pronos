@@ -73,6 +73,16 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
     if (el) cardRefsMap.current.set(nodeId, el);
     else cardRefsMap.current.delete(nodeId);
   }
+  // Nœuds DOM des libellés de tour, keyed par `column.key` — même patron que
+  // `registerCard` ci-dessus, pour que TreeConnectors.tsx puisse repositionner
+  // chaque libellé au-dessus de sa colonne une fois les cartes alignées
+  // (17/08/2026, bug réel corrigé : un libellé pouvait finir affiché SOUS ou
+  // À TRAVERS la 1re carte de sa propre colonne).
+  const labelRefsMap = useRef<Map<string, HTMLElement>>(new Map());
+  function registerLabel(columnKey: string, el: HTMLElement | null) {
+    if (el) labelRefsMap.current.set(columnKey, el);
+    else labelRefsMap.current.delete(columnKey);
+  }
 
   // Ancre `#round-X` du chargement (16/08/2026, correctif de la redirection
   // `/play/bracket?round=X` -> `/bracket#round-X`) : constaté en testant que
@@ -144,7 +154,9 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
           <div ref={treeContainerRef} className={styles.roundsBInner}>
             {columns.map((column) => (
               <div key={column.key} className={styles.treeColumn}>
-                <p className={styles.roundLabel}>{column.label}</p>
+                <p className={styles.roundLabel} ref={(el) => registerLabel(column.key, el)}>
+                  {column.label}
+                </p>
                 {column.items.map((node) => (
                   <div key={node.nodeId} ref={(el) => registerCard(node.nodeId, el)}>
                     {renderNode(node)}
@@ -158,6 +170,7 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
               getNextId={(node) => node.nextSeriesId}
               containerRef={treeContainerRef}
               cardRefs={cardRefsMap}
+              labelRefs={labelRefsMap}
             />
           </div>
         </div>

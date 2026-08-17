@@ -6564,4 +6564,50 @@ captures Playwright jetables (dont la manipulation temporaire de
 ACTIF à la demande explicite de l'utilisateur (contrairement aux sessions
 précédentes où il était arrêté en fin de session).
 ```
+
+## Correctif : libellés de tour mal positionnés après l'alignement des cartes (17/08/2026)
+
+```text
+Signalé par l'utilisateur juste après le chantier ci-dessus : « fais bien
+attention aux titres des tours de playoffs sur l'écran bracket (leur
+emplacement) ». Diagnostic direct par mesure DOM (Playwright,
+`getBoundingClientRect` sur chaque libellé et les cartes de sa colonne) —
+confirmé avant de corriger : « Demi-finales de conférence » (Ouest ET Est)
+avait son libellé positionné SOUS le haut de sa 1re carte (ex. libellé à
+y=394.5, carte à y=336 — la carte affichée AU-DESSUS de son propre titre).
+
+**Cause** : l'alignement des cartes fusionnées (`alignMergedCards()`,
+session précédente) déplace chaque carte via `transform: translateY()`
+vers le milieu de ses 2 parents — mais le libellé de la colonne, lui,
+n'était jamais déplacé, restant à sa position flex NATURELLE (calculée
+pour un bloc de cartes centré, avant tout déplacement individuel). Une
+colonne dont les cartes finissent tirées vers le haut (pour s'aligner sur
+des parents eux-mêmes hauts placés) se retrouve donc avec des cartes
+au-dessus de leur propre titre.
+
+**Correctif** (`TreeConnectors.tsx::alignColumnLabels()`, nouvelle
+fonction appelée juste après `alignMergedCards()`, avant le calcul des
+traits) : repositionne chaque libellé (`transform: translateY()`, même
+technique) pour qu'il reste à 8px au-dessus de la carte la PLUS HAUTE de sa
+colonne — seulement si nécessaire (ne bouge pas un libellé déjà
+confortablement positionné, évite un décalage inutile dans le cas courant
+non affecté). Nécessite une nouvelle Map de refs pour les libellés
+(`labelRefsMap`/`registerLabel`, même patron que `cardRefsMap`/
+`registerCard`), câblée dans `SeriesDrillDown.tsx` ET `FillPosterView.tsx`
+(consultation et remplissage partagent `TreeConnectors.tsx`, correctif
+automatiquement présent sur les 2 écrans).
+
+**Vérifié en conditions réelles** : même script de mesure DOM rejoué après
+correctif — « Demi-finales de conférence — Ouest » passe de labelTop=394.5
+(sous le haut de carte à 336) à labelTop=306.5 (29.5px AU-DESSUS, gap
+cohérent avec « 1er tour » à 33px) ; même correction sur le côté Est et sur
+« Finales de conférence — Est » (gap resserré à 9px avant, ramené à ~30px).
+Capture d'écran confirmant visuellement les 7 libellés correctement
+positionnés au-dessus de leur colonne.
+
+`tsc --noEmit`, `eslint .` (0 erreur, mêmes 4 warnings pré-existants hors
+app), `vitest run` (37/37), `next build` (36 routes) propres. Script de
+mesure + capture jetables, supprimés en fin de session. Serveur de dev
+laissé actif.
+```
 ```

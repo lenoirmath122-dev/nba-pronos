@@ -32,11 +32,18 @@ type TreeConnectorsProps<T> = {
   // (règle react-hooks/refs — lire `.current` pendant le rendu est interdit,
   // seulement dans un effet/handler) : déréférencée ICI, dans l'effet.
   cardRefs: RefObject<Map<string, HTMLElement>>;
+  /** Nœuds DOM des libellés de tour (`<p>` au-dessus de chaque colonne),
+   *  keyed par `column.key` — repositionnés (17/08/2026, bug réel signalé
+   *  par l'utilisateur) pour suivre la carte la plus haute de leur colonne
+   *  APRÈS l'alignement ci-dessous : sans ça, un libellé garde sa position
+   *  flex naturelle pendant que ses cartes se déplacent, et peut finir
+   *  affiché SOUS ou À TRAVERS la 1re carte de sa propre colonne. */
+  labelRefs: RefObject<Map<string, HTMLElement>>;
 };
 
 type ConnectorPath = { id: string; d: string };
 
-export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, cardRefs }: TreeConnectorsProps<T>) {
+export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, cardRefs, labelRefs }: TreeConnectorsProps<T>) {
   const [paths, setPaths] = useState<ConnectorPath[]>([]);
   // Une carte peut changer de HAUTEUR sans que le conteneur ne change de
   // taille (ex. une série qui bascule EN_COURS -> TERMINÉ en direct, cf. le
@@ -126,8 +133,40 @@ export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, car
         }
       }
 
+      // Repositionne chaque libellé de tour juste au-dessus de la carte la
+      // plus haute de sa colonne — DOIT s'exécuter après `alignMergedCards`
+      // (dépend des positions déjà corrigées des cartes). Une colonne peut
+      // contenir plusieurs cartes désormais réparties à des hauteurs très
+      // différentes (chacune alignée sur SES propres parents) : le libellé
+      // suit la plus haute des deux plutôt qu'une position centrée statique.
+      function alignColumnLabels() {
+        const labelsByKey = labelRefs.current;
+        const GAP = 8; // var(--space-2)
+
+        for (const column of columns) {
+          const labelEl = labelsByKey.get(column.key);
+          if (!labelEl) continue;
+
+          const cardTops = column.items
+            .map((item) => cardsById.get(getId(item)))
+            .filter((el): el is HTMLElement => el !== undefined)
+            .map((el) => el.getBoundingClientRect().top);
+
+          labelEl.style.transform = ""; // mesure la position NATURELLE avant de la corriger
+          if (cardTops.length === 0) continue;
+
+          const minCardTop = Math.min(...cardTops);
+          const labelRect = labelEl.getBoundingClientRect();
+          const offset = minCardTop - GAP - labelRect.bottom;
+          if (offset < 0) {
+            labelEl.style.transform = `translateY(${offset}px)`;
+          }
+        }
+      }
+
       function recompute() {
         alignMergedCards();
+        alignColumnLabels();
 
         const containerRect = container!.getBoundingClientRect();
         const nextPaths: ConnectorPath[] = [];
@@ -182,7 +221,7 @@ export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, car
       cancelled = true;
       observer?.disconnect();
     };
-  }, [columns, containerRef, cardRefs, liveSeriesMap, getId, getNextId]);
+  }, [columns, containerRef, cardRefs, labelRefs, liveSeriesMap, getId, getNextId]);
 
   return (
     <svg className={styles.connectors} aria-hidden="true">
