@@ -1,5 +1,6 @@
 import type { AdminSeriesNode } from "@/lib/queries/admin-results";
 import { createMatchFormAction, saveMatchResultFormAction } from "@/lib/actions/admin-results";
+import { DeleteMatchButton } from "./DeleteMatchButton";
 import styles from "./SeriesResultsCard.module.css";
 
 // Une série de l'écran Saisie des résultats (SPEC_ECRAN_ADMIN_RESULTATS_V0_1
@@ -112,6 +113,10 @@ export function SeriesResultsCard({ node, errorMatchId, errorSeriesId, errorMess
                   Enregistrer
                 </button>
               </form>
+              <DeleteMatchButton
+                matchId={match.id}
+                matchLabel={`Match ${match.gameNumber} — ${match.homeTeam.abbreviation} vs ${match.awayTeam.abbreviation}`}
+              />
             </li>
           ))}
         </ul>

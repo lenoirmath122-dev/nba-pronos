@@ -183,6 +183,71 @@ export async function saveMatchResult(input: {
   return { success: true };
 }
 
+// Suppression manuelle d'un match (17/08/2026, demandé par l'utilisateur —
+// matchs ajoutés avec une heure déjà passée par erreur de fuseau, aucun
+// moyen de les retirer jusqu'ici). Même patron d'auth/écriture que
+// createMatch/saveMatchResult ci-dessus. JAMAIS de cascade silencieuse :
+// `match_predictions`/`bets` référencent `matches` SANS `ON DELETE CASCADE`
+// (migration initiale) — une suppression bloquée par cette contrainte
+// (code Postgres 23503) est traduite en message clair plutôt que de perdre
+// des pronostics/paris de joueurs sans le dire.
+export async function deleteMatch(matchId: string): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { success: false, error: "Réservé aux admins." };
+
+  const service = getServiceClient();
+
+  const { data: before } = await service
+    .from("matches")
+    .select("id, competition_id, series_id, game_number, home_team_id, away_team_id, scheduled_at, status")
+    .eq("id", matchId)
+    .single<{
+      id: string;
+      competition_id: string;
+      series_id: string;
+      game_number: number;
+      home_team_id: string | null;
+      away_team_id: string | null;
+      scheduled_at: string | null;
+      status: string;
+    }>();
+  if (!before) return { success: false, error: "Match introuvable." };
+
+  const { error } = await service.from("matches").delete().eq("id", matchId);
+  if (error) {
+    if (error.code === "23503") {
+      return { success: false, error: "Impossible : des pronostics ou paris existent déjà sur ce match." };
+    }
+    return { success: false, error: error.message };
+  }
+
+  await recomputeBracketDeadline(service, before.competition_id);
+
+  await logAdminAction(supabase, {
+    actorUserId: user.id,
+    action: "DELETE_MATCH",
+    targetType: "match",
+    targetId: matchId,
+    before: {
+      seriesId: before.series_id,
+      gameNumber: before.game_number,
+      homeTeamId: before.home_team_id,
+      awayTeamId: before.away_team_id,
+      scheduledAt: before.scheduled_at,
+      status: before.status,
+    },
+  });
+
+  revalidateAffectedScreens();
+  return { success: true };
+}
+
 function parseOptionalInt(value: FormDataEntryValue | null): number | null {
   const str = String(value ?? "").trim();
   if (str.length === 0) return null;

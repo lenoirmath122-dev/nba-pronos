@@ -6646,4 +6646,67 @@ app), `vitest run` (37/37), `next build` (36 routes) propres. Scripts de
 mesure + captures jetables, supprimés en fin de session. Serveur de dev
 laissé actif.
 ```
+
+## Nouveau : suppression manuelle d'un match, écran admin (17/08/2026)
+
+```text
+Origine : l'utilisateur (Rillettes-31, seul compte ADMIN) signale que des
+matchs ajoutés pour le 17/08 n'apparaissent pas dans « Mes matchs ».
+Diagnostic (agent dédié, lecture seule) : PAS un bug — l'écran Matchs
+n'affiche que les matchs strictement à venir (`scheduled_at > now`), et ces
+3 lignes avaient un `scheduled_at` déjà passé au moment de leur création.
+Cause admise par l'utilisateur : décalage horaire (Canada, saisie pensée
+« 17h » en heure française déjà passée). Demande de suite : ajouter une
+fonction de suppression manuelle d'un match, qui n'existait nulle part
+(seule la synchro automatique en crée).
+
+**Recherche préalable** (agent dédié, lecture seule) avant de coder :
+convention exacte des actions admin existantes (`lib/actions/
+admin-results.ts::createMatch`/`saveMatchResult` — session admin
+re-vérifiée par `is_admin()` PUIS écriture en `service_role`, AUCUNE policy
+RLS d'INSERT/DELETE sur `matches`), et surtout le risque réel : `matches`
+est référencée par `match_predictions.match_id` et `bets.match_id` SANS
+`ON DELETE CASCADE` (migration initiale) — une suppression directe
+échouerait avec une violation de contrainte (code Postgres 23503) si des
+pronostics/paris existent déjà, plutôt que de les perdre silencieusement.
+Décision : NE JAMAIS cascader — traduire cette violation en message clair
+côté admin plutôt que de forcer la suppression.
+
+**Implémentation** :
+- `lib/actions/admin-results.ts::deleteMatch()` — même patron d'auth/
+  écriture que les 2 actions existantes ; capture `error.code === "23503"`
+  et renvoie « Impossible : des pronostics ou paris existent déjà sur ce
+  match. » ; appelle `recomputeBracketDeadline()` après coup (même besoin
+  que `createMatch`, la deadline dépend du match le plus tôt restant) ;
+  journalise via `logAdminAction` (action `DELETE_MATCH`, `before` = état
+  complet du match supprimé).
+- `components/admin/DeleteMatchButton.tsx` (nouveau, "use client") —
+  dialogue de confirmation IRRÉVERSIBLE, même patron exact que
+  `CloseCompetitionButton.tsx` (jusqu'au CSS dupliqué, même convention que
+  le reste du projet — pas de composant de dialogue partagé dans ce
+  projet).
+- `SeriesResultsCard.tsx` (écran `/admin/competitions/results`, déjà le
+  seul endroit qui liste les matchs d'une série) : bouton « Supprimer »
+  ajouté à côté du formulaire de résultat existant, pour chaque match.
+
+**Vérifié en conditions réelles** (Playwright) : rôle `ADMIN` accordé
+TEMPORAIREMENT à un compte bot de simulation (jamais touché au compte réel
+de l'utilisateur), revert automatique en fin de script (`finally`).
+1. Match jetable ajouté via le formulaire existant, supprimé via le
+   nouveau bouton — confirmé disparu de la base après confirmation.
+2. Pronostic de test créé sur un autre match réel, tentative de
+   suppression de CE match — bloquée, message d'erreur exact affiché
+   («Impossible : des pronostics ou paris existent déjà sur ce match. »),
+   match TOUJOURS présent en base après la tentative (aucune perte de
+   données). Pronostic de test nettoyé après coup.
+Aucune erreur console sur les 2 scénarios. **Les 3 lignes réelles du
+17/08 n'ont PAS été supprimées pendant ce test** (volontairement écarté du
+scénario de vérification, qui utilisait un match jetable dédié) — laissées
+à l'utilisateur, qui peut désormais les supprimer lui-même.
+
+`tsc --noEmit`, `eslint .` (0 erreur, mêmes 4 warnings pré-existants hors
+app), `vitest run` (37/37), `next build` (36 routes) propres. Scripts
+Playwright jetables (dont l'octroi temporaire du rôle ADMIN au bot),
+supprimés en fin de session. Serveur de dev laissé actif.
+```
 ```
