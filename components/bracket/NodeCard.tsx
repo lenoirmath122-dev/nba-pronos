@@ -5,9 +5,9 @@ import { clickableRowProps } from "@/lib/hooks/clickableRow";
 import styles from "./NodeCard.module.css";
 
 // Carte résumé d'une série. Présentiel pur (pas de "use client") : rendu
-// exclusivement par SeriesDrillDown, qui porte le clic (même mécanisme que
-// RotateInvite, §3 — un composant sans état propre peut être rendu par un
-// parent client sans porter la directive lui-même).
+// exclusivement par SeriesDrillDown, qui porte le clic (§3 — un composant
+// sans état propre peut être rendu par un parent client sans porter la
+// directive lui-même).
 
 const CONFERENCE_LABEL: Record<string, string> = { EAST: "Est", WEST: "Ouest" };
 // Champion déduit du bracket ENTIER (finale uniquement) : or réservé à ce cas

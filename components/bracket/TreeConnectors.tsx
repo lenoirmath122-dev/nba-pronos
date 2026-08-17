@@ -65,7 +65,70 @@ export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, car
       }
       const cardsById = cardRefs.current;
 
+      // Aligne chaque carte "fusion" (2 séries qui en alimentent 1 seule
+      // suivante) sur le milieu vertical de ses 2 séries d'origine
+      // (17/08/2026, demandé par l'utilisateur : « la carte demi-finale
+      // pile entre les 2 1er tours qui en sont à l'origine » — même
+      // principe étendu à toute fusion 2->1, pas seulement les demies,
+      // sinon la finale de conf./Finale NBA resteraient visuellement
+      // désalignées). Tri topologique simple par passes successives : un
+      // nœud SANS parent (1er tour, "racine") garde sa position naturelle
+      // du flex layout ; chaque nœud suivant s'aligne une fois ses 2
+      // parents eux-mêmes réglés — fonctionne sans connaître l'ordre des
+      // tours à l'avance (Playoffs miroité ET NBA Cup linéaire, même code).
+      // `transform: translateY()` plutôt qu'un repositionnement CSS : ne
+      // déclenche aucun reflow, la mesure suivante (traits de connexion)
+      // voit déjà la position finale via `getBoundingClientRect`.
+      function alignMergedCards() {
+        const allNodes = columns.flatMap((column) => column.items);
+        const feedersOf = new Map<string, string[]>();
+        for (const node of allNodes) {
+          const nextId = getNextId(node);
+          if (!nextId) continue;
+          const list = feedersOf.get(nextId) ?? [];
+          list.push(getId(node));
+          feedersOf.set(nextId, list);
+        }
+
+        const settled = new Set<string>();
+        const pendingIds = new Set(allNodes.map((node) => getId(node)));
+        let progressed = true;
+        while (progressed) {
+          progressed = false;
+          for (const id of pendingIds) {
+            const feederIds = feedersOf.get(id) ?? [];
+            if (!feederIds.every((f) => settled.has(f))) continue;
+
+            const targetEl = cardsById.get(id);
+            const feederEls =
+              feederIds.length === 2
+                ? feederIds.map((f) => cardsById.get(f)).filter((el): el is HTMLElement => el !== undefined)
+                : [];
+
+            if (targetEl && feederEls.length === 2) {
+              const centers = feederEls.map((el) => {
+                const rect = el.getBoundingClientRect();
+                return rect.top + rect.height / 2;
+              });
+              const desiredCenter = (centers[0] + centers[1]) / 2;
+              targetEl.style.transform = ""; // mesure la position NATURELLE avant de la corriger
+              const currentRect = targetEl.getBoundingClientRect();
+              const currentCenter = currentRect.top + currentRect.height / 2;
+              targetEl.style.transform = `translateY(${desiredCenter - currentCenter}px)`;
+            } else if (targetEl) {
+              targetEl.style.transform = ""; // racine, ou fusion incomplète (dormant) : position naturelle
+            }
+
+            settled.add(id);
+            pendingIds.delete(id);
+            progressed = true;
+          }
+        }
+      }
+
       function recompute() {
+        alignMergedCards();
+
         const containerRect = container!.getBoundingClientRect();
         const nextPaths: ConnectorPath[] = [];
 

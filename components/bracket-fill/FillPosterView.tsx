@@ -83,15 +83,15 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
   return (
     <div className={styles.overlay}>
       <div className={styles.header}>
-        <div>
+        <button type="button" className={styles.close} onClick={onExit}>
+          × Quitter
+        </button>
+        <div className={styles.headerTexts}>
           <p className={styles.title}>Mon bracket</p>
           <p className={styles.progress}>
             {data.filledCount}/{data.totalCount} séries
           </p>
         </div>
-        <button type="button" className={styles.close} onClick={onExit}>
-          × Quitter
-        </button>
       </div>
 
       <div className={styles.roundsB}>

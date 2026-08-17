@@ -2,39 +2,25 @@
 
 import { useRouter } from "next/navigation";
 import type { BracketData } from "@/lib/queries/bracket";
-import { useImmersiveDefault } from "@/lib/hooks/useImmersiveDefault";
+import { usePosterToggle } from "@/lib/hooks/usePosterToggle";
 import { SeriesDrillDown } from "./SeriesDrillDown";
-import { RotateInvite } from "./RotateInvite";
 import styles from "./TreeView.module.css";
 
-// Vue B « arbre » + bascule (§10). SEULE feuille responsable de : le
-// déclencheur « plein écran ↗ », l'overlay plein viewport, et l'invitation
-// à tourner (rendue via RotateInvite, sans état propre — §3). L'état
-// immersif par défaut (desktop/paysage) et sa mécanique de détection
-// vivent dans useImmersiveDefault.ts (16/08/2026, extrait d'ici pour être
-// partagé avec l'écran de remplissage, `/play/bracket`, qui adopte la même
-// règle — mobile PORTRAIT reste sur la Vue A, seule vue sans scroll
-// horizontal jamais permis ailleurs dans ce projet).
+// Vue B « arbre » — TOUJOURS l'écran d'arrivée depuis le 17/08/2026 (demandé
+// par l'utilisateur : « peu importe le device, on arrive sur l'arbre »),
+// avec un bouton « Quitter » en haut à GAUCHE pour revenir à la Vue A
+// (résumé par tour). Avant cette date, réservée à desktop/paysage
+// (useImmersiveDefault.ts, remplacé par usePosterToggle.ts, bien plus
+// simple — plus de détection de viewport ni d'invitation à tourner).
 type TreeViewProps = {
   data: BracketData;
-  /** `?arbre=1` déjà lu côté serveur par app/bracket/page.tsx. */
-  initialShow: boolean;
   /** Cf. BracketSummary — raccourci « Parier sur cette série » (04/08/2026). */
   showBetLink: boolean;
 };
 
-export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
+export function TreeView({ data, showBetLink }: TreeViewProps) {
   const router = useRouter();
-  const { visible, showInvite, handleTriggerClick, handleSeeAnyway, dismissInvite, exit } = useImmersiveDefault({
-    initialVisible: initialShow,
-    seenInviteKey: "bracket-tree-seen-anyway",
-    // Historique (§10.2) : entrée automatique (viewport déjà conforme, ou
-    // rotation) REMPLACE, entrée explicite (bouton, ou « voir quand
-    // même ») AJOUTE — sinon 3 rotations créent 3 retours.
-    onEnter: (reason) => {
-      if (reason === "auto") router.replace("/bracket?arbre=1");
-      else router.push("/bracket?arbre=1");
-    },
+  const { visible, enter, exit } = usePosterToggle({
     onExit: () => router.replace("/bracket"),
   });
 
@@ -42,10 +28,10 @@ export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
     return (
       <div className={styles.overlay}>
         <div className={styles.header}>
-          <p className={styles.title}>Arbre complet</p>
           <button type="button" className={styles.close} onClick={exit}>
             × Quitter
           </button>
+          <p className={styles.title}>Arbre complet</p>
         </div>
         <SeriesDrillDown
           rounds={data.rounds}
@@ -59,11 +45,8 @@ export function TreeView({ data, initialShow, showBetLink }: TreeViewProps) {
   }
 
   return (
-    <>
-      <button type="button" className={styles.trigger} onClick={handleTriggerClick}>
-        Plein écran ↗
-      </button>
-      {showInvite && <RotateInvite onDismiss={dismissInvite} onSeeAnyway={handleSeeAnyway} />}
-    </>
+    <button type="button" className={styles.trigger} onClick={enter}>
+      Voir l&rsquo;arbre complet ↗
+    </button>
   );
 }

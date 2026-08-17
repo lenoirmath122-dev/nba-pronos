@@ -14,7 +14,6 @@ import styles from "./BracketSummary.module.css";
 type BracketSummaryProps = {
   data: BracketData;
   competitionName: string;
-  initialShowTree: boolean;
   liveSeed: SeriesLiveSeed[];
   myLeagues: MyLeague[];
   /** Joueur connecté (pas un simple visiteur) — écran partagé visiteur/joueur
@@ -23,7 +22,7 @@ type BracketSummaryProps = {
   canBet: boolean;
 };
 
-export function BracketSummary({ data, competitionName, initialShowTree, liveSeed, myLeagues, canBet }: BracketSummaryProps) {
+export function BracketSummary({ data, competitionName, liveSeed, myLeagues, canBet }: BracketSummaryProps) {
   // Paris SÉRIE : PLAYOFFS uniquement (NBA Cup les refuse déjà côté
   // save_bet/migration #10 — même garde que BracketFillBoard.tsx).
   const showBetLink = canBet && data.competitionType === "PLAYOFFS";
@@ -41,9 +40,9 @@ export function BracketSummary({ data, competitionName, initialShowTree, liveSee
           <ProgressBar filledCount={data.filledCount} totalCount={data.totalCount} />
         </div>
 
-        <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} showTree={initialShowTree} />
+        <LeagueScopeChips myLeagues={myLeagues} activeLeagueId={data.scopeLeagueId} />
 
-        <TreeView data={data} initialShow={initialShowTree} showBetLink={showBetLink} />
+        <TreeView data={data} showBetLink={showBetLink} />
 
         {/* Avant la deadline (§13) : structure seule, compte à rebours, ni
             tendance ni nom. Les groupes sont déjà vides côté serveur : le tap

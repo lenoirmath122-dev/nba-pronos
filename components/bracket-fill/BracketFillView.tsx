@@ -1,8 +1,7 @@
 "use client";
 
-import { useImmersiveDefault } from "@/lib/hooks/useImmersiveDefault";
+import { usePosterToggle } from "@/lib/hooks/usePosterToggle";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
-import { RotateInvite } from "@/components/bracket/RotateInvite";
 import type { BracketFillData } from "@/lib/queries/bracket-fill";
 import { RoundTabs } from "./RoundTabs";
 import { BracketFillBoard } from "./BracketFillBoard";
@@ -14,19 +13,16 @@ type BracketFillViewProps = {
   activeRoundKey: string | undefined;
 };
 
-// Orchestrateur : bascule entre le flux normal (onglets par tour + un tour
-// à la fois, BracketFillBoard.tsx — seule vue sans scroll horizontal,
-// conservée pour mobile PORTRAIT) et le poster interactif
-// (FillPosterView.tsx, défaut sur desktop/paysage) — même rôle que
+// Orchestrateur : bascule entre le poster interactif (FillPosterView.tsx —
+// TOUJOURS l'écran d'arrivée depuis le 17/08/2026, demandé par
+// l'utilisateur : « peu importe le device, on arrive sur l'arbre ») et le
+// flux normal (onglets par tour + un tour à la fois, BracketFillBoard.tsx),
+// accessible via « Quitter »/« Voir en poster » — même rôle que
 // components/bracket/TreeView.tsx pour la consultation (16/08/2026,
-// chantier « remplissage en poster interactif »). Pas de contrat d'URL
-// `?arbre=` à préserver ici (contrairement à /bracket) : useImmersiveDefault
-// appelé sans `onEnter`/`onExit`, l'état reste local à ce composant.
+// chantier « remplissage en poster interactif », simplifié le 17/08/2026 :
+// plus de bascule par device, cf. usePosterToggle.ts).
 export function BracketFillView({ data, activeRoundKey }: BracketFillViewProps) {
-  const { visible, showInvite, handleTriggerClick, handleSeeAnyway, dismissInvite, exit } = useImmersiveDefault({
-    initialVisible: false,
-    seenInviteKey: "bracket-fill-poster-seen-anyway",
-  });
+  const { visible, enter, exit } = usePosterToggle();
 
   if (visible) {
     return <FillPosterView data={data} onExit={exit} />;
@@ -38,8 +34,8 @@ export function BracketFillView({ data, activeRoundKey }: BracketFillViewProps) 
     <div className={`${styles.page} photo-page`}>
       <div className={`${styles.header} glass-card`}>
         <h1 className={styles.title}>Mon bracket</h1>
-        <button type="button" className={styles.trigger} onClick={handleTriggerClick}>
-          Vue poster ↗
+        <button type="button" className={styles.trigger} onClick={enter}>
+          Voir en poster ↗
         </button>
       </div>
       <ProgressBar filledCount={data.filledCount} totalCount={data.totalCount} />
@@ -52,7 +48,6 @@ export function BracketFillView({ data, activeRoundKey }: BracketFillViewProps) 
           isAutoValidated={data.isAutoValidated}
         />
       )}
-      {showInvite && <RotateInvite onDismiss={dismissInvite} onSeeAnyway={handleSeeAnyway} />}
     </div>
   );
 }

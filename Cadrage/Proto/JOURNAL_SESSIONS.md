@@ -6495,4 +6495,73 @@ app), `vitest run` (37/37), `next build` (36 routes) propres après chaque
 manipulation temporaire de `bracket_deadline`/`bracket_picks`), supprimés
 et restaurés en fin de session, rien commité.
 ```
+
+## Arbre toujours par défaut + alignement des cartes fusionnées (17/08/2026)
+
+```text
+Nouvelle session, reprise directe (pas de rattrapage nécessaire — tout
+committé la veille). Demande de l'utilisateur en 3 parties sur le Bracket :
+(1) l'arbre complet doit être l'écran d'arrivée « peu importe le device »
+(plus de bascule desktop/paysage vs mobile portrait), avec « Quitter »
+toujours en haut à gauche ; (2) la carte demi-finale doit être pile entre
+les 2 cartes de 1er tour qui l'alimentent ; (3) confirmation que le
+remplissage via cette interface poster est déjà fait (oui, session du
+16/08 — `FillPosterView.tsx`). Clarifié par `AskUserQuestion` avant de
+coder : la règle "peu importe le device" doit-elle aussi s'appliquer au
+remplissage ? **Oui, même règle partout.**
+
+**Simplification radicale de la bascule** (point 1) : `useImmersiveDefault.ts`
+(16/08/2026 — media query desktop/paysage, invitation à tourner,
+sessionStorage) devient `usePosterToggle.ts`, un simple état visible/masqué
+sans AUCUNE détection de viewport — le poster est désormais TOUJOURS l'état
+initial, sur les 2 écrans (`TreeView.tsx` pour la consultation,
+`BracketFillView.tsx` pour le remplissage). `RotateInvite.tsx` (devenu
+inutilisé) supprimé, ainsi que tout le mécanisme `?arbre=` devenu mort
+(`app/bracket/page.tsx`, `BracketSummary.tsx`, `LeagueScopeChips.tsx` —
+plus de `showTree`/`initialShowTree`/`initialShow`). « Quitter » déplacé en
+1er élément du header (justify-content:space-between s'occupe du reste) sur
+les 2 écrans — `TreeView.tsx` et `FillPosterView.tsx`
+(`.headerTexts { text-align: right }` ajouté pour ce dernier, qui a 2
+lignes de texte à droite plutôt qu'un simple titre).
+
+**Alignement des cartes fusionnées sur le milieu de leurs 2 séries
+d'origine** (point 2, étendu par cohérence à TOUTE fusion 2→1, pas
+seulement les demi-finales — sinon la finale de conf./Finale NBA
+resteraient visuellement désalignées) — `TreeConnectors.tsx`, nouvelle
+fonction `alignMergedCards()` appelée en tête de `recompute()`, avant le
+calcul des traits : tri topologique par passes successives (un nœud SANS
+parent garde sa position naturelle du flex layout ; chaque nœud suivant
+s'aligne — `transform: translateY()`, pas de reflow — une fois ses 2
+parents eux-mêmes réglés), sans connaître l'ordre des tours à l'avance
+(fonctionne identiquement pour Playoffs miroité et NBA Cup linéaire).
+Fonction généraliste construite directement sur `getId`/`getNextId`
+(même extracteurs que le tracé des traits, déjà génériques depuis le
+16/08) — aucun changement de contrat, réutilisée automatiquement par les 2
+écrans (consultation ET remplissage) qui partagent `TreeConnectors.tsx`.
+
+**Vérifié en conditions réelles** (Playwright, visiteur + compte réel
+`Amine92`, compétition sandbox) :
+- Arbre affiché par défaut sur desktop (1440×900), mobile portrait
+  (375×667), mobile paysage (667×375) ET tablette portrait (768×1024) — les
+  4 contextes testés, un seul comportement partout.
+- Quitter puis « Voir l'arbre complet » : va-et-vient confirmé, aucune
+  régression sur le flux Vue A.
+- **Alignement confirmé par calcul manuel sur capture d'écran** : chaque
+  carte de tour 2+ (demi-finale, finale de conférence, Finale NBA) mesurée
+  à moins de 1px du milieu exact de ses 2 parents (ex. demi-finale à
+  y≈357, milieu de ses 2 parents 1er tour à (291+418)/2≈354.5).
+- Remplissage (poster) : même comportement confirmé sur mobile portrait ET
+  desktop — traits de connexion présents et correctement alignés (capture
+  rapprochée nécessaire pour les voir clairement à pleine page, faux
+  négatif corrigé en cours de vérification — les traits étaient bien là,
+  juste peu contrastés à cette résolution de capture).
+- Aucune erreur console sur l'ensemble des scénarios.
+
+`tsc --noEmit`, `eslint .` (0 erreur, mêmes 4 warnings pré-existants hors
+app), `vitest run` (37/37), `next build` (36 routes) propres. Scripts +
+captures Playwright jetables (dont la manipulation temporaire de
+`bracket_deadline`), supprimés en fin de session. Serveur de dev laissé
+ACTIF à la demande explicite de l'utilisateur (contrairement aux sessions
+précédentes où il était arrêté en fin de session).
+```
 ```

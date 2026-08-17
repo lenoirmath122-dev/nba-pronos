@@ -3,7 +3,7 @@ import styles from "./MarginStepper.module.css";
 
 // Stepper d'écart (§6, acté 23/07/2026 ; revu le 02/08/2026 à la demande de
 // l'utilisateur) — sans directive "use client" propre : rendu exclusivement
-// par PredictionForm, même mécanisme que NodeCard/RotateInvite.
+// par PredictionForm, même mécanisme que NodeCard.
 //
 // "−"/"+" positionnés sous l'équipe déjà choisie comme vainqueur par
 // TeamPicker (2 colonnes alignées sur celles de TeamPicker) — plus de

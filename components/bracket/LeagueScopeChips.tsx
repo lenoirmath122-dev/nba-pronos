@@ -5,23 +5,19 @@ import styles from "./LeagueScopeChips.module.css";
 // Sélecteur de portée par ligue (30/07/2026, demandé par l'utilisateur : le
 // Bracket montrait toujours TOUS les joueurs) — même patron que
 // components/leaderboard/LeagueScopeChips.tsx (Classement) : pas d'état
-// client, paramètre d'URL `?ligue=`, préserve `?arbre=` (état vue A/B) déjà
-// existant. N'apparaît que pour un joueur membre d'au moins une ligue.
+// client, paramètre d'URL `?ligue=`. N'apparaît que pour un joueur membre
+// d'au moins une ligue. Ne préserve plus `?arbre=` (17/08/2026, retiré : la
+// Vue B est désormais toujours l'écran d'arrivée, cf. TreeView.tsx).
 type LeagueScopeChipsProps = {
   myLeagues: MyLeague[];
   activeLeagueId: string | null;
-  showTree: boolean;
 };
 
-export function LeagueScopeChips({ myLeagues, activeLeagueId, showTree }: LeagueScopeChipsProps) {
+export function LeagueScopeChips({ myLeagues, activeLeagueId }: LeagueScopeChipsProps) {
   if (myLeagues.length === 0) return null;
 
   function href(leagueId: string | null): string {
-    const params = new URLSearchParams();
-    if (showTree) params.set("arbre", "1");
-    if (leagueId) params.set("ligue", leagueId);
-    const query = params.toString();
-    return query ? `/bracket?${query}` : "/bracket";
+    return leagueId ? `/bracket?ligue=${leagueId}` : "/bracket";
   }
 
   return (
