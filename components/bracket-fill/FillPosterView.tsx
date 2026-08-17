@@ -120,14 +120,14 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
                 {column.label}
               </p>
               {column.items.map((series) => (
-                <div key={series.seriesId} ref={(el) => registerCard(series.seriesId, el)}>
-                  <FillSeriesCard
-                    series={series}
-                    competitionType={data.competitionType}
-                    isTarget={series.seriesId === targetSeriesId}
-                    onError={setError}
-                  />
-                </div>
+                <FillSeriesCard
+                  key={series.seriesId}
+                  series={series}
+                  competitionType={data.competitionType}
+                  isTarget={series.seriesId === targetSeriesId}
+                  onError={setError}
+                  cardRef={(el) => registerCard(series.seriesId, el)}
+                />
               ))}
             </div>
           ))}

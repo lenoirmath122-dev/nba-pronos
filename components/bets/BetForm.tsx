@@ -121,11 +121,15 @@ export function BetForm(props: BetFormProps) {
     };
   }
 
+  // router.back() (17/08/2026, passage en pop-up) plutôt qu'une redirection
+  // fixe vers /play : referme le dialogue et ramène exactement à l'écran
+  // d'origine (Mes paris, Bracket, Matchs — tous les raccourcis vers ce
+  // formulaire restent de simples navigations, voir BetFormModal.tsx).
   function handleSaveDraft() {
     setError(null);
     startTransition(async () => {
       const result = await saveDraftBet(targetPayload());
-      if (result.success) router.push("/play");
+      if (result.success) router.back();
       else setError(result.error);
     });
   }
@@ -134,7 +138,7 @@ export function BetForm(props: BetFormProps) {
     setError(null);
     startTransition(async () => {
       const result = await submitBet(targetPayload());
-      if (result.success) router.push("/play");
+      if (result.success) router.back();
       else setError(result.error);
     });
   }
@@ -144,7 +148,7 @@ export function BetForm(props: BetFormProps) {
     setError(null);
     startTransition(async () => {
       const result = await withdrawBet(props.bet.betId);
-      if (result.success) router.push("/play");
+      if (result.success) router.back();
       else setError(result.error);
     });
   }
@@ -160,15 +164,7 @@ export function BetForm(props: BetFormProps) {
     : "";
 
   return (
-    <div
-      className={
-        showFullPanel
-          ? `${styles.form} ${styles.formReserveBottom}`
-          : hasTarget
-            ? `${styles.form} ${styles.formReserveBottomCompact}`
-            : styles.form
-      }
-    >
+    <div className={styles.form}>
       {props.mode === "CREATE" && props.shortcutClosed === "MATCH" && (
         <p className={styles.notice}>Ce match n&rsquo;est plus ouvert au pari.</p>
       )}

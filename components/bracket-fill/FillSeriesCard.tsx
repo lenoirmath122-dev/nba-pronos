@@ -38,9 +38,12 @@ type FillSeriesCardProps = {
   competitionType: "PLAYOFFS" | "NBA_CUP";
   isTarget: boolean;
   onError: (message: string | null) => void;
+  /** Ref de mesure pour TreeConnectors.tsx (traits de connexion) — posée
+   *  sur `.card`, la SEULE boîte bordée de ce composant. */
+  cardRef: (el: HTMLElement | null) => void;
 };
 
-export function FillSeriesCard({ series, competitionType, isTarget, onError }: FillSeriesCardProps) {
+export function FillSeriesCard({ series, competitionType, isTarget, onError, cardRef }: FillSeriesCardProps) {
   // Resynchronise l'état local sur la valeur serveur pendant le rendu, PAS
   // dans un effet (17/08/2026, bug réel corrigé : useState(initialValue) ne
   // se réinitialise qu'au 1er montage — sans ça, une remise à zéro du
@@ -69,7 +72,7 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError }: F
 
   if (!series.isSelectable) {
     return (
-      <div id={`series-${series.seriesId}`} className={`${styles.card} glass-card`}>
+      <div id={`series-${series.seriesId}`} ref={cardRef} className={`${styles.card} glass-card`}>
         <p className={styles.pending}>Équipe à définir — complète les séries précédentes.</p>
       </div>
     );
@@ -92,41 +95,47 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError }: F
   const cardClassName = [styles.card, "glass-card", isTarget && styles.cardTarget].filter(Boolean).join(" ");
 
   return (
-    <div id={`series-${series.seriesId}`} className={cardClassName}>
+    <div id={`series-${series.seriesId}`} ref={cardRef} className={cardClassName}>
       <div className={styles.teams}>
         {[series.teamA, series.teamB].map((team) => {
           if (!team) return null;
           const isSelected = winnerTeamId === team.teamId;
           return (
-            <button
-              key={team.teamId}
-              type="button"
-              className={isSelected ? `${styles.team} ${styles.teamSelected}` : styles.team}
-              onClick={() => pick(team.teamId, scoreFormat)}
-              aria-pressed={isSelected}
-            >
-              <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={28} />
-              <span className={styles.teamName}>{team.name}</span>
-            </button>
+            <div key={team.teamId} className={styles.teamRow}>
+              <button
+                type="button"
+                className={isSelected ? `${styles.team} ${styles.teamSelected}` : styles.team}
+                onClick={() => pick(team.teamId, scoreFormat)}
+                aria-pressed={isSelected}
+              >
+                <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={28} />
+                <span className={styles.teamName}>{team.name}</span>
+              </button>
+              {/* Menu déroulant du score (17/08/2026, demandé par
+                  l'utilisateur — avant : 4 boutons empilés à côté de toute
+                  la carte) : seulement en face de l'équipe désignée
+                  vainqueur, jamais l'autre. */}
+              {competitionType === "PLAYOFFS" && isSelected && (
+                <select
+                  className={styles.scoreSelect}
+                  value={scoreFormat ?? ""}
+                  onChange={(e) => pick(team.teamId, e.target.value as BetSeriesFormat)}
+                  aria-label={`Score de la série pour ${team.name}`}
+                >
+                  <option value="" disabled>
+                    Score
+                  </option>
+                  {SCORE_FORMATS.map((format) => (
+                    <option key={format} value={format}>
+                      {format}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
           );
         })}
       </div>
-
-      {competitionType === "PLAYOFFS" && winnerTeamId && (
-        <div className={styles.scores}>
-          {SCORE_FORMATS.map((format) => (
-            <button
-              key={format}
-              type="button"
-              className={scoreFormat === format ? `${styles.scoreButton} ${styles.scoreButtonSelected}` : styles.scoreButton}
-              onClick={() => pick(winnerTeamId, format)}
-              aria-pressed={scoreFormat === format}
-            >
-              {format}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Pari SÉRIE centralisé ici (demandé par l'utilisateur 28/07/2026 —
           « tout centraliser dans Matchs et Bracket »), même règle que
@@ -147,6 +156,7 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError }: F
               hasBet={series.hasBet}
               triggerLabel="Proposer un pari"
               myBet={series.myBet}
+              presentation="modal"
             />
           </div>
         ) : (

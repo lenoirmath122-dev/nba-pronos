@@ -39,6 +39,16 @@
   border: 1px solid var(--color-border-subtle);
 }
 
+/* Même champs que .form, sans fond/bordure propres (17/08/2026, mode
+   "modal") : la coquille ModalDialog fournit déjà le fond/bordure du
+   dialogue, un 2e cadre imbriqué serait redondant. */
+.formModal {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
 .field {
   display: flex;
   flex-direction: column;

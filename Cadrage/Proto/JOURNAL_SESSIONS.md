@@ -6803,3 +6803,202 @@ l'ordre d'écriture reste garanti sans bloquer l'UI. Même correctif dans
 `FillSeriesCard.tsx` et `BracketFillBoard.tsx::SeriesPickCard`. `tsc`,
 `eslint`, `vitest run` (37/37), `next build` (36 routes) propres. Serveur
 de dev laissé actif.
+
+## Nouveau/modifier un pari : fenêtre centrée au lieu d'une page (17/08/2026)
+
+Demandé par l'utilisateur (« Concernant les paris, peut-on faire en sorte
+que le formulaire apparaisse en pop-up ? »). Périmètre clarifié avec lui
+(AskUserQuestion) : concerne UNIQUEMENT `/play/bets/new` et
+`/play/bets/[id]/edit` (navigation pleine page jusqu'ici, atteints depuis
+« Mes paris → Modifier », l'arbre du Bracket en consultation, et la
+repropose après refus) — PAS `InlineBetForm.tsx` (Matchs, remplissage du
+Bracket), déjà inline. Style choisi : fenêtre centrée (même registre que
+les dialogues de confirmation Supprimer un match/Remettre à zéro), pas un
+plein écran façon poster du Bracket.
+
+**Implémentation** : nouveau `components/bets/BetFormModal.tsx` ("use
+client", portalé vers `document.body`) — backdrop assombri + boîte
+centrée (`max-width: 30rem`, `max-height: 90vh`, `overflow-y: auto`),
+en-tête sticky avec titre + « × Fermer » (`router.back()`). Les 2 routes
+restent de VRAIES pages Next.js (tous les raccourcis qui y mènent —
+`NodeCard.tsx`, `MyBetRow.tsx`, `reproposeHref`, hub Accueil — restent de
+simples `<Link>`, AUCUN changé) : seul leur RENDU devient ce dialogue au
+lieu d'un `.photo-page` pleine largeur. `BetForm.tsx` (le formulaire
+lui-même, inchangé sur le fond) : les 3 `router.push("/play")` après
+sauvegarde/retrait remplacés par `router.back()` — referme le pop-up et
+ramène exactement à l'écran d'origine plutôt qu'un hub fixe.
+
+**Adaptation CSS notable** : `.stickyContent`/`.selectionBar` (le bandeau
+« énoncé/catégorie/difficulté » qui reste visible pendant que le
+sélecteur série/match défile au-dessus, acquis les 27/07 et 04/08) étaient
+`position: fixed` calé au-dessus de la TabBar réelle du viewport — repris
+en `position: sticky; bottom: 0` relatif au scroll INTERNE du dialogue
+(`BetFormModal.module.css::.dialog`, seul conteneur défilant désormais,
+plus de TabBar visible sous le fond assombri à éviter). Les paddings de
+réserve `.formReserveBottom`/`.formReserveBottomCompact` (qui
+compensaient le retrait du flux par `fixed`) supprimés — `sticky` reste
+dans le flux, plus nécessaires.
+
+Routes `/play/bets/new/page.module.css` et `.../[id]/edit/page.module.css`
+supprimés (tout leur contenu vivait désormais dans BetFormModal, plus
+rien à styler côté page). `tsc`, `eslint`, `vitest run` (37/37),
+`next build` (36 routes) propres ; `/play/bets/new` et
+`/play/bets/{uuid}/edit` vérifiés sans erreur (redirection /login attendue,
+non authentifié) — pas de vérification Playwright authentifiée cette fois
+(les 10 comptes de simulation viennent d'être nettoyés à la demande de
+l'utilisateur, pas reconstruits pour ce seul test). Serveur de dev laissé
+actif.
+
+**Suite immédiate** : l'utilisateur a testé et signalé que la pop-up
+n'apparaissait pas « dans le bracket ». Diagnostic : (1) plusieurs
+`next build` lancés pendant que `next dev` tournait en parallèle risquaient
+d'avoir laissé son cache Turbopack incohérent — serveur redémarré
+proprement par précaution (`Stop-Process` + `npm run dev`, revérifié
+`curl` 307 sain) ; (2) le vrai motif — l'utilisateur était sur
+`/play/bracket` (remplissage), où `InlineBetForm` reste volontairement
+inline (exclu du périmètre initial, déjà discuté). Confirmé avec lui : il
+voulait EFFECTIVEMENT que ce cas devienne aussi une pop-up (« pour ne pas
+surcharger le bracket »).
+
+Extrait `components/ui/ModalDialog.tsx` (+ `.module.css`, déplacé depuis
+`BetFormModal.module.css`) : coquille backdrop+dialogue+en-tête générique,
+`onClose` fourni par l'appelant plutôt que câblé en dur — `BetFormModal.tsx`
+l'utilise avec `router.back()` (vraie page), le nouveau mode "modal"
+d'`InlineBetForm.tsx` avec `setIsOpen(false)` (pas de navigation, juste une
+pop-up sur la carte). `InlineBetForm.tsx` : nouvelle prop `presentation?:
+"inline" | "modal"` (défaut `"inline"`, Matchs inchangé) ; en mode modal, le
+formulaire ouvert se rend dans `ModalDialog` au lieu de se déplier dans la
+carte (nouvelle classe `.formModal`, sans fond/bordure propres — déjà
+fournis par le dialogue). Piège évité : `isOpen` s'initialisait à `myBet !==
+null` (auto-ouvert si un pari existe déjà, voulu en inline) — en modal ça
+aurait fait apparaître la pop-up TOUTE SEULE au chargement de la carte dès
+qu'un pari existait ; forcé à `false` en mode modal, bouton déclencheur
+affichant alors « Modifier le pari » plutôt que `triggerLabel` quand
+`myBet` existe. `FillSeriesCard.tsx` et `BracketFillBoard.tsx::SeriesPickCard`
+(les 2 rendus de `/play/bracket`) passent `presentation="modal"` ; Matchs
+(`PredictionForm.tsx`, 2 usages) inchangé.
+
+`tsc`, `eslint`, `vitest run` (37/37), `next build` (36 routes) propres.
+Serveur de dev redémarré une 2e fois après ce lot (même précaution
+`next build`/`next dev`). Rien commité — l'utilisateur n'a pas encore
+redemandé de push depuis ce lot.
+
+## Poster : scores à côté de la carte (vers le centre), plus en dessous (17/08/2026)
+
+Demandé par l'utilisateur (« On peut afficher les scores à gauche ou
+droite (vers le centre de la page), plutôt qu'en bas ? »). Périmètre
+confirmé par AskUserQuestion (preview ASCII à l'appui) : les boutons de
+format (4-0/4-1/4-2/4-3) de `FillSeriesCard.tsx` (poster uniquement, PAS
+`BracketFillBoard.tsx`/onglets mobile portrait — pas de notion
+gauche/droite là-bas), sortis de la carte, empilés verticalement à côté
+d'elle, du côté qui fait face au centre du poster (Ouest → à droite,
+Est → à gauche, via `PosterColumn.side` déjà existant dans
+`posterColumns.ts`).
+
+**Tentative de vérification Playwright avant d'implémenter** : création
+d'un compte de test jetable via `supabase.auth.admin.createUser` a échoué
+2 fois de suite (`AuthRetryableFetchError`, HTTP 500) — panne côté
+Supabase Auth apparemment transitoire, pas liée au code du projet.
+Implémentation faite SANS vérification visuelle en conditions réelles
+cette fois (annoncé explicitement à l'utilisateur) — à confirmer/ajuster
+avec lui.
+
+**Implémentation** : contrainte clé — `TreeConnectors.tsx` mesure le rect
+DOM de chaque carte (`cardRefs`) pour ancrer ses traits ; si les scores
+avaient été inclus dans le même élément mesuré, les traits se seraient
+ancrés au bord extérieur du bloc scores plutôt qu'au vrai bord de la
+carte. Restructuré pour que le `ref` de mesure porte SEULEMENT sur
+`.card` :
+- `FillPosterView.tsx` : passe désormais `cardRef` (callback) et `side`
+  (`column.side`) en props à `FillSeriesCard`, au lieu d'envelopper son
+  rendu dans un `<div ref=...>` externe (qui aurait englobé aussi les
+  scores).
+- `FillSeriesCard.tsx` : nouvelles props `side`/`cardRef` (`ref` posé
+  directement sur l'élément `.card`, y compris sur la branche "non
+  sélectionnable"). Quand un pari a un vainqueur (PLAYOFFS uniquement),
+  rendu dans un `.cardRow` flex (carte + scores côte à côte, ordre inversé
+  selon `side`) plutôt qu'à l'intérieur de la carte.
+- CSS : largeur de colonne du poster INCHANGÉE (14rem, pas touché au
+  couloir de traits de connexion entre colonnes, trop étroit — `--space-5`
+  = 1.5rem — pour y loger aussi les scores). `.card` devient `flex: 1;
+  min-width: 0` dans `.cardRow` (cède de la place aux scores plutôt que
+  d'élargir la colonne) ; `.scores` passe d'une grille 2x2 sous les
+  équipes à une pile verticale de largeur fixe (`2.75rem`, juste assez
+  pour "4-0" etc.).
+
+`tsc`, `eslint`, `vitest run` (37/37), `next build` (36 routes) propres.
+Serveur de dev redémarré une 3e fois après ce lot. Rien commité.
+
+**Correctif same session** : l'utilisateur a testé (capture d'écran à
+l'appui) et signalé 2 problèmes : (1) « il faut que les scores restent
+dans la carte sinon ça fait bizarre » — voulait le côté gauche/droite,
+mais SANS sortir les scores de la boîte bordée de la carte ; (2) « ça a
+augmenté la taille des cartes pour les demi-finales de conf et les
+finales de conf et finale NBA ».
+
+L'utilisateur a fourni ses identifiants réels (compte personnel, PAS un
+compte de test) pour vérifier en conditions réelles — utilisés
+UNIQUEMENT via variables d'environnement shell dans des scripts
+Playwright jetables, jamais écrits en clair dans un fichier (ni les
+scripts, ni ce journal), scripts et captures d'écran supprimés en fin de
+vérification.
+
+Diagnostic confirmé en conditions réelles : le point (2) était causé par
+le `.card { flex: 1; min-width: 0; }` ajouté au tour précédent — pensé
+pour l'usage dans `.cardRow` (une rangée), mais `.card` est AUSSI rendu
+directement comme enfant de `.treeColumn` (une COLONNE flex) pour toute
+série sans vainqueur choisi (dont TOUTES les demies/finales de conférence
+tant qu'aucun pick n'y est fait) — dans ce contexte, `flex: 1` le faisait
+grandir pour remplir toute la hauteur disponible de sa colonne, d'autant
+plus visible que la colonne est courte (1-2 cartes) → mesuré en
+conditions réelles à 393px (demies) et 797px (finales) contre ~190px
+attendu. Le point (1) et (2) se corrigent par le même changement : retour
+arrière sur `.cardRow` (élément frère de `.card`) au profit de
+`.cardInner`, un flex row INTERNE à `.card` (donc DANS la même boîte
+bordée) contenant `.content` (équipes + pari) et `.scores` (inchangés,
+pile verticale 2.75rem) — `.card` redevient un simple conteneur à 1
+enfant, plus de `flex: 1` parasite. `FillSeriesCard.tsx`/`.module.css`
+seuls fichiers touchés (`FillPosterView.tsx` inchangé depuis le lot
+précédent, la ref/le côté étaient déjà passés en props).
+
+Revérifié en conditions réelles (mêmes identifiants) : hauteurs des
+cartes redevenues cohérentes (44 à 214px selon le contenu, plus de
+393/797px), DOM confirmé — une seule boîte bordée par carte (`el.id`
+inspecté directement, pas de doute sur une éventuelle illusion visuelle
+d'un screenshot).
+
+`tsc`, `eslint`, `vitest run` (37/37), `next build` (36 routes) propres.
+Serveur de dev redémarré une 4e fois après ce lot. Rien commité.
+
+## Poster : score en menu déroulant, en face de l'équipe vainqueure (17/08/2026)
+
+Dernière itération du même chantier, demandée par l'utilisateur : « le
+score sélectionné (4-0 etc.) peut apparaître seulement en face de
+l'équipe vainqueure sélectionnée et s'afficher en menu déroulant ? » — au
+lieu des 4 boutons empilés à côté de toute la carte (lot précédent).
+Simplifie beaucoup : plus de notion gauche/droite/côté de poster pour les
+scores (le menu suit simplement la ligne de l'équipe cliquée, quel que
+soit le côté Ouest/Est) — `side` retiré de `FillSeriesCardProps`
+(`FillPosterView.tsx` ne le passe plus, resté inutile sinon).
+
+**Implémentation** : `.teams` reste une colonne, mais chaque équipe est
+maintenant une `.teamRow` (bouton équipe + `<select>` natif conditionnel,
+affiché SEULEMENT quand `winnerTeamId === team.teamId`). Le `<select>`
+porte les 4 formats + une option placeholder disabled ("Score") tant
+qu'aucun score n'est choisi, `onChange` appelle `pick()` exactement comme
+avant (même file d'attente de sauvegarde sérialisée, même resynchro
+d'état). `.cardInner`/`.content`/`.scores`/`.scoreButton*` (lot
+précédent) supprimés — `.card` redevient un simple conteneur à 2 enfants
+(`.teams`, `.seriesBet`/pending), plus simple qu'avant ce chantier entier.
+
+Vérifié en conditions réelles (mêmes identifiants réels de l'utilisateur,
+mêmes précautions — jamais écrits sur disque) : DOM confirmé (`<select>`
+présent uniquement sur la ligne Mavericks, absente sur Nuggets) +
+capture d'écran (menu "4-0"/"4-1" déjà renseigné pour 2 séries, "Score ▾"
+placeholder pour 2 autres où le vainqueur est choisi mais pas le score).
+Scripts et capture supprimés après vérification.
+
+`tsc`, `eslint`, `vitest run` (37/37), `next build` (36 routes) propres.
+Serveur de dev redémarré une 5e fois après ce lot. Rien commité —
+plusieurs lots de la session restent à pousser sur demande de
+l'utilisateur.

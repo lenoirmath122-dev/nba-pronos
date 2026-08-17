@@ -1,11 +1,15 @@
 import { getNewBetFormData } from "@/lib/queries/bets";
 import { EmptyState } from "@/components/home/EmptyState";
 import { BetForm } from "@/components/bets/BetForm";
-import styles from "./page.module.css";
+import { BetFormModal } from "@/components/bets/BetFormModal";
 
 // Écran Nouveau pari — création (SPEC_ECRAN_NOUVEAU_PARI_V0_1 §1/§2). Composant
 // SERVEUR : le cadrage (séries/matchs ouverts, quotas) est lu par
 // lib/queries/bets.ts et passé en props à la SEULE feuille cliente (BetForm).
+// Rendu en fenêtre centrée (BetFormModal, 17/08/2026) — cette route reste
+// une VRAIE navigation (tous les raccourcis qui y mènent restent de simples
+// <Link>, inchangés), seul le RENDU devient un pop-up plutôt qu'une page
+// pleine largeur.
 //
 // searchParams est une Promise en Next.js 16 (AGENTS.md) — attendue avant
 // lecture. `matchId` = raccourci depuis Matchs (§2, contexte A) ; `seriesId`
@@ -20,21 +24,15 @@ export default async function NewBetPage({ searchParams }: { searchParams: Promi
 
   if (data.competitionId === null || data.bootstrap === null) {
     return (
-      <div className={`${styles.page} photo-page`}>
-        <div className={`${styles.header} glass-card`}>
-          <h1 className={styles.title}>Nouveau pari</h1>
-        </div>
+      <BetFormModal title="Nouveau pari">
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
-      </div>
+      </BetFormModal>
     );
   }
 
   return (
-    <div className={`${styles.page} photo-page`}>
-      <div className={`${styles.header} glass-card`}>
-        <h1 className={styles.title}>Nouveau pari</h1>
-      </div>
+    <BetFormModal title="Nouveau pari">
       <BetForm mode="CREATE" bootstrap={data.bootstrap} context={data.context} shortcutClosed={data.shortcutClosed} />
-    </div>
+    </BetFormModal>
   );
 }

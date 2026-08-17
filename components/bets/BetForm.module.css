@@ -5,62 +5,39 @@
   padding: var(--space-4);
 }
 
-/* Réservée UNIQUEMENT quand le bandeau fixe (.stickyContent) est affiché
-   (une cible est choisie) : marge généreuse garantissant que le sélecteur
-   série/match reste défilable jusqu'au bout, sans jamais rester coincé
-   dessous. */
-.formReserveBottom {
-  padding-bottom: 45vh;
-}
-
-/* Panneau replié (barre compacte .selectionBar) : marge bien plus fine, juste
-   la hauteur de la barre elle-même. */
-.formReserveBottomCompact {
-  padding-bottom: calc(var(--tap-target-min) + var(--space-6) + env(safe-area-inset-bottom, 0px) + var(--space-4));
-}
-
-/* Contenu du pari (énoncé/catégorie/difficulté/actions) — FIXE en bas du
-   viewport, toujours visible pendant que le sélecteur défile au-dessus
-   (demandé 27/07/2026). Décalage vérifié contre la hauteur RÉELLE rendue de
-   TabBar (~67px avec son padding + bordure, mesuré en Chromium) — le calc de
-   StickyMeBar (44+12=56px) ne suffit pas et chevauche légèrement ; marge ici
-   volontairement plus large (44+32=76px) pour rester au-dessus dans tous les
-   cas, y compris avec env(safe-area-inset-bottom) sur mobile. */
+/* Contenu du pari (énoncé/catégorie/difficulté/actions) — collé en bas du
+   dialogue (BetFormModal) pendant que le sélecteur défile au-dessus
+   (demandé 27/07/2026, adapté 17/08/2026 au passage en fenêtre centrée :
+   `position: sticky` relatif au scroll du dialogue, plus `fixed` au
+   viewport — BetFormModal.module.css::.dialog est le conteneur défilant,
+   plus besoin d'éviter la TabBar puisqu'elle est sous le fond assombri). */
 .stickyContent {
-  position: fixed;
-  inset-inline: 0;
-  bottom: calc(var(--tap-target-min) + var(--space-6) + env(safe-area-inset-bottom, 0px));
-  z-index: 5;
-  /* Alignée sur la colonne centrée du body (28/07/2026), même traitement
-     que TabBar/StickyMeBar. */
-  max-width: var(--layout-max-width);
-  margin-inline: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
+  margin-inline: calc(-1 * var(--space-4));
   padding: var(--space-4);
   background: var(--color-surface-raised);
   border-top: 1px solid var(--color-border-subtle);
   box-shadow: var(--elevation-raised);
-  max-height: 60vh;
-  overflow-y: auto;
 }
 
-/* Barre compacte (panneau replié) — même positionnement fixe que
-   .stickyContent, mais une seule ligne : garde le sélecteur série/match
-   dégagé tant que l'utilisateur n'a pas explicitement demandé à rédiger. */
+/* Barre compacte (panneau replié) — même positionnement que .stickyContent,
+   mais une seule ligne : garde le sélecteur série/match dégagé tant que
+   l'utilisateur n'a pas explicitement demandé à rédiger. */
 .selectionBar {
-  position: fixed;
-  inset-inline: 0;
-  bottom: calc(var(--tap-target-min) + var(--space-6) + env(safe-area-inset-bottom, 0px));
-  z-index: 5;
-  max-width: var(--layout-max-width);
-  margin-inline: auto;
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   min-height: var(--tap-target-min);
+  margin-inline: calc(-1 * var(--space-4));
   padding: var(--space-3) var(--space-4);
   background: var(--color-surface-raised);
   border: none;

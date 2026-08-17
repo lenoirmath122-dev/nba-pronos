@@ -226,6 +226,7 @@ function SeriesPickCard({ series, competitionType, onError }: SeriesPickCardProp
               hasBet={series.hasBet}
               triggerLabel="Proposer un pari"
               myBet={series.myBet}
+              presentation="modal"
             />
           </div>
         ) : (

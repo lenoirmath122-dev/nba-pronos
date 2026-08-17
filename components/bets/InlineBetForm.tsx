@@ -9,6 +9,7 @@ import {
   DEFAULT_BET_DIFFICULTY,
 } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import { ModalDialog } from "@/components/ui/ModalDialog";
 import styles from "./InlineBetForm.module.css";
 
 // Saisie de pari partagée, générique sur le scope (MATCH ou SERIES) —
@@ -41,6 +42,13 @@ type InlineBetFormProps = {
   hideSubmit?: boolean;
   /** Miroir live des champs, NULL tant que rien n'est prêt à soumettre. */
   onFieldsChange?: (fields: InlineBetFields | null) => void;
+  /** "modal" (17/08/2026, demandé par l'utilisateur — « ne pas surcharger le
+   *  bracket ») : le formulaire ouvert s'affiche en fenêtre centrée
+   *  (ModalDialog, même coquille que BetFormModal.tsx) au lieu de se déplier
+   *  dans la carte. Défaut "inline" : comportement historique (Matchs),
+   *  inchangé. Le bouton déclencheur reste identique dans les 2 cas — seul
+   *  le rendu une fois ouvert diffère. */
+  presentation?: "inline" | "modal";
 };
 
 export function InlineBetForm({
@@ -52,8 +60,14 @@ export function InlineBetForm({
   myBet,
   hideSubmit,
   onFieldsChange,
+  presentation = "inline",
 }: InlineBetFormProps) {
-  const [isOpen, setIsOpen] = useState(myBet !== null);
+  // En mode "modal" (17/08/2026), jamais ouvert par défaut même s'il existe
+  // déjà un pari : contrairement à l'inline (où afficher direct le
+  // formulaire pré-rempli est voulu), une pop-up ne doit s'ouvrir que sur
+  // action explicite — sinon elle apparaîtrait toute seule au chargement de
+  // la carte dès qu'un pari existe déjà.
+  const [isOpen, setIsOpen] = useState(presentation === "modal" ? false : myBet !== null);
   const [description, setDescription] = useState(myBet?.description ?? "");
   const [category, setCategory] = useState<BetCategory>(myBet?.category ?? DEFAULT_BET_CATEGORY);
   const [difficulty, setDifficulty] = useState<BetDifficulty>(myBet?.difficulty ?? DEFAULT_BET_DIFFICULTY);
@@ -79,7 +93,7 @@ export function InlineBetForm({
   if (!isOpen) {
     return (
       <button type="button" className={styles.trigger} onClick={() => setIsOpen(true)}>
-        {triggerLabel}
+        {myBet ? "Modifier le pari" : triggerLabel}
       </button>
     );
   }
@@ -124,8 +138,8 @@ export function InlineBetForm({
     });
   }
 
-  return (
-    <div className={styles.form}>
+  const fields = (
+    <>
       <label className={styles.field}>
         <span className={styles.fieldLabel}>Énoncé</span>
         <textarea
@@ -190,6 +204,16 @@ export function InlineBetForm({
           </button>
         )}
       </div>
-    </div>
+    </>
   );
+
+  if (presentation === "modal") {
+    return (
+      <ModalDialog title={myBet ? "Modifier le pari" : "Proposer un pari"} onClose={() => setIsOpen(false)}>
+        <div className={styles.formModal}>{fields}</div>
+      </ModalDialog>
+    );
+  }
+
+  return <div className={styles.form}>{fields}</div>;
 }
