@@ -131,6 +131,37 @@ export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, car
             progressed = true;
           }
         }
+
+        // Le nœud FINAL (sans suivant — Finale NBA/finale de Cup) et ses 2
+        // parents directs (les 2 finales de conférence, ou les 2 demies de
+        // Cup) restent TOUJOURS sur la MÊME ligne horizontale (17/08/2026,
+        // demandé par l'utilisateur) — contrairement aux fusions
+        // précédentes (demi-finales), qui s'alignent chacune indépendamment
+        // sur SES propres parents et peuvent donc diverger d'un côté à
+        // l'autre. Calculé en dernier, sur les positions déjà réglées par
+        // la passe ci-dessus : la ligne partagée est la MOYENNE des 3
+        // positions déjà indépendamment calculées, pas la position d'un
+        // des 3 imposée aux 2 autres.
+        const finalNode = allNodes.find((node) => getNextId(node) === null);
+        if (finalNode) {
+          const finalId = getId(finalNode);
+          const feederIds = feedersOf.get(finalId) ?? [];
+          if (feederIds.length === 2) {
+            const rowIds = [finalId, ...feederIds];
+            const rowEls = rowIds.map((id) => cardsById.get(id)).filter((el): el is HTMLElement => el !== undefined);
+            if (rowEls.length === rowIds.length) {
+              const centers = rowEls.map((el) => {
+                const rect = el.getBoundingClientRect();
+                return rect.top + rect.height / 2;
+              });
+              const sharedCenter = centers.reduce((sum, c) => sum + c, 0) / centers.length;
+              rowEls.forEach((el, index) => {
+                const existingOffset = parseFloat(/translateY\(([-\d.]+)px\)/.exec(el.style.transform)?.[1] ?? "0");
+                el.style.transform = `translateY(${existingOffset + (sharedCenter - centers[index])}px)`;
+              });
+            }
+          }
+        }
       }
 
       // Repositionne chaque libellé de tour juste au-dessus de la carte la

@@ -6610,4 +6610,40 @@ app), `vitest run` (37/37), `next build` (36 routes) propres. Script de
 mesure + capture jetables, supprimés en fin de session. Serveur de dev
 laissé actif.
 ```
+
+## Finales de conférence + Finale NBA toujours sur la même ligne (17/08/2026)
+
+```text
+Suite immédiate : l'utilisateur demande que les 2 finales de conférence et
+la Finale NBA restent TOUJOURS alignées sur la même ligne horizontale —
+contrairement aux demi-finales (chacune alignée indépendamment sur SES
+propres parents, cf. l'entrée précédente), qui peuvent légitimement
+diverger d'un côté à l'autre du poster.
+
+**Implémentation** (`TreeConnectors.tsx::alignMergedCards()`, nouveau bloc
+en fin de fonction, après la passe topologique existante) : trouve le nœud
+FINAL (`getNextId(node) === null` — Finale NBA en Playoffs, finale de Cup
+en NBA Cup) et ses 2 parents directs. Si exactement 2 parents, calcule la
+MOYENNE des 3 positions déjà indépendamment réglées par la passe
+précédente (pas la position d'un des 3 imposée aux 2 autres) et déplace
+les 3 vers cette ligne partagée, en composant avec le `transform` déjà
+appliqué (parsing de la valeur `translateY` existante plutôt qu'un
+écrasement, pour ne pas perdre l'alignement individuel déjà calculé comme
+point de départ). Générique (pas de nom de tour en dur) : s'applique aussi
+bien à Playoffs (miroité, 2 finales de conférence) qu'à NBA Cup (linéaire,
+2 demies) si la structure s'y prête.
+
+**Vérifié en conditions réelles** : les 3 cartes ("Finales de conférence —
+Ouest", "Finale NBA", "Finales de conférence — Est") mesurées avec un
+centre vertical EXACTEMENT identique (513.5px sur la consultation, 596px
+sur le remplissage — même composant partagé, correctif automatiquement
+présent sur les 2 écrans). Capture d'écran confirmant visuellement
+l'alignement et les traits de connexion parfaitement horizontaux entre les
+3 cartes.
+
+`tsc --noEmit`, `eslint .` (0 erreur, mêmes 4 warnings pré-existants hors
+app), `vitest run` (37/37), `next build` (36 routes) propres. Scripts de
+mesure + captures jetables, supprimés en fin de session. Serveur de dev
+laissé actif.
+```
 ```
