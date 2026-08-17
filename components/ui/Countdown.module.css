@@ -25,6 +25,16 @@
   cursor: default;
 }
 
+/* Liseré d'urgence (Accueil uniquement, prop urgencyBorder) : deadline
+   proche = liseré plein, le reste = liseré neutre discret. */
+.rowUrgent {
+  border-left: 3px solid var(--color-accent);
+}
+
+.rowLater {
+  border-left: 3px solid var(--color-border-strong);
+}
+
 .badge {
   flex-shrink: 0;
   font-variant-numeric: tabular-nums;

@@ -13,6 +13,32 @@
   text-decoration: line-through;
 }
 
+/* Icône de résultat (§6, polish visuel) — mêmes teintes que .win/.loss/.neutral
+   ci-dessous, juste en pastille pour un repérage plus rapide que le texte seul. */
+.icon {
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-full);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+
+.iconWin {
+  background: color-mix(in srgb, var(--color-win) 16%, transparent);
+  color: var(--color-win);
+}
+
+.iconLoss {
+  background: color-mix(in srgb, var(--color-loss) 16%, transparent);
+  color: var(--color-loss);
+}
+
+.iconNeutral {
+  background: var(--color-surface-inset);
+  color: var(--color-text-muted);
+}
+
 .text {
   flex: 1;
   min-width: 0;

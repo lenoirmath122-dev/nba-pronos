@@ -26,6 +26,26 @@
   border-left: 2px solid var(--color-trend);
 }
 
+/* Icône par nature d'action (§4, polish visuel) — même teinte accent que le
+   reste des affordances joueur ; variante admin en --color-trend, jamais
+   confondue avec un résultat (win/loss réservés au vert/rouge). */
+.icon {
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.iconAdmin {
+  composes: icon;
+  background: color-mix(in srgb, var(--color-trend) 16%, transparent);
+  color: var(--color-trend);
+}
+
 .text {
   flex: 1;
   min-width: 0;
@@ -46,6 +66,16 @@
 .subtitle {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+}
+
+/* Prochain match (kind "matches") : pastilles d'équipe plutôt que du texte
+   brut — cohérent avec Bracket/Matchs, qui les affichent déjà (GAPS_OUVERTS). */
+.matchup {
+  composes: subtitle;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
 }
 
 .adminTag {

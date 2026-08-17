@@ -55,9 +55,14 @@ type CountdownProps = {
   /** Cible de l'action de l'item ; désactivée sur place à expiration. */
   href: string;
   children: React.ReactNode;
+  /** Liseré coloré selon l'urgence (accent si ≤1h, neutre sinon) — optionnel,
+   *  n'affecte que les appelants qui le demandent (Accueil). Par défaut off :
+   *  components/bracket/BracketSummary.tsx, seul autre appelant, ne le passe
+   *  pas et garde son rendu inchangé. */
+  urgencyBorder?: boolean;
 };
 
-export function Countdown({ deadline, href, children }: CountdownProps) {
+export function Countdown({ deadline, href, children, urgencyBorder = false }: CountdownProps) {
   // null = pas encore monté. Le tout premier rendu (SSR puis pré-hydratation
   // côté client) ne lit JAMAIS l'horloge : les deux sont donc strictement
   // identiques, aucun décalage d'hydratation possible. L'état réel n'arrive
@@ -95,8 +100,17 @@ export function Countdown({ deadline, href, children }: CountdownProps) {
     );
   }
 
+  // state null (pré-montage) : traité comme "later", même repli neutre que le
+  // libellé vide déjà en place — pas de flash, cohérent avec la garantie
+  // "aucun décalage d'hydratation" du composant.
+  const urgencyClass = urgencyBorder
+    ? state?.kind === "live"
+      ? styles.rowUrgent
+      : styles.rowLater
+    : "";
+
   return (
-    <Link href={href} className={styles.row}>
+    <Link href={href} className={`${styles.row} ${urgencyClass}`.trim()}>
       {children}
       <span className={styles.badge}>{state?.label ?? ""}</span>
     </Link>

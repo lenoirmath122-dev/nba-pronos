@@ -8,6 +8,12 @@ type HomeHeaderProps = {
   header: HomeHeaderData;
 };
 
+// Suffixe ordinal FR : 1er, sinon 2e/3e/... (pas de "ème", même registre
+// court que le reste de l'écran).
+function rankSuffix(rank: number): string {
+  return rank === 1 ? "er" : "e";
+}
+
 export function HomeHeader({ header }: HomeHeaderProps) {
   const { pseudo, competitionName, rank, totalPoints, pointsBehindLeader, recentFormPoints } =
     header;
@@ -21,20 +27,26 @@ export function HomeHeader({ header }: HomeHeaderProps) {
         <p className={styles.competition}>{competitionName}</p>
       </div>
 
-      <div className={styles.stats}>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Rang</span>
-          <span className={styles.statValue}>{rank === null ? "-" : `#${rank}`}</span>
-        </div>
-        <div className={styles.stat}>
-          <span className={styles.statLabel}>Points</span>
-          <span className={styles.statValue}>{totalPoints}</span>
-        </div>
+      {/* Le rang devient le chiffre hero (points/écart en secondaire) : les 3
+          valeurs avaient jusqu'ici le même poids visuel malgré une hiérarchie
+          d'usage réelle (le rang est ce qu'on vient vérifier en premier). */}
+      <div className={styles.statsHero}>
+        <span className={styles.rankHero}>
+          {rank === null ? "-" : (
+            <>
+              {rank}
+              <sup>{rankSuffix(rank)}</sup>
+            </>
+          )}
+        </span>
+        <span className={styles.ptsSecondary}>
+          {totalPoints}
+          <span>pts</span>
+        </span>
         {pointsBehindLeader !== null && (
-          <div className={styles.stat}>
-            <span className={styles.statLabel}>Derrière le leader</span>
-            <span className={styles.statValue}>-{pointsBehindLeader}</span>
-          </div>
+          <span className={styles.leaderChip}>
+            -<b>{pointsBehindLeader}</b> vs 1er
+          </span>
         )}
       </div>
 

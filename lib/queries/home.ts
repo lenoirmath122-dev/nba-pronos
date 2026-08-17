@@ -24,10 +24,18 @@ export type HomeHeader = {
   rankMovement: RankMovement | null; // TOUJOURS null en V1
 };
 
+/** Une équipe du prochain match à pronostiquer — pastille (§16.1), pas du texte. */
+export type TodoMatchupTeam = { abbreviation: string; name: string };
+
 export type TodoItem = {
   kind: "bracket" | "matches" | "bets" | "admin_bet_review";
   title: string;
   subtitle: string | null;
+  /** Prochain match (kind "matches" uniquement) : pastilles d'équipe plutôt
+   *  que le texte "Prochain : BOS - ATL" — null pour les autres kinds, ou si
+   *  les 2 équipes ne sont pas encore connues (mêmes conditions que l'ancien
+   *  subtitle textuel qu'il remplace). */
+  matchup: { home: TodoMatchupTeam; away: TodoMatchupTeam } | null;
   deadline: string | null;
   count: number;
   href: string;
@@ -285,6 +293,7 @@ async function getBracketTodo(
     kind: "bracket",
     title,
     subtitle: null,
+    matchup: null,
     deadline: competition.bracket_deadline,
     count: totalSlots - completed,
     href: "/play/bracket",
@@ -326,12 +335,13 @@ async function getMatchesTodo(
   if (pending.length === 0) return null;
 
   const nextMatch = pending[0]; // déjà trié par scheduled_at croissant
-  const subtitle = await describeUpcomingMatch(supabase, nextMatch);
+  const matchup = await describeUpcomingMatch(supabase, nextMatch);
 
   return {
     kind: "matches",
     title: `${pending.length} match${pending.length > 1 ? "s" : ""} à pronostiquer`,
-    subtitle,
+    subtitle: null,
+    matchup,
     deadline: nextMatch.scheduled_at as string,
     count: pending.length,
     href: "/play/matches",
@@ -341,7 +351,7 @@ async function getMatchesTodo(
 async function describeUpcomingMatch(
   supabase: SupabaseServerClient,
   match: { home_team_id: string | null; away_team_id: string | null }
-): Promise<string | null> {
+): Promise<TodoItem["matchup"]> {
   const teamIds = [match.home_team_id, match.away_team_id].filter(
     (id): id is string => id !== null
   );
@@ -349,13 +359,18 @@ async function describeUpcomingMatch(
 
   const { data: teams } = await supabase
     .from("teams")
-    .select("id, abbreviation")
+    .select("id, abbreviation, name")
     .in("id", teamIds);
 
-  const abbrevOf = (id: string) =>
-    (teams ?? []).find((team) => team.id === id)?.abbreviation ?? "?";
+  const teamOf = (id: string): TodoMatchupTeam => {
+    const team = (teams ?? []).find((row) => row.id === id);
+    return { abbreviation: team?.abbreviation ?? "?", name: team?.name ?? "?" };
+  };
 
-  return `Prochain : ${abbrevOf(match.home_team_id as string)} - ${abbrevOf(match.away_team_id as string)}`;
+  return {
+    home: teamOf(match.home_team_id as string),
+    away: teamOf(match.away_team_id as string),
+  };
 }
 
 async function getBetsTodo(
@@ -435,6 +450,7 @@ async function getBetsTodo(
   return {
     kind: "bets",
     title: `${openBets.length} pari${openBets.length > 1 ? "s" : ""} à finaliser`,
+    matchup: null,
     subtitle: hasDraft
       ? "Brouillons ou paris à reproposer avant leur deadline."
       : `Pari${openBets.length > 1 ? "s" : ""} refusé${openBets.length > 1 ? "s" : ""}, encore reproposable${openBets.length > 1 ? "s" : ""} avant leur deadline.`,
@@ -469,6 +485,7 @@ async function getAdminTodo(
       kind: "admin_bet_review",
       title: `${count} pari${count > 1 ? "s" : ""} à valider`,
       subtitle: null,
+      matchup: null,
       deadline: null,
       count,
       href: "/admin/validation",
