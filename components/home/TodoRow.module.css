@@ -78,6 +78,11 @@
   flex-wrap: wrap;
 }
 
+.gameNumber {
+  margin-left: var(--space-1);
+  color: var(--color-text-muted);
+}
+
 .adminTag {
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);

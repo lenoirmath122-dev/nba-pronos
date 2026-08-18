@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { getRemainingMatchBets } from "@/lib/queries/match-bets";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
+import { parisDateKey } from "@/lib/dates/paris";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
 // §7. Un seul module, appelé avec getServerClient() : les requêtes passent par
@@ -34,8 +35,9 @@ export type TodoItem = {
   /** Prochain match (kind "matches" uniquement) : pastilles d'équipe plutôt
    *  que le texte "Prochain : BOS - ATL" — null pour les autres kinds, ou si
    *  les 2 équipes ne sont pas encore connues (mêmes conditions que l'ancien
-   *  subtitle textuel qu'il remplace). */
-  matchup: { home: TodoMatchupTeam; away: TodoMatchupTeam } | null;
+   *  subtitle textuel qu'il remplace). `gameNumber` = numéro du match dans
+   *  SA série (18/08/2026, demandé par l'utilisateur — "Game 3"). */
+  matchup: { home: TodoMatchupTeam; away: TodoMatchupTeam; gameNumber: number } | null;
   deadline: string | null;
   count: number;
   href: string;
@@ -48,6 +50,13 @@ export type FeedItem = {
   points: number | null;
   outcome: "win" | "loss" | "neutral";
   occurredAt: string;
+  /** Lien vers l'item d'origine (18/08/2026, demandé par l'utilisateur) —
+   *  match_scored/bet MATCH -> /play/results#match-{id} (la cible est
+   *  toujours FINISHED ici, donc toujours côté Résultats, §14 SPEC_REFONTE_
+   *  ONGLET_JOUER) ; bet SERIES -> /bracket#series-{id}. null seulement si
+   *  la cible n'a pas pu être retrouvée (garde défensive, ne devrait pas
+   *  arriver en pratique). */
+  href: string | null;
 };
 
 /** Un item de la section « Paris » (demandée par l'utilisateur 28/07/2026
@@ -309,7 +318,7 @@ async function getMatchesTodo(
 
   const { data: matches } = await supabase
     .from("matches")
-    .select("id, scheduled_at, home_team_id, away_team_id")
+    .select("id, scheduled_at, game_number, home_team_id, away_team_id")
     .eq("competition_id", competitionId)
     .eq("status", "SCHEDULED")
     .not("scheduled_at", "is", null)
@@ -350,7 +359,7 @@ async function getMatchesTodo(
 
 async function describeUpcomingMatch(
   supabase: SupabaseServerClient,
-  match: { home_team_id: string | null; away_team_id: string | null }
+  match: { home_team_id: string | null; away_team_id: string | null; game_number: number }
 ): Promise<TodoItem["matchup"]> {
   const teamIds = [match.home_team_id, match.away_team_id].filter(
     (id): id is string => id !== null
@@ -370,6 +379,7 @@ async function describeUpcomingMatch(
   return {
     home: teamOf(match.home_team_id as string),
     away: teamOf(match.away_team_id as string),
+    gameNumber: match.game_number,
   };
 }
 
@@ -501,6 +511,7 @@ async function getAdminTodo(
 
 type MatchScoreRow = {
   id: string;
+  scheduled_at: string | null;
   home_team_id: string | null;
   away_team_id: string | null;
   home_score: number | null;
@@ -525,7 +536,7 @@ async function getFeed(
         .gte("scored_at", since),
       supabase
         .from("bets")
-        .select("id, description, points_awarded, status, scored_at")
+        .select("id, description, points_awarded, status, scored_at, scope, match_id, series_id")
         .eq("competition_id", competitionId)
         .eq("user_id", userId)
         .in("status", ["WON", "LOST"])
@@ -537,7 +548,7 @@ async function getFeed(
       // avec la règle « neutralisé, jamais rouge » de 0.2.4/0.2.9/T6c).
       supabase
         .from("bets")
-        .select("id, description, points_awarded, resolution_reason, resolved_at")
+        .select("id, description, points_awarded, resolution_reason, resolved_at, scope, match_id, series_id")
         .eq("competition_id", competitionId)
         .eq("user_id", userId)
         .eq("status", "CANCELLED")
@@ -545,12 +556,36 @@ async function getFeed(
         .gte("resolved_at", since),
     ]);
 
-  const matchIds = [...new Set((scoredPredictions ?? []).map((p) => p.match_id as string))];
+  // Lien d'un match/pari MATCH vers Résultats (18/08/2026) : `?date=` en plus
+  // de l'ancre, sinon on atterrit bien sur la bonne LIGNE mais le bandeau de
+  // dates reste sur "Tous" au lieu de cocher le jour concerné (repéré par
+  // l'utilisateur en testant l'ancre seule). Une cible résolue est toujours
+  // FINISHED, jamais dans Mes pronos (§14 SPEC_REFONTE_ONGLET_JOUER) — le
+  // filtre `?date=` y renvoie donc toujours un résultat, jamais une page vide.
+  function matchHref(matchId: string, scheduledAt: string | null): string {
+    const date = scheduledAt ? `?date=${parisDateKey(Date.parse(scheduledAt))}` : "";
+    return `/play/results${date}#match-${matchId}`;
+  }
+  // SERIES -> Bracket, même ancre/patron que getSeriesBetsTodo plus haut.
+  function betHref(bet: { scope: "MATCH" | "SERIES"; match_id: string | null; series_id: string }): string | null {
+    if (bet.scope === "MATCH") return bet.match_id ? matchHref(bet.match_id, matchById.get(bet.match_id)?.scheduled_at ?? null) : null;
+    return `/bracket#series-${bet.series_id}`;
+  }
+
+  // Tous les matchs dont on a besoin de la date : ceux des pronos scorés ET
+  // ceux des paris MATCH (2 sources distinctes, potentiellement disjointes).
+  const matchIds = [
+    ...new Set([
+      ...(scoredPredictions ?? []).map((p) => p.match_id as string),
+      ...(scoredBets ?? []).filter((b) => b.scope === "MATCH" && b.match_id).map((b) => b.match_id as string),
+      ...(resolvedBets ?? []).filter((b) => b.scope === "MATCH" && b.match_id).map((b) => b.match_id as string),
+    ]),
+  ];
   const { data: matches } =
     matchIds.length > 0
       ? await supabase
           .from("matches")
-          .select("id, home_team_id, away_team_id, home_score, away_score")
+          .select("id, scheduled_at, home_team_id, away_team_id, home_score, away_score")
           .in("id", matchIds)
       : { data: [] as MatchScoreRow[] };
 
@@ -583,6 +618,7 @@ async function getFeed(
       points: prediction.points_awarded,
       outcome: prediction.is_winner_correct ? "win" : "loss",
       occurredAt: prediction.scored_at as string,
+      href: matchHref(prediction.match_id as string, match?.scheduled_at ?? null),
     };
   });
 
@@ -593,6 +629,7 @@ async function getFeed(
     points: bet.points_awarded,
     outcome: bet.status === "WON" ? "win" : "loss",
     occurredAt: bet.scored_at as string,
+    href: betHref(bet),
   }));
 
   const betResolvedItems: FeedItem[] = (resolvedBets ?? []).map((bet) => ({
@@ -602,6 +639,7 @@ async function getFeed(
     points: bet.points_awarded,
     outcome: "neutral",
     occurredAt: bet.resolved_at as string,
+    href: betHref(bet),
   }));
 
   return [...matchItems, ...betScoredItems, ...betResolvedItems]

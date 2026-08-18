@@ -6437,3 +6437,95 @@ telle quelle (0 pt d'écart est un vrai résultat, pas un "non scoré").
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```
+
+### 2.83 Accueil : le feed « Ça vient de tomber » mène à l'item d'origine (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : que cliquer sur un item du feed mène à l'item
+affiché. `FeedItem` (lib/queries/home.ts) gagne un champ `href` :
+- `match_scored` -> `/play/results#match-{matchId}` (une prédiction scorée
+  vise TOUJOURS un match FINISHED, donc toujours côté Résultats, jamais Mes
+  pronos — §14 SPEC_REFONTE_ONGLET_JOUER) ;
+- `bet_scored`/`bet_resolved`, scope MATCH -> même ancre que ci-dessus ;
+  scope SERIES -> `/bracket#series-{seriesId}` (même patron que
+  `getSeriesBetsTodo`, plus haut dans le même fichier).
+
+**2 ancres manquantes trouvées et ajoutées en creusant** (ni Résultats ni le
+Bracket global n'exposaient de cible pour ces liens jusqu'ici) :
+`id={`match-${row.matchId}`}` sur `LockedRow.tsx` (n'existait que sur
+`UpcomingRow.tsx`, écran Mes pronos) ; `id={`series-${node.nodeId}`}` sur
+`NodeCard.tsx` (n'existait que sur les cartes de l'écran de REMPLISSAGE du
+bracket, jamais sur la vue globale de consultation — donc jamais sur
+`/bracket`, la cible réelle une fois une série/un pari série résolu).
+
+`components/home/FeedRow.tsx` : `<li>` devient un simple conteneur, le
+contenu passe dans un `<Link>` (repli en `<div>` si `href` est `null` — cas
+défensif, cible introuvable, ne devrait pas arriver en pratique). Reset
+CSS `text-decoration`/`color: inherit` pour rester visuellement identique
+à l'ancien `<li>` statique.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```
+
+### 2.84 Correctif : lien du feed atterrissait sur la bonne page, pas la bonne ligne (session du 18/08/2026)
+
+```text
+Signalé par l'utilisateur en testant §2.83 : un lien du feed vers
+`/play/results#match-XXX` arrivait bien sur Résultats mais pas sur le match
+visé. Cause : `DateStrip.tsx` (§2.79) défile automatiquement vers sa propre
+cible (date active ou plus récente) AU MÊME MOMENT que le scroll natif du
+navigateur/Next.js vers l'ancre `#match-XXX` — les deux se déclenchent au
+montage, et celui de DateStrip repassait en dernier, ramenant la page vers
+le bandeau de dates (en haut) plutôt que vers la ligne du match plus bas.
+
+Corrigé par une garde simple dans `DateStrip.tsx` : si `window.location.hash`
+est déjà posé (une ancre existe dans l'URL), le défilement automatique du
+bandeau ne se déclenche pas — l'ancre déjà présente a toujours priorité.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Bug
+trouvé au clic par l'utilisateur (serveur de dev relancé au préalable, 2
+instances en double coupées) ; correctif pas encore reconfirmé au clic à
+ce stade.
+```
+
+### 2.85 Feed : le lien mène aussi au bon jour, pas seulement à la bonne ligne (session du 18/08/2026)
+
+```text
+Suite immédiate : « ça amène bien sûr le match en particulier mais pas en
+cochant le jour concerné, on reste sur général ». L'ancre `#match-XXX`
+(§2.83) suffisait pour le scroll mais pas pour que le bandeau de dates
+(DateStrip) coche le bon jour — il faut aussi `?date=YYYY-MM-DD` dans l'URL.
+
+**`parisDateKey` extrait dans `lib/dates/paris.ts`** (2e utilisateur,
+au lieu d'une 3e implémentation divergente — même raison que
+`parisDateTimeLabel` juste à côté) : c'était `localDateKey`, dupliqué en
+LOCAL dans `lib/queries/play.ts` (4 appels) — remplacé par l'import partagé
+là-bas, et réutilisé ici dans `lib/queries/home.ts`.
+
+**`lib/queries/home.ts`** : `matchHref(matchId, scheduledAt)` construit
+`/play/results?date=...#match-{id}` ; `betHref` pour un pari MATCH
+réutilise la même fonction avec la date de SA cible. La collecte des
+matchs à dater est étendue : avant, seuls les matchs des pronos scorés
+étaient requêtés ; désormais aussi ceux des paris MATCH (2 sources
+distinctes, pas toujours les mêmes matchs) — `scheduled_at` ajouté au
+SELECT existant.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Pas
+encore reconfirmé au clic à ce stade.
+```
+
+### 2.86 Accueil : numéro de match dans « À traiter » (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : ajouter le numéro du match dans sa série à
+côté du prochain match à pronostiquer dans « À traiter » (« si c'est le 3e
+match de la série écris "Game 3" »).
+
+`TodoItem["matchup"]` (lib/queries/home.ts) gagne `gameNumber: number` —
+`game_number` déjà en base, juste ajouté au SELECT de `getMatchesTodo` et
+passé à travers `describeUpcomingMatch` (seul appelant, signature étendue
+sans risque). `components/home/TodoRow.tsx` : « Prochain : [logos] BOS –
+ATL · Game 3 ».
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```

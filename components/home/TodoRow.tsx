@@ -52,6 +52,9 @@ export function TodoRow({ item }: TodoRowProps) {
               size={16}
             />
             <span>{item.matchup.away.abbreviation}</span>
+            {/* Numéro du match dans SA série (18/08/2026, demandé par
+                l'utilisateur — "Game 3"). */}
+            <span className={styles.gameNumber}>Game {item.matchup.gameNumber}</span>
           </p>
         ) : (
           item.subtitle && <p className={styles.subtitle}>{item.subtitle}</p>

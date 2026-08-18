@@ -46,6 +46,13 @@ export function DateStrip({ dates, activeDate, seriesId, leagueId }: DateStripPr
   const scrollTargetRef = useRef<HTMLAnchorElement>(null);
 
   useEffect(() => {
+    // Bug trouvé par l'utilisateur (18/08/2026) : un lien du feed Accueil
+    // vers `/play/results#match-XXX` arrivait bien sur la bonne page, mais
+    // PAS sur la bonne ligne — ce défilement-ci (déclenché au même montage
+    // que le défilement natif du navigateur vers l'ancre) le reprenait de
+    // force vers le bandeau de dates, tout en haut. Une ancre déjà présente
+    // dans l'URL a toujours priorité : rien à faire ici dans ce cas.
+    if (window.location.hash) return;
     scrollTargetRef.current?.scrollIntoView({ inline: activeDate ? "center" : "end", block: "nearest" });
     // eslint-disable-next-line react-hooks/exhaustive-deps -- une seule fois au montage, jamais au re-rendu
   }, []);

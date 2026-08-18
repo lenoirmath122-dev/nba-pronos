@@ -51,7 +51,7 @@ export function LockedRow({
   const forceOpenMore = forceOpenPredictionCorrection || forceOpenBetCorrection;
 
   return (
-    <div className={`${styles.row} glass-card`}>
+    <div id={`match-${row.matchId}`} className={`${styles.row} glass-card`}>
       <div className={styles.header}>
         <span className={styles.teams}>
           <TeamLogo abbreviation={row.home.abbreviation} alt={row.home.name} size={24} />

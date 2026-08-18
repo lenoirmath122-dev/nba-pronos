@@ -7483,3 +7483,51 @@ au SELECT). `PredictionSummary.tsx` : « 15 pts (10 pronostic, 5 écart) ».
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail en
 `ETAT_ACTUEL.md` §2.82.
 ```
+
+## Accueil : feed « Ça vient de tomber » cliquable (18/08/2026)
+
+```text
+« ça mène aux items affichés quand on clique dessus ? ». `FeedItem` gagne
+`href` (match/pari MATCH -> Résultats, pari SERIES -> Bracket). 2 ancres
+manquantes trouvées en creusant et ajoutées : `id="match-{id}"` n'existait
+que sur `UpcomingRow.tsx` (pas `LockedRow.tsx`) ; `id="series-{id}"`
+n'existait que sur l'écran de REMPLISSAGE du bracket (pas la vue globale de
+consultation, la cible réelle une fois un pari série résolu). `FeedRow.tsx`
+enveloppe son contenu dans un `<Link>`. `tsc`/`eslint`/`vitest`
+(37/37)/`next build` (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.83.
+```
+
+## Correctif : lien du feed atterrissait sur la page mais pas la ligne (18/08/2026)
+
+```text
+Trouvé par l'utilisateur en testant §2.83 (après redémarrage du serveur de
+dev — 2 instances en double sur les ports 3000/3001, coupées, une seule
+relancée). Le lien du feed arrivait sur Résultats mais pas sur le match visé
+: `DateStrip.tsx` défilait automatiquement au montage, au même moment que le
+scroll natif vers l'ancre `#match-XXX`, et le reprenait de force. Corrigé
+par une garde `window.location.hash` dans `DateStrip.tsx` — une ancre déjà
+présente dans l'URL a priorité, le bandeau ne défile plus dans ce cas.
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail en
+`ETAT_ACTUEL.md` §2.84.
+```
+
+## Feed : le lien mène aussi au bon jour (18/08/2026)
+
+```text
+« ça amène le match mais sans cocher le jour, on reste sur général ».
+`parisDateKey` extrait de `lib/queries/play.ts` (ex-`localDateKey`, dupliqué
+localement) vers `lib/dates/paris.ts`, réutilisé dans `lib/queries/home.ts`
+pour construire `/play/results?date=...#match-{id}` sur les liens du feed
+(pronos ET paris MATCH). Collecte des matchs à dater étendue aux paris (pas
+seulement les pronos scorés, 2 sources distinctes). `tsc`/`eslint`/`vitest`
+(37/37)/`next build` (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.85.
+```
+
+## Accueil : numéro de match dans « À traiter » (18/08/2026)
+
+```text
+« si c'est le 3e match de la série écris "Game 3" ». `TodoItem["matchup"]`
+gagne `gameNumber` (déjà en base, ajouté au SELECT de `getMatchesTodo`).
+`TodoRow.tsx` : « Prochain : BOS – ATL · Game 3 ». `tsc`/`eslint`/`vitest`
+(37/37)/`next build` (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.86.
+```

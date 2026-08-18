@@ -1,6 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
-import { parisDayBoundsUtc } from "@/lib/dates/paris";
+import { parisDayBoundsUtc, parisDateKey } from "@/lib/dates/paris";
 import type { TeamRef } from "@/lib/queries/matches";
 import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
@@ -210,15 +210,6 @@ function teamRef(row: TeamRow): TeamRef {
   return { id: row.id, abbreviation: row.abbreviation, name: row.name };
 }
 
-function localDateKey(ms: number): string {
-  // en-CA formate en YYYY-MM-DD (ordre lexicographique = ordre chronologique).
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: DAY_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(ms));
-}
 
 function seriesLabel(series: SeriesRow | undefined, abbrevById: Map<string, string>): string {
   if (!series) return "";
@@ -525,13 +516,13 @@ async function getRevealedContent(
 }
 
 function groupByDay(cards: UpcomingMatchRow[], nowMs: number): MatchDay[] {
-  const todayKey = localDateKey(nowMs);
-  const tomorrowKey = localDateKey(nowMs + DAY_MS);
+  const todayKey = parisDateKey(nowMs);
+  const tomorrowKey = parisDateKey(nowMs + DAY_MS);
 
   const groups = new Map<string, MatchDay>();
   for (const card of cards) {
     const cardMs = Date.parse(card.scheduledAt);
-    const key = localDateKey(cardMs);
+    const key = parisDateKey(cardMs);
     let group = groups.get(key);
     if (!group) {
       group = { key, label: dayLabel(key, todayKey, tomorrowKey, cardMs), matches: [] };
@@ -947,7 +938,7 @@ async function getAvailableFilters(
   const latestMsBySeries = new Map<string, number>();
   for (const row of locked) {
     const ms = Date.parse(row.scheduled_at);
-    dateKeys.add(localDateKey(ms));
+    dateKeys.add(parisDateKey(ms));
     const current = latestMsBySeries.get(row.series_id);
     if (current === undefined || ms > current) latestMsBySeries.set(row.series_id, ms);
   }

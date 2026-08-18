@@ -180,6 +180,7 @@ export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: Node
 
   return (
     <div
+      id={`series-${node.nodeId}`}
       {...clickableRowProps(onToggle, { disabled })}
       className={cardClassName}
       aria-expanded={isOpen}

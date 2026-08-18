@@ -26,6 +26,23 @@ export function parisLocalToUtcIso(localValue: string): string {
   return new Date(naiveMs - offsetMinutes * 60 * 1000).toISOString();
 }
 
+/** "YYYY-MM-DD" en Europe/Paris (en-CA formate déjà dans cet ordre — ordre
+ *  lexicographique = ordre chronologique) — même valeur que la clé `?date=`
+ *  des filtres. Prend un timestamp ms (`Date.parse(iso)` côté appelant si
+ *  la source est une chaîne ISO) — même signature que les 4 appels déjà en
+ *  place. Extrait de lib/queries/play.ts::localDateKey (18/08/2026, 2e
+ *  utilisateur : lib/queries/home.ts, lien du feed Accueil vers le bon jour
+ *  de Résultats) pour éviter une 3e implémentation divergente, même raison
+ *  que parisDateTimeLabel juste en dessous. */
+export function parisDateKey(ms: number): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: DAY_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(ms));
+}
+
 /** "JJ/MM HH:mm" en Europe/Paris — même format ré-implémenté 6 fois (extrait
  *  de lib/queries/match-bets.ts, aussi dupliqué dans admin-requests.ts,
  *  admin-resolution.ts, admin-validation.ts, bets.ts, my-bets.ts) avant

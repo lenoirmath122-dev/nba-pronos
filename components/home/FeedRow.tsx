@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { FeedItem } from "@/lib/queries/home";
 import { WinIcon, LossIcon, NeutralIcon } from "@/components/icons/home-icons";
 import styles from "./FeedRow.module.css";
@@ -31,9 +32,10 @@ export function FeedRow({ item }: FeedRowProps) {
   // un résultat gagné/perdu, qui reste un rendu de jeu normal (T6c §4).
   const cancelled = item.kind === "bet_resolved";
   const Icon = OUTCOME_ICON[item.outcome];
+  const rowClassName = cancelled ? styles.rowCancelled : styles.row;
 
-  return (
-    <li className={cancelled ? styles.rowCancelled : styles.row}>
+  const content = (
+    <>
       <span className={`${styles.icon} ${OUTCOME_ICON_CLASS[item.outcome]}`} aria-hidden="true">
         <Icon size={14} />
       </span>
@@ -44,6 +46,22 @@ export function FeedRow({ item }: FeedRowProps) {
       <span className={`${styles.points} ${OUTCOME_STYLE[item.outcome]}`}>
         {formatPoints(item.points)}
       </span>
+    </>
+  );
+
+  // Mène vers l'item d'origine (18/08/2026, demandé par l'utilisateur) —
+  // `href` reste `null` seulement dans un cas défensif (cible introuvable,
+  // ne devrait pas arriver en pratique) : repli sans lien plutôt qu'un lien
+  // mort.
+  return (
+    <li>
+      {item.href ? (
+        <Link href={item.href} className={rowClassName}>
+          {content}
+        </Link>
+      ) : (
+        <div className={rowClassName}>{content}</div>
+      )}
     </li>
   );
 }

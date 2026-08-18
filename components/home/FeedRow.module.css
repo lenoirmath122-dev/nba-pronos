@@ -4,6 +4,15 @@
   gap: var(--space-3);
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border-hair);
+  /* Mène vers l'item d'origine (18/08/2026) : reset du <a> pour rester
+     visuellement identique à l'ancien <li> statique. */
+  text-decoration: none;
+  color: inherit;
+}
+
+.row:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 /* Pari annulé/neutralisé : barré + grisé, JAMAIS rouge (0.2.4 / 0.2.9 §7 / T6c §4). */
