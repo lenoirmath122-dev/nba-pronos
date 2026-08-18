@@ -9,6 +9,12 @@
 > de correction de pari en dur, cassée par la coexistence des 2 onglets).
 > Reste à vérifier en conditions réelles (session authentifiée), voir
 > `GAPS_OUVERTS.md`.
+> **AMENDEMENT du 18/08/2026 (§14)** : la décision 4 (fenêtre de 3 jours
+> entre Mes pronos et Résultats) est **abandonnée** — le partage se fait
+> désormais par **statut** (`FINISHED` → Résultats, quel que soit son âge ;
+> tout le reste verrouillé → Mes pronos). §3.1/§5.1/§12 ci-dessous décrivent
+> encore l'ancienne règle en corps de texte, non retouché par souci
+> d'historique — se fier à §14 pour la règle actuellement en vigueur.
 > **Portée** : remplace/fusionne quatre écrans existants et fermés
 > (`SPEC_ECRAN_HUB_JOUER_V0_1`, `SPEC_ECRAN_MATCHS_V0_1`,
 > `SPEC_ECRAN_MES_PRONOS_V0_1`, `SPEC_ECRAN_MES_PARIS_V0_1`) par **deux
@@ -575,8 +581,8 @@ les libellés exacts n'ont pas encore été écrits pour le cas fusionné.
 | 1 | Fusion **totale** : paris MATCH rejoignent les deux onglets, paris SÉRIE restent exclusivement au Bracket |
 | 2 | **Pas de hub à cartes** : `/play` ouvre directement sur des onglets internes (Mes pronos / Résultats) |
 | 3 | **Le match décide toujours l'onglet**, jamais le statut du pari — le pari garde son statut propre, y compris quand il « détonne » avec la fenêtre de son match |
-| 4 | Fenêtre Mes pronos = **union exacte** des anciennes fenêtres Matchs (à venir) et Récent (verrouillé < 3j) — aucune nouvelle largeur inventée |
-| 5 | Résultats = ancien segment Historique, **tel quel** (tri, pagination, filtres) |
+| 4 | ~~Fenêtre Mes pronos = union exacte des anciennes fenêtres Matchs (à venir) et Récent (verrouillé < 3j)~~ — **ABANDONNÉE le 18/08/2026, voir §14** : partage par statut (`FINISHED` → Résultats), plus de fenêtre de temps |
+| 5 | Résultats = ancien segment Historique, tri/pagination/filtres **tels quels** — sélection de base changée en `status = 'FINISHED'`, voir §14 |
 | 6 | Bracket accessible par un **point d'entrée permanent dans l'en-tête**, pas un 3ᵉ onglet, réutilisant `getBracketFillData()`/`getRemainingSeriesBets()` sans recalcul |
 | 7 | `SeriesBetHeader` retiré de Mes pronos/Résultats (paris série invisibles hors Bracket) |
 | 8 | Aucune nouvelle migration, aucune nouvelle server action |
@@ -604,3 +610,52 @@ les libellés exacts n'ont pas encore été écrits pour le cas fusionné.
 ```
 
 Plus aucun blocage connu avant d'écrire le code.
+
+---
+
+## 14. Amendement post-implémentation — partage par STATUT, pas par fenêtre de temps (18/08/2026)
+
+Signalé par l'utilisateur après avoir observé le DateStrip de Résultats
+(§2.78/79 `ETAT_ACTUEL.md`) : « pourquoi la dernière date... il y a des
+matchs après dans la compétition il me semble ». Réponse initiale — c'était
+le comportement VOULU (décision 4, fenêtre de 3 jours) — jugée insatisfaisante
+par l'utilisateur : « tout ce qui est finished doit être dans résultats et
+pas dans mes pronos ».
+
+**Décision 4 abandonnée.** Nouvelle règle, appliquée dans
+`lib/queries/play.ts::fetchLockedRows` :
+
+```text
+Mes pronos (verrouillé) : matches.status <> 'FINISHED'
+Résultats               : matches.status =  'FINISHED'
+```
+
+Plus de fenêtre de 3 jours ni dans un sens ni dans l'autre. Un match
+`IN_PROGRESS` ou encore `SCHEDULED` malgré une heure passée (latence du
+planificateur, §3.1) reste dans Mes pronos indéfiniment, jusqu'à son passage
+réel à `FINISHED` — ce qui referme au passage le point ouvert noté en §3.1
+(« un match vieux de 3 jours mais toujours `IN_PROGRESS` basculerait quand
+même en Résultats ») : ce cas ne peut structurellement plus se produire.
+
+**Ce n'est PAS une réouverture du principe "jamais filtrer sur le statut"**
+(§3.1, T4/A8) : ce principe concerne le VERROUILLAGE (une écriture, un enjeu
+d'équité — jamais gaté sur un statut qui peut mentir 30-60 min) et reste
+entier, inchangé, régi par `scheduled_at` partout où une saisie de prono/pari
+est en jeu. Ici, c'est un choix d'AFFICHAGE pur (quel onglet montre une ligne
+déjà verrouillée, en lecture seule des deux côtés) — un enjeu UX, pas de
+correction, où un retard de 30-60 min avant qu'un match tout juste terminé
+bascule dans Résultats est un inconvénient mineur assumé, pas un risque.
+
+**Point ouvert non traité, hors périmètre de la demande** : un match
+`POSTPONED`/`CANCELLED` déjà verrouillé ne devient jamais `FINISHED` —
+il resterait dans Mes pronos indéfiniment avec cette règle. Cas non
+rencontré dans les données actuelles, non tranché avec l'utilisateur —
+à rouvrir si ça se produit réellement (même traitement que le point ouvert
+similaire déjà noté en §3.1 pour l'ancienne règle).
+
+**Fichiers touchés** : `lib/queries/play.ts` (`fetchLockedRows`,
+`fetchLockedRowsFiltered`, `getAvailableFilters`, `getPlayUpcoming`,
+`getPlayResults` — `BACK_WINDOW_DAYS`/`cutoffIso` supprimés en entier,
+plus aucune notion de fenêtre temporelle sur ce partage). `tsc`/`eslint`/
+`vitest` (37/37)/`next build` (34 routes) propres — détail complet
+`ETAT_ACTUEL.md` §2.80.

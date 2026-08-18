@@ -4,6 +4,7 @@ import { getMyLeagues } from "@/lib/queries/leagues";
 import { EmptyState } from "@/components/home/EmptyState";
 import { PlayTabs } from "@/components/play/PlayTabs";
 import { BracketEntry } from "@/components/play/BracketEntry";
+import { DateStrip } from "@/components/play/DateStrip";
 import { FilterBar } from "@/components/play/FilterBar";
 import { LeagueScopeChips } from "@/components/play/LeagueScopeChips";
 import { LockedRow } from "@/components/play/LockedRow";
@@ -70,7 +71,8 @@ export default async function PlayResultsPage({ searchParams }: { searchParams: 
         seriesId={filter.seriesId}
         limit={limit}
       />
-      <FilterBar availableDates={data.availableDates} availableSeries={data.availableSeries} filter={filter} leagueId={data.scopeLeagueId} />
+      <DateStrip dates={data.availableDates} activeDate={filter.date} seriesId={filter.seriesId} leagueId={data.scopeLeagueId} />
+      <FilterBar availableSeries={data.availableSeries} seriesId={filter.seriesId} date={filter.date} leagueId={data.scopeLeagueId} />
 
       {data.rows.length === 0 ? (
         <EmptyState

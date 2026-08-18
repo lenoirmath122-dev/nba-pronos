@@ -167,7 +167,6 @@ export type PlayResultsData = {
 };
 
 const FORWARD_WINDOW_DAYS = 3; // ex-WINDOW_DAYS (écran Matchs)
-const BACK_WINDOW_DAYS = 3; // ex-RECENT_WINDOW_DAYS (segment Récent de Mes pronos)
 const DAY_MS = 24 * 60 * 60 * 1000;
 export const DEFAULT_RESULTS_LIMIT = 40;
 // Aucune convention de fuseau n'existe ailleurs dans le code que Europe/Paris,
@@ -296,11 +295,14 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
   const windowEndIso = new Date(nowMs + FORWARD_WINDOW_DAYS * DAY_MS).toISOString();
-  const recentStartIso = new Date(nowMs - BACK_WINDOW_DAYS * DAY_MS).toISOString();
 
+  // "Verrouillé mais pas encore FINISHED" — plus de fenêtre de 3 jours ici
+  // (18/08/2026, revenu sur la décision 4 de la spec à la demande explicite
+  // de l'utilisateur : « tout ce qui est finished doit être dans Résultats
+  // et pas dans Mes pronos », quel que soit son âge). §3.1 corrigée.
   const [{ days, readyCount }, recentLocked, quotas] = await Promise.all([
     fetchUpcomingWindow(supabase, user.id, competition, nowIso, windowEndIso, nowMs),
-    fetchLockedRows(supabase, user.id, competition.id, { gte: recentStartIso, lte: nowIso }, null),
+    fetchLockedRows(supabase, user.id, competition.id, { finished: false }, null),
     getQuotas(supabase, user.id, competition),
   ]);
 
@@ -640,14 +642,19 @@ function toRevealedPrediction(p: PredictionRow, teams: Map<string, TeamRef>, pse
 
 type LeagueScope = { id: string; name: string; memberUserIds: Set<string> };
 
-/** Récupère des lignes verrouillées sur une fenêtre [gte, lte]. Partagé par
- *  "Mes pronos" (recentLocked, scope=null — pas de sélecteur de ligue sur cet
- *  onglet, cf. spec) et "Résultats" (scope résolu depuis ?ligue=). */
+/** Récupère des lignes verrouillées, réparties par STATUT (18/08/2026,
+ *  décision 4 de la spec inversée à la demande de l'utilisateur — plus par
+ *  fenêtre de temps) : `finished: false` = "Mes pronos" (verrouillé, pas
+ *  encore FINISHED — inclut IN_PROGRESS et le cas STARTED où le
+ *  planificateur, 30-60 min, n'est pas encore passé dessus) ; `finished:
+ *  true` = "Résultats" (FINISHED, quel que soit son âge), avec `dateRange`
+ *  optionnel pour le filtre `?date=`. Partagé par les deux onglets ; scope
+ *  de ligue résolu par l'appelant (null sur Mes pronos, cf. spec). */
 async function fetchLockedRows(
   supabase: SupabaseServerClient,
   userId: string,
   competitionId: string,
-  range: { gte: string; lte?: string; lt?: string },
+  criteria: { finished: boolean; dateRange?: { gte: string; lt?: string } },
   scope: LeagueScope | null,
   limit?: number
 ): Promise<{ rows: LockedMatchRow[]; hasMore: boolean }> {
@@ -656,10 +663,15 @@ async function fetchLockedRows(
     .select("id, series_id, game_number, scheduled_at, home_team_id, away_team_id, status, home_score, away_score")
     .eq("competition_id", competitionId)
     .not("scheduled_at", "is", null)
-    .gte("scheduled_at", range.gte)
     .order("scheduled_at", { ascending: false });
-  if (range.lte) query = query.lte("scheduled_at", range.lte);
-  if (range.lt) query = query.lt("scheduled_at", range.lt);
+
+  query = criteria.finished
+    ? query.eq("status", "FINISHED")
+    : query.lte("scheduled_at", new Date().toISOString()).neq("status", "FINISHED");
+  if (criteria.dateRange) {
+    query = query.gte("scheduled_at", criteria.dateRange.gte);
+    if (criteria.dateRange.lt) query = query.lt("scheduled_at", criteria.dateRange.lt);
+  }
 
   // limit+1 pour détecter hasMore sans requête de comptage séparée.
   const { data: pageData } = limit ? await query.limit(limit + 1) : await query;
@@ -841,23 +853,19 @@ export async function getPlayResults(params: {
     : null;
 
   const limit = params.limit ?? DEFAULT_RESULTS_LIMIT;
-  const cutoffIso = new Date(Date.now() - BACK_WINDOW_DAYS * DAY_MS).toISOString();
 
-  let gte = "1970-01-01T00:00:00.000Z";
-  let lt: string | undefined = cutoffIso;
-  if (params.date) {
-    const { startIso, endIsoExclusive } = parisDayBoundsUtc(params.date);
-    gte = startIso;
-    lt = endIsoExclusive < cutoffIso ? endIsoExclusive : cutoffIso;
-  }
+  const dateRange = params.date ? (() => {
+    const { startIso, endIsoExclusive } = parisDayBoundsUtc(params.date!);
+    return { gte: startIso, lt: endIsoExclusive };
+  })() : undefined;
 
-  const { availableDates, availableSeries } = await getAvailableFilters(supabase, competition.id, cutoffIso);
+  const { availableDates, availableSeries } = await getAvailableFilters(supabase, competition.id);
 
   const { rows, hasMore } = await fetchLockedRowsFiltered(
     supabase,
     user.id,
     competition.id,
-    { gte, lt },
+    dateRange,
     params.seriesId ?? null,
     scope,
     limit
@@ -874,44 +882,42 @@ export async function getPlayResults(params: {
   };
 }
 
-/** fetchLockedRows + filtre optionnel par série (le filtre date est déjà
- *  porté par `range`, calculé par l'appelant). */
+/** fetchLockedRows(finished: true) + filtre optionnel par série. */
 async function fetchLockedRowsFiltered(
   supabase: SupabaseServerClient,
   userId: string,
   competitionId: string,
-  range: { gte: string; lt?: string },
+  dateRange: { gte: string; lt?: string } | undefined,
   seriesId: string | null,
   scope: LeagueScope | null,
   limit: number
 ): Promise<{ rows: LockedMatchRow[]; hasMore: boolean }> {
-  if (!seriesId) return fetchLockedRows(supabase, userId, competitionId, range, scope, limit);
+  if (!seriesId) return fetchLockedRows(supabase, userId, competitionId, { finished: true, dateRange }, scope, limit);
 
-  // Filtre série : pas de borne haute nécessaire au-delà du cutoff déjà dans
-  // `range.lt` — on repasse par fetchLockedRows puis on filtre en mémoire
-  // (une série ne compte jamais plus de 7 matchs, coût négligeable) plutôt
-  // que de dupliquer toute la requête pour une clause .eq() de plus.
-  const { rows: allRows } = await fetchLockedRows(supabase, userId, competitionId, range, scope);
+  // Filtre série : on repasse par fetchLockedRows (sans limite) puis on
+  // filtre en mémoire (une série ne compte jamais plus de 7 matchs, coût
+  // négligeable) plutôt que de dupliquer toute la requête pour une clause
+  // .eq() de plus.
+  const { rows: allRows } = await fetchLockedRows(supabase, userId, competitionId, { finished: true, dateRange }, scope);
   const filtered = allRows.filter((r) => r.seriesId === seriesId);
   const hasMore = filtered.length > limit;
   return { rows: hasMore ? filtered.slice(0, limit) : filtered, hasMore };
 }
 
 /** Valeurs proposables par les filtres date/série (§4.2 SPEC_ECRAN_MES_PRONOS)
- *  — dérivées des matchs verrouillés STRICTEMENT AVANT le cutoff (sinon le
- *  filtre proposerait des dates/séries qui ne peuvent renvoyer aucun résultat
- *  ici, ces matchs vivant désormais dans l'onglet Mes pronos). */
+ *  — dérivées des matchs FINISHED (18/08/2026 : plus d'un cutoff temporel,
+ *  cf. fetchLockedRows) : le filtre ne doit proposer que des dates/séries
+ *  qui peuvent réellement renvoyer un résultat ici. */
 async function getAvailableFilters(
   supabase: SupabaseServerClient,
-  competitionId: string,
-  cutoffIso: string
+  competitionId: string
 ): Promise<{ availableDates: string[]; availableSeries: { id: string; label: string }[] }> {
   const { data: lockedData } = await supabase
     .from("matches")
     .select("series_id, scheduled_at")
     .eq("competition_id", competitionId)
     .not("scheduled_at", "is", null)
-    .lt("scheduled_at", cutoffIso);
+    .eq("status", "FINISHED");
 
   const locked = (lockedData ?? []) as { series_id: string; scheduled_at: string }[];
   if (locked.length === 0) return { availableDates: [], availableSeries: [] };

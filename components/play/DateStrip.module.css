@@ -1,0 +1,67 @@
+.strip {
+  display: flex;
+  gap: var(--space-2);
+  overflow-x: auto;
+  padding: var(--space-1) var(--space-4) var(--space-2);
+  margin: 0 calc(var(--space-4) * -1);
+  scroll-snap-type: x proximity;
+  -webkit-overflow-scrolling: touch;
+  /* Barre de défilement masquée (18/08/2026, demandé par l'utilisateur —
+     « on sait qu'il faut défiler de gauche à droite ») : le défilement reste
+     entièrement fonctionnel (souris, tactile, clavier), seul l'indicateur
+     visuel disparaît. scrollbar-width (Firefox) + -ms-overflow-style (Edge
+     historique) + ::-webkit-scrollbar (Chrome/Safari/Edge Chromium) : les 3
+     nécessaires, aucune propriété unique ne couvre tous les moteurs. */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.strip::-webkit-scrollbar {
+  display: none;
+}
+
+.chip {
+  flex: 0 0 auto;
+  scroll-snap-align: start;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 3rem;
+  min-height: var(--tap-target-min);
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-chip);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.chipActive {
+  color: var(--color-text-on-accent);
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.all {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}
+
+.weekday {
+  font-size: var(--font-size-xs);
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.dayMonth {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+}

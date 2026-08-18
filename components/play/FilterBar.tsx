@@ -2,55 +2,36 @@ import Link from "next/link";
 import { buildResultsPath } from "./urls";
 import styles from "./FilterBar.module.css";
 
-// Filtres date/série de l'onglet Résultats — formulaire GET natif, aucun
-// JavaScript. Les valeurs proposées (availableDates/availableSeries) viennent
-// de lib/queries/play.ts, jamais inventées au rendu. Ex-components/
-// my-predictions/FilterBar.tsx — la bascule Récent/Historique a disparu (elle
-// EST désormais la bascule d'onglet Mes pronos/Résultats), donc plus de
-// notion de "mode" à préserver ici : un filtre actif n'a plus qu'un seul état
-// à remplacer.
-
-function formatDateChip(dateStr: string): string {
-  const atNoonUtc = new Date(`${dateStr}T12:00:00.000Z`);
-  return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", year: "numeric" }).format(
-    atNoonUtc
-  );
-}
+// Filtre par série de l'onglet Résultats — formulaire GET natif, aucun
+// JavaScript. Le filtre par date a déménagé dans DateStrip.tsx (18/08/2026,
+// demandé par l'utilisateur — bandeau de dates défilant plutôt qu'un
+// <input type="date">) : les deux filtres sont désormais INDÉPENDANTS,
+// chacun préserve l'autre via un champ caché plutôt que de tout remplacer.
 
 type FilterBarProps = {
-  availableDates: string[];
   availableSeries: { id: string; label: string }[];
-  filter: { date: string | null; seriesId: string | null };
+  seriesId: string | null;
+  date: string | null;
   leagueId?: string | null;
 };
 
-export function FilterBar({ availableDates, availableSeries, filter, leagueId }: FilterBarProps) {
-  const activeSeriesLabel = filter.seriesId ? availableSeries.find((s) => s.id === filter.seriesId)?.label : null;
-  const chipLabel = filter.date ? formatDateChip(filter.date) : activeSeriesLabel;
+export function FilterBar({ availableSeries, seriesId, date, leagueId }: FilterBarProps) {
+  const activeSeriesLabel = seriesId ? availableSeries.find((s) => s.id === seriesId)?.label : null;
 
   return (
     <div className={styles.wrap}>
-      {chipLabel && (
-        <Link href={buildResultsPath({ leagueId })} className={styles.chip}>
-          Filtre : {chipLabel} ✕
+      {activeSeriesLabel && (
+        <Link href={buildResultsPath({ date, leagueId })} className={styles.chip}>
+          Filtre : {activeSeriesLabel} ✕
         </Link>
       )}
 
       <form action="/play/results" method="get" className={styles.form}>
         {leagueId && <input type="hidden" name="ligue" value={leagueId} />}
-        <label className={styles.field}>
-          Date
-          <input type="date" name="date" defaultValue={filter.date ?? ""} list="play-results-available-dates" />
-        </label>
-        <datalist id="play-results-available-dates">
-          {availableDates.map((d) => (
-            <option key={d} value={d} />
-          ))}
-        </datalist>
-
+        {date && <input type="hidden" name="date" value={date} />}
         <label className={styles.field}>
           Série
-          <select name="series" defaultValue={filter.seriesId ?? ""}>
+          <select name="series" defaultValue={seriesId ?? ""}>
             <option value="">Toutes</option>
             {availableSeries.map((s) => (
               <option key={s.id} value={s.id}>

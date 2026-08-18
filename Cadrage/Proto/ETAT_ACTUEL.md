@@ -6264,3 +6264,129 @@ la poser tout le temps).
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```
+
+### 2.77 2e vague d'avancement de la compétition, après les pronos de l'utilisateur (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur (« j'ai fait des pronos, tu peux avancer la
+compétition encore ? ») — le compte réel Rillettes-31 avait posé 4 pronos
+VALIDATED sur les 4 matchs alors SCHEDULED (ATL-BOS #1, DAL-DEN #4,
+DET-IND #5, LAC-LAL #1). Lu en premier, jamais deviné : ces 4 matchs et
+leurs séries respectives.
+
+**`scripts/advance-current-competition-2.mjs`** (nouveau, suite de §2.73) :
+résout ces 4 matchs (scores plausibles) et prolonge chaque série d'1 à 2
+matchs supplémentaires (BKN-CHA/CHI-CLE déjà FINISHED, non touchées ;
+DET-IND/DAL-DEN/GSW-HOU/ATL-BOS/LAC-LAL avancées, un match à venir laissé
+sur chacune sauf DET-IND ; MEM-MIN reçoit son tout premier match). AUCUNE
+ligne de Rillettes-31/Demo_Amis écrite (jamais INSERT/UPDATE/DELETE sur
+leurs pronos/paris/bracket) — seuls les MATCHS sont touchés, les pronos
+déjà posés par l'utilisateur se font scorer par la passe de scoring, comme
+n'importe quel prono gelé sur un match qui se termine.
+
+**Bug trouvé APRÈS exécution, assumé plutôt que recorrigé à chaud** :
+DET-IND #5 a été résolu en pensant que `home_team_id` était IND (erreur de
+lecture du commentaire du script, pas de la donnée elle-même) — DET a donc
+gagné ce match au lieu d'IND, la série finissant 3-3 au lieu du 4-2 prévu.
+Complété avec un match #7 décisif (SCHEDULED) plutôt que de réécrire
+l'historique — script correctif replié dans le fichier principal après
+coup, pour que sa lecture future reste honnête sur ce qui s'est vraiment
+passé.
+
+**Résultat pour l'utilisateur** : 3 pronos sur 4 corrects (ATL, DEN, LAC —
+15/13/12 pts), 1 incorrect (IND prédit sur DET-IND #5, en réalité DET —
+0 pt, à cause du bug ci-dessus). 30 matchs au total désormais (+9 depuis
+§2.73), 124 pronos (+36 pour les 4 TestJoueur sur les nouveaux matchs +
+la résolution des 4 de Rillettes-31). `bracket_deadline` vérifiée cohérente
+après coup (aucun nouveau match antérieur au plus ancien existant).
+```
+
+### 2.78 Résultats : filtre par date en bandeau défilant (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : un filtre par date façon bandeau horizontal
+défilant (« ressemble à celui de MPP ») — une pastille par jour, ancien à
+gauche, récent à droite, clic = filtre sur ce jour — à la place de l'ancien
+`<input type="date">` de `FilterBar.tsx`.
+
+**`components/play/DateStrip.tsx`** (nouveau — voir §2.79 pour son passage
+ultérieur en "use client" le même jour) : une pastille "Tous" + une par
+date de
+`availableDates` (lib/queries/play.ts), triées ICI en ascendant (la source
+est descendante, convention héritée de l'ex-écran Mes pronos où la LISTE se
+lit anti-chronologique — pas changée en amont pour ne rien risquer ailleurs).
+
+**`FilterBar.tsx` réduit au filtre série seul** : les 2 filtres (date via
+DateStrip, série via ce formulaire) sont désormais INDÉPENDANTS — changer
+l'un préserve l'autre via un champ caché plutôt que tout remplacer,
+contrairement à l'ancienne puce unique "Filtre : X ✕" qui les confondait.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```
+
+### 2.79 DateStrip : défilement auto au chargement + barre masquée (session du 18/08/2026)
+
+```text
+2 ajustements demandés dans la foulée de §2.78 : « qu'on arrive sur l'onglet
+à la date du jour » + « enlever la barre de scroll (on sait qu'il faut
+défiler de gauche à droite) ».
+
+`DateStrip.tsx` passe "use client" — UNIQUEMENT pour le défilement
+automatique au montage (même patron que le guidage du poster de
+remplissage, §2.67 : une fois au chargement, jamais après). Les pastilles
+restent de vrais `<Link>`, navigables sans JS. Défile vers la pastille
+ACTIVE si une date est filtrée, sinon vers la plus RÉCENTE (bord droit) —
+Résultats ne contenant jamais "aujourd'hui" (fenêtre > 3 jours), le bord
+droit en est l'équivalent le plus proche. Bug trouvé en écrivant, corrigé
+avant de tester : "Tous" et la pastille la plus récente se disputaient la
+même ref React dans le cas non filtré — retiré de "Tous", qui n'a rien à
+révéler en défilant.
+
+Barre de défilement masquée en CSS (`scrollbar-width`/`-ms-overflow-style`/
+`::-webkit-scrollbar` — les 3 nécessaires, aucune propriété unique ne
+couvre tous les moteurs), défilement lui-même toujours pleinement
+fonctionnel (souris, tactile, clavier).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```
+
+### 2.80 Mes pronos/Résultats : partage par statut, plus par fenêtre de 3 jours (session du 18/08/2026)
+
+```text
+L'utilisateur remarque que le DateStrip de Résultats s'arrête au 14/08 alors
+que la compétition a des matchs après. Réponse initiale : comportement
+VOULU (décision 4 de la spec, fenêtre de 3 jours — un match FINISHED du
+16/08 reste dans Mes pronos tant qu'il a moins de 3 jours). Jugé indésirable
+par l'utilisateur : « tout ce qui est finished doit être dans résultats et
+pas dans mes pronos ».
+
+**Décision 4 abandonnée** (`SPEC_REFONTE_ONGLET_JOUER_V0_1.md` §14,
+amendement post-implémentation) : le partage entre les 2 onglets se fait
+désormais par STATUT, plus par fenêtre de temps —
+
+```text
+Mes pronos (verrouillé) : matches.status <> 'FINISHED'
+Résultats               : matches.status =  'FINISHED'
+```
+
+`lib/queries/play.ts` : `fetchLockedRows` prend un critère `{ finished:
+boolean; dateRange? }` au lieu d'une fenêtre `{gte, lte, lt}` ;
+`BACK_WINDOW_DAYS`/`cutoffIso` supprimés en entier (plus aucune notion de
+fenêtre temporelle sur ce partage) ; `getAvailableFilters` (dates/séries
+proposées par le filtre de Résultats) dérivé de `status = 'FINISHED'` au
+lieu d'un cutoff.
+
+**Précision actée avec vigilance, pas une réouverture du principe "jamais
+filtrer sur le statut"** (T4/A8, répété dans tout le projet) : ce principe
+protège le VERROUILLAGE (une écriture, un enjeu d'équité). Ici c'est un
+choix d'AFFICHAGE pur entre 2 vues en lecture seule — un match qui reste
+`IN_PROGRESS` 30-60 min de plus que la réalité (latence du planificateur)
+reste juste 30-60 min de plus dans Mes pronos, sans aucun enjeu de
+correction. Referme au passage un point ouvert déjà noté dans la spec (§3.1)
+sur l'ancienne règle. Point ouvert non traité, symétrique de l'ancien :
+un match POSTPONED/CANCELLED déjà verrouillé ne devient jamais FINISHED,
+resterait dans Mes pronos indéfiniment — non rencontré dans les données
+actuelles, non tranché.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```

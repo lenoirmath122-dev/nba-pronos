@@ -7396,3 +7396,64 @@ vérification `tsc`/`eslint`/`vitest`/`next build` à chaque fois :
 Détail complet en `ETAT_ACTUEL.md` §2.74-76. Committé groupé avec le script
 de seed (`aceefb4`) pour les points 1-3 ; le point 4 reste à committer.
 ```
+
+## 2e vague d'avancement de la compétition, après les pronos de l'utilisateur (18/08/2026)
+
+```text
+« j'ai fait des pronos, tu peux avancer la compétition encore ? » —
+Rillettes-31 (compte réel) avait posé 4 pronos VALIDATED sur les 4 matchs
+alors SCHEDULED. Lecture d'abord (`match_predictions` de Rillettes-31),
+jamais deviné quels matchs résoudre.
+
+`scripts/advance-current-competition-2.mjs` : résout ces 4 matchs +
+prolonge chaque série en cours d'1-2 matchs, sans jamais écrire une ligne
+de Rillettes-31/Demo_Amis — seuls les matchs bougent, la passe de scoring
+fait le reste. Bug trouvé APRÈS coup (home/away confondus dans un
+commentaire, DET-IND #5 gagné par DET au lieu d'IND) : plutôt que de
+retoucher l'historique déjà écrit, un match #7 décisif a été ajouté pour
+donner une suite à la série — le script conservé documente honnêtement ce
+qui s'est vraiment passé, pas ce qui était prévu au départ.
+
+Résultat : 3 pronos sur 4 de l'utilisateur corrects (15/13/12 pts), 1 raté
+à cause du bug ci-dessus (0 pt). Détail en `ETAT_ACTUEL.md` §2.77.
+```
+
+## Résultats : filtre par date en bandeau défilant (18/08/2026)
+
+```text
+« un filtre par date qui ressemble à celui de MPP... une pastille par jour
+qui défile de gauche à droite, ancien à gauche, récent à droite ». Nouveau
+`components/play/DateStrip.tsx` (serveur, CSS pur), `FilterBar.tsx` réduit
+au filtre série seul — les deux filtres sont désormais indépendants l'un de
+l'autre plutôt que confondus dans une seule puce. `tsc`/`eslint`/`vitest`
+(37/37)/`next build` (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.78.
+```
+
+## DateStrip : défilement auto au chargement + barre masquée (18/08/2026)
+
+```text
+« qu'on arrive sur l'onglet à la date du jour » + « enlever la barre de
+scroll ». `DateStrip.tsx` passe "use client" pour un seul effet au montage
+(scroll vers la date active, ou la plus récente à défaut) — bug de ref
+partagée entre 2 pastilles trouvé et corrigé avant de tester. Barre de
+défilement masquée en CSS sur les 3 moteurs, défilement resté fonctionnel.
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail en
+`ETAT_ACTUEL.md` §2.79.
+```
+
+## Mes pronos/Résultats : partage par statut au lieu de 3 jours (18/08/2026)
+
+```text
+« pourquoi la dernière date... il y a des matchs après » — répondu d'abord
+que c'était voulu (fenêtre de 3 jours, décision 4 de la spec). L'utilisateur
+tranche autrement : « tout ce qui est finished doit être dans résultats et
+pas dans mes pronos ». Décision 4 abandonnée — partage par
+`matches.status = 'FINISHED'` au lieu d'une fenêtre de temps
+(`lib/queries/play.ts::fetchLockedRows`, `BACK_WINDOW_DAYS` supprimé en
+entier). Précisé explicitement que ce n'est PAS une réouverture du principe
+"jamais filtrer sur le statut" (T4/A8) : ce principe protège le
+VERROUILLAGE (écriture), ceci est un choix d'affichage pur entre 2 vues en
+lecture seule. Amendement post-implémentation ajouté à la spec (§14) plutôt
+que de réécrire l'historique. `tsc`/`eslint`/`vitest` (37/37)/`next build`
+(34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.80.
+```
