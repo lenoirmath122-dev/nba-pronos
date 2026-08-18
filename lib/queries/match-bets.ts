@@ -14,13 +14,14 @@ import { MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 
 export type RemainingMatchBet = {
   matchId: string;
-  label: string; // « BOS vs MIA · 25/07 21:00 » (Europe/Paris)
+  label: string; // « BOS vs MIA · Game 3 · 25/07 21:00 » (Europe/Paris)
 };
 
 type CompetitionRow = { id: string; type: "PLAYOFFS" | "NBA_CUP" };
 type MatchRow = {
   id: string;
   series_id: string;
+  game_number: number;
   scheduled_at: string;
   home_team_id: string | null;
   away_team_id: string | null;
@@ -28,8 +29,11 @@ type MatchRow = {
 type TeamRow = { id: string; abbreviation: string };
 type OwnBetRow = { match_id: string | null; series_id: string; status: string };
 
-function matchLabel(homeAbbr: string, awayAbbr: string, scheduledAt: string): string {
-  return `${homeAbbr} vs ${awayAbbr} · ${parisDateTimeLabel(scheduledAt)}`;
+// Numéro du match dans SA série ajouté au libellé (18/08/2026, demandé par
+// l'utilisateur pour la section "matches à pronostiquer" de l'Accueil, étendu
+// ici — même bloc "À traiter", même besoin).
+function matchLabel(homeAbbr: string, awayAbbr: string, gameNumber: number, scheduledAt: string): string {
+  return `${homeAbbr} vs ${awayAbbr} · Game ${gameNumber} · ${parisDateTimeLabel(scheduledAt)}`;
 }
 
 /** Matchs où un pari MATCH reste POSSIBLE et pas encore posé — réutilisée par
@@ -52,7 +56,7 @@ export async function getRemainingMatchBets(): Promise<RemainingMatchBet[]> {
   const nowIso = new Date().toISOString();
   const { data: matchesData } = await supabase
     .from("matches")
-    .select("id, series_id, scheduled_at, home_team_id, away_team_id")
+    .select("id, series_id, game_number, scheduled_at, home_team_id, away_team_id")
     .eq("competition_id", competition.id)
     .not("scheduled_at", "is", null)
     .gt("scheduled_at", nowIso)
@@ -109,6 +113,7 @@ export async function getRemainingMatchBets(): Promise<RemainingMatchBet[]> {
       label: matchLabel(
         teams.get(m.home_team_id ?? "") ?? "?",
         teams.get(m.away_team_id ?? "") ?? "?",
+        m.game_number,
         m.scheduled_at
       ),
     }));

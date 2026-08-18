@@ -6529,3 +6529,19 @@ ATL · Game 3 ».
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```
+
+### 2.87 Accueil : numéro de match aussi dans la section Paris (session du 18/08/2026)
+
+```text
+Suite du 2.86 : le numéro de match manquait dans le second bloc de « À
+traiter », celui des paris MATCH encore possibles (`getRemainingMatchBets`,
+lib/queries/match-bets.ts — pas `getMatchesTodo`, module distinct).
+
+Même traitement : `MatchRow` gagne `game_number: number`, ajouté au
+SELECT de `getRemainingMatchBets()`. `matchLabel()` prend un paramètre
+`gameNumber` de plus, libellé « BOS vs MIA · Game 3 · 25/07 21:00 ».
+Seul appelant du module (`lib/queries/home.ts`, vérifié par grep) —
+changement de signature sans risque.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```

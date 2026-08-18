@@ -7531,3 +7531,14 @@ gagne `gameNumber` (déjà en base, ajouté au SELECT de `getMatchesTodo`).
 `TodoRow.tsx` : « Prochain : BOS – ATL · Game 3 ». `tsc`/`eslint`/`vitest`
 (37/37)/`next build` (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.86.
 ```
+
+## Accueil : numéro de match aussi dans la section Paris (18/08/2026)
+
+```text
+Suite immédiate : le numéro manquait dans le bloc paris MATCH encore
+possibles (`getRemainingMatchBets`, lib/queries/match-bets.ts — module
+distinct de `getMatchesTodo`). `MatchRow.game_number` ajouté au SELECT,
+`matchLabel()` étendu : « BOS vs MIA · Game 3 · 25/07 21:00 ». Seul
+appelant (`lib/queries/home.ts`) vérifié par grep. `tsc`/`eslint`/`vitest`
+(37/37)/`next build` (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.87.
+```
