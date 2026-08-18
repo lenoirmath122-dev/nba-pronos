@@ -7470,3 +7470,16 @@ UNIQUEMENT `scheduled_at`, ordre chronologique par série préservé, aucun
 autre champ touché. Vérifié après coup : 0 incohérence restante,
 `bracket_deadline` toujours correcte. Détail en `ETAT_ACTUEL.md` §2.81.
 ```
+
+## Résultats : détail des points du prono entre parenthèses (18/08/2026)
+
+```text
+« afficher entre parenthèse... le détail des points (pronos, écart et
+paris) ». 2 options présentées avant de coder : décomposer seulement le
+prono, ou fusionner prono+pari en un total unique. Choix : décomposer
+seulement le prono — le pari garde son propre total séparé. `MyPrediction`
+gagne `winnerPoints`/`marginPoints` (colonnes déjà en base, juste ajoutées
+au SELECT). `PredictionSummary.tsx` : « 15 pts (10 pronostic, 5 écart) ».
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail en
+`ETAT_ACTUEL.md` §2.82.
+```

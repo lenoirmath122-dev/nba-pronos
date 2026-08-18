@@ -39,7 +39,21 @@ export function PredictionSummary({ prediction }: PredictionSummaryProps) {
 
       <span className={styles.points}>
         {/* "—" tant que non scoré, jamais "0" */}
-        {prediction.points === null ? "—" : `${prediction.points} pts`}
+        {prediction.points === null ? (
+          "—"
+        ) : (
+          <>
+            {prediction.points} pts
+            {/* Détail demandé par l'utilisateur (18/08/2026) : vainqueur/écart
+                toujours les 2 ensemble (même passe de scoring que `points`),
+                y compris à 0 — ce n'est pas "non scoré", juste une composante
+                nulle d'un total qui, lui, est bien acquis. */}
+            <span className={styles.pointsDetail}>
+              {" "}
+              ({prediction.winnerPoints} pronostic, {prediction.marginPoints} écart)
+            </span>
+          </>
+        )}
       </span>
     </div>
   );

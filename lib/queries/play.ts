@@ -64,7 +64,15 @@ export type MyPrediction = {
   predictedMargin: number | null;
   isAutoValidated: boolean;
   adminCorrection: AdminCorrection | null;
+  /** Somme déjà faite en base (points_awarded = winnerPoints + marginPoints).
+   *  null tant que non scoré — jamais 0. */
   points: number | null;
+  /** Composantes du total ci-dessus (18/08/2026, demandé par l'utilisateur —
+   *  détail affiché entre parenthèses sur Résultats, PredictionSummary.tsx).
+   *  Mêmes conventions que `points` : non-null seulement quand `points`
+   *  l'est aussi (les 2 sont scorés ensemble, une seule passe de scoring). */
+  winnerPoints: number | null;
+  marginPoints: number | null;
 };
 
 /** Pari MATCH public d'un AUTRE joueur (0.2.4 §9), reconduit tel quel. */
@@ -571,6 +579,8 @@ type PredictionRow = {
   corrected_by_admin_id: string | null;
   correction_reason: string | null;
   points_awarded: number | null;
+  winner_points: number | null;
+  margin_bonus_points: number | null;
   scored_at: string | null;
 };
 
@@ -611,7 +621,16 @@ function toMyPrediction(
   pseudoById: Map<string, string>
 ): MyPrediction {
   if (!own) {
-    return { state: "MISSING", predictedWinner: null, predictedMargin: null, isAutoValidated: false, adminCorrection: null, points: null };
+    return {
+      state: "MISSING",
+      predictedWinner: null,
+      predictedMargin: null,
+      isAutoValidated: false,
+      adminCorrection: null,
+      points: null,
+      winnerPoints: null,
+      marginPoints: null,
+    };
   }
   const complete = isComplete(own);
   const state: MyPredictionState = complete
@@ -626,6 +645,8 @@ function toMyPrediction(
     isAutoValidated: own.is_auto_validated,
     adminCorrection: toAdminCorrection(own.corrected_by_admin_id, own.correction_reason, pseudoById),
     points: own.scored_at === null ? null : own.points_awarded,
+    winnerPoints: own.scored_at === null ? null : own.winner_points,
+    marginPoints: own.scored_at === null ? null : own.margin_bonus_points,
   };
 }
 
@@ -688,7 +709,7 @@ async function fetchLockedRows(
     supabase
       .from("match_predictions")
       .select(
-        "id, user_id, match_id, predicted_winner_team_id, predicted_margin, is_auto_validated, corrected_by_admin_id, correction_reason, points_awarded, scored_at"
+        "id, user_id, match_id, predicted_winner_team_id, predicted_margin, is_auto_validated, corrected_by_admin_id, correction_reason, points_awarded, winner_points, margin_bonus_points, scored_at"
       )
       .in("match_id", matchIds),
     // PAS de filtre user_id (révélation publique 0.2.4 §9) : RLS bet_is_public()

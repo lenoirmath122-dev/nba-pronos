@@ -6414,3 +6414,26 @@ date). Vérifié après coup : 0 incohérence restante, `bracket_deadline`
 toujours correcte (aucune des 7 nouvelles dates n'est antérieure au match
 du 02/08, qui reste la plus ancienne).
 ```
+
+### 2.82 Résultats : détail des points du prono entre parenthèses (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : afficher entre parenthèses, à la suite des
+points gagnés sur un match, le détail (pronostic/écart/paris). Options
+présentées (`AskUserQuestion`) : décomposer seulement le prono, ou fusionner
+prono + pari en un seul total décomposé en 3. **Choix : décomposer
+seulement le prono** — le pari garde son propre total séparé, inchangé
+(déjà un seul chiffre, rien à décomposer).
+
+`MyPrediction` (`lib/queries/play.ts`) gagne `winnerPoints`/`marginPoints`
+(colonnes `winner_points`/`margin_bonus_points`, déjà en base — juste
+absentes du SELECT jusqu'ici ; `points_awarded` en est la somme déjà faite
+par une colonne générée). Même convention que `points` : `null` tant que
+non scoré, jamais 0 — mais UNE FOIS scoré, une composante à 0 s'affiche
+telle quelle (0 pt d'écart est un vrai résultat, pas un "non scoré").
+
+`components/play/PredictionSummary.tsx` : « 15 pts (10 pronostic, 5
+écart) ». Nouvelle classe `.pointsDetail` (texte secondaire, plus petit).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```
