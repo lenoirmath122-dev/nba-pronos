@@ -7043,3 +7043,156 @@ correctifs — `next build` sciemment sauté cette fois (risque de
 recorrompre le cache déjà rencontré 2x cette session), remplacé par une
 vérification Playwright directe en conditions réelles, jugée plus fiable
 ici. Rien commité depuis `6396f1d`.
+
+## Accueil : polish visuel (icônes, liseré d'urgence, rang en avant, pastilles, feed illustré) (18/08/2026)
+
+```text
+Nouvelle session, reprise directe. Demande ouverte de l'utilisateur
+(« améliorer l'aspect visuel de la page d'accueil ») — cadrée avant tout
+code, même méthode que Profil (§2.54)/Stats (§2.55) : maquette artifact
+« Accueil NBA Pronos » (bascule Actuel/Proposition, tokens réels de
+`app/tokens.css`, pas une palette inventée), présentée avec 5 changements
+possibles. L'utilisateur valide les 5, précise vouloir garder les
+notifications/popup pour plus tard.
+
+**Implémentation, 5 changements purement visuels** :
+1. Icône par type d'item dans « À traiter » — nouveau
+   `components/icons/home-icons.tsx` (même patron que
+   `components/icons/nav-icons.tsx` : trait net, `currentColor`, viewBox
+   24x24). `PlayIcon` de la nav réutilisée telle quelle pour "matchs"
+   plutôt que dupliquée.
+2. Liseré d'urgence (accent si deadline < 1h, neutre sinon) — nouveau prop
+   `urgencyBorder?: boolean` sur `components/ui/Countdown.tsx`, calculé à
+   partir de son propre état déjà existant (`state.kind === "live"`), off
+   par défaut pour ne pas affecter `components/bracket/BracketSummary.tsx`
+   (seul autre appelant de `Countdown`).
+3. En-tête : le rang devient le chiffre hero (`--font-size-3xl`), points et
+   écart au leader passent en secondaire/chip — `HomeHeader.tsx`/
+   `.module.css` restructurés, `.stats`/`.stat`/`.statLabel`/`.statValue`
+   remplacés par `.statsHero`/`.rankHero`/`.ptsSecondary`/`.leaderChip`.
+4. Pastilles d'équipe sur le "prochain match" — `TodoItem.matchup`
+   (nouveau champ structuré `{ home, away }`, remplace le texte
+   pré-formaté "Prochain : BOS - ATL") dans `lib/queries/home.ts`,
+   `describeUpcomingMatch()` retourne désormais des objets équipe (avec
+   `name`, pour l'`alt` de `TeamLogo`) plutôt qu'une chaîne. Ferme
+   partiellement un point noté dans `GAPS_OUVERTS.md` depuis le
+   24/07/2026.
+5. Icône de résultat (✓/✗/–) dans le feed « Ça vient de tomber » —
+   `FeedRow.tsx`, vert/rouge toujours strictement réservés au résultat
+   gagné/perdu (règle déjà en place, pas touchée).
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (36 routes)
+propres après l'implémentation.
+
+**Vérification au clic tentée puis abandonnée** : recherche de l'email
+d'un compte de test (`TestJoueur1`) via une lecture `service_role`
+strictement en lecture seule (pseudo → email, aucune mutation) —
+**bloquée par le classifieur de permissions Claude Code**, même
+comportement que des sessions précédentes sur des actions liées aux
+identifiants. Pas de nouvelle tentative ni de contournement — signalé
+explicitement à l'utilisateur, vérification restée au niveau type/build
+uniquement.
+
+Committé et poussé sur demande explicite de l'utilisateur (`b91df40`).
+```
+
+## Mes paris : suppression d'un pari encore modifiable + boutons harmonisés (18/08/2026)
+
+```text
+Suite immédiate. Demande de l'utilisateur : pouvoir supprimer un PARI
+(personnalisé, pas un PRONO) encore présent dans « Mes paris ».
+
+**Recherche préalable** (agent dédié, lecture seule) : état de la machine
+à états `bets` (7 statuts), des server actions existantes (`save_bet`/
+`withdraw_bet`, migration #9), de la RLS (aucune policy DELETE nulle
+part), et de `GAPS_OUVERTS.md`/la spec fonctionnelle — rien ne mentionne
+la suppression comme un point déjà tranché.
+
+**1er tour `AskUserQuestion`** : proposé 2 options (vraie suppression des
+brouillons uniquement / retrait doux via `CANCELLED`) — l'utilisateur
+choisit la vraie suppression. **Conflit trouvé juste après, signalé
+explicitement avant de coder quoi que ce soit** : en lisant les migrations
+SQL, la rétention D2 (`SPEC_TECHNIQUE_V0.1_1.md` §7 — « aucune suppression,
+nulle part », motivée par l'absence de backup sur le plan gratuit) est une
+décision validée et auditée, pas une simple policy manquante par oubli —
+le commentaire du trigger `enforce_bet_transitions` le dit lui-même
+(« jamais de suppression, seulement ce retour arrière »). **2e tour
+`AskUserQuestion`** avec cette information : l'utilisateur reformule le
+besoin fonctionnel (« pouvoir supprimer un pari encore modifiable ») sans
+trancher explicitement le mécanisme — la solution conforme à D2 (retenue,
+recommandée) atteint le même résultat pratique sans y déroger : un pari
+DRAFT/SUBMITTED → CANCELLED est DÉJÀ une transition légale du trigger
+existant, DÉJÀ exclu du calcul de quota (`RELEASED_BET_STATUSES`), et déjà
+anticipé par un commentaire de la vue badges du 09/08/2026 (« un pari
+retiré par le joueur ») — jamais relié à un bouton jusqu'ici.
+
+**Implémentation** :
+- Migration #29 (`20260818090000_delete_bet_function.sql`) :
+  `delete_bet(bet_id)`, SECURITY DEFINER, même patron que `save_bet`/
+  `withdraw_bet` — DRAFT/SUBMITTED uniquement, passe le pari en
+  `CANCELLED` avec un motif dédié (« Retiré par toi avant revue. »,
+  distinct d'une neutralisation admin), `resolved_at` laissé `null`
+  (aucun admin impliqué → n'apparaît pas dans le feed de l'Accueil, qui
+  exige `resolved_at` non nul pour un `bet_resolved`).
+- `lib/actions/bets.ts::deleteBet` (nouveau, même patron `.rpc()` que les
+  3 actions existantes).
+- `components/my-bets/DeleteBetButton.tsx` (+ `.module.css`, nouveau) —
+  bouton + dialogue de confirmation, même patron exact que
+  `components/admin/DeleteMatchButton.tsx` (§2.66/17-08).
+- `MyBetRow.tsx` : bouton affiché à côté de "Modifier" (donc seulement sur
+  DRAFT/SUBMITTED) ; le motif de retrait affiché une fois supprimé
+  (conditionnel étendu aux paris `CANCELLED`, pas seulement WON/LOST).
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (36 routes)
+propres.
+
+**Harmonisation des boutons demandée dans la foulée** (« harmonise la
+forme des boutons sur ces fonctionnalités paris ») : Modifier/Reproposer
+(lien souligné), Signaler à un admin (texte nu de `<summary>`), Envoyer
+(bouton plein) et Supprimer (bouton contour, nouveau ci-dessus) — 4 formes
+différentes pour des actions de poids comparable dans la même ligne.
+Unifiées sur un seul gabarit `.actionButton` (`MyBetRow.module.css`) :
+contour, hauteur de cible tactile, rayon, poids de police identiques —
+seule la couleur reste porteuse de sens (accent = action neutre,
+`--color-text-secondary` = utilitaire, `--color-loss` = destructif).
+`DeleteBetButton.module.css` aligné pixel pour pixel dessus (`inline-flex`
+ajouté). Marqueur natif du `<summary>` masqué pour garder le même gabarit.
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (36 routes)
+propres.
+
+**Commit/push + migration réelle, demandés par l'utilisateur** : `git
+commit`/`push` réussis (`91f398a`). **`npx supabase db push` bloqué par le
+classifieur de permissions** (même comportement que la vérification au
+clic de l'entrée précédente) — pas de nouvelle tentative, signalé
+explicitement : la fonction `delete_bet` n'existe donc PAS ENCORE sur la
+base réelle, à pousser manuellement par l'utilisateur avant que le bouton
+"Supprimer" fonctionne en vrai.
+```
+
+## Rattrapage de suivi : `ETAT_ACTUEL.md`/`GAPS_OUVERTS.md` pas à jour depuis le 15/08/2026 (18/08/2026)
+
+```text
+L'utilisateur demande « tout est documenté ? » en fin de session. Vérif
+des 3 fichiers de suivi : `JOURNAL_SESSIONS.md` (celui-ci) à jour jusqu'au
+17/08/2026 inclus (voir les entrées ci-dessus), mais `ETAT_ACTUEL.md`
+arrêté à §2.63 (15/08/2026) et `GAPS_OUVERTS.md` encore titré « État au
+16/08/2026 » — ni l'un ni l'autre ne couvrait le 16-17/08 (audit, arbre
+bracket, suppression de match, paris en pop-up...) ni la session du jour.
+
+Signalé explicitement à l'utilisateur avant d'agir (`AskUserQuestion`,
+2 options : tout rattraper depuis le 16/08, ou documenter seulement
+aujourd'hui) — **choix : tout rattraper**. `ETAT_ACTUEL.md` §2.64→§2.70
+reconstruits à partir des entrées de ce journal (déjà fiables et
+détaillées pour le 16-17/08, contrairement au rattrapage du 16/08
+lui-même qui partait de simples commentaires de code) ; `GAPS_OUVERTS.md`
+nouveau bloc « État au 18/08/2026 » en tête, listant les points fermés
+(arbre bracket, suppression de match, reset bracket, paris en pop-up) et
+ouverts (icônes stopgap de l'Accueil, migration #29 pas encore poussée,
+notifications/chat toujours pas cadrés, SMTP toujours en pause). Entrée
+« Logos de franchise sur Accueil et Classement » mise à jour en
+« partiellement résolu » plutôt que dupliquée.
+
+Rien à committer pour cette entrée seule (fichiers de suivi uniquement,
+pas de code) — laissé à l'utilisateur de demander un commit si voulu.
+```

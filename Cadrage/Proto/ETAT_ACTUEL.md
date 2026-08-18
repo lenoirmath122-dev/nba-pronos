@@ -5,7 +5,30 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 16/08/2026 — **rattrapage de suivi :
+> Dernière mise à jour : session du 18/08/2026 — **rattrapage de suivi :
+> ce fichier et `GAPS_OUVERTS.md` n'avaient pas suivi depuis le 15/08/2026**,
+> alors que `JOURNAL_SESSIONS.md` (append-only) était lui à jour jusqu'au
+> 17/08/2026 inclus — repéré en répondant à la question de l'utilisateur
+> « tout est documenté ? » en fin de session du jour. Signalé explicitement
+> avant d'agir (`AskUserQuestion`) : rattrapage complet choisi plutôt que de
+> ne documenter que la session du jour. **7 entrées ajoutées** (§2.64→§2.70),
+> reconstruites à partir de `JOURNAL_SESSIONS.md` (déjà fiable et détaillé
+> pour le 16-17/08, contrairement au rattrapage du 16/08 ci-dessous qui,
+> lui, partait de commentaires de code faute de trace de session) :
+> **audit UX + code** (§2.64, `1f4847a`→`be31785`, 16/08) ; **Bracket, arbre
+> visuel connecté devenu le mode principal partout** (§2.65,
+> `5e7c806`→`f23a1ba`, 16-17/08) ; **admin, suppression manuelle d'un match**
+> (§2.66, `4e21c00`, 17/08) ; **Bracket, remise à zéro + correctifs
+> remplissage** (§2.67, `b48112b`, 17/08) ; **paris en pop-up + score en
+> menu déroulant sur le poster** (§2.68, `6396f1d`/`978fa97`, 17/08) ;
+> **Accueil, polish visuel** (§2.69, `b91df40`, 18/08 — voir aussi la piste
+> notifications/popup à la connexion toujours pas cadrée, `GAPS_OUVERTS.md`) ;
+> **Mes paris, suppression d'un pari + boutons harmonisés** (§2.70,
+> `91f398a`, 18/08). Détail de chaque session déjà connu dans
+> `JOURNAL_SESSIONS.md` — ces 7 entrées le condensent au format « instantané »
+> de ce fichier, sans le répéter intégralement.
+>
+> Plus tôt (session du 16/08/2026) — **rattrapage de suivi :
 > 9 commits des 14 et 15/08/2026, committés et poussés, jamais documentés
 > ici** (même pattern que le rattrapage du 06/08/2026 ci-dessous, ou celui
 > du 13/08/2026 juste en dessous). Repéré en tout début de session à la
@@ -5692,4 +5715,280 @@ dupliquée.
 
 `tsc`/`eslint`/`vitest`/`next build` revérifiés propres le 16/08/2026 (même
 réserve qu'en §2.60). Committé et poussé (`51bdb37`, `e2c63ef`).
+```
+
+### 2.64 Audit UX + code : parcours réel + revue multi-agents (session du 16/08/2026)
+
+```text
+Demande de l'utilisateur : « comment auditer entièrement l'appli », précisé
+en « mise à l'épreuve face à un potentiel joueur », comparé à des applis de
+pronostics/bracket entre amis existantes. Détail complet dans les fichiers
+dédiés `AUDIT_UX_16_08_2026.md` (technique) et `AVIS_EXPERT_16_08_2026.md`
+(qualitatif) — nature ponctuelle, pas fondue ici comme un instantané d'état.
+
+**Bug réel trouvé et corrigé** : inscription sur un email déjà pris
+échouait en silence (protection anti-énumération de Supabase, aucune
+erreur renvoyée par `signUp()`) — `lib/auth/actions.ts` suivait quand même
+le chemin succès. Corrigé (vérifie `data.session`/`data.user.identities`),
+vérifié en conditions réelles. Committé et poussé (`1f4847a`).
+
+**Infra** : quota d'emails Supabase (2/h, fixe) rencontré en testant un
+compte neuf — SMTP Resend configuré en séance en mode bac-à-sable (2 bugs
+de config trouvés/corrigés : username `Resend`→`resend`, port `465`→`587`).
+**Reste en pause, décision produit à prendre** (domaine vérifié Resend vs
+service intégré Supabase) — voir `GAPS_OUVERTS.md`. Clé API Resend exposée
+2x dans le chat pendant le dépannage, régénération laissée à l'utilisateur.
+
+**Revue de code** (`/code-review`, 9 commits du 14-15/08, 6 angles) : la
+trouvaille la plus solide — désync `isLive`/`isDecided` sur le Bracket
+(`LiveSeriesSubscriber.tsx` ne poussait en direct que le vainqueur, jamais
+le statut) — corrigée le jour même (voir 2 entrées suivantes). Bouton
+« Parier » trompeur sur série terminée corrigé aussi. 3 duplications de
+code dédoublonnées : `parisDateTimeLabel()` (`lib/dates/paris.ts`,
+6 copies), `RELEASED_BET_STATUSES` (`lib/labels/bets.ts`, 6 copies),
+`clickableRowProps()` (`lib/hooks/clickableRow.ts`, 3 copies). Erreur
+d'hydratation `NotificationSettings.tsx` (Profil, trouvée en marge des 9
+commits audités) corrigée le jour même. Libellé "Hier" du Classement
+(`RankTrend`) corrigé (`daysAgo`, "Il y a N jours" au-delà de la veille).
+Nœud sans conférence de `SeriesDrillDown.tsx` : garde-fou ajouté (3e
+colonne "rest"). Redirection `/play/bracket?round=X` → `/bracket` :
+transformée en ancre + scroll dédié (le scroll natif du navigateur
+n'avait pas lieu après l'hydratation Next.js). Committé et poussé
+(`3ffe528`, `e9eca96`, `e0e87f7`, `79291d3`, `be31785`).
+
+**Discussion produit** (`AVIS_EXPERT_16_08_2026.md`, 4 questions tranchées
+par `AskUserQuestion`) : (1) bracket en arbre visuel connecté — **oui**,
+codé dans la foulée (§2.65) ; (2) mécanique récurrente — **ni duel hebdo ni
+boosters**, l'utilisateur préfère un système de notifications/popups à la
+connexion (résumé depuis la dernière visite, badges débloqués, actus) —
+**pas cadré ni codé**, reste ouvert ; (3) chat/couche sociale in-app —
+**jugé utile**, **pas cadré ni codé** ; (4) priorité — pistes produit
+d'abord, SMTP reste en pause.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres après
+chaque correctif. Comparaison concurrentielle (HoopCall/Scorecast/
+ParidAmis) : nba-pronos en avance sur badges/bracket, en retard sur
+chat/boosters/duel hebdo — détail dans `AUDIT_UX_16_08_2026.md` §5.
+```
+
+### 2.65 Bracket : l'arbre visuel connecté devient le mode principal, partout (session du 16-17/08/2026)
+
+```text
+Suite de la discussion produit ci-dessus (§2.64, point 1). Chantier mené en
+plusieurs passes sur 2 jours, à chaque fois affiné par retour direct de
+l'utilisateur.
+
+**16/08 — traits de connexion** (`5e7c806`) : la Vue B (poster Ouest→
+Finale→Est, existante depuis le 30/07) n'avait aucun trait entre les
+séries. Nouveau `components/bracket/TreeConnectors.tsx` — SVG à la main,
+mesure DOM réelle (`getBoundingClientRect` + `ResizeObserver`, la hauteur
+des cartes n'est pas fixe), connecteurs en coude, couleur neutre
+(`--color-border-strong`, jamais une couleur sémantique). Généralisé via
+`getId`/`getNextId` pour être réutilisable entre consultation et
+remplissage (voir plus bas). Bug de scroll trouvé et corrigé le jour même :
+`justify-content: center` sur `.treeColumn` rendait le 1er tour partiellement
+inatteignable en paysage mobile (débordement symétrique, un conteneur
+scrollable ne scrolle jamais en négatif) — corrigé par marges auto
+(`3ca8e1e`).
+
+**16/08 — devient le défaut desktop/paysage, remplissage en poster
+interactif** (`e416af3`, `2f97324`) : Vue B posée en défaut sur
+desktop/paysage (Vue A reste seule vue sans scroll horizontal en portrait
+mobile, inchangée). Remplissage (`/play/bracket`) passé lui aussi en
+poster — 3 pièces génériques partagées entre consultation et remplissage
+(`posterColumns.ts`, `TreeConnectors.tsx` généralisé, nouveau
+`useImmersiveDefault.ts`) plutôt que dupliquées. Guidage automatique vers
+la prochaine série à compléter (`FillPosterView.tsx`).
+
+**17/08 — simplification radicale : l'arbre devient TOUJOURS l'écran
+d'arrivée** (`f23a1ba`) : sur demande de l'utilisateur (« peu importe le
+device »), toute détection de viewport (`useImmersiveDefault.ts`) retirée
+au profit d'un simple `usePosterToggle.ts` (visible/masqué, sans media
+query). « Quitter » déplacé en 1er élément du header. Cartes fusionnées
+(demi-finales, finales de conf., Finale NBA) alignées sur le milieu de
+leurs 2 parents (`alignMergedCards()`, tri topologique par passes,
+`transform: translateY()`).
+
+**17/08 — 2 correctifs de suite** : libellés de tour restés à leur
+position flex d'origine après l'alignement des cartes, donc parfois sous
+la 1re carte de leur colonne — corrigé (`alignColumnLabels()`, `d8a29a0`).
+Finales de conférence + Finale NBA alignées sur une ligne COMMUNE (moyenne
+des 3 positions), distinct de l'alignement individuel des demi-finales
+(`cc14bf5`).
+
+Vérifié en conditions réelles à chaque étape (Playwright, comptes réels et
+sandbox, 4 largeurs de viewport pour l'étape finale) — traits, alignements
+et guidage confirmés par mesure DOM et captures d'écran, jamais une
+simple relecture de code. `tsc`/`eslint`/`vitest` (37/37)/`next build`
+(36 routes) propres après chaque étape. Committé et poussé (`5e7c806`,
+`3ca8e1e`, `e416af3`, `2f97324`, `f23a1ba`, `d8a29a0`, `cc14bf5`).
+```
+
+### 2.66 Admin : suppression manuelle d'un match (session du 17/08/2026)
+
+```text
+Origine : l'utilisateur (seul compte ADMIN) signale des matchs invisibles
+dans « Mes matchs » — diagnostiqué PAS un bug (décalage horaire à la
+saisie, `scheduled_at` déjà passé) mais révèle l'absence de toute fonction
+de suppression manuelle (seule la synchro automatique en créait).
+
+**Recherche préalable** : `matches` référencée par `match_predictions`/
+`bets` SANS `ON DELETE CASCADE` — décision : ne jamais cascader, traduire
+la violation de contrainte Postgres (23503) en message clair plutôt que de
+forcer la perte de données. `lib/actions/admin-results.ts::deleteMatch()`
+(même patron auth/écriture que `createMatch`/`saveMatchResult`, capture le
+23503, recalcule `bracket_deadline`, journalise via `logAdminAction`).
+`components/admin/DeleteMatchButton.tsx` (nouveau, dialogue de
+confirmation irréversible, même patron que `CloseCompetitionButton.tsx`)
+— bouton ajouté à `SeriesResultsCard.tsx`.
+
+Vérifié en conditions réelles (rôle ADMIN accordé temporairement à un
+compte bot, revert automatique) : suppression d'un match jetable réussie ;
+suppression refusée avec le bon message quand un pronostic existe déjà
+(match resté intact). `tsc`/`eslint`/`vitest` (37/37)/`next build`
+(36 routes) propres. Committé et poussé (`4e21c00`).
+```
+
+### 2.67 Bracket : remise à zéro personnelle + correctifs remplissage (session du 17/08/2026)
+
+```text
+Demandé par l'utilisateur en testant le remplissage sur une compétition
+fraîchement recréée (« Play offs test », après nettoyage des 10 comptes
+bots de simulation du 14/08 — investigation FK préalable, même prudence
+que §2.66, 0 ligne résiduelle vérifiée après coup).
+
+**`resetBracket()`** (`lib/actions/bracket-fill.ts`) : remet
+`brackets.is_validated`/`validated_at` à l'état initial puis vide les
+`bracket_picks` (mise à `null`, pas de `DELETE` — RLS n'expose que
+`_update` sur `bracket_picks`). Verrou de deadline détecté via l'absence
+de ligne affectée (même patron que `validateBracket`).
+`components/bracket-fill/ResetBracketButton.tsx` (partagé entre les 2
+rendus de `/play/bracket`, teinté `--color-loss`).
+
+**2 correctifs signalés par l'utilisateur en testant, même session** :
+(1) l'écran ne se remettait à jour qu'après fermeture/réouverture — cause :
+`useState(series.myPick...)` initialisé une seule fois au montage, jamais
+resynchronisé après un `revalidatePath` ; corrigé par le patron React
+officiel « adjusting state when a prop changes » (comparaison de signature
+pendant le rendu, pas dans un effet — la 1re tentative via `useEffect`
+avait été rejetée par `react-hooks/set-state-in-effect`). (2) latence
+perçue entre le tap vainqueur et le tap score — cause : un seul
+`useTransition` désactivait TOUS les boutons pendant l'aller-retour réseau
+du 1er tap ; corrigé en retirant `disabled`, la sérialisation des 2
+sauvegardes reportée sur une file d'attente manuelle (`Promise` chaînée).
+
+**Autres correctifs remplissage** : boutons de score masqués tant
+qu'aucun vainqueur n'est choisi ; guidage automatique (scroll vers la
+prochaine série) limité à une seule fois au chargement, plus après chaque
+pick.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres après
+chaque correctif. Committé et poussé (`b48112b`).
+```
+
+### 2.68 Paris en pop-up + score du poster en menu déroulant (session du 17/08/2026)
+
+```text
+Demandé par l'utilisateur (« le formulaire de pari en pop-up ? »). Périmètre
+clarifié par `AskUserQuestion` : `/play/bets/new` et `/play/bets/[id]/edit`
+(navigation pleine page jusqu'ici) — pas `InlineBetForm` (Matchs, déjà
+inline), sauf extension demandée dans la foulée au Bracket (voir plus bas).
+
+**`BetFormModal.tsx`** (portalé vers `document.body`, backdrop + boîte
+centrée) : les 2 routes restent de vraies pages Next.js (tous les liens qui
+y mènent inchangés), seul leur RENDU devient une fenêtre centrée. Les 3
+`router.push("/play")` de `BetForm.tsx` remplacés par `router.back()`.
+`components/ui/ModalDialog.tsx` extrait (coquille backdrop+dialogue
+générique, `onClose` fourni par l'appelant) une fois l'utilisateur confirmé
+vouloir la même pop-up DANS le Bracket — nouvelle prop
+`InlineBetForm({ presentation: "inline" | "modal" })`, les 2 rendus de
+`/play/bracket` passent `"modal"`, Matchs inchangé. Piège évité : `isOpen`
+s'auto-ouvrait déjà pour un pari existant en mode inline — forcé à `false`
+en mode modal, sinon la pop-up serait apparue seule au chargement de la
+carte.
+
+**Poster : scores repositionnés puis affinés en menu déroulant**
+(`6396f1d`, `978fa97`) : d'abord sortis de la carte (empilés à côté, côté
+centre du poster) — correctif same-session après retour utilisateur
+(« ça fait bizarre hors de la carte », cartes de demi-finale/finale
+agrandies par un `flex: 1` mal ciblé) : revenu à un score AFFICHÉ DANS la
+carte, en menu déroulant natif, uniquement en face de l'équipe désignée
+vainqueur — plus simple que la version précédente (plus de notion
+gauche/droite pour les scores, juste `side` pour l'ordre bouton/menu dans
+la ligne équipe).
+
+Vérifié en conditions réelles à chaque itération (comptes réels et
+sandbox ; une tentative de compte de test a échoué sur une panne Supabase
+Auth transitoire, implémentation faite sans vérification visuelle cette
+fois-là, annoncé explicitement, revérifiée à l'itération suivante).
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres.
+Committé et poussé (`6396f1d`, `978fa97`).
+```
+
+### 2.69 Accueil : icônes, liseré d'urgence, rang en avant, pastilles d'équipe, feed illustré (session du 18/08/2026)
+
+```text
+Demande ouverte de l'utilisateur (« améliorer l'aspect visuel de la page
+d'accueil ») — cadrée par une maquette artifact (Actuel/Proposition, tokens
+réels de `app/tokens.css`) validée avant tout code, même méthode que les
+maquettes de Profil (§2.54) et Stats (§2.55).
+
+**5 changements, purement visuels** (aucune donnée/mécanique touchée) :
+icône par type d'item dans « À traiter » (nouveau
+`components/icons/home-icons.tsx`, même patron que `nav-icons.tsx` —
+`PlayIcon` de la nav réutilisée pour "matchs" plutôt que dupliquée) ;
+liseré d'urgence (accent si deadline < 1h, neutre sinon) via un prop
+`urgencyBorder` optionnel sur `Countdown.tsx` (off par défaut, n'affecte
+pas `BracketSummary.tsx`, seul autre appelant) ; le rang devient le
+chiffre hero de l'en-tête (`HomeHeader.tsx`), points/écart au leader en
+secondaire ; pastilles d'équipe (`TeamLogo`, déjà utilisé par Bracket/
+Matchs) sur le "prochain match" — `TodoItem` restructuré pour porter un
+`matchup` structuré au lieu d'un texte pré-formaté (ferme un point noté
+dans `GAPS_OUVERTS.md`) ; icône de résultat (✓/✗/–) dans le feed « Ça vient
+de tomber », vert/rouge toujours strictement réservés au résultat.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres. **Pas
+testé au clic** : connexion à un compte de test bloquée par le classifieur
+de permissions (recherche de l'email d'un compte via `service_role`
+refusée) — vérifié au niveau type/build uniquement, signalé explicitement
+à l'utilisateur. Committé et poussé (`b91df40`).
+```
+
+### 2.70 Mes paris : suppression d'un pari encore modifiable + boutons harmonisés (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : pouvoir supprimer un pari personnalisé (pas un
+prono) encore présent dans « Mes paris ». Conflit trouvé et signalé AVANT
+de coder (`AskUserQuestion`, 2 tours) : la rétention D2
+(`SPEC_TECHNIQUE_V0.1_1.md` §7, « aucune suppression, nulle part » — pas de
+backup sur le plan gratuit, effacer et le regretter est irrécupérable)
+interdit tout vrai `DELETE` sur `bets`, confirmé par le commentaire du
+trigger `enforce_bet_transitions` lui-même (« jamais de suppression,
+seulement ce retour arrière »). Décision retenue avec l'utilisateur : le
+bouton "Supprimer" reste honnête côté produit, mais sous le capot c'est un
+passage à `CANCELLED` — transition déjà légale, déjà exclue du calcul de
+quota, déjà anticipée par un commentaire de la vue badges du 09/08 (« un
+pari retiré par le joueur ») — jamais reliée à un bouton jusqu'ici.
+
+**`delete_bet(bet_id)`** (migration #29,
+`20260818090000_delete_bet_function.sql`, SECURITY DEFINER, même patron
+que `save_bet`/`withdraw_bet`) : DRAFT/SUBMITTED uniquement, motif dédié
+« Retiré par toi avant revue. » (distinct d'une neutralisation admin),
+`resolved_at` laissé `null` (aucun admin impliqué → n'apparaît pas dans le
+feed de l'Accueil). `lib/actions/bets.ts::deleteBet` +
+`components/my-bets/DeleteBetButton.tsx` (dialogue de confirmation, même
+patron que `DeleteMatchButton.tsx`, §2.66).
+
+**Harmonisation des boutons demandée dans la foulée** : Modifier/
+Reproposer/Signaler à un admin/Envoyer passaient d'un lien souligné à un
+texte nu à un bouton plein — 3 formes différentes pour des actions de
+poids équivalent. Unifiés sur un seul gabarit contour (`.actionButton`,
+`MyBetRow.module.css`), seule la couleur porte le sens désormais (accent/
+loss/secondaire) ; `DeleteBetButton` aligné pixel pour pixel dessus.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres. Migration
+**pas encore poussée sur la base réelle** (`npx supabase db push` bloqué
+par le classifieur de permissions, comme la vérification au clic de
+§2.69) — à faire manuellement par l'utilisateur, voir `GAPS_OUVERTS.md`.
+Committé et poussé (`91f398a`).
 ```

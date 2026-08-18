@@ -4,6 +4,57 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 18/08/2026** — **Rattrapage de suivi : `ETAT_ACTUEL.md` et ce
+> fichier n'avaient pas suivi depuis le 15/08/2026** (`JOURNAL_SESSIONS.md`,
+> lui, était à jour jusqu'au 17/08/2026) — repéré en répondant à la question
+> de l'utilisateur « tout est documenté ? », rattrapage complet choisi avec
+> lui plutôt que de ne documenter que le jour même. Détail complet dans
+> `ETAT_ACTUEL.md` §2.64→§2.70.
+> - **Bracket en arbre visuel connecté (avis expert du 16/08, point 1) —
+>   ENTIÈREMENT FAIT ET CLOS**, retiré des points ouverts ci-dessous : devenu
+>   le mode principal PARTOUT (consultation ET remplissage, tous devices,
+>   plus de bascule desktop/mobile) — voir `ETAT_ACTUEL.md` §2.65.
+> - **Admin : suppression manuelle d'un match — FAITE** (§2.66) ; **remise à
+>   zéro du bracket personnel — FAITE** (§2.67) ; **paris en pop-up + score
+>   du poster en menu déroulant — FAIT** (§2.68).
+> - **Accueil : polish visuel (icônes, liseré d'urgence, rang en avant,
+>   pastilles d'équipe, feed illustré) — FAIT** (§2.69). Logos de franchise
+>   sur l'Accueil : **partiellement résolu** — l'item "matchs à
+>   pronostiquer" de « À traiter » a maintenant de vraies pastilles
+>   d'équipe (`TeamLogo`), mais le feed « Ça vient de tomber » (icônes de
+>   résultat choisies à la place) et le Classement restent en texte seul —
+>   voir l'entrée plus bas « Logos de franchise sur Accueil et Classement ».
+> - **Nouveau point ouvert, non tranché** : les icônes de
+>   `components/icons/home-icons.tsx` (À traiter/feed, ajoutées le
+>   18/08/2026) sont un stopgap fait main — l'utilisateur a explicitement
+>   noté vouloir les reprendre plus tard, **même statut que les icônes de
+>   badges avant leur passe visuelle dédiée** (`lucide-react` → visuels IA,
+>   voir plus bas). Reprise à date non fixée.
+> - **Mes paris : suppression d'un pari personnalisé encore modifiable —
+>   FAITE** (§2.70, `delete_bet`, migration #29) — sous le capot un passage
+>   à `CANCELLED` (rétention D2), pas un vrai `DELETE`. **Boutons
+>   Modifier/Reproposer/Signaler/Envoyer/Supprimer harmonisés** (même
+>   gabarit contour) dans la foulée.
+> - **Nouveau point ouvert, bloquant pour cette dernière fonctionnalité** :
+>   la migration #29 (`delete_bet`) **n'est pas encore poussée sur la base
+>   réelle** — `npx supabase db push` bloqué par le classifieur de
+>   permissions côté Claude, à faire manuellement par l'utilisateur. Sans
+>   ça, le bouton "Supprimer" échoue avec une erreur RPC.
+> - **Reste ouvert, inchangé depuis le 16/08** (voir bloc ci-dessous pour le
+>   détail complet) : décision SMTP (bac-à-sable Resend vs service intégré
+>   Supabase) ; notifications/popup à la connexion (résumé depuis la
+>   dernière visite, badges débloqués, actus) — pas cadré ni codé ; chat/
+>   couche sociale in-app — jugé utile, pas cadré ni codé ; lien "Parier"
+>   atteignable dans une carte `aria-disabled` ; classes CSS mortes
+>   `.hero-banner-title`/`.hero-banner-subtitle` ; `LeaderboardRow` non
+>   mémoïsé ; regroupements de requêtes possibles (`getBracket()`,
+>   `getHomeData()`).
+> - **Vérification au clic bloquée 2 fois ce 18/08/2026** (Accueil §2.69,
+>   recherche d'email de compte de test pour §2.70) par le même classifieur
+>   de permissions que la migration ci-dessus — les 2 fonctionnalités sont
+>   donc vérifiées au niveau type/build (`tsc`/`eslint`/`vitest`/
+>   `next build`) mais pas encore au clic en conditions réelles.
+>
 > **État au 16/08/2026** — **Audit UX + code, détail complet dans
 > `AUDIT_UX_16_08_2026.md`.** Tous les points actionnables techniques
 > traités et poussés SAUF SMTP (mis en pause explicitement, décision à
@@ -651,19 +702,18 @@
   (`--logo-size-lg`), une taille plus grande a été mentionnée comme piste
   possible sans être décidée. À reprendre si le besoin se confirme à
   l'usage.
-- **Logos de franchise sur Accueil et Classement** (trouvé le 24/07/2026 : les
-  30 SVG existent bien dans `public/logos/teams/` et sont déjà committés,
-  mais aucun écran ne les affichait — câblés le même jour sur Bracket et
-  Matchs, `components/ui/TeamLogo.tsx`, chemin déduit de l'abréviation, sans
-  toucher aux contrats de types). Accueil et Classement laissés de côté
-  volontairement : Classement n'affiche aucune équipe (classement de
-  joueurs) ; Accueil ne porte les équipes que dans du texte déjà formaté
-  (`TodoItem.subtitle`, `FeedItem.label`, ex. « Prochain : BOS - ATL ») —
-  y ajouter un logo demanderait de restructurer ces contrats de type en
-  objets équipe, un changement plus large qu'un simple ajout visuel. À
-  décider plus tard : soit dans ce sens (restructurer), soit un simple
-  remplacement texte→texte+logo par extraction regex du subtitle/label,
-  moins propre.
+- **Logos de franchise sur Accueil et Classement — PARTIELLEMENT RÉSOLU le
+  18/08/2026** (trouvé le 24/07/2026 : les 30 SVG existent bien dans
+  `public/logos/teams/` et sont déjà committés, câblés le 24/07 sur Bracket
+  et Matchs, `components/ui/TeamLogo.tsx`). L'item "matchs à pronostiquer"
+  de l'Accueil (« À traiter ») a maintenant de vraies pastilles d'équipe —
+  `TodoItem.matchup` restructuré en objets équipe au lieu du texte
+  pré-formaté envisagé ici (le "changement plus large" ci-dessous, fait
+  pour de vrai plutôt que l'extraction regex, jugée moins propre à
+  l'époque). **Reste en texte seul** : le feed « Ça vient de tomber » de
+  l'Accueil (icônes de résultat choisies à la place, pas de pastille —
+  voir `ETAT_ACTUEL.md` §2.69) et le Classement (toujours aucune équipe
+  affichée, classement de joueurs). À reprendre séparément si voulu.
 - **Garde `bet_scope=SERIES` interdit en NBA Cup non testée en conditions
   réelles** (26/07/2026, `save_bet`, migration #10) : le jeu de données de
   test ne porte qu'une compétition PLAYOFFS active — le refus d'un pari
