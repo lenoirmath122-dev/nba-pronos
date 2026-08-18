@@ -49,6 +49,13 @@ export type BracketLiveScore = { teamAWins: number; teamBWins: number };
 export type BracketMyPick = {
   teamAbbreviation: string;
   seriesFormat: string | null; // null en NBA Cup (match sec)
+  /** Points marqués sur CE pronostic de bracket (winner + exact score +
+   *  matchup, déjà sommés par la colonne générée `points_awarded`). null
+   *  tant que non scoré — jamais 0 (même convention que les pronos match,
+   *  §9 SPEC_ECRAN_MES_PRONOS). Affiché entre parenthèses UNIQUEMENT une
+   *  fois la série FINISHED (18/08/2026, demandé par l'utilisateur) —
+   *  NodeCard.tsx porte cette condition, pas ce module. */
+  points: number | null;
 };
 
 /** Pilote le petit bouton « Parier »/« Modifier » sur chaque carte série
@@ -263,19 +270,23 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
     }
   }
 
-  // Score EN DIRECT des séries IN_PROGRESS (14/08/2026) — victoires par
-  // équipe, comptées depuis les matchs FINISHED de la série (même logique
-  // de comptage que deriveSeriesOutcome, lib/scoring/engine.ts, mais on a
+  // Score par équipe des séries IN_PROGRESS ET FINISHED (14/08/2026, étendu
+  // le 18/08/2026 aux séries terminées à la demande de l'utilisateur — même
+  // représentation X-Y qu'une série en cours, cf. NodeCard.tsx) — victoires
+  // comptées depuis les matchs FINISHED de la série (même logique de
+  // comptage que deriveSeriesOutcome, lib/scoring/engine.ts, mais on a
   // besoin ici du DÉTAIL par équipe, pas seulement de l'agrégat déjà écrit
   // dans official_*). Une seule requête, uniquement s'il y a au moins une
-  // série IN_PROGRESS.
-  const inProgressSeriesIds = series.filter((row) => row.official_status === "IN_PROGRESS").map((row) => row.id);
+  // série concernée.
+  const seriesIdsNeedingLiveScore = series
+    .filter((row) => row.official_status === "IN_PROGRESS" || row.official_status === "FINISHED")
+    .map((row) => row.id);
   const liveScoreBySeriesId = new Map<string, BracketLiveScore>();
-  if (inProgressSeriesIds.length > 0) {
+  if (seriesIdsNeedingLiveScore.length > 0) {
     const { data: liveMatches } = await supabase
       .from("matches")
       .select("series_id, home_team_id, away_team_id, home_score, away_score")
-      .in("series_id", inProgressSeriesIds)
+      .in("series_id", seriesIdsNeedingLiveScore)
       .eq("status", "FINISHED");
     const seriesById = new Map(series.map((row) => [row.id, row]));
     for (const match of liveMatches ?? []) {
@@ -328,7 +339,15 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
           ? (teams.get(row.official_winner_team_id)?.abbreviation ?? null)
           : null,
         status: row.official_status,
-        liveScore: row.official_status === "IN_PROGRESS" ? (liveScoreBySeriesId.get(row.id) ?? { teamAWins: 0, teamBWins: 0 }) : null,
+        // Étendu à FINISHED (18/08/2026, demandé par l'utilisateur) : une
+        // série terminée garde le même score X-Y déjà utilisé pour une série
+        // EN COURS, plutôt que de le masquer — seule la mise en avant change
+        // (vainqueur en vert au lieu de l'équipe qui MÈNE en --color-trend,
+        // cf. NodeCard.tsx). SCHEDULED reste à null (rien à compter).
+        liveScore:
+          row.official_status === "IN_PROGRESS" || row.official_status === "FINISHED"
+            ? (liveScoreBySeriesId.get(row.id) ?? { teamAWins: 0, teamBWins: 0 })
+            : null,
         finalScoreFormat: row.official_status === "FINISHED" ? row.official_score_format : null,
         filledBracketsCount: filledBySeriesId.get(row.id) ?? 0,
         groups: groupsBySeriesId.get(row.id) ?? [],
@@ -418,6 +437,8 @@ type BracketPickRow = {
   bracket_id: string;
   predicted_winner_team_id: string | null;
   predicted_score_format: string | null;
+  points_awarded: number | null;
+  scored_at: string | null;
 };
 
 async function getFilledPicksAndGroups(
@@ -435,7 +456,7 @@ async function getFilledPicksAndGroups(
   const [{ data: picksData }, { data: bracketsData }] = await Promise.all([
     supabase
       .from("bracket_picks")
-      .select("series_id, bracket_id, predicted_winner_team_id, predicted_score_format")
+      .select("series_id, bracket_id, predicted_winner_team_id, predicted_score_format, points_awarded, scored_at")
       .eq("competition_id", competitionId),
     supabase.from("brackets").select("id, user_id").eq("competition_id", competitionId),
   ]);
@@ -492,6 +513,7 @@ async function getFilledPicksAndGroups(
       myPicksBySeriesId.set(pick.series_id, {
         teamAbbreviation: team?.abbreviation ?? "?",
         seriesFormat: pick.predicted_score_format,
+        points: pick.scored_at === null ? null : pick.points_awarded,
       });
     }
   }

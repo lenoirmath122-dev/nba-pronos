@@ -6130,3 +6130,115 @@ ne l'a jamais eu). Pas un oubli : receveur naturel si demandé un jour.
 Rien commité — laissé à l'utilisateur de demander un commit s'il le
 souhaite.
 ```
+
+### 2.73 Avancement de la compétition active avec les comptes TestJoueur1-4 (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur, après confirmation que la refonte « a l'air de
+marcher » : faire avancer la compétition en cours en peuplant les comptes de
+test existants (bracket, pronos, paris), plutôt que d'observer un écran vide.
+
+**Lecture seule d'abord** (scripts jetables, supprimés après usage) : la
+compétition ACTIVE est « Play offs test » (créée le 17/08/2026, 15 séries
+déjà appariées au 1er tour, 1 seul match), et 4 comptes PLAYER déjà
+existants et vierges — TestJoueur1 à TestJoueur4 — à côté des comptes réels
+Demo_Amis et Rillettes-31 (bracket déjà validé, 1 prono, 1 pari — ni l'un ni
+l'autre touchés). Contrairement à `seed-playoffs-simulation.mjs` (14/08),
+PAS de nouvelle compétition à créer : celle-ci est réutilisée telle quelle,
+reste ACTIVE, rien n'est archivé.
+
+**`scripts/advance-current-competition.mjs`** (nouveau, conservé dans le
+dépôt comme les autres scripts de seed) : réutilise les fonctions de
+scoring/avancement de `seed-playoffs-simulation.mjs` À L'IDENTIQUE (copiées,
+pas modifiées) mais ne crée ni compétition ni équipes ni séries ni comptes —
+seulement des matchs (sur les 7 séries du 1er tour encore vides, mélange
+volontaire terminé/en cours/pas commencé, une 8e série — MEM-MIN — laissée
+SANS AUCUN match pour couvrir aussi ce cas), des brackets complets (15 picks
+chacun) pour les 4 TestJoueur, des pronos sur tous les matchs (joués et à
+venir), et 6 paris couvrant tous les statuts (DRAFT/SUBMITTED/WON/LOST/
+REJECTED/CANCELLED). 2 bugs trouvés et corrigés en écrivant le script avant
+de l'exécuter : `validated_by_admin_id` pointait par erreur vers le joueur
+lui-même au lieu d'un admin (expression `"X" in objet` toujours fausse) ;
+une expression bricolée dans le calcul des picks CONF_SEMIS était morte
+(toujours vraie) — nettoyée avant tout run réel.
+
+**Exécuté sans erreur**, vérifié en lecture ensuite : compétition toujours
+ACTIVE (même id), 21 matchs (17 FINISHED/4 SCHEDULED), 85 pronos (68
+scorés), 9 paris (tous statuts représentés), 5 brackets/75 picks, 2 séries
+FINISHED avec vainqueur réellement avancé au tour suivant. Les 6 comptes
+(dont Demo_Amis/Rillettes-31) restent ACTIVE, aucune donnée existante
+touchée. Scripts d'inspection jetables supprimés après usage ; le script de
+seed lui-même reste dans le dépôt, pas encore commité.
+
+**Correctif le jour même, signalé par l'utilisateur** (« mon bracket marque
+encore que je peux le modifier... et on ne voit pas l'avancement des séries
+réelles ») : les 2 symptômes n'en faisaient qu'un. `advance-current-
+competition.mjs` insérait des matchs SANS recalculer
+`competitions.bracket_deadline` (contrairement à `recomputeBracketDeadline()`,
+`lib/actions/admin-results.ts`, appelé par le vrai chemin d'écriture de
+l'app) — la deadline restait bloquée sur l'heure de l'unique match antérieur
+au seed (ce soir), alors que la plupart des matchs insérés sont plus anciens.
+Conséquence en cascade repérée dans `app/(app)/play/bracket/page.tsx` §61 :
+`/play/bracket` ne redirige vers `/bracket` (vue globale, seule à montrer
+l'avancement officiel des séries) que si `isDeadlinePassed` est vrai —
+resté faux, l'utilisateur restait donc coincé sur l'écran de REMPLISSAGE,
+qui n'affiche jamais cet avancement. Corrigé en base (deadline recalculée
+sur le vrai match le plus ancien) et dans le script lui-même (recalcul
+ajouté, pour ne pas reproduire le bug si relancé un jour).
+```
+
+### 2.74 Bracket : score de série conservé après la fin, vainqueur en vert (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : « quand une série est finie, il faut simplement
+surligner le vainqueur en vert et laisser le score comme il apparaît sur les
+séries en cours ». Constat avant de coder : le score X-Y (LiveTeamRow) était
+réservé aux séries IN_PROGRESS — une série FINISHED retombait sur le rendu
+"équipes seules, sans score" (matchup simple), le vert du vainqueur étant la
+SEULE information conservée.
+
+**`lib/queries/bracket.ts`** : `liveScore` n'était calculé QUE pour les
+séries IN_PROGRESS (2 endroits — la sélection des séries concernées ET le
+champ exposé dans `BracketNode`) ; étendu aux deux aux séries FINISHED
+également (SCHEDULED reste à `null`, rien à compter).
+
+**`components/bracket/NodeCard.tsx`** : `LiveTeamRow` renommé `SeriesTeamRow`,
+accepte désormais `highlight: "trend" | "win" | null` au lieu d'un booléen
+`isLeading` — "trend" (déjà existant, `--color-trend`) pour l'équipe qui MÈNE
+une série encore EN COURS, "win" (nouveau, `--color-win`) pour le VAINQUEUR
+réel d'une série TERMINÉE, jamais les deux à la fois. La branche de rendu
+bascule sur `node.liveScore !== null` (IN_PROGRESS OU FINISHED) au lieu de
+`isLive` seul ; l'étiquette "En cours" et le mini-résumé du prono restent
+réservés à `isLive`. `NodeCard` étant le seul point de rendu d'une série
+(vérifié — `SeriesDrillDown` s'y appuie entièrement, aucun autre composant),
+le correctif s'applique partout (Bracket global, drill-down, remplissage).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. **Pas
+vérifié au clic** (même limite que §2.72/§2.73).
+```
+
+### 2.75 Bracket : points du pronostic affichés une fois la série finie (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur, suite immédiate de §2.74 : « ajoute le nombre de
+points entre parenthèse à la suite de mon prono dans le bracket si la série
+est finie ».
+
+**`lib/queries/bracket.ts`** : `BracketMyPick` gagne un champ `points:
+number | null` (`— tant que non scoré, jamais 0`, même convention que les
+pronos match) — la requête `bracket_picks` sélectionnait déjà tout SAUF
+`points_awarded`/`scored_at`, ajoutés au select et au type `BracketPickRow`.
+
+**`components/bracket/NodeCard.tsx`** : `MyPickContent` prend un nouveau
+prop `showPoints`, qui ajoute ` (N pt(s))` après le prono UNIQUEMENT quand
+vrai. Des 2 emplacements où ce composant est rendu, un seul peut
+légitimement être FINISHED (celui de la ligne hors "En cours" — l'autre vit
+STRICTEMENT dans la branche `isLive`, où `liveStatus` est déjà réduit au
+type littéral `"IN_PROGRESS"` par le narrowing de TypeScript sur `isLive` :
+comparer à `"FINISHED"` y est une erreur de compilation, à raison — remplacé
+par `showPoints={false}` en dur, plus honnête que le comparateur mort qu'il
+remplaçait).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Pas
+vérifié au clic (même limite que les entrées précédentes du jour).
+```

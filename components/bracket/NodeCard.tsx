@@ -41,9 +41,14 @@ type NodeCardProps = {
 function MyPickContent({
   myPick,
   isCorrect,
+  showPoints,
 }: {
   myPick: NonNullable<BracketNode["myPick"]>;
   isCorrect: boolean;
+  /** Points affichés entre parenthèses UNIQUEMENT série FINISHED (18/08/2026,
+   *  demandé par l'utilisateur) — jamais avant, même si un composant
+   *  "affiche" a pu être scoré plus tôt (§ BracketMyPick.points). */
+  showPoints: boolean;
 }) {
   return (
     <>
@@ -51,6 +56,7 @@ function MyPickContent({
       <span className={isCorrect ? styles.myPickCorrect : styles.myPickNeutral}>
         {myPick.teamAbbreviation}
         {myPick.seriesFormat && ` en ${myPick.seriesFormat}`}
+        {showPoints && myPick.points !== null && ` (${myPick.points} pt${myPick.points > 1 ? "s" : ""})`}
       </span>
     </>
   );
@@ -78,27 +84,36 @@ function TeamLabel({
   );
 }
 
-// Ligne d'équipe EN DIRECT (14/08/2026) : logo + nom + score de série à
-// droite. L'équipe qui MÈNE (pas "qui a gagné") ressort en --color-trend,
-// JAMAIS --color-win (§17 : vert réservé au résultat FINAL). Score à égalité
-// -> aucune des deux équipes mise en avant.
-function LiveTeamRow({
+// Ligne d'équipe avec score de série à droite — partagée entre EN COURS et
+// TERMINÉE (18/08/2026, demandé par l'utilisateur : « laisser le score
+// comme il apparaît sur les séries en cours », plutôt que de le masquer une
+// fois la série décidée). Seule la mise en avant change selon `highlight` :
+// "trend" (--color-trend) pour l'équipe qui MÈNE une série encore EN COURS
+// (pas "qui a gagné"), "win" (--color-win, même registre que TeamLabel) pour
+// le VAINQUEUR réel d'une série TERMINÉE — jamais les deux en même temps, et
+// jamais --color-win avant que le résultat soit officiellement acquis (§17).
+// Score à égalité (série en cours) -> aucune des deux équipes mise en avant.
+function SeriesTeamRow({
   team,
   wins,
-  isLeading,
+  highlight,
+  isChampion,
 }: {
   team: { abbreviation: string; name: string } | null;
   wins: number | null;
-  isLeading: boolean;
+  highlight: "trend" | "win" | null;
+  isChampion: boolean;
 }) {
+  const scoreClassName =
+    highlight === "trend"
+      ? `${styles.liveScore} ${styles.liveScoreLeading}`
+      : highlight === "win"
+        ? `${styles.liveScore} ${styles.liveScoreWinner}`
+        : styles.liveScore;
   return (
     <span className={styles.liveTeamRow}>
-      <TeamLabel team={team} isChampion={false} isWinner={false} />
-      {wins !== null && (
-        <span className={isLeading ? `${styles.liveScore} ${styles.liveScoreLeading}` : styles.liveScore}>
-          {wins}
-        </span>
-      )}
+      <TeamLabel team={team} isChampion={isChampion} isWinner={highlight === "win"} />
+      {wins !== null && <span className={scoreClassName}>{wins}</span>}
     </span>
   );
 }
@@ -121,12 +136,27 @@ export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: Node
   const isMyPickCorrect =
     node.myPick !== null && actualWinnerAbbreviation !== null && node.myPick.teamAbbreviation === actualWinnerAbbreviation;
 
+  // "En tête" (trend) uniquement pour une série ENCORE en cours ; "vainqueur"
+  // (win, vert) uniquement une fois réellement décidée — jamais les deux à
+  // la fois, jamais l'un à la place de l'autre (§17).
   const leadingSide: "A" | "B" | null =
-    node.liveScore && node.liveScore.teamAWins !== node.liveScore.teamBWins
+    isLive && node.liveScore && node.liveScore.teamAWins !== node.liveScore.teamBWins
       ? node.liveScore.teamAWins > node.liveScore.teamBWins
         ? "A"
         : "B"
       : null;
+  const winnerSide: "A" | "B" | null =
+    !isLive && actualWinnerAbbreviation !== null
+      ? node.teamA?.abbreviation === actualWinnerAbbreviation
+        ? "A"
+        : node.teamB?.abbreviation === actualWinnerAbbreviation
+          ? "B"
+          : null
+      : null;
+  // Score affiché dès que la série a au moins commencé (EN COURS ou
+  // TERMINÉE) — cf. lib/queries/bracket.ts, liveScore n'est plus réservé à
+  // IN_PROGRESS (18/08/2026, demandé par l'utilisateur).
+  const showScoreRow = node.liveScore !== null;
 
   const cardClassName = [
     styles.card,
@@ -157,44 +187,50 @@ export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: Node
     >
       {node.conference && <span className={styles.conference}>{CONFERENCE_LABEL[node.conference]}</span>}
 
-      {isLive ? (
+      {showScoreRow ? (
         <div className={styles.liveMatchup}>
-          <span className={styles.liveHeader}>
-            <span className={styles.liveTag}>
-              <span className={styles.liveDot} aria-hidden="true" />
-              En cours
-            </span>
-            {node.myPick && (
-              <span className={styles.myPickLine}>
-                <MyPickContent myPick={node.myPick} isCorrect={isMyPickCorrect} />
+          {isLive && (
+            <span className={styles.liveHeader}>
+              <span className={styles.liveTag}>
+                <span className={styles.liveDot} aria-hidden="true" />
+                En cours
               </span>
-            )}
-          </span>
-          <LiveTeamRow team={node.teamA} wins={node.liveScore?.teamAWins ?? null} isLeading={leadingSide === "A"} />
-          <LiveTeamRow team={node.teamB} wins={node.liveScore?.teamBWins ?? null} isLeading={leadingSide === "B"} />
+              {node.myPick && (
+                <span className={styles.myPickLine}>
+                  {/* Emplacement EN COURS uniquement (isLive) : jamais FINISHED ici
+                      par construction — pas de points à montrer. */}
+                  <MyPickContent myPick={node.myPick} isCorrect={isMyPickCorrect} showPoints={false} />
+                </span>
+              )}
+            </span>
+          )}
+          <SeriesTeamRow
+            team={node.teamA}
+            wins={node.liveScore?.teamAWins ?? null}
+            highlight={leadingSide === "A" ? "trend" : winnerSide === "A" ? "win" : null}
+            isChampion={hasChampion && node.teamA?.abbreviation === actualWinnerAbbreviation}
+          />
+          <SeriesTeamRow
+            team={node.teamB}
+            wins={node.liveScore?.teamBWins ?? null}
+            highlight={leadingSide === "B" ? "trend" : winnerSide === "B" ? "win" : null}
+            isChampion={hasChampion && node.teamB?.abbreviation === actualWinnerAbbreviation}
+          />
+          {hasChampion && <span className={styles.championTag}>Champion</span>}
         </div>
       ) : (
         <div className={styles.matchup}>
           <span className={styles.teams}>
-            <TeamLabel
-              team={node.teamA}
-              isChampion={hasChampion && node.teamA?.abbreviation === actualWinnerAbbreviation}
-              isWinner={!isFinal && node.teamA?.abbreviation === actualWinnerAbbreviation}
-            />
+            <TeamLabel team={node.teamA} isChampion={false} isWinner={false} />
             <span className={styles.versus}>–</span>
-            <TeamLabel
-              team={node.teamB}
-              isChampion={hasChampion && node.teamB?.abbreviation === actualWinnerAbbreviation}
-              isWinner={!isFinal && node.teamB?.abbreviation === actualWinnerAbbreviation}
-            />
+            <TeamLabel team={node.teamB} isChampion={false} isWinner={false} />
           </span>
-          {hasChampion && <span className={styles.championTag}>Champion</span>}
         </div>
       )}
 
       {!isLive && node.myPick && (
         <span className={styles.myPickLine}>
-          <MyPickContent myPick={node.myPick} isCorrect={isMyPickCorrect} />
+          <MyPickContent myPick={node.myPick} isCorrect={isMyPickCorrect} showPoints={liveStatus === "FINISHED"} />
         </span>
       )}
 

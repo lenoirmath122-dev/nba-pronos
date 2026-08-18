@@ -203,6 +203,13 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/* Série TERMINÉE (18/08/2026) : même ligne équipe+score qu'EN COURS,
+   vainqueur réel en vert au lieu de "en tête" en --color-trend (§17). */
+.liveScoreWinner {
+  color: var(--color-win);
+  font-weight: var(--font-weight-semibold);
+}
+
 /* --- Pronostic de bracket du joueur (15/08/2026) --- */
 /* Filet d'accent latéral, ADDITIF (pas une teinte de fond/bordure) — même
    patron que le filet top 3 du Classement (LeaderboardRow.module.css) : ne

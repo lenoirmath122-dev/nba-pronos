@@ -7331,3 +7331,27 @@ clic** (pas de session authentifiée disponible sans franchir le classifieur
 de permissions) — signalé explicitement, détail des parcours à revérifier
 listé dans `GAPS_OUVERTS.md`. Rien commité — laissé à l'utilisateur.
 ```
+
+## Avancement de la compétition active avec TestJoueur1-4 (18/08/2026)
+
+```text
+Suite immédiate : « ça a l'air de marcher, fais avancer la compétition en
+cours ». Investigation en lecture seule d'abord (compétition ACTIVE = « Play
+offs test », 4 comptes TestJoueur1-4 déjà existants et vierges) avant
+d'écrire quoi que ce soit — mêmes réflexes que d'habitude, pas de script
+à l'aveugle sur une base réelle.
+
+Nouveau `scripts/advance-current-competition.mjs`, construit en réutilisant
+telles quelles les fonctions de scoring/avancement de
+`seed-playoffs-simulation.mjs` (14/08) mais SANS toucher à la compétition
+existante (pas d'archivage, contrairement à ce script-là) ni aux comptes
+réels. 2 bugs trouvés en relisant avant exécution (admin fictif dans
+`validated_by_admin_id`, expression morte dans le calcul des picks
+CONF_SEMIS) — corrigés avant le run.
+
+Exécuté sans erreur : 20 matchs ajoutés sur 7 séries (mélange terminé/en
+cours/pas commencé), 4 brackets complets, 84 pronos, 6 paris (tous statuts).
+Vérifié en lecture après coup : compétition toujours ACTIVE, comptes réels
+intacts, scoring et avancement de série cohérents. Détail complet en
+`ETAT_ACTUEL.md` §2.73. Scripts d'inspection jetables supprimés après usage.
+```
