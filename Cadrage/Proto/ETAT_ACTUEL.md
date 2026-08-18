@@ -6545,3 +6545,20 @@ changement de signature sans risque.
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```
+
+### 2.88 Accueil : numéro de match aussi dans « Ça vient de tomber » (session du 18/08/2026)
+
+```text
+Troisième et dernier bloc de l'Accueil concerné par la demande du numéro
+de match : le feed « Ça vient de tomber » (getFeed(), lib/queries/home.ts)
+n'affichait que le score (« BOS 102 - 98 ATL ») sans le numéro du match
+dans sa série.
+
+`MatchScoreRow` gagne `game_number: number`, ajouté au SELECT sur
+`matches`. Libellé du feed match_scored : « Game 3 · BOS 102 - 98 ATL ».
+Les items bet_scored/bet_resolved gardent `bet.description`, texte libre
+saisi par le joueur à la création du pari — non touché ici (pas de format
+imposé à réécrire).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```

@@ -511,6 +511,7 @@ async function getAdminTodo(
 
 type MatchScoreRow = {
   id: string;
+  game_number: number;
   scheduled_at: string | null;
   home_team_id: string | null;
   away_team_id: string | null;
@@ -585,7 +586,7 @@ async function getFeed(
     matchIds.length > 0
       ? await supabase
           .from("matches")
-          .select("id, scheduled_at, home_team_id, away_team_id, home_score, away_score")
+          .select("id, game_number, scheduled_at, home_team_id, away_team_id, home_score, away_score")
           .in("id", matchIds)
       : { data: [] as MatchScoreRow[] };
 
@@ -608,7 +609,7 @@ async function getFeed(
   const matchItems: FeedItem[] = (scoredPredictions ?? []).map((prediction) => {
     const match = matchById.get(prediction.match_id as string);
     const label = match
-      ? `${teamAbbrev(match.home_team_id)} ${match.home_score ?? "-"} - ${match.away_score ?? "-"} ${teamAbbrev(match.away_team_id)}`
+      ? `Game ${match.game_number} · ${teamAbbrev(match.home_team_id)} ${match.home_score ?? "-"} - ${match.away_score ?? "-"} ${teamAbbrev(match.away_team_id)}`
       : "Match scoré";
     const detail = prediction.margin_diff === 0 ? "Écart exact" : prediction.is_winner_correct ? "Bon vainqueur" : "Mauvais vainqueur";
     return {

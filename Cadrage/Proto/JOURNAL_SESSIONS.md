@@ -7542,3 +7542,14 @@ distinct de `getMatchesTodo`). `MatchRow.game_number` ajouté au SELECT,
 appelant (`lib/queries/home.ts`) vérifié par grep. `tsc`/`eslint`/`vitest`
 (37/37)/`next build` (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.87.
 ```
+
+## Accueil : numéro de match aussi dans « Ça vient de tomber » (18/08/2026)
+
+```text
+Dernier bloc concerné : le feed match_scored (getFeed(), lib/queries/
+home.ts) n'affichait que le score. `MatchScoreRow.game_number` ajouté au
+SELECT, libellé : « Game 3 · BOS 102 - 98 ATL ». bet_scored/bet_resolved
+gardent `bet.description` (texte libre du joueur), non touché.
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail
+en `ETAT_ACTUEL.md` §2.88.
+```
