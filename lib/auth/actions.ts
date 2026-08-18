@@ -1,5 +1,6 @@
 "use server";
 
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 
@@ -46,6 +47,8 @@ export async function signup(
   }
 
   const supabase = await getServerClient();
+  const headerList = await headers();
+  const origin = `${headerList.get("x-forwarded-proto") ?? "http"}://${headerList.get("host")}`;
 
   // Temps 1a — code compétition, vérifié serveur (T2 §4/§5).
   const { data: competitionId, error: codeError } = await supabase.rpc(
@@ -71,7 +74,7 @@ export async function signup(
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { pseudo } },
+    options: { data: { pseudo }, emailRedirectTo: `${origin}/email-confirmed` },
   });
 
   if (signUpError) {
@@ -84,14 +87,22 @@ export async function signup(
   // Anti-énumération Supabase (bug réel trouvé le 16/08/2026) : pour un email
   // déjà enregistré ET confirmé, signUp() ne renvoie AUCUNE erreur — data.user
   // existe mais sans identité rattachée (identities: []) et sans session.
-  // Sans ce garde-fou, le code tombait dans le cas "succès" ci-dessous et
-  // redirigeait vers /home sans jamais avoir ouvert de session, provoquant un
-  // renvoi silencieux vers /login (aucun message d'erreur affiché au joueur).
-  if (!signUpData.session || signUpData.user?.identities?.length === 0) {
+  if (signUpData.user?.identities?.length === 0) {
     return { error: "Un compte existe déjà avec cet email." };
   }
 
-  // Temps 3 — compte ACTIVE immédiat + session ouverte (C4).
+  // Temps 3a — Confirm email actif en prod (bug trouvé le 18/08/2026) :
+  // `!session` seul ne veut PAS dire "compte existant" — un compte tout
+  // neuf en attente de confirmation n'a pas non plus de session tant que le
+  // lien n'est pas cliqué. Distinct du cas ci-dessus (identities non vide ==
+  // vraie nouvelle identité créée), sinon un signup légitime se faisait
+  // rejeter avec le même message que "compte déjà pris".
+  if (!signUpData.session) {
+    redirect("/verify-email");
+  }
+
+  // Temps 3b — compte ACTIVE immédiat + session ouverte (C4, quand Confirm
+  // email est désactivé).
   redirect("/home");
 }
 
