@@ -4,12 +4,13 @@ import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
-// Server actions de l'écran Nouveau pari (SPEC_ECRAN_NOUVEAU_PARI_V0_1 §11).
-// AUCUNE écriture directe sur `bets` : tous les garde-fous (propriétaire,
-// statut, deadline, cible identifiée, quota COUNT non exprimable en index,
-// scope/Cup) vivent dans les fonctions SQL SECURITY DEFINER `save_bet` /
-// `withdraw_bet` (migration #9), appelées via .rpc() — même patron que
-// lib/actions/corrections.ts. Session utilisateur uniquement
+// Server actions de l'écran Nouveau pari (SPEC_ECRAN_NOUVEAU_PARI_V0_1 §11) et
+// de Mes paris (suppression, §18/08/2026). AUCUNE écriture directe sur
+// `bets` : tous les garde-fous (propriétaire, statut, deadline, cible
+// identifiée, quota COUNT non exprimable en index, scope/Cup) vivent dans les
+// fonctions SQL SECURITY DEFINER `save_bet` / `withdraw_bet` (migration #9) /
+// `delete_bet` (migration 20260818090000), appelées via .rpc() — même patron
+// que lib/actions/corrections.ts. Session utilisateur uniquement
 // (getServerClient, jamais service_role).
 
 export type ActionResult = { success: true; betId: string } | { success: false; error: string };
@@ -77,6 +78,27 @@ export async function withdrawBet(betId: string): Promise<SimpleActionResult> {
   if (!user) return { success: false, error: "Tu dois être connecté." };
 
   const { error } = await supabase.rpc("withdraw_bet", { p_bet_id: betId });
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/play/bets");
+  revalidatePath("/play/matches");
+  revalidatePath("/home");
+  return { success: true };
+}
+
+/** « Supprimer » un pari encore modifiable (DRAFT/SUBMITTED, 18/08/2026) —
+ *  sous le capot, passage à CANCELLED (rétention D2, migration
+ *  20260818090000_delete_bet_function.sql) : la ligne reste en base, sort de
+ *  « En cours » et libère son slot de quota. */
+export async function deleteBet(betId: string): Promise<SimpleActionResult> {
+  const supabase = await getServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { error } = await supabase.rpc("delete_bet", { p_bet_id: betId });
   if (error) return { success: false, error: error.message };
 
   revalidatePath("/play/bets");

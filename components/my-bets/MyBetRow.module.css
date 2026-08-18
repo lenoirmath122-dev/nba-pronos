@@ -84,21 +84,61 @@
   padding: 0 var(--space-2);
 }
 
-.editLink {
+.editActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+/* Forme commune à tous les boutons d'action de la ligne (Modifier, Reproposer,
+   Signaler à un admin, Envoyer, Supprimer — components/my-bets/DeleteBetButton
+   .module.css en reprend la même déclaration) : gabarit "contour" identique,
+   seule la couleur porte le sens (accent = action neutre/positive, loss =
+   destructive, --color-text-secondary = utilitaire). 18/08/2026, harmonisation
+   demandée par l'utilisateur — jusqu'ici Modifier/Reproposer étaient des liens
+   soulignés, Signaler un texte nu, Envoyer un bouton plein : 3 formes
+   différentes pour des actions de poids équivalent. */
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   align-self: flex-start;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: transparent;
   font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.actionButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.editLink {
+  composes: actionButton;
+  border: 1px solid var(--color-accent);
   color: var(--color-accent);
-  text-decoration: underline;
 }
 
 .details {
   margin-top: var(--space-1);
 }
 
+/* <summary> : marqueur natif (triangle) retiré pour garder le même gabarit
+   que les autres boutons de la ligne, sans icône de repli propre. */
 .summary {
-  font-size: var(--font-size-xs);
+  composes: actionButton;
+  border: 1px solid var(--color-border-subtle);
   color: var(--color-text-secondary);
-  cursor: pointer;
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
 }
 
 .pending {
@@ -145,19 +185,7 @@
 }
 
 .submit {
-  align-self: flex-start;
-  min-height: var(--tap-target-min);
-  padding: 0 var(--space-3);
-  border-radius: var(--radius-md);
-  border: none;
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.submit:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+  composes: actionButton;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
 }

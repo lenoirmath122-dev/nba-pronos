@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requestBetCorrectionFormAction } from "@/lib/actions/bet-corrections";
+import { DeleteBetButton } from "./DeleteBetButton";
 import type { MyBet } from "@/lib/queries/my-bets";
 import { BET_CATEGORY_OPTIONS } from "@/lib/labels/bets";
 import styles from "./MyBetRow.module.css";
@@ -62,15 +63,18 @@ export function MyBetRow({ bet, forceOpenCorrection, correctionError }: MyBetRow
           Reproposer
         </Link>
       )}
-      {(bet.status === "WON" || bet.status === "LOST") && bet.resolutionReason && (
+      {(bet.status === "WON" || bet.status === "LOST" || bet.status === "CANCELLED") && bet.resolutionReason && (
         <p className={styles.reason}>{bet.resolutionReason}</p>
       )}
       {bet.isAdminCorrected && <span className={styles.correctedBadge}>Corrigé par un admin</span>}
 
       {isEditable && (
-        <Link href={`/play/bets/${bet.betId}/edit`} className={styles.editLink}>
-          Modifier
-        </Link>
+        <div className={styles.editActions}>
+          <Link href={`/play/bets/${bet.betId}/edit`} className={styles.editLink}>
+            Modifier
+          </Link>
+          <DeleteBetButton betId={bet.betId} />
+        </div>
       )}
 
       {bet.isForgottenResolution && (
