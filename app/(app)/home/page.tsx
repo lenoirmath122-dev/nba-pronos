@@ -9,9 +9,11 @@ import { CollapsibleCard } from "@/components/home/CollapsibleCard";
 import { TutorialBanner } from "@/components/tutorial/TutorialBanner";
 import styles from "./page.module.css";
 
-// Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « À traiter »
-// (+ bloc admin) + « Paris » (accordéon Séries/Matchs, 15/08/2026 — remplace
+// Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « Reste à faire »
+// (+ bloc admin, renommé « À traiter (admin) » sans lien avec le nom joueur)
+// + « Paris disponibles » (accordéon Séries/Matchs, 15/08/2026 — remplace
 // l'ancienne section « Paris séries non remplis ») + « Ça vient de tomber ».
+// Les 4 cartes sont dépliables (18/08/2026, voir CollapsibleCard.tsx).
 // Aucun fetch client, aucune logique métier ici — tout est déjà calculé par
 // lib/queries/home.ts.
 //
@@ -43,8 +45,8 @@ export default async function HomePage() {
       {showTutorialBanner && <TutorialBanner />}
       <HomeHeader header={header} />
 
-      <section className={`${styles.section} glass-card`} aria-label="À traiter">
-        <CollapsibleCard id="todo" title="À traiter">
+      <section className={`${styles.section} glass-card`} aria-label="Reste à faire">
+        <CollapsibleCard id="todo" title="Reste à faire" count={todo.length}>
           {todo.length > 0 ? (
             <TodoList items={todo} />
           ) : (
@@ -55,7 +57,7 @@ export default async function HomePage() {
 
       {adminTodo.length > 0 && (
         <section className={`${styles.section} glass-card`} aria-label="À traiter (admin)">
-          <CollapsibleCard id="admin" title="À traiter (admin)">
+          <CollapsibleCard id="admin" title="À traiter (admin)" count={adminTodo.length}>
             <TodoList items={adminTodo} />
           </CollapsibleCard>
         </section>
@@ -65,15 +67,15 @@ export default async function HomePage() {
           28/07/2026, généralisé aux matchs le 15/08/2026) — jamais d'état
           vide affiché ici, contrairement aux 2 sections ci-dessus. */}
       {(seriesBets.length > 0 || matchBets.length > 0) && (
-        <section className={`${styles.section} glass-card`} aria-label="Paris">
-          <CollapsibleCard id="bets" title="Paris">
+        <section className={`${styles.section} glass-card`} aria-label="Paris disponibles">
+          <CollapsibleCard id="bets" title="Paris disponibles" count={seriesBets.length + matchBets.length}>
             <BetsAccordionList seriesBets={seriesBets} matchBets={matchBets} />
           </CollapsibleCard>
         </section>
       )}
 
       <section className={`${styles.section} glass-card`} aria-label="Ça vient de tomber">
-        <CollapsibleCard id="feed" title="Ça vient de tomber">
+        <CollapsibleCard id="feed" title="Ça vient de tomber" count={feed.length}>
           {feed.length > 0 ? (
             <Feed items={feed} />
           ) : (

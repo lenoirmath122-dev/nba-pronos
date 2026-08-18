@@ -7566,6 +7566,16 @@ setState dans un effet, lint react-hooks/set-state-in-effect). `tsc`/
 `ETAT_ACTUEL.md` §2.89.
 ```
 
+## Accueil : compteur sur les cartes + renommages (18/08/2026)
+
+```text
+`CollapsibleCard` gagne `count: number`, pastille toujours visible (même
+repliée, même à 0) à côté du chevron. Renommages : « À traiter » → « Reste
+à faire », « Paris » → « Paris disponibles » (titre + aria-label mis à
+jour ensemble). `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes)
+propres. Détail en `ETAT_ACTUEL.md` §2.90.
+```
+
 ## Accueil : numéro de match aussi dans « Ça vient de tomber » (18/08/2026)
 
 ```text

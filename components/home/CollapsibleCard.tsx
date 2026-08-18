@@ -10,6 +10,10 @@ type CollapsibleCardProps = {
    *  préférence d'affichage). */
   id: string;
   title: string;
+  /** Nombre de lignes contenues (18/08/2026, demandé par l'utilisateur) —
+   *  visible même carte repliée, pour savoir si elle contient quelque chose
+   *  sans avoir à l'ouvrir. */
+  count: number;
   children: React.ReactNode;
 };
 
@@ -36,7 +40,7 @@ function getServerSnapshot() {
 // synchrone dans un effet, et localStorage EST un store externe — son cas
 // d'usage exact. Snapshot serveur toujours `false` (jamais de point tant
 // que l'hydratation n'a pas eu lieu, aucun flash de contenu différent).
-export function CollapsibleCard({ id, title, children }: CollapsibleCardProps) {
+export function CollapsibleCard({ id, title, count, children }: CollapsibleCardProps) {
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const neverSeen = useSyncExternalStore(
@@ -64,6 +68,7 @@ export function CollapsibleCard({ id, title, children }: CollapsibleCardProps) {
         >
           <span>{title}</span>
           <span className={styles.right}>
+            <span className={styles.count}>{count}</span>
             {unseen && <span className={styles.dot} aria-hidden="true" />}
             <span className={styles.chevron} aria-hidden="true">
               {open ? "⌃" : "⌄"}

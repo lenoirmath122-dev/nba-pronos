@@ -6593,3 +6593,30 @@ utilisée nulle part ailleurs dans ce module).
 navigateur disponible dans cet environnement pour un test au clic — à
 vérifier par l'utilisateur.
 ```
+
+### 2.90 Accueil : compteur sur les cartes repliées + renommages (session du 18/08/2026)
+
+```text
+Suite immédiate du 2.89. Deux demandes : (1) afficher un chiffre à côté
+du titre de chaque carte, visible même repliée, pour savoir si elle
+contient quelque chose sans l'ouvrir ; (2) renommer « À traiter » en
+« Reste à faire » et « Paris » en « Paris disponibles » (les 2 autres
+titres, « À traiter (admin) » et « Ça vient de tomber », inchangés).
+
+`CollapsibleCard` gagne un prop `count: number`, rendu en pastille
+(`.count`, fond `--color-surface-inset`, `border-radius: --radius-pill`)
+à côté du chevron — toujours affiché, y compris à 0 (plus informatif
+qu'un badge masqué : "carte vide" devient visible sans ouvrir).
+`app/(app)/home/page.tsx` passe `count={todo.length}` /
+`count={adminTodo.length}` / `count={seriesBets.length +
+matchBets.length}` / `count={feed.length}`.
+
+Renommages : titre ET `aria-label` de la `<section>` mis à jour ensemble
+(cohérence lecteur d'écran / affichage visuel) pour les 2 cartes
+concernées. Les commentaires internes de lib/queries/home.ts référençant
+« À traiter »/« À traiter (admin) » comme noms de spec (§4/§5) NON
+renommés — ce sont des repères vers SPEC_ECRAN_ACCUEIL, pas le texte
+affiché.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
+```

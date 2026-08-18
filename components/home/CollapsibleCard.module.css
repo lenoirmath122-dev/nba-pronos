@@ -37,6 +37,18 @@
   flex-shrink: 0;
 }
 
+.count {
+  min-width: 20px;
+  text-align: center;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-2);
+  line-height: 1.6;
+}
+
 .dot {
   width: 8px;
   height: 8px;
