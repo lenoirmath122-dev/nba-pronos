@@ -6390,3 +6390,27 @@ actuelles, non tranché.
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```
+
+### 2.81 Nettoyage : matchs FINISHED avec une date dans le futur (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : « nettoyer... pour qu'il n'y ait pas de matchs
+qui soient terminés alors qu'ils sont programmés dans le futur ». Bug réel
+laissé par les 2 scripts d'avancement (§2.73/§2.77) : en marquant un match
+FINISHED, `status`/`home_score`/`away_score` étaient bien écrits, mais
+`scheduled_at` restait à sa valeur d'origine — souvent future, puisque
+c'étaient justement les "prochains matchs déjà programmés" qu'on résolvait.
+
+**Lecture d'abord** (`scripts/find-inconsistent-dates.mjs`, jetable) : 7
+matchs incohérents trouvés (GSW-HOU #3, ATL-BOS #1-2, LAC-LAL #1, DET-IND
+#5-6, DAL-DEN #4) — tous FINISHED avec `scheduled_at` encore dans le futur.
+
+**`scripts/fix-future-finished-dates.mjs`** (conservé) : recule uniquement
+`scheduled_at` de ces 7 matchs dans le passé, en préservant l'ordre
+chronologique interne à chaque série (après le match FINISHED précédent,
+avant le prochain SCHEDULED) — AUCUN autre champ touché (status/scores/
+pronos/paris/picks intacts, la liaison se fait par `match_id`, jamais par
+date). Vérifié après coup : 0 incohérence restante, `bracket_deadline`
+toujours correcte (aucune des 7 nouvelles dates n'est antérieure au match
+du 02/08, qui reste la plus ancienne).
+```

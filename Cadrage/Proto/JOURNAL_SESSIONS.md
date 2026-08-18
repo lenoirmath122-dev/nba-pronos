@@ -7457,3 +7457,16 @@ lecture seule. Amendement post-implémentation ajouté à la spec (§14) plutôt
 que de réécrire l'historique. `tsc`/`eslint`/`vitest` (37/37)/`next build`
 (34 routes) propres. Détail en `ETAT_ACTUEL.md` §2.80.
 ```
+
+## Nettoyage : matchs FINISHED avec une date future (18/08/2026)
+
+```text
+« nettoyer... pour qu'il n'y ait pas de matchs terminés alors qu'ils sont
+programmés dans le futur ». Bug laissé par les 2 scripts d'avancement :
+marquer un match FINISHED n'a jamais retouché `scheduled_at`, resté à sa
+date d'origine (souvent future). 7 matchs trouvés en lecture seule d'abord,
+corrigés par `scripts/fix-future-finished-dates.mjs` (conservé) — recule
+UNIQUEMENT `scheduled_at`, ordre chronologique par série préservé, aucun
+autre champ touché. Vérifié après coup : 0 incohérence restante,
+`bracket_deadline` toujours correcte. Détail en `ETAT_ACTUEL.md` §2.81.
+```
