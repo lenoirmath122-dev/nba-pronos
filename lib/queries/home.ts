@@ -148,7 +148,7 @@ async function getMatchBetsTodo(): Promise<BetTodoItem[]> {
   return remaining.map((match) => ({
     id: match.matchId,
     title: match.label,
-    href: `/play/matches#match-${match.matchId}`,
+    href: `/play#match-${match.matchId}`,
   }));
 }
 
@@ -344,7 +344,7 @@ async function getMatchesTodo(
     matchup,
     deadline: nextMatch.scheduled_at as string,
     count: pending.length,
-    href: "/play/matches",
+    href: "/play",
   };
 }
 
@@ -439,12 +439,14 @@ async function getBetsTodo(
     openBets[0].deadline
   );
 
-  // Un DRAFT se modifie sur /play/bets (§ isEditable, MyBetRow.tsx) : la liste
-  // reste la bonne destination. S'il ne reste QUE des REJECTED, il n'y a rien
-  // à éditer là-bas (REJECTED va dans « Terminés », spec §6, sans lien
-  // d'action avant le 15/08/2026) — direct vers Nouveau pari plutôt que de
-  // faire chercher le joueur dans un onglet Terminés (trouvé en confirmant
-  // avec l'utilisateur que l'Accueil et Mes paris divergeaient ici).
+  // Un DRAFT se modifie sur /play (Mes pronos, InlineBetForm) : sans
+  // ambiguïté malgré la fusion des écrans (18/08/2026,
+  // SPEC_REFONTE_ONGLET_JOUER_V0_1 §2.1) — un DRAFT/SUBMITTED ne peut exister
+  // que tant que bet_deadline_open() est vraie, donc son match est TOUJOURS
+  // dans la fenêtre Mes pronos, jamais dans Résultats. S'il ne reste QUE des
+  // REJECTED, il n'y a rien à éditer là-bas — direct vers Nouveau pari plutôt
+  // que de faire chercher le joueur (trouvé en confirmant avec l'utilisateur
+  // que l'Accueil et l'ex-écran Mes paris divergeaient ici, avant le 18/08).
   const hasDraft = openBets.some((bet) => bet.status === "DRAFT");
 
   return {
@@ -456,7 +458,7 @@ async function getBetsTodo(
       : `Pari${openBets.length > 1 ? "s" : ""} refusé${openBets.length > 1 ? "s" : ""}, encore reproposable${openBets.length > 1 ? "s" : ""} avant leur deadline.`,
     deadline: nearestDeadline,
     count: openBets.length,
-    href: hasDraft ? "/play/bets" : "/play/bets/new",
+    href: hasDraft ? "/play" : "/play/bets/new",
   };
 }
 

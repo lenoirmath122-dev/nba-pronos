@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
 import {
   BET_CATEGORY_OPTIONS,
@@ -10,6 +11,7 @@ import {
 } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { ModalDialog } from "@/components/ui/ModalDialog";
+import { DeleteBetButton } from "./DeleteBetButton";
 import styles from "./InlineBetForm.module.css";
 
 // Saisie de pari partagée, générique sur le scope (MATCH ou SERIES) —
@@ -74,11 +76,33 @@ export function InlineBetForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
+  // Garde C2 (18/08/2026, vérification de dépôt §13.2 de
+  // SPEC_REFONTE_ONGLET_JOUER_V0_1 : ce formulaire n'avait JAMAIS porté cette
+  // garde, contrairement au formulaire de prono — un oubli sans conséquence
+  // tant que le pari vivait sur son propre écran, redevenu risqué maintenant
+  // qu'il coexiste avec le prono sur la même ligne (Mes pronos). Clé
+  // DISTINCTE de celle du prono du même match (`bet:` en préfixe) : les deux
+  // formulaires ne doivent jamais partager le même verrou.
+  const { markDirty, clearDirty } = useUnsavedGuard(`bet:${matchId ?? seriesId}`);
+
   useEffect(() => {
     if (!onFieldsChange) return;
     const ready = isOpen && description.trim().length > 0;
     onFieldsChange(ready ? { description, category, difficulty } : null);
   }, [isOpen, description, category, difficulty, onFieldsChange]);
+
+  useEffect(() => {
+    const dirty =
+      isOpen &&
+      (description !== (myBet?.description ?? "") ||
+        category !== (myBet?.category ?? DEFAULT_BET_CATEGORY) ||
+        difficulty !== (myBet?.difficulty ?? DEFAULT_BET_DIFFICULTY));
+    if (dirty) markDirty();
+    else clearDirty();
+  }, [isOpen, description, category, difficulty, myBet, markDirty, clearDirty]);
+
+  // Démontage (ligne repliée, formulaire fermé) : rien ne reste à protéger.
+  useEffect(() => () => clearDirty(), [clearDirty]);
 
   // Pari déjà posé mais dans un statut non éditable ici (VALIDATED/WON/LOST) :
   // lecture seule, pas de ré-ouverture inline.
@@ -117,7 +141,8 @@ export function InlineBetForm({
     setError(null);
     startTransition(async () => {
       const result = await saveDraftBet(targetPayload());
-      if (!result.success) setError(result.error);
+      if (result.success) clearDirty();
+      else setError(result.error);
     });
   }
 
@@ -125,7 +150,8 @@ export function InlineBetForm({
     setError(null);
     startTransition(async () => {
       const result = await submitBet(targetPayload());
-      if (!result.success) setError(result.error);
+      if (result.success) clearDirty();
+      else setError(result.error);
     });
   }
 
@@ -203,6 +229,14 @@ export function InlineBetForm({
             Revenir en brouillon
           </button>
         )}
+        {/* Suppression (18/08/2026) : vivait UNIQUEMENT sur l'ex-écran "Mes
+            paris" (DeleteBetButton via MyBetRow), disparu avec la fusion
+            (SPEC_REFONTE_ONGLET_JOUER_V0_1) — reconduite ici pour ne pas
+            perdre la fonctionnalité, et étendue au passage aux paris SÉRIE du
+            Bracket (2e appelant de ce composant), qui n'en avaient jamais
+            bénéficié. Même garde-fou DRAFT/SUBMITTED que delete_bet
+            (migration 20260818090000), déjà assuré par myBet !== null ici. */}
+        {myBet && <DeleteBetButton betId={myBet.betId} />}
       </div>
     </>
   );

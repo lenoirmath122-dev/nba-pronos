@@ -52,8 +52,8 @@ async function callSaveBet(input: SaveBetInput, submit: boolean): Promise<Action
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/play/bets");
-  revalidatePath("/play/matches");
+  revalidatePath("/play");
+  revalidatePath("/play/results");
   revalidatePath("/home");
   return { success: true, betId: data as string };
 }
@@ -80,8 +80,8 @@ export async function withdrawBet(betId: string): Promise<SimpleActionResult> {
   const { error } = await supabase.rpc("withdraw_bet", { p_bet_id: betId });
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/play/bets");
-  revalidatePath("/play/matches");
+  revalidatePath("/play");
+  revalidatePath("/play/results");
   revalidatePath("/home");
   return { success: true };
 }
@@ -101,8 +101,8 @@ export async function deleteBet(betId: string): Promise<SimpleActionResult> {
   const { error } = await supabase.rpc("delete_bet", { p_bet_id: betId });
   if (error) return { success: false, error: error.message };
 
-  revalidatePath("/play/bets");
-  revalidatePath("/play/matches");
+  revalidatePath("/play");
+  revalidatePath("/play/results");
   revalidatePath("/home");
   return { success: true };
 }

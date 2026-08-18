@@ -95,7 +95,7 @@ export async function saveMatchPredictionDraft(input: {
     .upsert(patch, { onConflict: "user_id,match_id" });
   if (error) return { success: false, error: "Impossible d'enregistrer le brouillon." };
 
-  revalidatePath("/play/matches");
+  revalidatePath("/play");
   revalidatePath("/home");
   return { success: true };
 }
@@ -127,7 +127,7 @@ export async function validateMatchPrediction(matchId: string): Promise<ActionRe
     .eq("match_id", matchId);
   if (error) return { success: false, error: "Impossible de valider ce prono." };
 
-  revalidatePath("/play/matches");
+  revalidatePath("/play");
   revalidatePath("/home");
   return { success: true };
 }
@@ -162,7 +162,7 @@ export async function validateAllCompleteMatchPredictions(): Promise<{ validated
 
   if (error) return { validatedMatchIds: [] };
 
-  revalidatePath("/play/matches");
+  revalidatePath("/play");
   revalidatePath("/home");
   return { validatedMatchIds: (updated ?? []).map((row) => row.match_id as string) };
 }

@@ -23,8 +23,8 @@ function revalidateAffectedScreens() {
   revalidatePath(RESULTS_PATH);
   revalidatePath("/bracket");
   revalidatePath("/leaderboard");
-  revalidatePath("/play/matches");
-  revalidatePath("/play/my-predictions");
+  revalidatePath("/play");
+  revalidatePath("/play/results");
   revalidatePath("/home");
 }
 

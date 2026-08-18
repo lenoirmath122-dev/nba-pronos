@@ -1,0 +1,171 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.description {
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.descriptionCancelled {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  opacity: var(--opacity-cancelled);
+}
+
+.meta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.status {
+  align-self: flex-start;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+}
+
+.statusNeutral {
+  color: var(--color-text-secondary);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.statusMuted {
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border-subtle);
+}
+
+.statusWon {
+  color: var(--color-win);
+  border: 1px solid var(--color-win);
+}
+
+.statusLost {
+  color: var(--color-loss);
+  border: 1px solid var(--color-loss);
+}
+
+.statusCancelled {
+  color: var(--color-neutralized);
+  border: 1px dashed var(--color-neutralized);
+}
+
+.points {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.reason {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.correctedBadge {
+  align-self: flex-start;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-2);
+}
+
+/* Même gabarit "contour" que components/my-bets (harmonisation du 18/08/2026,
+   reconduite ici) : seule la couleur porte le sens. */
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: flex-start;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  background: transparent;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.actionButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.editLink {
+  composes: actionButton;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+}
+
+.details {
+  margin-top: var(--space-1);
+}
+
+.summary {
+  composes: actionButton;
+  border: 1px solid var(--color-border-subtle);
+  color: var(--color-text-secondary);
+  list-style: none;
+}
+
+.summary::-webkit-details-marker {
+  display: none;
+}
+
+.pending {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.textarea {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-ui);
+  resize: vertical;
+}
+
+.textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-loss);
+}
+
+.submit {
+  composes: actionButton;
+  border: 1px solid var(--color-accent);
+  color: var(--color-accent);
+}

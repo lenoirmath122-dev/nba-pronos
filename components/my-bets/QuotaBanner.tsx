@@ -1,4 +1,4 @@
-import type { QuotaSummary } from "@/lib/queries/my-bets";
+import type { QuotaSummary } from "@/lib/queries/play";
 import { MATCH_SLOT_CAP } from "@/lib/labels/bets";
 import styles from "./QuotaBanner.module.css";
 

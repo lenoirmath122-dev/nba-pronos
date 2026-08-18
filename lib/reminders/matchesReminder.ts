@@ -101,7 +101,7 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
     const { deadSubscriptionIds: dead } = await sendPushToSubscriptions(subscriptions, {
       title: "Match ce soir",
       body: `${home} - ${away} : tu n'as pas encore pronostiqué.`,
-      url: "/play/matches",
+      url: "/play",
     });
     dead.forEach((id) => deadSubscriptionIds.add(id));
 

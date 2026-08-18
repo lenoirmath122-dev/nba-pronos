@@ -7196,3 +7196,138 @@ notifications/chat toujours pas cadrés, SMTP toujours en pause). Entrée
 Rien à committer pour cette entrée seule (fichiers de suivi uniquement,
 pas de code) — laissé à l'utilisateur de demander un commit si voulu.
 ```
+
+## Onglet Jouer : cadrage de la fusion Mes pronos / Résultats (18/08/2026)
+
+```text
+Nouvelle session. L'utilisateur ouvre un chantier « plus dimensionnant » :
+simplifier la lecture/navigation de l'onglet Jouer. Idée de départ : un
+onglet « Mes pronos » (matchs à suivre + pronos/paris associés) et un
+onglet « Résultats » (matchs chronologiques + pronos/paris + état/points),
+les paris SÉRIE restant visibles uniquement sur le Bracket. Demande
+explicite : « dis moi ce que tu en penses et propose des options ».
+
+**Lecture de l'existant avant tout avis** : hub `/play` (grille 2×2 :
+Matchs / Mes pronos / Mon bracket / Paris), les 4 écrans qu'il ouvre, et
+les specs fermées correspondantes (`SPEC_ECRAN_HUB_JOUER`,
+`SPEC_ECRAN_MATCHS`, `SPEC_ECRAN_MES_PRONOS`, `SPEC_ECRAN_MES_PARIS`).
+Constat partagé avec l'utilisateur avant de proposer quoi que ce soit :
+duplication réelle entre Matchs (à venir) et Mes pronos/Récent (verrouillé
+< 3j), et un conflit de nom à surveiller (« Mes pronos » désigne
+aujourd'hui les matchs déjà VERROUILLÉS, l'inverse de l'usage souhaité par
+l'utilisateur).
+
+**3 tours `AskUserQuestion`, aucun tranché sans options présentées** :
+1. Ampleur — reskin léger du hub / fusion Matchs+Mes pronos seulement
+   (paris restent à part) / fusion totale incluant les paris MATCH.
+   **Choix : fusion totale.**
+2. Structure de nav — hub allégé à 3 cartes / onglets internes sans hub,
+   Bracket en lien permanent. **Choix : onglets internes** (« colle à ma
+   formulation », note l'utilisateur). Question de suivi de l'utilisateur
+   (« où sera l'onglet bracket ? ») répondue par un point d'entrée fixe
+   dans l'en-tête, réutilisant les données déjà calculées par
+   `getBracketFillData()`/`getRemainingSeriesBets()` (déjà le patron de
+   `lib/queries/play-hub.ts`, pas de nouveau calcul).
+3. **Conflit de fond trouvé en lisant `SPEC_ECRAN_MES_PARIS_V0_1` §6-7,
+   signalé avant d'écrire quoi que ce soit** : le cycle de vie d'un pari
+   (statut, piloté par l'admin) et celui de son match (piloté par l'heure)
+   divergent dans deux cas réels déjà spécifiés — un pari REJETÉ sur un
+   match à venir, un pari VALIDÉ non résolu sur un match déjà terminé (cas
+   « pari oublié »). Deux résolutions : le MATCH décide toujours l'onglet
+   (extension du principe déjà acté « écran ancré sur les matchs »,
+   `SPEC_ECRAN_MES_PRONOS_V0_1` §3) / chaque objet garde son propre statut
+   (casserait le tri chronologique par date de match). **Choix : le match
+   décide toujours.**
+
+**Spec rédigée** : `Cadrage/V1/Spec visuelle/SPEC_REFONTE_ONGLET_JOUER_V0_1.md`,
+même gabarit que les 4 specs sources (statut, sources et cadre, architecture,
+contrats de types, récap des décisions, vérifications de dépôt). Fusionne
+`lib/queries/matches.ts`+`my-predictions.ts`+la partie MATCH de
+`my-bets.ts` dans un nouveau `lib/queries/play.ts` ; fenêtre « Mes pronos »
+actée comme l'union EXACTE des deux fenêtres existantes (aucune largeur
+nouvelle) ; `SeriesBetHeader` retiré (paris série invisibles hors
+Bracket) ; aucune nouvelle migration, aucune nouvelle server action — pure
+recomposition de lecture/rendu. 4 vérifications de dépôt listées (§13) :
+autres appelants de `getMyBets`, garde C2 à étendre au formulaire de pari
+inline, deadline réelle de proposition d'un pari sur un match verrouillé,
+recensement des liens entrants à rediriger.
+
+Utilisateur validant la spec (« la spec me va ») avec demande explicite de
+tout documenter « au cas où on doit revenir en arrière » — `ETAT_ACTUEL.md`
+§2.71 et cette entrée ajoutées, `GAPS_OUVERTS.md` mis à jour en
+conséquence (bloc « État au 18/08/2026 »), avant tout code. **Aucune ligne
+de code écrite dans cette session** : les 4 écrans actuels restent
+inchangés et en production.
+
+**Suite immédiate, même session — les 4 vérifications de dépôt levées en
+lecture seule** (demande de l'utilisateur : « on lève les 4 vérifs
+ensemble ? »). Deux ont changé le contenu de la spec, pas seulement
+confirmé ce qui était écrit :
+
+- **§13.1 (autres appelants de `getMyBets`)** : LEVÉE sans surprise, un
+  seul appelant (`/play/bets/page.tsx`, qui disparaît).
+- **§13.2 (garde C2 sur le pari)** : LEVÉE, mais **le contraire de ce qui
+  était espéré** — `InlineBetForm`/`BetFormModal` n'appellent
+  `useUnsavedGuard` NULLE PART (grep confirmé), seul
+  `components/matches/PredictionForm.tsx` le fait. Extension nécessaire
+  documentée en spec §2.2 (clé distincte de celle du prono, sinon les deux
+  formulaires du même match écraseraient le même verrou).
+- **§13.3 (deadline d'un pari MATCH sur un match verrouillé)** : LEVÉE,
+  **hypothèse initiale de la spec invalidée en lisant le SQL** —
+  `bet_deadline_open()` (`20260718110000_rls.sql` §100-112), consommée par
+  la RLS ET par `save_bet`/`submit_bet`, ferme l'écriture d'un pari MATCH
+  exactement à `scheduled_at > now()` : le MÊME instant que le
+  verrouillage du prono, pas une fenêtre propre comme la spec le supposait
+  (§3.3 corrigée en conséquence — le CTA « Parier » disparaît dès qu'un
+  match se verrouille, aucun état transitoire où l'un serait éditable et
+  pas l'autre).
+- **§13.4 (liens entrants)** : LEVÉE, catalogue exhaustif fait par grep
+  (détail en spec §2.1) — 5 fichiers d'écriture à retargeter
+  (`lib/actions/{matches,bets,corrections,bet-corrections,admin-results}.ts`),
+  5 fichiers de lecture, dont deux (`my-predictions/urls.ts`,
+  `FilterBar.tsx`) ne peuvent plus coder un chemin en dur du tout (à
+  paramétrer sur l'onglet actif), et `my-bets/SegmentTabs.tsx` qui est
+  remplacé plutôt que retargeté. Un faux problème résolu au passage : le
+  lien "brouillon de pari" de l'Accueil (`home.ts` ligne ~459) semblait
+  ambigu (vers quel onglet ?) mais ne l'est pas — un DRAFT/SUBMITTED ne
+  peut exister QUE tant que `bet_deadline_open()` est vrai, donc son match
+  est TOUJOURS dans la fenêtre Mes pronos, jamais dans Résultats.
+
+Spec mise à jour en conséquence (statut, §3.3, nouvelles §2.1/§2.2/§2.3,
+§13). Toujours **aucune ligne de code écrite** — prochaine étape :
+implémenter.
+
+**Suite immédiate, même session — implémentation complète** (« ok on
+fonce »). Détail exhaustif en `ETAT_ACTUEL.md` §2.72 ; résumé ici de ce qui
+n'était PAS anticipé par le cadrage ni les vérifications de dépôt :
+
+- **`getMyBets()` intégralement supprimé**, pas seulement réduit comme la
+  spec le prévoyait (§2 : « CONSERVÉ, mais réduit ») — en écrivant
+  `lib/queries/play.ts`, la seule chose encore consommée ailleurs
+  (`QuotaSummary`/`buildQuotas`) a été rapatriée dans le nouveau module ;
+  plus aucun appelant ne restait pour la fonction elle-même une fois
+  `/play/bets/page.tsx` disparu.
+- **Bouton "Supprimer" un pari (§2.70) sans point d'entrée dans le nouveau
+  design** — trouvé en écrivant `UpcomingRowForm.tsx` : le chemin éditable
+  retenu (`InlineBetForm`, patron de l'ex-écran Matchs) n'a jamais eu ce
+  bouton, contrairement à l'ex-`MyBetRow` (ex-Mes paris, supprimé). Corrigé
+  en l'intégrant directement dans `InlineBetForm` — les paris SÉRIE du
+  Bracket (2e appelant du composant) en héritent aussi au passage, un
+  bénéfice qu'ils n'avaient jamais eu.
+- **Redirection de la correction de pari en dur vers `/play/bets`** (donc
+  cassée) — invisible tant qu'un seul écran existait pour ce formulaire,
+  devenue un vrai bug une fois accessible depuis Mes pronos ET Résultats.
+  Aligné sur le mécanisme `returnTo` déjà en place pour la correction de
+  prono (`corrections.ts`).
+- **1 erreur eslint** (`react-hooks/purity`, `BracketEntry.tsx`) : un
+  `Date.now()` appelé directement dans le corps du composant plutôt que
+  dans une fonction nommée à part — corrigé en suivant le même patron que
+  `deadlineLabel`, juste à côté, qui lui passait déjà.
+
+`tsc --noEmit`, `eslint`, `vitest run` (37/37), `next build` (34 routes,
+contre 36 avant — cohérence attendue : -`/play/matches` -`/play/
+my-predictions` +`/play/results`) tous propres. **Pas de vérification au
+clic** (pas de session authentifiée disponible sans franchir le classifieur
+de permissions) — signalé explicitement, détail des parcours à revérifier
+listé dans `GAPS_OUVERTS.md`. Rien commité — laissé à l'utilisateur.
+```

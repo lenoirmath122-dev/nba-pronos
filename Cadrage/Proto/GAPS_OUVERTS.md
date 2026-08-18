@@ -54,6 +54,27 @@
 >   de permissions que la migration ci-dessus — les 2 fonctionnalités sont
 >   donc vérifiées au niveau type/build (`tsc`/`eslint`/`vitest`/
 >   `next build`) mais pas encore au clic en conditions réelles.
+> - **Refonte de l'onglet Jouer — CODÉE ET VÉRIFIÉE (type/build), même
+>   session du 18/08/2026** (§2.72 `ETAT_ACTUEL.md`) : hub 2×2 remplacé par
+>   2 onglets « Mes pronos »/« Résultats » + Bracket en point d'entrée
+>   permanent, paris MATCH intégrés aux deux onglets (tous statuts, pas
+>   seulement éditables). `tsc`/`eslint`/`vitest` (37/37)/`next build` (34
+>   routes) propres.
+> - **Nouveau point ouvert : pas encore vérifié au clic** (session
+>   authentifiée non tentée, cf. `claude_code_auto_mode_classifier_blocks_
+>   credentials` en mémoire) — à faire en conditions réelles avant de
+>   considérer la refonte définitivement close : saisie/validation d'un
+>   prono et d'un pari sur un match à venir, bascule vers Résultats une fois
+>   un match verrouillé > 3 jours, correction de prono ET de pari depuis les
+>   deux onglets (le mécanisme `returnTo` des deux formulaires n'a été
+>   vérifié qu'au niveau des types), suppression d'un pari (bouton déplacé
+>   dans `InlineBetForm`), bandeau de quota, bandeau « Tout valider ».
+> - **Simplification assumée, pas un bug** : le filtre « des autres joueurs »
+>   par ligue (`LeagueScopeChips`) n'existe plus que sur Résultats — l'ex-
+>   segment « Récent » de Mes pronos en bénéficiait, l'onglet Mes pronos
+>   fusionné n'en hérite pas (documenté dans
+>   `SPEC_REFONTE_ONGLET_JOUER_V0_1.md` avant même de coder). À rouvrir si
+>   l'utilisateur le demande.
 >
 > **État au 16/08/2026** — **Audit UX + code, détail complet dans
 > `AUDIT_UX_16_08_2026.md`.** Tous les points actionnables techniques

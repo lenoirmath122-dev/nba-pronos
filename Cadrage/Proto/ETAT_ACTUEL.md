@@ -5991,4 +5991,142 @@ loss/secondaire) ; `DeleteBetButton` aligné pixel pour pixel dessus.
 par le classifieur de permissions, comme la vérification au clic de
 §2.69) — à faire manuellement par l'utilisateur, voir `GAPS_OUVERTS.md`.
 Committé et poussé (`91f398a`).
+
+### 2.71 Onglet Jouer : cadrage de la fusion Mes pronos / Résultats (session du 18/08/2026)
+
+```text
+CADRAGE UNIQUEMENT — AUCUNE LIGNE DE CODE ÉCRITE. Demande ouverte de
+l'utilisateur (« chantier plus dimensionnant, simplification de lecture et
+navigation dans l'onglet jouer ») : remplacer le hub 2×2 actuel (Matchs /
+Mes pronos / Mon bracket / Paris) par deux onglets — « Mes pronos »
+(matchs à suivre + pronos/paris associés) et « Résultats » (matchs
+chronologiques + pronos/paris + état/points) — les paris SÉRIE restant
+visibles uniquement sur le Bracket.
+
+**Cadrage par options, jamais tranché à l'aveugle** (3 tours
+`AskUserQuestion`, méthode déjà utilisée sur les mockups Profil/Stats/
+Accueil, cf. §2.54/§2.55/§2.69) :
+1. Ampleur de la fusion : reskin léger du hub / fusion Matchs+Mes pronos
+   seulement / **fusion totale y compris les paris MATCH — RETENUE**.
+2. Structure de navigation : hub allégé à 3 cartes / **onglets internes
+   sans hub, Bracket en point d'entrée permanent dans l'en-tête — RETENUE**.
+3. **Conflit trouvé et signalé avant d'écrire la spec** : le cycle de vie
+   d'un pari (statut DRAFT→…→WON/LOST/REJECTED/CANCELLED, piloté par
+   l'admin) n'est PAS synchronisé avec celui de son match (piloté par
+   l'heure) — un pari REJETÉ peut viser un match pas encore joué, un pari
+   VALIDÉ peut rester non résolu après la fin du match (cas « pari
+   oublié », `SPEC_ECRAN_MES_PARIS_V0_1` §7). Deux résolutions proposées :
+   le MATCH décide toujours l'onglet (réutilise le principe déjà acté
+   « écran ancré sur les matchs », `SPEC_ECRAN_MES_PRONOS_V0_1` §3) / le
+   pari garde son propre statut indépendamment de son match. **Retenue :
+   le match décide toujours** — un pari affiche son propre statut là où
+   son match se trouve, y compris quand les deux « détonnent ».
+
+**Spec écrite** : `Cadrage/V1/Spec visuelle/SPEC_REFONTE_ONGLET_JOUER_V0_1.md`
+— remplace/fusionne 4 specs fermées (`SPEC_ECRAN_HUB_JOUER`,
+`SPEC_ECRAN_MATCHS`, `SPEC_ECRAN_MES_PRONOS`, `SPEC_ECRAN_MES_PARIS`) sans
+rouvrir leurs décisions de fond (rampe de statut, quotas, C2,
+confidentialité) — seule la découpe écran/le rattachement pari↔match
+changent. Fenêtre « Mes pronos » actée comme l'union exacte des deux
+anciennes fenêtres (Matchs à venir + Récent 3j), pas une largeur nouvelle.
+
+**Les 4 vérifications de dépôt levées en lecture seule, même session** :
+deux ont changé la spec, pas juste confirmé. (1) La garde anti-perte de
+saisie (C2, `useUnsavedGuard`) n'existe PAS sur le formulaire de pari
+(`InlineBetForm`/`BetFormModal`) — seul le formulaire de prono l'a ;
+extension documentée (spec §2.2). (2) La deadline d'un pari MATCH n'est
+PAS indépendante de celle du prono comme la spec le supposait : la
+fonction SQL `bet_deadline_open()` ferme les deux exactement au même
+instant (`scheduled_at > now()`) — spec §3.3 corrigée : le CTA « Parier »
+disparaît dès qu'un match se verrouille, aucun état transitoire. Les 2
+autres vérifications (autres appelants de `getMyBets`, recensement des
+liens entrants à rediriger — 5 fichiers d'écriture, 5 de lecture, 1
+composant remplacé) n'ont rien changé de structurant, juste produit un
+catalogue exhaustif (spec §2.1/§2.3). **Statut de la spec : prête à
+implémenter, plus aucun blocage connu.**
+
+**Les 4 écrans actuels (`/play` hub, `/play/matches`, `/play/my-predictions`,
+`/play/bets`) restent inchangés et en production tels quels** — ni le
+cadrage ni les vérifications de dépôt ne les ont touchés, aucune ligne de
+code écrite à ce stade. Voir `GAPS_OUVERTS.md` pour le suivi de
+l'implémentation à venir.
+```
+
+### 2.72 Onglet Jouer : implémentation de la fusion Mes pronos / Résultats (même session, 18/08/2026)
+
+```text
+Suite immédiate de §2.71. Demande de l'utilisateur : « ok on fonce ».
+Implémentation complète de `SPEC_REFONTE_ONGLET_JOUER_V0_1.md`.
+
+**Nouveau module `lib/queries/play.ts`** : fusionne `lib/queries/matches.ts`
++ `lib/queries/my-predictions.ts` + le calcul de quota de l'ex-`my-bets.ts`.
+Deux fonctions de lecture, pas une seule comme l'esquisse de la spec le
+suggérait (raffinement fait en codant) : `getPlayUpcoming()` (onglet Mes
+pronos — union exacte des anciennes fenêtres Matchs + Récent, §3.1) et
+`getPlayResults(params)` (onglet Résultats — ex-Historique, filtres
+date/série/ligue inchangés). Une fonction interne `fetchLockedRows()`
+partagée par les deux (verrouillé = lecture seule, prono ET pari) : mêmes
+lignes, mêmes calculs, appelées deux fois avec des fenêtres différentes.
+
+`lib/queries/matches.ts` **réduit à `TeamRef` seul** (pas supprimé) : 5
+autres modules en dépendent (`admin-results.ts`, `bets.ts`,
+`player-profile.ts`, `profile.ts`, `admin-missing.ts`) — vérifié par grep
+avant de toucher au fichier, cf. §13.1 de la spec. `lib/queries/
+my-predictions.ts` et `lib/queries/my-bets.ts` supprimés en entier (aucun
+appelant restant une fois `/play/bets` et `/play/my-predictions`
+disparus — vérifié).
+
+**Bloc pari unifié** — `components/play/BetBlock.tsx` (lecture seule, fusion
+de l'ex-`AssociatedBetCard` et de l'ex-`MyBetRow` : TOUS les statuts, motif
+de refus/résolution, lien "Reproposer", correction "pari oublié") +
+`InlineBetForm.tsx` (édition, réutilisé tel quel côté DRAFT/SUBMITTED). Une
+ligne affiche l'un OU l'autre selon le statut du pari, jamais les deux.
+
+**2 corrections trouvées EN CODANT, au-delà de ce que les vérifications de
+dépôt avaient anticipé** :
+- `DeleteBetButton` (suppression d'un pari, §2.70) n'avait plus AUCUN point
+  d'entrée dans le nouveau design : l'ex-écran Mes paris (seul appelant)
+  disparaît, et le chemin éditable retenu (`InlineBetForm`, patron de
+  l'ex-écran Matchs) n'a jamais eu de bouton Supprimer. Repéré en écrivant
+  `UpcomingRowForm.tsx`, pas avant. Corrigé en déplaçant `DeleteBetButton`
+  dans `components/bets/` et en l'intégrant DANS `InlineBetForm` lui-même —
+  bénéfice non demandé mais gratuit : les paris SÉRIE du Bracket (2e
+  appelant d'`InlineBetForm`) en bénéficient aussi désormais, alors qu'ils
+  n'avaient jamais eu de bouton Supprimer.
+- La requête de correction d'un pari (`requestBetCorrectionFormAction`,
+  "pari oublié") redirigeait vers `/play/bets` en dur, sans mécanisme
+  `returnTo` — invisible tant qu'un seul écran existait, devenu un bug réel
+  une fois le même formulaire accessible depuis les DEUX onglets (une
+  correction déposée depuis Résultats aurait renvoyé à tort vers Mes
+  pronos). Aligné sur le patron déjà en place pour la correction de prono
+  (`requestPredictionCorrectionFormAction`, champ caché `returnTo`).
+
+**Fichiers supprimés** : `app/(app)/play/matches/`, `app/(app)/play/
+my-predictions/`, `app/(app)/play/bets/page.tsx` (new/ et [id]/edit/
+conservés), `components/matches/*`, `components/my-predictions/*`,
+`components/my-bets/{MyBetRow,SegmentTabs,DeleteBetButton}.*` (QuotaBanner
+conservé), `components/play/PlayHubCard.*` (ex-hub, mort).
+
+**Vérifié** : `tsc --noEmit` propre, `eslint` propre (1 seule erreur trouvée
+et corrigée : `react-hooks/purity` sur `BracketEntry.tsx`, un `Date.now()`
+appelé directement dans le corps du composant plutôt que dans une fonction
+nommée à part — même patron que `deadlineLabel` juste au-dessus, qui lui
+passait déjà), `vitest run` (37/37), `next build` (34 routes, contre 36
+avant — cohérent : -2 routes, `/play/matches` et `/play/my-predictions`
+disparues, `/play/results` apparue).
+
+**PAS vérifié au clic** : nécessite une session authentifiée réelle,
+non tentée dans cette session (pas de compte de test disponible sans
+franchir le classifieur de permissions, cf. `claude_code_auto_mode_
+classifier_blocks_credentials` en mémoire). Signalé explicitement à
+l'utilisateur.
+
+**Simplification assumée, documentée dans la spec dès le cadrage (§2.1)** :
+`LeagueScopeChips` (filtre "des autres joueurs" par ligue) n'existe plus que
+sur Résultats — l'ex-segment "Récent" de Mes pronos en bénéficiait, l'onglet
+Mes pronos fusionné n'en a pas hérité (l'écran Matchs, dont il hérite aussi,
+ne l'a jamais eu). Pas un oubli : receveur naturel si demandé un jour.
+
+Rien commité — laissé à l'utilisateur de demander un commit s'il le
+souhaite.
 ```

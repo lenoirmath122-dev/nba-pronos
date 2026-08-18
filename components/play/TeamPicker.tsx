@@ -1,0 +1,35 @@
+import type { TeamRef } from "@/lib/queries/play";
+import { TeamLogo } from "@/components/ui/TeamLogo";
+import styles from "./TeamPicker.module.css";
+
+// Sélecteur de vainqueur par tap direct sur l'équipe (T7 §15.8) — pas de
+// boutons segmentés séparés. Sans "use client" : rendu exclusivement par
+// UpcomingRowForm (même mécanisme que TeamLabel/NodeCard du bracket).
+type TeamPickerProps = {
+  homeTeam: TeamRef;
+  awayTeam: TeamRef;
+  selectedTeamId: string | null;
+  onSelect: (teamId: string) => void;
+};
+
+export function TeamPicker({ homeTeam, awayTeam, selectedTeamId, onSelect }: TeamPickerProps) {
+  return (
+    <div className={styles.picker}>
+      {[homeTeam, awayTeam].map((team) => {
+        const isSelected = selectedTeamId === team.id;
+        return (
+          <button
+            key={team.id}
+            type="button"
+            className={isSelected ? `${styles.team} ${styles.teamSelected}` : styles.team}
+            onClick={() => onSelect(team.id)}
+            aria-pressed={isSelected}
+          >
+            <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={48} />
+            <span className={styles.name}>{team.name}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}

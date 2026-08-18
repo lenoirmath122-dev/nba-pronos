@@ -33,26 +33,33 @@ export async function requestBetCorrection(input: { betId: string; justification
     return { success: false, error: error.message };
   }
 
-  revalidatePath("/play/bets");
+  // Le cas "pari oublié" peut se produire sur un match encore dans Mes
+  // pronos (recentLocked, < 3j) OU déjà dans Résultats — les deux chemins
+  // sont invalidés, comme requestPredictionCorrection (corrections.ts).
+  revalidatePath("/play");
+  revalidatePath("/play/results");
   return { success: true };
 }
 
 /**
  * Variante `<form action={...}>` NATIVE (aucun JS) : reçoit un FormData brut,
- * appelle requestBetCorrection(), puis REDIRIGE — un formulaire sans JS ne
- * peut pas lire une valeur de retour, l'erreur est donc portée par l'URL de
- * la redirection, jamais par un état client. Même patron que
- * requestPredictionCorrectionFormAction (lib/actions/corrections.ts).
+ * appelle requestBetCorrection(), puis REDIRIGE vers `returnTo` — l'onglet
+ * d'origine (porté par le formulaire, même patron que
+ * requestPredictionCorrectionFormAction, lib/actions/corrections.ts) plutôt
+ * qu'une route fixe : sans ça, une correction déposée depuis Résultats
+ * renverrait à tort vers Mes pronos.
  */
 export async function requestBetCorrectionFormAction(formData: FormData): Promise<void> {
   const betId = String(formData.get("betId") ?? "");
   const justification = String(formData.get("justification") ?? "");
+  const returnTo = String(formData.get("returnTo") ?? "/play");
 
   const result = await requestBetCorrection({ betId, justification });
 
   if (!result.success) {
-    redirect(`/play/bets?betError=${encodeURIComponent(result.error)}&betId=${betId}`);
+    const separator = returnTo.includes("?") ? "&" : "?";
+    redirect(`${returnTo}${separator}betError=${encodeURIComponent(result.error)}&betId=${betId}`);
   }
 
-  redirect("/play/bets");
+  redirect(returnTo);
 }
