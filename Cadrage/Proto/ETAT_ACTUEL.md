@@ -6562,3 +6562,34 @@ imposé à réécrire).
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```
+
+### 2.89 Accueil : cartes dépliables (session du 18/08/2026)
+
+```text
+Demande de l'utilisateur : les 4 cartes de l'Accueil (« À traiter », « À
+traiter (admin) », « Paris », « Ça vient de tomber ») deviennent
+dépliables — repliées par défaut au chargement, avec un point d'alerte
+tant qu'une carte n'a jamais été ouverte sur l'appareil (clarifié par
+AskUserQuestion : portée = les 4, état initial = fermé + voyant).
+
+Nouveau `components/home/CollapsibleCard.tsx` (client) : en-tête
+cliquable (patron `clickableRowProps` de BetGroupRow.tsx, chevron ⌃/⌄),
+titre en `<h2>` englobant la zone cliquable (disclosure widget WAI-ARIA
+standard, pas l'inverse). Mémorisation "déjà ouverte" en localStorage
+(`home-card-seen:{id}`, par appareil — aucune colonne serveur pour une
+simple préférence d'affichage). Lecture via `useSyncExternalStore`
+plutôt qu'un `useEffect`+`setState` : le lint react-hooks/set-state-in-
+effect interdit le setState synchrone dans un effet, et localStorage EST
+un store externe — snapshot serveur toujours `false`, aucun flash au
+premier rendu client.
+
+`app/(app)/home/page.tsx` : les 4 `<section>` gardent leur wrapper
+`glass-card`/`aria-label` inchangé, le titre + contenu passent dans
+`<CollapsibleCard id="..." title="...">`. `page.module.css` : `.section-
+Title` supprimée (remplacée par `CollapsibleCard.module.css`, plus
+utilisée nulle part ailleurs dans ce module).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Pas de
+navigateur disponible dans cet environnement pour un test au clic — à
+vérifier par l'utilisateur.
+```

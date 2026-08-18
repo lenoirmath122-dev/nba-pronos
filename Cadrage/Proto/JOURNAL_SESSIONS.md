@@ -7553,3 +7553,26 @@ gardent `bet.description` (texte libre du joueur), non touché.
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail
 en `ETAT_ACTUEL.md` §2.88.
 ```
+
+## Accueil : cartes dépliables (18/08/2026)
+
+```text
+Les 4 cartes de l'Accueil deviennent dépliables (fermées par défaut,
+point d'alerte tant que jamais ouvertes — clarifié par AskUserQuestion).
+Nouveau `components/home/CollapsibleCard.tsx`, mémorisation localStorage
+`home-card-seen:{id}`, lecture via `useSyncExternalStore` (pas de
+setState dans un effet, lint react-hooks/set-state-in-effect). `tsc`/
+`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail en
+`ETAT_ACTUEL.md` §2.89.
+```
+
+## Accueil : numéro de match aussi dans « Ça vient de tomber » (18/08/2026)
+
+```text
+Dernier bloc concerné : le feed match_scored (getFeed(), lib/queries/
+home.ts) n'affichait que le score. `MatchScoreRow.game_number` ajouté au
+SELECT, libellé : « Game 3 · BOS 102 - 98 ATL ». bet_scored/bet_resolved
+gardent `bet.description` (texte libre du joueur), non touché.
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail
+en `ETAT_ACTUEL.md` §2.88.
+```

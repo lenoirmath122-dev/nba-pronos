@@ -5,6 +5,7 @@ import { TodoList } from "@/components/home/TodoList";
 import { BetsAccordionList } from "@/components/home/BetsAccordionList";
 import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
+import { CollapsibleCard } from "@/components/home/CollapsibleCard";
 import { TutorialBanner } from "@/components/tutorial/TutorialBanner";
 import styles from "./page.module.css";
 
@@ -43,18 +44,20 @@ export default async function HomePage() {
       <HomeHeader header={header} />
 
       <section className={`${styles.section} glass-card`} aria-label="À traiter">
-        <h2 className={styles.sectionTitle}>À traiter</h2>
-        {todo.length > 0 ? (
-          <TodoList items={todo} />
-        ) : (
-          <EmptyState title="Tout est à jour" subtitle="Rien à pronostiquer pour le moment." />
-        )}
+        <CollapsibleCard id="todo" title="À traiter">
+          {todo.length > 0 ? (
+            <TodoList items={todo} />
+          ) : (
+            <EmptyState title="Tout est à jour" subtitle="Rien à pronostiquer pour le moment." />
+          )}
+        </CollapsibleCard>
       </section>
 
       {adminTodo.length > 0 && (
         <section className={`${styles.section} glass-card`} aria-label="À traiter (admin)">
-          <h2 className={styles.sectionTitle}>À traiter (admin)</h2>
-          <TodoList items={adminTodo} />
+          <CollapsibleCard id="admin" title="À traiter (admin)">
+            <TodoList items={adminTodo} />
+          </CollapsibleCard>
         </section>
       )}
 
@@ -63,21 +66,23 @@ export default async function HomePage() {
           vide affiché ici, contrairement aux 2 sections ci-dessus. */}
       {(seriesBets.length > 0 || matchBets.length > 0) && (
         <section className={`${styles.section} glass-card`} aria-label="Paris">
-          <h2 className={styles.sectionTitle}>Paris</h2>
-          <BetsAccordionList seriesBets={seriesBets} matchBets={matchBets} />
+          <CollapsibleCard id="bets" title="Paris">
+            <BetsAccordionList seriesBets={seriesBets} matchBets={matchBets} />
+          </CollapsibleCard>
         </section>
       )}
 
       <section className={`${styles.section} glass-card`} aria-label="Ça vient de tomber">
-        <h2 className={styles.sectionTitle}>Ça vient de tomber</h2>
-        {feed.length > 0 ? (
-          <Feed items={feed} />
-        ) : (
-          <EmptyState
-            title="Rien de neuf depuis 2 jours"
-            subtitle="Les résultats s'afficheront ici."
-          />
-        )}
+        <CollapsibleCard id="feed" title="Ça vient de tomber">
+          {feed.length > 0 ? (
+            <Feed items={feed} />
+          ) : (
+            <EmptyState
+              title="Rien de neuf depuis 2 jours"
+              subtitle="Les résultats s'afficheront ici."
+            />
+          )}
+        </CollapsibleCard>
       </section>
     </div>
   );
