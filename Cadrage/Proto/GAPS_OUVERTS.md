@@ -60,15 +60,21 @@
 >   permanent, paris MATCH intégrés aux deux onglets (tous statuts, pas
 >   seulement éditables). `tsc`/`eslint`/`vitest` (37/37)/`next build` (34
 >   routes) propres.
-> - **Nouveau point ouvert : pas encore vérifié au clic** (session
->   authentifiée non tentée, cf. `claude_code_auto_mode_classifier_blocks_
->   credentials` en mémoire) — à faire en conditions réelles avant de
->   considérer la refonte définitivement close : saisie/validation d'un
->   prono et d'un pari sur un match à venir, bascule vers Résultats une fois
->   un match verrouillé > 3 jours, correction de prono ET de pari depuis les
->   deux onglets (le mécanisme `returnTo` des deux formulaires n'a été
->   vérifié qu'au niveau des types), suppression d'un pari (bouton déplacé
->   dans `InlineBetForm`), bandeau de quota, bandeau « Tout valider ».
+> - **Vérification au clic EN COURS par l'utilisateur, même session** — la
+>   compétition active a été peuplée avec les comptes TestJoueur1-4
+>   (`scripts/advance-current-competition.mjs`, §2.73) précisément pour
+>   permettre ce test réel. 4 bugs déjà trouvés et corrigés en regardant
+>   l'appli tourner (§2.73 addendum, §2.74-76 `ETAT_ACTUEL.md`) :
+>   `bracket_deadline` jamais recalculée par le script de seed (bracket
+>   resté « modifiable », avancement des séries invisible) ; score de série
+>   masqué une fois FINISHED ; points du pronostic de bracket jamais
+>   affichés ; thème Photo perdu sur l'onglet Mes pronos dès qu'il a du
+>   contenu. **Restent à vérifier au clic**, toujours non confirmés : saisie/
+>   validation d'un prono et d'un pari sur un match à venir, bascule vers
+>   Résultats une fois un match verrouillé > 3 jours, correction de prono ET
+>   de pari depuis les deux onglets (mécanisme `returnTo`), suppression d'un
+>   pari (bouton déplacé dans `InlineBetForm`), bandeau de quota, bandeau
+>   « Tout valider ».
 > - **Simplification assumée, pas un bug** : le filtre « des autres joueurs »
 >   par ligue (`LeagueScopeChips`) n'existe plus que sur Résultats — l'ex-
 >   segment « Récent » de Mes pronos en bénéficiait, l'onglet Mes pronos

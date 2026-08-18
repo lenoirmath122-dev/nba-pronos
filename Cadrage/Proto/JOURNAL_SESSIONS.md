@@ -5782,6 +5782,7 @@ badges, quel critère de sélection parmi les 36, emplacement exact dans
 sera repris.
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` propres aux 2 étapes.
+```
 
 ## Badges permanents — remplacement des icônes stopgap par des visuels IA (10/08/2026, suite) : EN COURS, MIS EN PAUSE
 
@@ -5864,7 +5865,6 @@ Bracket Master généré mais à refaire — silhouette pleine). Scout, groupe
 Flat sans cadre, jamais généré — le pilote sur les 3 groupes de
 composition n'est donc pas complet. Aucune régénération faite après le
 correctif "outline only". Reprise à date non fixée.
-```
 ```
 
 ## Rattrapage de suivi : reprise après la pause du 10/08/2026, migration #28 poussée (13/08/2026)
@@ -6742,7 +6742,6 @@ réelles sur la compétition fraîchement recréée) :
 
 `tsc --noEmit`, `eslint` (fichiers touchés) propres. Serveur de dev laissé
 actif.
-```
 
 ## Nouveau : remise à zéro du bracket personnel (17/08/2026)
 
@@ -7354,4 +7353,46 @@ cours/pas commencé), 4 brackets complets, 84 pronos, 6 paris (tous statuts).
 Vérifié en lecture après coup : compétition toujours ACTIVE, comptes réels
 intacts, scoring et avancement de série cohérents. Détail complet en
 `ETAT_ACTUEL.md` §2.73. Scripts d'inspection jetables supprimés après usage.
+```
+
+## Bracket : score conservé, points du prono, thème Photo perdu sur Mes pronos (18/08/2026)
+
+```text
+Suite du même jour, en testant les données injectées par le script
+ci-dessus. 3 demandes successives de l'utilisateur, traitées une à une avec
+vérification `tsc`/`eslint`/`vitest`/`next build` à chaque fois :
+
+1. « mon bracket marque encore que je peux le modifier... et on ne voit pas
+   l'avancement des séries réelles » — un seul bug expliquait les deux
+   symptômes : `advance-current-competition.mjs` n'avait jamais recalculé
+   `competitions.bracket_deadline` après avoir inséré des matchs antérieurs
+   au seul match déjà présent. `isDeadlinePassed` restant faux,
+   `/play/bracket` ne redirigeait jamais vers `/bracket` (seule vue montrant
+   l'avancement officiel) — cf. `app/(app)/play/bracket/page.tsx` §61.
+   Corrigé en base (deadline recalculée) et dans le script (recalcul ajouté).
+2. « quand une série est finie, surligne simplement le vainqueur en vert et
+   laisse le score comme sur les séries en cours » — `lib/queries/bracket.ts`
+   ne calculait le score X-Y que pour IN_PROGRESS ; étendu à FINISHED.
+   `NodeCard.tsx` : `LiveTeamRow` renommé `SeriesTeamRow`, accepte
+   `highlight: "trend" | "win" | null` au lieu d'un booléen `isLeading` —
+   vert (`--color-win`) réservé au vainqueur RÉEL, jamais confondu avec
+   "en tête" (`--color-trend`) d'une série encore en cours.
+3. « ajoute le nombre de points entre parenthèse à la suite de mon prono...
+   si la série est finie » — `BracketMyPick` gagne un champ `points`
+   (`— tant que non scoré`, colonne déjà en base, juste absente du select).
+   `MyPickContent` (NodeCard.tsx) l'affiche entre parenthèses uniquement
+   quand `showPoints` est vrai. Piège trouvé par le compilateur : l'un des 2
+   emplacements du composant vit STRICTEMENT dans la branche `isLive`, où
+   TypeScript réduit déjà `liveStatus` au type littéral `"IN_PROGRESS"`
+   (narrowing sur variable alias) — comparer à `"FINISHED"` y est une
+   erreur de compilation légitime, remplacé par `showPoints={false}` en dur.
+
+4. « les nouveaux onglets... notamment mes pronos était en thème sombre et
+   non en thème image » — `app/(app)/play/page.tsx` posait `photo-page`
+   UNIQUEMENT sur l'état vide (hérité de l'ancien écran Matchs, jamais
+   remarqué tant que Matchs restait séparé de Mes pronos qui, lui, la posait
+   toujours). Corrigé : posée sans condition, comme les 8 autres écrans.
+
+Détail complet en `ETAT_ACTUEL.md` §2.74-76. Committé groupé avec le script
+de seed (`aceefb4`) pour les points 1-3 ; le point 4 reste à committer.
 ```

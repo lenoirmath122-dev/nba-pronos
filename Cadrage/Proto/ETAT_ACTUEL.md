@@ -5991,6 +5991,7 @@ loss/secondaire) ; `DeleteBetButton` aligné pixel pour pixel dessus.
 par le classifieur de permissions, comme la vérification au clic de
 §2.69) — à faire manuellement par l'utilisateur, voir `GAPS_OUVERTS.md`.
 Committé et poussé (`91f398a`).
+```
 
 ### 2.71 Onglet Jouer : cadrage de la fusion Mes pronos / Résultats (session du 18/08/2026)
 
@@ -6241,4 +6242,25 @@ remplaçait).
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Pas
 vérifié au clic (même limite que les entrées précédentes du jour).
+```
+
+### 2.76 Onglet Mes pronos : thème Photo perdu quand l'écran a du contenu (session du 18/08/2026)
+
+```text
+Signalé par l'utilisateur : « les nouveaux onglets... notamment mes pronos
+était en thème sombre et non en thème image [Photo]. En revanche le thème
+clair et sombre marchent bien ». Vrai bug de fusion, pas un problème de
+réglage : `app/(app)/play/page.tsx` posait `photo-page` UNIQUEMENT sur
+l'état vide (`isEmpty ? ... photo-page : ...`) — hérité tel quel de l'ancien
+écran Matchs, qui avait ce même comportement conditionnel, mais qui n'avait
+jamais posé problème puisque Matchs restait un écran séparé. Une fois fusionné
+avec l'ex-Mes pronos (qui posait `photo-page` INCONDITIONNELLEMENT, comme
+tous les autres écrans du site), l'onglet perdait le thème Photo dès qu'il
+affichait le moindre contenu réel. `/play/results` n'avait pas ce bug (déjà
+inconditionnel). Corrigé : `photo-page` posé sans condition sur `/play`,
+comme sur les 8 autres écrans qui la posent déjà (`app/globals.css` : la
+classe est structurelle, sans effet visuel hors thème Photo — aucun risque à
+la poser tout le temps).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```

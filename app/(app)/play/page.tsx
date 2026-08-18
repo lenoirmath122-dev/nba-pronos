@@ -51,7 +51,7 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
     }));
 
   return (
-    <div className={isEmpty ? `${styles.page} photo-page` : styles.page}>
+    <div className={`${styles.page} photo-page`}>
       <div className={`${styles.header} glass-card`}>
         <h1 className={styles.title}>Jouer</h1>
         <BracketEntry />
