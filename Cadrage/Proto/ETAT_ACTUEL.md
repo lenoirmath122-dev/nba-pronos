@@ -6620,3 +6620,65 @@ affiché.
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres.
 ```
+
+### 2.91 SMTP résolu (Gmail) + bug signup + URL Configuration (session du 19/08/2026)
+
+```text
+Reprise du point ouvert depuis le 16/08 (GAPS_OUVERTS.md, décision SMTP en
+pause). Demande de l'utilisateur : débloquer inscription + reset mot de
+passe pour de vrais joueurs, sans acheter de domaine vérifié Resend.
+Décision confirmée par AskUserQuestion : SMTP Gmail perso plutôt que retour
+au mailer Supabase natif (limite plus haute, ~500/jour, livrable à
+n'importe quelle vraie adresse).
+
+Config Gmail SMTP : mot de passe d'application généré côté Google, saisi
+directement dans le dashboard Supabase (host smtp.gmail.com, port 587) —
+jamais transmis dans le chat, contrairement à l'incident avec la clé Resend
+(16/08). Fait par l'utilisateur lui-même (accès dashboard + secret).
+
+Bug réel trouvé en testant une vraie inscription (lib/auth/actions.ts,
+signup()) : le garde-fou anti-énumération ajouté le 16/08
+(!signUpData.session || identities.length === 0 → "compte existe déjà")
+mélangeait 2 cas distincts. identities.length === 0 est le vrai signal
+d'un compte existant confirmé. Mais !session seul arrive AUSSI pour un
+compte tout neuf, tant que Confirm email est actif en prod (aucune session
+avant le clic sur le lien) — ce réglage s'est avéré actif malgré le
+"décoché et sauvegardé" du 27/07 (GAPS_OUVERTS.md, jamais confirmé
+fiable), probablement laissé ainsi pendant les tests Resend d'août.
+Résultat avant correctif : toute inscription légitime affichait "compte
+existe déjà" alors que le compte était bien créé (vérifié en base —
+nouvelle ligne auth.users, email_confirmed_at null).
+
+Corrigé : les 2 cas séparés. identities.length === 0 → message d'erreur
+inchangé. !session (identity non vide) → redirect("/verify-email"),
+nouvelle page (app/(public)/verify-email/page.tsx).
+
+Lien de confirmation par email : signUp() prend maintenant
+options.emailRedirectTo: ${origin}/email-confirmed (origine lue via
+headers(), async depuis Next 15/16 comme cookies() dans
+lib/supabase/server.ts). Nouvelle page app/(public)/email-confirmed/
+page.tsx ("Adresse confirmée, connecte-toi").
+
+2e bug trouvé en testant le clic sur le lien : atterrissait directement
+sur la page de connexion au lieu de /email-confirmed. Cause, vue en
+capture d'écran du dashboard : Site URL réglé sur http://localhost:3000
+(jamais mis à jour vers le domaine de prod) et aucune Redirect URL
+enregistrée — tout lien de redirection retombe sur Site URL si la cible
+n'est pas dans l'allow-list, proxy.ts vérifié innocent (rien côté notre
+app ne redirige /email-confirmed). Corrigé côté dashboard : Site URL →
+https://nba-pronos.vercel.app, Redirect URLs → wildcard
+https://nba-pronos.vercel.app/** (+ http://localhost:3000/** pour le dev
+local).
+
+Vérifié en conditions réelles par l'utilisateur, bout en bout :
+suppression du compte de test, réinscription, réception de l'email de
+confirmation, clic → atterrit bien sur /email-confirmed, connexion OK.
+« Tout fonctionne nickel. »
+
+tsc/eslint/vitest (37/37) propres après chaque étape. Committé et poussé
+(4f08f7c).
+
+Reste ouvert (GAPS_OUVERTS.md) : personnaliser le contenu du template
+email de confirmation (dashboard Supabase, actuellement générique et en
+anglais) — à faire plus tard, pas urgent.
+```

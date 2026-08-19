@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type CSSProperties } from "react";
+import { useEffect, useState } from "react";
 import type { UpcomingMatchRow as UpcomingMatchRowData } from "@/lib/queries/play";
-import { TEAM_COLORS } from "@/lib/labels/teamColors";
+import { TeamLogo } from "@/components/ui/TeamLogo";
 import { UpcomingRowForm } from "./UpcomingRowForm";
 import styles from "./UpcomingRow.module.css";
 
@@ -10,40 +10,12 @@ import styles from "./UpcomingRow.module.css";
 // Feuille client : porte son PROPRE booléen d'ouverture. Plusieurs lignes
 // peuvent être ouvertes en même temps ; aucun état ne remonte à un parent
 // (MatchDayGroup et la page restent serveur). État d'ouverture non persisté.
-
-function hexToRgb(hex: string): { r: number; g: number; b: number } {
-  return {
-    r: parseInt(hex.slice(1, 3), 16),
-    g: parseInt(hex.slice(3, 5), 16),
-    b: parseInt(hex.slice(5, 7), 16),
-  };
-}
-
-function shade(hex: string, amount: number): string {
-  const { r, g, b } = hexToRgb(hex);
-  const adjust = (v: number) => Math.max(0, Math.min(255, Math.round(v + (amount > 0 ? 255 - v : v) * amount)));
-  return `rgb(${adjust(r)}, ${adjust(g)}, ${adjust(b)})`;
-}
-
-function contrastTextColor(hex: string): string {
-  const { r, g, b } = hexToRgb(hex);
-  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
-  return luminance > 150 ? "#10141D" : "#F2F5FA";
-}
-
-function teamChipStyle(abbreviation: string): CSSProperties {
-  const colors = TEAM_COLORS[abbreviation];
-  if (!colors) return {};
-  const { r, g, b } = hexToRgb(colors.secondary);
-  return {
-    color: contrastTextColor(colors.primary),
-    "--team-primary": colors.primary,
-    "--team-primary-light": shade(colors.primary, 0.24),
-    "--team-primary-dark": shade(colors.primary, -0.3),
-    "--team-secondary-tint": `rgba(${r}, ${g}, ${b}, 0.4)`,
-    "--team-logo-url": `url(/logos/teams/${abbreviation}.svg)`,
-  } as CSSProperties;
-}
+//
+// En-tête équipes alignée sur LockedRow.tsx (logo + abréviations, neutre) —
+// avant le 19/08/2026, ce composant avait son PROPRE style de chip coloré en
+// dégradé par équipe (logo en filigrane à peine visible), redondant avec le
+// vrai logo affiché juste en dessous par TeamPicker une fois la ligne
+// ouverte (doublon signalé par l'utilisateur).
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -97,6 +69,31 @@ type UpcomingRowProps = { match: UpcomingMatchRowData };
 export function UpcomingRow({ match }: UpcomingRowProps) {
   const [isOpen, setIsOpen] = useState(false);
 
+  // Vainqueur : levé ici (plutôt que dans UpcomingRowForm) pour que les
+  // boutons logo de l'en-tête, TOUJOURS montés, puissent le modifier — un
+  // tap choisit ET déplie en une seule action (fusion avec l'ex-TeamPicker).
+  // Remis à match.myWinnerTeamId à la FERMETURE (handleToggle, pas un effet
+  // — react-hooks/set-state-in-effect, déjà rencontré §2.89 ETAT_ACTUEL) :
+  // même garantie qu'avant le levage, quand UpcomingRowForm se démontait
+  // avec son propre état local et perdait le brouillon non enregistré.
+  const [winner, setWinner] = useState<string | null>(match.myWinnerTeamId);
+
+  const isReadOnly = match.viewStatus === "VALIDATED";
+
+  function handleSelectTeam(teamId: string) {
+    if (isReadOnly) return;
+    setWinner(teamId);
+    setIsOpen(true);
+  }
+
+  function handleToggle() {
+    setIsOpen((wasOpen) => {
+      if (!wasOpen) return true;
+      setWinner(match.myWinnerTeamId);
+      return false;
+    });
+  }
+
   // Repère TEXTUEL, pas un décompte vivant : calculé une seule fois au
   // montage, jamais pendant le rendu (piège d'hydratation déjà rencontré sur
   // components/ui/Countdown.tsx).
@@ -138,20 +135,30 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
 
   return (
     <div id={`match-${match.matchId}`} className={`${styles.row} glass-card`}>
-      <button type="button" className={styles.header} onClick={() => setIsOpen((v) => !v)} aria-expanded={isOpen}>
-        <span className={styles.split}>
-          <span className={styles.teamAbbr} style={teamChipStyle(match.homeTeam.abbreviation)}>
-            <span className={styles.teamLabel}>
-              {match.homeTeam.abbreviation}
-              <span className={styles.srOnly}> contre </span>
-            </span>
-          </span>
-          <span className={styles.divider} aria-hidden="true" />
-          <span className={styles.teamAbbr} style={teamChipStyle(match.awayTeam.abbreviation)}>
-            <span className={styles.teamLabel}>{match.awayTeam.abbreviation}</span>
-          </span>
-        </span>
-        <span className={styles.metaRow}>
+      <div className={styles.header}>
+        <div className={styles.teams}>
+          {[match.homeTeam, match.awayTeam].map((team) => (
+            <button
+              key={team.id}
+              type="button"
+              className={winner === team.id ? `${styles.teamButton} ${styles.teamButtonSelected}` : styles.teamButton}
+              onClick={() => handleSelectTeam(team.id)}
+              disabled={isReadOnly}
+              aria-pressed={winner === team.id}
+              aria-label={team.name}
+            >
+              <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={32} />
+              {team.abbreviation}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className={styles.metaToggle}
+          onClick={handleToggle}
+          aria-expanded={isOpen}
+          aria-label="Détails du match"
+        >
           <span className={styles.meta}>
             <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
             <span className={styles.lock}>{isOpen ? liveLockLabel : lockLabel}</span>
@@ -164,9 +171,9 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
               ▾
             </span>
           </span>
-        </span>
-      </button>
-      {isOpen && <UpcomingRowForm match={match} />}
+        </button>
+      </div>
+      {isOpen && <UpcomingRowForm match={match} winner={winner} />}
     </div>
   );
 }

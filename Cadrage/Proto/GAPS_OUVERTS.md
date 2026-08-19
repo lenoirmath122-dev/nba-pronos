@@ -4,6 +4,32 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 19/08/2026** — **SMTP — RÉSOLU, testé en conditions réelles.**
+> Point ouvert depuis le 16/08 (voir bloc ci-dessous). Décision retenue :
+> SMTP Gmail perso (`smtp.gmail.com`, mot de passe d'application) plutôt
+> qu'un domaine vérifié Resend — livrable à n'importe quelle vraie adresse,
+> configuré directement dans le dashboard Supabase (jamais de secret collé
+> dans le chat). Détail complet dans `ETAT_ACTUEL.md` §2.91.
+> - **Bug réel trouvé en testant** : `signup()` (`lib/auth/actions.ts`)
+>   traitait l'absence de session comme "compte déjà existant"
+>   (anti-énumération), mais c'est aussi le cas normal d'un compte tout
+>   juste créé en attente de confirmation — Confirm email s'est avéré actif
+>   en prod (contrairement au réglage sauvegardé le 27/07). Corrigé : les 2
+>   cas sont maintenant distingués, avec 2 nouvelles pages de redirection
+>   (`/verify-email` après inscription, `/email-confirmed` après clic sur
+>   le lien reçu).
+> - **2e bug trouvé en testant le lien de confirmation** : Site URL du
+>   dashboard Supabase pointait sur `http://localhost:3000` (jamais mis à
+>   jour vers le domaine de prod) et aucune Redirect URL n'était enregistrée
+>   — tout lien de redirection (confirmation, reset) retombait sur
+>   localhost. Corrigé côté dashboard (Site URL + wildcard
+>   `https://nba-pronos.vercel.app/**`).
+> - **Nouveau point ouvert, à faire plus tard, pas urgent** : personnaliser
+>   le contenu du mail de confirmation (Authentication → Emails →
+>   Templates dans le dashboard Supabase) — actuellement le template par
+>   défaut Supabase, générique et en anglais, alors que toute l'appli est
+>   en français.
+>
 > **État au 18/08/2026** — **Rattrapage de suivi : `ETAT_ACTUEL.md` et ce
 > fichier n'avaient pas suivi depuis le 15/08/2026** (`JOURNAL_SESSIONS.md`,
 > lui, était à jour jusqu'au 17/08/2026) — repéré en répondant à la question

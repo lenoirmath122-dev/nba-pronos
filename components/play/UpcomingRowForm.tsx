@@ -5,7 +5,6 @@ import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
 import { saveMatchPredictionDraft, validateMatchPrediction } from "@/lib/actions/matches";
 import { submitBet } from "@/lib/actions/bets";
 import type { BetSlotIndicator, UpcomingMatchRow } from "@/lib/queries/play";
-import { TeamPicker } from "./TeamPicker";
 import { MarginStepper } from "./MarginStepper";
 import { RevealPanelUpcoming } from "./RevealPanelUpcoming";
 import { BetBlock } from "./BetBlock";
@@ -15,9 +14,13 @@ import styles from "./UpcomingRowForm.module.css";
 // Ligne dépliée d'un match pas encore verrouillé — ex-components/matches/
 // PredictionForm.tsx, fusionné avec le bloc pari (§3.3 SPEC_REFONTE_ONGLET_
 // JOUER_V0_1 : le pari devient éditable ICI, plus sur un écran à part).
-// Porte l'état de saisie local (winner/margin) et le drapeau `dirty`
-// consommé par useUnsavedGuard (C2). Ordre imposé par §3.2 de la spec :
-// affrontement → écart → panneau "valider = voir" → actions → pari.
+// `winner` vient du parent (UpcomingRow, 19/08/2026) — le choix du vainqueur
+// se fait désormais directement sur les boutons logo de l'en-tête, TOUJOURS
+// montés (un tap choisit ET déplie), donc plus de TeamPicker ici (ex-doublon
+// signalé par l'utilisateur). `margin` reste un état local propre à ce
+// formulaire. Porte le drapeau `dirty` consommé par useUnsavedGuard (C2).
+// Ordre imposé par §3.2 de la spec : affrontement (en-tête) → écart →
+// panneau "valider = voir" → actions → pari.
 //
 // Une fois VALIDATED, plus aucune saisie n'est rendue : irréversible, la
 // ligne bascule en lecture seule + révélation — toujours dérivé de la prop,
@@ -42,11 +45,16 @@ function winnerAbbreviation(match: UpcomingMatchRow): string | null {
   return null;
 }
 
-type UpcomingRowFormProps = { match: UpcomingMatchRow };
+// `winner` est lu seul (jamais modifié ici) : la sélection se fait sur les
+// boutons logo de l'en-tête (UpcomingRow, TOUJOURS montés), pas dans ce
+// formulaire qui ne monte qu'une fois la ligne ouverte.
+type UpcomingRowFormProps = {
+  match: UpcomingMatchRow;
+  winner: string | null;
+};
 
-export function UpcomingRowForm({ match }: UpcomingRowFormProps) {
+export function UpcomingRowForm({ match, winner }: UpcomingRowFormProps) {
   const { markDirty, clearDirty } = useUnsavedGuard(match.matchId);
-  const [winner, setWinner] = useState<string | null>(match.myWinnerTeamId);
   const [margin, setMargin] = useState<number | null>(match.myMargin);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -179,8 +187,6 @@ export function UpcomingRowForm({ match }: UpcomingRowFormProps) {
 
   return (
     <div className={styles.form}>
-      <TeamPicker homeTeam={match.homeTeam} awayTeam={match.awayTeam} selectedTeamId={winner} onSelect={setWinner} />
-
       <MarginStepper
         value={margin}
         onChange={setMargin}
