@@ -6682,3 +6682,69 @@ Reste ouvert (GAPS_OUVERTS.md) : personnaliser le contenu du template
 email de confirmation (dashboard Supabase, actuellement générique et en
 anglais) — à faire plus tard, pas urgent.
 ```
+
+### 2.92 Mes pronos : carte match — logos visibles + fusion sélection/en-tête (session du 19/08/2026)
+
+```text
+Demande de l'utilisateur : retravailler la carte match de l'onglet Mes
+pronos (UpcomingRow.tsx). Clarifiée par AskUserQuestion (multi-select) :
+repenser la mise en page globale, logos d'équipe plus visibles, et — a
+minima — supprimer le doublon d'infos d'équipe (« enlever celle avec la
+couleur, garder les logos seuls »).
+
+Cause du doublon, trouvée en lisant le composant : l'en-tête (toujours
+visible) affichait un chip coloré en dégradé par équipe avec l'abréviation,
+logo réduit à un filigrane à peine visible (opacity 0.2) — puis, une fois
+la carte ouverte, TeamPicker (composants/play/TeamPicker.tsx) affichait à
+nouveau les 2 équipes, cette fois avec le VRAI logo (TeamLogo, net) et le
+nom complet. Même info montrée deux fois, avec deux traitements visuels
+différents.
+
+**1er passage** : en-tête aligné sur le style neutre de LockedRow.tsx
+(TeamLogo + abréviation, sans dégradé coloré) — chip coloré retiré,
+helpers hexToRgb/shade/contrastTextColor/teamChipStyle et l'import
+TEAM_COLORS supprimés (plus utilisés). Le doublon avec TeamPicker
+persistait encore à ce stade (2 représentations différentes des mêmes 2
+équipes, juste toutes les deux neutres maintenant) — signalé par
+l'utilisateur après vérification au clic : « on a toujours un doublon ».
+
+**2e passage, fusion complète** : proposition de l'utilisateur — les logos
+de l'en-tête deviennent directement les boutons de sélection, un tap
+choisit le vainqueur ET déplie la carte. Confirmé par AskUserQuestion
+(interaction retenue : tap sur un logo = sélectionne + déplie ; tap sur
+l'heure/le statut = déplie seul, sans rien choisir).
+
+Implémentation : l'état `winner` (vainqueur choisi) est LEVÉ de
+UpcomingRowForm vers UpcomingRow — les boutons logo de l'en-tête sont
+TOUJOURS montés (contrairement au formulaire, monté seulement une fois la
+carte ouverte), ils doivent donc porter cet état pour pouvoir le modifier.
+`margin` reste local à UpcomingRowForm (pas de bouton d'en-tête concerné).
+`.teams` passe en grille 2 colonnes pleine largeur (`1fr 1fr`), pour rester
+alignée avec la grille identique de MarginStepper une fois la carte
+ouverte (le "−"/"+" doit tomber sous la bonne équipe — alignement
+intentionnel déjà documenté dans MarginStepper.tsx, préservé). En-tête
+restructuré : n'est plus UN SEUL `<button>` englobant tout (boutons
+imbriqués invalides en HTML) — devient un conteneur avec 2 boutons de
+sélection + 1 bouton `.metaToggle` séparé (heure/verrou/statut/chevron)
+qui déplie sans toucher à la sélection.
+
+Piège react-hooks/set-state-in-effect (déjà rencontré §2.89) : la remise à
+zéro du brouillon non enregistré à la fermeture ne peut pas passer par un
+useEffect (setState synchrone interdit dans un effet) — déplacée dans
+handleToggle, l'event handler qui ferme la carte, où c'est un setState
+normal déclenché par une action utilisateur.
+
+`components/play/TeamPicker.tsx` + son CSS **supprimés** (plus aucun
+usage après la fusion — vérifié par grep avant suppression).
+
+**Vérifié visuellement** (screenshots via un compte de test jetable créé/
+supprimé par service_role + Playwright, aucun accès navigateur natif dans
+cet environnement) : carte repliée (logos nets, 2 boutons), tap sur un
+logo (sélectionné + dépliée, stepper d'écart aligné dessous), tap sur la
+zone heure/statut d'une autre carte (dépliée sans sélection, stepper
+masqué comme attendu tant qu'aucun vainqueur n'est choisi). Aucune erreur
+console. `tsc`/`eslint`/`vitest` (37/37) propres.
+
+Committé et poussé (`bc7cc68`), avec le rattrapage doc SMTP (§2.91) dans
+le même commit.
+```

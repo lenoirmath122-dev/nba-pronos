@@ -29,6 +29,14 @@
 >   Templates dans le dashboard Supabase) — actuellement le template par
 >   défaut Supabase, générique et en anglais, alors que toute l'appli est
 >   en français.
+> - **Mes pronos, carte match (`UpcomingRow.tsx`) — FAIT pour la partie
+>   demandée en priorité** : logos d'équipe visibles + doublon avec
+>   TeamPicker éliminé (sélection fusionnée dans l'en-tête, `TeamPicker.tsx`
+>   supprimé) — détail dans `ETAT_ACTUEL.md` §2.92. **Reste ouvert** : parmi
+>   les options cochées par l'utilisateur (AskUserQuestion multi-select),
+>   « repenser la mise en page globale » (agencement, hiérarchie visuelle,
+>   pas juste les logos/le doublon) n'a pas été traitée — seule la version
+>   a minima a été livrée pour ce 1er aller-retour. À reprendre si demandé.
 >
 > **État au 18/08/2026** — **Rattrapage de suivi : `ETAT_ACTUEL.md` et ce
 > fichier n'avaient pas suivi depuis le 15/08/2026** (`JOURNAL_SESSIONS.md`,
