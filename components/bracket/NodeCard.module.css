@@ -42,16 +42,13 @@
   border-color: var(--color-accent-line);
 }
 
-/* Série EN COURS (14/08/2026) : même teinte accent que .cardOpen (registre
-   "attention" déjà établi par ce token) — pas de conflit puisqu'une série en
-   cours n'est jamais aussi "décidée"/"champion" (isLive et isDecided/
-   hasChampion s'excluent déjà par construction, cf. NodeCard.tsx). Déclarée
-   AVANT .cardOpen dans la liste de classes : le clic (ouverture du détail)
-   garde la priorité visuelle, comme pour .cardDecided/.cardChampion. */
-.cardLive {
-  border-color: var(--color-accent-line);
-  background: var(--color-accent-soft);
-}
+/* Série EN COURS (14/08/2026, teinte retirée le 20/08/2026) : la carte
+   redevient une carte neutre standard, plus aucune couleur ne "signale" une
+   série en cours à distance — seul .liveTag/.liveDot (--color-live) attire
+   l'œil. Avant : même accent orange que .betButton sur la même carte, qui
+   portait donc 2 sens différents en même temps (statut ET action) —
+   AJUSTEMENTS_VISUELS_20_08_2026 §15. Classe gardée sur la carte
+   (NodeCard.tsx) pour l'état isLive, sans effet visuel propre désormais. */
 
 .cardDisabled {
   cursor: default;
@@ -138,6 +135,13 @@
   gap: var(--space-2);
 }
 
+/* --color-live (rouge dédié), pas --color-accent (orange) : l'orange était
+   partagé avec .betButton sur la même carte ("Parier"/"Modifier le pari"),
+   portant 2 sens différents en même temps (statut "en cours" ET action).
+   --color-live est déjà le bon token pour ce statut ailleurs dans l'app
+   (badge "EN DIRECT" de Jouer/Mes pronos, LiveSubscriber.module.css) — ici
+   c'est le Bracket qui s'écartait du token fait pour cet usage, pas
+   l'inverse (AJUSTEMENTS_VISUELS_20_08_2026 §15). */
 .liveTag {
   display: inline-flex;
   align-items: center;
@@ -146,14 +150,14 @@
   font-weight: var(--font-weight-semibold);
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--color-accent);
+  color: var(--color-live);
 }
 
 .liveDot {
   width: 6px;
   height: 6px;
   border-radius: var(--radius-full);
-  background: var(--color-accent);
+  background: var(--color-live);
 }
 
 /* --motion-pulse-duration (tokens.css) : réservé pour "le pulse du point
@@ -213,8 +217,8 @@
 /* --- Pronostic de bracket du joueur (15/08/2026) --- */
 /* Filet d'accent latéral, ADDITIF (pas une teinte de fond/bordure) — même
    patron que le filet top 3 du Classement (LeaderboardRow.module.css) : ne
-   remplace jamais .cardDecided/.cardChampion/.cardLive, qui gardent leur
-   propre sémantique de couleur (§17). */
+   remplace jamais .cardDecided/.cardChampion, qui gardent leur propre
+   sémantique de couleur (§17) — .cardLive n'en porte plus depuis §15. */
 .cardHasPick::before {
   content: "";
   position: absolute;
