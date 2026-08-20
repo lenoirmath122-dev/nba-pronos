@@ -35,8 +35,8 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
 
   return (
     <ScreenShell authenticated={user !== null}>
-      <div className={styles.page}>
-        <header className={`${styles.header} hero-banner`}>
+      <div className={`${styles.page} photo-page`}>
+        <header className={`${styles.header} hero-banner glass-card`}>
           <p className={`${styles.pseudo} hero-banner-title`}>{profile.pseudo}</p>
           <div className={styles.badges}>
             {profile.isAdmin && <span className={styles.badge}>Admin</span>}
@@ -55,7 +55,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           <EmptyState title="Aucune compétition en cours" subtitle="Rien à montrer pour l'instant." />
         ) : (
           <>
-            <section className={styles.section}>
+            <section className={`${styles.section} glass-card`}>
               <h2 className={styles.sectionTitle}>Classement — {profile.competitionName}</h2>
               {profile.rank === null ? (
                 <p className={styles.muted}>N&apos;a encore rien pronostiqué sur cette compétition.</p>
@@ -67,7 +67,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               )}
             </section>
 
-            <section className={styles.section}>
+            <section className={`${styles.section} glass-card`}>
               <h2 className={styles.sectionTitle}>Bracket</h2>
               {!profile.isBracketRevealed ? (
                 <p className={styles.muted}>
@@ -102,7 +102,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               )}
             </section>
 
-            <section className={styles.section}>
+            <section className={`${styles.section} glass-card`}>
               <h2 className={styles.sectionTitle}>Pronostics de matchs</h2>
               {profile.matchPredictions.length === 0 ? (
                 <p className={styles.muted}>Aucun pronostic verrouillé pour l&apos;instant.</p>
@@ -129,7 +129,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
               )}
             </section>
 
-            <section className={styles.section}>
+            <section className={`${styles.section} glass-card`}>
               <h2 className={styles.sectionTitle}>Paris</h2>
               {profile.bets.length === 0 ? (
                 <p className={styles.muted}>Aucun pari résolu pour l&apos;instant.</p>
