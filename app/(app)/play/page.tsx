@@ -7,6 +7,7 @@ import { ValidateAllBanner } from "@/components/play/ValidateAllBanner";
 import { MatchDayGroup } from "@/components/play/MatchDayGroup";
 import { LockedRow } from "@/components/play/LockedRow";
 import { LiveSubscriber } from "@/components/play/LiveSubscriber";
+import { LiveTicker } from "@/components/play/LiveTicker";
 import styles from "./page.module.css";
 
 // Onglet "Mes pronos" (à suivre) — SPEC_REFONTE_ONGLET_JOUER_V0_1 §3.
@@ -98,6 +99,8 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
           )}
         </>
       )}
+
+      <LiveTicker recentLocked={data.recentLocked} days={data.days} />
     </div>
   );
 }

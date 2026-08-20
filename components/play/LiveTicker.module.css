@@ -1,0 +1,99 @@
+/* Ticker "en direct" — chantier À L'ESSAI, réversible
+   (AJUSTEMENTS_VISUELS_20_08_2026 §16) : aucune dépendance créée ailleurs
+   dans le code sur sa présence — retirer ce fichier + son import dans
+   app/(app)/play/page.tsx suffit à l'enlever si l'usage réel montre que ça
+   distrait plus que ça n'ajoute d'énergie.
+
+   Fond noir volontairement CONSTANT (--c-navy-950, pas --color-surface-*
+   qui bascule en clair selon le thème) — registre "bandeau broadcast",
+   délibérément différent d'une carte de lecture classique. Texte en
+   --c-white-050 pour la même raison : --color-text-primary s'inverserait en
+   thème Clair et deviendrait illisible sur ce fond qui, lui, ne bascule
+   jamais (même logique que les constantes hors thème de tokens.css §10.1).
+   Bleed edge-to-edge dans la colonne de la page, même technique que
+   .stickyContent (components/bets/BetForm.module.css). */
+.ticker {
+  overflow: hidden;
+  margin-inline: calc(-1 * var(--space-4));
+  background: var(--c-navy-950);
+  border-top: 1px solid var(--color-accent);
+  padding: var(--space-2) 0;
+}
+
+.track {
+  display: flex;
+  width: max-content;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .track {
+    animation: play-ticker-scroll var(--motion-ticker-duration) linear infinite;
+  }
+}
+
+@keyframes play-ticker-scroll {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.trackGroup {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-6);
+  padding-inline: var(--space-4) var(--space-6);
+}
+
+/* Repli sans animation (accessibilité, R-MOT2) : la copie dupliquée du
+   contenu (qui permet la boucle de défilement sans coupure) n'a plus lieu
+   d'être une fois l'animation neutralisée — sinon le même contenu
+   apparaîtrait deux fois, immobile, côte à côte. */
+@media (prefers-reduced-motion: reduce) {
+  .ticker {
+    overflow-x: auto;
+  }
+
+  .trackGroupDuplicate {
+    display: none;
+  }
+}
+
+.item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  white-space: nowrap;
+}
+
+.liveTag,
+.deadlineTag {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+/* --color-live, même token que le badge "EN DIRECT" de LiveBadgeAndScore
+   sur cette page (LiveSubscriber.module.css) — pas --color-accent, réservé
+   ici au rappel de deadline juste en dessous. */
+.liveTag {
+  color: var(--color-live);
+}
+
+.deadlineTag {
+  color: var(--color-accent);
+}
+
+.score,
+.deadlineMeta {
+  color: var(--c-white-050);
+  font-size: var(--font-size-sm);
+}
+
+.score {
+  font-variant-numeric: tabular-nums;
+}
