@@ -8027,3 +8027,36 @@ et le rétrécissement §18) avant de généraliser.
 Documenté dans projet-data-nba.md §19 + bandeau REPRISE mis à jour +
 GAPS_OUVERTS.md. Rien codé, pas de commit pour cette entrée.
 ```
+
+
+## Fix : fond blanc Login/Signup/Reset en prod Vercel (20/08/2026, suite)
+
+```text
+Signalé par l'utilisateur après déploiement Vercel : fond blanc sur Login/
+Signup/Reset au lieu du fond sombre attendu (restylées §2.93/commit
+1572a90). Pas repéré avant : aucun accès navigateur natif dans cet
+environnement, seuls tsc/eslint/next build vérifiés après ce chantier —
+pas un rendu réel, limite signalée explicitement dans le suivi plutôt que
+découverte tue.
+
+Cause : `body` (app/globals.css) gardait `--background`/`--foreground`,
+reliquat du scaffold create-next-app — blanc par défaut, piloté par
+`prefers-color-scheme` (OS), jamais branché sur le vrai système
+`[data-theme]` de l'app. `html` pose déjà le bon fond
+(`--color-surface-base`), mais `body` (opaque, par-dessus) le masquait
+partout où rien ne repeint dessus. Les écrans avec `ScreenShell`/`.shell`
+(Classement, Bracket, zone connectée) le repeignaient déjà, d'où le bug
+resté invisible jusqu'ici — Login/Signup/Reset, restylées sans ce wrapper,
+l'ont rendu visible en prod.
+
+Corrigé : `body` reprend les mêmes tokens que `html`. `--background`/
+`--foreground` et leur bloc `@theme inline` (`--color-background`,
+`--color-foreground`, `--font-sans`, `--font-mono`) supprimés entièrement
+— vérifié par grep qu'aucune classe Tailwind ne les consommait nulle part
+dans le code, reliquat mort plutôt qu'une simple valeur à corriger.
+
+`tsc`/`next build` (36 routes) propres. Committé et poussé (`8aeb6f9`).
+Au passage, corrigé un bloc de code Markdown mal fermé dans
+ETAT_ACTUEL.md (§2.92/§2.93, fermeture manquante préexistante avant ce
+chantier — repérée en ajoutant §2.94).
+```

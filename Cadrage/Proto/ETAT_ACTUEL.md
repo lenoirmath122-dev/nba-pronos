@@ -5,7 +5,18 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 20/08/2026 — **Ajustements visuels
+> Dernière mise à jour : session du 20/08/2026 (soir) — **Fix fond blanc
+> Login/Signup/Reset en prod Vercel — §2.94 ci-dessous.** Signalé par
+> l'utilisateur après déploiement : `body` gardait un reliquat du scaffold
+> create-next-app (`--background`/`--foreground`, jamais branché sur le
+> vrai système `[data-theme]`) qui masquait le fond sombre correct posé
+> sur `html` — invisible jusqu'ici sur les écrans avec `ScreenShell`, rendu
+> visible par le restyling Login/Signup/Reset (§2.93) qui n'a pas ce
+> wrapper. Corrigé (`body` reprend les tokens de `html`, reliquat mort
+> supprimé entièrement). Committé et poussé (`8aeb6f9`). `tsc`/`next build`
+> (36 routes) propres.
+>
+> Plus tôt (session du 20/08/2026) — **Ajustements visuels
 > validés, implémentation.** Reprise d'une session de design séparée
 > (Cowork, analyse + maquettes sur le code source réel, consignée dans
 > `Cadrage/DA/AJUSTEMENTS_VISUELS_20_08_2026.md`) : les chantiers marqués
@@ -6780,6 +6791,7 @@ console. `tsc`/`eslint`/`vitest` (37/37) propres.
 
 Committé et poussé (`bc7cc68`), avec le rattrapage doc SMTP (§2.91) dans
 le même commit.
+```
 
 ### 2.93 Ajustements visuels validés — implémentation, 6 commits (session du 20/08/2026)
 
@@ -6845,4 +6857,38 @@ Voir `GAPS_OUVERTS.md` pour le suivi de ces 2 points.
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres après
 CHAQUE commit. 6 commits poussés sur `main` (`a3f43ed..0214914`).
 ```
+
+### 2.94 Fix : fond blanc sur Login/Signup/Reset en prod Vercel (session du 20/08/2026)
+
+```text
+Signalé par l'utilisateur après déploiement : fond blanc sur Login/Signup/
+Reset (§2.93) au lieu du fond sombre attendu — pas repéré avant (aucun
+accès navigateur natif dans cet environnement, seuls tsc/eslint/next build
+avaient été vérifiés après le chantier §2.93, pas un rendu réel).
+
+Cause trouvée : `body` (app/globals.css) utilisait encore `--background`/
+`--foreground`, reliquat du scaffold create-next-app — blanc par défaut,
+piloté par `prefers-color-scheme` (OS), jamais branché sur le vrai système
+`[data-theme]` de l'app. `html`, lui, pose déjà le bon fond
+(`--color-surface-base`) — mais `body` (opaque, par-dessus) le masquait
+partout où rien d'autre ne repeint dessus. Les écrans avec un wrapper
+`ScreenShell`/`.shell` (Classement, Bracket, zone connectée) le
+repeignaient déjà correctement, d'où le bug resté invisible jusqu'ici —
+Login/Signup/Reset (restylées en §2.93, sans ce wrapper) l'ont rendu
+visible en prod.
+
+**Corrigé** : `body` reprend les mêmes tokens que `html`
+(`--color-surface-base`/`--color-text-primary`). `--background`/
+`--foreground` et leur bloc `@theme inline` (`--color-background`,
+`--color-foreground`, `--font-sans`, `--font-mono`) supprimés entièrement
+— vérifié par grep qu'aucune classe Tailwind (`bg-background`,
+`text-foreground`, `font-sans`, `font-mono`) ne les consommait nulle part
+dans le code : reliquat mort, pas juste une valeur à corriger.
+
+`tsc`/`next build` (36 routes) propres. Committé et poussé (`8aeb6f9`).
+
+Note de méthode pour la suite : ce bug n'aurait pas existé si le rendu
+avait pu être vérifié visuellement après §2.93, comme demandé par défaut
+pour les changements UI — limite connue de cet environnement (pas d'accès
+navigateur), signalée explicitement plutôt que supposée réglée.
 ```
