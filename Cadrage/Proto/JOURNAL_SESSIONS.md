@@ -8060,3 +8060,33 @@ Au passage, corrigé un bloc de code Markdown mal fermé dans
 ETAT_ACTUEL.md (§2.92/§2.93, fermeture manquante préexistante avant ce
 chantier — repérée en ajoutant §2.94).
 ```
+
+
+## Login/Signup/Reset : photo forcée même sans session (20/08/2026, suite)
+
+```text
+Après le fix du fond blanc (entrée précédente), l'utilisateur signale que
+le fond reste sombre uni, pas la photo attendue sur Login/Signup/Reset.
+
+Vérifié avant de conclure à un bug : `.photo-page` n'affiche une image que
+sous `[data-theme="photo"]`, jamais posé pour un visiteur non connecté
+(défaut DARK dans app/layout.tsx). Ce n'est PAS un bug introduit par les
+fixs précédents — c'est le comportement d'origine, déjà vrai pour
+/leaderboard et /bracket (même règle, citée comme justification de
+cohérence dans le document de design §1 au moment du restyling initial).
+
+Tranché avec l'utilisateur (AskUserQuestion, 3 options) avant de coder :
+forcer la photo sur Login/Signup/Reset uniquement (retenu) / forcer partout
+pour un visiteur sans session (aurait aussi changé /leaderboard et
+/bracket) / laisser tel quel (comportement d'origine).
+
+Nouvelle classe `.force-photo` (app/globals.css), combinée à `.photo-page`
+sur les 3 pages : reprend les mêmes règles `::before`/`::after`/
+`.glass-card` que `[data-theme="photo"]` mais sans la condition — réutilise
+la structure d'empilement déjà en place (isolation, z-index déjà posés par
+`.photo-page`), seule la condition d'affichage change. `/leaderboard` et
+`/bracket` non touchés, restent liés à la préférence utilisateur.
+
+`tsc`/`eslint`/`next build` (36 routes) propres. Committé et poussé
+(`fd44b84`).
+```

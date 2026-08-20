@@ -5,7 +5,19 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 20/08/2026 (soir) — **Fix fond blanc
+> Dernière mise à jour : session du 20/08/2026 (soir, suite) — **Login/
+> Signup/Reset : photo forcée même sans session — §2.95 ci-dessous.**
+> Après le fix §2.94, l'utilisateur signale que le fond restait sombre uni
+> (pas la photo attendue) — comportement d'origine, pas un nouveau bug :
+> `.photo-page` n'affiche une image que sous `[data-theme="photo"]`, jamais
+> posé pour un visiteur non connecté. Décision (confirmée avec
+> l'utilisateur, 3 options proposées) : forcer la photo sur ces 3 écrans
+> uniquement (1er contact d'un nouveau venu), `/leaderboard`/`/bracket`
+> restent liés à la préférence utilisateur. Nouvelle classe `.force-photo`.
+> Committé et poussé (`fd44b84`). `tsc`/`eslint`/`next build` (36 routes)
+> propres.
+>
+> Plus tôt (session du 20/08/2026, soir) — **Fix fond blanc
 > Login/Signup/Reset en prod Vercel — §2.94 ci-dessous.** Signalé par
 > l'utilisateur après déploiement : `body` gardait un reliquat du scaffold
 > create-next-app (`--background`/`--foreground`, jamais branché sur le
@@ -6891,4 +6903,33 @@ Note de méthode pour la suite : ce bug n'aurait pas existé si le rendu
 avait pu être vérifié visuellement après §2.93, comme demandé par défaut
 pour les changements UI — limite connue de cet environnement (pas d'accès
 navigateur), signalée explicitement plutôt que supposée réglée.
+```
+
+### 2.95 Login/Signup/Reset : photo forcée même sans session (session du 20/08/2026)
+
+```text
+Suite immédiate de §2.94 : après le fix du fond blanc, l'utilisateur
+signale que le fond reste sombre uni, pas la photo attendue.
+
+Cause, PAS un bug — comportement d'origine : `.photo-page` n'affiche une
+image que sous `[data-theme="photo"]`, jamais posé pour un visiteur non
+connecté (défaut DARK dans `app/layout.tsx`, même règle que /leaderboard
+et /bracket, décision pré-existante citée par le document de design §1
+comme justification de cohérence). Donc fond sombre uni en pratique sur
+Login/Signup/Reset pour tout nouveau venu, jamais la photo.
+
+Vérifié avec l'utilisateur avant de coder (AskUserQuestion, 3 options :
+forcer sur ces 3 écrans seulement / forcer partout pour un visiteur sans
+session / laisser tel quel) — **choix : forcer la photo sur Login/Signup/
+Reset uniquement**, /leaderboard et /bracket restent liés à la préférence
+utilisateur, inchangés.
+
+Nouvelle classe `.force-photo` (app/globals.css), combinée à `.photo-page`
+sur le wrapper des 3 pages : reprend les mêmes règles `::before`/`::after`/
+`.glass-card` que `[data-theme="photo"]`, mais sans la condition — réutilise
+la structure d'empilement déjà en place (isolation, z-index), seule la
+condition d'affichage change.
+
+`tsc`/`eslint`/`next build` (36 routes) propres. Committé et poussé
+(`fd44b84`).
 ```
