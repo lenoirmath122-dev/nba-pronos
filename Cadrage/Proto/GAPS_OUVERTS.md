@@ -33,6 +33,26 @@
 >   déclarations quasi identiques) — chantier de refactor identifié, pas
 >   pressant.
 
+> **État au 20/08/2026 (soir, encore une suite)** — **Projet Data NBA :
+> écart réel trouvé sur le double-double via `tester_modele.py` en usage
+> réel — PAS un bug, une limite de conception identifiée.** Testé sur
+> Victor Wembanyama : modèle 42.8% vs Gemini/Copilot ~60%. Vérifié dans la
+> base : le modèle colle exactement à sa fenêtre d'entrée (taux réel 40%
+> sur les 10 derniers matchs) mais cette fenêtre est trop courte pour
+> distinguer une vraie tendance récente d'un creux passager (taux réel
+> 60-62% sur des fenêtres plus longues/la saison). Cause : `reb_moy5`/
+> `reb_moy10` pèsent >50% de la décision du modèle double-double, et
+> `reb_moy10` de Wembanyama est tombé juste sous 10 (rebonds très
+> irréguliers récemment). Contrairement aux modèles régressés (2 horizons)
+> et aux % de tir (rétrécissement bayésien vers une moyenne longue, §18),
+> le modèle double-double/triple-double n'a aucun signal à horizon long.
+> **Décision explicite : ne rien changer au code maintenant** — creuser
+> d'abord si ce cas est isolé à Wembanyama ou général (profils à forte
+> variance de rebonds), avant de modifier la recette. Piste retenue pour
+> la reprise : feature `reb_moy20`/moyenne de saison à tester
+> empiriquement avant de généraliser. Détail complet
+> `Cadrage/Stats/projet-data-nba.md` §19, bandeau REPRISE à jour.
+
 > **État au 20/08/2026 (soir, suite)** — **Projet Data NBA : Phase 1
 > (largeur) TERMINÉE — pourcentages de tir FT%/FG%/3P% validés et
 > généralisés.** 🔴 **Reprise : voir le bandeau en tête de

@@ -2,8 +2,30 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 20/08/2026, session DA/stats du soir)
+> ## 🔴 REPRISE ICI (état au 20/08/2026, soir — suite)
 >
+> **Nouveau testeur `tester_modele.py` (§11 README.pdf) utilisé pour la
+> 1ère fois en usage réel** : a fait remonter un écart concret sur le
+> double-double de Victor Wembanyama (modèle : 42.8%, Gemini/Copilot :
+> ~60%). Vérifié dans la base avant conclusion — **pas un bug de
+> calibration**, le modèle colle exactement à sa fenêtre d'entrée (taux réel
+> 40% sur les 10 derniers matchs, contre 60-62% sur des fenêtres plus
+> longues/la saison complète). **Vraie limite de conception identifiée** :
+> contrairement aux modèles régressés (2 horizons moy5/moy10) et aux % de
+> tir (rétrécissement bayésien vers une moyenne longue, §18), le modèle
+> double-double/triple-double n'a AUCUN signal à horizon long pour
+> distinguer une vraie tendance récente d'un creux passager sur 10 matchs.
+> Détail complet, diagnostic via `feature_importances_` : §19.
+>
+> **Décision explicite de l'utilisateur : PAS encore de changement de
+> code** — creuser d'abord (est-ce isolé à Wembanyama ou général à tout
+> profil à forte variance de rebonds ?) avant de modifier la recette du
+> modèle. Piste retenue pour la reprise : ajouter une fenêtre longue
+> (`reb_moy20` ou moyenne de saison) comme feature supplémentaire du modèle
+> double-double/triple-double, à tester empiriquement comme d'habitude
+> avant de généraliser (même démarche que §15/§18).
+>
+> Plus tôt (état au 20/08/2026, session DA/stats du soir) —
 > **Phase 1 (largeur) TERMINÉE — pourcentages de tir FT%/FG%/3P% VALIDÉS et
 > généralisés**, même session. Approche Binomiale à 2 sous-modèles
 > (tentatives régressées + taux rétréci vers la moyenne ligue par
@@ -686,3 +708,55 @@ correctif de biais de sélection intégré dès le départ.
 (hypothèse overdispersion, cf. plus haut) — plus visible sur FT%/3P% (peu
 de tentatives) que FG%. Candidat Phase 3 si besoin d'affiner davantage,
 pas bloquant pour l'usage en l'état.
+
+## 19. Cas Wembanyama — écart double-double vs Gemini/Copilot, piste Phase 3 (20/08/2026)
+
+```text
+Testé avec tester_modele.py (§11 README.pdf) : P(double-double) = 42.8%,
+P(triple-double) = 3.1% pour Victor Wembanyama. Comparé par l'utilisateur à
+Gemini/Copilot (~60% DD, ~7% TD, chiffres non vérifiés/non recalculés,
+juste des estimations d'un autre LLM) — écart notable sur le DD (43 vs 60).
+Vérifié dans la base avant de conclure quoi que ce soit (pas de suppositions
+sans preuve).
+
+**Diagnostic** (`player_id=1641705`, 132 matchs en base, saisons 2024-25 +
+2025-26) :
+- Taux de double-double RÉEL selon la fenêtre : 5 derniers matchs 60% ;
+  **10 derniers matchs (= fenêtre utilisée par le modèle) 40%** ; 20
+  derniers matchs 60% ; 40 derniers matchs 62.5% ; saison complète 62.1%.
+- **Le modèle (42.8%) colle exactement à sa fenêtre d'entrée (40% réel sur
+  10 matchs) — pas un chiffre aléatoire, le modèle fait ce qu'on lui
+  demande.** L'écart avec Gemini/Copilot (~60%) vient probablement du fait
+  qu'un LLM sans calcul réel derrière tend à ressortir une moyenne de
+  saison/une réputation générale plutôt qu'un calcul sur la forme récente
+  — ni plus rigoureux ni forcément faux, juste une réponse différente à une
+  question légèrement différente.
+- Cause identifiée via `feature_importances_` du modèle `double_double` :
+  `reb_moy10` (33%) + `reb_moy5` (22%) pèsent plus de la moitié de la
+  décision — logique, les points de Wembanyama (~26 pts/match, quasi
+  garantis) ne sont jamais le facteur limitant d'un double-double, ce sont
+  toujours les rebonds. Son `reb_moy10` est tombé à 9.1, tout juste sous le
+  seuil de 10 (rebonds très irréguliers sur cette fenêtre : 4, 6, 7, 8, 9,
+  10, 12, 13, 14, 15, 17, 24).
+
+**Ce n'est PAS un bug de calibration au sens propre** (la calibration
+globale du modèle double-double, mesurée par log loss sur tout le dataset
+de test, §14/§17, reste bonne) — c'est une LIMITE DE CONCEPTION : contrairement
+aux modèles de points/rebonds/etc. qui ont déjà 2 horizons (`moy5` ET
+`moy10`), et contrairement aux modèles de % de tir qui rétrécissent vers
+une moyenne longue (Beta-Binomial, §18), le modèle double-double/triple-
+double n'a AUCUN signal à plus long terme (20 matchs, saison) pour
+distinguer une vraie tendance récente d'un creux passager sur une fenêtre
+de 10 matchs. Même famille de problème que le rétrécissement bayésien de
+§18, jamais appliqué ici.
+
+**Piste concrète pour la Phase 3, PAS ENCORE FAITE** (décision explicite de
+l'utilisateur : creuser d'abord avant de changer la recette) : ajouter une
+fenêtre plus longue (ex. `reb_moy20` ou une moyenne de saison) comme
+feature supplémentaire du modèle double-double/triple-double, pour que le
+RandomForest puisse lui-même arbitrer entre forme récente et tendance de
+fond plutôt que de ne voir que 10 matchs. **À vérifier avant de généraliser
+ce changement** : est-ce que ce cas (Wembanyama) est isolé, ou est-ce que
+d'autres joueurs à forte variance de rebonds montrent le même écart entre
+fenêtre courte et taux réel long terme ? Pas encore regardé.
+```

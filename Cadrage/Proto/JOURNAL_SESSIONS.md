@@ -7942,3 +7942,88 @@ catégorie identifiés dans l'audit du classeur (§8/§15) sont couverts.
 Prochaine décision (Phase 3/4/5) à prendre à la reprise, pas tranchée
 d'avance — bandeau REPRISE et plan §16 de projet-data-nba.md mis à jour.
 ```
+
+
+## Projet Data NBA — testeur generique des 12 modeles, autonomie utilisateur (20/08/2026, suite)
+
+```text
+Demande de l'utilisateur : comprendre comment devenir "quasi autonome" sur
+l'entrainement/test des modeles, sans repasser par la conversation a chaque
+fois. Explique le pipeline en 3 couches (donnees brutes -> variables ->
+modeles) et ou se trouvent les "manettes" ajustables (ex : --seasons de
+fetch_nba_data.py pour etendre la periode extraite). Proposition d'un
+script "tout-en-un" declinee par l'utilisateur : prefere garder les scripts
+separes et comprendre chacun individuellement.
+
+**tester_modele.py (nouveau)** : generalise demo_pari_reel.py (cable en dur
+sur Tatum/points) a un testeur en ligne de commande couvrant les 12
+modeles a la fois (`--joueur/--stat/--seuil`), sans rien editer dans le
+code. Dispatch automatique sur 3 formules selon le type de modele
+(regression+distribution, classification directe, Binomial pour un %) --
+reconstruit le contexte du prochain match a partir des 10 derniers matchs
+reellement connus. Recherche joueur/equipe insensible aux accents (SQLite
+LIKE ne gere pas les diacritiques, comparaison normalisee cote Python).
+
+**Bug reel trouve en testant** : noms de fichiers .joblib mal documentes
+pour double-double/triple-double (`doubledouble.joblib` suppose au lieu du
+vrai `double_double.joblib`, produit par train_doubledouble_model.py) --
+corrige dans le script et le README.
+
+README.pdf regenere : nouvelle section 11 dediee (sommaire/numerotation a
+jour, 13 sections). Au passage, l'utilisateur avait deja etendu
+`DEFAULT_SEASONS` de fetch_nba_data.py a 5 saisons (2021-22->2025-26,
+contre 2 avant) en experimentant de son cote suite a l'explication du
+pipeline -- pas encore relance, laisse tel quel. Un exemple de commande
+invalide corrige au passage dans le docstring du meme fichier.
+
+Committe et pousse (`a9bf62f`).
+```
+
+
+## Projet Data NBA — écart double-double Wembanyama, limite de conception trouvée en usage réel (20/08/2026, suite)
+
+```text
+Premier usage réel de tester_modele.py par l'utilisateur, hors de la
+conversation : compare P(double-double)/P(triple-double) de Victor
+Wembanyama (modèle : 42.8%/3.1%) à des chiffres sortis par Gemini/Copilot
+(~60%/~7%, non vérifiés/non recalculés). Question posée : écart normal,
+recalibration nécessaire ?
+
+Vérifié dans la base avant toute conclusion (pas de suppositions) :
+- Taux de double-double RÉEL de Wembanyama (132 matchs en base) selon la
+  fenêtre : 5 derniers matchs 60% ; **10 derniers matchs (= fenêtre du
+  modèle) 40%** ; 20 derniers matchs 60% ; 40 derniers 62.5% ; saison
+  complète 62.1%.
+- **Le modèle colle exactement à sa fenêtre d'entrée (42.8% prédit vs 40%
+  réel) — pas un bug, il fait ce qu'on lui demande.** L'écart avec Gemini/
+  Copilot vient probablement d'une moyenne de saison/réputation générale
+  chez l'autre LLM plutôt que d'un calcul sur la forme récente -- une
+  réponse à une question légèrement différente, ni plus rigoureuse.
+- Cause identifiée via `feature_importances_` : `reb_moy10` (33%) +
+  `reb_moy5` (22%) pèsent plus de la moitié de la décision (ses points,
+  ~26/match, ne sont jamais le facteur limitant d'un double-double —
+  toujours les rebonds pour un intérieur). Son `reb_moy10` est tombé à
+  9.1, tout juste sous le seuil de 10 (rebonds très irréguliers sur cette
+  fenêtre précise).
+
+**Diagnostic final : PAS un bug de calibration, une vraie LIMITE DE
+CONCEPTION.** Contrairement aux modèles régressés (2 horizons moy5/moy10
+déjà présents) et aux modèles de % de tir (rétrécissement bayésien vers
+une moyenne longue, §18 projet-data-nba.md), le modèle double-double/
+triple-double n'a aucun signal à horizon long (20 matchs, saison) pour
+distinguer une vraie tendance récente d'un creux passager sur 10 matchs —
+même famille de problème que celui déjà réglé pour les % de tir, jamais
+appliqué à ces 2 modèles.
+
+**Décision explicite de l'utilisateur : ne rien changer au code
+maintenant.** Creuser d'abord si ce cas est isolé à Wembanyama (profil
+statistique très particulier, intérieur 2m24 avec un profil scoreur
+périmètre) ou général à tout joueur à forte variance de rebonds, avant de
+changer la recette du modèle. Piste retenue pour la reprise : ajouter une
+fenêtre longue (`reb_moy20` ou moyenne de saison) comme feature
+supplémentaire, à tester empiriquement (même démarche que pour Poisson §15
+et le rétrécissement §18) avant de généraliser.
+
+Documenté dans projet-data-nba.md §19 + bandeau REPRISE mis à jour +
+GAPS_OUVERTS.md. Rien codé, pas de commit pour cette entrée.
+```
