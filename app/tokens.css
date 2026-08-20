@@ -160,11 +160,15 @@
   /* ========================================================================
      TYPOGRAPHIE (§4) — indépendant du thème
      ======================================================================== */
-  /* Famille unique, auto-hébergée (§14.2). @font-face Inter à ajouter à
-     l'intégration de l'asset — pas de hotlink externe. */
-  --font-ui:       "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-display:  var(--font-ui); /* même famille, contraste par graisse/letter-spacing */
-  --font-numeric:  var(--font-ui); /* à utiliser AVEC font-variant-numeric: tabular-nums (R-TYP1) */
+  /* Sora partout pour le texte de lecture, auto-hébergée par next/font
+     (app/layout.tsx) — plus de liste de fallback à maintenir à la main, le
+     mécanisme s'en charge (AJUSTEMENTS_VISUELS_20_08_2026 §2). */
+  --font-ui:       var(--font-sora);
+  /* Oswald (condensée) réservée aux chiffres/rangs qui "bougent" — la
+     séparation à 3 emplacements sert enfin à quelque chose : --font-ui ne
+     bouge pas (AJUSTEMENTS_VISUELS_20_08_2026 §9). */
+  --font-display:  var(--font-oswald);
+  --font-numeric:  var(--font-oswald); /* à utiliser AVEC font-variant-numeric: tabular-nums (R-TYP1) */
 
   --font-size-xs:    0.75rem;   /* 12px */
   --font-size-sm:    0.875rem;  /* 14px */
