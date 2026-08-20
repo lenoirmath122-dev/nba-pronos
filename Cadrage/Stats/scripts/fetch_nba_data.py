@@ -5,7 +5,7 @@ Cf. Cadrage/Stats/projet-data-nba.md pour le contexte.
 
 Usage:
     python fetch_nba_data.py
-    python fetch_nba_data.py --seasons 2024-25 2025-26 --season-types "Regular Season" Playoffs PlayIn
+    python fetch_nba_data.py --seasons 2021-22 2022-23 2023-24 2024-25 2025-26 --season-types "Regular Season" Playoffs PlayIn
     python fetch_nba_data.py --retry-failed
 
 Le script est résumable : il saute tout game_id déjà présent sur disque, donc
@@ -28,7 +28,7 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 DATA_DIR = SCRIPT_DIR.parent / "data" / "raw"
 LOG_DIR = SCRIPT_DIR.parent / "data" / "logs"
 
-DEFAULT_SEASONS = ["2024-25", "2025-26"]
+DEFAULT_SEASONS = ["2021-22", "2022-23", "2023-24", "2024-25", "2025-26"]
 DEFAULT_SEASON_TYPES = ["Regular Season", "Playoffs", "PlayIn"]
 
 REQUEST_TIMEOUT = 60

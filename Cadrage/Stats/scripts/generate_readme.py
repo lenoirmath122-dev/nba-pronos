@@ -37,8 +37,9 @@ SOMMAIRE = [
     "8. Construire les features et les cibles",
     "9. Entrainer les modeles",
     "10. Comprendre les modeles sauvegardes",
-    "11. Suivre l'etat du projet",
-    "12. Prochaines etapes",
+    "11. Tester un modele en ligne de commande",
+    "12. Suivre l'etat du projet",
+    "13. Prochaines etapes",
 ]
 
 
@@ -193,7 +194,8 @@ def build() -> Readme:
         "    train_doubledouble_model.py <- double-double / triple-double",
         "    train_stat_model.py       <- reb/ast/fg3m/stl/blk/minutes (6 modeles)",
         "    train_pct_model.py        <- FT%/FG%/3P% (3 modeles, approche taux)",
-        "    demo_pari_reel.py         <- demo sur un cas connu (Jokic)",
+        "    demo_pari_reel.py         <- demo cablee en dur (Tatum, points)",
+        "    tester_modele.py          <- teste N'IMPORTE quel modele en ligne de commande",
         "    generate_readme.py        <- regenere ce document",
         "    requirements.txt",
         "  data/                      <- NON versionne dans git (trop volumineux)",
@@ -347,7 +349,7 @@ def build() -> Readme:
         ["Script", "Modele(s) produit(s)"],
         [
             ("train_points_model.py", "points.joblib"),
-            ("train_doubledouble_model.py", "doubledouble.joblib, tripledouble.joblib"),
+            ("train_doubledouble_model.py", "double_double.joblib, triple_double.joblib"),
             ("train_stat_model.py", "reb, ast, fg3m, stl, blk, min .joblib (6 modeles)"),
             ("train_pct_model.py", "ft_pct, fg_pct, fg3_pct .joblib (3 modeles)"),
         ],
@@ -392,14 +394,42 @@ def build() -> Readme:
         "m = joblib.load('../models/points.joblib')",
         "print(m['target'], m['distribution'])",
     ])
+    # ---- Section 11 ----
+    pdf.h2("11. Tester un modele en ligne de commande")
+    pdf.body(
+        "tester_modele.py fonctionne pour les 12 modeles a la fois -- donne un "
+        "joueur, une stat et un seuil, il choisit lui-meme le bon fichier .joblib "
+        "et la bonne formule (regression+distribution, classification directe, ou "
+        "Binomial pour un pourcentage de tir). Reconstruit le contexte du PROCHAIN "
+        "match a partir des 10 derniers matchs REELEMENT connus du joueur."
+    )
+    pdf.code([
+        'python tester_modele.py --joueur "Nikola Jokic" --stat pts --seuil 25',
+        'python tester_modele.py --joueur "Jokic" --stat dd',
+        'python tester_modele.py --joueur "Tatum" --stat ft --seuil 0.85',
+    ])
+    pdf.table(
+        ["Code --stat", "Modele(s)"],
+        [
+            ("pts, reb, ast, fg3m, stl, blk, min", "regression + distribution (--seuil obligatoire)"),
+            ("dd, td", "double-double / triple-double (probabilite directe)"),
+            ("ft, fg, fg3", "% de tir -- --seuil en fraction (0.80 = 80%)"),
+        ],
+        [70, 107],
+    )
     pdf.note(
-        "demo_pari_reel.py montre un exemple complet, sur un cas reel connu "
-        "(Nikola Jokic), de chargement d'un modele + calcul d'une probabilite pour "
-        "un seuil donne."
+        "--adversaire (code/ville/nom d'equipe) n'affecte que --stat pts, seul "
+        "modele a utiliser l'historique face a un adversaire precis. "
+        "--exterieur/--repos ajustent le contexte du prochain match (illustratif "
+        "si non precise). Recherche de joueur/equipe insensible aux accents "
+        "(un nom tape sans accent trouve le nom accentue en base). "
+        "demo_pari_reel.py reste le 1er "
+        "exemple historique (un seul cas cable en dur, points uniquement) -- "
+        "tester_modele.py le generalise aux 12 modeles."
     )
 
-    # ---- Section 11 ----
-    pdf.h2("11. Suivre l'etat du projet")
+    # ---- Section 12 ----
+    pdf.h2("12. Suivre l'etat du projet")
     pdf.bullets([
         "Demander directement dans la conversation : je verifie et je reponds.",
         "Lire le bandeau REPRISE en tete de projet-data-nba.md -- toujours a jour "
@@ -408,8 +438,8 @@ def build() -> Readme:
         "JOURNAL_SESSIONS.md (section \"Projet Data NBA\").",
     ])
 
-    # ---- Section 12 ----
-    pdf.h2("12. Prochaines etapes")
+    # ---- Section 13 ----
+    pdf.h2("13. Prochaines etapes")
     pdf.bullets([
         "Extraction TERMINEE (2 641/2 641 matchs, 0 echec) -- plus a relancer sauf "
         "pour une saison future.",
