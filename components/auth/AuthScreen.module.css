@@ -1,0 +1,193 @@
+/* Login/Signup/Reset password — restyling complet aux tokens du design
+   system, jusqu'ici les seuls écrans encore sur des classes Tailwind par
+   défaut (bg-black, border gris générique...) alors que PublicNav juste
+   au-dessus est déjà stylé aux tokens — rupture visuelle sur le tout premier
+   écran vu par un nouveau venu (AJUSTEMENTS_VISUELS_20_08_2026 §1). Partagé
+   entre les 3 pages ((public)/login|signup|reset-password) ET les 3
+   composants de formulaire (components/auth/*Form.tsx), même patron que les
+   LeagueScopeChips.module.css partagés entre plusieurs écrans. */
+
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4);
+}
+
+/* Bloc marque au-dessus de la carte (redondant avec PublicNav, assumé —
+   c'est le tout premier écran vu par un visiteur qui découvre l'app). */
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  text-align: center;
+}
+
+.brandName {
+  margin: 0;
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.brandTagline {
+  margin: 0;
+  max-width: 24rem;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+/* Carte glass-card autour du formulaire actif — délimite la zone d'action
+   sur le 1er écran de l'app (alternative "formulaire nu" écartée en revue). */
+.card {
+  width: 100%;
+  max-width: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-raised);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.input {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-family: var(--font-ui);
+}
+
+.input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-loss);
+}
+
+/* Message de confirmation neutre (ex. reset réussi) — PAS --color-win : le
+   vert reste strictement réservé au résultat d'un match/pari (R-COL, §17 du
+   design system), une mise à jour de mot de passe n'en est pas un. */
+.success {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.submit {
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.submit:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.links {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.linkLine {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.link {
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* État "Vérifie ta boîte mail" (ResetPasswordForm) — EXCEPTION actée :
+   volontairement SANS carte, flotte directement sur le fond photo. Différence
+   assumée : état d'information pure (rien à faire, juste attendre), pas une
+   action, contrairement aux 3 autres états de ce même écran. */
+.infoState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  max-width: 24rem;
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--color-text-primary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.infoState svg {
+  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
+}
+
+.infoStateText {
+  margin: 0;
+  font-size: var(--font-size-sm);
+}
+
+/* État transitoire "Chargement…" — trop bref pour justifier une maquette
+   dédiée (AJUSTEMENTS_VISUELS_20_08_2026 §1), mais garde un token plutôt que
+   le gris Tailwind générique d'origine pour rester lisible sur le fond photo. */
+.loading {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}

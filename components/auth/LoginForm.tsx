@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useSyncExternalStore } from "react";
 import { login } from "@/lib/auth/actions";
+import styles from "./AuthScreen.module.css";
 
 // Pas de souscription réelle : l'URL ne change pas après le montage sur cet
 // écran (pas de navigation interne qui la modifierait) — no-op suffisant.
@@ -30,57 +31,62 @@ export function LoginForm() {
   );
 
   return (
-    <form action={formAction} className="flex w-full max-w-sm flex-col gap-4">
-      {resetSuccess && (
-        <p className="text-sm text-green-700">
-          Mot de passe mis à jour. Connecte-toi avec ton nouveau mot de passe.
+    <div className={`${styles.card} glass-card`}>
+      <h1 className={styles.cardTitle}>Connexion</h1>
+      <form action={formAction} className={styles.form}>
+        {resetSuccess && (
+          <p className={styles.success}>
+            Mot de passe mis à jour. Connecte-toi avec ton nouveau mot de passe.
+          </p>
+        )}
+        <div className={styles.field}>
+          <label htmlFor="email" className={styles.fieldLabel}>
+            Email
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            required
+            autoComplete="email"
+            className={styles.input}
+          />
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="password" className={styles.fieldLabel}>
+            Mot de passe
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            autoComplete="current-password"
+            className={styles.input}
+          />
+        </div>
+        {state?.error && (
+          <p role="alert" className={styles.error}>
+            {state.error}
+          </p>
+        )}
+        <button type="submit" disabled={pending} className={styles.submit}>
+          {pending ? "Connexion…" : "Se connecter"}
+        </button>
+      </form>
+      <div className={styles.links}>
+        <p className={styles.linkLine}>
+          <Link href="/reset-password" className={styles.link}>
+            Mot de passe oublié ?
+          </Link>
         </p>
-      )}
-      <div className="flex flex-col gap-1">
-        <label htmlFor="email">Email</label>
-        <input
-          id="email"
-          name="email"
-          type="email"
-          required
-          autoComplete="email"
-          className="rounded border px-3 py-2"
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="password">Mot de passe</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          autoComplete="current-password"
-          className="rounded border px-3 py-2"
-        />
-      </div>
-      {state?.error && (
-        <p role="alert" className="text-sm text-red-600">
-          {state.error}
+        <p className={styles.linkLine}>
+          Pas encore de compte ?{" "}
+          <Link href="/signup" className={styles.link}>
+            Inscris-toi
+          </Link>
         </p>
-      )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-      >
-        {pending ? "Connexion…" : "Se connecter"}
-      </button>
-      <p className="text-sm">
-        <Link href="/reset-password" className="underline">
-          Mot de passe oublié ?
-        </Link>
-      </p>
-      <p className="text-sm">
-        Pas encore de compte ?{" "}
-        <Link href="/signup" className="underline">
-          Inscris-toi
-        </Link>
-      </p>
-    </form>
+      </div>
+    </div>
   );
 }

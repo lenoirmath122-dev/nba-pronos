@@ -1,9 +1,13 @@
 import { LoginForm } from "@/components/auth/LoginForm";
+import styles from "@/components/auth/AuthScreen.module.css";
 
 export default function LoginPage() {
   return (
-    <main className="flex flex-1 flex-col items-center justify-center gap-6 p-6">
-      <h1 className="text-2xl font-semibold">Connexion</h1>
+    <main className={`${styles.page} photo-page`}>
+      <div className={styles.brand}>
+        <p className={styles.brandName}>NBA Pronos</p>
+        <p className={styles.brandTagline}>Pronostics et paris entre amis sur les playoffs NBA.</p>
+      </div>
       <LoginForm />
     </main>
   );

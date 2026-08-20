@@ -3,6 +3,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { getBrowserClient } from "@/lib/supabase/browser";
+import { MailIcon } from "@/components/icons/auth-icons";
+import styles from "./AuthScreen.module.css";
 
 // Flux Supabase STANDARD (T2 §8, T6a arbre app/ — UNE seule route pour les 2
 // étapes) : ni server action, ni logique métier à nous — la demande ET la
@@ -87,96 +89,108 @@ export function ResetPasswordForm() {
   }
 
   if (mode === "checking") {
-    return <p className="text-sm text-gray-500">Chargement…</p>;
+    return <p className={styles.loading}>Chargement…</p>;
   }
 
   if (mode === "request") {
     if (requestSent) {
+      // EXCEPTION actée (AJUSTEMENTS_VISUELS_20_08_2026 §1) : seul état de ce
+      // formulaire volontairement SANS carte — pure information (rien à
+      // faire, juste attendre), pas une action comme les 3 autres états.
       return (
-        <p className="max-w-sm text-sm">
-          Si un compte existe avec cet email, un lien de réinitialisation vient
-          d&apos;être envoyé. Vérifie ta boîte de réception.
-        </p>
+        <div className={styles.infoState}>
+          <MailIcon />
+          <p className={styles.infoStateText}>
+            Si un compte existe avec cet email, un lien de réinitialisation vient
+            d&apos;être envoyé. Vérifie ta boîte de réception.
+          </p>
+        </div>
       );
     }
     return (
-      <form onSubmit={handleRequest} className="flex w-full max-w-sm flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="email">Email</label>
-          <input
-            id="email"
-            name="email"
-            type="email"
-            required
-            autoComplete="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="rounded border px-3 py-2"
-          />
-        </div>
-        {error && (
-          <p role="alert" className="text-sm text-red-600">
-            {error}
+      <div className={`${styles.card} glass-card`}>
+        <h1 className={styles.cardTitle}>Réinitialiser le mot de passe</h1>
+        <form onSubmit={handleRequest} className={styles.form}>
+          <div className={styles.field}>
+            <label htmlFor="email" className={styles.fieldLabel}>
+              Email
+            </label>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              required
+              autoComplete="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={styles.input}
+            />
+          </div>
+          {error && (
+            <p role="alert" className={styles.error}>
+              {error}
+            </p>
+          )}
+          <button type="submit" disabled={pending} className={styles.submit}>
+            {pending ? "Envoi…" : "Envoyer le lien de réinitialisation"}
+          </button>
+        </form>
+        <div className={styles.links}>
+          <p className={styles.linkLine}>
+            <Link href="/login" className={styles.link}>
+              Retour à la connexion
+            </Link>
           </p>
-        )}
-        <button
-          type="submit"
-          disabled={pending}
-          className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-        >
-          {pending ? "Envoi…" : "Envoyer le lien de réinitialisation"}
-        </button>
-        <p className="text-sm">
-          <Link href="/login" className="underline">
-            Retour à la connexion
-          </Link>
-        </p>
-      </form>
+        </div>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={handleConfirm} className="flex w-full max-w-sm flex-col gap-4">
-      <div className="flex flex-col gap-1">
-        <label htmlFor="password">Nouveau mot de passe</label>
-        <input
-          id="password"
-          name="password"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="rounded border px-3 py-2"
-        />
-      </div>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="confirmPassword">Confirme le mot de passe</label>
-        <input
-          id="confirmPassword"
-          name="confirmPassword"
-          type="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          value={confirmPassword}
-          onChange={(e) => setConfirmPassword(e.target.value)}
-          className="rounded border px-3 py-2"
-        />
-      </div>
-      {error && (
-        <p role="alert" className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded bg-black px-4 py-2 text-white disabled:opacity-50"
-      >
-        {pending ? "Mise à jour…" : "Mettre à jour le mot de passe"}
-      </button>
-    </form>
+    <div className={`${styles.card} glass-card`}>
+      <h1 className={styles.cardTitle}>Nouveau mot de passe</h1>
+      <form onSubmit={handleConfirm} className={styles.form}>
+        <div className={styles.field}>
+          <label htmlFor="password" className={styles.fieldLabel}>
+            Nouveau mot de passe
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className={styles.input}
+          />
+        </div>
+        <div className={styles.field}>
+          <label htmlFor="confirmPassword" className={styles.fieldLabel}>
+            Confirme le mot de passe
+          </label>
+          <input
+            id="confirmPassword"
+            name="confirmPassword"
+            type="password"
+            required
+            minLength={8}
+            autoComplete="new-password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            className={styles.input}
+          />
+        </div>
+        {error && (
+          <p role="alert" className={styles.error}>
+            {error}
+          </p>
+        )}
+        <button type="submit" disabled={pending} className={styles.submit}>
+          {pending ? "Mise à jour…" : "Mettre à jour le mot de passe"}
+        </button>
+      </form>
+    </div>
   );
 }
