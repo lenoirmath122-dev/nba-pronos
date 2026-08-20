@@ -89,6 +89,28 @@
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
+/* Même recette que TutorialLink.module.css::.link (section Aide) — lien
+   simple vers /regles, pas de modale à ouvrir contrairement au tutoriel. */
+.helpLink {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+}
+
+.helpLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 /* Sélecteur « Thème » (06/08/2026, remplace l'ancien toggle Clair/Sombre à
    1 bouton) — 3 choix mutuellement exclusifs, même patron sans-JS que
    .bgPicker juste en dessous (1 <form> par choix, pas un vrai groupe radio

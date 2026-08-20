@@ -1,0 +1,186 @@
+import { getServerClient } from "@/lib/supabase/server";
+import { ScreenShell } from "@/components/nav/ScreenShell";
+import { BaremeTable } from "@/components/regles/BaremeTable";
+import styles from "./page.module.css";
+
+// Règles — route physique UNIQUE, hors des route groups (public)/(app),
+// même patron que /leaderboard et /bracket (T6a §3.2/§8.1) : visiteur ou
+// joueur connecté, contenu identique (page statique, pas de RLS à
+// respecter ici). Contenu sourcé sur les décisions ACTÉES/le code réel
+// (SPEC_TECHNIQUE_SCORING_V0_1.md T5, figé ; decisions_0.2.x ; lib/queries,
+// lib/labels), pas sur les 1ers documents de cadrage (beaucoup de "à
+// préciser plus tard" dans le résumé initial, depuis tranchés autrement).
+export default async function ReglesPage() {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  return (
+    <ScreenShell authenticated={user !== null}>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <p className={styles.title}>Règles du jeu</p>
+          <p className={styles.intro}>
+            Playoffs NBA entre amis : 3 façons de marquer des points, réunies dans un seul classement.
+          </p>
+        </div>
+
+        <section className={`${styles.section} glass-card`} aria-label="Bracket">
+          <h2 className={styles.sectionTitle}>Bracket</h2>
+          <p className={styles.body}>
+            En début de compétition, choisis le vainqueur et le score exact (4-0, 4-1, 4-2 ou 4-3) de chaque
+            série, sur les 4 tours des playoffs. Le champion NBA n&apos;est pas choisi à part : il est déduit
+            automatiquement du vainqueur de la finale.
+          </p>
+          <p className={styles.body}>
+            Modifiable jusqu&apos;à la date limite (le 1ᵉʳ match des playoffs) — même après une première
+            validation. Les points du bracket sont totalement indépendants des pronostics de matchs : un
+            mauvais bracket ne pénalise jamais tes pronos, et inversement.
+          </p>
+          <p className={styles.baremeLabel}>Barème par série</p>
+          <BaremeTable
+            caption="Barème du bracket"
+            columns={["Vainqueur", "Score exact", "Bonne affiche"]}
+            rows={[
+              { label: "1ᵉʳ tour", values: ["25", "+10", "+0"] },
+              { label: "Demi-finales de conf.", values: ["45", "+20", "+15"] },
+              { label: "Finales de conférence", values: ["80", "+30", "+25"] },
+              { label: "Finale NBA", values: ["250", "+50", "+40"] },
+            ]}
+          />
+          <p className={styles.note}>
+            « Bonne affiche » = deviner à l&apos;avance les 2 équipes qui s&apos;affrontent à ce tour —
+            indépendant du vainqueur (une bonne affiche avec le mauvais vainqueur compte quand même, et
+            inversement). Aucune affiche à deviner au 1ᵉʳ tour, les oppositions sont déjà connues. Bracket
+            parfait : 340 points. La NBA Cup (quand elle a lieu) suit le même principe avec un barème et un
+            nombre de tours différents, pas de score exact à prédire.
+          </p>
+        </section>
+
+        <section className={`${styles.section} glass-card`} aria-label="Pronostics de matchs">
+          <h2 className={styles.sectionTitle}>Pronostics de matchs</h2>
+          <p className={styles.body}>
+            Pour chaque match, pronostique le vainqueur et l&apos;écart de points. Le pronostic se verrouille
+            à l&apos;heure exacte du coup d&apos;envoi.
+          </p>
+          <p className={styles.body}>
+            Tant que tu n&apos;as pas validé ton pronostic pour un match, tu ne vois pas ceux déjà validés par
+            les autres joueurs — valider le tien débloque leur vue, pour éviter de s&apos;inspirer des choix
+            des autres avant de s&apos;engager. Une fois le match verrouillé, tous les pronostics deviennent
+            publics.
+          </p>
+          <p className={styles.baremeLabel}>Barème par match</p>
+          <div className={styles.statGrid}>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Bon vainqueur</span>
+              <span className={styles.statCardValue}>10</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Écart exact</span>
+              <span className={styles.statCardValue}>+5</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Écart à 1-2 pts</span>
+              <span className={styles.statCardValue}>+3</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Écart à 3-5 pts</span>
+              <span className={styles.statCardValue}>+2</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Écart à 6-9 pts</span>
+              <span className={styles.statCardValue}>+1</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Écart ≥ 10 pts</span>
+              <span className={styles.statCardValue}>+0</span>
+            </div>
+          </div>
+          <p className={styles.note}>
+            Le bonus d&apos;écart ne s&apos;applique que si le vainqueur est correct — un mauvais vainqueur
+            rapporte 0 point, même avec un écart proche. Un prono rapporte donc entre 10 et 15 points.
+          </p>
+        </section>
+
+        <section className={`${styles.section} glass-card`} aria-label="Paris personnalisés">
+          <h2 className={styles.sectionTitle}>Paris personnalisés</h2>
+          <p className={styles.body}>
+            Propose tes propres paris sur une série en cours : un pari « série » (ex. « la série ira à 7
+            matchs ») et jusqu&apos;à 3 paris « match » sur des matchs différents de cette série (ex. «
+            Tatum marque plus de 30 points »).
+          </p>
+          <p className={styles.body}>
+            Chaque pari a un niveau de difficulté de 1 à 5 que tu proposes toi-même ; un admin le valide ou
+            l&apos;ajuste avant résolution. Le pari « série » se verrouille au 1ᵉʳ match de la série, chaque
+            pari « match » au coup d&apos;envoi du match visé.
+          </p>
+          <p className={styles.baremeLabel}>Barème par difficulté</p>
+          <div className={styles.statGridWide}>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Niveau 1</span>
+              <span className={styles.statCardValue}>5</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Niveau 2</span>
+              <span className={styles.statCardValue}>10</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Niveau 3</span>
+              <span className={styles.statCardValue}>15</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Niveau 4</span>
+              <span className={styles.statCardValue}>20</span>
+            </div>
+            <div className={styles.statCard}>
+              <span className={styles.statCardLabel}>Niveau 5</span>
+              <span className={styles.statCardValue}>25</span>
+            </div>
+          </div>
+          <p className={styles.note}>
+            Un pari perdu ou annulé ne rapporte ni ne coûte rien (0 point, jamais de pénalité).
+          </p>
+        </section>
+
+        <section className={`${styles.section} glass-card`} aria-label="Ligues entre amis">
+          <h2 className={styles.sectionTitle}>Ligues entre amis</h2>
+          <p className={styles.body}>
+            Rejoins une ligue avec un code pour comparer tes résultats à un groupe restreint plutôt qu&apos;à
+            tout le monde. Une ligue ne change rien au calcul des points : c&apos;est une vue filtrée du même
+            classement, du même bracket et des mêmes résultats. Tu peux appartenir à plusieurs ligues en même
+            temps.
+          </p>
+        </section>
+
+        <section className={`${styles.section} glass-card`} aria-label="Classement">
+          <h2 className={styles.sectionTitle}>Classement</h2>
+          <p className={styles.body}>
+            Un seul classement additionne les points de matchs, de bracket et de paris personnalisés. En cas
+            d&apos;égalité, l&apos;ordre de départage est :
+          </p>
+          <ul className={styles.list}>
+            <li className={styles.listItem}>Total de points</li>
+            <li className={styles.listItem}>Nombre de bons vainqueurs de match</li>
+            <li className={styles.listItem}>Nombre d&apos;écarts exacts</li>
+            <li className={styles.listItem}>Points de bracket</li>
+          </ul>
+          <p className={styles.note}>
+            Si tout est encore égal après ces 4 critères, l&apos;égalité est assumée — les joueurs partagent
+            le même rang.
+          </p>
+        </section>
+
+        <section className={`${styles.section} glass-card`} aria-label="Badges">
+          <h2 className={styles.sectionTitle}>Badges</h2>
+          <p className={styles.body}>
+            En plus du classement, des badges permanents récompensent la régularité et les exploits (une
+            série de bons pronos, un triple-double deviné...). Valables à vie, toutes compétitions
+            confondues, sans comparaison entre joueurs — un accomplissement personnel, consultable dans
+            Profil &gt; Stats.
+          </p>
+        </section>
+      </div>
+    </ScreenShell>
+  );
+}

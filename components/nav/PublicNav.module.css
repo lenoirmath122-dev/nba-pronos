@@ -1,7 +1,7 @@
-/* Nav réduite du visiteur (0.2.9 §3, T6a §3.1) : Classement · Bracket · Se
-   connecter. Partagée entre (public)/layout.tsx et les enveloppes fines
-   /leaderboard, /bracket (T6a §3.2/§8.1 — la nav est choisie par la route,
-   pas dupliquée). */
+/* Nav réduite du visiteur (0.2.9 §3, T6a §3.1) : Classement · Bracket ·
+   Règles · Se connecter. Partagée entre (public)/layout.tsx et les
+   enveloppes fines /leaderboard, /bracket, /regles (T6a §3.2/§8.1 — la nav
+   est choisie par la route, pas dupliquée). */
 
 .bar {
   display: flex;

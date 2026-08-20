@@ -2,9 +2,10 @@ import Link from "next/link";
 import styles from "./PublicNav.module.css";
 
 // Nav réduite du visiteur non connecté (0.2.9 §3, T6a §3.1) : Classement,
-// Bracket, CTA discret « Se connecter ». Aucun état interne → composant
-// serveur, partagé entre (public)/layout.tsx et les enveloppes fines
-// /leaderboard, /bracket (T6a §3.2/§8.1).
+// Bracket, Règles (ajouté 20/08/2026, même patron dual-nav que les 2
+// précédents), CTA discret « Se connecter ». Aucun état interne →
+// composant serveur, partagé entre (public)/layout.tsx et les enveloppes
+// fines /leaderboard, /bracket, /regles (T6a §3.2/§8.1).
 export function PublicNav() {
   return (
     <nav className={styles.bar} aria-label="Navigation">
@@ -15,6 +16,9 @@ export function PublicNav() {
         </Link>
         <Link href="/bracket" className={styles.link}>
           Bracket
+        </Link>
+        <Link href="/regles" className={styles.link}>
+          Règles
         </Link>
         <Link href="/login" className={styles.linkCta}>
           Se connecter

@@ -237,6 +237,9 @@ export default async function ProfilePage({
           <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Aide</h2>
             <TutorialLink />
+            <Link href="/regles" className={styles.helpLink}>
+              Règles du jeu
+            </Link>
           </section>
         </>
       )}
