@@ -3,17 +3,28 @@ Charge les CSV extraits par fetch_nba_data.py (Cadrage/Stats/data/raw/) dans
 une base SQLite unique (Cadrage/Stats/data/nba.db).
 
 Reconstruit entièrement la base à chaque exécution — les CSV sont la source
-de vérité, ça reste rapide (quelques secondes à quelques dizaines de
-secondes) et évite tout risque de désynchronisation. Peut être relancé à
-tout moment, y compris pendant que fetch_nba_data.py tourne encore : les
-matchs pas encore récupérés seront simplement absents ou incomplets, et
-réapparaîtront complets au prochain chargement.
+de vérité, ça évite tout risque de désynchronisation. Durée : de quelques
+secondes (2 saisons) à plusieurs minutes (5 saisons et plus, ~19 000
+fichiers CSV) — dépend du volume dans data/raw/, pas une constante. Peut
+être relancé à tout moment, y compris pendant que fetch_nba_data.py tourne
+encore : les matchs pas encore récupérés seront simplement absents ou
+incomplets, et réapparaîtront complets au prochain chargement.
+
+Affiche l'avancement en continu (20/08/2026, ajouté après un cas réel où
+le silence total pendant plusieurs minutes faisait croire à un blocage) :
+lecture décomptée saison par saison, écriture décomptée table par table.
+ATTENTION si interrompu (Ctrl+C) en cours de lecture : les tables sont
+vidées en tout début d'exécution, l'écriture ne se fait qu'en un seul bloc
+à la fin — une interruption avant "Écriture dans la base..." laisse la
+base VIDE jusqu'à la prochaine exécution COMPLÈTE (pas de reprise
+partielle possible ici, contrairement à fetch_nba_data.py).
 
 Usage:
     python load_to_sqlite.py
 """
 
 import sqlite3
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -228,11 +239,32 @@ def build_matchs_row(game_id: str, game_meta: dict, pbp_df: pd.DataFrame | None)
     return row
 
 
+PROGRESS_EVERY = 200  # affichage d'avancement toutes les N parties lues
+
+
 def main():
+    # print() est mis en mémoire tampon PAR BLOC (pas ligne par ligne) dès que
+    # la sortie standard n'est pas un vrai terminal (redirection, capture par
+    # un outil...) — l'avancement ci-dessous n'apparaîtrait sinon qu'à la
+    # toute fin, exactement le problème qu'il est censé résoudre. encoding
+    # forcé en UTF-8 en même temps : le codepage par défaut de PowerShell/
+    # cmd.exe rendait "É"/"é" en "�" (accents capitaux surtout), constaté au
+    # 1er essai réel du 20/08/2026.
+    sys.stdout.reconfigure(line_buffering=True, encoding="utf-8")
+
     if not RAW_DIR.exists():
         raise SystemExit(f"Dossier introuvable: {RAW_DIR} (as-tu lancé fetch_nba_data.py ?)")
 
-    conn = sqlite3.connect(DB_PATH)
+    print(f"Lecture de {RAW_DIR}...")
+
+    # timeout=120 (au lieu des 5s par défaut de sqlite3) : si une AUTRE
+    # exécution de ce script tient déjà le verrou d'écriture (2 lancements
+    # accidentels en même temps — cas réel du 20/08/2026), la connexion
+    # ATTEND que l'autre finisse au lieu d'échouer immédiatement avec
+    # "database is locked". N'empêche pas de lancer 2 fois par erreur, rend
+    # juste l'échec impossible dans ce cas précis (l'un des deux attend,
+    # l'autre écrit) plutôt qu'un plantage confus pour l'utilisateur.
+    conn = sqlite3.connect(DB_PATH, timeout=120)
     cur = conn.cursor()
     cur.executescript("DROP TABLE IF EXISTS equipes; DROP TABLE IF EXISTS joueurs; "
                        "DROP TABLE IF EXISTS matchs; DROP TABLE IF EXISTS box_scores; "
@@ -247,18 +279,24 @@ def main():
     box_adv_frames: list = []
     pbp_frames: list = []
 
+    # Tables vidées au-dessus, avant d'avoir rien lu : si le script est
+    # interrompu (Ctrl+C) pendant cette boucle, la base reste VIDE jusqu'à
+    # la prochaine exécution complète — écriture (plus bas) faite en un seul
+    # bloc à la fin, pas incrémentale. Relancer jusqu'au bout après une
+    # interruption, ne pas s'arrêter à mi-chemin.
     for season_dir in season_dirs():
         index_path = season_dir / "games_index.csv"
         if not index_path.exists():
             continue
         index_df = pd.read_csv(index_path, dtype={"GAME_ID": str})
         index_by_id = {row["GAME_ID"]: row for _, row in index_df.iterrows()}
+        print(f"  {season_dir.name} : {len(index_by_id)} matchs")
 
         box_dir = season_dir / "boxscores"
         box_adv_dir = season_dir / "boxscores_advanced"
         pbp_dir = season_dir / "playbyplay"
 
-        for game_id, meta in index_by_id.items():
+        for i, (game_id, meta) in enumerate(index_by_id.items(), start=1):
             box_path = box_dir / f"{game_id}.csv"
             box_adv_path = box_adv_dir / f"{game_id}.csv"
             pbp_path = pbp_dir / f"{game_id}.csv"
@@ -288,18 +326,31 @@ def main():
                 df = df[df["minutes"].notna()]  # même filtre DNP/DND que le traditionnel ci-dessus
                 box_adv_frames.append(df.rename(columns=ADVANCED_COLUMNS)[BOX_SCORE_ADVANCED_TABLE_COLUMNS])
 
+            if i % PROGRESS_EVERY == 0 or i == len(index_by_id):
+                print(f"    ... {i}/{len(index_by_id)} matchs lus")
+
+    print("Écriture dans la base...")
     if equipes:
+        print(f"  equipes ({len(equipes)} lignes)")
         pd.DataFrame(equipes.values()).to_sql("equipes", conn, if_exists="append", index=False)
     if joueurs:
+        print(f"  joueurs ({len(joueurs)} lignes)")
         pd.DataFrame(joueurs.values()).to_sql("joueurs", conn, if_exists="append", index=False)
     if matchs_rows:
+        print(f"  matchs ({len(matchs_rows)} lignes)")
         pd.DataFrame(matchs_rows).to_sql("matchs", conn, if_exists="append", index=False)
     if box_frames:
-        pd.concat(box_frames, ignore_index=True).to_sql("box_scores", conn, if_exists="append", index=False)
+        box_df = pd.concat(box_frames, ignore_index=True)
+        print(f"  box_scores ({len(box_df)} lignes)")
+        box_df.to_sql("box_scores", conn, if_exists="append", index=False)
     if box_adv_frames:
-        pd.concat(box_adv_frames, ignore_index=True).to_sql("box_scores_advanced", conn, if_exists="append", index=False)
+        box_adv_df = pd.concat(box_adv_frames, ignore_index=True)
+        print(f"  box_scores_advanced ({len(box_adv_df)} lignes)")
+        box_adv_df.to_sql("box_scores_advanced", conn, if_exists="append", index=False)
     if pbp_frames:
-        pd.concat(pbp_frames, ignore_index=True).to_sql("play_by_play", conn, if_exists="append", index=False)
+        pbp_df_all = pd.concat(pbp_frames, ignore_index=True)
+        print(f"  play_by_play ({len(pbp_df_all)} lignes) -- la plus longue, patience")
+        pbp_df_all.to_sql("play_by_play", conn, if_exists="append", index=False)
 
     conn.commit()
 
