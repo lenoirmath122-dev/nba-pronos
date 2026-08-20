@@ -215,11 +215,11 @@ def build() -> Readme:
     pdf.table(
         ["Parametre", "Valeur retenue"],
         [
-            ("Saisons", "2024-25 et 2025-26"),
+            ("Saisons", "2021-22 a 2025-26 (5 saisons)"),
             ("Types de match", "Saison reguliere, Playoffs, Play-In Tournament"),
             ("Box score", "Traditionnel (pts/reb/ast...) + Avance (ratings, usage%, pace...)"),
             ("Play-by-play", "Detail de chaque action du match (tirs, fautes, remplacements...)"),
-            ("Volume", "2 641 matchs (extraction terminee, 0 echec), ~3 fichiers par match"),
+            ("Volume", "6 602 matchs (extraction terminee, 0 echec), ~3 fichiers par match"),
         ],
         [55, 122],
     )
@@ -239,10 +239,11 @@ def build() -> Readme:
     pdf.body("Puis lancer :")
     pdf.code("python fetch_nba_data.py")
     pdf.note(
-        "Extraction des 2 saisons deja TERMINEE au 20/08/2026 (2 641/2 641 matchs, "
-        "0 echec) -- cette section reste utile pour une saison future ou un "
-        "complement. Duree estimee pour un fetch complet : plusieurs heures (pause "
-        "volontaire entre chaque appel a l'API pour eviter un blocage par NBA.com)."
+        "Extraction des 5 saisons (2021-22 a 2025-26) deja TERMINEE au 20/08/2026 "
+        "(6 602/6 602 matchs, 0 echec) -- cette section reste utile pour une saison "
+        "future ou un complement. Duree estimee pour un fetch complet : plusieurs "
+        "heures (pause volontaire entre chaque appel a l'API pour eviter un "
+        "blocage par NBA.com)."
     )
     pdf.body(
         "Pour que le script continue de tourner meme si VS Code est ferme, le "
@@ -258,12 +259,26 @@ def build() -> Readme:
     pdf.h2("5. Mettre a jour la base (load_to_sqlite.py)")
     pdf.body(
         "Ce script relit tous les CSV presents dans data/raw/ et reconstruit "
-        "entierement la base data/nba.db. Rapide (quelques secondes a une minute), "
-        "et sans risque : il peut etre relance autant de fois que necessaire, y "
-        "compris pendant que l'extraction tourne encore."
+        "entierement la base data/nba.db. Duree variable selon le volume : de "
+        "quelques secondes (2 saisons) a plusieurs minutes (5 saisons et plus, "
+        "~19 000 fichiers) -- affiche l'avancement en continu (saison par "
+        "saison en lecture, table par table en ecriture), pas besoin d'attendre "
+        "la fin pour savoir si ca tourne. Sans risque : peut etre relance autant "
+        "de fois que necessaire, y compris pendant que l'extraction tourne "
+        "encore."
     )
     pdf.code("python load_to_sqlite.py")
     pdf.body("Un resume s'affiche a la fin (nombre de lignes par table).")
+    pdf.note(
+        "ATTENTION si interrompu (Ctrl+C) en cours de lecture : les tables sont "
+        "videes en tout debut d'execution, l'ecriture se fait en un seul bloc a "
+        "la fin -- une interruption avant \"Ecriture dans la base...\" laisse la "
+        "base VIDE jusqu'a la prochaine execution COMPLETE (relancer jusqu'au "
+        "bout, pas de reprise partielle possible ici). Ne JAMAIS lancer 2 "
+        "instances en meme temps volontairement (2 lancements accidentels "
+        "restent tolerables : timeout de 120s sur le verrou SQLite, l'un des "
+        "deux attend l'autre plutot que de planter)."
+    )
 
     # ---- Section 6 ----
     pdf.h2("6. Si 'python' n'est pas reconnu")
@@ -441,11 +456,15 @@ def build() -> Readme:
     # ---- Section 13 ----
     pdf.h2("13. Prochaines etapes")
     pdf.bullets([
-        "Extraction TERMINEE (2 641/2 641 matchs, 0 echec) -- plus a relancer sauf "
-        "pour une saison future.",
+        "Extraction ETENDUE a 5 saisons TERMINEE (6 602/6 602 matchs, 0 echec) -- "
+        "plus a relancer sauf pour une saison future.",
         "Phase 1 (couverture des categories de paris du classeur) TERMINEE : 12 "
         "modeles construits -- points, double-double, triple-double, rebonds, "
-        "passes, 3-points, interceptions, contres, minutes, FT%, FG%, 3P%.",
+        "passes, 3-points, interceptions, contres, minutes, FT%, FG%, 3P%. "
+        "ATTENTION : entraines sur les 2 premieres saisons seulement (avant "
+        "l'extension a 5) -- relancer build_features.py/build_targets.py puis "
+        "les 4 scripts train_*.py (S8/S9) pour en profiter sur les donnees "
+        "completes.",
         "Decision en attente (voir bandeau REPRISE de projet-data-nba.md) : Phase "
         "3 (affiner la calibration residuelle), Phase 4 (pont contexte en direct) "
         "ou Phase 5 (integration dans l'appli, SPEC_TECHNIQUE_PROBA_PARIS_"

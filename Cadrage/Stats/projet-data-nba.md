@@ -2,7 +2,24 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 20/08/2026, soir — suite)
+> ## 🔴 REPRISE ICI (état au 20/08/2026, soir — encore une suite)
+>
+> **Fetch étendu à 5 saisons (2021-22→2025-26) TERMINÉ, base reconstruite**
+> — 6 602 matchs (contre 2 641 sur 2 saisons), 139 543 lignes box_scores,
+> 3 054 074 lignes play_by_play. `load_to_sqlite.py` amélioré au passage
+> (incident réel : 2 lancements simultanés = "database is locked" — base
+> vérifiée intacte après coup, mais correctif ajouté : timeout de verrou
+> 120s au lieu de 5s par défaut ; avancement affiché en direct saison par
+> saison/table par table, plus de silence total pendant plusieurs minutes ;
+> encodage UTF-8 forcé, accents capitaux mal affichés sinon).
+>
+> **🟡 LES 12 MODÈLES SONT MAINTENANT PÉRIMÉS** : toujours entraînés sur le
+> dataset à 2 saisons (56 938 lignes), alors que la base en contient
+> maintenant ~2,4x plus. Pour en profiter : relancer dans l'ordre
+> `build_features.py` → `build_targets.py` → les 4 `train_*.py` (§8/§9
+> README.pdf) — pas encore fait, à décider à la reprise (probablement
+> amélioration nette partout, comme observé lors du 1er passage à données
+> complètes, §17).
 >
 > **Nouveau testeur `tester_modele.py` (§11 README.pdf) utilisé pour la
 > 1ère fois en usage réel** : a fait remonter un écart concret sur le

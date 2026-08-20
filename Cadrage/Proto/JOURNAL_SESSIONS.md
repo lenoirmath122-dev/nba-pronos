@@ -8090,3 +8090,50 @@ la structure d'empilement déjà en place (isolation, z-index déjà posés par
 `tsc`/`eslint`/`next build` (36 routes) propres. Committé et poussé
 (`fd44b84`).
 ```
+
+
+## Projet Data NBA — load_to_sqlite.py plus robuste, fetch étendu rebuild (20/08/2026, suite)
+
+```text
+Demande de l'utilisateur : "n'affiche rien" en lançant load_to_sqlite.py.
+Pas un bug -- aucun retour avant la toute fin (aucune barre de progression
+dans le script) ET un volume 2,4x plus gros qu'avant (fetch étendu de 2 à
+5 saisons lancé entre-temps par l'utilisateur, ~19 200 CSV au lieu de
+~7 900). Interrompu (TaskStop) sur demande pour ajouter l'avancement --
+laisse la base VIDE (tables vidées en tout début d'exécution, écriture en
+un seul bloc à la fin, pas de reprise partielle) : redocumenté
+explicitement dans le script.
+
+Ajouté : avancement décompte saison par saison (lecture) puis table par
+table (écriture) -- print() forcé en ligne-par-ligne
+(sys.stdout.reconfigure), sinon bufferisé par bloc dès que la sortie n'est
+pas un vrai terminal, exactement le problème à résoudre (constaté en
+testant : rien n'apparaissait avant plusieurs dizaines de secondes malgré
+le correctif tant que ce détail n'était pas réglé).
+
+Relancé jusqu'au bout pour reconstruire la base (vidée par l'interruption
+volontaire) : 6 602 matchs, 139 543 lignes box_scores, 3 054 074 lignes
+play_by_play (5 saisons).
+
+**Incident réel pendant le relance** : l'utilisateur a aussi lancé le
+script de son côté, en même temps que la tâche de fond -- collision
+d'écriture SQLite, l'un des deux ("database is locked") a planté avec une
+trace Python brute. Vérifié avant de conclure : base intacte (comptes
+exacts confirmés), l'autre exécution avait fini proprement. Corrigé pour
+que ça n'arrive plus mal : `sqlite3.connect(..., timeout=120)` (5s par
+défaut) -- 2 lancements accidentels simultanés se tolèrent maintenant
+(l'un attend l'autre) plutôt que de planter. Encodage UTF-8 forcé au
+passage (accents capitaux mal affichés avec le codepage par défaut de
+PowerShell, repéré au 1er essai réel).
+
+README.pdf mis à jour en conséquence : durée variable (pas "quelques
+secondes à une minute", dépend du volume), avertissement sur
+l'interruption/le double-lancement (§5), tableau saisons/volume actualisé
+(§3, 5 saisons/6 602 matchs), et **note ajoutée : les 12 modèles sont
+maintenant entraînés sur un dataset PÉRIMÉ** (2 saisons, alors que la base
+en a maintenant 5) -- à relancer (build_features/build_targets + les 4
+train_*.py) pour en profiter, pas encore fait, décision à la reprise.
+Bandeau REPRISE de projet-data-nba.md mis à jour en conséquence.
+
+Committé et poussé (`140029a`).
+```
