@@ -12,8 +12,16 @@ type CollapsibleCardProps = {
   title: string;
   /** Nombre de lignes contenues (18/08/2026, demandé par l'utilisateur) —
    *  visible même carte repliée, pour savoir si elle contient quelque chose
-   *  sans avoir à l'ouvrir. */
-  count: number;
+   *  sans avoir à l'ouvrir. Omis pour les cartes qui n'enveloppent pas une
+   *  liste (Profil / onglet Stats, AJUSTEMENTS_VISUELS_20_08_2026 §14) —
+   *  pas de nombre de lignes honnête à afficher pour un résumé de stats. */
+  count?: number;
+  /** Ouverte par défaut au lieu de repliée (Profil / onglet Stats §14 :
+   *  Précision/Comparaison restent ouvertes, « ça amène un peu de couleur »
+   *  face à un écran sinon très neutre au 1er coup d'œil). Le point d'alerte
+   *  "jamais ouverte" est désactivé pour ces cartes : leur contenu est déjà
+   *  visible au chargement, rien à signaler. */
+  defaultOpen?: boolean;
   children: React.ReactNode;
 };
 
@@ -40,9 +48,12 @@ function getServerSnapshot() {
 // synchrone dans un effet, et localStorage EST un store externe — son cas
 // d'usage exact. Snapshot serveur toujours `false` (jamais de point tant
 // que l'hydratation n'a pas eu lieu, aucun flash de contenu différent).
-export function CollapsibleCard({ id, title, count, children }: CollapsibleCardProps) {
-  const [open, setOpen] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+export function CollapsibleCard({ id, title, count, defaultOpen = false, children }: CollapsibleCardProps) {
+  const [open, setOpen] = useState(defaultOpen);
+  // Initialisé à `defaultOpen` : une carte déjà ouverte au chargement n'a
+  // rien de "jamais consulté" à signaler, pas besoin d'attendre un clic pour
+  // faire taire le point d'alerte.
+  const [dismissed, setDismissed] = useState(defaultOpen);
   const neverSeen = useSyncExternalStore(
     noopSubscribe,
     () => window.localStorage.getItem(`${STORAGE_PREFIX}${id}`) === null,
@@ -68,7 +79,7 @@ export function CollapsibleCard({ id, title, count, children }: CollapsibleCardP
         >
           <span>{title}</span>
           <span className={styles.right}>
-            <span className={styles.count}>{count}</span>
+            {count !== undefined && <span className={styles.count}>{count}</span>}
             {unseen && <span className={styles.dot} aria-hidden="true" />}
             <span className={styles.chevron} aria-hidden="true">
               {open ? "⌃" : "⌄"}

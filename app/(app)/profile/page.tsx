@@ -11,6 +11,7 @@ import { updateThemePreference, updateBackgroundTheme, updateProfile } from "@/l
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
+import { CollapsibleCard } from "@/components/home/CollapsibleCard";
 import { NotificationSettings } from "@/components/profile/NotificationSettings";
 import { ProfileTabs, type ProfileTab } from "@/components/profile/ProfileTabs";
 import { LeagueScopeChips } from "@/components/profile/LeagueScopeChips";
@@ -253,114 +254,127 @@ export default async function ProfilePage({
                 <span className={styles.totalHeroLabel}>points cette compétition</span>
               </div>
 
-              <section className={`${styles.section} glass-card`}>
-                <h2 className={styles.sectionTitle}>Précision</h2>
-                {stats.accuracy.totalScoredPredictions === 0 ? (
-                  <p className={styles.fieldLabel}>Pas encore de match scoré cette compétition.</p>
-                ) : (
-                  <>
-                    <ProgressBar
-                      filledCount={stats.accuracy.correctWinners}
-                      totalCount={stats.accuracy.totalScoredPredictions}
-                      label={`Précision bons vainqueurs : ${stats.accuracy.correctWinners} sur ${stats.accuracy.totalScoredPredictions}`}
-                    />
-                    <ProgressBar
-                      filledCount={stats.accuracy.exactMargins}
-                      totalCount={stats.accuracy.totalScoredPredictions}
-                      label={`Précision écarts exacts : ${stats.accuracy.exactMargins} sur ${stats.accuracy.totalScoredPredictions}`}
-                    />
-                  </>
-                )}
-                <div className={styles.statGrid}>
-                  <div className={styles.statCard}>
-                    <span className={styles.statCardLabel}>Points matchs</span>
-                    <span className={styles.statCardValue}>{stats.pointsBreakdown.matchesPoints}</span>
+              <section className={`${styles.section} glass-card`} aria-label="Précision">
+                <CollapsibleCard id="stats-accuracy" title="Précision" defaultOpen>
+                  {stats.accuracy.totalScoredPredictions === 0 ? (
+                    <p className={styles.fieldLabel}>Pas encore de match scoré cette compétition.</p>
+                  ) : (
+                    <>
+                      <ProgressBar
+                        filledCount={stats.accuracy.correctWinners}
+                        totalCount={stats.accuracy.totalScoredPredictions}
+                        label={`Précision bons vainqueurs : ${stats.accuracy.correctWinners} sur ${stats.accuracy.totalScoredPredictions}`}
+                      />
+                      <ProgressBar
+                        filledCount={stats.accuracy.exactMargins}
+                        totalCount={stats.accuracy.totalScoredPredictions}
+                        label={`Précision écarts exacts : ${stats.accuracy.exactMargins} sur ${stats.accuracy.totalScoredPredictions}`}
+                      />
+                    </>
+                  )}
+                  <div className={styles.statGrid}>
+                    <div className={styles.statCard}>
+                      <span className={styles.statCardLabel}>Points matchs</span>
+                      <span className={styles.statCardValue}>{stats.pointsBreakdown.matchesPoints}</span>
+                    </div>
+                    <div className={styles.statCard}>
+                      <span className={styles.statCardLabel}>Points bracket</span>
+                      <span className={styles.statCardValue}>{stats.pointsBreakdown.bracketPoints}</span>
+                    </div>
+                    <div className={styles.statCard}>
+                      <span className={styles.statCardLabel}>Points paris</span>
+                      <span className={styles.statCardValue}>{stats.pointsBreakdown.betsPoints}</span>
+                    </div>
                   </div>
-                  <div className={styles.statCard}>
-                    <span className={styles.statCardLabel}>Points bracket</span>
-                    <span className={styles.statCardValue}>{stats.pointsBreakdown.bracketPoints}</span>
-                  </div>
-                  <div className={styles.statCard}>
-                    <span className={styles.statCardLabel}>Points paris</span>
-                    <span className={styles.statCardValue}>{stats.pointsBreakdown.betsPoints}</span>
-                  </div>
-                </div>
+                </CollapsibleCard>
               </section>
 
-              <section className={`${styles.section} glass-card`}>
-                <h2 className={styles.sectionTitle}>Comparaison</h2>
-                <LeagueScopeChips myLeagues={statsLeagues} activeLeagueId={stats.comparison.scopeLeagueId} />
-                <div className={styles.compareRow}>
-                  <span>
-                    <span className={styles.compareRank}>
-                      {stats.rank.value !== null ? `#${stats.rank.value}` : "—"}
+              <section className={`${styles.section} glass-card`} aria-label="Comparaison">
+                <CollapsibleCard id="stats-comparison" title="Comparaison" defaultOpen>
+                  <LeagueScopeChips myLeagues={statsLeagues} activeLeagueId={stats.comparison.scopeLeagueId} />
+                  <div className={styles.compareRow}>
+                    <span>
+                      <span className={styles.compareRank}>
+                        {stats.rank.value !== null ? `#${stats.rank.value}` : "—"}
+                      </span>
+                      <span className={styles.compareRankTotal}> / {stats.rank.totalPlayers} joueur{stats.rank.totalPlayers > 1 ? "s" : ""}</span>
                     </span>
-                    <span className={styles.compareRankTotal}> / {stats.rank.totalPlayers} joueur{stats.rank.totalPlayers > 1 ? "s" : ""}</span>
-                  </span>
-                  <span className={styles.compareDelta}>
-                    {stats.comparison.deltaVsAverage >= 0 ? "+" : ""}
-                    {stats.comparison.deltaVsAverage} pts vs moyenne ({stats.comparison.othersAveragePoints})
-                  </span>
-                </div>
+                    <span className={styles.compareDelta}>
+                      {stats.comparison.deltaVsAverage >= 0 ? "+" : ""}
+                      {stats.comparison.deltaVsAverage} pts vs moyenne ({stats.comparison.othersAveragePoints})
+                    </span>
+                  </div>
+                </CollapsibleCard>
               </section>
 
-              <section className={`${styles.section} glass-card`}>
-                <h2 className={styles.sectionTitle}>Évolution du classement</h2>
-                {stats.evolution.series.length >= 2 ? (
-                  <>
-                    <div className={styles.chartWrapper}>
-                      <RankEvolutionChart series={stats.evolution.series} />
-                    </div>
-                    <p className={styles.chartCaption}>
-                      Toujours en classement général, même si un filtre ligue est actif ci-dessus.
+              <section className={`${styles.section} glass-card`} aria-label="Évolution du classement">
+                <CollapsibleCard id="stats-evolution" title="Évolution du classement">
+                  {stats.evolution.series.length >= 2 ? (
+                    <>
+                      <div className={styles.chartWrapper}>
+                        <RankEvolutionChart series={stats.evolution.series} />
+                      </div>
+                      <p className={styles.chartCaption}>
+                        Toujours en classement général, même si un filtre ligue est actif ci-dessus.
+                      </p>
+                    </>
+                  ) : (
+                    <p className={styles.fieldLabel}>
+                      Reviens dans quelques jours pour voir ta courbe d&rsquo;évolution.
                     </p>
-                  </>
-                ) : (
-                  <p className={styles.fieldLabel}>
-                    Reviens dans quelques jours pour voir ta courbe d&rsquo;évolution.
-                  </p>
-                )}
+                  )}
+                </CollapsibleCard>
               </section>
 
-              <section className={`${styles.section} glass-card`}>
-                <h2 className={styles.sectionTitle}>Paris</h2>
-                {stats.betRecord.resolvedCount === 0 ? (
-                  <p className={styles.fieldLabel}>Aucun pari résolu pour l&rsquo;instant.</p>
-                ) : (
-                  <>
-                    <div className={styles.betRecordRow}>
-                      <div className={styles.betStat}>
-                        <span className={styles.betStatValueWon}>{stats.betRecord.wonCount}</span>
-                        <span className={styles.betStatLabel}>Gagnés</span>
+              <section className={`${styles.section} glass-card`} aria-label="Paris">
+                <CollapsibleCard id="stats-bets" title="Paris" count={stats.betRecord.resolvedCount}>
+                  {stats.betRecord.resolvedCount === 0 ? (
+                    <p className={styles.fieldLabel}>Aucun pari résolu pour l&rsquo;instant.</p>
+                  ) : (
+                    <>
+                      <div className={styles.betRecordRow}>
+                        <div className={styles.betStat}>
+                          <span className={styles.betStatValueWon}>{stats.betRecord.wonCount}</span>
+                          <span className={styles.betStatLabel}>Gagnés</span>
+                        </div>
+                        <div className={styles.betStat}>
+                          <span className={styles.betStatValueLost}>{stats.betRecord.lostCount}</span>
+                          <span className={styles.betStatLabel}>Perdus</span>
+                        </div>
+                        <div className={styles.betStat}>
+                          <span className={styles.betStatValue}>{stats.betRecord.winRatePct}%</span>
+                          <span className={styles.betStatLabel}>Réussite</span>
+                        </div>
                       </div>
-                      <div className={styles.betStat}>
-                        <span className={styles.betStatValueLost}>{stats.betRecord.lostCount}</span>
-                        <span className={styles.betStatLabel}>Perdus</span>
-                      </div>
-                      <div className={styles.betStat}>
-                        <span className={styles.betStatValue}>{stats.betRecord.winRatePct}%</span>
-                        <span className={styles.betStatLabel}>Réussite</span>
-                      </div>
-                    </div>
-                    {stats.betRecord.bestWin && (
-                      <div className={styles.bestWin}>
-                        <span className={styles.bestWinTag}>Plus gros coup</span>
-                        <span className={styles.bestWinDesc}>« {stats.betRecord.bestWin.description} »</span>
-                        <span className={styles.bestWinMeta}>
-                          {stats.betRecord.bestWin.difficultyLabel} · +{stats.betRecord.bestWin.points} pts
-                        </span>
-                      </div>
-                    )}
-                  </>
-                )}
+                      {stats.betRecord.bestWin && (
+                        <div className={styles.bestWin}>
+                          <span className={styles.bestWinTag}>Plus gros coup</span>
+                          <span className={styles.bestWinDesc}>« {stats.betRecord.bestWin.description} »</span>
+                          <span className={styles.bestWinMeta}>
+                            {stats.betRecord.bestWin.difficultyLabel} · +{stats.betRecord.bestWin.points} pts
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </CollapsibleCard>
               </section>
             </>
           )}
 
           {badges && (
-            <section className={`${styles.section} glass-card`}>
-              <h2 className={styles.sectionTitle}>Badges</h2>
-              <BadgesSection data={badges} />
+            <section className={`${styles.section} glass-card`} aria-label="Badges">
+              <CollapsibleCard
+                id="stats-badges"
+                title="Badges"
+                count={
+                  badges.categories
+                    .flatMap((c) => c.badges)
+                    .filter((b) => (b.kind === "tiered" ? b.tier !== null : b.unlocked)).length
+                }
+              >
+                <BadgesSection data={badges} />
+              </CollapsibleCard>
             </section>
           )}
         </>
