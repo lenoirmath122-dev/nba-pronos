@@ -5,7 +5,40 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 18/08/2026 — **rattrapage de suivi :
+> Dernière mise à jour : session du 20/08/2026 — **Ajustements visuels
+> validés, implémentation.** Reprise d'une session de design séparée
+> (Cowork, analyse + maquettes sur le code source réel, consignée dans
+> `Cadrage/DA/AJUSTEMENTS_VISUELS_20_08_2026.md`) : les chantiers marqués
+> VALIDÉ ont été codés, un commit par chantier, dans l'ordre suggéré au
+> §6/§11 du document — **§2.93 ci-dessous**. En bref : police Sora +
+> Oswald (fondation, posée en premier), restyling complet Login/Signup/
+> Reset password, profil joueur public aligné sur le reste de l'app,
+> onglet Stats du Profil rendu repliable, badge "En cours" du Bracket
+> recoloré, et un ticker "en direct" sur Jouer/Mes pronos posé À L'ESSAI
+> (commit séparé, explicitement réversible). §12 (photo de profil) et §13
+> (identité de marque) du document PAS codés cette session — voir
+> `GAPS_OUVERTS.md` pour pourquoi. 6 commits poussés sur `main`
+> (`a3f43ed..0214914`). `tsc`/`eslint`/`vitest` (37/37)/`next build`
+> (36 routes) propres après chaque commit.
+>
+> Plus tôt (session du 19-20/08/2026) — **pointeur seulement,
+> PAS de réécriture complète cette fois** : le travail de cette session
+> (projet Data NBA, `Cadrage/Stats/`, et une proposition de paris persos
+> pilotés par la proba) est un chantier séparé de l'implémentation V1
+> ci-dessous (aucun écran/code appli touché), documenté en entier dans
+> `Cadrage/Stats/projet-data-nba.md` (§7-§16, bandeau 🔴 REPRISE en tête du
+> fichier avec la marche à suivre précise) et
+> `Cadrage/V1/SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` (statut
+> PROPOSITION, en pause). Signalé explicitement à l'utilisateur : ce fichier
+> fait 6750+ lignes portant sur l'état de l'appli elle-même, une vraie
+> réécriture intégrale n'a pas été refaite pour ce chantier hors-app — voir
+> `GAPS_OUVERTS.md` pour le résumé à jour de ce chantier. **Fin de session
+> du 20/08 : 8 modèles jetables construits/sauvegardés (`Cadrage/Stats/
+> models/*.joblib`), fetch des 2 saisons laissé tourner en tâche de fond,
+> réentraînement complet prévu à la reprise (commandes exactes dans le
+> bandeau de `projet-data-nba.md`).**
+>
+> Plus tôt (session du 18/08/2026) — **rattrapage de suivi :
 > ce fichier et `GAPS_OUVERTS.md` n'avaient pas suivi depuis le 15/08/2026**,
 > alors que `JOURNAL_SESSIONS.md` (append-only) était lui à jour jusqu'au
 > 17/08/2026 inclus — repéré en répondant à la question de l'utilisateur
@@ -6747,4 +6780,69 @@ console. `tsc`/`eslint`/`vitest` (37/37) propres.
 
 Committé et poussé (`bc7cc68`), avec le rattrapage doc SMTP (§2.91) dans
 le même commit.
+
+### 2.93 Ajustements visuels validés — implémentation, 6 commits (session du 20/08/2026)
+
+```text
+Suite d'une session de design séparée (Cowork, sans accès navigateur au
+site déployé, analyse + maquettes construites directement sur le code
+source et les vraies variables app/tokens.css/app/globals.css) :
+`Cadrage/DA/AJUSTEMENTS_VISUELS_20_08_2026.md` liste 4 chantiers validés en
+round 1 (§1-§4) + 4 de plus validés en round 2 après une demande explicite
+de pistes "innovantes" (§9/§14/§15/§16). Cette session implémente les
+chantiers marqués VALIDÉ, un commit par chantier, dans l'ordre suggéré au
+§6/§11 du document. Question posée avant de commencer : signaler si un
+chantier n'était pas assez précis pour être codé sans ambiguïté — aucun
+blocage réel, 2 petits appels de jugement pris et signalés (détail
+JOURNAL_SESSIONS.md).
+
+**Police — Sora + Oswald** (`4006514`) : `--font-ui` (Inter jamais
+chargée, Geist chargée mais jamais consommée, Arial héritage
+create-next-app en repli de fait) devient Sora ; `--font-display`/
+`--font-numeric` deviennent Oswald (condensée, chiffres/rangs) — les deux
+regroupées dans ce commit comme suggéré au §11 (aucune codée encore).
+Auto-hébergées via `next/font/google`. `<title>`/`description` corrigés
+dans la foulée (même fichier, changement trivial).
+
+**Login/Signup/Reset password** (`1572a90`) : restyling complet aux
+tokens (CSS Module partagé `components/auth/AuthScreen.module.css`),
+seuls écrans encore sur Tailwind par défaut. `photo-page` + `glass-card` +
+bloc marque au-dessus. Exception : état "Vérifie ta boîte mail" du reset
+reste sans carte (info pure). Message de reset réussi en
+`--color-text-secondary`, pas `--color-win` (vert réservé au résultat
+d'un match/pari, R-COL).
+
+**Profil joueur public** (`bfab0c5`) : `photo-page`/`glass-card` sur
+`/players/[userId]`, mise en conformité avec le reste de l'app (pas un
+nouveau pattern).
+
+**Profil / onglet Stats** (`cf70066`) : 5 sections enveloppées dans
+`CollapsibleCard` (Précision/Comparaison ouvertes par défaut, Évolution du
+classement/Paris/Badges repliées) pour réduire le scroll mobile.
+`CollapsibleCard` étendu (`count` optionnel, nouveau prop `defaultOpen`)
+pour ce nouvel usage — non prévu dans le document, décision prise en
+implémentant.
+
+**Bracket, badge "En cours"** (`ccf854e`) : `--color-accent` (orange, déjà
+pris par `.betButton` sur la même carte) remplacé par `--color-live`
+(rouge, déjà le bon token ailleurs pour ce statut). Teinte de fond/bordure
+de `.cardLive` retirée entièrement.
+
+**Ticker Jouer/Mes pronos — À L'ESSAI** (`0214914`) : seul chantier du lot
+pas marqué VALIDÉ définitivement — traité en commit séparé comme demandé,
+message de commit détaillant la marche à suivre pour le retirer. Nouveau
+composant `components/play/LiveTicker.tsx`, recompose seulement des
+données déjà affichées sur la page (scores `recentLocked` + prochain match
+non `VALIDATED`), décoratif (`aria-hidden`), défilement neutralisé sous
+`prefers-reduced-motion`.
+
+**Pas codé cette session** : §12 du document (photo de profil) —
+explicitement "non tranché, à reprendre avant de coder" PAR LE DOCUMENT
+LUI-MÊME (bucket Supabase Storage à créer, format/recadrage non décidés).
+§13 (identité de marque) — feuille de route, pas un chantier à coder.
+Voir `GAPS_OUVERTS.md` pour le suivi de ces 2 points.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres après
+CHAQUE commit. 6 commits poussés sur `main` (`a3f43ed..0214914`).
+```
 ```

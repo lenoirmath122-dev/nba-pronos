@@ -7586,3 +7586,359 @@ gardent `bet.description` (texte libre du joueur), non touché.
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (34 routes) propres. Détail
 en `ETAT_ACTUEL.md` §2.88.
 ```
+
+
+## Projet Data NBA — reprise, feature engineering, lien avec le scoring (19-20/08/2026)
+
+```text
+Hors périmètre app V1 — chantier séparé `Cadrage/Stats/` (récupération de
+stats NBA réelles pour, à terme, estimer des probabilités d'événements).
+Détail complet dans `Cadrage/Stats/projet-data-nba.md` (§7-§11) — ici,
+résumé des décisions et de ce qui a changé.
+
+**Reprise du fetch** : script `fetch_nba_data.py` relancé (2 saisons,
+2 641 matchs, box scores + avancé + play-by-play via `nba_api`). Tourne en
+tâche de fond sur plusieurs heures ; s'est arrêté une 1ère fois cette nuit
+(00h43) suite à une coupure réseau (DNS), pas une fin normale — relancé en
+début de session du 20/08. Le script skip les fichiers déjà téléchargés
+(pas de perte entre les relances).
+
+**Feature engineering — nouvelle feature `continuite_effectif_saison`**
+(`features_equipe`, `build_features.py`) : décidé de garder les moyennes
+glissantes à cheval sur 2 saisons (pas de reset au 1er match), complété par
+une mesure de mouvement d'effectif (part des minutes jouées cette saison,
+avant le match, par des joueurs qui étaient déjà dans le "coeur d'effectif"
+— 70 % des minutes — de la même équipe la saison précédente). Logique
+validée par un test synthétique isolé (pas encore vérifiée sur de vraies
+données 2025-26 au moment d'écrire, le fetch n'était pas allé aussi loin).
+
+**Tables cibles construites** (`build_targets.py`, nouveau script) :
+`labels_joueur` (pts/reb/ast/fg3m/stl/blk réels + double-double/
+triple-double par joueur/match) et `entrainement_matchs` (1 ligne/match,
+features domicile/extérieur côte à côte + home_win/ecart/total_points).
+Taux vérifiés plausibles (victoire domicile 54.1 %, double-double 6.9 %,
+triple-double 0.5 %, cohérents avec les vraies stats NBA).
+
+**Taxonomie réelle des paris trouvée** : la feuille `PARIS_PERSOS_
+CATEGORIES` de l'ancien classeur Excel (`Cadrage/DA/🏀 NBA Pronos -
+22_04_2026 (réponses) (1).xlsx`, suivi manuel des playoffs 2026 avant
+l'appli) contient 429 paris persos réels déjà catégorisés — a permis de
+prioriser sur des données réelles plutôt que deviner (catégorie dominante :
+seuil de points joueur, 138 mentions).
+
+**Décision produit importante (avec l'utilisateur)** : le barème pronos
+match/bracket (`T5`) ne bouge pas. Ce qui a de la valeur, c'est
+d'automatiser les **paris persos** : remplacer le choix manuel d'une
+difficulté (1-5) par une probabilité calculée par le modèle, qui
+détermine automatiquement le palier de points — sans toucher au moteur
+`scoreBet` de T5 §8 (reste intact, pur, figé), seulement à la SOURCE de
+`validated_difficulty`. Nouvelle spec dédiée :
+`Cadrage/V1/SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` — texte libre + IA
+de structuration, fallback sur la difficulté manuelle pour les paris non
+calculables (~1/3 de l'historique, barème du fallback pas encore tranché),
+probabilité figée à la validation (même logique que P10). **Spec écrite
+mais EN PAUSE** : les seuils entre paliers ne peuvent pas être calibrés
+sans un modèle qui tourne pour de vrai.
+
+**Explication du principe d'entraînement donnée à l'utilisateur avant tout
+code** (détail dans `projet-data-nba.md` §11) : apprentissage supervisé
+(features = avant le match, labels = résultat réel), distribution de
+probabilité plutôt que seuil fixe (un pari peut porter sur n'importe quel
+seuil), découpage temporel obligatoire (jamais aléatoire, anti-fuite),
+calibration comme critère de qualité (plus important que la précision
+brute ici, puisque la proba détermine des points).
+
+**Prochaine étape actée pour la reprise** : entraîner un 1er modèle
+jetable (régression sur les points d'un joueur, cas le plus fréquent),
+vérifié sur un cas connu (Jokić) avant d'aller plus loin. Rien codé côté
+modèle à ce stade — fetch de données toujours la seule chose qui tourne.
+```
+
+
+## Projet Data NBA — 8 modèles construits, persistance, bug DNP, correctif Poisson (20/08/2026, suite)
+
+```text
+Suite directe de l'entrée précédente (19-20/08). Détail complet dans
+Cadrage/Stats/projet-data-nba.md (§12-§16) — ici, résumé des étapes.
+
+**Modèle points affiné** : dispersion personnalisée par joueur ajoutée
+(`pts_ecarttype10`, déjà calculée depuis le début mais jamais branchée) à
+la place d'un écart-type global unique pour tout le monde — gain de
+calibration net (écarts de +4.8% max à ±1.4% max). Démo Tatum mise à jour
+(P(>40 pts) : 0.2% → 0.1%).
+
+**Persistance des modèles** : question posée par l'utilisateur ("où sont
+stockés ces modèles ?") — réponse à l'époque : nulle part, réentraînement
+à chaque exécution. Corrigé : tous les scripts sauvegardent maintenant sur
+disque via `joblib` (`Cadrage/Stats/models/*.joblib`), démo mise à jour
+pour CHARGER le modèle plutôt que le réentraîner.
+
+**2e catégorie : double-double/triple-double** (`train_doubledouble_
+model.py`, RandomForestClassifier). Bug de calibration réel trouvé au 1er
+essai : `class_weight="balanced_subsample"` (réflexe pour classe rare)
+faussait massivement les probas (+30 à +60 points de % d'écart) en
+rééquilibrant artificiellement l'entraînement — retiré, calibration
+excellente une fois enlevé (−0.1 à +3.4%).
+
+**Audit des stats oubliées** (question posée par l'utilisateur) : revue
+complète du classeur historique (~120 libellés de `Stat pari perso`, pas
+juste le top 20) — 2 vrais trous trouvés : **minutes jouées** (28
+mentions, jamais modélisées comme cible) et **contres/interceptions**
+(~11 mentions). Ajoutés (`stl`/`blk`/`minutes` dans `labels_joueur`,
+features correspondantes dans `features_joueur`). Nouveau script généralisé
+`train_stat_model.py` (même recette que les points, réutilisable) entraîne
+rebonds/passes/3-points/interceptions/contres/minutes en un coup.
+Pourcentages de tir (FG%/3P%/FT%, ~30 mentions) identifiés mais PAS
+traités — nécessitent une approche différente (stat de taux).
+
+**Bug de données réel trouvé et corrigé (impact large)** : ~19% des lignes
+de `box_scores` étaient des DNP (joueur sur la feuille de match mais non
+entré en jeu — l'API renvoie quand même une ligne, `minutes=NULL`, stats à
+0, champ `comment` explicite) chargées comme de VRAIES apparitions à 0
+point — faussait moyennes ET labels d'entraînement pour quasi tous les
+joueurs. Repéré en creusant une prédiction Tatum incohérente. Corrigé dans
+`load_to_sqlite.py` (filtre `minutes IS NOT NULL`), toute la chaîne
+reconstruite.
+
+**Résultats des 6 nouveaux modèles, très inégaux** : minutes = meilleur
+modèle du lot (R²=0.557, calibration quasi parfaite) ; rebonds/passes bons ;
+3-points/interceptions/contres avaient une calibration RÉELLEMENT dégradée
+sur le seuil "au moins 1" (+14 à +22 points de % d'écart) — cause
+identifiée : stats à faible valeur très souvent exactement nulles, la
+distribution normale (cloche symétrique) ne colle pas. **Corrigé** :
+distribution de Poisson pour ces 3 stats spécifiquement, vérifié
+empiriquement AVANT de généraliser (même prédiction du modèle, seule la
+lecture change) : écarts ramenés à ±1.4%. Vérifié aussi que Poisson
+n'aide PAS points/rebonds/passes (la normale personnalisée par joueur
+reste meilleure) — changement ciblé, pas généralisé partout. Chaque
+`.joblib` embarque maintenant sa `distribution` (normal/poisson).
+
+**Plan en 5 phases écrit pour la 1ère fois** (largeur des événements →
+données → affinage des modèles → contexte en direct → intégration appli),
+expliqué à l'oral plus tôt dans la session mais jamais couché sur papier
+avant ce point — maintenant dans `projet-data-nba.md` §16.
+
+**État en fin de session** : 8 modèles construits et sauvegardés, sur
+données encore PARTIELLES (le fetch des 2 saisons tournait toujours en
+tâche de fond). Décision de l'utilisateur : laisser le fetch finir en
+arrière-plan, reprendre dans une autre conversation — réentraînement
+complet sur les 2 saisons intégrales acté comme prochaine étape, marche à
+suivre précise (commandes exactes) écrite en tête de
+`projet-data-nba.md`. 2 interruptions réseau du fetch pendant la session
+(scripts bloqués silencieusement après coupure DNS, PID toujours actif
+mais plus aucune progression) — relancés manuellement à chaque fois, à
+surveiller si ça se reproduit.
+```
+
+
+## Projet Data NBA — fetch terminé + réentraînement complet enchaînés en fond (20/08/2026, fin de session)
+
+```text
+Suite immédiate de l'entrée précédente. L'utilisateur a quitté la
+conversation pour une autre pendant que le fetch continuait en tâche de
+fond, après avoir acté la séquence à enchaîner automatiquement une fois le
+fetch fini : reconstruire le pipeline puis réentraîner les 8 modèles sur
+les données complètes. Fait sans repasser par lui, sur notification de fin
+de tâche (2 étapes : reconstruction pipeline, puis réentraînement).
+
+Fetch terminé : 2641/2641 matchs, 0 échec. Pipeline reconstruit
+(56 938 lignes joueur/match, `entrainement_matchs` couvre les 2641 matchs
+en entier). 8 modèles réentraînés, amélioration nette partout, la plus
+marquée sur points (MAE 5.09→4.75, R² 0.428→0.497) et minutes (R²
+0.557→0.604, toujours le meilleur modèle). Aucune régression. Détail
+complet et tableau avant/après dans projet-data-nba.md §17.
+
+Le bandeau REPRISE en tête de projet-data-nba.md est à jour : la décision
+qui reste à prendre au prochain échange, c'est le choix entre compléter la
+largeur (pourcentages de tir) ou avancer en profondeur (affinage des
+distributions, pont temps réel) — rien tranché d'avance, volontairement.
+```
+
+
+## Ajustements visuels validés (session DA séparée) — implémentation (20/08/2026)
+
+```text
+Reprise d'une session de design séparée (Cowork, sans accès navigateur au
+site déployé — analyse + maquettes construites directement sur le code
+source et les vraies variables de app/tokens.css/app/globals.css, repo
+rendu public temporairement pour l'occasion). Décisions actées, point par
+point, consignées dans Cadrage/DA/AJUSTEMENTS_VISUELS_20_08_2026.md — cette
+session-ci n'a fait qu'implémenter ce qui y était déjà marqué VALIDÉ, dans
+l'ordre suggéré au §6/§11 du document, un commit par chantier. Avant de
+commencer, question explicite posée : signaler si un chantier n'était pas
+assez précis pour être codé sans ambiguïté — aucun blocage réel trouvé,
+2 petits appels de jugement pris et signalés a posteriori (voir plus bas).
+
+**1. Police — Sora + Oswald, fondation posée en premier** (`4006514`).
+Trois systèmes de police coexistaient sans jamais converger (`--font-ui:
+"Inter"` jamais chargée, Geist chargée via next/font mais jamais consommée,
+`body { font-family: Arial... }` héritage create-next-app qui l'emportait
+partout). Remplacés par Sora (`--font-ui`, texte de lecture) et Oswald
+(`--font-display`/`--font-numeric`, chiffres/rangs) via next/font/google,
+auto-hébergées — Oswald regroupée dans ce même commit avec Sora comme
+suggéré au §11 du document (les deux étaient encore à coder, même registre
+de changement de fondation). `<title>`/`description` ("Create Next App" →
+"NBA Pronos") glissés dans ce commit (même fichier, changement trivial,
+autorisé explicitement par le document plutôt qu'un commit dédié).
+
+**2. Login/Signup/Reset password — restyling complet** (`1572a90`). Ces 3
+écrans étaient les seuls encore sur des classes Tailwind par défaut
+(`bg-black`, bordure grise générique, `text-red-600`...) alors que
+PublicNav juste au-dessus est déjà aux tokens — rupture nette sur le tout
+premier écran vu par un nouveau venu. CSS Module partagé
+`components/auth/AuthScreen.module.css` (patron déjà utilisé ailleurs dans
+le repo pour des composants proches, ex. LeagueScopeChips.module.css) :
+fond photo-page, carte glass-card, bloc marque au-dessus. Exception actée
+respectée : l'état "Vérifie ta boîte mail" du reset reste SANS carte (info
+pure, pas une action). Message de reset réussi passé en
+`--color-text-secondary`, pas `--color-win` — le vert reste strictement
+réservé au résultat d'un match/pari (R-COL, règle du design system citée
+dans le document lui-même comme risque à éviter).
+Appel de jugement pris (non explicité dans le document) : le titre par
+écran ("Connexion", "Inscription"...) déplacé À L'INTÉRIEUR de la carte
+plutôt que laissé au-dessus — le document ne tranchait que le bloc marque,
+pas le sort du titre existant.
+
+**3. Profil joueur public** (`bfab0c5`). Mise en conformité pure (pas un
+nouveau pattern) : `photo-page`/`glass-card` posés sur `/players/[userId]`,
+seul écran (avec le Bracket global, laissé de côté) resté sans ce
+traitement. Ordre des sections, espacement, densité inchangés — exactement
+comme validé dans le document.
+
+**4. Profil / onglet Stats — sections repliables** (`cf70066`, hors §6,
+round 2 du document — §14). `CollapsibleCard` (déjà utilisé sur l'Accueil)
+réutilisé tel quel pour Précision/Comparaison/Évolution du
+classement/Paris/Badges — Précision/Comparaison ouvertes par défaut,
+le reste replié. `.totalHero` reste hors carte, toujours visible.
+Extension minimale du composant pour ce nouvel usage, pas anticipée dans le
+document : `count` devient optionnel (Précision/Comparaison/Évolution ne
+sont pas des listes, pas de nombre de lignes honnête à leur donner) ;
+`defaultOpen` ajouté, qui désactive aussi le point d'alerte "jamais
+ouverte" pour les cartes déjà ouvertes au chargement (rien à signaler).
+
+**5. Bracket — badge "En cours" en `--color-live`** (`ccf854e`, §15).
+`--color-accent` (orange) portait 2 sens différents sur la même carte :
+statut "en cours" ET action (`.betButton`, "Parier"). Aligné sur le token
+déjà utilisé correctement ailleurs pour ce statut (badge "EN DIRECT" de
+Jouer/Mes pronos) — réduit au minimum après itération dans la session DA :
+la teinte orange de fond/bordure de `.cardLive` est retirée entièrement
+(carte neutre standard), `.betButton` inchangé. Uniquement des
+déclarations de couleur, aucun changement de structure.
+
+**6. Ticker "en direct" sur Jouer/Mes pronos — commit séparé, À L'ESSAI**
+(`0214914`, §16). Seul chantier du lot marqué "à l'essai, réversible" dans
+le document plutôt que VALIDÉ définitivement — traité différemment comme
+demandé : commit à part, message de commit détaillant explicitement la
+marche à suivre pour le retirer si l'usage réel montre que ça distrait plus
+que ça n'ajoute d'énergie. Nouveau composant `components/play/LiveTicker.tsx`
+(aucun équivalent partagé avec le Bracket dans le code, seulement dans les
+maquettes de la session DA) : recompose des données déjà affichées sur la
+page (scores de `recentLocked` + prochain match non `VALIDATED`), aucune
+nouvelle donnée. Décoratif (`aria-hidden`), défilement neutralisé sous
+`prefers-reduced-motion` (R-MOT2, même patron que le pulse du point live de
+NodeCard). Nouveau token `--motion-ticker-duration` (app/tokens.css).
+
+**Non traité, volontairement** : §12 (photo de profil) marqué VALIDÉ dans
+le document mais explicitement "non tranché, à reprendre avant de coder"
+par le document lui-même (bucket Supabase Storage à créer, format/taille,
+recadrage) — pas implémenté, resterait un chantier à cadrer avant de
+coder, pas une ambiguïté de comportement à deviner. §13 (nom/logo/mascotte)
+— feuille de route explicitement pas un chantier à coder, comme demandé.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (36 routes) propres après
+CHAQUE commit (vérifié avant de committer, pas seulement en fin de
+session). 6 commits poussés sur `main` (`a3f43ed..0214914`).
+```
+
+
+## Projet Data NBA — pourcentages de tir, approche Binomiale validée sur FT% (20/08/2026, suite)
+
+```text
+Hors périmètre app V1, suite directe de la session Data NBA du même jour
+(voir entrées précédentes) — reprise après la session DA/implémentation
+ci-dessus. Décision prise au point ouvert laissé en fin de session
+précédente (largeur vs profondeur, §16/§17 de projet-data-nba.md) :
+compléter la largeur — pourcentages de tir (FG%/3P%/FT%), seul trou de
+catégorie du classeur encore non traité. Détail complet dans
+projet-data-nba.md §18 — ici, résumé.
+
+**Approche délibérément différente des 9 stats déjà modélisées** : un
+pourcentage n'est pas une valeur à régresser (contrairement aux points/
+rebonds/etc.), c'est un ratio réussites/tentatives. Principe retenu, validé
+d'abord sur UN SEUL cas (FT%, lancers francs — le plus stable
+statistiquement) avant de généraliser, même méthode que points puis les 6
+autres stats : 2 sous-modèles combinés par une loi Binomiale — tentatives
+régressées (RandomForestRegressor, même recette que les autres stats
+comptées) + taux de réussite estimé par rétrécissement bayésien
+(Beta-Binomial) du ratio observé sur 10 matchs vers la moyenne ligue (pas
+une régression — un petit échantillon comme 1/1 doit être ramené vers la
+moyenne, pas pris pour argent comptant).
+
+**Bug réel trouvé en validant, pas juste une hypothèse** : le modèle de
+tentatives, entraîné sur TOUS les matchs (y compris les soirs à 0
+tentative, comme le reste des stats comptées), sous-estimait `n_hat` de
+28% une fois comparé aux matchs où la calibration se mesure réellement
+(tentative réelle > 0 — un % n'existe pas sinon). Cause identifiée :
+biais de sélection — la calibration se mesure forcément sur une espérance
+CONDITIONNELLE (`E[fta | fta>0]`), différente de l'espérance
+INCONDITIONNELLE qu'apprend un modèle entraîné sur l'ensemble complet.
+Conséquence concrète : plus les tentatives prédites sont sous-estimées,
+plus un seul panier suffit à "dépasser 90%" — gonflait la proba des seuils
+hauts (écart de calibration jusqu'à +17.7% sur les matchs à volume élevé).
+**Corrigé** : le modèle de tentatives s'entraîne désormais UNIQUEMENT sur
+les matchs avec tentative réelle ≥ 1 — écart ramené à ±4-9% selon le
+seuil, plus de dérive systématique avec le seuil (contrairement à avant le
+correctif, où l'écart grandissait avec le seuil et le volume d'attempts).
+
+**Rétrécissement (`k`) testé empiriquement** (5 valeurs, même démarche que
+Poisson vs normale du 20/08 précédent) : différences minimes entre elles,
+signe que le biais de sélection ci-dessus dominait largement l'erreur, pas
+le manque de rétrécissement. `k=5` retenu (le plus proche du ratio brut
+non rétréci).
+
+**Écart résiduel non expliqué (±4-9%), pas bloquant pour juger l'approche
+validée** : hypothèse la plus probable, pas vérifiée — la variance réelle
+du % par match dépasse sans doute celle d'une Binomiale pure (tirs i.i.d.),
+même famille de problème que la correction Poisson déjà faite pour les
+stats à faible valeur. Candidat Phase 3, pas creusé cette session.
+
+Nouvelles colonnes ajoutées au pipeline existant (`build_targets.py` :
+`labels_joueur.ftm/fta` ; `build_features.py` : `features_joueur.
+fta_moy5/10`, `ftm_sum10`/`fta_sum10` — sommes BRUTES, pas un ratio déjà
+calculé, nécessaires au rétrécissement bayésien). Nouveau script
+`train_pct_model.py`, modèle sauvegardé `Cadrage/Stats/models/
+ft_pct.joblib`.
+
+**Pas encore tranché, décision à la reprise** : généraliser à FG%/3P%
+maintenant avec la même recette, ou creuser d'abord le résiduel de
+calibration (Phase 3) avant de dupliquer l'approche 2 fois de plus. Bandeau
+REPRISE de projet-data-nba.md mis à jour en conséquence.
+```
+
+
+## Projet Data NBA — généralisation FG%/3P%, Phase 1 (largeur) terminée (20/08/2026, suite immédiate)
+
+```text
+Décision prise sur le point ouvert de l'entrée précédente : généraliser
+FG%/3P% maintenant plutôt que creuser le résiduel FT% d'abord — le
+résiduel n'était pas jugé bloquant. `train_pct_model.py` reparamétré en
+fonction `run(stat, label_fr, makes_col, attempts_col, thresholds)` (même
+patron que `train_stat_model.py`), pipeline étendu (`build_targets.py` :
+fgm/fga/fg3a ; `build_features.py` : tentatives + sommes brutes pour les 3
+stats). Détail complet projet-data-nba.md §18 — ici, le résultat principal.
+
+**Résultat net : le biais de sélection découvert sur FT% pesait
+proportionnellement à la RARETÉ des tentatives.** FT% (~2-4 tentatives/
+match, le moins fréquent) reste le moins bien calibré (±4-9%). FG% (~10
+tentatives/match, quasi tout joueur qui joue en tente) quasi parfaitement
+calibré (±0-2.8%, le meilleur résultat de calibration du projet à ce jour,
+tous modèles confondus). 3P% intermédiaire (±1.4-7.8%). Rétrécissement
+bayésien (`k`) reconfirmé peu déterminant sur les 3 stats — le volume de
+tentatives domine, pas le choix de `k`.
+
+**Phase 1 (couverture des événements, plan §16) considérée TERMINÉE** :
+12 modèles au total (`Cadrage/Stats/models/*.joblib`), tous les trous de
+catégorie identifiés dans l'audit du classeur (§8/§15) sont couverts.
+Prochaine décision (Phase 3/4/5) à prendre à la reprise, pas tranchée
+d'avance — bandeau REPRISE et plan §16 de projet-data-nba.md mis à jour.
+```

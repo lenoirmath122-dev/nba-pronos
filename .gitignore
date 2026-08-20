@@ -46,3 +46,9 @@ Cadrage/V1/ecran-matchs-voieA.html
 
 # placeholders de dev du bandeau (§15.7) — jamais committés
 public/brand/*.dev.*
+
+# données NBA récupérées via nba_api (volumineux, régénérables) — cf. Cadrage/Stats/
+/Cadrage/Stats/data/
+# modèles entraînés (volumineux, régénérables via les scripts train_*.py)
+/Cadrage/Stats/models/
+__pycache__/

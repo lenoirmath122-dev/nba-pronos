@@ -1,0 +1,8 @@
+nba_api
+pandas
+requests
+numpy
+scikit-learn
+scipy
+joblib
+fpdf2

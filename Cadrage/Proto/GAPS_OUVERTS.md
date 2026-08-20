@@ -4,6 +4,95 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 20/08/2026 (session DA)** — **Ajustements visuels validés,
+> chantiers §1-§4/§9/§14/§15 de `Cadrage/DA/AJUSTEMENTS_VISUELS_20_08_2026.md`
+> implémentés et poussés, un commit par chantier** (détail dans
+> `JOURNAL_SESSIONS.md`, résumé condensé `ETAT_ACTUEL.md` §2.93).
+> - **Nouveau point ouvert, décision volontairement pas prise maintenant** :
+>   ticker "en direct" de Jouer/Mes pronos (§16 du document, `LiveTicker.tsx`)
+>   posé À L'ESSAI, pas un chantier figé — à observer en usage réel puis
+>   trancher (garder / retirer). Réversible sans effet de bord (aucune
+>   dépendance créée ailleurs dans le code sur sa présence — marche à suivre
+>   pour le retirer dans le message du commit `0214914`).
+> - **Reste ouvert, pas codé** : §12 du document (photo de profil) — VALIDÉ
+>   comme principe côté DA mais explicitement "non tranché, à reprendre
+>   avant de coder" PAR LE DOCUMENT LUI-MÊME : bucket Supabase Storage à
+>   créer (n'existe pas), format/taille acceptés, recadrage automatique vs.
+>   manuel. Pas implémenté cette session — cadrage à faire avant tout code.
+>   Noté aussi comme provisoire par le document : pourrait être reconsidéré
+>   une fois une identité de marque plus forte définie (§13, logo/mascotte).
+> - **§13 du document (nom définitif → logo/wordmark → mascotte)** :
+>   feuille de route explicitement pas un chantier à coder pour l'instant,
+>   seul l'ORDRE des 3 étapes est acté — rien sur leur contenu. À reprendre
+>   en détail dans une session dédiée quand l'utilisateur voudra s'y
+>   attaquer.
+> - **Bracket global (`/bracket`)** : confirmé de nouveau à laisser tel quel
+>   (déjà su, pas un nouveau point — cf. `.hero-banner-title`/
+>   `.hero-banner-subtitle` et Bracket format horizontal plus bas dans cette
+>   liste). Composant Button partagé toujours pas construit non plus (19+
+>   déclarations quasi identiques) — chantier de refactor identifié, pas
+>   pressant.
+
+> **État au 20/08/2026 (soir, suite)** — **Projet Data NBA : Phase 1
+> (largeur) TERMINÉE — pourcentages de tir FT%/FG%/3P% validés et
+> généralisés.** 🔴 **Reprise : voir le bandeau en tête de
+> `Cadrage/Stats/projet-data-nba.md`** (à jour). Toujours EN PAUSE avant
+> tout code appli, chantier séparé de l'app V1. Approche Binomiale
+> (tentatives régressées + taux rétréci vers la moyenne ligue) validée
+> d'abord sur FT% seul — **bug réel trouvé et corrigé en validant** : le
+> modèle de tentatives entraîné sur tous les matchs sous-estimait `n_hat`
+> de 28% une fois restreint aux matchs à tentative réelle (biais de
+> sélection), gonflant la proba des seuils hauts (+17.7%) — corrigé
+> (entraîné uniquement sur les matchs avec tentative réelle). Généralisé le
+> jour même à FG%/3P%, correctif intégré dès le départ. **Calibration très
+> inégale selon le volume de tentatives** : FG% quasi parfait (±0-2.8%, le
+> plus tenté des 3, meilleur résultat de calibration du projet à ce jour) ;
+> 3P% correct (±1.4-7.8%) ; FT% le moins bon (±4-9%, le moins tenté). Détail
+> complet `Cadrage/Stats/projet-data-nba.md` §18. **12 modèles au total**
+> (`Cadrage/Stats/models/*.joblib`), tous les trous de catégorie du
+> classeur couverts. **Pas encore tranché, à décider à la reprise** : Phase
+> 3 (affiner — résiduel de calibration, overdispersion probable pas
+> vérifiée), Phase 4 (contexte en direct) ou Phase 5 (intégration appli).
+
+> **État au 20/08/2026 (fin de session)** — **Projet Data NBA / paris persos
+> pilotés par la proba — chantier séparé de l'app V1, EN PAUSE avant tout
+> code appli.** 🔴 **Reprise : voir le bandeau en tête de
+> `Cadrage/Stats/projet-data-nba.md`** (marche à suivre précise, commandes
+> exactes). Spec app dédiée : `Cadrage/V1/SPEC_TECHNIQUE_PROBA_PARIS_
+> PERSOS_V0_1.md` (statut PROPOSITION). Détail complet dans
+> `JOURNAL_SESSIONS.md`, résumé ici :
+> - **Décidé (19/08)** : le barème pronos match/bracket (T5) ne bouge pas.
+>   Le chantier à valeur, c'est d'automatiser les paris persos — remplacer
+>   la difficulté choisie à la main par une probabilité calculée, qui
+>   détermine le palier de points, SANS toucher au moteur `scoreBet`
+>   (T5 §8, reste intact) — seule la source de `validated_difficulty`
+>   change.
+> - **8 modèles jetables construits, testés et sauvegardés sur disque**
+>   (`Cadrage/Stats/models/*.joblib`, via `joblib`) : points, double-double,
+>   triple-double, rebonds, passes, 3-points, interceptions, contres,
+>   minutes. Validés sur de vrais paris du classeur historique (Mitchell,
+>   Tatum). 2 bugs réels trouvés et corrigés en cours de route : ~19% de
+>   lignes DNP (joueur non entré en jeu) chargées comme de vraies
+>   apparitions à 0 (faussait tout) ; distribution normale mal adaptée aux
+>   stats rares/souvent nulles (3-points/contres/interceptions), remplacée
+>   par une distribution de Poisson pour ces 3-là spécifiquement (vérifié
+>   empiriquement, pas juste supposé).
+> - **Fetch des 2 saisons TERMINÉ (2641/2641, 0 échec) ET réentraînement des
+>   8 modèles sur données COMPLÈTES FAIT** — les deux se sont terminés
+>   après le départ de l'utilisateur vers une autre conversation, enchaînés
+>   automatiquement (séquence pré-actée avec lui). Amélioration nette
+>   partout (ex : points MAE 5.09→4.75, R² 0.428→0.497), aucune régression.
+>   Détail complet dans `projet-data-nba.md` §17.
+> - **Toujours ouvert, pas tranché** : les seuils exacts entre paliers de
+>   points côté appli (§5 de la spec dédiée) — besoin de probas sur
+>   beaucoup de paris réels pour calibrer, prématuré tant que la Phase 1
+>   (couverture des catégories) n'est pas plus avancée. Pourcentages de tir
+>   (FG%/3P%/FT%, ~30 mentions du classeur) : seul trou de catégorie encore
+>   non traité, nécessite une approche différente (stat de taux). Blessures/
+>   absences : toujours pas de source de données trouvée (§7).
+> - Plan complet en 5 phases (largeur → données → affinage → temps réel →
+>   intégration appli) écrit dans `projet-data-nba.md` §16.
+
 > **État au 19/08/2026** — **SMTP — RÉSOLU, testé en conditions réelles.**
 > Point ouvert depuis le 16/08 (voir bloc ci-dessous). Décision retenue :
 > SMTP Gmail perso (`smtp.gmail.com`, mot de passe d'application) plutôt
@@ -650,8 +739,9 @@
 - **Petits points d'intégration des tokens** (ouverts par la consolidation du
   21/07/2026, `app/tokens.css`, non bloquants) : contraste AA de
   `--color-trend` sur fond **clair** (une seule valeur donnée, §15.4, à
-  vérifier à l'usage réel) ; `@font-face` Inter **auto-hébergée** pas encore
-  ajoutée (l'asset n'est pas fourni, `--font-ui` retombe sur `system-ui`).
+  vérifier à l'usage réel). Police : RÉSOLU le 20/08/2026, autrement que
+  prévu ici — pas d'`@font-face` Inter auto-hébergée manuelle, mais Sora +
+  Oswald via `next/font/google` (ETAT_ACTUEL.md §2.93) — retiré d'ici.
   Asset réel du bandeau parquet : DÉPOSÉ le 29/07/2026
   (`public/brand/hero-parquet.jpg`, §2.45 `ETAT_ACTUEL.md`) — retiré d'ici.
 - **T8 — Déploiement : CHANTIER ENTIÈREMENT CLOS** (28/07/2026,
