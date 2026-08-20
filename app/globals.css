@@ -1,25 +1,6 @@
 @import "tailwindcss";
 @import "./tokens.css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-sora);
-  --font-mono: var(--font-sora);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 /* Bandes latérales (desktop, colonne centrée §ci-dessous) : couleur de fond
    réelle de l'app (respecte data-theme, posé sur <html> par app/layout.tsx)
    plutôt que le blanc/noir par défaut du navigateur derrière le body. */
@@ -27,9 +8,16 @@ html {
   background: var(--color-surface-base);
 }
 
+/* body reprend les MÊMES tokens que html (au lieu des --background/
+   --foreground du scaffold create-next-app, jamais branchés sur
+   [data-theme] — reliquat qui masquait le fond sombre de html en blanc sur
+   tout écran sans wrapper ScreenShell/.shell par-dessus, ex. Login/Signup/
+   Reset : bug réel constaté en prod le 20/08/2026). Écrans avec leur propre
+   .shell (ScreenShell, layout (app)) le repeignent déjà par-dessus — cette
+   règle ne sert de fond visible que là où rien d'autre ne le fait. */
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--color-surface-base);
+  color: var(--color-text-primary);
   font-family: var(--font-ui);
   /* Colonne centrée à mi-chemin entre mobile et desktop (demandé par
      l'utilisateur 28/07/2026) — sans effet sur mobile, où le viewport est
