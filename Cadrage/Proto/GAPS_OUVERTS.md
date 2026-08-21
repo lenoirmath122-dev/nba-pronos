@@ -4,33 +4,29 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 3, chantier Data NBA)** — **Architecture
-> d'hébergement tranchée, micro-service migré vers Supabase, prêt à
-> déployer** (`projet-data-nba.md` §23, `JOURNAL_SESSIONS.md` entrée
-> dédiée) :
-> - **Retiré** : hébergement à disque persistant abandonné au profit d'une
->   architecture "sans état" — le contexte joueur vit dans 3 nouvelles
->   tables Supabase (`stats_equipes`/`stats_joueurs`/`stats_box_scores`,
->   migration #31, ~140k lignes migrées et vérifiées), les modèles restent
->   embarqués dans l'image du service. Hébergeur choisi : **Google Cloud
->   Run** (free tier généreux, vrai serverless — carte bancaire requise à
->   l'inscription mais aucun coût tant que l'usage reste sous le seuil
->   gratuit, très large pour ce projet).
-> - **Retiré (effet de bord)** : les migrations #29 (`delete_bet`) et #30
->   (`drop_tutorial_seen_at`), bloquées depuis plusieurs jours par le
->   classifieur de permissions, sont passées sans blocage cette session et
->   sont désormais poussées sur la base réelle.
-> - **`Dockerfile` + guide de déploiement écrits**
->   (`Cadrage/Stats/service/DEPLOIEMENT_CLOUD_RUN.md`) — **pas encore
->   exécuté** : nécessite un compte Google Cloud (carte + `gcloud` CLI),
->   action que l'utilisateur doit faire lui-même.
-> - **Nouveaux points ouverts (reste pour clore la Phase 4)** :
->   (1) exécuter le déploiement Cloud Run (guide prêt, pas encore fait) ;
->   (2) fetch incrémental `nba_api` + job d'upsert Supabase quotidien
->   (remplace le stub `/refresh`, désormais inutile dans cette architecture
->   — le rafraîchissement peut écrire directement dans Supabase sans passer
->   par le service) ; (3) workflow GitHub Actions pour ce job quotidien.
->   Une fois faits, il restera encore 3 points indépendants de
+> **État au 21/08/2026 (suite 4, chantier Data NBA)** — **Micro-service
+> DÉPLOYÉ ET VÉRIFIÉ sur Google Cloud Run** (`projet-data-nba.md` §24,
+> `JOURNAL_SESSIONS.md` entrée dédiée) :
+> - **Retiré** : le déploiement Cloud Run (guide suivi de bout en bout par
+>   l'utilisateur) — service en ligne à
+>   `https://nba-pronos-stats-991522521713.europe-west1.run.app`, `/predict`
+>   testé et vérifié (résultats identiques aux tests locaux).
+> - **2 accrocs réels rencontrés et corrigés** : permission Secret Manager
+>   manquante pour le compte de service Cloud Run (`roles/secretmanager.
+>   secretAccessor` à accorder explicitement — absent du guide initial,
+>   ajouté après coup) ; commande `gcloud run deploy` multi-lignes mal
+>   découpée par PowerShell (1re révision déployée sans les identifiants
+>   Supabase, corrigée sans reconstruire via `gcloud run services update`
+>   en une seule ligne). `DEPLOIEMENT_CLOUD_RUN.md` mis à jour avec les 2
+>   correctifs pour un futur redéploiement/une autre machine.
+> - **Incident secret, sans conséquence retenue** : `SUPABASE_SERVICE_ROLE_KEY`
+>   exposée en clair dans la conversation (sélection IDE) en la fournissant
+>   pour Secret Manager — signalé immédiatement, rotation proposée et
+>   déclinée par l'utilisateur.
+> - **Reste pour clore la Phase 4** : fetch incrémental `nba_api` + job
+>   d'upsert Supabase quotidien (remplace le stub `/refresh`, désormais
+>   inutile dans cette architecture) ; workflow GitHub Actions pour ce job
+>   quotidien. Une fois faits, il restera encore 3 points indépendants de
 >   `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7 pour la Phase 5
 >   (distribution de probas pour calibrer les seuils, structuration IA du
 >   texte libre, barème du fallback).

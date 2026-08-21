@@ -8413,3 +8413,58 @@ PERSOS_V0_1.md` §7).
 
 Détail complet : `projet-data-nba.md` §23, bandeau REPRISE mis à jour.
 ```
+
+
+## Projet Data NBA : déploiement Cloud Run réel, service EN LIGNE (21/08/2026, suite)
+
+```text
+Suite immédiate de l'entrée précédente -- l'utilisateur suit
+`service/DEPLOIEMENT_CLOUD_RUN.md` de bout en bout, guidé pas à pas (aucune
+commande gcloud lancée depuis cet environnement, pas de compte GCP ici --
+tout exécuté par l'utilisateur dans son propre terminal PowerShell).
+
+Étapes suivies : installation `gcloud` CLI (`winget install
+Google.CloudSDK`, `--include-unknown` nécessaire à cause d'un résidu d'une
+install précédente) ; `gcloud init` (projet créé : `nba-pronos-stats-2026`) ;
+liaison d'un compte de facturation via la console web (obligatoire même
+pour le free tier, pas documenté dans la 1re version du guide -- ajouté
+après coup) ; activation des 3 APIs ; clé Supabase stockée dans Secret
+Manager.
+
+**Incident réel, secret exposé** : `SUPABASE_SERVICE_ROLE_KEY` apparue en
+clair dans la conversation (sélection IDE collée avec la commande gcloud).
+Signalé immédiatement, rotation proposée -- déclinée par l'utilisateur
+("pas nécessaire cette fois"), la clé étant déjà stockée avec succès dans
+Secret Manager au moment du signalement.
+
+**2 bugs réels rencontrés en déployant, corrigés en conditions réelles** :
+1. Commande `gcloud run deploy` multi-lignes (continuation par backtick
+   PowerShell, copiée du guide) mal découpée -- le déploiement s'est
+   terminé AVANT que `--set-secrets` soit pris en compte, ce flag exécuté
+   comme une commande séparée (erreur de syntaxe). Résultat : 1re révision
+   déployée sans les identifiants Supabase. Détecté en testant `/health`
+   (OK, ne dépend pas de Supabase) vs `/predict` (500). Corrigé sans
+   reconstruire l'image, `gcloud run services update` en une seule ligne.
+2. Permission Secret Manager manquante : le compte de service par défaut
+   de Cloud Run n'a pas accès aux secrets sans octroi explicite
+   (`roles/secretmanager.secretAccessor`) -- absent du guide initial,
+   ajouté après coup avec la commande `gcloud secrets
+   add-iam-policy-binding` correspondante.
+
+`service/DEPLOIEMENT_CLOUD_RUN.md` corrigé avec ces 2 accrocs (commandes en
+une seule ligne, étape IAM ajoutée, liaison facturation documentée) --
+c'est la version qui marche, plus la version originale.
+
+**Vérifié en conditions réelles, service EN LIGNE** :
+`https://nba-pronos-stats-991522521713.europe-west1.run.app` -- `/predict`
+testé (Tatum FT% 26.8%, Jokić dd 75.1%, Curry pts vs LAL 48.7%), résultats
+identiques aux tests locaux d'avant déploiement. Le pont Next.js (Vercel)
+<-> Python (Cloud Run) fonctionne bout en bout pour la 1ère fois.
+
+**Reste à faire pour clore la Phase 4** : fetch incrémental `nba_api` +
+upsert quotidien Supabase (remplace le stub `/refresh`) ; workflow GitHub
+Actions pour ce job. Puis Phase 5 (3 points de `SPEC_TECHNIQUE_PROBA_PARIS_
+PERSOS_V0_1.md` §7).
+
+Détail complet : `projet-data-nba.md` §24, bandeau REPRISE mis à jour.
+```
