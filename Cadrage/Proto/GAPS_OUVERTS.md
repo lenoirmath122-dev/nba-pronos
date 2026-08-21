@@ -13,6 +13,23 @@
 > explication. Testé avec de vrais appels Claude Opus 5, 3/3 cas corrects.
 > `tsc`/`eslint`/`vitest`/`next build` propres. Ne change rien aux points
 > ouverts ci-dessous (toujours bloquants).
+>
+> **Nouvelle piste notée le 21/08/2026, PAS pour maintenant** : l'utilisateur
+> demande de noter l'idée d'utiliser l'IA pour aider à la RÉSOLUTION des
+> paris une fois le match terminé (suggérer gagné/perdu) — rejoint
+> l'idée déjà écrite dans `decisions_0.2.4 §10` ("Une IA pourrait
+> PRÉ-REMPLIR une suggestion gagné/perdu"), jamais construite. Distinct de
+> la structuration à la soumission (Phase 5 en cours) — à reprendre
+> explicitement plus tard, pas dans la continuité immédiate de ce chantier.
+>
+> **Coût Claude Opus 5, suivi** : 0,23$ consommés sur les 5$ de crédit du
+> 2e compte Anthropic (au 21/08/2026) — l'utilisateur considère ces 5$
+> comme un budget de test, et envisage un modèle gratuit (ex. Gemini) "au
+> moins pour le début" s'il s'épuise trop vite. Décision explicitement
+> reportée à ce moment-là, pas maintenant (voir échange du 21/08/2026 —
+> switch déconseillé pour l'instant : le prompt actuel est testé/affiné
+> spécifiquement pour Claude Opus 5, un changement de fournisseur
+> demanderait de tout revalider).
 
 > **État au 21/08/2026 (suite 11, chantier Data NBA)** — **Contexte de
 > match ajouté à la structuration IA, 2 bugs réels corrigés**
