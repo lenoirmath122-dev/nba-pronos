@@ -43,6 +43,7 @@ SOMMAIRE = [
     "14. Paris personnalises pilotes par l'IA (Phase 5)",
     "15. Suivre l'etat du projet",
     "16. Prochaines etapes",
+    "17. Enchainements courants (que faire selon l'objectif)",
 ]
 
 
@@ -200,7 +201,7 @@ def build() -> Readme:
         "    train_pct_model.py        <- FT%/FG%/3P% (3 modeles, approche taux)",
         "    demo_pari_reel.py         <- demo cablee en dur (Tatum, points)",
         "    tester_modele.py          <- teste N'IMPORTE quel modele en ligne de commande",
-        "    calibrate_difficulty_thresholds.py <- calibre les seuils proba->palier (S14)",
+        "    calibrate_difficulty_thresholds.py <- calibre les seuils proba->palier (S16/S17)",
         "    generate_readme.py        <- regenere ce document",
         "    requirements.txt",
         "  service/                  <- micro-service FastAPI, deploye sur Cloud Run (S12)",
@@ -573,6 +574,45 @@ def build() -> Readme:
         "la RESOLUTION des paris une fois un match termine (idee notee, pas "
         "encore construite), repli automatique des cartes apres soumission "
         "d'un pari/prono (piste UX, pas encore construite).",
+    ])
+
+    pdf.add_page()
+
+    # ---- Section 17 ----
+    pdf.h2("17. Enchainements courants (que faire selon l'objectif)")
+    pdf.body(
+        "Recapitulatif des commandes des sections precedentes, regroupees par "
+        "objectif plutot que par script -- pour trouver directement quoi "
+        "lancer sans reparcourir tout le document."
+    )
+    pdf.bullets([
+        "Verifier vite un pari sur un joueur : tester_modele.py --joueur ... "
+        "--stat ... --seuil ... (S11).",
+        "Ajouter une nouvelle saison / rattraper du retard local : dans "
+        "l'ordre, fetch_nba_data.py -> load_to_sqlite.py -> build_features.py "
+        "-> build_targets.py -> train_points_model.py -> "
+        "train_doubledouble_model.py -> train_stat_model.py -> "
+        "train_pct_model.py (S4-S9).",
+        "Faire beneficier l'app en prod des derniers matchs joues : rien a "
+        "faire, refresh_daily.py tourne seul chaque jour a 10h (GitHub "
+        "Actions) -- en cas de doute, verifier l'onglet Actions du depot (S13).",
+        "Reentrainer les modeles sur les donnees les plus recentes : "
+        "build_features.py -> build_targets.py -> les 4 train_*.py (S8/S9), "
+        "PUIS redeployer (point suivant) pour que la prod utilise les nouveaux "
+        ".joblib.",
+        "Redeployer apres une modification de code du service : depuis "
+        "Cadrage/Stats/, gcloud run deploy nba-pronos-stats --source . "
+        "--region europe-west1 -- necessaire des que app.py, "
+        "supabase_context.py ou tester_modele.py changent (S12).",
+        "Recalibrer les seuils proba -> palier de difficulte : "
+        "calibrate_difficulty_thresholds.py, puis reporter les seuils "
+        "affiches dans lib/ai/difficultyTiers.ts (cote app Next.js, pas ce "
+        "dossier).",
+        "Reinitialiser Supabase depuis zero (rare, deja fait une fois) : "
+        "backfill_supabase.py -- ECRASE entierement les tables stats_* "
+        "(S12/S13).",
+        "'python' non reconnu dans le terminal : utiliser le chemin complet "
+        "vers python.exe, cf S6.",
     ])
 
     return pdf
