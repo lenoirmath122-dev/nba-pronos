@@ -45,7 +45,7 @@ export async function predictOverUnder(
   playerName: string,
   stat: StatCode,
   threshold: number | null,
-  comparison: "OVER" | "UNDER",
+  comparison: "OVER" | "UNDER" | null, // null pour dd/td (NO_THRESHOLD_STATS) -- pas de sens OVER/UNDER, ignoré ci-dessous
 ): Promise<StatsPredictResult | null> {
   const body: Record<string, unknown> = { joueur: playerName, stat };
   if (!NO_THRESHOLD_STATS.has(stat)) {

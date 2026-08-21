@@ -3,6 +3,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
 import { predictOverUnder } from "./statsService";
 import { probaToDifficulty } from "./difficultyTiers";
+import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 
 // Orchestre la structuration IA + le calcul de proba pour UN pari, à la
 // soumission (SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §3/§6, décidé le
@@ -15,13 +16,22 @@ import { probaToDifficulty } from "./difficultyTiers";
 export async function structureAndScoreBet(betId: string, description: string): Promise<void> {
   try {
     const structuration = await structureBet(description);
-    if (!structuration || !structuration.calculable || !structuration.player_name || !structuration.stat || !structuration.comparison) {
+    if (!structuration || !structuration.calculable || !structuration.player_name || !structuration.stat) {
+      return;
+    }
+    // comparison est légitimement null pour dd/td (NO_THRESHOLD_STATS,
+    // probabilité directe) -- ne l'exiger que pour les stats à seuil. Bug
+    // réel trouvé en testant le 21/08/2026 : la condition d'origine
+    // exigeait comparison partout, faisant tomber TOUS les paris dd/td en
+    // "non calculable" alors qu'ils le sont bel et bien.
+    const stat = structuration.stat as StatCode;
+    if (!NO_THRESHOLD_STATS.has(stat) && !structuration.comparison) {
       return;
     }
 
     const prediction = await predictOverUnder(
       structuration.player_name,
-      structuration.stat as Parameters<typeof predictOverUnder>[1],
+      stat,
       structuration.threshold,
       structuration.comparison,
     );

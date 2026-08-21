@@ -2,30 +2,43 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 6 — Phase 5 démarrée, codée)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 7 — Phase 5 vérifiée hors-appli)
 >
-> **Structuration IA + raccordement réel dans l'appli — CODÉ, PAS ENCORE
-> VÉRIFIÉ AU CLIC** (§27, voir aussi `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md`
-> §7bis). Un pari perso soumis passe désormais par Claude Opus 5
-> (extraction joueur/stat/seuil) puis le micro-service Cloud Run (§24) pour
-> une vraie proba, figée à la soumission — best-effort de bout en bout,
-> aucune panne de cette chaîne ne peut bloquer une soumission de pari.
-> Nouvelle migration (`bets` +7 colonnes + RPC `update_bet_structuration`),
-> 5 nouveaux fichiers `lib/ai/*`, `submitBet`/écran admin de validation mis
-> à jour. `tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes) propres,
-> migration poussée sur la base réelle.
-> - **Reste, action de l'utilisateur** : ajouter `ANTHROPIC_API_KEY` (clé
->   Anthropic Console, jamais collée dans le chat) et `STATS_SERVICE_URL`
->   (URL du service Cloud Run, non sensible) sur Vercel + `.env.local` —
->   sans ça, la structuration reste silencieusement inactive (repli manuel
->   existant, aucune casse). Puis vérifier au clic (poser un vrai pari
->   perso calculable, voir la suggestion apparaître côté admin).
+> **Structuration IA testée en conditions réelles (hors interface, pas
+> d'accès navigateur) — 1 bug réel trouvé et corrigé, chaîne complète
+> confirmée fonctionnelle** (§28). Script de vérification autonome (Claude
+> Opus 5 + micro-service réels, `.env.local` chargé, pas de mock) sur 4 cas
+> : pari calculable simple (Tatum >25 pts, proba 27%, palier 4), pari fun
+> non calculable (rejeté correctement), pari UNDER (Curry, proba 72% après
+> inversion), et un pari dd/td. **Bug réel** : `structureAndScoreBet.ts`
+> exigeait `comparison` non-null pour TOUT pari calculable -- or dd/td
+> (double-double/triple-double) ont légitimement `comparison: null` (pas de
+> notion OVER/UNDER), donc TOUS les paris dd/td tombaient à tort en "non
+> calculable". Corrigé (`comparison` requis seulement hors `NO_THRESHOLD_
+> STATS`) -- revérifié, Jokić triple-double calcule bien une proba (18,3%,
+> palier 5).
+> - **Incident billing en cours de route** : 1er compte Anthropic sans
+>   crédit ("credit balance too low"), paiement refusé plusieurs fois
+>   (probablement pré-autorisation bancaire) -- l'utilisateur a créé un 2e
+>   compte Anthropic, chargé 5$, ça a débloqué. Nouvelle clé mise en place
+>   directement par l'utilisateur (jamais collée dans le chat).
+> - `tsc`/`eslint`/`vitest` (37/37) propres après le correctif.
+> - **Reste avant vérification complète** : test au clic dans l'interface
+>   réelle (poser un vrai pari perso, voir la suggestion apparaître côté
+>   admin) -- pas fait, cet environnement n'a pas d'accès navigateur ; le
+>   script de vérification a testé la logique/les appels externes réels
+>   mais pas le passage par `submitBet`/l'écran admin lui-même.
 > - **Seuils proba->palier volontairement provisoires** ("à vue de nez",
 >   décidé le 21/08/2026) — point 2 de la spec toujours pas fait, à
 >   recalibrer une fois assez de paris réels structurés.
 > - **Point 5 (barème du fallback) volontairement pas tranché** — statu quo
 >   assumé (mécanisme manuel existant inchangé pour les paris non
 >   calculables), question "faut-il un barème séparé ?" reste ouverte.
+>
+> Plus tôt (état au 21/08/2026, suite 6 — Phase 5 démarrée, codée) —
+> Structuration IA + raccordement réel codés (§27), migration poussée,
+> `tsc`/`eslint`/`vitest`/`next build` propres avant le test en conditions
+> réelles ci-dessus.
 >
 > Plus tôt (état au 21/08/2026, suite 5 — Phase 4 totalement close) —
 > **Secrets GitHub Actions ajoutés par l'utilisateur, workflow lancé
@@ -1449,4 +1462,71 @@ par une requête directe). **PAS ENCORE vérifié au clic** -- nécessite
 - Vérification en conditions réelles (poser un vrai pari perso calculable,
   observer la suggestion admin) -- bloquée sur la configuration des 2
   variables d'environnement.
+```
+
+## 28. Structuration IA vérifiée hors-interface, 1 bug réel corrigé (21/08/2026, suite)
+
+```text
+Suite de §27 : les 2 variables d'environnement configurées par
+l'utilisateur (.env.local + Vercel), reste à vérifier que la chaîne
+fonctionne réellement. Aucun accès navigateur dans cet environnement --
+au lieu d'attendre un test au clic, vérification directe des nouveaux
+appels externes (Claude Opus 5 + micro-service Cloud Run) via un script
+autonome jetable, reproduisant exactement la logique de structureBet.ts/
+statsService.ts (obligé de dupliquer plutôt qu'importer : "server-only"
+bloque l'exécution hors build Next.js, erreur explicite si on essaie).
+
+**Incident billing en route, résolu par l'utilisateur** : 1er essai avec
+la clé du compte Anthropic initial -- `BadRequestError 400 "Your credit
+balance is too low"`. L'utilisateur tente d'acheter des crédits (6$),
+refusé plusieurs fois par sa banque malgré un solde suffisant (20€) --
+diagnostic partagé (probable pré-autorisation bancaire plus élevée que le
+montant réel, carte à plafond bas, ou blocage paiement international),
+pistes de contournement proposées (autre carte, contact banque, 3D
+Secure). L'utilisateur choisit finalement de créer un 2e compte Anthropic
+et d'y charger 5$ avec succès -- nouvelle clé mise en place directement
+dans `.env.local` par l'utilisateur (jamais collée dans le chat, confirmé
+au passage : la fédération d'identité proposée par la console Anthropic
+n'est PAS adaptée ici, ne fonctionne qu'avec GCP/AWS/Azure/GitHub Actions
+comme fournisseur, pas Vercel -- clé API statique confirmée comme le bon
+choix pour ce projet).
+
+**Script de test, 4 cas réels** :
+1. "Jayson Tatum marque plus de 25 points ce soir" -> calculable, pts>25,
+   OVER -- proba 27% (Tatum sous sa moyenne récente), palier 4.
+2. "L'entraîneur des Celtics criera au moins 3 fois sur l'arbitre" ->
+   calculable=false, raisonnement correct (hors-terrain, aucune des 12
+   stats) -- comportement attendu, repli manuel.
+3. "Nikola Jokic fait un triple-double" -> calculable=true, stat=td,
+   threshold=null, comparison=null (extraction IA correcte) -- **mais
+   rejeté à tort comme non calculable** par le code (voir bug ci-dessous).
+4. "Stephen Curry réussit moins de 4 tirs à 3 points" -> calculable, UNDER
+   -- proba 72% (1 - 28% côté service), palier 2. Confirme que
+   l'approximation UNDER fonctionne mécaniquement.
+
+**Bug réel trouvé et corrigé** : `structureAndScoreBet.ts` exigeait
+`structuration.comparison` non-null pour TOUT pari `calculable=true` --
+mais dd/td (`NO_THRESHOLD_STATS`) ont légitimement `comparison: null` par
+design (probabilité directe, pas de notion OVER/UNDER, exactement ce que
+`structureBet.ts` demande à l'IA d'extraire). Conséquence avant correctif :
+**tous les paris double-double/triple-double, pourtant calculables,
+tombaient systématiquement en repli manuel** -- pas un crash, juste une
+fonctionnalité silencieusement inopérante pour 2 des 12 stats gérées.
+Corrigé : `comparison` requis seulement pour les stats hors
+`NO_THRESHOLD_STATS` (`structureAndScoreBet.ts`), type de
+`predictOverUnder()` élargi à `"OVER" | "UNDER" | null`
+(`statsService.ts`, la fonction gérait déjà correctement `null` en
+pratique -- seul le type et le garde-fou appelant étaient faux).
+Revérifié après correctif : cas 3 calcule bien une proba (18,3%, palier
+5, cohérent avec un joueur qui ne fait pas souvent de triple-double).
+
+`tsc`/`eslint`/`vitest` (37/37) propres après le correctif. Script de test
+jetable supprimé après usage (jamais commité).
+
+**Reste avant de considérer la Phase 5 pleinement vérifiée** : test au
+clic dans l'interface réelle (poser un vrai pari perso, observer la
+suggestion sur l'écran admin de validation) -- la logique/les appels
+externes sont confirmés fonctionnels, mais pas le passage complet par
+`submitBet` et le rendu de `ValidationBetCard.tsx`, jamais testés
+ensemble faute d'accès navigateur dans cet environnement.
 ```

@@ -8617,3 +8617,54 @@ statu quo assumé).
 Détail complet : projet-data-nba.md §27,
 SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §7bis (nouvelle section).
 ```
+
+
+## Structuration IA vérifiée hors-interface, 1 bug réel corrigé (21/08/2026, suite)
+
+```text
+Suite directe de l'entrée précédente -- variables d'environnement
+configurées par l'utilisateur, vérification que la chaîne fonctionne
+réellement. Pas d'accès navigateur dans cet environnement -- vérification
+directe des appels externes réels (Claude Opus 5 + micro-service Cloud
+Run) via un script jetable dupliquant la logique de structureBet.ts/
+statsService.ts (obligé, "server-only" bloque l'exécution hors build
+Next.js).
+
+Incident billing en route de l'utilisateur : 1er compte Anthropic sans
+crédit, paiement de 6$ refusé plusieurs fois malgré un solde suffisant
+(probable pré-autorisation bancaire ou blocage carte) -- résolu en créant
+un 2e compte Anthropic, 5$ chargés avec succès. Nouvelle clé mise en place
+directement par l'utilisateur, jamais collée dans le chat. Confirmé au
+passage : la fédération d'identité proposée par la console Anthropic ne
+convient pas ici (GCP/AWS/Azure/GitHub Actions seulement, pas Vercel) --
+clé API statique est le bon choix pour ce projet.
+
+Script de test, 4 cas réels : pari calculable simple (Tatum >25 pts, proba
+27%, palier 4) ; pari fun non calculable (rejeté correctement, bon
+raisonnement) ; pari UNDER (Curry, proba 72% après inversion 1-28%,
+confirme l'approximation) ; pari triple-double (Jokić) -- extraction IA
+correcte (calculable=true, comparison=null, normal pour dd/td) mais
+**rejeté à tort par le code**.
+
+Bug réel trouvé et corrigé : structureAndScoreBet.ts exigeait
+`comparison` non-null pour TOUT pari calculable -- or dd/td ont
+légitimement comparison=null par design (probabilité directe, pas de
+notion OVER/UNDER). Conséquence avant correctif : tous les paris double-
+double/triple-double, pourtant calculables, tombaient systématiquement en
+repli manuel silencieux -- pas un crash, une fonctionnalité inopérante
+pour 2 des 12 stats gérées. Corrigé (comparison requis seulement hors
+NO_THRESHOLD_STATS ; type de predictOverUnder() élargi à "OVER"|"UNDER"|
+null dans statsService.ts). Revérifié : Jokić triple-double calcule
+maintenant une vraie proba (18,3%, palier 5).
+
+tsc/eslint/vitest (37/37) propres après le correctif. Script de test
+jetable supprimé après usage, jamais commité.
+
+Reste avant de considérer la Phase 5 pleinement vérifiée : test au clic
+dans l'interface réelle (soumettre un vrai pari perso, observer la
+suggestion sur l'écran admin) -- logique et appels externes confirmés,
+mais le passage complet par submitBet + le rendu de ValidationBetCard.tsx
+jamais testés ensemble faute d'accès navigateur.
+
+Détail complet : projet-data-nba.md §28.
+```

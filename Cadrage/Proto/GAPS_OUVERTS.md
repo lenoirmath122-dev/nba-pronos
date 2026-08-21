@@ -4,23 +4,23 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 7, chantier Data NBA)** — **Phase 5
-> démarrée : structuration IA + raccordement réel codés**
-> (`projet-data-nba.md` §27, `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md`
-> §7bis, `JOURNAL_SESSIONS.md` entrée dédiée) :
-> - **Retiré** : le raccordement lui-même — un pari perso soumis passe
->   désormais par Claude Opus 5 (extraction joueur/stat/seuil) puis le
->   micro-service Cloud Run pour une vraie proba, figée à la soumission,
->   avec repli manuel best-effort si n'importe quel maillon échoue.
-> - **Nouveau point ouvert, bloquant pour vérifier au clic** : ajouter
->   `ANTHROPIC_API_KEY` (clé Anthropic Console, jamais collée dans le chat)
->   et `STATS_SERVICE_URL` (URL du service Cloud Run, non sensible) sur
->   Vercel + `.env.local` — action de l'utilisateur, pas encore faite. Sans
->   ça, la structuration reste silencieusement inactive (pas d'erreur
->   visible, juste le flux manuel existant qui continue de s'appliquer).
-> - **Une fois fait** : vérifier en conditions réelles (poser un vrai pari
->   perso calculable, ex. "Tatum plus de 25 points", observer la suggestion
->   apparaître sur l'écran admin de validation).
+> **État au 21/08/2026 (suite 8, chantier Data NBA)** — **Structuration IA
+> vérifiée hors-interface, 1 bug réel corrigé** (`projet-data-nba.md` §28,
+> `JOURNAL_SESSIONS.md` entrée dédiée) :
+> - **Retiré** : `ANTHROPIC_API_KEY`/`STATS_SERVICE_URL` configurées par
+>   l'utilisateur (2e compte Anthropic après un incident de facturation sur
+>   le 1er). Chaîne complète (Claude Opus 5 + micro-service Cloud Run)
+>   vérifiée fonctionnelle via un script de test sur 4 cas réels.
+> - **Retiré** : bug réel trouvé et corrigé — `structureAndScoreBet.ts`
+>   exigeait `comparison` non-null pour tout pari calculable, mais dd/td
+>   (double-double/triple-double) ont légitimement `comparison: null` —
+>   tous les paris sur ces 2 stats tombaient à tort en repli manuel,
+>   silencieusement (pas de crash). Corrigé, revérifié.
+> - **Reste, bloquant pour clore complètement la Phase 5** : test au clic
+>   dans l'interface réelle (soumettre un vrai pari perso, observer la
+>   suggestion sur l'écran admin) — la logique et les appels externes sont
+>   confirmés fonctionnels, mais `submitBet` + `ValidationBetCard.tsx`
+>   jamais testés ensemble faute d'accès navigateur dans cet environnement.
 > - **Restent ouverts, assumés explicitement (pas oubliés)** : seuils
 >   proba->palier toujours provisoires ("à vue de nez", point 2 de la spec,
 >   jamais calibrés sur un vrai échantillon) ; barème du fallback pour les
