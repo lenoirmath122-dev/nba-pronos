@@ -75,7 +75,7 @@ export async function saveDraftBet(input: SaveBetInput): Promise<ActionResult> {
 export async function submitBet(input: SaveBetInput): Promise<ActionResult> {
   const result = await callSaveBet(input, true);
   if (result.success) {
-    await structureAndScoreBet(result.betId, input.description);
+    await structureAndScoreBet(result.betId, input.description, input.seriesId);
     revalidatePath("/play");
     revalidatePath("/play/results");
     revalidatePath("/home");

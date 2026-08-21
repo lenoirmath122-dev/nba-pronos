@@ -13,9 +13,36 @@ import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 // est avalée silencieusement : le pari reste soumis normalement, avec le
 // mécanisme manuel existant (difficulté proposée/validée à la main) comme
 // seul repli, jamais bloquant pour le joueur.
-export async function structureAndScoreBet(betId: string, description: string): Promise<void> {
+
+/** Bug réel corrigé le 21/08/2026 : sans le contexte du match, l'IA validait
+ *  des paris sur des joueurs qui ne jouent même pas dans le match visé
+ *  (ex. "Jayson Tatum" sur un match Nets-Hornets). Résolu depuis
+ *  series.team1_id/team2_id -- null si pas encore connus (série pas
+ *  déterminée), structureBet() se rabat alors sur l'ancien comportement
+ *  sans vérification d'équipe. */
+async function resolveMatchTeamNames(
+  supabase: Awaited<ReturnType<typeof getServerClient>>,
+  seriesId: string,
+): Promise<[string, string] | null> {
+  const { data: series } = await supabase
+    .from("series")
+    .select("team1_id, team2_id")
+    .eq("id", seriesId)
+    .maybeSingle<{ team1_id: string | null; team2_id: string | null }>();
+  if (!series?.team1_id || !series?.team2_id) return null;
+
+  const { data: teams } = await supabase.from("teams").select("id, name").in("id", [series.team1_id, series.team2_id]);
+  const nameById = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
+  const name1 = nameById.get(series.team1_id);
+  const name2 = nameById.get(series.team2_id);
+  return name1 && name2 ? [name1, name2] : null;
+}
+
+export async function structureAndScoreBet(betId: string, description: string, seriesId: string): Promise<void> {
   try {
-    const structuration = await structureBet(description);
+    const supabase = await getServerClient();
+    const teamNames = await resolveMatchTeamNames(supabase, seriesId);
+    const structuration = await structureBet(description, teamNames);
     if (!structuration || !structuration.calculable || !structuration.player_name || !structuration.stat) {
       return;
     }
@@ -39,7 +66,6 @@ export async function structureAndScoreBet(betId: string, description: string): 
 
     const suggestedDifficulty = probaToDifficulty(prediction.proba);
 
-    const supabase = await getServerClient();
     await supabase.rpc("update_bet_structuration", {
       p_bet_id: betId,
       p_structured_player_name: structuration.player_name,

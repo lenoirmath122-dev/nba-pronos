@@ -2,8 +2,30 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 9 — auto-validation ajoutée)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 10 — contexte de match ajouté)
 >
+> **2 bugs réels supplémentaires trouvés par l'utilisateur en testant
+> "Jayson Tatum" sur un match Nets-Hornets — corrigés** (§31) : (1) l'IA
+> validait des paris sur un joueur qui ne joue même pas dans le match visé
+> (aucune vérification d'équipe) ; (2) les fautes de frappe/orthographe du
+> joueur ("Junior" au lieu de "Jr.") n'étaient jamais corrigées. **Corrigé
+> d'un coup** : `structureBet()` reçoit désormais les 2 équipes du
+> match/de la série (résolues depuis `series.team1_id/team2_id`), Claude
+> Opus 5 utilise sa connaissance des effectifs NBA réels pour vérifier
+> l'appartenance du joueur ET corriger l'orthographe vers la convention
+> standard. Testé avec de vrais appels : Tatum + Nets/Hornets -> rejeté
+> correctement ; Tatum + Celtics/Heat -> accepté ; "Michael Porter
+> Junior" + Nets/Hornets -> corrigé en "Michael Porter Jr." ET confirmé
+> comme joueur des Nets. `tsc`/`eslint`/`vitest` (37/37)/`next build`
+> propres. **Limite assumée** : repose sur la connaissance du modèle, pas
+> une base d'effectifs vérifiée en direct -- un transfert très récent
+> pourrait échapper à la vérification.
+> - **Reste** : redéployer le service Cloud Run (correctif "Junior"/"Jr."
+>   côté `find_player()`, §29 -- toujours utile en secours si l'IA ne
+>   corrige pas l'orthographe pour une raison quelconque) puis retester de
+>   bout en bout via l'appli.
+>
+> Plus tôt (état au 21/08/2026, suite 9 — auto-validation ajoutée) —
 > **Design révisé + auto-validation codée** (§30) : la 1re version de la
 > Phase 5 ("admin garde la main, suggestion en lecture seule") ne
 > correspondait pas à ce que l'utilisateur avait en tête, découvert en le
@@ -1701,4 +1723,71 @@ poussée sur la base réelle.
 §29, toujours pas fait) puis retester "Michael Porter Junior marque plus
 de 10 pts" via l'appli pour confirmer l'auto-validation de bout en bout
 (statut VALIDATED direct, proba visible dans "Mes pronos").
+```
+
+## 31. Contexte de match ajouté à la structuration IA -- 2 bugs réels corrigés (21/08/2026, suite)
+
+```text
+L'utilisateur teste "Jayson Tatum marque +25 pts" sur un match Nets-
+Hornets (Tatum joue à Boston, aucun rapport) -- le pari est quand même
+auto-validé avec une vraie proba calculée. Signale aussi que des fautes
+de frappe/orthographe (ex. "Junior" vs "Jr.", déjà rencontré en §29) sont
+prévisibles côté joueurs, et demande si l'IA peut les détecter.
+
+**Diagnostic** : les 2 problèmes partagent la même cause -- `structureBet()`
+extrayait le nom du joueur SANS connaître le contexte du match (qui joue
+réellement dans cette rencontre), et reprenait le texte du joueur tel
+quel plutôt que de connaître la vraie orthographe.
+
+**2 approches possibles envisagées** : (a) construire un vrai système
+d'effectifs par équipe (nouvelle colonne `team_id` sur `stats_box_scores`,
+retirée volontairement en §23 car pas nécessaire à `build_context()` ;
+nouvel endpoint de lookup côté service Python) -- plus fiable en théorie
+mais plus lourd, et pas forcément plus à jour que la connaissance du
+modèle sur des infos NBA publiques et récentes ; (b) donner à Claude Opus
+5 le nom des 2 équipes du match en contexte et s'appuyer sur sa
+connaissance réelle des effectifs NBA pour vérifier ET corriger --
+beaucoup plus léger, choisi.
+
+**Implémenté** :
+- `lib/ai/structureBet.ts` : nouveau paramètre `teamNames: [string,
+  string] | null`. Prompt système enrichi -- si fourni, demande à Claude de
+  (1) vérifier que le joueur nommé joue actuellement pour l'une des 2
+  équipes (sinon `calculable=false`, même si le reste de l'extraction est
+  clair) et (2) renvoyer l'orthographe STANDARD NBA du joueur, pas le
+  texte exact du joueur (schema Zod du champ `player_name` mis à jour en
+  conséquence).
+- `lib/ai/structureAndScoreBet.ts` : nouvelle `resolveMatchTeamNames()`
+  (résout `series.team1_id/team2_id` -> noms d'équipe via `teams` ; `null`
+  si la série n'a pas encore ses 2 équipes déterminées -- dégrade
+  proprement vers l'ancien comportement sans vérification). Nouveau
+  paramètre `seriesId` sur `structureAndScoreBet()`.
+- `lib/actions/bets.ts` (`submitBet`) : passe `input.seriesId` (déjà
+  disponible dans `SaveBetInput`, aucune nouvelle donnée à faire remonter
+  du formulaire).
+
+**Testé avec de vrais appels Claude Opus 5** (script jetable, supprimé
+après usage) :
+1. "Jayson Tatum..." + contexte Nets/Hornets -> `calculable: false`,
+   raisonnement correct ("Tatum évolue aux Boston Celtics").
+2. Même pari + contexte Celtics/Heat -> `calculable: true`, accepté.
+3. "Michael Porter Junior..." + contexte Nets/Hornets -> `player_name:
+   "Michael Porter Jr."` (orthographe corrigée) ET `calculable: true`
+   (Claude confirme qu'il joue bien pour les Nets -- connaissance réelle
+   et à jour, pas une supposition).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` propres.
+
+**Limite assumée, pas cachée** : cette vérification s'appuie sur la
+connaissance du modèle (entraînement + raisonnement), pas une base
+d'effectifs interrogée en direct -- un transfert très récent (après la
+date de connaissance de Claude) pourrait échapper à la vérification. Reste
+très supérieur à l'absence totale de vérification d'avant. Si ça se révèle
+insuffisant en usage réel, l'option (a) (vraie table d'effectifs) reste
+disponible pour une itération plus robuste.
+
+**Reste** : redéployer le service Cloud Run (correctif "Junior"/"Jr." côté
+`find_player()`, §29 -- désormais une 2e ligne de défense, l'essentiel du
+correctif orthographe se fait maintenant côté IA) puis retester de bout en
+bout via l'appli.
 ```

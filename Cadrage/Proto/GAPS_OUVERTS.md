@@ -4,25 +4,22 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 10, chantier Data NBA)** — **Design révisé :
-> auto-validation, admin corrige après coup** (`projet-data-nba.md` §30,
-> `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7bis, `JOURNAL_SESSIONS.md`
-> entrée dédiée) :
-> - **Retiré** : la question soulevée par l'utilisateur sur la cohérence de
->   l'écran de saisie joueur — résolue en révisant le design (auto-
->   validation direct SUBMITTED->VALIDATED pour un pari calculable, proba
->   visible au joueur dans "Mes pronos" une fois validée, correction admin
->   via une nouvelle section sur `/admin/validation`).
-> - **Retiré** : 2 emplacements UI initialement envisagés
->   (`/players/[userId]`) écartés après avoir trouvé qu'ils cassaient soit
->   le timing voulu (proba visible seulement à la deadline publique) soit
->   un principe de conception documenté ("même vue pour tout le monde").
+> **État au 21/08/2026 (suite 11, chantier Data NBA)** — **Contexte de
+> match ajouté à la structuration IA, 2 bugs réels corrigés**
+> (`projet-data-nba.md` §31, `JOURNAL_SESSIONS.md` entrée dédiée) :
+> - **Retiré** : bug réel trouvé par l'utilisateur — l'IA validait des
+>   paris sur un joueur qui ne joue même pas dans le match visé (ex.
+>   "Jayson Tatum" sur un match Nets-Hornets). Corrigé : `structureBet()`
+>   reçoit désormais les 2 équipes du match, Claude Opus 5 vérifie
+>   l'appartenance ET corrige l'orthographe du nom (règle aussi le
+>   problème "Junior" vs "Jr." à la source, plus largement que le correctif
+>   ponctuel de §29). Testé avec de vrais appels, 3/3 cas corrects.
 > - **Toujours bloquant** : redéployer le service Cloud Run (correctif
->   "Junior"/"Jr.", trouvé lors du test précédent) — action de
->   l'utilisateur, pas encore faite. Une fois fait, resoumettre le pari de
->   test ("Michael Porter Junior marque plus de 10 pts") et vérifier
->   l'auto-validation de bout en bout (statut VALIDATED direct, proba
->   visible dans "Mes pronos", pari listé dans la nouvelle section admin).
+>   "Junior"/"Jr." côté `find_player()`, §29 — désormais une 2e ligne de
+>   défense) — action de l'utilisateur, pas encore faite. Une fois fait,
+>   resoumettre un pari de test et vérifier l'auto-validation de bout en
+>   bout (statut VALIDATED direct, proba visible dans "Mes pronos", pari
+>   listé dans la section admin si besoin de correction).
 > - **Restent ouverts, assumés explicitement (pas oubliés)** : seuils
 >   proba->palier toujours provisoires ("à vue de nez", point 2 de la spec,
 >   jamais calibrés sur un vrai échantillon) ; barème du fallback pour les

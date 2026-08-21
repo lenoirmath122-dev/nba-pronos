@@ -8752,3 +8752,47 @@ l'auto-validation de bout en bout.
 Détail complet : projet-data-nba.md §30,
 SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §7bis mis à jour.
 ```
+
+
+## Contexte de match ajouté à la structuration IA -- 2 bugs réels corrigés (21/08/2026, suite)
+
+```text
+L'utilisateur teste "Jayson Tatum marque +25 pts" sur un match Nets-
+Hornets (Tatum joue à Boston, aucun rapport) -- auto-validé quand même
+avec une vraie proba. Signale aussi le risque de fautes de frappe côté
+joueurs (ex. "Junior" vs "Jr.", déjà vu en §29).
+
+Même cause pour les 2 : structureBet() extrayait le nom sans connaître le
+contexte du match, reprenait le texte tel quel. 2 approches envisagées :
+construire une vraie table d'effectifs (plus lourd, colonne team_id
+retirée volontairement en §23) vs donner à Claude Opus 5 le nom des 2
+équipes du match et s'appuyer sur sa connaissance réelle des effectifs
+NBA -- choisi (plus léger, testé fonctionnel).
+
+Implémenté : structureBet() reçoit un nouveau paramètre teamNames,
+prompt enrichi (vérifie l'appartenance du joueur au match, corrige
+l'orthographe vers la convention NBA standard) ; structureAndScoreBet()
+résout les noms d'équipe depuis series.team1_id/team2_id (null si série
+pas encore déterminée, dégrade proprement) ; submitBet passe seriesId
+(déjà disponible, rien de nouveau côté formulaire).
+
+Testé avec de vrais appels Claude Opus 5 : Tatum + Nets/Hornets -> rejeté
+correctement (raisonnement explicite) ; Tatum + Celtics/Heat -> accepté ;
+"Michael Porter Junior" + Nets/Hornets -> corrigé en "Michael Porter Jr."
+ET confirmé comme joueur des Nets (connaissance réelle, pas une
+supposition).
+
+tsc/eslint/vitest (37/37)/next build propres.
+
+Limite assumée : repose sur la connaissance du modèle, pas une base
+d'effectifs interrogée en direct -- un transfert très récent pourrait
+échapper à la vérification. Très supérieur à l'absence totale de
+vérification d'avant ; option "vraie table d'effectifs" reste disponible
+si insuffisant en usage réel.
+
+Reste : redéployer le service Cloud Run (correctif Junior/Jr. côté
+find_player(), désormais une 2e ligne de défense) puis retester de bout
+en bout via l'appli.
+
+Détail complet : projet-data-nba.md §31.
+```
