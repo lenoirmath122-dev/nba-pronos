@@ -8796,3 +8796,26 @@ en bout via l'appli.
 
 Détail complet : projet-data-nba.md §31.
 ```
+
+
+## Fix observabilité : is_calculable=false écrit explicitement (21/08/2026, suite)
+
+```text
+Test "MPJ marque plus de 25 pts" sur un match Atlanta-Boston -- reste
+SUBMITTED, is_calculable NULL. Ressemblait à une panne (rate limit),
+c'était en fait un bug de code : structureAndScoreBet.ts retournait sans
+jamais écrire en base dès que l'IA répondait "non calculable" --
+is_calculable restait NULL, indistinguable d'une vraie panne. MPJ
+(Brooklyn) ne joue ni pour Atlanta ni Boston -- le rejet était
+probablement correct, juste jamais tracé.
+
+Corrigé : nouvelle markNotCalculable(), appelée à chaque sortie
+anticipée, écrit explicitement is_calculable=false. Vérifié séparément
+avec l'utilisateur que le pari Tatum validé plus tôt sur Nets/Hornets
+avait été soumis AVANT le correctif §31 -- pas un vrai trou dans la
+vérification d'équipe.
+
+tsc/eslint/vitest (37/37)/next build propres.
+
+Détail complet : projet-data-nba.md §32.
+```

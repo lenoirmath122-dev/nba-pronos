@@ -2,8 +2,16 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 10 — contexte de match ajouté)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 11 — fix observabilité)
 >
+> **`is_calculable=false` désormais écrit explicitement (jamais laissé
+> NULL)** (§32) -- bug trouvé en testant "MPJ" (Michael Porter Jr., pas
+> dans le match Atlanta-Boston testé) : le rejet était probablement
+> correct, juste jamais tracé en base, rendant le diagnostic impossible.
+> `tsc`/`eslint`/`vitest`/`next build` propres. **Reste toujours** :
+> redéployer le service Cloud Run (§29) puis retester de bout en bout.
+>
+> Plus tôt (état au 21/08/2026, suite 10 — contexte de match ajouté) —
 > **2 bugs réels supplémentaires trouvés par l'utilisateur en testant
 > "Jayson Tatum" sur un match Nets-Hornets — corrigés** (§31) : (1) l'IA
 > validait des paris sur un joueur qui ne joue même pas dans le match visé
@@ -1790,4 +1798,42 @@ disponible pour une itération plus robuste.
 `find_player()`, §29 -- désormais une 2e ligne de défense, l'essentiel du
 correctif orthographe se fait maintenant côté IA) puis retester de bout en
 bout via l'appli.
+```
+
+## 32. Fix observabilité : is_calculable=false écrit explicitement (21/08/2026, suite)
+
+```text
+L'utilisateur teste "MPJ marque plus de 25 pts" sur un match Atlanta-
+Boston -- le pari reste SUBMITTED, `is_calculable` NULL. Ressemble d'abord
+à une panne (rate limit Anthropic, compte tout juste crédité) -- log
+serveur partagé par l'utilisateur montre pourtant un appel `submitBet`
+complet (4879ms, cohérent avec un vrai aller-retour Claude).
+
+**Vraie cause, dans le code, pas côté API** : `structureAndScoreBet.ts`
+faisait un `return` dès que l'IA répondait `calculable=false` (ou
+`comparison` manquant, ou prédiction échouée) SANS jamais appeler
+`update_bet_structuration` -- `is_calculable` restait NULL au lieu de
+`false`, indistinguable d'une vraie panne (clé absente, timeout).
+Fonctionnellement inoffensif (`is_calculable ?? false` partout en
+lecture, le pari retombe pareil sur le flux manuel) mais rendait tout
+diagnostic impossible -- exactement le piège qui a fait perdre du temps
+ici. MPJ (Michael Porter Jr.) joue à Brooklyn, ni Atlanta ni Boston --
+le rejet était très probablement CORRECT, juste jamais tracé clairement.
+
+**Corrigé** : nouvelle `markNotCalculable()` dans `structureAndScoreBet.ts`,
+appelée à chaque sortie anticipée -- écrit explicitement `is_calculable:
+false` (`structured_*`/`calculated_proba`/`suggested_difficulty` à NULL).
+`is_calculable` NULL ne signifie plus désormais que "l'IA n'a jamais pu
+répondre" (vraie panne), jamais "l'IA a répondu non".
+
+**Vérifié séparément avec l'utilisateur** : le pari Tatum validé plus tôt
+sur un match Nets/Hornets (qui aurait dû être rejeté par le correctif
+§31) a été confirmé comme soumis AVANT ce correctif -- pas un vrai trou
+dans la vérification d'équipe, juste un pari antérieur au fix.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` propres.
+
+**Reste** : redéployer le service Cloud Run (§29, toujours pas fait) ;
+resoumettre un pari pour confirmer que `is_calculable=false` s'écrit
+maintenant clairement en base pour un cas non calculable.
 ```

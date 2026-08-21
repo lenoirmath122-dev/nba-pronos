@@ -4,6 +4,14 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 21/08/2026 (suite 12, chantier Data NBA)** — **Fix
+> observabilité : `is_calculable=false` écrit explicitement**
+> (`projet-data-nba.md` §32) — un pari rejeté par l'IA ("MPJ" hors du
+> match testé) laissait `is_calculable` à NULL au lieu de `false`,
+> indistinguable d'une vraie panne. Corrigé, `tsc`/`eslint`/`vitest`/
+> `next build` propres. Ne change rien aux points ouverts ci-dessous
+> (toujours bloquants).
+
 > **État au 21/08/2026 (suite 11, chantier Data NBA)** — **Contexte de
 > match ajouté à la structuration IA, 2 bugs réels corrigés**
 > (`projet-data-nba.md` §31, `JOURNAL_SESSIONS.md` entrée dédiée) :
