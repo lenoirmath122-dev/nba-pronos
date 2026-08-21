@@ -82,6 +82,29 @@ export async function structureAndScoreBet(betId: string, description: string, s
       return;
     }
 
+    // Joueur identifié mais absent des 2 équipes du match (bug réel trouvé
+    // le 21/08/2026, ex. "LeBron James" sur un match Atlanta-Boston) --
+    // proba forcée à 0% SANS appeler le micro-service (celui-ci ne connaît
+    // pas le contexte du match, il calculerait une vraie proba à partir des
+    // stats du joueur, ignorant qu'il ne joue pas ce soir-là -- exactement
+    // le bug d'origine). Reste calculable=true (accepté, auto-validé,
+    // perdra simplement à la résolution) plutôt que rejeté -- décidé avec
+    // l'utilisateur pour ne jamais bloquer une soumission (même principe
+    // que decisions_0.2.4 §4).
+    if (structuration.player_not_in_match) {
+      await supabase.rpc("update_bet_structuration", {
+        p_bet_id: betId,
+        p_structured_player_name: structuration.player_name,
+        p_stat: structuration.stat,
+        p_threshold: structuration.threshold,
+        p_comparison: structuration.comparison,
+        p_is_calculable: true,
+        p_calculated_proba: 0,
+        p_suggested_difficulty: probaToDifficulty(0),
+      });
+      return;
+    }
+
     const prediction = await predictOverUnder(
       structuration.player_name,
       stat,

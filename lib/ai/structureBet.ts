@@ -16,11 +16,21 @@ const BetStructurationSchema = z.object({
   calculable: z
     .boolean()
     .describe(
-      "true UNIQUEMENT si le pari porte sur UN SEUL joueur, UNE SEULE des stats listées, avec un seuil " +
-        "numérique clair (\"plus de\"/\"moins de\" un nombre), ET que ce joueur joue actuellement pour l'une des " +
-        "2 équipes du match indiqué. false pour tout pari équipe, combo multi-joueurs, score total, événement de " +
-        "match, fun/hors-terrain, scénario, formulation trop ambiguë, OU un joueur qui ne joue pour AUCUNE des " +
-        "2 équipes de ce match (même si c'est un vrai joueur NBA par ailleurs) — ne force jamais une extraction incertaine.",
+      "true si le pari porte sur UN SEUL joueur, UNE SEULE des stats listées, avec un seuil numérique clair " +
+        "(\"plus de\"/\"moins de\" un nombre) -- y COMPRIS si ce joueur ne joue pour aucune des 2 équipes du match " +
+        "(voir player_not_in_match ci-dessous, ce cas reste calculable=true). false UNIQUEMENT pour tout pari " +
+        "équipe, combo multi-joueurs, score total, événement de match, fun/hors-terrain, scénario, ou formulation " +
+        "trop ambiguë pour être sûr — ne force jamais une extraction incertaine.",
+    ),
+  player_not_in_match: z
+    .boolean()
+    .describe(
+      "true si le joueur identifié ne joue actuellement pour AUCUNE des 2 équipes du match indiqué (mauvais " +
+        "match/mauvaise équipe -- utilise ta connaissance des effectifs NBA réels), même si c'est un vrai joueur " +
+        "NBA par ailleurs. Dans ce cas: calculable reste true, remplis quand même player_name/stat/threshold/" +
+        "comparison normalement -- l'application forcera la probabilité à 0% (il ne peut rien marquer dans un " +
+        "match auquel il ne participe pas). false dans tous les autres cas (joueur trouvé dans le bon match, ou " +
+        "pari non calculable pour une autre raison).",
     ),
   player_name: z
     .string()
@@ -52,10 +62,10 @@ function buildSystemPrompt(teamNames: [string, string] | null): string {
   const matchContext = teamNames
     ? `\n\nCe pari concerne un match entre **${teamNames[0]}** et **${teamNames[1]}**. Vérifie que le joueur nommé ` +
       "joue actuellement pour l'une de ces 2 équipes (utilise ta connaissance des effectifs NBA réels) -- si ce " +
-      "n'est pas le cas (joueur d'une autre équipe, joueur retraité, nom inventé...), marque calculable=false " +
-      "même si l'extraction du reste (stat, seuil) semblait claire. Corrige aussi l'orthographe du nom vers la " +
-      "convention standard NBA (ex: \"Junior\" -> \"Jr.\") plutôt que de reprendre le texte exact du joueur, qui " +
-      "peut contenir des fautes de frappe."
+      "n'est pas le cas (joueur d'une autre équipe, joueur retraité, nom inventé...), marque player_not_in_match=true " +
+      "(calculable reste true, voir la description du champ) plutôt que calculable=false. Corrige aussi " +
+      "l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> \"Jr.\") plutôt que de reprendre le " +
+      "texte exact du joueur, qui peut contenir des fautes de frappe."
     : "";
   return (
     "Tu structures des paris personnalisés NBA écrits en texte libre par des joueurs d'une ligue entre amis, " +

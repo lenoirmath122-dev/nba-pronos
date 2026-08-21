@@ -2,8 +2,25 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 11 — fix observabilité)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 12 — proba 0% pour joueur hors match)
 >
+> **Nouveau champ `player_not_in_match` : un pari sur un joueur absent des
+> 2 équipes du match est maintenant ACCEPTÉ avec proba=0%, plus jamais
+> rejeté silencieusement en `calculable=false`** (§33) -- décidé avec
+> l'utilisateur après le test "LeBron James" sur Atlanta-Boston (LeBron
+> joue aux Lakers) : au lieu de retomber sur le flux manuel sans
+> explication, le pari s'auto-valide avec 0% (visible dans "Mes pronos"),
+> cohérent avec le principe "l'IA ne bloque jamais un pari"
+> (`decisions_0.2.4` §4). Le micro-service n'est PLUS appelé dans ce cas
+> (il calculerait une vraie proba à partir des stats du joueur, ignorant
+> qu'il ne joue pas ce soir-là -- le bug d'origine). Testé avec de vrais
+> appels Claude Opus 5, 3/3 cas corrects (LeBron rejeté du bon match,
+> Tatum accepté normalement, pari fun toujours `calculable=false`).
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres.
+> - **Reste** : redéployer le service Cloud Run (§29) puis retester de
+>   bout en bout via l'appli.
+>
+> Plus tôt (état au 21/08/2026, suite 11 — fix observabilité) —
 > **`is_calculable=false` désormais écrit explicitement (jamais laissé
 > NULL)** (§32) -- bug trouvé en testant "MPJ" (Michael Porter Jr., pas
 > dans le match Atlanta-Boston testé) : le rejet était probablement
@@ -1836,4 +1853,58 @@ dans la vérification d'équipe, juste un pari antérieur au fix.
 **Reste** : redéployer le service Cloud Run (§29, toujours pas fait) ;
 resoumettre un pari pour confirmer que `is_calculable=false` s'écrit
 maintenant clairement en base pour un cas non calculable.
+```
+
+## 33. Joueur hors du match visé : proba 0% au lieu d'un rejet silencieux (21/08/2026, suite)
+
+```text
+Suite de §31/§32 : l'utilisateur teste "LeBron James marque +25 pts" sur
+un match Atlanta-Boston (LeBron joue aux Lakers) -- correctement rejeté
+(`is_calculable=false` grâce au correctif §32), mais rien n'informe le
+joueur de la raison, il reste juste sur le flux manuel habituel comme
+n'importe quel autre pari non calculable. Retour de l'utilisateur : "il
+faut mettre une alerte et refuser le pari... ou alors on l'accepte mais
+la proba est à 0%, ce sera plus simple et plus lisible".
+
+**Tension signalée avant de coder** : rejeter la soumission (forcer une
+resaisie) romprait le principe déjà acté "l'IA ne bloque jamais un pari"
+(`decisions_0.2.4` §4) -- nécessiterait aussi de réorganiser l'ordre
+soumission/vérification (aujourd'hui l'IA tourne APRÈS que `save_bet` ait
+déjà créé le pari). Accepter avec proba 0% reste cohérent avec ce
+principe et ne change pas l'architecture. **Choisi avec l'utilisateur :
+option B (accepter, proba 0%).**
+
+**Implémenté** :
+- `lib/ai/structureBet.ts` : nouveau champ `player_not_in_match: boolean`
+  dans le schema Zod -- distinct de `calculable` (qui reste `true` dans ce
+  cas, le pari EST structurellement clair, juste sur le mauvais match).
+  Prompt système ajusté : au lieu de "marque calculable=false", demande
+  "marque player_not_in_match=true (calculable reste true)".
+- `lib/ai/structureAndScoreBet.ts` : si `player_not_in_match`, appelle
+  `update_bet_structuration` DIRECTEMENT avec `p_calculated_proba: 0`,
+  `p_suggested_difficulty: probaToDifficulty(0)` -- SANS jamais appeler
+  `predictOverUnder()`/le micro-service Cloud Run, qui n'a aucune notion
+  du contexte de match et calculerait une vraie proba à partir des
+  vraies stats du joueur (LeBron a un vrai historique de points -- le
+  service ignorerait complètement qu'il ne joue pas ce soir-là, exactement
+  le bug d'origine de §31 si on le laissait tourner).
+
+**Testé avec de vrais appels Claude Opus 5** (script jetable, supprimé
+après usage), 3 cas :
+1. "Lebron James..." + Atlanta/Boston -> `calculable: true,
+   player_not_in_match: true` -- proba forcée à 0% côté appli.
+2. "Jayson Tatum..." + Atlanta/Boston -> `calculable: true,
+   player_not_in_match: false` -- flux normal inchangé, proba calculée
+   par le service comme avant.
+3. Pari fun ("l'entraîneur criera...") -> `calculable: false,
+   player_not_in_match: false` -- toujours rejeté proprement, comme avant.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` propres.
+
+**Conséquence acceptée, pas creusée davantage** : `probaToDifficulty(0)`
+retourne le palier 5 (le plus dur, 25 points) pour un pari à 0% -- cohérent
+avec la logique existante des paliers (proba basse = palier haut) même si
+sémantiquement un peu étrange pour un pari "impossible" plutôt que "très
+difficile mais possible". Sans conséquence pratique : un pari à 0% perdra
+de toute façon (0 point à la résolution), quel que soit son palier.
 ```

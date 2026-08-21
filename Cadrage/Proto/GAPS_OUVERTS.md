@@ -4,13 +4,15 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 12, chantier Data NBA)** — **Fix
-> observabilité : `is_calculable=false` écrit explicitement**
-> (`projet-data-nba.md` §32) — un pari rejeté par l'IA ("MPJ" hors du
-> match testé) laissait `is_calculable` à NULL au lieu de `false`,
-> indistinguable d'une vraie panne. Corrigé, `tsc`/`eslint`/`vitest`/
-> `next build` propres. Ne change rien aux points ouverts ci-dessous
-> (toujours bloquants).
+> **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
+> match visé : proba 0% au lieu d'un rejet silencieux**
+> (`projet-data-nba.md` §33) — un pari sur un joueur qui ne joue pour
+> aucune des 2 équipes du match (ex. "LeBron James" sur Atlanta-Boston)
+> est maintenant accepté avec une proba forcée à 0%, visible dans "Mes
+> pronos", plutôt que de retomber silencieusement en repli manuel sans
+> explication. Testé avec de vrais appels Claude Opus 5, 3/3 cas corrects.
+> `tsc`/`eslint`/`vitest`/`next build` propres. Ne change rien aux points
+> ouverts ci-dessous (toujours bloquants).
 
 > **État au 21/08/2026 (suite 11, chantier Data NBA)** — **Contexte de
 > match ajouté à la structuration IA, 2 bugs réels corrigés**

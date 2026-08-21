@@ -8819,3 +8819,34 @@ tsc/eslint/vitest (37/37)/next build propres.
 
 Détail complet : projet-data-nba.md §32.
 ```
+
+
+## Joueur hors du match visé : proba 0% au lieu d'un rejet silencieux (21/08/2026, suite)
+
+```text
+"LeBron James marque +25 pts" sur Atlanta-Boston (LeBron joue aux Lakers)
+-- correctement rejeté (is_calculable=false) mais sans que le joueur en
+soit informé, retombe comme n'importe quel autre pari non calculable.
+L'utilisateur demande une alerte/refus explicite, ou à défaut accepter
+avec proba 0%.
+
+Tension signalée avant de coder : rejeter la soumission romprait le
+principe déjà acté "l'IA ne bloque jamais un pari" (decisions_0.2.4 §4)
+et nécessiterait de réorganiser l'ordre soumission/vérification. Accepter
+avec proba 0% reste cohérent, choisi avec l'utilisateur.
+
+Implémenté : nouveau champ player_not_in_match dans le schema Zod
+(distinct de calculable, qui reste true) ; structureAndScoreBet.ts force
+calculated_proba=0 directement dans ce cas SANS appeler le micro-service
+(qui ignorerait le contexte de match et calculerait une vraie proba à
+partir des stats réelles du joueur -- le bug d'origine si on le laissait
+tourner).
+
+Testé avec de vrais appels Claude Opus 5, 3/3 cas corrects (LeBron rejeté
+du bon match avec proba forcée à 0%, Tatum accepté normalement, pari fun
+toujours calculable=false).
+
+tsc/eslint/vitest (37/37)/next build propres.
+
+Détail complet : projet-data-nba.md §33.
+```
