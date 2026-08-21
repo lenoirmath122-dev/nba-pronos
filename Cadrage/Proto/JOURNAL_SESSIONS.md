@@ -8278,3 +8278,63 @@ avant.
 Détail complet : `projet-data-nba.md` §20 (bandeau REPRISE mis à jour en
 tête du fichier).
 ```
+
+
+## Projet Data NBA : réentraînement 5 saisons, biais FT% diagnostiqué, Phase 4 démarrée (21/08/2026, suite)
+
+```text
+Enchaîné dans la foulée de l'entrée précédente, même session.
+
+**Réentraînement sur 5 saisons** (point resté ouvert depuis le 20/08/2026,
+§16/§17) : `build_features.py` → `build_targets.py` → les 4 `train_*.py`,
+même séquence que §17. `features_joueur`/`labels_joueur` : 56 938 → 140 933
+lignes. Amélioration nette (points MAE 4.75→4.65, R² 0.497→0.518 ; 3P%
+3.6%→2.9% d'écart moyen absolu ; FT%/FG% stables), aucune régression.
+
+**Biais résiduel FT% diagnostiqué** (~4%, signe qui s'inverse selon le
+seuil, laissé ouvert dans l'entrée précédente) : nouveau script
+`diagnose_ft_bias.py`, 3 hypothèses testées. Biais non conditionnel sur
+p_hat/n_hat négligeables (écarté). Cause réelle : **artefact de
+granularité** -- avec 1 à 6 tentatives réelles/match, les fractions
+atteignables sont rares, la proba prédite (fonction de n_hat arrondi)
+reste identique sur plusieurs seuils consécutifs alors que le taux réel
+varie en continu. **Pas un bug, rien à corriger** -- même famille de
+constat que le cas Wembanyama (§19 projet-data-nba.md).
+
+**Phase 4 (raccordement appli) démarrée** : décisions d'architecture
+prises avec l'utilisateur, aucune des deux jamais tranchée avant --
+micro-service Python (FastAPI) plutôt que réimplémenter l'inférence en
+TypeScript ou un job batch Supabase ; fraîcheur de `nba.db` via cron
+quotidien, même patron que `sync-results.yml` côté appli. Point de
+conception déduit en construisant : `nba.db`/`models/` étant gitignorés
+(volumineux, régénérables), un cron GitHub Actions classique (checkout
+éphémère) ne peut pas accumuler un fetch incrémental -- le service doit
+tourner sur un hôte à disque persistant et faire son propre refresh, le
+cron se contentant d'un curl déclencheur (`POST /refresh`), comme
+`sync-results.yml` le fait déjà pour `/api/sync/results`.
+
+Refactor préalable sans duplication : `tester_modele.py` gagne
+`compute_proba()`, extrait de `main()`, réutilisé par le CLI ET le
+service -- vérifié après coup que le CLI produit des résultats
+rigoureusement identiques à avant (Tatum/FT%, Jokić/dd, Curry/pts vs LAL).
+
+Nouveau `Cadrage/Stats/service/app.py` (FastAPI) : `GET /health`,
+`POST /predict` (réutilise `compute_proba`/`find_player`/`find_team` tels
+quels, erreurs `SystemExit`/`ValueError` existantes renvoyées en 400 avec
+le même message que le CLI), `POST /refresh` (stub 501 -- fetch incrémental
+nba_api pas encore écrit). Vérifié en conditions réelles (uvicorn local,
+curl) : les 3 familles de modèles + adversaire/extérieur/repos + 3 cas
+d'erreur (nom ambigu, joueur inconnu, seuil manquant) -- réponses
+identiques au CLI déjà validé. Serveur de test arrêté après vérification.
+
+**Reste à faire pour clore la Phase 4** : fetch incrémental nba_api
+(`/refresh` reste un stub), choix de l'hébergement (disque persistant
+requis -- pas encore fait), workflow GitHub Actions (cron quotidien,
+dépend du point précédent). Puis, pour la Phase 5 : distribution réelle de
+probas pour calibrer les seuils entre paliers, structuration IA du texte
+libre, barème du fallback -- 3 points de `SPEC_TECHNIQUE_PROBA_PARIS_
+PERSOS_V0_1.md` §7 indépendants de cette brique-ci.
+
+Détail complet : `projet-data-nba.md` §21 (réentraînement + diagnostic
+biais), §22 (micro-service), bandeau REPRISE mis à jour.
+```

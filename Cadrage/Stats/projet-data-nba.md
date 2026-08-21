@@ -2,24 +2,42 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite — Phase 4 en cours)
 >
-> **Phase 3 (overdispersion FT%/FG%/3P%) close — Beta-Binomial adopté sur
-> FT% seulement, testé empiriquement d'abord** (§20) : résiduel de
-> calibration réduit 5.4%→4.1% sur FT% (négligeable/contre-productif sur
-> 3P%/FG%, pas adopté là). `train_pct_model.py`/`tester_modele.py` mis à
-> jour, les 3 modèles `*_pct.joblib` réentraînés et resauvegardés, vérifié
-> en conditions réelles (`tester_modele.py`). **Reste ouvert** : ~4% de
-> biais résiduel sur FT% (signe qui s'inverse selon le seuil, piste
-> distincte de l'overdispersion, pas encore regardée) ; pas bloquant.
+> **Phase 4 (raccordement appli) démarrée — micro-service FastAPI construit
+> et vérifié en local, PAS ENCORE DÉPLOYÉ** (§22). Décisions d'architecture
+> actées avec l'utilisateur : micro-service Python (FastAPI) plutôt que
+> réimplémenter l'inférence en TypeScript ou un job batch Supabase ;
+> fraîchissement de `nba.db` via un cron quotidien, même patron que la
+> synchro matchs de l'appli (`sync-results.yml`). `scripts/tester_modele.py`
+> refactoré (`compute_proba()` extrait, réutilisé par le CLI ET le service,
+> zéro duplication) ; `Cadrage/Stats/service/app.py` (`/health`, `/predict`)
+> testé en conditions réelles (curl, les 3 familles de modèles + cas
+> d'erreur : nom ambigu, joueur inconnu, seuil manquant).
+> - **Reste à faire pour Phase 4** : `/refresh` n'est qu'un stub (fetch
+>   incrémental `nba_api` pas encore écrit) ; **hébergement pas choisi**
+>   (Render/Railway/Fly.io/VPS — Vercel ne fait pas tourner un service Python
+>   à disque persistant, nécessaire puisque le service garde `nba.db` en
+>   local entre les appels) ; le cron GitHub Actions lui-même pas écrit.
 >
-> **Toujours en attente depuis le 20/08/2026 (pas retouché cette session)** :
-> les 12 modèles socle (points/rebonds/passes/.../min/dd/td) restent
-> entraînés sur le dataset à 2 saisons (56 938 lignes) alors que la base
-> (`nba.db`) en contient ~2,4x plus depuis le fetch à 5 saisons. Pour en
-> profiter : relancer `build_features.py` → `build_targets.py` → les 4
-> `train_*.py` — décision volontairement reportée à la reprise précédente,
-> toujours pas prise.
+> **Les 12 modèles socle réentraînés sur les 5 saisons** (`nba.db` à 6 602
+> matchs, `features_joueur`/`labels_joueur` passés de 56 938 à 140 933
+> lignes) — point resté ouvert depuis le 20/08/2026. Amélioration nette,
+> cohérente avec le 1er passage à données complètes (§17) : Points MAE
+> 4.75→**4.65**, R² 0.497→**0.518** ; 3P% (écart moyen absolu) 3.6%→**2.9%** ;
+> FT%/FG% quasi stables (FT% Beta-Binomial toujours retenu, 5.3%→4.1% sur ce
+> dataset). Aucune régression détectée.
+>
+> **Biais résiduel FT% (~4%, signe qui s'inverse selon le seuil) — DIAGNOSTIQUÉ,
+> PAS UN BUG.** (`scripts/diagnose_ft_bias.py`, §21) Biais non conditionnel
+> négligeable (p_hat 77.6% vs réel 76.8%, n_hat 3.85 vs réel 3.88) — le
+> modèle n'est pas biaisé en moyenne. Le signe qui s'inverse est un artefact
+> de granularité : avec 1 à 6 tentatives réelles/match, les fractions
+> atteignables sont rares (ex. n=2 → seulement 0/50/100%), la proba prédite
+> reste identique sur plusieurs seuils consécutifs alors que le taux réel
+> varie en continu. Rien à corriger — même famille de constat que le cas
+> Wembanyama (§19) : une limite mathématique inhérente aux petits n, pas une
+> erreur de conception.
 >
 > Plus tôt (état au 20/08/2026, soir — encore une suite) —
 > **Fetch étendu à 5 saisons (2021-22→2025-26) TERMINÉ, base reconstruite**
@@ -851,4 +869,124 @@ pour FT%, les 2 autres stats affichent le détail inchangé.
 **Reste ouvert, pas creusé** : le biais résiduel ~4% sur FT% (signe qui
 s'inverse selon le seuil) — piste distincte de l'overdispersion, jamais
 regardée. Pas bloquant, gain déjà net par rapport à avant.
+```
+
+## 21. Réentraînement complet sur 5 saisons + biais résiduel FT% diagnostiqué (21/08/2026)
+
+```text
+Reprise du point resté ouvert depuis le 20/08/2026 (§16/§17) : les 12
+modèles restaient entraînés sur le dataset à 2 saisons alors que `nba.db`
+avait déjà été reconstruit à 5 saisons. Séquence documentée en §17 rejouée
+à l'identique : `build_features.py` → `build_targets.py` →
+`train_points_model.py` → `train_doubledouble_model.py` →
+`train_stat_model.py` → `train_pct_model.py`.
+
+`features_joueur`/`labels_joueur` : 56 938 → **140 933 lignes**,
+`entrainement_matchs` couvre les 6 602 matchs des 5 saisons. Amélioration
+nette, cohérente avec le 1er passage à données complètes (§17, où le même
+type de gain avait déjà été observé) :
+
+| Modèle | Avant (2 saisons) | Après (5 saisons) |
+|---|---|---|
+| Points (MAE / R²) | 4.75 / 0.497 | **4.65 / 0.518** |
+| FT% (écart moyen absolu, Beta-Binomial) | 4.1% | 4.1% (stable) |
+| FG% (écart moyen absolu) | 0.9% (k=30) | 0.9% (k=30, stable) |
+| 3P% (écart moyen absolu) | 3.6% (k=5) | **2.9%** (k=5) |
+
+Aucune régression. Le correctif Beta-Binomial sur FT% (§20) reste valide
+sur le nouveau dataset (5.3%→4.1% avant/après Beta-Binomial, cohérent avec
+la version précédente).
+
+**Biais résiduel FT% (~4%, signe qui s'inverse selon le seuil, laissé
+ouvert en §20) — diagnostiqué, PAS UN BUG.** Nouveau script
+`scripts/diagnose_ft_bias.py` (gardé pour trace), 3 hypothèses testées dans
+l'ordre :
+1. **Biais non conditionnel sur p_hat** : moyenne prédite 77.6% vs taux réel
+   moyen 76.8% (+0.8%) — négligeable, écarté.
+2. **Biais sur n_hat** (tentatives) : moyenne prédite 3.85 vs réelle 3.88
+   (-0.02) — négligeable, écarté.
+3. **Granularité (retenue)** : calibration recalculée par tranche de n_hat
+   arrondi (1-2, 3, 4, 5-6, 7+). Avec un si petit nombre de tentatives
+   réelles, les fractions atteignables sont rares (n=2 → seulement 0/50/
+   100% ; n=3 → 0/33/67/100%...) — la proba prédite (fonction de n_hat
+   arrondi et du seuil) reste EXACTEMENT IDENTIQUE sur plusieurs seuils
+   consécutifs (ex. 60.3% répété de 70% à 90% pour n_hat∈[1,2]), alors que
+   le taux réel empirique varie en continu d'un seuil à l'autre. C'est ce
+   décalage mécanique entre une fonction en escalier (le modèle, contraint
+   par un n petit) et une courbe lisse (le réel) qui produit le signe qui
+   s'inverse observé en §20 — pas une erreur du modèle.
+
+**Conclusion : rien à corriger.** Même famille de constat que le cas
+Wembanyama (§19) — une limite mathématique inhérente aux stats à faible
+volume de tentatives, pas un défaut de conception. Le résiduu ±4% de §20
+est déjà le résultat du meilleur choix de distribution disponible
+(Beta-Binomial) compte tenu de cette contrainte structurelle.
+```
+
+## 22. Phase 4 — micro-service FastAPI (raccordement appli), démarré (21/08/2026)
+
+```text
+Reprise du plan en 5 phases (§16) : Phase 4 ("pont contexte en direct"),
+prérequis à la Phase 5 (intégration appli, SPEC_TECHNIQUE_PROBA_PARIS_
+PERSOS_V0_1.md §7, point 3 -- "le pont technique features à jour... pas
+construit, nécessaire pour calculer une proba au moment réel où un joueur
+valide un pari").
+
+**Décisions d'architecture actées avec l'utilisateur, jamais tranchées
+avant** (rien dans la doc ne les couvrait) :
+1. **Pont inter-langage appli (Next.js/TypeScript) ↔ modèles (Python)** :
+   micro-service HTTP (FastAPI) plutôt que réimplémenter l'inférence en
+   TypeScript (duplication, resynchronisation à chaque réentraînement) ou
+   un job batch écrivant dans Supabase (latence = fréquence du job, l'appli
+   ne calcule jamais rien à la demande).
+2. **Fraîcheur de `nba.db`** : cron quotidien, même patron que la synchro
+   matchs déjà en place côté appli (`sync-results.yml`, T4/T8) --
+   implication déduite en concevant : comme `nba.db`/`models/` sont
+   gitignorés (volumineux, régénérables, cf. `.gitignore`), un cron GitHub
+   Actions classique (checkout éphémère) ne peut PAS accumuler un fetch
+   incrémental d'un run à l'autre -- le service doit tourner sur un hôte à
+   DISQUE PERSISTANT et faire son propre refresh, le cron se contentant
+   d'un curl déclencheur (`POST /refresh`), exactement comme
+   `sync-results.yml` déclenche `/api/sync/results` côté appli. Implique un
+   hébergement avec disque persistant (Render/Railway/Fly.io/VPS) --
+   **pas encore choisi**, à trancher avant tout déploiement réel.
+
+**Refactor préalable (zéro duplication)** : `scripts/tester_modele.py`
+gagne `compute_proba(conn, player_id, stat, seuil, opponent_id, is_home,
+rest_days) -> dict` -- extrait la logique jusque-là seulement dans
+`main()` (résolution de la famille de modèle, construction du contexte,
+appel du bon `run_*`). Le CLI devient un fin appelant de cette fonction ;
+vérifié après coup que les 3 sorties (Tatum/FT%, Jokić/dd, Curry/pts vs
+LAL) sont RIGOUREUSEMENT IDENTIQUES à avant le refactor.
+
+**Service construit** : `Cadrage/Stats/service/app.py` (nouveau dossier),
+`requirements.txt` dédié (fastapi, uvicorn, + les dépendances d'inférence
+existantes -- pas nba_api/fpdf2, pas nécessaires pour l'inférence seule).
+- `GET /health` -- liste les modèles chargés + stats disponibles.
+- `POST /predict` -- body `{joueur|joueur_id, stat, seuil?, adversaire?,
+  exterieur?, repos?}`, réutilise `compute_proba()`/`find_player()`/
+  `find_team()` tels quels. Erreurs (`SystemExit`/`ValueError` du code
+  existant) attrapées et renvoyées en 400 avec le même message que le CLI
+  (nom ambigu, joueur introuvable, seuil manquant).
+- `POST /refresh` -- stub, 501 explicite. Le fetch incrémental nba_api
+  n'existe pas encore, laissé pour la suite de la Phase 4.
+
+**Vérifié en conditions réelles** (uvicorn local, port 8123, curl) : les 3
+familles de modèles (régression/pts, classification/dd, pourcentage/ft +
+fg3m Poisson), le cas adversaire+extérieur+repos, ET les 3 cas d'erreur
+(joueur ambigu "Curry", joueur inconnu, seuil manquant pour `pts`) --
+réponses identiques aux résultats CLI déjà validés. Serveur de test arrêté
+après vérification, fichiers de sortie temporaires nettoyés.
+
+**Reste à faire pour clore la Phase 4** :
+1. Fetch incrémental `nba_api` (nouveaux matchs depuis le dernier connu,
+   sans tout retélécharger) -- `/refresh` reste un stub sans lui.
+2. Choisir l'hébergement (disque persistant requis) -- pas encore fait.
+3. Écrire le workflow GitHub Actions (cron quotidien, curl vers
+   `/refresh`) -- dépend du point 2 (URL de l'hôte).
+4. Une fois 1-3 faits : reprendre la spec Phase 5
+   (SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §7) -- il restera encore les
+   points 2 (distribution réelle de probas pour calibrer les seuils entre
+   paliers), 4 (structuration IA du texte libre) et 5 (barème du fallback),
+   qui ne dépendent pas de cette brique-ci.
 ```

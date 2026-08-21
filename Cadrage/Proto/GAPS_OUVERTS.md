@@ -4,6 +4,27 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 21/08/2026 (suite 2, chantier Data NBA)** — **2 points retirés,
+> Phase 4 démarrée** (`projet-data-nba.md` §21/§22, `JOURNAL_SESSIONS.md`
+> entrée dédiée) :
+> - **Retiré** : les 12 modèles socle sont réentraînés sur les 5 saisons
+>   (140 933 lignes, contre 56 938 avant) — amélioration nette partout,
+>   aucune régression.
+> - **Retiré** : le biais résiduel ~4% sur FT% (signe qui s'inverse selon le
+>   seuil) est diagnostiqué — artefact de granularité (peu de tentatives
+>   réelles/match), PAS un bug, rien à corriger.
+> - **Nouveaux points ouverts (Phase 4, raccordement appli)** : micro-service
+>   FastAPI (`Cadrage/Stats/service/app.py`) construit et vérifié en local,
+>   mais **pas déployé** — 3 briques manquantes avant de pouvoir l'être :
+>   (1) `/refresh` reste un stub, le fetch incrémental `nba_api` n'est pas
+>   écrit ; (2) **hébergement pas choisi** (disque persistant requis —
+>   Render/Railway/Fly.io/VPS, Vercel ne convient pas) ; (3) le workflow
+>   GitHub Actions (cron quotidien vers `/refresh`) pas écrit, dépend du
+>   choix d'hébergement. Une fois ces 3 faits, il restera encore 3 points
+>   indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7 pour la
+>   Phase 5 (distribution de probas pour calibrer les seuils, structuration
+>   IA du texte libre, barème du fallback).
+
 > **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
 > calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain
 > ciblé adopté sur FT% seulement** (`projet-data-nba.md` §20,
@@ -11,15 +32,9 @@
 > résiduel 5.4%→4.1% sur FT%, jugé négligeable (3P%) ou contre-productif
 > (FG%) sur les 2 autres — pas adopté là, même patron que `POISSON_STATS`
 > (§15). `train_pct_model.py`/`tester_modele.py` mis à jour, 3 modèles
-> réentraînés/resauvegardés, vérifié en conditions réelles.
-> - **Nouveau point ouvert, pas creusé** : ~4% de biais résiduel restant sur
->   FT% même après le correctif (signe qui s'inverse selon le seuil) — piste
->   distincte de l'overdispersion, jamais regardée. Pas bloquant.
-> - **Toujours ouvert, inchangé** : les 12 modèles socle (points/rebonds/
->   .../dd/td) restent entraînés sur le dataset à 2 saisons (56 938 lignes)
->   alors que `nba.db` en contient ~2,4x plus depuis le fetch à 5 saisons
->   (20/08/2026) — décision de relancer `build_features.py`/
->   `build_targets.py`/les 4 `train_*.py` toujours pas prise.
+> réentraînés/resauvegardés, vérifié en conditions réelles. (Les 2 points
+> ouverts notés ici — biais résiduel FT% et réentraînement 5 saisons — sont
+> désormais traités, voir le bandeau du dessus.)
 
 > **État au 21/08/2026** — **Nouvelle page `/regles` construite (§2.96
 > ETAT_ACTUEL.md) et tutoriel "Comment jouer ?" entièrement retiré (§2.97)**

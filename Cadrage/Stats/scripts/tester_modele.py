@@ -239,6 +239,54 @@ def run_pct(bundle, context, seuil) -> tuple:
     return float(proba), detail
 
 
+def resolve_stat(stat: str) -> tuple:
+    """(famille, model_file, label, raw_col_key_ou_None) pour un code --stat."""
+    if stat in REGRESSION_STATS:
+        model_file, raw_col_key, label = REGRESSION_STATS[stat]
+        return "regression", model_file, label, raw_col_key
+    if stat in CLASSIFIER_STATS:
+        model_file, label = CLASSIFIER_STATS[stat]
+        return "classifier", model_file, label, None
+    model_file, makes_col, attempts_col, label = PCT_STATS[stat]
+    return "pct", model_file, label, None
+
+
+def compute_proba(conn, player_id: int, stat: str, seuil, opponent_id=None, is_home: int = 1, rest_days: int = 2) -> dict:
+    """Point d'entree partage CLI/API (raccordement appli, Phase 4 -- projet-
+    data-nba.md §16) : construit le contexte a jour d'un joueur (10 derniers
+    matchs REELS connus en base, meme fonction que le CLI) et calcule la
+    proba pour n'importe lequel des 12 modeles. Leve ValueError si --seuil
+    manque pour une stat qui en a besoin (les familles regression/pct)."""
+    if stat not in REGRESSION_STATS and stat not in CLASSIFIER_STATS and stat not in PCT_STATS:
+        raise ValueError(f"stat inconnue : {stat}")
+    famille, model_file, label, raw_col_key = resolve_stat(stat)
+    if famille != "classifier" and seuil is None:
+        raise ValueError(f"seuil obligatoire pour la stat {stat}")
+
+    context, ecarttypes, recent = build_context(conn, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
+    bundle = joblib.load(MODELS_DIR / f"{model_file}.joblib")
+
+    if famille == "regression":
+        proba, detail = run_regression(bundle, context, ecarttypes, raw_col_key, seuil)
+    elif famille == "classifier":
+        proba, detail = run_classifier(bundle, context)
+    else:
+        proba, detail = run_pct(bundle, context, seuil)
+
+    return {
+        "label": label,
+        "proba": proba,
+        "detail": detail,
+        "contexte_matchs": len(recent),
+        "contexte_periode": [str(recent["game_date"].min()), str(recent["game_date"].max())],
+        "vs_adversaire_nb_matchs": context["vs_adversaire_nb_matchs"] if opponent_id is not None else None,
+        "vs_adversaire_pts_moy": (
+            None if opponent_id is None or pd.isna(context["vs_adversaire_pts_moy"])
+            else float(context["vs_adversaire_pts_moy"])
+        ),
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     joueur_group = parser.add_mutually_exclusive_group(required=True)
@@ -265,37 +313,30 @@ def main():
     if args.adversaire:
         opponent_id, opponent_name = find_team(conn, args.adversaire)
 
-    context, ecarttypes, recent = build_context(
-        conn, player_id, opponent_id, is_home=0 if args.exterieur else 1, rest_days=args.repos
+    result = compute_proba(
+        conn, player_id, args.stat, args.seuil,
+        opponent_id=opponent_id, is_home=0 if args.exterieur else 1, rest_days=args.repos,
     )
     conn.close()
 
     print(f"=== {player_name} -- stat={args.stat} ===")
-    print(f"Contexte : {len(recent)} derniers matchs connus ({recent['game_date'].min()} -> {recent['game_date'].max()})"
+    periode_debut, periode_fin = result["contexte_periode"]
+    print(f"Contexte : {result['contexte_matchs']} derniers matchs connus ({periode_debut} -> {periode_fin})"
           f" | domicile={'non' if args.exterieur else 'oui'} | repos={args.repos}j")
     if opponent_name:
-        print(f"Historique vs {opponent_name} : {context['vs_adversaire_nb_matchs']} match(s), "
-              f"moyenne {context['vs_adversaire_pts_moy']:.1f} pts" if context["vs_adversaire_nb_matchs"] else
-              f"Historique vs {opponent_name} : aucun match connu")
+        if result["vs_adversaire_nb_matchs"]:
+            print(f"Historique vs {opponent_name} : {result['vs_adversaire_nb_matchs']} match(s), "
+                  f"moyenne {result['vs_adversaire_pts_moy']:.1f} pts")
+        else:
+            print(f"Historique vs {opponent_name} : aucun match connu")
 
-    if args.stat in REGRESSION_STATS:
-        model_file, raw_col_key, label = REGRESSION_STATS[args.stat]
-        bundle = joblib.load(MODELS_DIR / f"{model_file}.joblib")
-        proba, detail = run_regression(bundle, context, ecarttypes, args.stat, args.seuil)
-        print(f"\n{label} -- {detail}")
-        print(f"P({label} > {args.seuil}) = {proba:.1%}")
+    print(f"\n{result['label']} -- {result['detail']}")
+    if args.stat in PCT_STATS:
+        print(f"P({result['label']} > {args.seuil:.0%}) = {result['proba']:.1%}")
     elif args.stat in CLASSIFIER_STATS:
-        model_file, label = CLASSIFIER_STATS[args.stat]
-        bundle = joblib.load(MODELS_DIR / f"{model_file}.joblib")
-        proba, detail = run_classifier(bundle, context)
-        print(f"\n{label} -- {detail}")
-        print(f"P({label}) = {proba:.1%}")
+        print(f"P({result['label']}) = {result['proba']:.1%}")
     else:
-        model_file, makes_col, attempts_col, label = PCT_STATS[args.stat]
-        bundle = joblib.load(MODELS_DIR / f"{model_file}.joblib")
-        proba, detail = run_pct(bundle, context, args.seuil)
-        print(f"\n{label} -- {detail}")
-        print(f"P({label} > {args.seuil:.0%}) = {proba:.1%}")
+        print(f"P({result['label']} > {args.seuil}) = {result['proba']:.1%}")
 
 
 if __name__ == "__main__":
