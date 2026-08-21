@@ -61,7 +61,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from scipy.stats import binom
+from scipy.stats import betabinom, binom
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
@@ -80,6 +80,15 @@ SHARED_ATTEMPTS_COLS = [
 # est grand, plus le taux d'un joueur à faible volume est ramené vers la
 # moyenne ligue.
 SHRINKAGE_CANDIDATES = (5, 10, 15, 20, 30)
+
+# Stats où la loi Beta-Binomiale prédictive (garde l'incertitude sur p au
+# lieu de l'écraser à p_hat) réduit réellement le résiduel de calibration —
+# testé empiriquement (test_overdispersion_ft.py, §19 projet-data-nba.md),
+# PAS supposé : FT% 5.4%->4.1% (retenu), 3P% 3.6%->3.4% (gain négligeable),
+# FG% 0.9%->1.1% (pire, déjà quasi parfait — n'y touche pas). Même patron que
+# POISSON_STATS dans train_stat_model.py : correctif ciblé, pas généralisé
+# partout par défaut.
+BETABINOM_STATS = {"ft"}
 
 TEST_FRACTION = 0.2
 
@@ -128,6 +137,26 @@ def proba_pct_over(threshold: float, n: np.ndarray, p: np.ndarray) -> np.ndarray
     valable que threshold*n soit entier ou non."""
     min_makes = np.floor(threshold * n) + 1
     return 1 - binom.cdf(min_makes - 1, n, p)
+
+
+def proba_pct_over_betabinom(threshold: float, n: np.ndarray, alpha: np.ndarray, beta: np.ndarray) -> np.ndarray:
+    """P(M/n > threshold) avec M ~ Beta-Binomial(n, alpha, beta) — garde
+    l'incertitude sur le taux (posterior Beta complet) au lieu de l'écraser à
+    sa moyenne comme proba_pct_over. Overdispersion mécanique par rapport à
+    la Binomiale pure : variance toujours >= celle du plug-in Binomial(n, p_hat)."""
+    min_makes = np.floor(threshold * n) + 1
+    return 1 - betabinom.cdf(min_makes - 1, n, alpha, beta)
+
+
+def posterior_alpha_beta(makes_sum: pd.Series, attempts_sum: pd.Series, league_avg: float, k: float):
+    """Paramètres du postérieur Beta(alpha, beta) après rétrécissement vers
+    le prior Beta(k*avg, k*(1-avg)) — mêmes entrées que shrunk_rate, mais
+    alpha/beta gardés séparés au lieu d'être réduits à leur moyenne."""
+    makes = makes_sum.fillna(0.0).to_numpy() if hasattr(makes_sum, "fillna") else np.asarray(makes_sum)
+    attempts = attempts_sum.fillna(0.0).to_numpy() if hasattr(attempts_sum, "fillna") else np.asarray(attempts_sum)
+    alpha = k * league_avg + makes
+    beta = k * (1 - league_avg) + (attempts - makes)
+    return alpha, beta
 
 
 def calibration_check(label: str, y_makes, y_attempts, n_hat, p_hat, thresholds):
@@ -200,12 +229,30 @@ def run(stat: str, label_fr: str, makes_col: str, attempts_col: str, thresholds:
             for s in thresholds
         ]))
         print(f"\n[k={k}] écart moyen absolu (tous seuils) : {score:.1%}")
-        calibration_check(f"Beta-Binomial k={k}", test_scoreable["makes_reel"], test_scoreable["attempts_reel"],
+        calibration_check(f"Binomial (p rétréci) k={k}", test_scoreable["makes_reel"], test_scoreable["attempts_reel"],
                            n_hat_scoreable, p_hat, thresholds)
         if best_score is None or score < best_score:
             best_k, best_score = k, score
 
     print(f"\n>>> Meilleur k retenu : {best_k} (écart moyen absolu {best_score:.1%})")
+
+    # Overdispersion (Phase 3, projet-data-nba.md §19) : testé empiriquement
+    # pour chaque stat via test_overdispersion_ft.py — n'aide que sur FT%
+    # (voir BETABINOM_STATS). Recalibré ici avec le k retenu pour confirmer
+    # et documenter le gain au moment de sauvegarder.
+    distribution = "binomial"
+    if stat in BETABINOM_STATS:
+        alpha_post, beta_post = posterior_alpha_beta(
+            test_scoreable["makes_sum10"], test_scoreable["attempts_sum10"], league_avg, best_k
+        )
+        real_pct = test_scoreable["makes_reel"] / test_scoreable["attempts_reel"]
+        bb_score = float(np.mean([
+            abs(proba_pct_over_betabinom(s, n_hat_scoreable, alpha_post, beta_post).mean() - (real_pct > s).mean())
+            for s in thresholds
+        ]))
+        print(f"\n[Beta-Binomial prédictif, k={best_k}] écart moyen absolu : {bb_score:.1%} "
+              f"(contre {best_score:.1%} en Binomial plug-in) — adopté en prod pour cette stat.")
+        distribution = "beta_binomial"
 
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / f"{stat}_pct.joblib"
@@ -216,7 +263,7 @@ def run(stat: str, label_fr: str, makes_col: str, attempts_col: str, thresholds:
             "league_avg": league_avg,
             "shrinkage_k": best_k,
             "target": f"{stat}_pct",
-            "distribution": "binomial",
+            "distribution": distribution,
         },
         model_path,
     )

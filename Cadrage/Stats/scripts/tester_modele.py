@@ -34,7 +34,7 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from scipy.stats import binom, norm, poisson
+from scipy.stats import betabinom, binom, norm, poisson
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -219,10 +219,23 @@ def run_pct(bundle, context, seuil) -> tuple:
     stat = bundle["target"].replace("_pct", "")
     makes_key = {"ft": "ftm_sum10", "fg": "fgm_sum10", "fg3": "fg3m_sum10"}[stat]
     attempts_key = {"ft": "fta_sum10", "fg": "fga_sum10", "fg3": "fg3a_sum10"}[stat]
-    p_hat = (context[makes_key] + k * league_avg) / (context[attempts_key] + k)
+    makes_sum, attempts_sum = context[makes_key], context[attempts_key]
     min_makes = math.floor(seuil * n_hat) + 1
-    proba = 1 - binom.cdf(min_makes - 1, n_hat, p_hat)
-    detail = f"tentatives predites = {n_hat} | taux estime = {p_hat:.1%} (ligue: {league_avg:.1%})"
+
+    if bundle.get("distribution") == "beta_binomial":
+        # Postérieur Beta complet gardé (pas écrasé à sa moyenne) — réduit le
+        # résiduel de calibration sur cette stat, testé empiriquement
+        # (projet-data-nba.md §19, train_pct_model.py BETABINOM_STATS).
+        alpha_post = k * league_avg + makes_sum
+        beta_post = k * (1 - league_avg) + (attempts_sum - makes_sum)
+        proba = 1 - betabinom.cdf(min_makes - 1, n_hat, alpha_post, beta_post)
+        p_hat = alpha_post / (alpha_post + beta_post)
+        detail = (f"tentatives predites = {n_hat} | taux estime = {p_hat:.1%} (ligue: {league_avg:.1%}) "
+                  f"[Beta-Binomial, incertitude sur le taux gardee]")
+    else:
+        p_hat = (makes_sum + k * league_avg) / (attempts_sum + k)
+        proba = 1 - binom.cdf(min_makes - 1, n_hat, p_hat)
+        detail = f"tentatives predites = {n_hat} | taux estime = {p_hat:.1%} (ligue: {league_avg:.1%})"
     return float(proba), detail
 
 

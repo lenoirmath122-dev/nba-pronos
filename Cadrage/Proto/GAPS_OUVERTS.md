@@ -4,6 +4,23 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
+> calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain
+> ciblé adopté sur FT% seulement** (`projet-data-nba.md` §20,
+> `JOURNAL_SESSIONS.md` entrée dédiée) : Beta-Binomial prédictif réduit le
+> résiduel 5.4%→4.1% sur FT%, jugé négligeable (3P%) ou contre-productif
+> (FG%) sur les 2 autres — pas adopté là, même patron que `POISSON_STATS`
+> (§15). `train_pct_model.py`/`tester_modele.py` mis à jour, 3 modèles
+> réentraînés/resauvegardés, vérifié en conditions réelles.
+> - **Nouveau point ouvert, pas creusé** : ~4% de biais résiduel restant sur
+>   FT% même après le correctif (signe qui s'inverse selon le seuil) — piste
+>   distincte de l'overdispersion, jamais regardée. Pas bloquant.
+> - **Toujours ouvert, inchangé** : les 12 modèles socle (points/rebonds/
+>   .../dd/td) restent entraînés sur le dataset à 2 saisons (56 938 lignes)
+>   alors que `nba.db` en contient ~2,4x plus depuis le fetch à 5 saisons
+>   (20/08/2026) — décision de relancer `build_features.py`/
+>   `build_targets.py`/les 4 `train_*.py` toujours pas prise.
+
 > **État au 21/08/2026** — **Nouvelle page `/regles` construite (§2.96
 > ETAT_ACTUEL.md) et tutoriel "Comment jouer ?" entièrement retiré (§2.97)**
 > à la demande de l'utilisateur, `/regles` couvrant désormais ce besoin.

@@ -2,8 +2,26 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 20/08/2026, soir — encore une suite)
+> ## 🔴 REPRISE ICI (état au 21/08/2026)
 >
+> **Phase 3 (overdispersion FT%/FG%/3P%) close — Beta-Binomial adopté sur
+> FT% seulement, testé empiriquement d'abord** (§20) : résiduel de
+> calibration réduit 5.4%→4.1% sur FT% (négligeable/contre-productif sur
+> 3P%/FG%, pas adopté là). `train_pct_model.py`/`tester_modele.py` mis à
+> jour, les 3 modèles `*_pct.joblib` réentraînés et resauvegardés, vérifié
+> en conditions réelles (`tester_modele.py`). **Reste ouvert** : ~4% de
+> biais résiduel sur FT% (signe qui s'inverse selon le seuil, piste
+> distincte de l'overdispersion, pas encore regardée) ; pas bloquant.
+>
+> **Toujours en attente depuis le 20/08/2026 (pas retouché cette session)** :
+> les 12 modèles socle (points/rebonds/passes/.../min/dd/td) restent
+> entraînés sur le dataset à 2 saisons (56 938 lignes) alors que la base
+> (`nba.db`) en contient ~2,4x plus depuis le fetch à 5 saisons. Pour en
+> profiter : relancer `build_features.py` → `build_targets.py` → les 4
+> `train_*.py` — décision volontairement reportée à la reprise précédente,
+> toujours pas prise.
+>
+> Plus tôt (état au 20/08/2026, soir — encore une suite) —
 > **Fetch étendu à 5 saisons (2021-22→2025-26) TERMINÉ, base reconstruite**
 > — 6 602 matchs (contre 2 641 sur 2 saisons), 139 543 lignes box_scores,
 > 3 054 074 lignes play_by_play. `load_to_sqlite.py` amélioré au passage
@@ -776,4 +794,61 @@ fond plutôt que de ne voir que 10 matchs. **À vérifier avant de généraliser
 ce changement** : est-ce que ce cas (Wembanyama) est isolé, ou est-ce que
 d'autres joueurs à forte variance de rebonds montrent le même écart entre
 fenêtre courte et taux réel long terme ? Pas encore regardé.
+```
+
+## 20. Phase 3 — overdispersion FT%/FG%/3P% : Beta-Binomial adopté, FT% seulement (21/08/2026)
+
+```text
+Reprise du résiduel de calibration ±4-9% laissé ouvert en §18 (candidat
+Phase 3, hypothèse overdispersion jamais vérifiée). Même démarche que le
+choix Poisson vs normale (§15) : tester empiriquement avant de généraliser,
+rien décidé a priori.
+
+**Hypothèse testée** : `train_pct_model.py` calcule P(pct > seuil) via une
+Binomiale PLUG-IN — le rétrécissement bayésien (§18) donne un postérieur
+Beta(alpha, beta) sur le taux, mais celui-ci est écrasé à sa seule moyenne
+(`p_hat`) avant d'être injecté dans une Binomiale simple. Ça jette
+l'incertitude sur le taux lui-même, qui doit mécaniquement sous-estimer la
+variance réelle match par match (fatigue, défense adverse...).
+
+Testé (`scripts/test_overdispersion_ft.py`, script gardé pour trace/repro) :
+même split que `train_pct_model.py`, comparaison Binomial plug-in actuel vs.
+Beta-Binomial prédictif (garde alpha/beta séparés au lieu de la moyenne),
+sur les 3 stats de taux avec leur `k` déjà retenu en §18.
+
+| Stat | Volume tentatives | Écart Binomial | Écart Beta-Binomial |
+|---|---|---|---|
+| FT% | faible (~2-4/match) | 5.4% | **4.1%** |
+| 3P% | moyen (~5-8/match) | 3.6% | 3.4% (négligeable) |
+| FG% | élevé (~10/match) | 0.9% | 1.1% (légèrement pire) |
+
+**Confirmé, mais pas partout** : l'effet d'overdispersion est réel et
+proportionnel à la RARETÉ des tentatives — inverse du volume qui dominait
+déjà la calibration en §18. Sur FG% (déjà quasi parfait), élargir la
+distribution n'apporte rien et dégrade légèrement. Sur FT% (le pire des 3),
+gain net (~24% de réduction du résiduel). 3P% : gain marginal, pas retenu.
+Le gain sur FT% ne comble pas tout le résiduel (reste ~4%) — le signe de
+l'écart s'inverse entre 60% (+7%) et 70-90% (−4 à −6%), signe d'un biais
+résiduel sur l'estimation du taux/des tentatives eux-mêmes, pas juste un
+manque de variance. Pas creusé davantage (jugé pas assez d'intérêt pour
+l'effort à ce stade).
+
+**Adopté en prod, FT% seulement** — même patron que `POISSON_STATS` (§15) :
+correctif ciblé par stat, pas généralisé partout par défaut.
+`train_pct_model.py` : nouvelle constante `BETABINOM_STATS = {"ft"}`,
+`proba_pct_over_betabinom()`/`posterior_alpha_beta()` ajoutées, `run()`
+sauvegarde `distribution: "beta_binomial"` pour FT% (`"binomial"` inchangé
+pour FG%/3P%). `tester_modele.py` (`run_pct()`) lit ce champ et bascule sur
+la CDF Beta-Binomiale avec le postérieur complet pour FT%, comportement
+inchangé pour FG%/3P%. Les 3 modèles réentraînés/resauvegardés
+(`models/{ft,fg,fg3}_pct.joblib`) — mêmes `k` retenus qu'en §18 (FT%=5,
+FG%=30, 3P%=5), aucune régression sur FG%/3P% (calibration identique aux
+chiffres de §18, code non affecté pour ces 2 stats). Vérifié en conditions
+réelles via `tester_modele.py` (Tatum/FT%, Curry/3P%, Jokić/FG%) : le tag
+`[Beta-Binomial, incertitude sur le taux gardee]` apparaît bien seulement
+pour FT%, les 2 autres stats affichent le détail inchangé.
+
+**Reste ouvert, pas creusé** : le biais résiduel ~4% sur FT% (signe qui
+s'inverse selon le seuil) — piste distincte de l'overdispersion, jamais
+regardée. Pas bloquant, gain déjà net par rapport à avant.
 ```

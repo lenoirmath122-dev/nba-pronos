@@ -8218,3 +8218,63 @@ décrit plus rien de présent dans le code).
 final confirmant aucune référence résiduelle à "tutorial"/"tutoriel"
 nulle part dans app/, components/, lib/.
 ```
+
+
+## Projet Data NBA : Phase 3, overdispersion FT%/FG%/3P% — Beta-Binomial adopté sur FT% (21/08/2026)
+
+```text
+Chantier séparé de l'app V1 (Cadrage/Stats/projet-data-nba.md), reprise de
+la Phase 3 du plan en 5 phases (§16) : le résiduel de calibration ±4-9%
+laissé ouvert sur FT%/3P% en §18 (hypothèse overdispersion jamais vérifiée).
+Même méthode que le choix Poisson vs normale (§15, distribution testée
+empiriquement avant de généraliser) — rien décidé a priori.
+
+Cause du résiduel identifiée avant de tester : `train_pct_model.py` calcule
+la proba finale via une Binomiale PLUG-IN (n_hat, p_hat) — le rétrécissement
+bayésien (§18) donne pourtant un vrai postérieur Beta(alpha, beta) sur le
+taux, écrasé à sa seule moyenne avant d'être injecté dans la Binomiale.
+L'incertitude sur le taux lui-même est donc jetée, ce qui sous-estime
+mécaniquement la variance réelle match par match.
+
+Testé (`scripts/test_overdispersion_ft.py`, nouveau script, gardé pour
+trace/repro à la demande de l'utilisateur) : Beta-Binomial prédictif
+(alpha/beta gardés séparés) vs Binomial plug-in actuel, même split que
+train_pct_model.py, sur les 3 stats de taux avec leur k déjà retenu (§18).
+Résultat, très inégal selon le volume de tentatives (même logique que §18,
+mais inversée) : FT% (le moins tenté) 5.4%→4.1% (gain net) ; 3P% 3.6%→3.4%
+(négligeable) ; FG% (le plus tenté, déjà quasi parfait) 0.9%→1.1%
+(légèrement PIRE — élargir la distribution n'aide pas un modèle déjà bien
+calibré). Décision avec l'utilisateur : adopter Beta-Binomial en prod
+UNIQUEMENT sur FT%, même patron que `POISSON_STATS` (§15, correctif ciblé
+par stat, jamais généralisé par défaut sans vérification).
+
+Implémenté : `train_pct_model.py` — `BETABINOM_STATS = {"ft"}`,
+`proba_pct_over_betabinom()`/`posterior_alpha_beta()` ajoutées, `run()`
+sauvegarde `distribution: "beta_binomial"` pour FT% (`"binomial"` inchangé
+pour FG%/3P%). Renommé au passage le label de calibration de la boucle de
+sélection de k ("Beta-Binomial k=..." → "Binomial (p rétréci) k=...") —
+l'ancien nom prêtait à confusion maintenant qu'un vrai Beta-Binomial
+prédictif existe à côté (l'ancien calcul reste un plug-in Binomial, seul le
+`p_hat` en entrée était rétréci via la formule Beta-Binomiale). Côté
+lecture, `tester_modele.py` (`run_pct()`) bascule sur la CDF Beta-Binomiale
+avec le postérieur complet quand `bundle["distribution"] == "beta_binomial"`,
+comportement inchangé sinon.
+
+Les 3 modèles réentraînés/resauvegardés (`models/{ft,fg,fg3}_pct.joblib`),
+mêmes k retenus qu'en §18 (FT%=5, FG%=30, 3P%=5) — aucune régression sur
+FG%/3P% (code de calibration identique pour ces 2 stats, chiffres
+inchangés). Vérifié en conditions réelles via `tester_modele.py` (Tatum/FT%,
+Curry/3P%, Jokić/FG%) : le tag `[Beta-Binomial, incertitude sur le taux
+gardee]` apparaît bien uniquement pour FT%, comportement/format inchangé
+pour les 2 autres stats.
+
+**Reste ouvert, pas creusé** : même après le correctif, ~4% de biais
+résiduel sur FT% (le signe de l'écart s'inverse entre le seuil 60%, +7%, et
+70-90%, -4 à -6%) — signe d'un biais sur l'estimation du taux/des
+tentatives eux-mêmes, piste distincte de l'overdispersion, jamais regardée.
+Pas bloquant, gain déjà net (~24% de réduction du résiduel) par rapport à
+avant.
+
+Détail complet : `projet-data-nba.md` §20 (bandeau REPRISE mis à jour en
+tête du fichier).
+```
