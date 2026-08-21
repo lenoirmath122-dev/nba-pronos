@@ -17,6 +17,17 @@ export type PendingValidationBet = {
   proposedCategory: BetCategory;
   proposedDifficulty: BetDifficulty;
   submittedAt: string;
+  // Structuration IA + proba calculée (Phase 5 Data NBA, 21/08/2026) --
+  // null tant que non calculable ou en cas de panne à la soumission, voir
+  // lib/ai/structureAndScoreBet.ts. Simple SUGGESTION affichée à l'admin,
+  // qui garde la main (même patron que proposedCategory/proposedDifficulty).
+  isCalculable: boolean;
+  structuredPlayerName: string | null;
+  structuredStat: string | null;
+  structuredThreshold: number | null;
+  structuredComparison: "OVER" | "UNDER" | null;
+  calculatedProba: number | null;
+  suggestedDifficulty: BetDifficulty | null;
 };
 
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
@@ -43,6 +54,13 @@ type BetRow = {
   proposed_category: BetCategory;
   proposed_difficulty: BetDifficulty;
   submitted_at: string | null;
+  is_calculable: boolean | null;
+  structured_player_name: string | null;
+  structured_stat: string | null;
+  structured_threshold: number | null;
+  structured_comparison: "OVER" | "UNDER" | null;
+  calculated_proba: number | null;
+  suggested_difficulty: BetDifficulty | null;
 };
 
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null };
@@ -60,7 +78,9 @@ export async function getPendingValidationBets(): Promise<PendingValidationBet[]
 
   const { data: betsData } = await supabase
     .from("bets")
-    .select("id, user_id, scope, series_id, match_id, description, proposed_category, proposed_difficulty, submitted_at")
+    .select(
+      "id, user_id, scope, series_id, match_id, description, proposed_category, proposed_difficulty, submitted_at, is_calculable, structured_player_name, structured_stat, structured_threshold, structured_comparison, calculated_proba, suggested_difficulty",
+    )
     .eq("competition_id", competition.id)
     .eq("status", "SUBMITTED")
     .order("submitted_at", { ascending: true });
@@ -106,6 +126,13 @@ export async function getPendingValidationBets(): Promise<PendingValidationBet[]
       proposedCategory: b.proposed_category,
       proposedDifficulty: b.proposed_difficulty,
       submittedAt: b.submitted_at ?? "",
+      isCalculable: b.is_calculable ?? false,
+      structuredPlayerName: b.structured_player_name,
+      structuredStat: b.structured_stat,
+      structuredThreshold: b.structured_threshold,
+      structuredComparison: b.structured_comparison,
+      calculatedProba: b.calculated_proba,
+      suggestedDifficulty: b.suggested_difficulty,
     };
   });
 }

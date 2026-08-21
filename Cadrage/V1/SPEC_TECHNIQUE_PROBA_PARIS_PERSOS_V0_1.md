@@ -5,12 +5,14 @@
 > une probabilité calculée automatiquement, pour les paris que le modèle
 > sait calculer.
 >
-> **Statut : PROPOSITION, EN PAUSE — aucune implémentation commencée.**
-> Décisions de principe actées avec l'utilisateur le 19/08/2026, mais la
-> spec n'est **pas** finalisable tant qu'un modèle de probabilité ne tourne
-> pas pour de vrai (dépendance : `Cadrage/Stats/projet-data-nba.md`,
-> chantier Data NBA). Reprise prévue après un premier modèle jetable
-> entraîné et vérifié sur un cas connu.
+> **Statut : PREMIÈRE VERSION CODÉE ET DÉPLOYÉE (21/08/2026)** — voir §7bis.
+> Point 1 (modèle qui tourne), point 3 (pont contexte à jour) et point 4
+> (structuration IA) sont FAITS. Points 2 (seuils calibrés — provisoires
+> pour l'instant, à vue de nez) et 5 (barème du fallback — inchangé, pas de
+> nouveau barème créé) restent ouverts, détail §7bis. Décisions de principe
+> actées avec l'utilisateur le 19/08/2026 ; le modèle de probabilité tourne
+> désormais pour de vrai (`Cadrage/Stats/projet-data-nba.md`, chantier Data
+> NBA, service déployé §24 de ce document).
 >
 > **Dépend de** : `SPEC_TECHNIQUE_SCORING_V0_1.md` (T5 §8, moteur
 > `scoreBet` — **reste intact**, non réouvert par cette spec) ;
@@ -142,3 +144,75 @@ validation.
 Cette spec sera complétée/validée point par point au fur et à mesure que
 ces briques existeront, en commençant par le point 1 (voir
 `Cadrage/Stats/projet-data-nba.md` §11 pour la suite prévue côté modèle).
+
+## 7bis. Implémentation réelle (21/08/2026)
+
+```text
+Points 1/3/4 FAITS :
+1. Modèle qui tourne : les 12 modèles (Cadrage/Stats/models/*.joblib),
+   réentraînés sur 5 saisons (projet-data-nba.md §21).
+3. Pont contexte à jour : micro-service Python déployé sur Google Cloud
+   Run (§24), architecture sans état -- les stats vivent dans Supabase
+   (stats_equipes/stats_joueurs/stats_matchs/stats_box_scores),
+   rafraîchies chaque jour (§25/§26).
+4. Structuration IA : Claude Opus 5 (lib/ai/structureBet.ts), sortie
+   structurée via client.messages.parse() + zodOutputFormat -- extrait
+   {calculable, player_name, stat, threshold, comparison, reasoning}.
+   calculable=false pour tout ce qui sort des 12 stats du modèle (paris
+   équipe, combo multi-joueurs, score total, fun/hors-terrain, scénario,
+   formulation ambiguë) -- retombe alors intégralement sur le mécanisme
+   manuel existant (§4), zéro changement de comportement dans ce cas.
+```
+
+**Où ça vit dans le code, décidé le 21/08/2026** (répond au point non
+tranché de §3 -- "où vit cet appel ? à la validation ? en tâche de
+fond ?") : **synchrone, à la SOUMISSION du pari** (`submitBet`,
+`lib/actions/bets.ts`), pas à la validation admin. Orchestré par
+`lib/ai/structureAndScoreBet.ts` : structuration IA -> appel au
+micro-service (`lib/ai/statsService.ts`, `POST /predict`) -> conversion
+proba->palier (`lib/ai/difficultyTiers.ts`) -> écriture figée via une
+nouvelle fonction SQL `update_bet_structuration` (SECURITY DEFINER, même
+patron que `save_bet`/`withdraw_bet`/`delete_bet` -- session utilisateur,
+jamais service_role). **Best-effort de bout en bout** : toute panne (clé
+API absente, timeout Cloud Run, joueur non trouvé, stat non calculable)
+laisse le pari soumis normalement, avec le flux manuel existant intact --
+rien de cette chaîne ne peut faire échouer une soumission de pari.
+
+**Nouvelles colonnes** (migration `20260821150000_bets_ai_structuration.sql`,
+toutes NULLABLES) : `structured_player_name`, `structured_stat`,
+`structured_threshold`, `structured_comparison` (OVER/UNDER),
+`is_calculable`, `calculated_proba`, `suggested_difficulty`. Figées à la
+soumission (P10), jamais recalculées après (même si le modèle est
+réentraîné ou la stat rejouée).
+
+**UNDER approximé** : le micro-service ne calcule que P(stat > seuil). Pour
+un pari UNDER, `statsService.ts` utilise `1 - P(stat > seuil)` -- ignore
+`P(stat == seuil)` pile sur le seuil, écart mineur assumé pour ce 1er jet.
+
+**Admin reste dans la boucle** (même principe que `proposed_category`/
+`proposed_difficulty` déjà existants) : `ValidationBetCard.tsx` affiche la
+suggestion IA (joueur/stat/seuil/proba/palier) en lecture seule, et
+pré-remplit le `<select>` de difficulté avec `suggestedDifficulty` --
+l'admin peut valider tel quel ou changer manuellement, rien n'est
+auto-appliqué sans son geste de validation.
+
+**Point 2 (seuils calibrés) -- PAS FAIT, provisoire assumé** : décidé avec
+l'utilisateur de livrer une version qui marche maintenant plutôt que
+d'attendre une vraie distribution de probas sur un échantillon de paris
+réels. `lib/ai/difficultyTiers.ts` pose des seuils "à vue de nez" (>=80% ->
+palier 1, >=60% -> palier 2, >=40% -> palier 3, >=20% -> palier 4, sinon
+palier 5) -- À RECALIBRER une fois assez de paris réels structurés pour
+observer la vraie distribution.
+
+**Point 5 (barème du fallback) -- PAS TRANCHÉ, statu quo assumé par
+défaut** : aucun nouveau barème créé pour les paris non calculables, ils
+utilisent le mécanisme manuel existant tel quel (`proposed_difficulty`/
+`validated_difficulty`, `BET_DIFFICULTY_POINTS`) -- la question "faut-il un
+barème séparé ?" (notée "à voir" par l'utilisateur le 19/08) reste
+explicitement ouverte, pas juste oubliée.
+
+**Vérifié** : `tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes)
+propres. Migration poussée sur la base réelle. **Pas encore vérifié en
+conditions réelles au clic** : nécessite `ANTHROPIC_API_KEY` et
+`STATS_SERVICE_URL` configurées (Vercel + `.env.local`), pas encore fait
+par l'utilisateur -- voir `GAPS_OUVERTS.md`.

@@ -2,8 +2,32 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 5 — Phase 4 TOTALEMENT CLOSE)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 6 — Phase 5 démarrée, codée)
 >
+> **Structuration IA + raccordement réel dans l'appli — CODÉ, PAS ENCORE
+> VÉRIFIÉ AU CLIC** (§27, voir aussi `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md`
+> §7bis). Un pari perso soumis passe désormais par Claude Opus 5
+> (extraction joueur/stat/seuil) puis le micro-service Cloud Run (§24) pour
+> une vraie proba, figée à la soumission — best-effort de bout en bout,
+> aucune panne de cette chaîne ne peut bloquer une soumission de pari.
+> Nouvelle migration (`bets` +7 colonnes + RPC `update_bet_structuration`),
+> 5 nouveaux fichiers `lib/ai/*`, `submitBet`/écran admin de validation mis
+> à jour. `tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes) propres,
+> migration poussée sur la base réelle.
+> - **Reste, action de l'utilisateur** : ajouter `ANTHROPIC_API_KEY` (clé
+>   Anthropic Console, jamais collée dans le chat) et `STATS_SERVICE_URL`
+>   (URL du service Cloud Run, non sensible) sur Vercel + `.env.local` —
+>   sans ça, la structuration reste silencieusement inactive (repli manuel
+>   existant, aucune casse). Puis vérifier au clic (poser un vrai pari
+>   perso calculable, voir la suggestion apparaître côté admin).
+> - **Seuils proba->palier volontairement provisoires** ("à vue de nez",
+>   décidé le 21/08/2026) — point 2 de la spec toujours pas fait, à
+>   recalibrer une fois assez de paris réels structurés.
+> - **Point 5 (barème du fallback) volontairement pas tranché** — statu quo
+>   assumé (mécanisme manuel existant inchangé pour les paris non
+>   calculables), question "faut-il un barème séparé ?" reste ouverte.
+>
+> Plus tôt (état au 21/08/2026, suite 5 — Phase 4 totalement close) —
 > **Secrets GitHub Actions ajoutés par l'utilisateur, workflow lancé
 > manuellement et RÉUSSI** (§26) — 1er run réel : `succeeded en 10m29s`,
 > mais quasi tout ce temps passé sur des timeouts (60s × 3 tentatives × 3
@@ -12,10 +36,9 @@
 > pour `leaguegamefinder` dans `refresh_daily.py` (15s, 1 tentative) --
 > passe de ~10 min à ~8s en local pour ce même cas, sans rien perdre en
 > fiabilité une fois la saison lancée (revérifié sur 2025-26 : 1321
-> connus/1321 trouvés/0 nouveau, identique à avant). **Phase 4 maintenant
-> ENTIÈREMENT close** : service déployé (§24), données à jour automatique
-> (§25), coût du job optimisé (§26). Reste la Phase 5 (3 points
-> indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7).
+> connus/1321 trouvés/0 nouveau, identique à avant). Phase 4 entièrement
+> close : service déployé (§24), données à jour automatique (§25), coût du
+> job optimisé (§26).
 >
 > Plus tôt (état au 21/08/2026, suite 4 — Phase 4 code complet) —
 > **Rafraîchissement quotidien écrit, testé et validé** (§25) —
@@ -1335,4 +1358,95 @@ tenues à jour automatiquement (§25), coût du job quotidien optimisé (§26).
 Reste la Phase 5, 3 points indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_
 PERSOS_V0_1.md` §7 (distribution de probas pour calibrer les seuils entre
 paliers, structuration IA du texte libre, barème du fallback).
+```
+
+## 27. Phase 5 démarrée — structuration IA + raccordement réel dans l'appli (21/08/2026, suite)
+
+```text
+Utilisateur : "On y go" -- Phase 5 (relier réellement un pari perso au
+calcul de proba). Détail complet du design/des décisions dans
+SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §7bis (nouvelle section) -- ici,
+résumé de la session.
+
+**Recherche préalable, code réel de l'appli (agent Explore)** : le cycle de
+vie complet d'un pari perso (table bets, save_bet/submitBet/validateBet/
+resolveBet/scoreBet) confirmé -- AUCUNE colonne structurée n'existait avant
+aujourd'hui (tout dans un champ description texte libre). decisions_0.2.4
+§10 n'envisageait l'IA que pour suggérer gagné/perdu à la RÉSOLUTION, pas
+pour structurer à la soumission -- ce qui est fait aujourd'hui est une
+vraie extension de périmètre, pas un remplissage de case déjà prévue.
+
+**Décisions actées avec l'utilisateur avant de coder** :
+- Modèle : **Claude Opus 5** (coût réel négligeable pour ce volume, ~1-1,5
+  centime/pari classifié -- l'utilisateur a d'abord demandé s'il existait
+  une option gratuite/incluse dans son abonnement Claude Code : non, l'API
+  Anthropic est facturée séparément, mais le coût réel est trivial ici).
+- Moment de l'appel : **synchrone, à la SOUMISSION du pari** (pas à la
+  validation admin, pas en tâche de fond).
+- Seuils proba->palier (point 2 de la spec, jamais calibré) : **provisoires
+  à vue de nez** pour livrer une version qui marche maintenant, à
+  recalibrer plus tard sur un vrai échantillon.
+- Plan d'ensemble validé avant codage : nouvelles colonnes sur `bets`,
+  accroché à la soumission (même moment que `proposed_category`/
+  `proposed_difficulty`), admin garde la main à la validation (même
+  principe que l'existant).
+
+**Implémenté** :
+- Migration `20260821150000_bets_ai_structuration.sql` : 7 colonnes
+  nullables sur `bets` (structured_player_name/stat/threshold/comparison,
+  is_calculable, calculated_proba, suggested_difficulty) + fonction SQL
+  `update_bet_structuration` (SECURITY DEFINER, même patron que
+  save_bet/withdraw_bet/delete_bet -- vérifie propriétaire + statut
+  SUBMITTED, jamais un UPDATE direct depuis le client).
+- `lib/ai/statCodes.ts` : les 12 codes de stat du micro-service, à
+  resynchroniser à la main avec `STATS_DISPONIBLES` côté Python (pas de
+  génération partagée entre les 2 dépôts/langages).
+- `lib/ai/structureBet.ts` : appel Claude Opus 5 via
+  `client.messages.parse()` + `zodOutputFormat` (structured outputs,
+  pattern recommandé de la skill claude-api) -- extrait {calculable,
+  player_name, stat, threshold, comparison, reasoning}. `calculable=false`
+  pour tout ce qui sort des 12 stats (paris équipe, combo, score total,
+  fun/hors-terrain, scénario, formulation ambiguë) -- jamais forcé.
+- `lib/ai/statsService.ts` : appel HTTP au micro-service Cloud Run
+  (`POST /predict`, §24). Le service ne calcule que P(stat > seuil) --
+  pour un pari UNDER, approximation `1 - P(stat > seuil)` (ignore
+  P(stat==seuil) pile sur le seuil, écart mineur assumé pour ce 1er jet).
+- `lib/ai/difficultyTiers.ts` : seuils provisoires (>=80%->palier 1,
+  >=60%->2, >=40%->3, >=20%->4, sinon 5).
+- `lib/ai/structureAndScoreBet.ts` : orchestrateur, appelé depuis
+  `submitBet` (`lib/actions/bets.ts`) après le succès de `save_bet`.
+  **Best-effort total** : try/catch à chaque étage, une panne (clé API
+  absente, timeout Cloud Run, joueur non trouvé...) laisse le pari soumis
+  normalement, flux manuel existant intact -- rien ne peut faire échouer
+  une soumission de pari à cause de cette chaîne.
+- Écran admin de validation (`lib/queries/admin-validation.ts`,
+  `components/admin/ValidationBetCard.tsx`) : affiche la suggestion IA
+  (joueur/stat/seuil/proba/palier) en lecture seule, pré-remplit le
+  `<select>` de difficulté avec `suggestedDifficulty` -- l'admin garde la
+  main (comme aujourd'hui pour catégorie/difficulté), rien d'auto-appliqué
+  sans son geste de validation.
+- Dépendances ajoutées : `@anthropic-ai/sdk`, `zod` (`npm install`, pas de
+  version devinée -- laissé npm résoudre après un 1er essai avec une
+  version inventée qui n'existait pas).
+
+**Bug réel trouvé en vérifiant** : `tsc` a rejeté le cast de
+`getPendingValidationBets()` (`GenericStringError[]` au lieu de `BetRow[]`)
+-- la chaîne `.select(...)` construite par concaténation (`"a, b" + "c, d"`)
+empêche supabase-js d'inférer les colonnes en type littéral. Corrigé en
+un seul literal string non concaténé.
+
+**Vérifié** : `tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes)
+propres. Migration poussée sur la base réelle (colonnes confirmées lisibles
+par une requête directe). **PAS ENCORE vérifié au clic** -- nécessite
+`ANTHROPIC_API_KEY` et `STATS_SERVICE_URL` configurées (Vercel +
+`.env.local`), pas encore fait par l'utilisateur.
+
+**Reste ouvert, assumé explicitement, pas oublié** :
+- Point 2 (seuils calibrés) : toujours provisoire, à reprendre avec un vrai
+  échantillon de paris structurés.
+- Point 5 (barème du fallback) : statu quo, question "faut-il un barème
+  séparé ?" toujours ouverte, jamais tranchée par l'utilisateur.
+- Vérification en conditions réelles (poser un vrai pari perso calculable,
+  observer la suggestion admin) -- bloquée sur la configuration des 2
+  variables d'environnement.
 ```

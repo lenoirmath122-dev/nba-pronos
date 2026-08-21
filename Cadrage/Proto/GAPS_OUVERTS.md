@@ -4,24 +4,28 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 6, chantier Data NBA)** — **Phase 4
-> (raccordement appli) ENTIÈREMENT CLOSE** (`projet-data-nba.md` §26,
-> `JOURNAL_SESSIONS.md` entrée dédiée) :
-> - **Retiré** : secrets GitHub Actions ajoutés par l'utilisateur, 1er run
->   réel du cron déclenché manuellement — `succeeded`. Bug de performance
->   trouvé sur ce 1er run (~10 min passées en timeouts pour la saison
->   2026-27 hors-saison, qui se serait répété chaque jour jusqu'à
->   mi-octobre) — corrigé (timeout/tentatives réduits pour la détection de
->   saison uniquement), revérifié : ~8s hors-saison, comportement identique
->   sur une saison pleine (aucune perte de fiabilité).
-> - **Plus aucun point ouvert pour la Phase 4** : service Cloud Run déployé
->   et vérifié, données Supabase tenues à jour automatiquement, coût du job
->   optimisé.
-> - **Reste pour la Phase 5** (raccordement réel dans l'appli, pas encore
->   commencée) : 3 points indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_
->   PERSOS_V0_1.md` §7 — distribution réelle de probas pour calibrer les
->   seuils entre paliers, structuration IA du texte libre du pari,
->   barème du fallback pour les paris non calculables.
+> **État au 21/08/2026 (suite 7, chantier Data NBA)** — **Phase 5
+> démarrée : structuration IA + raccordement réel codés**
+> (`projet-data-nba.md` §27, `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md`
+> §7bis, `JOURNAL_SESSIONS.md` entrée dédiée) :
+> - **Retiré** : le raccordement lui-même — un pari perso soumis passe
+>   désormais par Claude Opus 5 (extraction joueur/stat/seuil) puis le
+>   micro-service Cloud Run pour une vraie proba, figée à la soumission,
+>   avec repli manuel best-effort si n'importe quel maillon échoue.
+> - **Nouveau point ouvert, bloquant pour vérifier au clic** : ajouter
+>   `ANTHROPIC_API_KEY` (clé Anthropic Console, jamais collée dans le chat)
+>   et `STATS_SERVICE_URL` (URL du service Cloud Run, non sensible) sur
+>   Vercel + `.env.local` — action de l'utilisateur, pas encore faite. Sans
+>   ça, la structuration reste silencieusement inactive (pas d'erreur
+>   visible, juste le flux manuel existant qui continue de s'appliquer).
+> - **Une fois fait** : vérifier en conditions réelles (poser un vrai pari
+>   perso calculable, ex. "Tatum plus de 25 points", observer la suggestion
+>   apparaître sur l'écran admin de validation).
+> - **Restent ouverts, assumés explicitement (pas oubliés)** : seuils
+>   proba->palier toujours provisoires ("à vue de nez", point 2 de la spec,
+>   jamais calibrés sur un vrai échantillon) ; barème du fallback pour les
+>   paris non calculables jamais tranché (point 5, statu quo assumé —
+>   mécanisme manuel existant inchangé).
 
 > **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
 > calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain

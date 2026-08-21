@@ -8558,3 +8558,62 @@ automatique et fiable (§25), coût du job optimisé (§26). Reste la Phase 5
 
 Détail complet : `projet-data-nba.md` §26, bandeau REPRISE mis à jour.
 ```
+
+
+## Phase 5 démarrée : structuration IA des paris persos, raccordement réel dans l'appli (21/08/2026, suite)
+
+```text
+"On y go" -- Phase 5 (relier réellement un pari perso au calcul de proba,
+plutôt qu'une simple brique technique séparée). Recherche préalable
+(agent Explore) sur le cycle de vie réel des paris persos : AUCUNE colonne
+structurée n'existait avant (tout dans le champ description texte libre) ;
+decisions_0.2.4 §10 n'envisageait l'IA que pour la résolution (suggestion
+gagné/perdu), pas pour structurer à la soumission -- vraie extension de
+périmètre, confirmée avant de coder plutôt que supposée.
+
+Décisions actées avant codage : modèle Claude Opus 5 (coût réel négligeable
+à ce volume, ~1-1,5 centime/pari -- pas d'option gratuite/incluse dans
+l'abonnement Claude Code, API Anthropic facturée séparément) ; appel
+synchrone à la SOUMISSION du pari (pas à la validation admin) ; seuils
+proba->palier provisoires "à vue de nez" pour livrer une version qui
+marche maintenant (point 2 de la spec, jamais calibré, reste ouvert).
+
+Implémenté : migration (7 colonnes nullables sur `bets` + RPC
+`update_bet_structuration`, même patron SECURITY DEFINER que
+save_bet/withdraw_bet/delete_bet) ; 5 nouveaux fichiers `lib/ai/*`
+(statCodes, structureBet -- Claude Opus 5 via client.messages.parse() +
+zodOutputFormat --, statsService -- appel HTTP au micro-service Cloud Run
+--, difficultyTiers, structureAndScoreBet -- orchestrateur best-effort) ;
+`submitBet` (lib/actions/bets.ts) appelle l'orchestrateur après le succès
+de save_bet ; écran admin de validation mis à jour (suggestion IA affichée
+en lecture seule, select de difficulté pré-rempli, admin garde la main).
+
+Best-effort de bout en bout : toute panne de cette chaîne (clé API absente,
+timeout Cloud Run, joueur non trouvé, stat non calculable) laisse le pari
+soumis normalement -- rien ne peut faire échouer une soumission de pari.
+UNDER approximé (le service ne calcule que P(stat > seuil), UNDER =
+1 - P(stat > seuil), écart mineur assumé).
+
+Dépendances ajoutées : @anthropic-ai/sdk, zod (npm install, pas de version
+devinée -- 1er essai avec une version inventée qui n'existait pas,
+corrigé en laissant npm résoudre).
+
+Bug réel trouvé en vérifiant : tsc a rejeté le cast dans
+getPendingValidationBets() -- la chaîne .select(...) construite par
+concaténation empêchait supabase-js d'inférer les colonnes en type
+littéral. Corrigé en un seul literal string non concaténé.
+
+tsc/eslint/vitest (37/37)/next build (38 routes) propres. Migration
+poussée sur la base réelle, colonnes vérifiées lisibles.
+
+Reste, action de l'utilisateur : ajouter ANTHROPIC_API_KEY (jamais collée
+dans le chat) et STATS_SERVICE_URL (URL Cloud Run, non sensible) sur
+Vercel + .env.local -- sans ça, la structuration reste silencieusement
+inactive. Puis vérifier au clic (poser un vrai pari perso calculable).
+Reste aussi ouvert, assumé explicitement : seuils de palier toujours
+provisoires (point 2) ; barème du fallback jamais tranché (point 5,
+statu quo assumé).
+
+Détail complet : projet-data-nba.md §27,
+SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §7bis (nouvelle section).
+```

@@ -38,6 +38,16 @@
   font-size: var(--font-size-xs);
 }
 
+.aiSuggestion {
+  margin: 0;
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
 .validateForm,
 .rejectForm {
   display: flex;

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import { structureAndScoreBet } from "@/lib/ai/structureAndScoreBet";
 
 // Server actions de l'écran Nouveau pari (SPEC_ECRAN_NOUVEAU_PARI_V0_1 §11) et
 // de Mes paris (suppression, §18/08/2026). AUCUNE écriture directe sur
@@ -63,9 +64,17 @@ export async function saveDraftBet(input: SaveBetInput): Promise<ActionResult> {
   return callSaveBet(input, false);
 }
 
-/** « Soumettre à validation » (§8) : entre dans la file admin, énoncé requis. */
+/** « Soumettre à validation » (§8) : entre dans la file admin, énoncé requis.
+ *  Enrichit ensuite le pari avec une structuration IA + une proba calculée
+ *  (Phase 5 Data NBA, §21/08/2026) -- synchrone, best-effort : une panne de
+ *  cette étape ne fait jamais échouer la soumission elle-même (voir
+ *  structureAndScoreBet.ts). */
 export async function submitBet(input: SaveBetInput): Promise<ActionResult> {
-  return callSaveBet(input, true);
+  const result = await callSaveBet(input, true);
+  if (result.success) {
+    await structureAndScoreBet(result.betId, input.description);
+  }
+  return result;
 }
 
 /** « Revenir en brouillon » (§9, geste « retirer ») : SUBMITTED → DRAFT, aucun champ touché. */
