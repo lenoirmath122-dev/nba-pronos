@@ -39,11 +39,36 @@ async function resolveMatchTeamNames(
 }
 
 export async function structureAndScoreBet(betId: string, description: string, seriesId: string): Promise<void> {
+  const supabase = await getServerClient();
+
+  /** Écrit is_calculable=false explicitement (jamais laissé NULL) -- bug
+   *  réel trouvé le 21/08/2026 : le code s'arrêtait sans rien écrire dès
+   *  que l'IA répondait "non calculable", rendant indistinguable "l'IA a
+   *  tranché non" de "l'IA n'a jamais tourné" (panne, clé absente...).
+   *  Fonctionnellement inoffensif (is_calculable ?? false partout en
+   *  lecture) mais rendait tout diagnostic impossible. */
+  async function markNotCalculable(): Promise<void> {
+    try {
+      await supabase.rpc("update_bet_structuration", {
+        p_bet_id: betId,
+        p_structured_player_name: null,
+        p_stat: null,
+        p_threshold: null,
+        p_comparison: null,
+        p_is_calculable: false,
+        p_calculated_proba: null,
+        p_suggested_difficulty: null,
+      });
+    } catch {
+      // Best-effort, comme le reste de cette fonction.
+    }
+  }
+
   try {
-    const supabase = await getServerClient();
     const teamNames = await resolveMatchTeamNames(supabase, seriesId);
     const structuration = await structureBet(description, teamNames);
     if (!structuration || !structuration.calculable || !structuration.player_name || !structuration.stat) {
+      await markNotCalculable();
       return;
     }
     // comparison est légitimement null pour dd/td (NO_THRESHOLD_STATS,
@@ -53,6 +78,7 @@ export async function structureAndScoreBet(betId: string, description: string, s
     // "non calculable" alors qu'ils le sont bel et bien.
     const stat = structuration.stat as StatCode;
     if (!NO_THRESHOLD_STATS.has(stat) && !structuration.comparison) {
+      await markNotCalculable();
       return;
     }
 
@@ -62,7 +88,10 @@ export async function structureAndScoreBet(betId: string, description: string, s
       structuration.threshold,
       structuration.comparison,
     );
-    if (!prediction) return;
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
 
     const suggestedDifficulty = probaToDifficulty(prediction.proba);
 
@@ -78,6 +107,9 @@ export async function structureAndScoreBet(betId: string, description: string, s
     });
   } catch {
     // Best-effort : ne jamais faire échouer submitBet à cause de cette
-    // étape d'enrichissement.
+    // étape d'enrichissement -- y compris si structureBet()/predictOverUnder()
+    // lèvent une exception avant d'avoir pu répondre (timeout réseau...) :
+    // on n'a alors même pas de réponse IA à enregistrer, is_calculable
+    // reste NULL dans ce cas précis (panne, pas une décision).
   }
 }
