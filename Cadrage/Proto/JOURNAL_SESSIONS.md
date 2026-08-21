@@ -8850,3 +8850,37 @@ tsc/eslint/vitest (37/37)/next build propres.
 
 Détail complet : projet-data-nba.md §33.
 ```
+
+## README.pdf mis à jour + calibration réelle des seuils proba->difficulté (21/08/2026)
+
+```text
+README.pdf (Cadrage/Stats/) régénéré avec 3 nouvelles sections (service
+Cloud Run, rafraîchissement quotidien Supabase, paris IA Phase 5) + un
+récap des enchaînements de commandes par objectif, demandé par
+l'utilisateur pour consulter l'état du projet sans repasser par la
+conversation.
+
+Calibration des seuils proba->difficulté (Phase 5 §7 point 2) : seulement
+3 vrais paris calculables en base, bien trop peu pour une vraie
+distribution. Simulé à la place sur 868 joueurs réels
+(calibrate_difficulty_thresholds.py) -- 1er essai biaisé (mêmes seuils
+fixes 50-90% testés pour FT/FG/3P%, alors que la ligue tourne à ~78%/47%/
+36% selon la stat, écrasant la moyenne simulée de FG/FG3 à 12.7%),
+corrigé avec des seuils réalistes par stat calés sur la vraie moyenne
+ligue. Vérifié sur un cas concret : "Curry + de 20% à 3-points" donne
+94.7% de proba réelle, cohérent avec le palier attendu.
+
+Résultat final (868 joueurs, 62 280 probas simulées) : quintiles 24.9% /
+39.4% / 52.9% / 66.4%. lib/ai/difficultyTiers.ts mis à jour (remplace les
+seuils provisoires 80/60/40/20%). tsc/eslint/vitest (37/37)/next build
+(37 routes) propres, commité et poussé.
+
+Discussion ouverte sur le point 5 (barème du fallback) : proposition de
+l'utilisateur (champ points libre 5-25 à la place du sélecteur 1-5,
+impacte lib/scoring/engine.ts::scoreBet) élargie vers l'idée d'un
+formulaire structuré joueur/stat/seuil pour éliminer par construction les
+bugs d'extraction IA corrigés aujourd'hui -- ni l'un ni l'autre tranché,
+noté dans GAPS_OUVERTS.md.
+
+Détail complet : projet-data-nba.md §34.
+```

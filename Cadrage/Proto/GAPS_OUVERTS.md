@@ -36,6 +36,41 @@
 > automatiquement sur elle-même après validation, pour libérer la vue —
 > demandé par l'utilisateur en passant, pas urgent, à reprendre dans un
 > chantier UI dédié plus tard (hors périmètre Phase 5 Data NBA).
+>
+> **Calibration des seuils proba->difficulté FAITE (21/08/2026)** — Phase 5
+> §7 point 2 : `lib/ai/difficultyTiers.ts` utilise désormais des seuils
+> calibrés (66.4/52.9/39.4/24.9%) plutôt que les seuils provisoires
+> 80/60/40/20%, voir `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7bis pour
+> le détail de la méthode (échantillon simulé, `calibrate_difficulty_
+> thresholds.py`). Retire ce point de la liste des bloquants Phase 5.
+>
+> **Point 5 (barème du fallback IA) — discussion ouverte le 21/08/2026,
+> PAS TRANCHÉ, dernier point avant de clore la Phase 5 officiellement** :
+> l'utilisateur propose de remplacer le sélecteur de difficulté 1-5 par un
+> champ où le joueur tape un nombre de points libre, borné 5-25 (accord
+> obtenu sur le plafond) — mais impacte `lib/scoring/engine.ts::scoreBet`
+> (table `BET_DIFFICULTY_POINTS` fixe indexée sur 1-5, une valeur libre
+> type 17 nécessiterait une vraie colonne "points" séparée, pas juste un
+> changement de widget). Reste à trancher : ce champ REMPLACE-t-il le
+> sélecteur actuel ou s'y AJOUTE-t-il ? Question posée, réponse détournée
+> vers la piste ci-dessous avant d'être tranchée.
+>
+> **Piste plus large notée le 21/08/2026, PAS pour maintenant** : plutôt
+> que de compter sur l'IA pour extraire joueur/stat/seuil d'un texte libre
+> (source de tous les bugs corrigés aujourd'hui — mauvais joueur, faute
+> d'orthographe, joueur hors match), l'utilisateur envisage un formulaire
+> STRUCTURÉ à plusieurs champs (type de pari, joueur du match via
+> sélecteur peuplé du vrai roster, stat, seuil) pour au moins la catégorie
+> "pari joueur" (`PLAYER_PROP`, la seule que le modèle sait calculer) —
+> éliminerait la classe de bug entière plutôt que de la corriger après
+> coup, sans coût ni latence Claude pour ces cas. Le texte libre + IA
+> resterait pour tout le reste (fun, combo, hors-terrain — justement le
+> périmètre du fallback/point 5 ci-dessus). Chantier UI conséquent
+> (peupler un sélecteur avec le roster réel du match, gérer le format de
+> seuil par stat -- fraction pour %, entier sinon) : pas attaqué
+> maintenant, à reprendre dans une session dédiée. Recommandation donnée à
+> l'utilisateur : limiter le structuré à `PLAYER_PROP`, garder le texte
+> libre pour le reste plutôt que de tout transformer en formulaire.
 
 > **État au 21/08/2026 (suite 11, chantier Data NBA)** — **Contexte de
 > match ajouté à la structuration IA, 2 bugs réels corrigés**

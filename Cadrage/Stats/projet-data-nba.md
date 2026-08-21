@@ -2,9 +2,24 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 12 — proba 0% pour joueur hors match)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 13 — calibration + README)
 >
-> **Nouveau champ `player_not_in_match` : un pari sur un joueur absent des
+> **Seuils proba->difficulté CALIBRÉS (§34, Phase 5 §7 point 2 FAIT)** :
+> remplace les seuils provisoires 80/60/40/20% par des seuils calibrés par
+> quintile (66.4/52.9/39.4/24.9%) sur un échantillon simulé de 62 280
+> probas (868 joueurs réels) -- 3 vrais paris seulement en base, bien trop
+> peu pour calibrer sur du réel. `lib/ai/difficultyTiers.ts` mis à jour,
+> `tsc`/`eslint`/`vitest`/`next build` propres, commité et poussé.
+> `README.pdf` régénéré avec les nouvelles sections Cloud Run/refresh
+> quotidien/paris IA + un récap des enchaînements courants (§34).
+> - **Reste pour clore la Phase 5** : point 5 (barème du fallback IA) --
+>   discussion ouverte, pas tranchée, voir `GAPS_OUVERTS.md` (piste "champ
+>   points libre" vs piste plus large "formulaire structuré joueur/stat").
+> - **Reste comme avant** : redéployer le service Cloud Run (§29) puis
+>   retester de bout en bout via l'appli.
+>
+> Plus tôt (état au 21/08/2026, suite 12 — proba 0% pour joueur hors match)
+> — **Nouveau champ `player_not_in_match` : un pari sur un joueur absent des
 > 2 équipes du match est maintenant ACCEPTÉ avec proba=0%, plus jamais
 > rejeté silencieusement en `calculable=false`** (§33) -- décidé avec
 > l'utilisateur après le test "LeBron James" sur Atlanta-Boston (LeBron
@@ -1907,4 +1922,60 @@ avec la logique existante des paliers (proba basse = palier haut) même si
 sémantiquement un peu étrange pour un pari "impossible" plutôt que "très
 difficile mais possible". Sans conséquence pratique : un pari à 0% perdra
 de toute façon (0 point à la résolution), quel que soit son palier.
+```
+
+## 34. README.pdf mis à jour + calibration réelle des seuils proba->difficulté (21/08/2026)
+
+```text
+Deux chantiers distincts cette session, après §33 :
+
+**1. README.pdf régénéré** (`generate_readme.py`) avec 3 nouvelles sections
+(§12 service Cloud Run, §13 rafraîchissement quotidien Supabase, §14 paris
+IA Phase 5) + §17 récapitulant les enchaînements de commandes par objectif
+("je veux X -> je lance quoi"), demandé par l'utilisateur pour consulter
+l'état du projet sans repasser par la conversation à chaque fois.
+
+**2. Calibration des seuils proba->difficulté (Phase 5 §7 point 2)** :
+seulement 3 vrais paris calculables en base à cette date -- bien trop peu
+pour observer une vraie distribution par quintile comme prévu à l'origine.
+Décidé avec l'utilisateur de SIMULER une large distribution plutôt que
+d'attendre du volume réel : nouveau script
+`scripts/calibrate_difficulty_thresholds.py`, réutilise `build_context()`/
+`run_regression()`/`run_classifier()`/`run_pct()` de `tester_modele.py` sur
+868 joueurs réels (>=10 matchs connus), avec des seuils de test réalistes
+(offsets autour de la moyenne récente du joueur pour les stats à seuil,
+seuils calés sur la vraie moyenne ligue pour FT/FG/3P%).
+
+**1er essai biaisé, corrigé** : le même jeu de seuils fixes (50%-90%) testé
+pour FT/FG/3P% donnait 12.7% de proba moyenne pour FG et FG3 contre 59.5%
+pour FT -- parce que la ligue tourne à ~78% aux lancers francs mais
+~47%/36% au tir/3-points (`league_avg` des modèles), tester "FG > 90%"
+revient à simuler un pari quasi impossible à chaque fois. Corrigé avec des
+seuils réalistes PAR stat (calés sur `league_avg`) plutôt qu'un seul jeu
+partagé. Vérifié avec l'utilisateur sur un cas concret : "Curry + de 20% à
+3-points" (quasi certain, career ~42%) donne 94.7% de proba réelle,
+cohérent avec le palier 1 attendu.
+
+**Résultat final** (868 joueurs, 62 280 probas simulées) : quintiles
+(20/40/60/80e percentile) = 24.9% / 39.4% / 52.9% / 66.4%. Nouveaux seuils
+dans `lib/ai/difficultyTiers.ts` : palier 1 >=66.4%, palier 2 >=52.9%,
+palier 3 >=39.4%, palier 4 >=24.9%, palier 5 <24.9% (remplace les seuils
+provisoires 80/60/40/20% posés à vue de nez au lancement de la Phase 5).
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (37 routes) propres, commité
+et poussé.
+
+**Discussion ouverte, pas tranchée** : pour le point 5 restant (barème du
+fallback IA), l'utilisateur propose de remplacer le sélecteur de
+difficulté 1-5 par un champ où le joueur tape un nombre de points libre
+(borné 5-25, accord obtenu sur le plafond) -- impacte
+`lib/scoring/engine.ts::scoreBet` (table fixe indexée 1-5, une valeur
+libre nécessiterait une vraie colonne "points"). Discussion élargie vers
+une piste plus large : un formulaire STRUCTURÉ (joueur du match via
+sélecteur peuplé du vrai roster + stat + seuil) pour la catégorie
+`PLAYER_PROP` uniquement, qui éliminerait par construction toute la classe
+de bugs corrigée aujourd'hui (mauvais joueur, faute d'orthographe, joueur
+hors match) -- le texte libre + IA resterait pour le reste (fun, combo,
+hors-terrain). Ni l'un ni l'autre tranché, notés dans `GAPS_OUVERTS.md`
+pour reprise ultérieure -- dernier point avant de clore officiellement la
+Phase 5.
 ```

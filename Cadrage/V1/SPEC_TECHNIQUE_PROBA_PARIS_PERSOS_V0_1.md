@@ -6,10 +6,10 @@
 > sait calculer.
 >
 > **Statut : PREMIÈRE VERSION CODÉE ET DÉPLOYÉE (21/08/2026)** — voir §7bis.
-> Point 1 (modèle qui tourne), point 3 (pont contexte à jour) et point 4
-> (structuration IA) sont FAITS. Points 2 (seuils calibrés — provisoires
-> pour l'instant, à vue de nez) et 5 (barème du fallback — inchangé, pas de
-> nouveau barème créé) restent ouverts, détail §7bis. Décisions de principe
+> Points 1 (modèle qui tourne), 2 (seuils calibrés), 3 (pont contexte à
+> jour) et 4 (structuration IA) sont FAITS. Point 5 (barème du fallback —
+> inchangé, pas de nouveau barème créé, discussion en cours) reste ouvert,
+> détail §7bis. Décisions de principe
 > actées avec l'utilisateur le 19/08/2026 ; le modèle de probabilité tourne
 > désormais pour de vrai (`Cadrage/Stats/projet-data-nba.md`, chantier Data
 > NBA, service déployé §24 de ce document).
@@ -215,20 +215,38 @@ actées avec l'utilisateur :
    l'IA" sur `/admin/validation` (pas `/players/[userId]`, écarté pour la
    même raison "même vue pour tout le monde").
 
-**Point 2 (seuils calibrés) -- PAS FAIT, provisoire assumé** : décidé avec
-l'utilisateur de livrer une version qui marche maintenant plutôt que
-d'attendre une vraie distribution de probas sur un échantillon de paris
-réels. `lib/ai/difficultyTiers.ts` pose des seuils "à vue de nez" (>=80% ->
-palier 1, >=60% -> palier 2, >=40% -> palier 3, >=20% -> palier 4, sinon
-palier 5) -- À RECALIBRER une fois assez de paris réels structurés pour
-observer la vraie distribution.
+**Point 2 (seuils calibrés) -- FAIT (21/08/2026)** : seulement 3 vrais
+paris calculables en base à cette date (bien trop peu pour observer une
+vraie distribution) -- calibré à la place sur un échantillon SIMULÉ
+(`Cadrage/Stats/scripts/calibrate_difficulty_thresholds.py`) : 868 joueurs
+réels, seuils réalistes autour de la moyenne récente de chaque joueur
+(stats à seuil) ou de la moyenne ligue réelle (FT/FG/3P%, corrigé après un
+1er essai biaisé -- même seuil fixe 50-90% testé pour les 3, alors que la
+ligue tourne à ~78% aux lancers francs mais ~47%/36% au tir/3-points,
+écrasant artificiellement la moyenne simulée de FG/FG3 à 12.7%). 62 280
+probas simulées au total, quintiles (20/40/60/80e percentile) : 24.9% /
+39.4% / 52.9% / 66.4%. Nouveaux seuils dans `lib/ai/difficultyTiers.ts` :
+palier 1 >=66.4%, palier 2 >=52.9%, palier 3 >=39.4%, palier 4 >=24.9%,
+palier 5 <24.9% (remplace 80/60/40/20%). Vérifié : Curry "+ de 20% à
+3-points" (quasi-certain, career ~42%) donne bien 94.7% de proba réelle et
+tombe en palier 1 -- cohérence confirmée avec l'utilisateur.
 
-**Point 5 (barème du fallback) -- PAS TRANCHÉ, statu quo assumé par
-défaut** : aucun nouveau barème créé pour les paris non calculables, ils
-utilisent le mécanisme manuel existant tel quel (`proposed_difficulty`/
-`validated_difficulty`, `BET_DIFFICULTY_POINTS`) -- la question "faut-il un
-barème séparé ?" (notée "à voir" par l'utilisateur le 19/08) reste
-explicitement ouverte, pas juste oubliée.
+**Point 5 (barème du fallback) -- PAS TRANCHÉ, discussion ouverte le
+21/08/2026** : aucun nouveau barème créé pour les paris non calculables,
+ils utilisent encore le mécanisme manuel existant tel quel
+(`proposed_difficulty`/`validated_difficulty`, `BET_DIFFICULTY_POINTS`).
+Piste proposée par l'utilisateur : remplacer le sélecteur 1-5
+(`BetForm.tsx`, libellés "Très accessible"/.../"Jackpot") par un champ où
+le joueur tape directement un nombre de points, borné 5-25 (accord :
+plafond conservé pour l'équilibre du jeu, mais N'IMPORTE QUELLE valeur
+dans cette fourchette, pas seulement des multiples de 5) -- IMPACTE
+`lib/scoring/engine.ts::scoreBet` (`BET_DIFFICULTY_POINTS` est aujourd'hui
+une table fixe indexée sur `validated_difficulty` 1-5, un nombre libre
+type 17 n'y a pas d'entrée -- nécessiterait une colonne "points" séparée
+plutôt qu'un simple changement de widget de saisie). Remplace ou s'ajoute
+au sélecteur actuel : PAS TRANCHÉ, la discussion a bifurqué sur une piste
+plus large (voir GAPS_OUVERTS.md, "formulaire structuré joueur/stat/seuil")
+avant d'y répondre -- à reprendre.
 
 **Vérifié** : `tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes)
 propres. Migration poussée sur la base réelle. **Pas encore vérifié en
