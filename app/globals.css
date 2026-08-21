@@ -119,7 +119,7 @@ body {
      (layout.module.css), pas seulement sous les cartes de cette page.
      Contrepartie assumée : un position:fixed voulant couvrir TOUTE la page
      (pas seulement cet écran) depuis un descendant doit passer par un
-     portail React vers document.body — voir components/tutorial/TutorialModal.tsx.
+     portail React vers document.body — voir components/ui/ModalDialog.tsx.
      Posé inconditionnellement (même hors thème Photo) : structurel, sans
      effet visuel tant que ::before/::after ci-dessous n'ont pas de fond. */
   isolation: isolate;

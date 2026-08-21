@@ -8137,3 +8137,84 @@ Bandeau REPRISE de projet-data-nba.md mis à jour en conséquence.
 
 Committé et poussé (`140029a`).
 ```
+
+
+## Nouvelle page /regles (20/08/2026, suite)
+
+```text
+Demande de l'utilisateur : construire une page de règles à afficher sur le
+site. Clarifié avant de coder (AskUserQuestion, 2 questions) : contenu =
+barème de scoring ET règles générales (les deux, pas l'un ou l'autre) ;
+emplacement = nouvelle page dédiée, pas intégrée au tutoriel "Comment
+jouer ?" existant.
+
+Recherche de contenu déléguée à un agent Explore (2 recherches distinctes :
+le barème exact déjà lu directement dans SPEC_TECHNIQUE_SCORING_V0_1.md,
+figé T5 ; les règles générales via agent, avec instruction explicite de
+privilégier decisions_0.2.x/le code réel sur le résumé de cadrage initial
+nba_pronos_resume_cadrage_valide.md — largement dépassé, plein de "à
+préciser plus tard" depuis tranchés autrement). Bug potentiel évité : le
+quota de paris persos avait changé depuis ce résumé initial (3 paris par
+série → 1 pari série + 3 paris match), la règle de visibilité des pronos et
+la cascade de départage du classement aussi précisées différemment depuis
+— afficher les anciennes valeurs aurait été une vraie erreur de contenu
+utilisateur.
+
+Route `/regles`, même patron dual-nav que `/leaderboard`/`/bracket`
+(ScreenShell, visiteur ou connecté). Nouveau composant générique
+`components/regles/BaremeTable.tsx` (divs+flex + rôles ARIA de tableau,
+convention du dépôt — jamais de `<table>`). Lien ajouté dans `PublicNav` et
+Profil > Aide (à côté du lien tutoriel existant à ce moment) — pas de 5e
+onglet `TabBar`, qui reste à 4.
+
+`tsc`/`eslint`/`vitest`/`next build` (37 routes) propres. Committé et
+poussé (`b7091d9`). Pas de vérification visuelle réelle (pas d'accès
+navigateur dans cet environnement) — signalé explicitement avant de
+pousser ; l'utilisateur a choisi de pousser quand même plutôt que d'attendre
+une vérification locale.
+```
+
+
+## Retrait du tutoriel "Comment jouer ?" (21/08/2026)
+
+```text
+Suite directe de l'entrée précédente : demande de l'utilisateur, la page
+/regles suffit désormais, retirer le tutoriel. Cartographié avant toute
+suppression (agent Explore, 5 axes : fichiers composant, sites d'usage,
+implication base de données, doc spec/backlog, autres références) pour ne
+rien laisser à moitié cassé.
+
+Supprimé : `components/tutorial/*` (3 composants + leurs CSS Modules),
+`lib/actions/tutorial.ts` (server action `markTutorialSeen`),
+`public/tutorial/*.png` (5 captures d'écran). `app/(app)/home/page.tsx` :
+retire l'import, `showTutorialBanner`, les 2 sites de rendu (branche vide +
+branche pleine), et simplifie `Promise.all([getHomeData(), getProfileData()])`
+en `getHomeData()` seul — `getProfileData()` n'était appelé QUE pour ce
+flag, sinon inutilisé dans ce fichier. `app/(app)/profile/page.tsx` : retire
+l'import et l'usage, garde le lien `/regles` déjà présent juste à côté.
+`lib/queries/profile.ts` : retire `tutorialSeenAt` du type/select/mapping.
+2 commentaires obsolètes nettoyés en passant (`app/globals.css` référençait
+`TutorialModal.tsx` comme exemple de portail React vers `document.body` —
+remplacé par `components/ui/ModalDialog.tsx`, toujours valide et
+fonctionnellement identique ; `profile/page.module.css` comparait
+`.helpLink` au tutoriel dans son commentaire, reformulé).
+
+**Migration #30** (`supabase/migrations/20260821090000_drop_tutorial_seen_at.sql`) :
+`alter table users drop column tutorial_seen_at`, même patron que la
+migration #20 (`drop_use_team_colors.sql`) — colonne retirée symétriquement
+après retrait du code qui la lisait/l'écrivait, pour ne pas laisser une
+colonne orpheline. Écrite mais PAS poussée sur la base réelle (`npx
+supabase db push` bloqué par le classifieur de permissions côté Claude,
+même blocage déjà rencontré pour la migration #29) — à faire manuellement
+par l'utilisateur, noté dans GAPS_OUVERTS.md.
+
+Doc mise à jour en cohérence : `BACKLOG_V1.md` (entrée FAIT → FAIT puis
+RETIRÉ, 21/08/2026), `SPEC_TUTORIEL_JOUEUR_V0_1.md` (bandeau RETIRÉ ajouté
+en tête, le statut d'origine jamais mis à jour après le vrai livrable du
+31/07/2026 est noté comme tel — la spec reste comme trace historique, ne
+décrit plus rien de présent dans le code).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (37 routes) propres. Grep
+final confirmant aucune référence résiduelle à "tutorial"/"tutoriel"
+nulle part dans app/, components/, lib/.
+```

@@ -1,7 +1,20 @@
 # NBA Pronos — SPEC TUTORIEL JOUEUR V0.1
 
-> **Statut : cadré en séance le 30/07/2026 (2 tours d'AskUserQuestion), en
-> attente de relecture finale avant 1re ligne de code.** Aucune spec ne
+> **🔴 RETIRÉ — 21/08/2026.** Chantier codé et livré le 31/07/2026 (le
+> statut "en attente de relecture" ci-dessous n'avait jamais été mis à jour
+> après coup — voir `BACKLOG_V1.md`/`ETAT_ACTUEL.md` §2.51 pour la trace du
+> livrable réel), puis entièrement retiré le 21/08/2026 sur demande
+> explicite de l'utilisateur : la nouvelle page `/regles` couvre désormais
+> le besoin. Composants (`components/tutorial/*`), server action
+> (`lib/actions/tutorial.ts`), captures d'écran (`public/tutorial/*`) et
+> colonne `users.tutorial_seen_at` (migration #30,
+> `20260821090000_drop_tutorial_seen_at.sql`) supprimés. Ce document reste
+> comme trace historique de ce qui a existé, ne décrit plus rien de présent
+> dans le code — voir `ETAT_ACTUEL.md` §2.96 pour le détail du retrait.
+>
+> **Statut d'origine (archivé) : cadré en séance le 30/07/2026 (2 tours
+> d'AskUserQuestion), en attente de relecture finale avant 1re ligne de
+> code.** Aucune spec ne
 > préexistait — seule une ligne dans `BACKLOG_V1.md` (« Tutoriel &
 > notifications ») : « Tutoriel d'utilisation de l'appli pour le JOUEUR
 > (comprendre que l'app se reset à chaque nouvelle compétition) — à

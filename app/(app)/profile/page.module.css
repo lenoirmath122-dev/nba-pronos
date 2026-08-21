@@ -89,8 +89,8 @@
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
-/* Même recette que TutorialLink.module.css::.link (section Aide) — lien
-   simple vers /regles, pas de modale à ouvrir contrairement au tutoriel. */
+/* Lien simple vers /regles (section Aide) — même recette que les boutons
+   contour secondaires du reste de l'app (border-subtle, fond transparent). */
 .helpLink {
   align-self: flex-start;
   display: inline-flex;

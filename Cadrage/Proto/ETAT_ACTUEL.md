@@ -5,7 +5,17 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 20/08/2026 (soir, suite) — **Login/
+> Dernière mise à jour : session du 21/08/2026 — **Retrait du tutoriel
+> "Comment jouer ?" — §2.97 ci-dessous** (suite directe de la nouvelle page
+> `/regles` — §2.96 — qui couvre désormais ce besoin, demande explicite de
+> l'utilisateur). Tout supprimé : 6 fichiers composant, la server action
+> dédiée, 5 captures d'écran, la colonne `users.tutorial_seen_at` (migration
+> #30 écrite, PAS encore poussée sur la base réelle — bloqué par le
+> classifieur de permissions, comme #29). `BACKLOG_V1.md`/
+> `SPEC_TUTORIEL_JOUEUR_V0_1.md` mis à jour en cohérence. `tsc`/`eslint`/
+> `vitest` (37/37)/`next build` (37 routes) propres.
+>
+> Plus tôt (session du 20/08/2026, soir, suite) — **Login/
 > Signup/Reset : photo forcée même sans session — §2.95 ci-dessous.**
 > Après le fix §2.94, l'utilisateur signale que le fond restait sombre uni
 > (pas la photo attendue) — comportement d'origine, pas un nouveau bug :
@@ -6932,4 +6942,80 @@ condition d'affichage change.
 
 `tsc`/`eslint`/`next build` (36 routes) propres. Committé et poussé
 (`fd44b84`).
+```
+
+### 2.96 Nouvelle page /regles (session du 20/08/2026)
+
+```text
+Demande de l'utilisateur : construire une page de règles à afficher sur le
+site. Clarifié par AskUserQuestion (2 questions) avant de coder : contenu
+= barème de scoring ET règles générales du jeu (les deux) ; emplacement =
+nouvelle page dédiée (route à part), pas intégrée au tutoriel existant.
+
+Route physique `/regles`, même patron dual-nav que `/leaderboard` et
+`/bracket` (visiteur ou connecté, contenu statique identique). Contenu
+sourcé sur les décisions ACTÉES et le code réel (SPEC_TECHNIQUE_SCORING_V0_1.md
+T5, figé ; decisions_0.2.x ; lib/queries, lib/labels) — PAS sur le résumé
+de cadrage initial (`nba_pronos_resume_cadrage_valide.md`), largement
+dépassé depuis ("à préciser plus tard" un peu partout, tranché autrement
+dans les specs validées et l'implémentation réelle). Recherche déléguée à
+un agent Explore pour ne pas saturer le contexte avec les docs volumineux,
+avec instruction explicite de privilégier le code/les décisions actées sur
+ce document initial.
+
+6 sections : bracket (barème par tour, 4 tours), pronostics de matchs
+(barème vainqueur+écart, règle de visibilité "valider débloque la vue"),
+paris personnalisés (barème par difficulté, quota 1 pari série + 3 paris
+match), ligues entre amis, classement (cascade de départage à 4 critères),
+badges (mention brève).
+
+Nouveau composant `components/regles/BaremeTable.tsx` : divs+flex avec
+rôles ARIA de tableau (convention du dépôt, jamais de `<table>` — même
+patron que `LeaderboardTable.tsx`), réutilisé pour le barème du bracket.
+
+Lien ajouté dans `PublicNav` (visiteurs) et section Aide du Profil
+(connectés, à côté de "Comment jouer ?") — pas de 5e onglet ajouté à la
+`TabBar`, qui reste à 4 par choix déjà établi.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (37 routes) propres. Committé
+et poussé (`b7091d9`). Pas de vérification visuelle réelle faite (pas
+d'accès navigateur dans cet environnement) — signalé explicitement à
+l'utilisateur avant de pousser.
+```
+
+### 2.97 Retrait du tutoriel "Comment jouer ?" (session du 21/08/2026)
+
+```text
+Demande de l'utilisateur, suite directe de §2.96 : la page /regles suffit
+désormais, retirer le tutoriel. Cartographié avant toute suppression
+(agent Explore) pour ne rien laisser à moitié cassé : 6 fichiers composant
+(`components/tutorial/*`), 1 server action (`lib/actions/tutorial.ts`), 5
+captures d'écran (`public/tutorial/*.png`), 1 colonne DB
+(`users.tutorial_seen_at`, migration #21 20260730130000), 2 points de
+montage (`app/(app)/home/page.tsx` bannière, `app/(app)/profile/page.tsx`
+lien permanent).
+
+Tout supprimé : les 3 composants + leurs CSS Modules, la server action, les
+5 PNG, `lib/queries/profile.ts` (retire `tutorialSeenAt` du type/select/
+mapping), `app/(app)/home/page.tsx` (retire l'import, la variable
+`showTutorialBanner`, les 2 sites de rendu, et simplifie le
+`Promise.all([getHomeData(), getProfileData()])` devenu `getHomeData()`
+seul — `getProfileData()` n'était appelé que pour ce flag). 2 commentaires
+obsolètes nettoyés au passage (`app/globals.css` référençait
+`TutorialModal.tsx` comme exemple de portail React — remplacé par
+`components/ui/ModalDialog.tsx`, toujours valide ; `profile/page.module.css`
+comparait `.helpLink` au tutoriel, reformulé).
+
+**Migration #30** (`20260821090000_drop_tutorial_seen_at.sql`) : `drop
+column tutorial_seen_at`, même patron que la migration #20
+(`drop_use_team_colors.sql`, précédent direct de "colonne retirée
+symétriquement après retrait du code"). Écrite, PAS encore poussée sur la
+base réelle (`npx supabase db push` bloqué par le classifieur de
+permissions côté Claude, comme la migration #29) — à pousser manuellement.
+
+Doc mise à jour en cohérence : `BACKLOG_V1.md` (entrée FAIT → FAIT puis
+RETIRÉ), `SPEC_TUTORIEL_JOUEUR_V0_1.md` (bandeau RETIRÉ en tête, doc gardé
+comme trace historique).
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (37 routes) propres.
 ```

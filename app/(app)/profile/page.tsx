@@ -19,7 +19,6 @@ import { RankEvolutionChart } from "@/components/profile/RankEvolutionChart";
 import { BadgesSection } from "@/components/profile/BadgesSection";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { PlayerLink } from "@/components/ui/PlayerLink";
-import { TutorialLink } from "@/components/tutorial/TutorialLink";
 import styles from "./page.module.css";
 
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
@@ -236,7 +235,6 @@ export default async function ProfilePage({
 
           <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Aide</h2>
-            <TutorialLink />
             <Link href="/regles" className={styles.helpLink}>
               Règles du jeu
             </Link>

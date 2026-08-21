@@ -4,6 +4,17 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **État au 21/08/2026** — **Nouvelle page `/regles` construite (§2.96
+> ETAT_ACTUEL.md) et tutoriel "Comment jouer ?" entièrement retiré (§2.97)**
+> à la demande de l'utilisateur, `/regles` couvrant désormais ce besoin.
+> - **Nouveau point ouvert** : migration #30 (`drop column
+>   tutorial_seen_at`) écrite mais PAS poussée sur la base réelle — `npx
+>   supabase db push` bloqué par le classifieur de permissions côté Claude
+>   (même blocage que la migration #29, `GAPS_OUVERTS.md` déjà noté à
+>   l'époque). À faire manuellement par l'utilisateur. Sans elle, la colonne
+>   reste en base, orpheline mais inoffensive (plus aucun code ne la lit ni
+>   ne l'écrit) — pas bloquant, juste à nettoyer quand l'occasion se présente.
+
 > **État au 20/08/2026 (session DA)** — **Ajustements visuels validés,
 > chantiers §1-§4/§9/§14/§15 de `Cadrage/DA/AJUSTEMENTS_VISUELS_20_08_2026.md`
 > implémentés et poussés, un commit par chantier** (détail dans

@@ -25,7 +25,6 @@ export type ProfileData = {
    *  assumée que theme_preference, cf. commentaire de getTheme()). */
   backgroundTheme: "MURAL" | "HOOP" | "HK";
   notificationPreference: "NONE" | "PUSH" | "EMAIL";
-  tutorialSeenAt: string | null;
 };
 
 export type TeamOption = {
@@ -45,7 +44,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, tutorial_seen_at"
+      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference"
     )
     .eq("id", user.id)
     .single<{
@@ -56,7 +55,6 @@ export async function getProfileData(): Promise<ProfileData | null> {
       theme_preference: "LIGHT" | "DARK" | "PHOTO";
       background_theme: "MURAL" | "HOOP" | "HK";
       notification_preference: "NONE" | "PUSH" | "EMAIL";
-      tutorial_seen_at: string | null;
     }>();
 
   if (error || !data) return null;
@@ -72,7 +70,6 @@ export async function getProfileData(): Promise<ProfileData | null> {
     theme: data.theme_preference,
     backgroundTheme: data.background_theme,
     notificationPreference: data.notification_preference,
-    tutorialSeenAt: data.tutorial_seen_at,
   };
 }
 

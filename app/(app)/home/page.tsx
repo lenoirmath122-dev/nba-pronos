@@ -1,12 +1,10 @@
 import { getHomeData } from "@/lib/queries/home";
-import { getProfileData } from "@/lib/queries/profile";
 import { HomeHeader } from "@/components/home/HomeHeader";
 import { TodoList } from "@/components/home/TodoList";
 import { BetsAccordionList } from "@/components/home/BetsAccordionList";
 import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
-import { TutorialBanner } from "@/components/tutorial/TutorialBanner";
 import styles from "./page.module.css";
 
 // Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « Reste à faire »
@@ -16,22 +14,12 @@ import styles from "./page.module.css";
 // Les 4 cartes sont dépliables (18/08/2026, voir CollapsibleCard.tsx).
 // Aucun fetch client, aucune logique métier ici — tout est déjà calculé par
 // lib/queries/home.ts.
-//
-// Bannière du tutoriel joueur (SPEC_TUTORIEL_JOUEUR_V0_1 §1) : affichée
-// indépendamment de la compétition active (un joueur peut s'inscrire alors
-// qu'aucune compétition n'est en cours) — c'est pour ça qu'elle est montée
-// AVANT le early-return "aucune compétition", pas seulement dans la branche
-// pleine ci-dessous.
 export default async function HomePage() {
-  const [{ competitionId, header, todo, adminTodo, seriesBets, matchBets, feed }, profile] =
-    await Promise.all([getHomeData(), getProfileData()]);
-
-  const showTutorialBanner = profile !== null && profile.tutorialSeenAt === null;
+  const { competitionId, header, todo, adminTodo, seriesBets, matchBets, feed } = await getHomeData();
 
   if (competitionId === null || header === null) {
     return (
       <div className={`${styles.page} photo-page`}>
-        {showTutorialBanner && <TutorialBanner />}
         <div className={`${styles.header} glass-card`}>
           <p className={styles.title}>Accueil</p>
         </div>
@@ -42,7 +30,6 @@ export default async function HomePage() {
 
   return (
     <div className={`${styles.page} photo-page`}>
-      {showTutorialBanner && <TutorialBanner />}
       <HomeHeader header={header} />
 
       <section className={`${styles.section} glass-card`} aria-label="Reste à faire">
