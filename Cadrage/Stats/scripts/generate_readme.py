@@ -24,7 +24,7 @@ WHITE = (255, 255, 255)
 BLACK = (20, 20, 20)
 
 TITLE = "NBA Pronos - Donnees stats"
-SUBTITLE = "Dossier Cadrage/Stats/  -  mis a jour le 20/08/2026"
+SUBTITLE = "Dossier Cadrage/Stats/  -  mis a jour le 21/08/2026"
 
 SOMMAIRE = [
     "1. Objectif",
@@ -38,8 +38,11 @@ SOMMAIRE = [
     "9. Entrainer les modeles",
     "10. Comprendre les modeles sauvegardes",
     "11. Tester un modele en ligne de commande",
-    "12. Suivre l'etat du projet",
-    "13. Prochaines etapes",
+    "12. Service de prediction en production (Cloud Run)",
+    "13. Rafraichissement quotidien automatique (Supabase)",
+    "14. Paris personnalises pilotes par l'IA (Phase 5)",
+    "15. Suivre l'etat du projet",
+    "16. Prochaines etapes",
 ]
 
 
@@ -185,6 +188,7 @@ def build() -> Readme:
         "Cadrage/Stats/",
         "  projet-data-nba.md        <- cadrage d'origine + journal des decisions",
         "  README.pdf                <- ce document",
+        "  Dockerfile, .dockerignore <- image du service Cloud Run (S12)",
         "  scripts/",
         "    fetch_nba_data.py         <- extraction (nba_api -> CSV)",
         "    load_to_sqlite.py         <- chargement (CSV -> base SQLite)",
@@ -196,18 +200,29 @@ def build() -> Readme:
         "    train_pct_model.py        <- FT%/FG%/3P% (3 modeles, approche taux)",
         "    demo_pari_reel.py         <- demo cablee en dur (Tatum, points)",
         "    tester_modele.py          <- teste N'IMPORTE quel modele en ligne de commande",
+        "    calibrate_difficulty_thresholds.py <- calibre les seuils proba->palier (S14)",
         "    generate_readme.py        <- regenere ce document",
         "    requirements.txt",
+        "  service/                  <- micro-service FastAPI, deploye sur Cloud Run (S12)",
+        "    app.py                     <- endpoints /health, /predict, /refresh",
+        "    supabase_context.py        <- equivalent Postgres de build_context()/compute_proba()",
+        "    refresh_daily.py           <- fetch incremental quotidien -> Supabase (S13)",
+        "    backfill_supabase.py       <- migration ponctuelle nba.db -> Supabase",
+        "    DEPLOIEMENT_CLOUD_RUN.md   <- guide de deploiement pas-a-pas",
         "  data/                      <- NON versionne dans git (trop volumineux)",
         "    raw/2024-25/, raw/2025-26/  <- CSV bruts (games_index, boxscores...)",
         "    logs/                      <- journaux d'execution de l'extraction",
-        "    nba.db                     <- la base de donnees SQLite",
+        "    nba.db                     <- la base de donnees SQLite (usage LOCAL/dev)",
         "  models/                    <- NON versionne dans git",
         "    *.joblib                   <- modeles entraines et sauvegardes (S9)",
     ])
     pdf.note(
         "data/ et models/ sont exclus de git (.gitignore) : volumineux et "
-        "entierement regenerables en relancant les scripts (S4-S9)."
+        "entierement regenerables en relancant les scripts (S4-S9). En "
+        "PRODUCTION (service Cloud Run), la source de donnees n'est plus nba.db "
+        "mais les tables Supabase stats_equipes/stats_joueurs/stats_box_scores/ "
+        "stats_matchs (S12/S13) -- nba.db reste utile en local pour entrainer et "
+        "tester les modeles."
     )
 
     # ---- Section 3 ----
@@ -443,8 +458,95 @@ def build() -> Readme:
         "tester_modele.py le generalise aux 12 modeles."
     )
 
+    pdf.add_page()
+
     # ---- Section 12 ----
-    pdf.h2("12. Suivre l'etat du projet")
+    pdf.h2("12. Service de prediction en production (Cloud Run)")
+    pdf.body(
+        "Le moteur de proba (les 12 modeles + compute_proba()) est expose en "
+        "production via un micro-service FastAPI (service/app.py), deploye sur "
+        "Google Cloud Run (conteneur sans serveur, scale-to-zero -- pas de cout "
+        "quand personne ne l'appelle). Il lit les stats joueurs/equipes/matchs "
+        "depuis Supabase (service/supabase_context.py, cle service_role) plutot "
+        "que depuis nba.db -- nba.db reste local, utilise seulement pour "
+        "entrainer/tester les modeles (S9/S11)."
+    )
+    pdf.table(
+        ["Endpoint", "Role"],
+        [
+            ("GET /health", "verification que le service tourne"),
+            ("POST /predict", "joueur + stat + seuil -> proba (appele par l'appli Next.js)"),
+            ("POST /refresh", "stub reserve, le vrai refresh est S13 (job separe)"),
+        ],
+        [55, 122],
+    )
+    pdf.body(
+        "L'appli Next.js appelle /predict depuis lib/ai/statsService.ts "
+        "(predictOverUnder()), a la structuration d'un pari personnalise (S14)."
+    )
+    pdf.note(
+        "Guide de deploiement complet, pas-a-pas (gcloud, secrets, IAM) : "
+        "service/DEPLOIEMENT_CLOUD_RUN.md. Redeployer apres toute modification de "
+        "service/app.py, service/supabase_context.py ou scripts/tester_modele.py :"
+    )
+    pdf.code("gcloud run deploy nba-pronos-stats --source . --region europe-west1")
+    pdf.note(
+        "(depuis Cadrage/Stats/, le Dockerfile ne copie que scripts/tester_modele.py, "
+        "models/, service/app.py et service/supabase_context.py -- jamais data/)."
+    )
+
+    # ---- Section 13 ----
+    pdf.h2("13. Rafraichissement quotidien automatique (Supabase)")
+    pdf.body(
+        "service/refresh_daily.py va chercher les nouveaux matchs joues depuis "
+        "la derniere execution (nba_api) et les ajoute aux tables Supabase -- "
+        "sans reduplication ni re-telechargement des matchs deja connus "
+        "(known_game_ids(), pagine correctement au-dela de 1000 lignes). "
+        "Programme pour tourner automatiquement chaque jour via un workflow "
+        "GitHub Actions (.github/workflows/), pour que les stats utilisees par "
+        "/predict restent a jour sans intervention manuelle."
+    )
+    pdf.note(
+        "En cas de probleme (job en echec, donnees manquantes) : verifier "
+        "d'abord les logs du workflow dans l'onglet Actions du depot GitHub."
+    )
+
+    # ---- Section 14 ----
+    pdf.h2("14. Paris personnalises pilotes par l'IA (Phase 5)")
+    pdf.body(
+        "Quand un joueur soumet un pari personnalise en texte libre (ex. \"MPJ "
+        "marque plus de 25 points\"), l'appli le fait analyser par l'IA "
+        "(Claude, lib/ai/structureBet.ts) qui en extrait le joueur, la stat, le "
+        "seuil et le sens (plus/moins de), en verifiant que le joueur fait bien "
+        "partie d'une des deux equipes du match vise (contexte transmis a l'IA) "
+        "et en corrigeant les fautes d'orthographe grace a sa connaissance NBA."
+    )
+    pdf.bullets([
+        "Si le pari est calculable, la proba est calculee via le service Cloud "
+        "Run (S12) et le pari est AUTO-VALIDE immediatement (plus de queue "
+        "d'admin a traiter pour ces cas) -- la proba n'est montree au joueur "
+        "qu'une fois le pari valide, jamais avant.",
+        "Si le joueur cite est un vrai joueur NBA mais ne joue pas dans CE "
+        "match precis, le pari est quand meme accepte (jamais bloquant) mais "
+        "avec une proba forcee a 0% -- il perdra simplement a la resolution.",
+        "Si le pari n'est pas calculable (evenement hors-terrain, stat non "
+        "supportee...), le mecanisme manuel existant prend le relais : "
+        "difficulte choisie a la main par un admin, comme avant l'IA.",
+        "Un admin peut a tout moment corriger la difficulte d'un pari "
+        "auto-valide par l'IA (section dediee \"Auto-valides par l'IA\" de la "
+        "page d'administration des paris).",
+    ])
+    pdf.note(
+        "Detail complet de la conception et des decisions : Cadrage/V1/"
+        "SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md (S7bis). Limite connue : la "
+        "verification d'equipe s'appuie sur la connaissance NBA de l'IA, pas "
+        "sur un vrai roster a jour en temps reel."
+    )
+
+    pdf.add_page()
+
+    # ---- Section 15 ----
+    pdf.h2("15. Suivre l'etat du projet")
     pdf.bullets([
         "Demander directement dans la conversation : je verifie et je reponds.",
         "Lire le bandeau REPRISE en tete de projet-data-nba.md -- toujours a jour "
@@ -453,22 +555,24 @@ def build() -> Readme:
         "JOURNAL_SESSIONS.md (section \"Projet Data NBA\").",
     ])
 
-    # ---- Section 13 ----
-    pdf.h2("13. Prochaines etapes")
+    # ---- Section 16 ----
+    pdf.h2("16. Prochaines etapes")
     pdf.bullets([
         "Extraction ETENDUE a 5 saisons TERMINEE (6 602/6 602 matchs, 0 echec) -- "
         "plus a relancer sauf pour une saison future.",
-        "Phase 1 (couverture des categories de paris du classeur) TERMINEE : 12 "
-        "modeles construits -- points, double-double, triple-double, rebonds, "
-        "passes, 3-points, interceptions, contres, minutes, FT%, FG%, 3P%. "
-        "ATTENTION : entraines sur les 2 premieres saisons seulement (avant "
-        "l'extension a 5) -- relancer build_features.py/build_targets.py puis "
-        "les 4 scripts train_*.py (S8/S9) pour en profiter sur les donnees "
-        "completes.",
-        "Decision en attente (voir bandeau REPRISE de projet-data-nba.md) : Phase "
-        "3 (affiner la calibration residuelle), Phase 4 (pont contexte en direct) "
-        "ou Phase 5 (integration dans l'appli, SPEC_TECHNIQUE_PROBA_PARIS_"
-        "PERSOS_V0_1.md).",
+        "Phase 1 (12 modeles) et Phase 2 (reentrainement sur les 5 saisons "
+        "completes) TERMINEES.",
+        "Phase 4 (service Cloud Run + rafraichissement quotidien Supabase, S12/"
+        "S13) et Phase 5 (paris IA, S14) EN PRODUCTION.",
+        "Calibration reelle des seuils proba->difficulte (SPEC_TECHNIQUE_PROBA_"
+        "PARIS_PERSOS_V0_1.md S7 point 2) : en cours via "
+        "calibrate_difficulty_thresholds.py, qui simule une large distribution "
+        "de probas plutot que d'attendre un vrai volume de paris joueurs.",
+        "Reste a trancher (voir GAPS_OUVERTS.md) : bareme de repli pour les "
+        "paris non calculables par l'IA (point 5 du meme S7), assistance IA a "
+        "la RESOLUTION des paris une fois un match termine (idee notee, pas "
+        "encore construite), repli automatique des cartes apres soumission "
+        "d'un pari/prono (piste UX, pas encore construite).",
     ])
 
     return pdf
