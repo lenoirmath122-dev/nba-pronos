@@ -4,27 +4,24 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 5, chantier Data NBA)** — **Rafraîchissement
-> quotidien écrit et validé, Phase 4 code complet** (`projet-data-nba.md`
-> §25, `JOURNAL_SESSIONS.md` entrée dédiée) :
-> - **Retiré** : `service/refresh_daily.py` + workflow
->   `.github/workflows/refresh-stats-supabase.yml` (cron quotidien) —
->   remplace le stub `/refresh`. Nouvelle table `stats_matchs` (migration
->   #32). Testé en conditions réelles (2 vrais matchs supprimés/réinsérés,
->   comparaison stricte), 3 bugs réels trouvés et corrigés (pagination
->   PostgREST tronquée à 1000 lignes, mauvaise liste de colonnes, filtre
->   DNP insuffisant sur données API en direct) + un point de robustesse
->   (ordre d'écriture stats avant matchs, pour ne jamais marquer un match
->   "connu" sans ses stats).
-> - **Nouveau point ouvert, bloquant pour que le cron tourne réellement** :
->   ajouter 2 secrets GitHub Actions (`SUPABASE_URL`,
->   `SUPABASE_SERVICE_ROLE_KEY`) au dépôt — action de l'utilisateur
->   (`gh secret set`, jamais collé dans le chat). Sans ça, le workflow
->   s'exécutera mais échouera faute de variables d'environnement.
-> - **Une fois ce point fait, la Phase 4 est ENTIÈREMENT close.** Reste
->   ensuite la Phase 5, 3 points indépendants de `SPEC_TECHNIQUE_PROBA_
->   PARIS_PERSOS_V0_1.md` §7 (distribution de probas pour calibrer les
->   seuils, structuration IA du texte libre, barème du fallback).
+> **État au 21/08/2026 (suite 6, chantier Data NBA)** — **Phase 4
+> (raccordement appli) ENTIÈREMENT CLOSE** (`projet-data-nba.md` §26,
+> `JOURNAL_SESSIONS.md` entrée dédiée) :
+> - **Retiré** : secrets GitHub Actions ajoutés par l'utilisateur, 1er run
+>   réel du cron déclenché manuellement — `succeeded`. Bug de performance
+>   trouvé sur ce 1er run (~10 min passées en timeouts pour la saison
+>   2026-27 hors-saison, qui se serait répété chaque jour jusqu'à
+>   mi-octobre) — corrigé (timeout/tentatives réduits pour la détection de
+>   saison uniquement), revérifié : ~8s hors-saison, comportement identique
+>   sur une saison pleine (aucune perte de fiabilité).
+> - **Plus aucun point ouvert pour la Phase 4** : service Cloud Run déployé
+>   et vérifié, données Supabase tenues à jour automatiquement, coût du job
+>   optimisé.
+> - **Reste pour la Phase 5** (raccordement réel dans l'appli, pas encore
+>   commencée) : 3 points indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_
+>   PERSOS_V0_1.md` §7 — distribution réelle de probas pour calibrer les
+>   seuils entre paliers, structuration IA du texte libre du pari,
+>   barème du fallback pour les paris non calculables.
 
 > **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
 > calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain

@@ -49,6 +49,18 @@ from load_to_sqlite import ADVANCED_COLUMNS, TRADITIONAL_COLUMNS  # noqa: E402
 DEFAULT_SEASON_TYPES = ["Regular Season", "Playoffs", "PlayIn"]
 DELAY_MIN, DELAY_MAX = 0.6, 1.2
 
+# Timeout/tentatives réduits SPÉCIFIQUEMENT pour leaguegamefinder (juste "y
+# a-t-il des matchs cette saison ?"), pas pour fetch_box_scores (un vrai
+# match existant, où on veut rester robuste avec REQUEST_TIMEOUT/MAX_RETRIES
+# complets). Trouvé en conditions réelles le 21/08/2026 : hors-saison,
+# stats.nba.com n'expire même pas vite sur une saison sans aucun match --
+# 3 season_types x 3 tentatives x 60s = ~9-10 min perdues chaque jour pour
+# rien tant que la saison n'a pas commencé (mi-octobre). Sans risque de
+# manquer un vrai match une fois la saison lancée : un jour normal a des
+# matchs à trouver, la requête répond alors en quelques secondes.
+SEASON_INDEX_TIMEOUT = 15
+SEASON_INDEX_RETRIES = 1
+
 # Colonnes réellement présentes dans stats_box_scores (migration #31) -- PAS
 # BOX_SCORE_TABLE_COLUMNS de load_to_sqlite.py, plus large (oreb/dreb/tov/pf/
 # fg_pct/fg3_pct/ft_pct/team_id inclus, absents ici -- table Supabase
@@ -122,10 +134,10 @@ def fetch_season_games(season: str, season_types: list) -> dict:
         def call(_season_type=season_type):
             return leaguegamefinder.LeagueGameFinder(
                 season_nullable=season, season_type_nullable=_season_type,
-                league_id_nullable="00", timeout=REQUEST_TIMEOUT,
+                league_id_nullable="00", timeout=SEASON_INDEX_TIMEOUT,
             ).get_data_frames()[0]
 
-        df = fetch_with_retries(call, f"leaguegamefinder {season} {season_type}")
+        df = fetch_with_retries(call, f"leaguegamefinder {season} {season_type}", SEASON_INDEX_RETRIES)
         sleep_between_requests(DELAY_MIN, DELAY_MAX)
         if df is None or df.empty:
             continue

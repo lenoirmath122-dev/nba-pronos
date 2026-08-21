@@ -2,8 +2,22 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 4 — Phase 4 CODE COMPLET)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 5 — Phase 4 TOTALEMENT CLOSE)
 >
+> **Secrets GitHub Actions ajoutés par l'utilisateur, workflow lancé
+> manuellement et RÉUSSI** (§26) — 1er run réel : `succeeded en 10m29s`,
+> mais quasi tout ce temps passé sur des timeouts (60s × 3 tentatives × 3
+> season_types) pour la saison 2026-27 qui n'a encore aucun match
+> (hors-saison). **Corrigé** : timeout/tentatives réduits SPÉCIFIQUEMENT
+> pour `leaguegamefinder` dans `refresh_daily.py` (15s, 1 tentative) --
+> passe de ~10 min à ~8s en local pour ce même cas, sans rien perdre en
+> fiabilité une fois la saison lancée (revérifié sur 2025-26 : 1321
+> connus/1321 trouvés/0 nouveau, identique à avant). **Phase 4 maintenant
+> ENTIÈREMENT close** : service déployé (§24), données à jour automatique
+> (§25), coût du job optimisé (§26). Reste la Phase 5 (3 points
+> indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7).
+>
+> Plus tôt (état au 21/08/2026, suite 4 — Phase 4 code complet) —
 > **Rafraîchissement quotidien écrit, testé et validé** (§25) —
 > `service/refresh_daily.py` (fetch incrémental `nba_api` -> upsert direct
 > Supabase, remplace le stub `/refresh`) + workflow
@@ -1282,4 +1296,43 @@ Actions (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) au dépôt -- jamais
 collés dans le chat, à faire via `gh secret set` ou l'interface GitHub.
 Sans ça, le cron s'exécutera mais échouera (variables d'environnement
 absentes). Une fois fait, la Phase 4 est ENTIÈREMENT close.
+```
+
+## 26. 1er run réel du cron + optimisation timeout hors-saison (21/08/2026, suite)
+
+```text
+L'utilisateur ajoute les 2 secrets GitHub Actions via l'interface web
+(jamais collés dans le chat) et déclenche le workflow manuellement
+(`workflow_dispatch`) pour un 1er test réel, sans attendre le cron du
+lendemain.
+
+**Résultat : `succeeded` en 10m29s** -- mais logs partagés par l'utilisateur
+montrant que quasi tout ce temps est passé sur des échecs : les 3 appels
+`leaguegamefinder` (Regular Season/Playoffs/PlayIn) pour la saison 2026-27
+expirent chacun après 3 tentatives de 60s (`HTTPSConnectionPool...Read
+timed out`), avant que le script conclue correctement "Rien de nouveau --
+terminé" (saison 2026-27 hors-saison, aucun match n'existe encore --
+comportement final juste, juste très lent à y arriver).
+
+**Problème identifié avant que l'utilisateur ne le signale explicitement**
+(prévu en observant "In progress" depuis longtemps, confirmé par les logs
+partagés) : ce timeout de 9-10 minutes va se répéter CHAQUE JOUR jusqu'à
+mi-octobre (début de saison réelle) -- gaspille une part non négligeable
+du quota gratuit GitHub Actions (dépôt privé) pour ne rien trouver.
+
+**Corrigé** : `SEASON_INDEX_TIMEOUT` (15s) et `SEASON_INDEX_RETRIES` (1),
+utilisés UNIQUEMENT pour l'appel `leaguegamefinder` dans
+`fetch_season_games()` -- `fetch_box_scores()` (un vrai match existant)
+garde `REQUEST_TIMEOUT`/`MAX_RETRIES` complets, aucune perte de fiabilité
+là où ça compte. Revérifié en local : hors-saison (2026-27) passe de
+~10 min à **8 secondes** ; saison pleine (2025-26, tous types) toujours
+correcte à l'identique (1321 connus/1321 trouvés/0 nouveau) -- le timeout
+réduit ne fait manquer aucun match réel, seulement échouer plus vite quand
+il n'y a réellement rien à trouver.
+
+**Phase 4 ENTIÈREMENT close** : service déployé et vérifié (§24), données
+tenues à jour automatiquement (§25), coût du job quotidien optimisé (§26).
+Reste la Phase 5, 3 points indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_
+PERSOS_V0_1.md` §7 (distribution de probas pour calibrer les seuils entre
+paliers, structuration IA du texte libre, barème du fallback).
 ```

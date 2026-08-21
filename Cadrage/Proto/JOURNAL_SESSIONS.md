@@ -8527,3 +8527,34 @@ chat). Une fois fait, la Phase 4 est entièrement close.
 
 Détail complet : `projet-data-nba.md` §25, bandeau REPRISE mis à jour.
 ```
+
+
+## Projet Data NBA : 1er run réel du cron, optimisation timeout, Phase 4 close (21/08/2026, suite)
+
+```text
+L'utilisateur ajoute les 2 secrets GitHub Actions via l'interface web (pas
+via le chat) et déclenche le workflow manuellement pour un 1er test réel.
+
+Résultat : succeeded en 10m29s -- mais les logs (partagés par
+l'utilisateur, captures d'écran) montrent que ce temps est presque
+entièrement des échecs : les 3 appels leaguegamefinder pour 2026-27
+(hors-saison, aucun match n'existe encore) expirent chacun après 3
+tentatives de 60s avant la conclusion correcte "Rien de nouveau". Comportement
+final juste, mais très lent à y arriver -- et ça va se répéter chaque jour
+jusqu'à mi-octobre, consommant une part non négligeable du quota gratuit
+GitHub Actions (dépôt privé) pour ne rien trouver.
+
+Corrigé : timeout (15s) et tentatives (1) réduits UNIQUEMENT pour l'appel
+leaguegamefinder (fetch_season_games), fetch_box_scores garde le
+timeout/les tentatives complets (un vrai match existant, où la fiabilité
+compte). Revérifié en local : hors-saison ~10min -> 8s ; saison pleine
+(2025-26) toujours identique (1321/1321/0 nouveau) -- aucune perte de
+fiabilité, juste un échec plus rapide quand il n'y a réellement rien.
+
+**Phase 4 du chantier Data NBA (raccordement appli) ENTIÈREMENT CLOSE** :
+service déployé et vérifié sur Cloud Run (§24), rafraîchissement quotidien
+automatique et fiable (§25), coût du job optimisé (§26). Reste la Phase 5
+(3 points indépendants de SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §7).
+
+Détail complet : `projet-data-nba.md` §26, bandeau REPRISE mis à jour.
+```
