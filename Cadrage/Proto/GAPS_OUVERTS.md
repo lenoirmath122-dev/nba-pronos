@@ -30,6 +30,12 @@
 > switch déconseillé pour l'instant : le prompt actuel est testé/affiné
 > spécifiquement pour Claude Opus 5, un changement de fournisseur
 > demanderait de tout revalider).
+>
+> **Piste UX notée le 21/08/2026, PAS pour maintenant** : à la saisie d'un
+> prono et/ou d'un pari dans "Mes pronos", la carte devrait se replier
+> automatiquement sur elle-même après validation, pour libérer la vue —
+> demandé par l'utilisateur en passant, pas urgent, à reprendre dans un
+> chantier UI dédié plus tard (hors périmètre Phase 5 Data NBA).
 
 > **État au 21/08/2026 (suite 11, chantier Data NBA)** — **Contexte de
 > match ajouté à la structuration IA, 2 bugs réels corrigés**
