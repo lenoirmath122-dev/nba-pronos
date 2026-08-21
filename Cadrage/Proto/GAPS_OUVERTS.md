@@ -4,28 +4,30 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 8, chantier Data NBA)** — **Structuration IA
-> vérifiée hors-interface, 1 bug réel corrigé** (`projet-data-nba.md` §28,
-> `JOURNAL_SESSIONS.md` entrée dédiée) :
-> - **Retiré** : `ANTHROPIC_API_KEY`/`STATS_SERVICE_URL` configurées par
->   l'utilisateur (2e compte Anthropic après un incident de facturation sur
->   le 1er). Chaîne complète (Claude Opus 5 + micro-service Cloud Run)
->   vérifiée fonctionnelle via un script de test sur 4 cas réels.
-> - **Retiré** : bug réel trouvé et corrigé — `structureAndScoreBet.ts`
->   exigeait `comparison` non-null pour tout pari calculable, mais dd/td
->   (double-double/triple-double) ont légitimement `comparison: null` —
->   tous les paris sur ces 2 stats tombaient à tort en repli manuel,
->   silencieusement (pas de crash). Corrigé, revérifié.
-> - **Reste, bloquant pour clore complètement la Phase 5** : test au clic
->   dans l'interface réelle (soumettre un vrai pari perso, observer la
->   suggestion sur l'écran admin) — la logique et les appels externes sont
->   confirmés fonctionnels, mais `submitBet` + `ValidationBetCard.tsx`
->   jamais testés ensemble faute d'accès navigateur dans cet environnement.
+> **État au 21/08/2026 (suite 9, chantier Data NBA)** — **1er test réel via
+> l'interface, bug "Junior" vs "Jr." trouvé et corrigé**
+> (`projet-data-nba.md` §29, `JOURNAL_SESSIONS.md` entrée dédiée) :
+> - **Retiré** : bug réel — `find_player()` (service Python) ne matchait
+>   pas "Michael Porter Junior" (texte du joueur, repris fidèlement par
+>   Claude Opus 5) contre "Michael Porter Jr." (nom réel en base). Corrigé
+>   (`normalize_suffix()`, appliqué dans `tester_modele.py` ET
+>   `supabase_context.py`), testé directement contre Supabase, zéro
+>   régression sur les cas connus (Tatum, Jokić, Curry ambigu, inconnu).
+> - **Nouveau point ouvert, bloquant pour reconfirmer via l'appli** :
+>   redéployer le service Cloud Run (`gcloud run deploy`) pour que ce
+>   correctif s'applique en ligne — action de l'utilisateur, pas encore
+>   faite. Le service déployé tourne toujours sur l'ancienne image.
+> - **Une fois redéployé** : resoumettre le même pari de test ("Michael
+>   Porter Junior marque plus de 10 pts") et revérifier en base que les
+>   champs de structuration se remplissent cette fois.
 > - **Restent ouverts, assumés explicitement (pas oubliés)** : seuils
 >   proba->palier toujours provisoires ("à vue de nez", point 2 de la spec,
 >   jamais calibrés sur un vrai échantillon) ; barème du fallback pour les
 >   paris non calculables jamais tranché (point 5, statu quo assumé —
->   mécanisme manuel existant inchangé).
+>   mécanisme manuel existant inchangé) ; question soulevée par
+>   l'utilisateur sur la cohérence de l'écran de saisie joueur (le champ
+>   difficulté manuelle reste affiché même pour un pari calculable par
+>   l'IA) — pas tranchée, discussion en cours.
 
 > **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
 > calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain

@@ -27,6 +27,7 @@ si tu ne les précises pas (mêmes valeurs par défaut que demo_pari_reel.py).
 
 import argparse
 import math
+import re
 import sqlite3
 import unicodedata
 from pathlib import Path
@@ -81,11 +82,25 @@ def strip_accents(s: str) -> str:
     return "".join(c for c in unicodedata.normalize("NFKD", s) if not unicodedata.combining(c)).lower()
 
 
+def normalize_suffix(s: str) -> str:
+    """"Michael Porter Junior" doit trouver "Michael Porter Jr." -- bug reel
+    trouve en testant la structuration IA en conditions reelles le
+    21/08/2026 (projet-data-nba.md) : l'IA reprend fidelement le texte du
+    joueur ("Junior"), la base utilise l'abreviation standard NBA ("Jr.").
+    Meme logique pour Senior/Sr, applique aux DEUX cotes de la comparaison
+    (needle et haystack) dans find_player()."""
+    s = re.sub(r"\bjunior\b", "jr", s)
+    s = re.sub(r"\bjr\.?\b", "jr", s)
+    s = re.sub(r"\bsenior\b", "sr", s)
+    s = re.sub(r"\bsr\.?\b", "sr", s)
+    return s
+
+
 def find_player(conn, query: str) -> tuple:
     df = pd.read_sql("SELECT player_id, first_name, family_name FROM joueurs", conn)
     df["full_name"] = df["first_name"] + " " + df["family_name"]
-    needle = strip_accents(query)
-    rows = df[df["full_name"].apply(lambda n: needle in strip_accents(n))]
+    needle = normalize_suffix(strip_accents(query))
+    rows = df[df["full_name"].apply(lambda n: needle in normalize_suffix(strip_accents(n)))]
     if rows.empty:
         raise SystemExit(f"Aucun joueur trouvé pour \"{query}\" -- verifie l'orthographe.")
     if len(rows) > 1:

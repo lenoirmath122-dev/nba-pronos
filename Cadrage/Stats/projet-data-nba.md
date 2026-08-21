@@ -2,8 +2,26 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 7 — Phase 5 vérifiée hors-appli)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 8 — 1er test réel via l'appli)
 >
+> **1er vrai pari perso testé via l'interface (`npm run dev`, compte
+> Rillettes-31)** — a révélé un 2e bug réel, corrigé, **service PAS ENCORE
+> redéployé** (§29). "Michael Porter Junior marque plus de 10 pts" soumis
+> deux fois (avant et après redémarrage du serveur de dev pour charger les
+> nouvelles variables d'env) : toujours aucun champ de structuration rempli.
+> Diagnostic : `find_player()` (service Python) ne fait qu'une comparaison
+> de sous-chaîne -- "Junior" (repris fidèlement du texte du joueur par
+> Claude Opus 5) ne matche pas "Jr." (vrai nom en base). Corrigé
+> (`normalize_suffix()`, `tester_modele.py`, réutilisé par
+> `supabase_context.py`) -- testé directement contre Supabase, résout
+> maintenant "Michael Porter Junior" -> `Michael Porter Jr.` (1629008), zéro
+> régression sur Tatum/Jokić/Curry (ambigu)/joueur inconnu.
+> - **Reste, action de l'utilisateur** : redéployer le service Cloud Run
+>   (`gcloud run deploy`, guide déjà existant) pour que ce correctif soit
+>   pris en compte en ligne -- sans ça, le service déployé garde l'ancien
+>   comportement. Puis retester le même pari dans l'appli.
+>
+> Plus tôt (état au 21/08/2026, suite 7 — Phase 5 vérifiée hors-appli) —
 > **Structuration IA testée en conditions réelles (hors interface, pas
 > d'accès navigateur) — 1 bug réel trouvé et corrigé, chaîne complète
 > confirmée fonctionnelle** (§28). Script de vérification autonome (Claude
@@ -1529,4 +1547,53 @@ suggestion sur l'écran admin de validation) -- la logique/les appels
 externes sont confirmés fonctionnels, mais pas le passage complet par
 `submitBet` et le rendu de `ValidationBetCard.tsx`, jamais testés
 ensemble faute d'accès navigateur dans cet environnement.
+```
+
+## 29. 1er test réel via l'interface -- bug "Junior" vs "Jr." trouvé et corrigé (21/08/2026, suite)
+
+```text
+Suite de §28 : les variables d'environnement configurées, l'utilisateur
+teste pour de vrai via `npm run dev` (compte Rillettes-31, pas de compte
+de test jetable -- plus simple). 1re confusion de navigation : plus
+d'écran "Nouveau pari" séparé depuis la refonte du 18/08/2026 (§2.72
+ETAT_ACTUEL.md) -- les paris sont accrochés aux cartes de match. Corrigé
+dans l'échange, pas un vrai bug.
+
+**1re tentative bloquée sur un serveur de dev périmé** : un `next dev`
+tournait déjà depuis le 19/08/2026 (`Get-CimInstance` confirme la date de
+création du process), avant l'ajout de `ANTHROPIC_API_KEY`/
+`STATS_SERVICE_URL` dans `.env.local` -- Next.js charge les variables
+d'environnement au démarrage, pas à chaud. Redémarré par l'utilisateur.
+
+**2e tentative, bug réel** : "Michael Porter Junior marque plus de 10 pts"
+soumis via le vrai formulaire (`InlineBetForm.tsx` -> `submitBet()`,
+confirmé par grep que c'est bien la même fonction que celle modifiée en
+§27) -- toujours aucun champ de structuration rempli en base après
+soumission. Diagnostiqué en testant directement le micro-service déployé
+(`curl .../predict` avec ce nom exact) : `"Aucun joueur trouvé pour
+\"Michael Porter Junior\""`. Vérifié en base (`stats_joueurs`) : le vrai
+nom est `"Michael Porter Jr."`. Cause : `find_player()` (service Python,
+`tester_modele.py`/`supabase_context.py`) ne fait qu'une comparaison de
+sous-chaîne après normalisation des accents -- "junior" et "jr." ne
+matchent jamais entre eux, simples chaînes différentes. Claude Opus 5 a
+fidèlement repris le texte du joueur ("Junior", orthographe humaine
+courante) plutôt que la convention d'abréviation NBA utilisée en base --
+comportement normal de l'IA, la faille est côté correspondance de nom.
+
+**Corrigé** : nouvelle fonction `normalize_suffix()` dans
+`tester_modele.py` (normalise "junior"/"jr"/"jr." -> "jr", idem senior/sr,
+`\b` word-boundary pour ne pas mordre sur d'autres mots), appliquée aux
+DEUX côtés de la comparaison (needle ET haystack) dans `find_player()`
+-- corrigé à la fois dans `tester_modele.py` (CLI local, sqlite) ET
+`supabase_context.py` (service déployé, réutilise la fonction via import,
+zéro duplication). Testé directement contre la vraie base Supabase :
+"Michael Porter Junior" résout maintenant `(1629008, "Michael Porter
+Jr.")`. Zéro régression vérifiée (Tatum, Jokić -- accents --, Curry --
+ambiguïté toujours détectée --, joueur inconnu -- toujours rejeté).
+
+**Pas encore pris en compte en production** : le service Cloud Run
+déployé (§24) tourne toujours sur l'image d'avant ce correctif -- il faut
+un redéploiement (`gcloud run deploy`, action de l'utilisateur) pour que
+ça s'applique en ligne. Le pari de test ("Michael Porter Junior...") reste
+donc à resoumettre après le redéploiement pour confirmer de bout en bout.
 ```

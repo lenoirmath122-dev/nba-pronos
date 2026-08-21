@@ -8668,3 +8668,37 @@ jamais testés ensemble faute d'accès navigateur.
 
 Détail complet : projet-data-nba.md §28.
 ```
+
+
+## 1er test réel via l'interface -- bug "Junior" vs "Jr." trouvé et corrigé (21/08/2026, suite)
+
+```text
+Suite directe : l'utilisateur teste pour de vrai via npm run dev (compte
+Rillettes-31). Serveur de dev périmé (tournait depuis le 19/08, avant
+l'ajout des variables d'environnement -- Next.js les charge au démarrage,
+pas à chaud) -- redémarré.
+
+Pari "Michael Porter Junior marque plus de 10 pts" soumis via le vrai
+formulaire (InlineBetForm -> submitBet(), confirmé identique à la fonction
+modifiée en §27) -- aucun champ de structuration rempli. Diagnostiqué en
+testant directement le service déployé : "Aucun joueur trouvé pour
+Michael Porter Junior". Vraie cause : le nom en base est "Michael Porter
+Jr.", find_player() ne fait qu'une comparaison de sous-chaîne après
+normalisation des accents -- "junior" et "jr." ne matchent jamais. Claude
+Opus 5 a fidèlement repris l'orthographe du joueur, la faille est côté
+correspondance de nom, pas côté extraction IA.
+
+Corrigé : normalize_suffix() (tester_modele.py, "junior"/"jr"/"jr." ->
+"jr", idem senior/sr), appliquée aux deux côtés de la comparaison dans
+find_player() -- corrigé dans tester_modele.py ET supabase_context.py
+(réutilise la fonction, zéro duplication). Testé directement contre
+Supabase : résout maintenant "Michael Porter Junior" -> Michael Porter
+Jr. (1629008). Zéro régression (Tatum, Jokić, Curry ambigu, joueur
+inconnu).
+
+Reste : le service Cloud Run déployé tourne encore sur l'ancienne image --
+redéploiement (gcloud run deploy, action utilisateur) nécessaire avant de
+pouvoir reconfirmer de bout en bout via l'appli.
+
+Détail complet : projet-data-nba.md §29.
+```

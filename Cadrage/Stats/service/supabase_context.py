@@ -27,6 +27,7 @@ from tester_modele import (  # noqa: E402
     PCT_STATS,
     REGRESSION_STATS,
     minutes_to_float,
+    normalize_suffix,
     resolve_stat,
     run_classifier,
     run_pct,
@@ -39,8 +40,8 @@ def find_player(client, query: str) -> tuple:
     rows = client.table("stats_joueurs").select("player_id, first_name, family_name").execute().data
     df = pd.DataFrame(rows)
     df["full_name"] = df["first_name"] + " " + df["family_name"]
-    needle = strip_accents(query)
-    matches = df[df["full_name"].apply(lambda n: needle in strip_accents(n))]
+    needle = normalize_suffix(strip_accents(query))
+    matches = df[df["full_name"].apply(lambda n: needle in normalize_suffix(strip_accents(n)))]
     if matches.empty:
         raise ValueError(f"Aucun joueur trouvé pour \"{query}\" -- verifie l'orthographe.")
     if len(matches) > 1:
