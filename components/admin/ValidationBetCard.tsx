@@ -2,22 +2,15 @@ import type { PendingValidationBet } from "@/lib/queries/admin-validation";
 import { BET_CATEGORY_OPTIONS, BET_DIFFICULTY_LABELS } from "@/lib/labels/bets";
 import { validateBetFormAction, rejectBetFormAction } from "@/lib/actions/admin-validation";
 import { PlayerLink } from "@/components/ui/PlayerLink";
-import { STAT_LABELS_FR, PERCENTAGE_STATS, NO_THRESHOLD_STATS, type StatCode } from "@/lib/ai/statCodes";
 import styles from "./ValidationBetCard.module.css";
 
-// Résumé lisible de la structuration IA (Phase 5 Data NBA, 21/08/2026) --
-// simple SUGGESTION, l'admin garde la main (select ci-dessous pré-rempli
-// mais modifiable, même patron que proposedCategory/proposedDifficulty).
-function aiSuggestionLabel(bet: PendingValidationBet): string | null {
-  if (!bet.isCalculable || !bet.structuredStat || bet.calculatedProba === null) return null;
-  const stat = bet.structuredStat as StatCode;
-  const label = STAT_LABELS_FR[stat] ?? bet.structuredStat;
-  const comparisonLabel = bet.structuredComparison === "UNDER" ? "moins de" : "plus de";
-  const thresholdLabel = NO_THRESHOLD_STATS.has(stat)
-    ? ""
-    : ` ${comparisonLabel} ${PERCENTAGE_STATS.has(stat) ? `${Math.round((bet.structuredThreshold ?? 0) * 100)}%` : bet.structuredThreshold}`;
-  return `Suggestion IA : ${bet.structuredPlayerName ?? "?"} — ${label}${thresholdLabel} (proba calculée ${Math.round(bet.calculatedProba * 100)}%, palier ${bet.suggestedDifficulty} suggéré)`;
-}
+// Note (Phase 5 Data NBA, 21/08/2026) : un pari `is_calculable` par l'IA
+// n'apparaît plus jamais dans cette file -- update_bet_structuration le
+// fait sauter direct en VALIDATED (auto-validation, voir
+// AutoValidatedBetCard.tsx pour la correction admin après coup). Un pari
+// ici a donc toujours `isCalculable: false`, la suggestion IA affichée
+// pendant la 1re version de cette fonctionnalité (avant l'auto-validation)
+// a été retirée -- devenue du code mort par construction.
 
 // Une carte de la file de validation (SPEC_ECRAN_ADMIN_VALIDATION_V0_1 §2) :
 // contexte complet sans navigation + 2 formulaires natifs indépendants
@@ -37,7 +30,6 @@ export function ValidationBetCard({ bet, error }: ValidationBetCardProps) {
       </p>
       <p className={styles.target}>{bet.targetLabel}</p>
       <p className={styles.description}>{bet.description}</p>
-      {aiSuggestionLabel(bet) && <p className={styles.aiSuggestion}>{aiSuggestionLabel(bet)}</p>}
 
       {error && <p className={styles.error}>{error}</p>}
 
@@ -57,7 +49,7 @@ export function ValidationBetCard({ bet, error }: ValidationBetCardProps) {
 
         <label className={styles.field}>
           Difficulté
-          <select name="validatedDifficulty" defaultValue={bet.suggestedDifficulty ?? bet.proposedDifficulty} className={styles.select}>
+          <select name="validatedDifficulty" defaultValue={bet.proposedDifficulty} className={styles.select}>
             {([1, 2, 3, 4, 5] as const).map((level) => (
               <option key={level} value={level}>
                 {level} — {BET_DIFFICULTY_LABELS[level]}

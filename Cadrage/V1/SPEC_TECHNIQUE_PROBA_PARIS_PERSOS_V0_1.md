@@ -189,12 +189,31 @@ réentraîné ou la stat rejouée).
 un pari UNDER, `statsService.ts` utilise `1 - P(stat > seuil)` -- ignore
 `P(stat == seuil)` pile sur le seuil, écart mineur assumé pour ce 1er jet.
 
-**Admin reste dans la boucle** (même principe que `proposed_category`/
-`proposed_difficulty` déjà existants) : `ValidationBetCard.tsx` affiche la
-suggestion IA (joueur/stat/seuil/proba/palier) en lecture seule, et
-pré-remplit le `<select>` de difficulté avec `suggestedDifficulty` --
-l'admin peut valider tel quel ou changer manuellement, rien n'est
-auto-appliqué sans son geste de validation.
+**Auto-validation, PAS "admin reste dans la boucle"** -- design révisé le
+21/08/2026 en cours de vérification réelle : la 1re version (ci-dessus,
+admin garde la main via `ValidationBetCard.tsx`) ne correspondait PAS à ce
+que l'utilisateur avait en tête ("ça affiche au joueur la probabilité au
+moment de la validation, auto-validation mais encore corrigable par
+l'admin si besoin"). Corrigé : un pari calculable saute la file
+d'attente admin -- `update_bet_structuration` (migration
+`20260821160000_bets_ai_auto_validation.sql`) passe directement
+SUBMITTED -> VALIDATED (`validated_category` = catégorie proposée,
+`validated_difficulty` = palier suggéré, `validated_by_admin_id` = NULL --
+signal distinctif "validé par l'IA, pas un humain"). 2 conséquences
+actées avec l'utilisateur :
+1. **La proba est montrée au JOUEUR, mais seulement une fois `VALIDATED`**
+   (jamais avant, pour ne pas influencer son choix de pari) --
+   `BetBlock.tsx` (onglet "Mes pronos"), pas la page profil public
+   `/players/[userId]` (écartée : montre la même vue à tout le monde par
+   principe documenté, et ne révèle un pari qu'à la deadline publique, pas
+   à la validation -- mauvais timing).
+2. **Correction admin après coup** : aucun mécanisme existant ne couvrait
+   ce cas (le système de demande de correction est joueur-initié, ne
+   permet pas de réviser une difficulté sur un pari qui RESTE VALIDATED) --
+   nouvelle action `overrideAutoValidatedDifficulty`
+   (`lib/actions/admin-validation.ts`), nouvelle section "Auto-validés par
+   l'IA" sur `/admin/validation` (pas `/players/[userId]`, écarté pour la
+   même raison "même vue pour tout le monde").
 
 **Point 2 (seuils calibrés) -- PAS FAIT, provisoire assumé** : décidé avec
 l'utilisateur de livrer une version qui marche maintenant plutôt que

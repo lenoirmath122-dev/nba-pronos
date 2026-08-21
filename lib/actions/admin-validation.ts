@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/actions/audit";
+import { recomputeBet } from "@/lib/scoring/recompute";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Écriture de la file de validation (SPEC_ECRAN_ADMIN_VALIDATION_V0_1 §4).
@@ -128,6 +129,70 @@ export async function validateBetFormAction(formData: FormData): Promise<void> {
   const validatedCategory = String(formData.get("validatedCategory") ?? "") as BetCategory;
 
   const result = await validateBet({ betId, validatedDifficulty, validatedCategory });
+
+  if (!result.success) {
+    redirect(`/admin/validation?validationError=${encodeURIComponent(result.error)}&betId=${betId}`);
+  }
+  redirect("/admin/validation");
+}
+
+/**
+ * Correction admin d'un pari auto-validé par l'IA (Phase 5 Data NBA,
+ * 21/08/2026) -- pas de mécanisme équivalent existant (le système de
+ * demande de correction est déclenché par le joueur, et ne couvre pas le
+ * cas "réviser la difficulté d'un pari qui reste VALIDATED", vérifié avant
+ * d'écrire ceci). Ne touche QUE `validated_difficulty` -- `is_calculable`
+ * reste true (trace que ce pari a été calculé), la proba/le contexte
+ * structuré restent inchangés (ce sont des FAITS constatés par l'IA à la
+ * soumission, pas un jugement à corriger). recomputeBet() systématique :
+ * le pari peut déjà être résolu (WON/LOST), les points doivent refléter la
+ * nouvelle difficulté.
+ */
+export async function overrideAutoValidatedDifficulty(input: {
+  betId: string;
+  newDifficulty: BetDifficulty;
+}): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const ownBetError = await assertNotOwnBet(supabase, input.betId, user.id);
+  if (ownBetError) return { success: false, error: ownBetError };
+
+  const { data: updated, error } = await supabase
+    .from("bets")
+    .update({ validated_difficulty: input.newDifficulty })
+    .eq("id", input.betId)
+    .eq("is_calculable", true)
+    .is("validated_by_admin_id", null)
+    .select("id")
+    .maybeSingle();
+
+  if (error) return { success: false, error: error.message };
+  if (!updated) return { success: false, error: "Ce pari n'est plus un pari auto-validé corrigeable." };
+
+  await recomputeBet(input.betId);
+
+  await logAdminAction(supabase, {
+    actorUserId: user.id,
+    action: "OVERRIDE_AUTO_VALIDATED_DIFFICULTY",
+    targetType: "bet",
+    targetId: input.betId,
+    after: { newDifficulty: input.newDifficulty },
+  });
+
+  revalidatePath("/admin/validation");
+  revalidatePath("/admin");
+  return { success: true };
+}
+
+export async function overrideAutoValidatedDifficultyFormAction(formData: FormData): Promise<void> {
+  const betId = String(formData.get("betId") ?? "");
+  const newDifficulty = Number(formData.get("newDifficulty")) as BetDifficulty;
+
+  const result = await overrideAutoValidatedDifficulty({ betId, newDifficulty });
 
   if (!result.success) {
     redirect(`/admin/validation?validationError=${encodeURIComponent(result.error)}&betId=${betId}`);

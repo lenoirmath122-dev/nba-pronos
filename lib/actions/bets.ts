@@ -64,15 +64,21 @@ export async function saveDraftBet(input: SaveBetInput): Promise<ActionResult> {
   return callSaveBet(input, false);
 }
 
-/** « Soumettre à validation » (§8) : entre dans la file admin, énoncé requis.
- *  Enrichit ensuite le pari avec une structuration IA + une proba calculée
- *  (Phase 5 Data NBA, §21/08/2026) -- synchrone, best-effort : une panne de
- *  cette étape ne fait jamais échouer la soumission elle-même (voir
- *  structureAndScoreBet.ts). */
+/** « Soumettre à validation » (§8) : entre dans la file admin, énoncé requis
+ *  -- SAUF si l'IA arrive à calculer une proba (Phase 5 Data NBA,
+ *  21/08/2026, décidé avec l'utilisateur) : dans ce cas le pari est
+ *  auto-validé (saute la file admin), voir update_bet_structuration.
+ *  Synchrone, best-effort : une panne de cette étape ne fait jamais
+ *  échouer la soumission elle-même (voir structureAndScoreBet.ts).
+ *  revalidatePath rappelé APRÈS (pas seulement dans callSaveBet) --
+ *  l'auto-validation change le statut du pari après le 1er appel. */
 export async function submitBet(input: SaveBetInput): Promise<ActionResult> {
   const result = await callSaveBet(input, true);
   if (result.success) {
     await structureAndScoreBet(result.betId, input.description);
+    revalidatePath("/play");
+    revalidatePath("/play/results");
+    revalidatePath("/home");
   }
   return result;
 }

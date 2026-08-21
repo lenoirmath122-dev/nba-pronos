@@ -64,6 +64,11 @@ export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctio
       </span>
       <span className={`${styles.status} ${STATUS_CLASS[bet.status]}`}>{STATUS_LABEL[bet.status]}</span>
       {bet.pointsAwarded !== null && <span className={styles.points}>{bet.pointsAwarded} pts</span>}
+      {bet.isCalculable && bet.status !== "DRAFT" && bet.status !== "SUBMITTED" && bet.calculatedProba !== null && (
+        <span className={styles.aiProba}>
+          Proba calculée : {Math.round(bet.calculatedProba * 100)}% (palier {bet.suggestedDifficulty})
+        </span>
+      )}
 
       {bet.status === "REJECTED" && bet.refusalReason && <p className={styles.reason}>Motif du refus : {bet.refusalReason}</p>}
       {bet.reproposeHref && (

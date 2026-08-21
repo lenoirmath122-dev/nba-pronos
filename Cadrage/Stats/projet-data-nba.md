@@ -2,8 +2,28 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 8 — 1er test réel via l'appli)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 9 — auto-validation ajoutée)
 >
+> **Design révisé + auto-validation codée** (§30) : la 1re version de la
+> Phase 5 ("admin garde la main, suggestion en lecture seule") ne
+> correspondait pas à ce que l'utilisateur avait en tête, découvert en le
+> questionnant après le 1er test réel. Corrigé : un pari calculable saute
+> désormais la file d'attente admin (`update_bet_structuration` passe
+> direct SUBMITTED->VALIDATED, migration
+> `20260821160000_bets_ai_auto_validation.sql`, poussée sur la base réelle).
+> Proba montrée au JOUEUR une fois validée (`BetBlock.tsx`, "Mes pronos") ;
+> nouvelle section admin "Auto-validés par l'IA" (`/admin/validation`) pour
+> corriger la difficulté après coup — 2 emplacements initialement proposés
+> (`/players/[userId]`) écartés après avoir trouvé qu'ils violaient un
+> principe de conception documenté ("même vue pour tout le monde") et un
+> mauvais timing (visible seulement à la deadline publique, pas à la
+> validation). `tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes)
+> propres, migration poussée.
+> - **Reste, action de l'utilisateur** : redéployer le service Cloud Run
+>   (correctif "Junior"/"Jr.", §29, toujours pas fait) PUIS retester le
+>   même pari via l'appli pour confirmer l'auto-validation de bout en bout.
+>
+> Plus tôt (état au 21/08/2026, suite 8 — 1er test réel via l'appli) —
 > **1er vrai pari perso testé via l'interface (`npm run dev`, compte
 > Rillettes-31)** — a révélé un 2e bug réel, corrigé, **service PAS ENCORE
 > redéployé** (§29). "Michael Porter Junior marque plus de 10 pts" soumis
@@ -1596,4 +1616,89 @@ déployé (§24) tourne toujours sur l'image d'avant ce correctif -- il faut
 un redéploiement (`gcloud run deploy`, action de l'utilisateur) pour que
 ça s'applique en ligne. Le pari de test ("Michael Porter Junior...") reste
 donc à resoumettre après le redéploiement pour confirmer de bout en bout.
+```
+
+## 30. Design révisé : auto-validation au lieu de "admin garde la main" (21/08/2026, suite)
+
+```text
+Après le 2e bug (§29), l'utilisateur pose une question qui révèle un vrai
+malentendu de conception : "si ça fonctionne on va avoir des gros
+changements à faire côté interface non ? car la en tant que joueur je
+peux encore choisir la difficulté alors que c'est censé être prédit par
+l'appli". Creusé : ce que l'utilisateur avait en tête depuis le début
+("ça affiche au joueur la probabilité au moment de la validation, auto-
+validation mais encore corrigable par l'admin si besoin") est DIFFÉRENT de
+ce qui a été codé en §27 ("admin garde la main, suggestion en lecture
+seule, comportement joueur inchangé"). Signalé explicitement plutôt que
+silencieusement réinterprété -- 2 vraies questions produit tranchées avec
+lui : (1) proba visible au joueur, mais seulement APRÈS validation (pas
+avant, pour ne pas influencer son choix de pari) ; (2) auto-validation
+pour les paris calculables (saute la file d'attente admin), admin corrige
+après coup si besoin.
+
+**2 conflits trouvés en implémentant, signalés avant de coder autour** :
+1. `/players/[userId]` (proposé initialement par l'utilisateur pour la
+   correction admin) filtre les paris par "deadline publique passée", pas
+   par statut VALIDATED -- la proba n'y apparaîtrait que bien après la
+   validation, mauvais timing par rapport à la demande.
+2. Cette même page porte un principe de conception EXPLICITEMENT
+   DOCUMENTÉ dans son propre code : "cette page reste la même vue
+   publique pour tout le monde" (même l'admin ou le propriétaire du
+   profil). Y ajouter un contrôle admin-only aurait cassé ce principe.
+Les 2 emplacements réajustés avec l'utilisateur : proba au joueur ->
+`BetBlock.tsx` ("Mes pronos", montre TOUS ses propres paris dès
+validation, pas seulement les publics) ; correction admin ->
+`/admin/validation` (déjà admin-only par nature, contrairement au profil
+public).
+
+**Recherche préalable (agent Explore)** sur le système de correction
+existant : confirmé qu'AUCUN mécanisme actuel ne permet à un admin de
+réviser `validated_difficulty` sur un pari qui RESTE `VALIDATED` -- le
+système de `correction_requests` est strictement joueur-initié (RPC
+`request_bet_correction` exige `user_id = auth.uid()`), et ses 2 branches
+de traitement (origine VALIDATED-non-résolu -> juste rediriger vers la
+résolution ; contesté REJECTED/WON/LOST -> changement de statut) ne
+couvrent pas ce cas. Nouvelle action nécessaire, pas de réutilisation
+possible.
+
+**Implémenté** :
+- Migration `20260821160000_bets_ai_auto_validation.sql` : remplace
+  `update_bet_structuration` -- si `is_calculable=true`, transition directe
+  SUBMITTED->VALIDATED (`validated_category` = catégorie proposée,
+  `validated_difficulty` = palier suggéré, `validated_by_admin_id` = NULL,
+  signal "validé par l'IA"). Si non calculable, comportement inchangé
+  (file d'attente admin classique).
+- `lib/queries/play.ts` + `components/play/BetBlock.tsx` : nouvelle ligne
+  "Proba calculée : X% (palier Y)", affichée uniquement si
+  `isCalculable && status !== DRAFT/SUBMITTED` (donc jamais avant
+  validation).
+- `lib/actions/bets.ts` (`submitBet`) : `revalidatePath` rappelé APRÈS
+  `structureAndScoreBet` (pas seulement avant) -- l'auto-validation change
+  le statut du pari après le 1er appel de revalidation dans
+  `callSaveBet`.
+- `lib/queries/admin-validation.ts` : nouvelle `getAutoValidatedBets()`
+  (paris `is_calculable=true` + `validated_by_admin_id IS NULL`, statuts
+  VALIDATED/WON/LOST) -- même patron de jointures que
+  `getPendingValidationBets()`.
+- `lib/actions/admin-validation.ts` : nouvelle
+  `overrideAutoValidatedDifficulty()` -- modifie UNIQUEMENT
+  `validated_difficulty` (la proba/le contexte structuré restent
+  inchangés, ce sont des faits constatés par l'IA, pas un jugement à
+  corriger), `recomputeBet()` systématique (le pari peut déjà être résolu,
+  les points doivent refléter la nouvelle difficulté), garde
+  `assertNotOwnBet` réutilisée (même règle que la validation classique).
+- `components/admin/AutoValidatedBetCard.tsx` (nouveau) + section "Auto-
+  validés par l'IA" sur `/admin/validation/page.tsx`.
+- **Nettoyage** : `ValidationBetCard.tsx` -- la suggestion IA affichée en
+  lecture seule (ajoutée en §27) devient du code mort par construction
+  (un pari calculable n'apparaît plus jamais dans cette file, il saute
+  direct en VALIDATED) -- retirée plutôt que laissée trompeuse.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes) propres. Migration
+poussée sur la base réelle.
+
+**Reste** : redéployer le service Cloud Run (correctif "Junior"/"Jr.",
+§29, toujours pas fait) puis retester "Michael Porter Junior marque plus
+de 10 pts" via l'appli pour confirmer l'auto-validation de bout en bout
+(statut VALIDATED direct, proba visible dans "Mes pronos").
 ```

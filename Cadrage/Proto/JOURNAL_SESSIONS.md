@@ -8702,3 +8702,53 @@ pouvoir reconfirmer de bout en bout via l'appli.
 
 Détail complet : projet-data-nba.md §29.
 ```
+
+
+## Design révisé : auto-validation au lieu de "admin garde la main" (21/08/2026, suite)
+
+```text
+L'utilisateur pose une question qui révèle un malentendu de conception :
+en tant que joueur il peut encore choisir la difficulté alors que
+l'appli est censée la prédire. Creusé : ce qu'il avait en tête depuis le
+début (proba montrée au joueur À la validation, auto-validation, admin
+corrige après coup) est différent de ce qui a été codé (admin garde la
+main, suggestion en lecture seule, comportement joueur inchangé).
+Signalé explicitement plutôt que réinterprété silencieusement -- 2
+questions produit tranchées : proba visible au joueur mais SEULEMENT
+après validation (pas avant, pour ne pas influencer son choix) ; auto-
+validation pour les paris calculables, admin corrige après coup.
+
+2 conflits trouvés en implémentant, signalés avant de coder autour :
+/players/[userId] (proposé initialement pour la correction admin) ne
+montre un pari qu'à la deadline PUBLIQUE, pas à la validation (mauvais
+timing) ; et cette page porte un principe documenté dans son propre code
+("même vue pour tout le monde") qu'ajouter un contrôle admin-only aurait
+cassé. Réajusté avec l'utilisateur : proba au joueur -> BetBlock.tsx
+("Mes pronos") ; correction admin -> /admin/validation (déjà admin-only).
+
+Recherche préalable (agent Explore) : confirmé qu'aucun mécanisme
+existant ne permet à un admin de réviser une difficulté sur un pari qui
+reste VALIDATED (le système de correction est joueur-initié, ses 2
+branches ne couvrent pas ce cas) -- nouvelle action nécessaire.
+
+Implémenté : migration remplaçant update_bet_structuration (transition
+directe SUBMITTED->VALIDATED si calculable, validated_by_admin_id=NULL
+comme signal "validé par l'IA") ; ligne proba dans BetBlock.tsx (gardée
+avant status DRAFT/SUBMITTED) ; revalidatePath rappelé après
+structureAndScoreBet dans submitBet ; nouvelle getAutoValidatedBets() +
+overrideAutoValidatedDifficulty() (avec recomputeBet systématique et
+assertNotOwnBet réutilisée) ; nouveau AutoValidatedBetCard.tsx + section
+sur /admin/validation. Nettoyage : la suggestion IA en lecture seule de
+ValidationBetCard.tsx (ajoutée avant ce changement) devient du code mort
+par construction -- retirée plutôt que laissée trompeuse.
+
+tsc/eslint/vitest (37/37)/next build (38 routes) propres. Migration
+poussée sur la base réelle.
+
+Reste : redéployer le service Cloud Run (correctif Junior/Jr., toujours
+pas fait) puis retester le pari via l'appli pour confirmer
+l'auto-validation de bout en bout.
+
+Détail complet : projet-data-nba.md §30,
+SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §7bis mis à jour.
+```

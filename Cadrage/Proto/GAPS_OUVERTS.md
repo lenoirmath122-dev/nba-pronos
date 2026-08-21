@@ -4,30 +4,30 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 9, chantier Data NBA)** — **1er test réel via
-> l'interface, bug "Junior" vs "Jr." trouvé et corrigé**
-> (`projet-data-nba.md` §29, `JOURNAL_SESSIONS.md` entrée dédiée) :
-> - **Retiré** : bug réel — `find_player()` (service Python) ne matchait
->   pas "Michael Porter Junior" (texte du joueur, repris fidèlement par
->   Claude Opus 5) contre "Michael Porter Jr." (nom réel en base). Corrigé
->   (`normalize_suffix()`, appliqué dans `tester_modele.py` ET
->   `supabase_context.py`), testé directement contre Supabase, zéro
->   régression sur les cas connus (Tatum, Jokić, Curry ambigu, inconnu).
-> - **Nouveau point ouvert, bloquant pour reconfirmer via l'appli** :
->   redéployer le service Cloud Run (`gcloud run deploy`) pour que ce
->   correctif s'applique en ligne — action de l'utilisateur, pas encore
->   faite. Le service déployé tourne toujours sur l'ancienne image.
-> - **Une fois redéployé** : resoumettre le même pari de test ("Michael
->   Porter Junior marque plus de 10 pts") et revérifier en base que les
->   champs de structuration se remplissent cette fois.
+> **État au 21/08/2026 (suite 10, chantier Data NBA)** — **Design révisé :
+> auto-validation, admin corrige après coup** (`projet-data-nba.md` §30,
+> `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7bis, `JOURNAL_SESSIONS.md`
+> entrée dédiée) :
+> - **Retiré** : la question soulevée par l'utilisateur sur la cohérence de
+>   l'écran de saisie joueur — résolue en révisant le design (auto-
+>   validation direct SUBMITTED->VALIDATED pour un pari calculable, proba
+>   visible au joueur dans "Mes pronos" une fois validée, correction admin
+>   via une nouvelle section sur `/admin/validation`).
+> - **Retiré** : 2 emplacements UI initialement envisagés
+>   (`/players/[userId]`) écartés après avoir trouvé qu'ils cassaient soit
+>   le timing voulu (proba visible seulement à la deadline publique) soit
+>   un principe de conception documenté ("même vue pour tout le monde").
+> - **Toujours bloquant** : redéployer le service Cloud Run (correctif
+>   "Junior"/"Jr.", trouvé lors du test précédent) — action de
+>   l'utilisateur, pas encore faite. Une fois fait, resoumettre le pari de
+>   test ("Michael Porter Junior marque plus de 10 pts") et vérifier
+>   l'auto-validation de bout en bout (statut VALIDATED direct, proba
+>   visible dans "Mes pronos", pari listé dans la nouvelle section admin).
 > - **Restent ouverts, assumés explicitement (pas oubliés)** : seuils
 >   proba->palier toujours provisoires ("à vue de nez", point 2 de la spec,
 >   jamais calibrés sur un vrai échantillon) ; barème du fallback pour les
 >   paris non calculables jamais tranché (point 5, statu quo assumé —
->   mécanisme manuel existant inchangé) ; question soulevée par
->   l'utilisateur sur la cohérence de l'écran de saisie joueur (le champ
->   difficulté manuelle reste affiché même pour un pari calculable par
->   l'IA) — pas tranchée, discussion en cours.
+>   mécanisme manuel existant inchangé).
 
 > **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
 > calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain

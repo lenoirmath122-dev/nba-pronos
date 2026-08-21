@@ -103,6 +103,14 @@ export type PlayAssociatedBet = {
    *  Mes pronos : bet_deadline_open() ferme la reproposition exactement au
    *  verrouillage du match (§3.3 de la spec, vérification de dépôt §13.3). */
   reproposeHref: string | null;
+  /** Structuration IA + proba calculée (Phase 5 Data NBA, 21/08/2026) --
+   *  isCalculable=true implique une auto-validation (validatedByAdminId
+   *  null), voir update_bet_structuration. Affiché seulement une fois
+   *  VALIDATED ou au-delà (jamais DRAFT/SUBMITTED), décidé avec
+   *  l'utilisateur pour ne pas influencer son choix avant coup. */
+  isCalculable: boolean;
+  calculatedProba: number | null;
+  suggestedDifficulty: BetDifficulty | null;
 };
 
 /** Match PAS ENCORE verrouillé (scheduled_at > now()) — saisie possible. */
@@ -204,6 +212,9 @@ type BetSourceRow = {
   refusal_reason: string | null;
   resolution_reason: string | null;
   points_awarded: number | null;
+  is_calculable: boolean | null;
+  calculated_proba: number | null;
+  suggested_difficulty: BetDifficulty | null;
 };
 
 function teamRef(row: TeamRow): TeamRef {
@@ -255,6 +266,9 @@ function toPlayAssociatedBet(
     isForgottenResolution: b.status === "VALIDATED" && targetFinished,
     hasPendingCorrectionRequest: pendingBetIds.has(b.id),
     reproposeHref: b.status === "REJECTED" && deadlineOpen ? `/play/bets/new?matchId=${b.match_id}` : null,
+    isCalculable: b.is_calculable ?? false,
+    calculatedProba: b.calculated_proba,
+    suggestedDifficulty: b.suggested_difficulty,
   };
 }
 
@@ -357,7 +371,7 @@ async function fetchUpcomingWindow(
     supabase
       .from("bets")
       .select(
-        "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded"
+        "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, is_calculable, calculated_proba, suggested_difficulty"
       )
       .eq("user_id", userId)
       .eq("competition_id", competition.id)
@@ -709,7 +723,7 @@ async function fetchLockedRows(
     supabase
       .from("bets")
       .select(
-        "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded"
+        "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, is_calculable, calculated_proba, suggested_difficulty"
       )
       .eq("competition_id", competitionId)
       .eq("scope", "MATCH")
