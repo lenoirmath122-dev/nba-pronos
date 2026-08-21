@@ -8338,3 +8338,78 @@ PERSOS_V0_1.md` §7 indépendants de cette brique-ci.
 Détail complet : `projet-data-nba.md` §21 (réentraînement + diagnostic
 biais), §22 (micro-service), bandeau REPRISE mis à jour.
 ```
+
+
+## Projet Data NBA : Phase 4, architecture sans état + Cloud Run + migration Supabase (21/08/2026, suite)
+
+```text
+Enchaîné dans la foulée de l'entrée précédente -- l'utilisateur demande
+explicitement de trancher l'hébergement ("on se penche sur le point 1").
+
+**Reconsidération avant de s'engager** : `nba.db` (575 Mo) ne pèse autant
+que par le play-by-play (3M lignes), jamais lu par l'inférence -- vérifié
+concrètement (copie de test sans cette table : 110 Mo). Le design prévu en
+§22 (service auto-suffisant, disque local) aurait nécessité un hébergeur
+payant à disque persistant juste pour ces 110 Mo + 103 Mo de modèles.
+Architecture alternative proposée et retenue avec l'utilisateur : les
+données utiles vivent dans Supabase (déjà en place), les modèles sont
+embarqués dans l'image du service au build -- le service devient sans
+état, hébergeable gratuitement. Hébergeur : Google Cloud Run, choisi après
+comparaison explicite avec Render (gratuit, plus simple à déployer mais
+moins robuste) et une fonction Python dans le projet Vercel existant
+(écartée, risque de dépasser les limites de taille de fonction avec
+scikit-learn + 103 Mo de modèles).
+
+**Migration #31** (`20260821130000_stats_tables_for_service.sql`) : 3
+tables préfixées `stats_` dans le schéma `public` (pas un nouveau schéma,
+pour éviter un réglage manuel dashboard) -- `stats_equipes`/`stats_joueurs`/
+`stats_box_scores` (dénormalisée, toutes les colonnes de `build_context()`
+dans une seule table pour éviter les jointures PostgREST). RLS activée
+sans policy. Poussée sur la base réelle (`npx supabase db push`) --
+**repassé SANS blocage classifieur cette fois**, ce qui a débloqué au
+passage les migrations #29 (`delete_bet`) et #30
+(`drop_tutorial_seen_at`), en attente depuis plusieurs jours (voir
+`GAPS_OUVERTS.md`, les 2 points correspondants retirés).
+
+**Backfill** (`service/backfill_supabase.py`) : bug réel trouvé en migrant
+-- pandas 3.0 (changement de comportement récent) renvoie des `float`/`int`
+Python natifs via `to_dict()`, pas des scalaires numpy comme avant ; une
+colonne entière avec des `NULL` (donc `3.0` côté pandas) atterrissait
+littéralement en `3.0` dans le JSON envoyé à une colonne Postgres
+`integer`, rejeté (`22P02`). Corrigé (le test de type couvre aussi les
+types Python natifs). Résultat vérifié : 30 équipes, 1052 joueurs, 140 016
+lignes `stats_box_scores`.
+
+**Service réécrit** : nouveau `service/supabase_context.py` (équivalent
+Postgres de `build_context()`/`find_player()`/`find_team()` de
+`tester_modele.py`, laissé inchangé pour le CLI local) ; `service/app.py`
+reconnecté dessus. Vérifié en conditions réelles contre la VRAIE base
+Supabase (uvicorn local + curl) : résultats rigoureusement identiques à la
+version SQLite (Tatum FT% 26.8%, Jokić dd 75.1%, Curry pts vs LAL 48.7%) --
+aucune régression du changement d'architecture. Un détail de format
+corrigé au passage (date au lieu d'un timestamp complet dans la réponse).
+
+**`Dockerfile`** (`Cadrage/Stats/Dockerfile`) + guide de déploiement
+(`service/DEPLOIEMENT_CLOUD_RUN.md`, commandes `gcloud` exactes, clé
+Supabase via Secret Manager -- jamais collée dans le chat). Pas de Docker
+disponible dans cet environnement pour tester le build lui-même -- guide
+écrit pour que l'utilisateur l'exécute, avec son propre compte Google
+Cloud.
+
+**Nettoyage secret** : un fichier `.env.test` temporaire (clé Supabase,
+pour les tests locaux du service) créé puis supprimé après usage --
+couvert par `.env*` dans `.gitignore`, jamais exposé dans un commit.
+Incident mineur sans conséquence : 2 anciens process `uvicorn` de sessions
+précédentes étaient restés vivants en arrière-plan (le `kill`/`pkill`
+bash n'agit pas fiablement sur des process Windows lancés via `&`) --
+repéré via une requête PowerShell `Get-CimInstance`, arrêtés proprement.
+
+**Reste à faire pour clore la Phase 4** : exécuter le déploiement Cloud Run
+(nécessite le compte Google Cloud de l'utilisateur) ; fetch incrémental
+`nba_api` + upsert quotidien Supabase (remplace le stub `/refresh`,
+devenu inutile dans cette architecture) ; workflow GitHub Actions pour ce
+job. Puis Phase 5 (3 points indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_
+PERSOS_V0_1.md` §7).
+
+Détail complet : `projet-data-nba.md` §23, bandeau REPRISE mis à jour.
+```

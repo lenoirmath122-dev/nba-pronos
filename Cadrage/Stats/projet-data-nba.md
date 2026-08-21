@@ -2,24 +2,42 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite — Phase 4 en cours)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 2 — architecture Phase 4 tranchée)
 >
-> **Phase 4 (raccordement appli) démarrée — micro-service FastAPI construit
-> et vérifié en local, PAS ENCORE DÉPLOYÉ** (§22). Décisions d'architecture
-> actées avec l'utilisateur : micro-service Python (FastAPI) plutôt que
-> réimplémenter l'inférence en TypeScript ou un job batch Supabase ;
-> fraîchissement de `nba.db` via un cron quotidien, même patron que la
-> synchro matchs de l'appli (`sync-results.yml`). `scripts/tester_modele.py`
-> refactoré (`compute_proba()` extrait, réutilisé par le CLI ET le service,
-> zéro duplication) ; `Cadrage/Stats/service/app.py` (`/health`, `/predict`)
-> testé en conditions réelles (curl, les 3 familles de modèles + cas
-> d'erreur : nom ambigu, joueur inconnu, seuil manquant).
-> - **Reste à faire pour Phase 4** : `/refresh` n'est qu'un stub (fetch
->   incrémental `nba_api` pas encore écrit) ; **hébergement pas choisi**
->   (Render/Railway/Fly.io/VPS — Vercel ne fait pas tourner un service Python
->   à disque persistant, nécessaire puisque le service garde `nba.db` en
->   local entre les appels) ; le cron GitHub Actions lui-même pas écrit.
+> **Architecture "sans état" adoptée (§23), remplace le design auto-suffisant
+> à disque local (§22) — micro-service prêt à déployer, PAS ENCORE
+> DÉPLOYÉ.** Décidé avec l'utilisateur en pensant concrètement l'hébergement :
+> `nba.db`/`models/` étant gitignorés (régénérables), un service auto-suffisant
+> aurait exigé un hôte à disque persistant payant (~5-7€/mois). À la place :
+> le contexte joueur vit dans 3 nouvelles tables Supabase (migration #31,
+> `stats_equipes`/`stats_joueurs`/`stats_box_scores`, ~140k lignes migrées
+> depuis `nba.db` MOINS le play-by-play, jamais utilisé par l'inférence —
+> 110 Mo utiles au lieu de 575). Le service devient stateless (modèles
+> embarqués dans l'image au build), déployable sur un hébergeur serverless
+> gratuit. **Google Cloud Run retenu** (comparé à Render/une fonction Python
+> Vercel) pour sa robustesse et son free tier large.
 >
+> `scripts/tester_modele.py` refactoré (`compute_proba()` extrait, zéro
+> duplication CLI/service) ; nouveau `service/supabase_context.py`
+> (équivalent Postgres de `build_context()`/`find_player()`/`find_team()`) ;
+> `service/app.py` reconnecté dessus. Migration #31 poussée sur la vraie
+> base (`npx supabase db push`, repassé sans blocage classifieur cette
+> session — a aussi débloqué au passage les migrations #29/#30, en attente
+> depuis plusieurs jours). Backfill fait et vérifié (30 équipes, 1052
+> joueurs, 140 016 lignes box_scores). Service testé en conditions réelles
+> contre la vraie base Supabase (curl, mêmes résultats qu'avant le
+> changement d'architecture — Tatum FT% 26.8%, Jokić dd 75.1%, etc.).
+> `Dockerfile` + guide de déploiement écrits
+> (`service/DEPLOIEMENT_CLOUD_RUN.md`).
+> - **Reste à faire** : (1) exécuter le déploiement Cloud Run (nécessite un
+>   compte Google Cloud de l'utilisateur, pas faisable depuis cet
+>   environnement) ; (2) fetch incrémental `nba_api` + upsert quotidien dans
+>   Supabase (remplace le stub `/refresh`, qui n'est plus nécessaire dans
+>   cette architecture -- le rafraîchissement peut écrire directement dans
+>   Supabase sans jamais appeler le service) ; (3) workflow GitHub Actions
+>   pour ce job quotidien.
+>
+> Plus tôt (état au 21/08/2026, suite — Phase 4 démarrée, design abandonné) —
 > **Les 12 modèles socle réentraînés sur les 5 saisons** (`nba.db` à 6 602
 > matchs, `features_joueur`/`labels_joueur` passés de 56 938 à 140 933
 > lignes) — point resté ouvert depuis le 20/08/2026. Amélioration nette,
@@ -989,4 +1007,101 @@ après vérification, fichiers de sortie temporaires nettoyés.
    points 2 (distribution réelle de probas pour calibrer les seuils entre
    paliers), 4 (structuration IA du texte libre) et 5 (barème du fallback),
    qui ne dépendent pas de cette brique-ci.
+```
+
+## 23. Phase 4 — architecture "sans état" (Supabase) retenue, Cloud Run choisi, service migré (21/08/2026)
+
+```text
+Suite immédiate de §22 : au moment de choisir concrètement l'hébergement du
+micro-service (demandé explicitement par l'utilisateur -- "on se penche sur
+le point 1"), reconsidération avant de s'engager sur un hébergeur payant.
+
+**Constat qui a fait pivoter le design** : `nba.db` (575 Mo) ne pèse autant
+que parce qu'il embarque le play-by-play (3 054 074 lignes) -- jamais lu par
+`build_context()` (seulement box_scores/matchs/box_scores_advanced/
+features_joueur). Vérifié concrètement : une copie de test sans
+play_by_play tombe à 110 Mo. Le design auto-suffisant de §22 (le service
+garde nba.db en local, se rafraîchit lui-même) aurait nécessité un hôte à
+DISQUE PERSISTANT payant (~5-7€/mois, Render Starter/Fly.io/VPS) juste pour
+faire persister ces 110 Mo + les 103 Mo de modèles entre les requêtes.
+
+**Décision avec l'utilisateur** : architecture B (sans état) --
+1. Les 110 Mo utiles vivent dans **Supabase** (déjà payé/utilisé par
+   l'appli) au lieu du disque du service.
+2. Les modèles (103 Mo) sont embarqués DANS L'IMAGE du service au build
+   (git), pas sur un disque à faire persister.
+3. Le service devient stateless -- hébergeable sur un serverless gratuit.
+4. Le rafraîchissement quotidien devient un job qui écrit DIRECTEMENT dans
+   Supabase (pas encore écrit), sans jamais appeler le service -- `/refresh`
+   devient inutile dans ce design (gardé en stub pour l'instant, à retirer
+   si confirmé inutile une fois le job quotidien écrit).
+
+**Hébergeur, comparé à 3 options** (Render gratuit / Google Cloud Run /
+fonction Python dans le projet Vercel existant) -- **Google Cloud Run
+retenu** : vrai serverless (scale à zéro), free tier très large (2M
+requêtes/mois, inatteignable ici), plus robuste/standard que le "réveil"
+Render pour ce pattern exact (service conteneurisé stateless). Contrepartie
+assumée : carte bancaire requise à l'inscription (aucun débit sous le seuil
+gratuit) + Dockerfile à écrire (Render aurait déployé depuis un simple push
+Git). La fonction Python Vercel a été écartée sans être testée -- risque
+réel de dépasser les limites de taille de fonction (scikit-learn/scipy +
+103 Mo de modèles, plan Hobby) jugé trop élevé pour s'y engager sans test.
+
+**Schéma Supabase** (`supabase/migrations/20260821130000_stats_tables_for_
+service.sql`, migration #31) : 3 tables préfixées `stats_` dans le schéma
+`public` (pas un nouveau schéma Postgres, pour éviter le réglage manuel
+"Exposed schemas" du dashboard) -- `stats_equipes`, `stats_joueurs`, et
+`stats_box_scores` DÉNORMALISÉE (1 table de faits avec toutes les colonnes
+nécessaires à `build_context()`, y compris `ts_pct`/`usg_pct` -- évite les
+jointures via PostgREST, plus lourdes qu'en SQL direct). RLS activée sans
+policy (deny-all anon/authenticated, le service utilise
+`SUPABASE_SERVICE_ROLE_KEY` qui contourne RLS). Index sur (player_id,
+game_date desc) et (player_id, opponent_team_id), les 2 accès réels de
+`build_context()`.
+
+**Poussée sur la base réelle** (`npx supabase db push`) -- repassé SANS le
+blocage classifieur rencontré les jours précédents, ce qui a aussi débloqué
+au passage les migrations #29 (`delete_bet`) et #30
+(`drop_tutorial_seen_at`), en attente depuis plusieurs jours (voir
+`GAPS_OUVERTS.md`).
+
+**Backfill** (`service/backfill_supabase.py`, nouveau script, une seule
+fois) : lit `nba.db` (le JOIN exact utilisé par `build_context()`), upsert
+par lots de 1000 lignes. **Bug réel trouvé en migrant** : pandas 3.0 (très
+récente, changement de comportement) renvoie des `float`/`int` Python
+NATIFS via `to_dict()` (pas des scalaires `numpy.float64`/`numpy.int64`
+comme avant) -- un test `isinstance(v, np.floating)` ne les détecte donc
+plus, et une colonne entière avec des `NULL` (remontée en `3.0` à cause du
+`NaN` pandas) atterrit littéralement comme `3.0` dans le JSON envoyé à
+Postgres, rejeté par une colonne `integer` (`22P02`). Corrigé
+(`to_json_safe()` teste aussi `int`/`float` natifs, pas seulement les types
+numpy). **Résultat final vérifié** : 30 équipes, 1052 joueurs, 140 016
+lignes `stats_box_scores`.
+
+**Réécriture du service** : nouveau `service/supabase_context.py` --
+équivalent Postgres de `build_context()`/`find_player()`/`find_team()`
+(tester_modele.py, inchangé, reste utilisé par le CLI local) +
+`compute_proba()` propre à cette source. `service/app.py` reconnecté
+dessus (client Supabase créé paresseusement, pas au chargement du module).
+**Vérifié en conditions réelles** (uvicorn local + vraie base Supabase,
+curl) : les 3 familles de modèles ET les 3 cas d'erreur (nom ambigu, joueur
+inconnu, seuil manquant) -- résultats RIGOUREUSEMENT IDENTIQUES à la
+version SQLite d'avant (Tatum FT% 26.8%, Jokić dd 75.1%, Curry pts vs LAL
+48.7%). Un détail de format corrigé au passage (`contexte_periode`
+affichait un timestamp complet au lieu d'une date simple).
+
+**`Dockerfile`** (`Cadrage/Stats/Dockerfile`, contexte de build =
+`Cadrage/Stats/`) : copie ciblée de `service/requirements.txt`,
+`scripts/tester_modele.py` (seul fichier de `scripts/` nécessaire à
+l'inférence, pas tout le dossier), `models/` (103 Mo), `service/app.py` +
+`service/supabase_context.py` -- JAMAIS `data/` (575 Mo, inutile dans cette
+architecture). `.dockerignore` ajouté par sécurité. Guide de déploiement
+complet écrit (`service/DEPLOIEMENT_CLOUD_RUN.md`) -- commandes `gcloud`
+exactes, clé Supabase stockée via Secret Manager (jamais collée dans le
+chat, copiée directement du `.env.local` vers la commande `gcloud` par
+l'utilisateur).
+
+**Pas encore fait** (nécessite l'action de l'utilisateur, compte Google
+Cloud) : le déploiement réel. Ni le fetch incrémental quotidien, ni le
+workflow GitHub Actions correspondant.
 ```

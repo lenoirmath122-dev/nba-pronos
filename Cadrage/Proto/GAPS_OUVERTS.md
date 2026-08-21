@@ -4,26 +4,36 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 2, chantier Data NBA)** — **2 points retirés,
-> Phase 4 démarrée** (`projet-data-nba.md` §21/§22, `JOURNAL_SESSIONS.md`
-> entrée dédiée) :
-> - **Retiré** : les 12 modèles socle sont réentraînés sur les 5 saisons
->   (140 933 lignes, contre 56 938 avant) — amélioration nette partout,
->   aucune régression.
-> - **Retiré** : le biais résiduel ~4% sur FT% (signe qui s'inverse selon le
->   seuil) est diagnostiqué — artefact de granularité (peu de tentatives
->   réelles/match), PAS un bug, rien à corriger.
-> - **Nouveaux points ouverts (Phase 4, raccordement appli)** : micro-service
->   FastAPI (`Cadrage/Stats/service/app.py`) construit et vérifié en local,
->   mais **pas déployé** — 3 briques manquantes avant de pouvoir l'être :
->   (1) `/refresh` reste un stub, le fetch incrémental `nba_api` n'est pas
->   écrit ; (2) **hébergement pas choisi** (disque persistant requis —
->   Render/Railway/Fly.io/VPS, Vercel ne convient pas) ; (3) le workflow
->   GitHub Actions (cron quotidien vers `/refresh`) pas écrit, dépend du
->   choix d'hébergement. Une fois ces 3 faits, il restera encore 3 points
->   indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7 pour la
->   Phase 5 (distribution de probas pour calibrer les seuils, structuration
->   IA du texte libre, barème du fallback).
+> **État au 21/08/2026 (suite 3, chantier Data NBA)** — **Architecture
+> d'hébergement tranchée, micro-service migré vers Supabase, prêt à
+> déployer** (`projet-data-nba.md` §23, `JOURNAL_SESSIONS.md` entrée
+> dédiée) :
+> - **Retiré** : hébergement à disque persistant abandonné au profit d'une
+>   architecture "sans état" — le contexte joueur vit dans 3 nouvelles
+>   tables Supabase (`stats_equipes`/`stats_joueurs`/`stats_box_scores`,
+>   migration #31, ~140k lignes migrées et vérifiées), les modèles restent
+>   embarqués dans l'image du service. Hébergeur choisi : **Google Cloud
+>   Run** (free tier généreux, vrai serverless — carte bancaire requise à
+>   l'inscription mais aucun coût tant que l'usage reste sous le seuil
+>   gratuit, très large pour ce projet).
+> - **Retiré (effet de bord)** : les migrations #29 (`delete_bet`) et #30
+>   (`drop_tutorial_seen_at`), bloquées depuis plusieurs jours par le
+>   classifieur de permissions, sont passées sans blocage cette session et
+>   sont désormais poussées sur la base réelle.
+> - **`Dockerfile` + guide de déploiement écrits**
+>   (`Cadrage/Stats/service/DEPLOIEMENT_CLOUD_RUN.md`) — **pas encore
+>   exécuté** : nécessite un compte Google Cloud (carte + `gcloud` CLI),
+>   action que l'utilisateur doit faire lui-même.
+> - **Nouveaux points ouverts (reste pour clore la Phase 4)** :
+>   (1) exécuter le déploiement Cloud Run (guide prêt, pas encore fait) ;
+>   (2) fetch incrémental `nba_api` + job d'upsert Supabase quotidien
+>   (remplace le stub `/refresh`, désormais inutile dans cette architecture
+>   — le rafraîchissement peut écrire directement dans Supabase sans passer
+>   par le service) ; (3) workflow GitHub Actions pour ce job quotidien.
+>   Une fois faits, il restera encore 3 points indépendants de
+>   `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7 pour la Phase 5
+>   (distribution de probas pour calibrer les seuils, structuration IA du
+>   texte libre, barème du fallback).
 
 > **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
 > calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain
@@ -39,13 +49,12 @@
 > **État au 21/08/2026** — **Nouvelle page `/regles` construite (§2.96
 > ETAT_ACTUEL.md) et tutoriel "Comment jouer ?" entièrement retiré (§2.97)**
 > à la demande de l'utilisateur, `/regles` couvrant désormais ce besoin.
-> - **Nouveau point ouvert** : migration #30 (`drop column
->   tutorial_seen_at`) écrite mais PAS poussée sur la base réelle — `npx
->   supabase db push` bloqué par le classifieur de permissions côté Claude
->   (même blocage que la migration #29, `GAPS_OUVERTS.md` déjà noté à
->   l'époque). À faire manuellement par l'utilisateur. Sans elle, la colonne
->   reste en base, orpheline mais inoffensive (plus aucun code ne la lit ni
->   ne l'écrit) — pas bloquant, juste à nettoyer quand l'occasion se présente.
+> - **Point retiré, résolu le 21/08/2026** : migration #30 (`drop column
+>   tutorial_seen_at`) écrite mais restée bloquée par le classifieur de
+>   permissions (même blocage que la migration #29). `npx supabase db push`
+>   est repassé sans blocage lors de la session Phase 4 (voir bandeau du
+>   dessus) — #29 ET #30 sont désormais poussées sur la base réelle, en même
+>   temps que la nouvelle migration #31 (tables `stats_*`).
 
 > **État au 20/08/2026 (session DA)** — **Ajustements visuels validés,
 > chantiers §1-§4/§9/§14/§15 de `Cadrage/DA/AJUSTEMENTS_VISUELS_20_08_2026.md`
@@ -221,11 +230,10 @@
 >   à `CANCELLED` (rétention D2), pas un vrai `DELETE`. **Boutons
 >   Modifier/Reproposer/Signaler/Envoyer/Supprimer harmonisés** (même
 >   gabarit contour) dans la foulée.
-> - **Nouveau point ouvert, bloquant pour cette dernière fonctionnalité** :
->   la migration #29 (`delete_bet`) **n'est pas encore poussée sur la base
->   réelle** — `npx supabase db push` bloqué par le classifieur de
->   permissions côté Claude, à faire manuellement par l'utilisateur. Sans
->   ça, le bouton "Supprimer" échoue avec une erreur RPC.
+> - **Point retiré, résolu le 21/08/2026** : la migration #29 (`delete_bet`)
+>   est restée bloquée (classifieur de permissions) jusqu'à la session
+>   Phase 4 Data NBA, où `npx supabase db push` est repassé sans blocage —
+>   poussée sur la base réelle, le bouton "Supprimer" fonctionne désormais.
 > - **Reste ouvert, inchangé depuis le 16/08** (voir bloc ci-dessous pour le
 >   détail complet) : décision SMTP (bac-à-sable Resend vs service intégré
 >   Supabase) ; notifications/popup à la connexion (résumé depuis la
