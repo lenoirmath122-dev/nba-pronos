@@ -85,11 +85,17 @@ def main():
     equipes = pd.read_sql("SELECT team_id, tricode, city, name FROM equipes", conn)
     upsert_batched(client, "stats_equipes", equipes, on_conflict="team_id")
 
-    print("2/3 -- stats_joueurs")
+    print("2/4 -- stats_joueurs")
     joueurs = pd.read_sql("SELECT player_id, first_name, family_name FROM joueurs", conn)
     upsert_batched(client, "stats_joueurs", joueurs, on_conflict="player_id")
 
-    print("3/3 -- stats_box_scores (peut prendre quelques minutes, ~140k lignes)")
+    print("3/4 -- stats_matchs")
+    matchs = pd.read_sql(
+        "SELECT game_id, game_date, season, season_type, home_team_id, away_team_id FROM matchs", conn
+    )
+    upsert_batched(client, "stats_matchs", matchs, on_conflict="game_id")
+
+    print("4/4 -- stats_box_scores (peut prendre quelques minutes, ~140k lignes)")
     box_scores = pd.read_sql(
         """
         SELECT
@@ -109,7 +115,8 @@ def main():
     conn.close()
     upsert_batched(client, "stats_box_scores", box_scores, on_conflict="game_id,player_id")
 
-    print(f"\nTermine : {len(equipes)} equipes, {len(joueurs)} joueurs, {len(box_scores)} lignes box_scores.")
+    print(f"\nTermine : {len(equipes)} equipes, {len(joueurs)} joueurs, {len(matchs)} matchs, "
+          f"{len(box_scores)} lignes box_scores.")
 
 
 if __name__ == "__main__":

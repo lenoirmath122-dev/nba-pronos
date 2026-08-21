@@ -4,32 +4,27 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **État au 21/08/2026 (suite 4, chantier Data NBA)** — **Micro-service
-> DÉPLOYÉ ET VÉRIFIÉ sur Google Cloud Run** (`projet-data-nba.md` §24,
-> `JOURNAL_SESSIONS.md` entrée dédiée) :
-> - **Retiré** : le déploiement Cloud Run (guide suivi de bout en bout par
->   l'utilisateur) — service en ligne à
->   `https://nba-pronos-stats-991522521713.europe-west1.run.app`, `/predict`
->   testé et vérifié (résultats identiques aux tests locaux).
-> - **2 accrocs réels rencontrés et corrigés** : permission Secret Manager
->   manquante pour le compte de service Cloud Run (`roles/secretmanager.
->   secretAccessor` à accorder explicitement — absent du guide initial,
->   ajouté après coup) ; commande `gcloud run deploy` multi-lignes mal
->   découpée par PowerShell (1re révision déployée sans les identifiants
->   Supabase, corrigée sans reconstruire via `gcloud run services update`
->   en une seule ligne). `DEPLOIEMENT_CLOUD_RUN.md` mis à jour avec les 2
->   correctifs pour un futur redéploiement/une autre machine.
-> - **Incident secret, sans conséquence retenue** : `SUPABASE_SERVICE_ROLE_KEY`
->   exposée en clair dans la conversation (sélection IDE) en la fournissant
->   pour Secret Manager — signalé immédiatement, rotation proposée et
->   déclinée par l'utilisateur.
-> - **Reste pour clore la Phase 4** : fetch incrémental `nba_api` + job
->   d'upsert Supabase quotidien (remplace le stub `/refresh`, désormais
->   inutile dans cette architecture) ; workflow GitHub Actions pour ce job
->   quotidien. Une fois faits, il restera encore 3 points indépendants de
->   `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7 pour la Phase 5
->   (distribution de probas pour calibrer les seuils, structuration IA du
->   texte libre, barème du fallback).
+> **État au 21/08/2026 (suite 5, chantier Data NBA)** — **Rafraîchissement
+> quotidien écrit et validé, Phase 4 code complet** (`projet-data-nba.md`
+> §25, `JOURNAL_SESSIONS.md` entrée dédiée) :
+> - **Retiré** : `service/refresh_daily.py` + workflow
+>   `.github/workflows/refresh-stats-supabase.yml` (cron quotidien) —
+>   remplace le stub `/refresh`. Nouvelle table `stats_matchs` (migration
+>   #32). Testé en conditions réelles (2 vrais matchs supprimés/réinsérés,
+>   comparaison stricte), 3 bugs réels trouvés et corrigés (pagination
+>   PostgREST tronquée à 1000 lignes, mauvaise liste de colonnes, filtre
+>   DNP insuffisant sur données API en direct) + un point de robustesse
+>   (ordre d'écriture stats avant matchs, pour ne jamais marquer un match
+>   "connu" sans ses stats).
+> - **Nouveau point ouvert, bloquant pour que le cron tourne réellement** :
+>   ajouter 2 secrets GitHub Actions (`SUPABASE_URL`,
+>   `SUPABASE_SERVICE_ROLE_KEY`) au dépôt — action de l'utilisateur
+>   (`gh secret set`, jamais collé dans le chat). Sans ça, le workflow
+>   s'exécutera mais échouera faute de variables d'environnement.
+> - **Une fois ce point fait, la Phase 4 est ENTIÈREMENT close.** Reste
+>   ensuite la Phase 5, 3 points indépendants de `SPEC_TECHNIQUE_PROBA_
+>   PARIS_PERSOS_V0_1.md` §7 (distribution de probas pour calibrer les
+>   seuils, structuration IA du texte libre, barème du fallback).
 
 > **État au 21/08/2026 (suite, chantier Data NBA)** — **Phase 3 (résiduel de
 > calibration FT%/FG%/3P%, candidat overdispersion) testée et close, gain

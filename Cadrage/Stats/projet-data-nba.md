@@ -2,16 +2,37 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 3 — service EN LIGNE)
+> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 4 — Phase 4 CODE COMPLET)
 >
+> **Rafraîchissement quotidien écrit, testé et validé** (§25) —
+> `service/refresh_daily.py` (fetch incrémental `nba_api` -> upsert direct
+> Supabase, remplace le stub `/refresh`) + workflow
+> `.github/workflows/refresh-stats-supabase.yml` (cron quotidien 10h UTC).
+> Nouvelle table légère `stats_matchs` (migration #32) pour savoir vite
+> quels matchs sont déjà connus sans scanner `stats_box_scores`. **3 bugs
+> réels trouvés et corrigés en testant** (suppression/réinsertion contrôlée
+> de 2 vrais matchs, comparaison stricte avant/après) : pagination
+> PostgREST tronquée à 1000 lignes, mauvaise liste de colonnes
+> (`BOX_SCORE_TABLE_COLUMNS` du pipeline local, pas celle de Supabase),
+> filtre DNP insuffisant (chaîne vide "" non capturée par `.notna()` en
+> lisant l'API en direct, contrairement au pipeline local qui repasse par
+> un CSV). Correspondance EXACTE confirmée sur toutes les colonnes avec les
+> données originales après correctifs.
+> - **Reste avant que le cron tourne réellement** : ajouter les 2 secrets
+>   GitHub Actions (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) au dépôt —
+>   pas encore fait, action de l'utilisateur (`gh secret set`, jamais collé
+>   dans le chat).
+> - **Phase 4 alors entièrement close** : service déployé (§24) + données
+>   tenues à jour automatiquement (§25). Reste ensuite la Phase 5
+>   (3 points indépendants de `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7).
+>
+> Plus tôt (état au 21/08/2026, suite 3 — service EN LIGNE) —
 > **Micro-service DÉPLOYÉ ET VÉRIFIÉ sur Google Cloud Run** (§24) — l'utilisateur
 > a suivi `service/DEPLOIEMENT_CLOUD_RUN.md` de bout en bout (compte GCP,
 > `gcloud` CLI, projet `nba-pronos-stats-2026`, Secret Manager, déploiement).
 > URL du service : `https://nba-pronos-stats-991522521713.europe-west1.run.app`
 > — `/predict` testé en conditions réelles (Tatum FT%, Jokić dd, Curry pts vs
-> LAL), résultats identiques aux tests locaux. **Reste pour clore la Phase 4** :
-> fetch incrémental `nba_api` + upsert quotidien Supabase (remplace le stub
-> `/refresh`), puis le workflow GitHub Actions correspondant.
+> LAL), résultats identiques aux tests locaux.
 >
 > Plus tôt (état au 21/08/2026, suite 2 — architecture Phase 4 tranchée) —
 > **Architecture "sans état" adoptée (§23), remplace le design auto-suffisant
@@ -1174,4 +1195,91 @@ upsert quotidien dans Supabase (le stub `/refresh` reste inutilisé dans
 cette architecture, le job peut écrire directement dans Supabase) ; workflow
 GitHub Actions pour ce job. Puis Phase 5 (3 points indépendants de
 `SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md` §7).
+```
+
+## 25. Rafraîchissement quotidien Supabase — écrit, testé, 3 bugs réels corrigés (21/08/2026, suite)
+
+```text
+Dernière brique de la Phase 4 : remplacer le stub `/refresh` par un vrai
+job qui garde `stats_equipes`/`stats_joueurs`/`stats_box_scores` à jour
+sans jamais toucher au service Cloud Run (§23 -- le job écrit directement
+dans Supabase).
+
+**Nouvelle table `stats_matchs`** (migration #32,
+`20260821140000_stats_matchs_table.sql`) : légère (game_id/date/saison/
+season_type/home_team_id/away_team_id, une ligne par match, ~6-7k lignes)
+-- sans elle, savoir "quels matchs sont déjà connus" aurait demandé de
+scanner `stats_box_scores` (140k lignes, une par joueur/match) à chaque
+exécution. `backfill_supabase.py` étendu pour la peupler depuis la table
+locale `matchs` (6602 lignes, migration triviale).
+
+**`service/refresh_daily.py`** (nouveau) : détermine la saison "en cours"
+depuis la date du jour (heuristique : à partir d'août, la saison en cours
+est celle qui démarre en octobre suivant) ; interroge `stats_matchs` pour
+savoir quels matchs de cette saison sont déjà connus ; appelle
+`leaguegamefinder` (nba_api) pour la vraie liste des matchs de la saison ;
+ne va chercher via l'API (`boxscoretraditionalv3`/`boxscoreadvancedv3`) que
+les matchs manquants. **Simplification par rapport au pipeline local** :
+domicile/extérieur et l'adversaire de chaque joueur sont déduits
+directement du champ `MATCHUP` des 2 lignes `leaguegamefinder` d'un match
+("@" = extérieur) -- pas besoin du play-by-play (jamais stocké dans
+Supabase, §23) juste pour cette information, contrairement à
+`build_matchs_row()` du pipeline local qui en a besoin pour le score final
+(pas nécessaire ici).
+
+**Testé en conditions réelles, PAS en local sur un dataset jetable** :
+2 vrais matchs des Finales 2026 (`0042500404`/`0042500405`) supprimés
+temporairement de `stats_matchs`/`stats_box_scores` (snapshot exact avant
+suppression), puis redétectés et réinsérés par le script -- comparaison
+stricte colonne par colonne avec les données originales.
+
+**3 bugs réels trouvés et corrigés au fil des essais** :
+1. **Pagination PostgREST tronquée** : `known_game_ids()`/
+   `season_player_game_counts()` ne paginaient pas -- une réponse Supabase
+   plafonne par défaut à 1000 lignes, donc sur une saison à 1321 matchs,
+   83 matchs déjà connus ont été pris pour "nouveaux" au 1er essai.
+   Corrigé (`fetch_all_rows()`, pagination par `.range()`).
+2. **Mauvaise liste de colonnes** : réutilisation initiale de
+   `BOX_SCORE_TABLE_COLUMNS` (pipeline local, inclut `oreb`/`dreb`/`tov`/
+   `pf`/`fg_pct`.../`team_id`) au lieu d'une liste dédiée
+   (`STATS_BOX_SCORE_TRAD_COLUMNS`) correspondant exactement au schéma
+   Supabase allégé -- `insert` rejeté (`Could not find the 'dreb' column`).
+3. **Filtre DNP incomplet en lisant l'API en direct** : `minutes.notna()`
+   seul (même filtre que `load_to_sqlite.py`) ne suffit PAS ici -- le
+   pipeline local relit un CSV (une case vide y redevient un vrai NaN à la
+   lecture), alors que la réponse `nba_api` EN DIRECT garde `""` (chaîne
+   vide) pour un joueur DNP. 18 lignes DNP (`pts=0`) passées au travers au
+   2e essai, corrigé (`notna() & (!= "")`). `drop_duplicates(subset=
+   ["personId"])` ajouté par la même occasion (même précaution que
+   `load_to_sqlite.py`, jamais déclenchée dans ce test mais gardée par
+   cohérence).
+
+**Point de robustesse corrigé sans attendre un vrai incident** : l'ordre
+d'écriture est `stats_box_scores` PUIS `stats_matchs` (pas l'inverse) --
+`known_game_ids()` ne regarde que `stats_matchs`, donc si le script est
+interrompu entre les deux (panne réseau, quota API), on veut qu'un match
+reste détecté "pas encore connu" tant que ses stats ne sont pas confirmées
+écrites. Trouvé en pratique lors du 1er essai raté (bug #2 a interrompu le
+script après l'upsert `stats_matchs` mais avant celui des stats -- les 2
+matchs sont restés "connus" sans leurs stats jusqu'à ce que ce soit corrigé).
+
+**Après les 3 correctifs** : reproduction confirmée EXACTE (mêmes 42 lignes,
+mêmes valeurs sur toutes les colonnes y compris `games_played_season_avant`
+et `opponent_team_id`) ; test de non-régression sur la saison entière
+(3 season_types) : 1321 connus, 1321 trouvés, 0 nouveau -- aucun doublon,
+aucun fantôme.
+
+**Workflow GitHub Actions** (`.github/workflows/refresh-stats-supabase.yml`) :
+cron quotidien (10h UTC, safely après la fin de tous les matchs de la
+nuit), + `workflow_dispatch` pour un lancement manuel. Installe
+`Cadrage/Stats/scripts/requirements.txt` (déjà utilisé par le pipeline
+local, `supabase` y a été ajouté) et lance `refresh_daily.py` directement
+(PAS d'appel au service Cloud Run -- cohérent avec l'architecture sans
+état, §23).
+
+**Reste à faire, action de l'utilisateur** : ajouter 2 secrets GitHub
+Actions (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) au dépôt -- jamais
+collés dans le chat, à faire via `gh secret set` ou l'interface GitHub.
+Sans ça, le cron s'exécutera mais échouera (variables d'environnement
+absentes). Une fois fait, la Phase 4 est ENTIÈREMENT close.
 ```

@@ -1,0 +1,29 @@
+name: Data NBA — rafraîchissement quotidien Supabase
+
+# Fetch incrémental nba_api -> upsert direct dans Supabase (stats_equipes/
+# stats_joueurs/stats_matchs/stats_box_scores), Phase 4 du chantier Data NBA
+# séparé de l'app V1 (Cadrage/Stats/projet-data-nba.md §25). N'appelle PAS le
+# micro-service Cloud Run (architecture "sans état", §23) -- ce job écrit
+# directement dans Supabase, le service ne fait qu'y LIRE au moment d'un
+# /predict. Une exécution par jour suffit : les stats servent à un calcul de
+# proba fait bien avant un match, pas un besoin temps réel.
+on:
+  schedule:
+    - cron: "0 10 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Installer les dépendances
+        run: pip install -r Cadrage/Stats/scripts/requirements.txt
+      - name: Rafraîchir les tables Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python Cadrage/Stats/service/refresh_daily.py

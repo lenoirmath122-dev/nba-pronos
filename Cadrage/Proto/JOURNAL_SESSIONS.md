@@ -8468,3 +8468,62 @@ PERSOS_V0_1.md` §7).
 
 Détail complet : `projet-data-nba.md` §24, bandeau REPRISE mis à jour.
 ```
+
+
+## Projet Data NBA : rafraîchissement quotidien écrit et validé, Phase 4 code complet (21/08/2026, suite)
+
+```text
+Dernière brique de la Phase 4 -- remplacer le stub `/refresh` par un vrai
+job qui garde Supabase à jour, sans jamais appeler le service Cloud Run
+(écrit directement dans Supabase, cohérent avec l'architecture sans état).
+
+Migration #32 (`stats_matchs`) ajoutée : table légère (game_id/date/saison/
+équipes) pour savoir vite quels matchs sont déjà connus, sans scanner les
+140k lignes de `stats_box_scores`. `backfill_supabase.py` étendu pour la
+peupler (6602 lignes locales -> Supabase).
+
+Nouveau `service/refresh_daily.py` : saison "en cours" déduite de la date,
+comparaison stats_matchs vs `leaguegamefinder` (nba_api) pour ne fetcher
+que les matchs manquants. Simplification trouvée en concevant : domicile/
+extérieur et l'adversaire se déduisent du champ MATCHUP de
+leaguegamefinder ("@" = extérieur) -- pas besoin du play-by-play
+(volontairement absent de Supabase) contrairement au pipeline local qui
+l'utilise pour le score final (pas nécessaire ici).
+
+**Testé en conditions réelles** (pas un jeu de données jetable) : 2 vrais
+matchs des Finales 2026 supprimés temporairement (snapshot exact avant),
+puis redétectés/réinsérés par le script, comparés colonne par colonne à
+l'original.
+
+**3 bugs réels trouvés et corrigés en testant** :
+1. Pagination PostgREST tronquée à 1000 lignes (défaut) -- `known_game_ids()`
+   ne voyait que 1000 des 1321 matchs déjà connus, 83 pris pour "nouveaux".
+   Corrigé (pagination par `.range()`).
+2. Mauvaise liste de colonnes réutilisée du pipeline local
+   (`BOX_SCORE_TABLE_COLUMNS`, inclut des colonnes absentes du schéma
+   Supabase allégé) -- insert rejeté par PostgREST. Liste dédiée créée.
+3. Filtre DNP insuffisant en lisant l'API en direct : le pipeline local
+   relit un CSV (case vide -> vrai NaN), la réponse nba_api en direct garde
+   `""` -- 18 lignes DNP passées au travers (`pts=0`), corrigé.
+
+**Point de robustesse corrigé en même temps** : ordre d'écriture changé
+(`stats_box_scores` avant `stats_matchs`, pas l'inverse) -- sinon un
+plantage entre les deux laisserait un match marqué "connu" alors que ses
+stats manquent encore, silencieusement, pour toujours. Découvert en
+pratique : le bug #2 a provoqué exactement ce scénario au 1er essai.
+
+Après les 3 correctifs : reproduction EXACTE confirmée (mêmes 42 lignes,
+toutes colonnes identiques y compris les valeurs calculées) ; test de
+non-régression saison entière : 1321 connus, 1321 trouvés, 0 nouveau.
+
+Workflow `.github/workflows/refresh-stats-supabase.yml` ajouté (cron
+quotidien 10h UTC + déclenchement manuel), installe
+`Cadrage/Stats/scripts/requirements.txt` (`supabase` ajouté aux
+dépendances) et lance le script directement.
+
+**Reste, action de l'utilisateur** : ajouter les secrets GitHub Actions
+`SUPABASE_URL`/`SUPABASE_SERVICE_ROLE_KEY` au dépôt (jamais collés dans le
+chat). Une fois fait, la Phase 4 est entièrement close.
+
+Détail complet : `projet-data-nba.md` §25, bandeau REPRISE mis à jour.
+```
