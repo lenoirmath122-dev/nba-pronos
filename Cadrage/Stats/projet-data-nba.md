@@ -2,18 +2,28 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 22/08/2026, suite 14 — Phase 5 CLOSE)
+> ## 🔴 REPRISE ICI (état au 22/08/2026, suite 15 — coût IA optimisé)
 >
-> **Phase 5 (paris persos pilotés par la proba) CLOSE** : les 4 points
-> réalisables (modèle, calibration, contexte à jour, structuration IA)
-> sont FAITS (§34). Le point 5 restant (barème du fallback pour les paris
-> non calculables) est PARQUÉ PAR DÉCISION explicite de l'utilisateur
-> (22/08/2026), pas un oubli -- 2 pistes notées pour reprise future dans
-> `GAPS_OUVERTS.md` ("champ points libre 5-25" et "formulaire structuré
-> joueur/stat/seuil"), mécanisme manuel actuel inchangé en attendant.
-> - **Reste** : redéployer le service Cloud Run (§29) puis retester de
->   bout en bout via l'appli -- seul point encore ouvert, indépendant de
->   la clôture de Phase 5.
+> **Coût des appels de structuration IA optimisé (§35)** : modèle par
+> défaut Opus 5 -> Sonnet 5 (~2.6x moins cher, résultats identiques sur
+> les cas à risque testés) + descriptions du schéma Zod condensées (vrai
+> poste de coût, ~2000 tokens/appel, incompressible par cache -- pas
+> `system` qui lui ne pèse que ~450 tokens, sous le seuil de mise en
+> cache). Revalidé sur 7 cas réels, aucune régression.
+> `tsc`/`eslint`/`vitest`/`next build` propres, commité et poussé.
+>
+> Plus tôt (état au 22/08/2026, suite 14) — **Phase 5 (paris persos
+> pilotés par la proba) CLOSE** : les 4 points réalisables (modèle,
+> calibration, contexte à jour, structuration IA) sont FAITS (§34). Le
+> point 5 restant (barème du fallback pour les paris non calculables) est
+> PARQUÉ PAR DÉCISION explicite de l'utilisateur, pas un oubli -- 2
+> pistes notées pour reprise future dans `GAPS_OUVERTS.md` ("champ points
+> libre 5-25" et "formulaire structuré joueur/stat/seuil"), mécanisme
+> manuel actuel inchangé en attendant.
+> - **Reste** : l'utilisateur a lancé le redéploiement du service Cloud
+>   Run en parallèle de cette session (§29 -- fix `normalize_suffix()`) ;
+>   confirmer que ça s'est bien passé et retester de bout en bout via
+>   l'appli si pas encore fait.
 >
 > Plus tôt (état au 21/08/2026, suite 12 — proba 0% pour joueur hors match)
 > — **Nouveau champ `player_not_in_match` : un pari sur un joueur absent des
@@ -1975,4 +1985,39 @@ hors match) -- le texte libre + IA resterait pour le reste (fun, combo,
 hors-terrain). Ni l'un ni l'autre tranché, notés dans `GAPS_OUVERTS.md`
 pour reprise ultérieure -- dernier point avant de clore officiellement la
 Phase 5.
+```
+
+## 35. Optimisation du coût des appels IA de structuration (22/08/2026)
+
+```text
+Demande : réduire le coût des appels Claude à la structuration d'un pari
+(lib/ai/structureBet.ts), sans perdre la précision qui a coûté toute la
+session précédente à obtenir (vérification joueur/équipe, correction
+d'orthographe).
+
+**Piste écartée après vérification** : cache de prompt sur le system
+prompt (statList + instructions générales). Mesuré via l'API réelle de
+comptage de tokens : 441 tokens -- sous le seuil minimum de mise en cache
+(~1024 tokens). cache_control n'aurait servi à rien.
+
+**Vraie découverte, en creusant les usages réels** : chaque appel
+consommait ~2500 tokens d'entrée, alors que system+message ne pèsent que
+~450-500 tokens. Les ~2000 tokens restants viennent du SCHÉMA ZOD lui-même
+(les descriptions .describe() de chaque champ, renvoyées à chaque appel
+pour contraindre la sortie structurée) -- poste de coût dominant,
+INCOMPRESSIBLE par cache_control (pas exposé sur output_config.format
+dans le SDK).
+
+**2 changements appliqués** :
+1. Modèle par défaut : Opus 5 -> Sonnet 5 (~2.6x moins cher). Comparé sur
+   5 vrais appels API face à Opus 5 (LeBron/MPJ hors match, Tatum, Curry,
+   pari fun) -- résultats structurés IDENTIQUES sur les 2 cas les plus à
+   risque (joueur hors match, faute de suffixe).
+2. Descriptions du schéma condensées (même instruction, moins de mots) --
+   revalidé sur les 5 cas précédents + 2 nouveaux (Jokic double-double,
+   Tatum lancers francs 85%) : aucun changement de résultat.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (37 routes) propres, commité
+et poussé. `structureBet()` garde un paramètre `model` optionnel (défaut
+Sonnet 5) -- permet de comparer/revenir à Opus 5 sans dupliquer le code.
 ```

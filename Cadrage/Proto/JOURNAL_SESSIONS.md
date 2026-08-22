@@ -8901,3 +8901,31 @@ projet-data-nba.md mis à jour en conséquence. Seul point encore ouvert,
 indépendant : redéployer le service Cloud Run pour le fix normalize_
 suffix() (2e ligne de défense, §31).
 ```
+
+## Optimisation du coût des appels IA de structuration (22/08/2026)
+
+```text
+L'utilisateur relance le redéploiement Cloud Run (en parallèle) et demande
+d'optimiser le coût des appels Claude à la structuration d'un pari
+(lib/ai/structureBet.ts), sans perdre la précision obtenue au prix de
+toute la session précédente.
+
+Cache de prompt écarté après vérification réelle (API de comptage de
+tokens) : system prompt = 441 tokens, sous le seuil minimum de cache
+(~1024). Découverte plus utile en creusant les usages réels des appels :
+chaque appel coûte ~2500 tokens d'entrée, dont ~2000 viennent du SCHÉMA
+ZOD lui-même (les descriptions de champs, renvoyées à chaque appel pour
+contraindre la sortie) -- poste dominant, incompressible par cache
+(non exposé sur output_config.format).
+
+2 changements appliqués et revalidés avec de vrais appels API (7 cas,
+dont les 2 bugs corrigés cette session) : modèle par défaut Opus 5 ->
+Sonnet 5 (~2.6x moins cher, résultats identiques) + descriptions du
+schéma condensées (même instruction, moins de tokens). Aucune régression
+sur aucun cas testé.
+
+tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
+poussé.
+
+Détail complet : projet-data-nba.md §35.
+```
