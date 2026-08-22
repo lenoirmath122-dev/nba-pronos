@@ -150,8 +150,17 @@ export function InlineBetForm({
     setError(null);
     startTransition(async () => {
       const result = await submitBet(targetPayload());
-      if (result.success) clearDirty();
-      else setError(result.error);
+      if (result.success) {
+        clearDirty();
+        // Repli automatique demandé par l'utilisateur le 21/08/2026 (libérer
+        // la vue après soumission) -- dans les deux présentations : en modal
+        // aussi, rien d'autre ne referme la pop-up toute seule après un
+        // succès (ModalDialog ne fait que porter le bouton de fermeture
+        // manuelle, onClose).
+        setIsOpen(false);
+      } else {
+        setError(result.error);
+      }
     });
   }
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { UpcomingMatchRow as UpcomingMatchRowData } from "@/lib/queries/play";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { UpcomingRowForm } from "./UpcomingRowForm";
@@ -79,6 +79,22 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
   const [winner, setWinner] = useState<string | null>(match.myWinnerTeamId);
 
   const isReadOnly = match.viewStatus === "VALIDATED";
+
+  // Repli automatique demandé par l'utilisateur le 21/08/2026 (libérer la
+  // vue après validation) : se déclenche UNE FOIS, au moment précis où le
+  // statut bascule sur VALIDATED pendant que la ligne est ouverte -- jamais
+  // en repliant de force une ligne déjà validée qu'on rouvre ensuite pour
+  // consulter le récap (isReadOnly reste consultable via handleToggle
+  // normal). previousStatus en ref plutôt qu'en dépendance d'effet : on ne
+  // veut réagir qu'à la TRANSITION, pas rejouer à chaque re-render une fois
+  // déjà VALIDATED.
+  const previousStatusRef = useRef(match.viewStatus);
+  useEffect(() => {
+    if (previousStatusRef.current !== "VALIDATED" && match.viewStatus === "VALIDATED") {
+      setIsOpen(false);
+    }
+    previousStatusRef.current = match.viewStatus;
+  }, [match.viewStatus]);
 
   function handleSelectTeam(teamId: string) {
     if (isReadOnly) return;
