@@ -29,7 +29,10 @@ export function RevealPanelLocked({ others, absenteeCount }: RevealPanelProps) {
                 <li key={other.userId} className={styles.item}>
                   <PlayerLink userId={other.userId} pseudo={other.userName} className={styles.pseudo} />
                   <span className={styles.pick}>
-                    {other.predictedWinner ? `${other.predictedWinner.abbreviation} −${other.predictedMargin}` : "—"}
+                    {/* "+" pas "−" (22/08/2026, même correctif que
+                        PredictionSummary.tsx) : predictedMargin est
+                        toujours l'écart de victoire, jamais un déficit. */}
+                    {other.predictedWinner ? `${other.predictedWinner.abbreviation} +${other.predictedMargin}` : "—"}
                   </span>
                   <span className={styles.points}>{other.points === null ? "—" : `${other.points} pts`}</span>
                   {other.adminCorrection && (

@@ -26,7 +26,11 @@ export function PredictionSummary({ prediction }: PredictionSummaryProps) {
     <div className={styles.summary}>
       <span className={`${styles.state} ${STATE_CLASS[prediction.state]}`}>
         {prediction.state === "FROZEN" && prediction.predictedWinner
-          ? `✓ ${prediction.predictedWinner.abbreviation} −${prediction.predictedMargin}`
+          ? // "+" (pas "−", corrigé 22/08/2026, signalé par l'utilisateur --
+            // lu comme un écart NÉGATIF alors que predictedMargin est
+            // toujours l'écart de victoire du vainqueur choisi, jamais un
+            // déficit) : "CHI +4" = Chicago gagne avec 4 points d'écart.
+            `✓ ${prediction.predictedWinner.abbreviation} +${prediction.predictedMargin}`
           : STATE_LABEL[prediction.state]}
       </span>
 

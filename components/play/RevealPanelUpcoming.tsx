@@ -41,7 +41,10 @@ export function RevealPanelUpcoming({ isRevealed, predictedCount, eligibleCount,
                 >
                   <PlayerLink userId={other.userId} pseudo={other.pseudo} className={styles.pseudo} />
                   <span className={styles.pick}>
-                    {other.teamAbbreviation} −{other.margin}
+                    {/* "+" pas "−" (22/08/2026, même correctif que
+                        PredictionSummary.tsx) : margin est toujours l'écart
+                        de victoire, jamais un déficit. */}
+                    {other.teamAbbreviation} +{other.margin}
                   </span>
                   {other.adminCorrection && (
                     <span className={styles.correctedBadge}>

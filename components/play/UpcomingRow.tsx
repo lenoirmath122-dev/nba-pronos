@@ -181,7 +181,11 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
           </span>
           <span className={styles.metaRight}>
             <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
-              {recap !== null ? `✓ ${recap} −${match.myMargin}` : STATUS_LABEL[match.viewStatus]}
+              {/* "+" pas "−" (22/08/2026, signalé par l'utilisateur --
+                  "CHI −4" se lisait comme un ecart negatif alors que
+                  myMargin est toujours l'ecart de victoire du vainqueur
+                  choisi). */}
+              {recap !== null ? `✓ ${recap} +${match.myMargin}` : STATUS_LABEL[match.viewStatus]}
             </span>
             <span className={isOpen ? styles.chevronOpen : styles.chevron} aria-hidden="true">
               ▾

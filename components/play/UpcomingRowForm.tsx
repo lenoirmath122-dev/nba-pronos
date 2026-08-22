@@ -82,7 +82,9 @@ export function UpcomingRowForm({ match, winner }: UpcomingRowFormProps) {
     return (
       <div className={styles.form}>
         <p className={styles.validatedRecap}>
-          Ton prono : {winnerAbbreviation(match)} −{match.myMargin}
+          {/* "+" pas "−" (22/08/2026, même correctif que UpcomingRow.tsx) :
+              myMargin est toujours l'écart de victoire, jamais un déficit. */}
+          Ton prono : {winnerAbbreviation(match)} +{match.myMargin}
         </p>
         {/* Le prono et le pari sont deux entités indépendantes — valider le
             prono en premier ne doit pas priver l'accès au pari associé. */}

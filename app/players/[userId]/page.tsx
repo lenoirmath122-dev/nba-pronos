@@ -114,7 +114,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                         {p.awayTeam.abbreviation} @ {p.homeTeam.abbreviation}
                       </span>
                       <span className={styles.predictionPick}>
-                        {p.predictedWinner.abbreviation} −{p.predictedMargin}
+                        {/* "+" pas "−" (22/08/2026, même correctif que
+                            PredictionSummary.tsx) : predictedMargin est
+                            toujours l'écart de victoire, jamais un déficit. */}
+                        {p.predictedWinner.abbreviation} +{p.predictedMargin}
                       </span>
                       <span className={styles.mutedInline}>{DATE_FORMATTER.format(new Date(p.scheduledAt))}</span>
                       {p.points !== null && <span className={styles.pickPoints}>{p.points} pts</span>}
