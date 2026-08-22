@@ -9136,3 +9136,36 @@ Plan en 4 blocs, construits un par un :
 tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
 poussé pour le bloc 1.
 ```
+
+## Phase 6, blocs 2-3 : résolution automatique construite (22/08/2026)
+
+```text
+lib/ai/resolveCalculableBets.ts : resolveNbaGameId() (pont match appli <->
+game_id NBA via entity_mappings, nouveau source_type NBA_API, rapprochement
+déterministe date NY + paire d'équipes) + computeOutcome() (compare la
+vraie stats_box_scores au seuil, même définition dd/td EXACTE que
+build_targets.py) + resolveCalculableBets() (boucle sur les paris MATCH
+VALIDATED calculables, écrit WON/LOST + recomputeBet()). Nouvelle route
+/api/resolve-bets (même auth que /api/sync/*), chaînée en bout du workflow
+refresh-stats-supabase.yml.
+
+Vérifié séparément (pas resolveCalculableBets() en entier, qui écrirait
+sur de vrais paris sans accord explicite) :
+- resolveNbaGameId testé contre le vrai match de la finale NBA Cup (Atlanta-
+  Chicago, décalé à 11h30 UTC) : logique de rapprochement correcte
+  (équipes/dates bien résolues), 0 candidat trouvé dans stats_matchs --
+  ATTENDU et IMPORTANT à noter : cette compétition de test utilise des
+  dates fictives d'août (hors saison NBA réelle, les vraies données
+  Data NBA s'arrêtent autour de mai 2026) -- CE MÉCANISME NE POURRA JAMAIS
+  ÊTRE TESTÉ DE BOUT EN BOUT SUR CETTE COMPÉTITION DE TEST PRÉCISE, faute
+  de vrai match NBA le même jour. Vérifiable seulement sur une vraie
+  compétition alignée sur le vrai calendrier NBA (saison réelle, ou une
+  compétition de test dont les dates recouvrent un vrai match passé).
+- computeOutcome vérifié sur 9 cas contre une vraie ligne stats_box_scores
+  (Rudy Gobert, reb/dd/td/ft/fg/min, over/under) : 9/9 corrects.
+
+tsc/eslint/vitest (37/37)/next build (38 routes) propres, commité et
+poussé. Reste (bloc 4 restant) : redéployer Cloud Run + appliquer la
+migration structured_player_id (toujours en attente, bloc 1) avant que
+quoi que ce soit ici puisse tourner pour de vrai.
+```
