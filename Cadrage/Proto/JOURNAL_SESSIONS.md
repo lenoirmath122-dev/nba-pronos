@@ -9098,3 +9098,41 @@ correctement par l'IA, cohérent. Chaîne de bugs (find_player non paginé
 -> match.bet non filtré sur CANCELLED -> uniq_active_match_bet non mis à
 jour) entièrement résolue et vérifiée en conditions réelles.
 ```
+
+## Phase 6 lancée : résolution automatique des paris IA (22/08/2026)
+
+```text
+Après 3 petits fix UI (carte cliquable Résultats, replier aussi le pari,
+total points combiné, retrait du "✓" trompeur -- tous commités), l'utilisateur
+lance le prochain gros chantier : résoudre automatiquement WON/LOST les
+paris IA calculables, via les vraies stats déjà collectées (Data NBA) --
+rejoint l'idée notée le 21/08 (decisions_0.2.4 §10).
+
+Cadrage avant de coder : /api/sync/results tourne déjà toutes les 30 min
+et auto-score déjà les PRONOSTICS (vainqueur/écart) -- le vrai trou est
+la résolution des PARIS, encore 100% manuelle. 2 forks tranchés avec
+l'utilisateur :
+1. Périmètre : paris MATCH uniquement pour le 1er jet (paris SÉRIE trop
+   ambigus -- quel match exact fait foi -- restent manuels).
+2. Pont match appli <-> vraies stats NBA : les 2 mondes utilisent des
+   sources externes DIFFÉRENTES et sans lien (appli = Highlightly,
+   Data NBA = nba_api) -- étendre entity_mappings (déjà prévue pour ce
+   genre de pont, aujourd'hui limitée à Highlightly) avec un nouveau
+   source_type NBA_API, matché par date+équipes -- même logique
+   déterministe déjà utilisée pour les mappings Highlightly (pas de
+   nouvel écran admin).
+
+Plan en 4 blocs, construits un par un :
+1. FAIT -- capturer le vrai player_id à la structuration (au lieu de
+   re-matcher structured_player_name par nom plus tard, source de bugs
+   réels cette session). service/app.py renvoie désormais player_id ;
+   nouvelle colonne bets.structured_player_id ; migration
+   20260822130000. Testé en local (app.predict() direct). Reste à
+   appliquer la migration + redéployer Cloud Run.
+2-4. À construire : mapping entity_mappings NBA_API, logique de
+   résolution (comparer la vraie stat au seuil), branchement en bout de
+   chaîne de refresh_daily.py.
+
+tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
+poussé pour le bloc 1.
+```
