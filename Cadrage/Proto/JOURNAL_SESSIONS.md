@@ -8993,3 +8993,35 @@ tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
 poussé. PAS testé au clic dans un navigateur (pas d'outil disponible ici,
 confirmé par l'utilisateur : vu sur ordinateur/tablette) -- à vérifier.
 ```
+
+## Investigation pari IA non reconnu + fix affichage "CHI −4" (22/08/2026)
+
+```text
+2 sujets distincts, tous deux à partir de retours réels de l'utilisateur
+sur la NBA Cup :
+
+1. "Zacari risacher + 5 rebonds" resté is_calculable=false alors que
+   "Rudy Gobert +10 rebonds" a bien fonctionné. Vérifié en base (bet
+   réel), reconstitué le contexte exact (vrai match résolu depuis --
+   Atlanta Hawks vs Charlotte Hornets -- et absence de contexte de match
+   au moment réel du pari, les 2 quarts alimentant cette demie n'étant
+   pas encore joués à l'heure du pari). Relancé 11 fois au total (Sonnet
+   5, schéma condensé) avec et sans contexte : 11/11 réussites,
+   orthographe corrigée ("Zaccharie Risacher"), calculable=true à chaque
+   fois. Pas de bug reproductible -- probablement un aléa ponctuel
+   (réseau/API), avalé silencieusement par design (best-effort, jamais
+   bloquant). Solution donnée à l'utilisateur : rouvrir/resoumettre le
+   pari relance l'IA depuis zéro.
+
+2. L'utilisateur signale que "✓ CHI −4" (recap d'un prono validé) se lit
+   comme un écart NÉGATIF alors que le chiffre est toujours l'écart de
+   VICTOIRE du vainqueur choisi, jamais un déficit -- signe moins
+   trompeur. Corrigé aux 6 endroits qui affichent ce recap :
+   UpcomingRow.tsx, UpcomingRowForm.tsx, PredictionSummary.tsx,
+   RevealPanelUpcoming.tsx, RevealPanelLocked.tsx,
+   app/players/[userId]/page.tsx -- "−" remplacé par "+" partout,
+   trouvés par grep exhaustif pour ne pas en manquer un.
+
+tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
+poussé.
+```
