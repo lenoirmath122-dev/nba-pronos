@@ -40,11 +40,14 @@ export function PredictionSummary({ prediction, betPoints }: PredictionSummaryPr
     <div className={styles.summary}>
       <span className={`${styles.state} ${STATE_CLASS[prediction.state]}`}>
         {prediction.state === "FROZEN" && prediction.predictedWinner
-          ? // "+" (pas "−", corrigé 22/08/2026, signalé par l'utilisateur --
-            // lu comme un écart NÉGATIF alors que predictedMargin est
-            // toujours l'écart de victoire du vainqueur choisi, jamais un
-            // déficit) : "CHI +4" = Chicago gagne avec 4 points d'écart.
-            `✓ ${prediction.predictedWinner.abbreviation} +${prediction.predictedMargin}`
+          ? // Pas de "✓" ici (retiré 22/08/2026, signalé par l'utilisateur --
+            // affiché à côté du score RÉEL une fois le match joué, il donnait
+            // l'impression trompeuse que le prono avait été GAGNANT, alors
+            // qu'il ne fait que rappeler ce qui a été pronostiqué -- correct
+            // ou pas ne se lit qu'en comparant au score, pas via ce symbole).
+            // "+" (pas "−", même correctif) : "CHI +4" = Chicago gagne avec 4
+            // points d'écart.
+            `${prediction.predictedWinner.abbreviation} +${prediction.predictedMargin}`
           : STATE_LABEL[prediction.state]}
       </span>
 
