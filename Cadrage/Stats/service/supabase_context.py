@@ -36,8 +36,36 @@ from tester_modele import (  # noqa: E402
 )
 
 
+PAGE_SIZE = 1000  # limite par defaut de PostgREST (meme constante que
+# service/refresh_daily.py::fetch_all_rows -- dupliquee ici plutot
+# qu'importee, refresh_daily.py n'est pas copie dans l'image Cloud Run,
+# cf. Dockerfile) -- toute lecture "table entiere" sans .range() se
+# tronque silencieusement a 1000 lignes.
+
+
+def fetch_all_rows(query_builder) -> list:
+    """Recupere TOUTES les lignes en paginant avec .range() -- query_builder
+    est une fonction (start, end) -> reponse PostgREST, pour composer
+    .select()/.eq() avant de paginer."""
+    rows: list = []
+    start = 0
+    while True:
+        page = query_builder(start, start + PAGE_SIZE - 1).execute().data
+        rows.extend(page)
+        if len(page) < PAGE_SIZE:
+            return rows
+        start += PAGE_SIZE
+
+
 def find_player(client, query: str) -> tuple:
-    rows = client.table("stats_joueurs").select("player_id, first_name, family_name").execute().data
+    # Bug reel corrige le 22/08/2026 (signale par l'utilisateur -- "Zaccharie
+    # Risacher" jamais trouve malgre l'orthographe correcte en base) : sans
+    # pagination, stats_joueurs (1052 lignes au 22/08/2026, > 1000) se
+    # tronquait silencieusement aux 1000 premieres -- meme bug deja corrige
+    # dans refresh_daily.py::known_game_ids, jamais applique ici.
+    rows = fetch_all_rows(
+        lambda start, end: client.table("stats_joueurs").select("player_id, first_name, family_name").range(start, end)
+    )
     df = pd.DataFrame(rows)
     df["full_name"] = df["first_name"] + " " + df["family_name"]
     needle = normalize_suffix(strip_accents(query))
@@ -52,7 +80,12 @@ def find_player(client, query: str) -> tuple:
 
 
 def find_team(client, query: str) -> tuple:
-    rows = client.table("stats_equipes").select("team_id, tricode, city, name").execute().data
+    # stats_equipes ne fait que 30 lignes aujourd'hui (largement sous 1000),
+    # mais meme pagination que find_player() par coherence/prudence plutot
+    # que de laisser un 2e appel non pagine a cote du 1er corrige.
+    rows = fetch_all_rows(
+        lambda start, end: client.table("stats_equipes").select("team_id, tricode, city, name").range(start, end)
+    )
     df = pd.DataFrame(rows)
     df["full_name"] = df["city"] + " " + df["name"]
     needle = strip_accents(query)
