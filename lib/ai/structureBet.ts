@@ -12,32 +12,32 @@ import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
 // `calculable: false` fait retomber sur le mécanisme manuel existant,
 // inchangé).
 
+// Descriptions condensées le 22/08/2026 (optimisation coût, §35) -- même
+// instruction qu'avant, moins de tokens : le schéma entier (pas seulement
+// system+message) est renvoyé à chaque appel pour contraindre la sortie,
+// ~2000 tokens mesurés sur l'ancienne version verbeuse. Revalidé sur les
+// mêmes 5 cas réels (LeBron/MPJ hors match, Tatum, Curry, pari fun) sans
+// aucun changement de résultat avant de commit.
 const BetStructurationSchema = z.object({
   calculable: z
     .boolean()
     .describe(
-      "true si le pari porte sur UN SEUL joueur, UNE SEULE des stats listées, avec un seuil numérique clair " +
-        "(\"plus de\"/\"moins de\" un nombre) -- y COMPRIS si ce joueur ne joue pour aucune des 2 équipes du match " +
-        "(voir player_not_in_match ci-dessous, ce cas reste calculable=true). false UNIQUEMENT pour tout pari " +
-        "équipe, combo multi-joueurs, score total, événement de match, fun/hors-terrain, scénario, ou formulation " +
-        "trop ambiguë pour être sûr — ne force jamais une extraction incertaine.",
+      "true si UN seul joueur + UNE stat listée + seuil clair (même si le joueur ne joue pas dans ce match, " +
+        "voir player_not_in_match). false pour pari équipe, combo, score total, fun/hors-terrain, ou formulation " +
+        "ambiguë -- ne force jamais une extraction incertaine.",
     ),
   player_not_in_match: z
     .boolean()
     .describe(
-      "true si le joueur identifié ne joue actuellement pour AUCUNE des 2 équipes du match indiqué (mauvais " +
-        "match/mauvaise équipe -- utilise ta connaissance des effectifs NBA réels), même si c'est un vrai joueur " +
-        "NBA par ailleurs. Dans ce cas: calculable reste true, remplis quand même player_name/stat/threshold/" +
-        "comparison normalement -- l'application forcera la probabilité à 0% (il ne peut rien marquer dans un " +
-        "match auquel il ne participe pas). false dans tous les autres cas (joueur trouvé dans le bon match, ou " +
-        "pari non calculable pour une autre raison).",
+      "true si le joueur (vrai joueur NBA) ne joue pour AUCUNE des 2 équipes de ce match (utilise ta connaissance " +
+        "des effectifs réels). calculable reste true, remplis quand même les autres champs -- l'appli forcera " +
+        "proba=0%. false sinon.",
     ),
   player_name: z
     .string()
     .nullable()
     .describe(
-      "Orthographe standard NBA du joueur (ex: \"Michael Porter Jr.\", PAS \"Michael Porter Junior\" même si " +
-        "c'est ce que le joueur a écrit) -- corrige les fautes de frappe/orthographe évidentes vers le vrai nom, " +
+      "Orthographe standard NBA (ex: \"Michael Porter Jr.\" pas \"Junior\") -- corrige les fautes évidentes, " +
         "null si non calculable.",
     ),
   stat: z.enum(STAT_CODES as [string, ...string[]]).nullable().describe("Code de la stat concernée, null si non calculable."),
@@ -45,14 +45,16 @@ const BetStructurationSchema = z.object({
     .number()
     .nullable()
     .describe(
-      "Seuil numérique. Pour dd/td (double-double/triple-double) toujours null (probabilité directe, pas de seuil). " +
-        "Pour ft/fg/fg3 (pourcentages), une FRACTION entre 0 et 1 (ex. 0.85 pour \"85%\"), jamais 85.",
+      "Seuil numérique. null pour dd/td (proba directe). Pour ft/fg/fg3, une FRACTION 0-1 (0.85 pour \"85%\"), " +
+        "jamais 85.",
     ),
   comparison: z
     .enum(["OVER", "UNDER"])
     .nullable()
     .describe("OVER (\"plus de\"/\"au moins\") ou UNDER (\"moins de\"), null pour dd/td ou non calculable."),
-  reasoning: z.string().describe("Une phrase expliquant la décision, pour trace/debug côté admin."),
+  reasoning: z
+    .string()
+    .describe("Explication TRÈS COURTE (10-15 mots), pour trace/debug admin, pas pour le joueur."),
 });
 
 export type BetStructuration = z.infer<typeof BetStructurationSchema>;
@@ -82,8 +84,18 @@ function buildSystemPrompt(teamNames: [string, string] | null): string {
 /** teamNames : les 2 équipes du match/de la série concernée par ce pari
  *  (bet réel corrigé le 21/08/2026 -- sans ce contexte, l'IA validait des
  *  paris sur des joueurs qui ne jouent même pas dans le match visé). Passé
- *  par structureAndScoreBet.ts, résolu depuis series/matches/teams. */
-export async function structureBet(description: string, teamNames: [string, string] | null = null): Promise<BetStructuration | null> {
+ *  par structureAndScoreBet.ts, résolu depuis series/matches/teams.
+ *
+ *  model : Claude Sonnet 5 par défaut (changé depuis Opus 5 le 22/08/2026,
+ *  optimisation coût) -- comparé sur 5 vrais appels API face à Opus 5,
+ *  RÉSULTATS STRUCTURÉS IDENTIQUES sur les 2 cas les plus à risque de cette
+ *  session (joueur hors match, faute d'orthographe/suffixe), pour ~2.6x
+ *  moins cher par appel (Cadrage/Stats/projet-data-nba.md §35). */
+export async function structureBet(
+  description: string,
+  teamNames: [string, string] | null = null,
+  model = "claude-sonnet-5",
+): Promise<BetStructuration | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     // Pas de clé configurée : traité comme un échec silencieux, pas une
@@ -96,7 +108,7 @@ export async function structureBet(description: string, teamNames: [string, stri
 
   try {
     const response = await client.messages.parse({
-      model: "claude-opus-5",
+      model,
       max_tokens: 1024,
       system: buildSystemPrompt(teamNames),
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
