@@ -8959,3 +8959,37 @@ tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
 poussé. PAS testé au clic dans un navigateur (pas d'outil de test UI
 disponible dans cet environnement) -- à vérifier par l'utilisateur.
 ```
+
+## Fix : superposition des demi-finales NBA Cup dans l'arbre (22/08/2026)
+
+```text
+L'utilisateur signale un bug visuel (capture d'écran) sur "Mon bracket"
+NBA Cup, poster/arbre : l'étiquette "Demi-finales" mal placée et une
+carte "Finale" qui semble flotter/chevaucher au mauvais endroit,
+demi-finale manquante à l'écran.
+
+Vérifié en base (requête directe Supabase) : la structure de données est
+correcte (4 quarts -> 2 demies -> 1 finale, next_series_id/slot bien
+distincts, aucune collision d'id). Le bug est donc dans le rendu, pas les
+données -- exclu une 1re hypothèse (conflit marge auto CSS §16/08 vs
+alignement JS) après relecture attentive de l'algorithme (delta-based,
+auto-correcteur).
+
+Cause réelle trouvée dans TreeConnectors.tsx : une règle du 17/08 force
+la Finale ET ses 2 séries précédentes sur la MÊME ligne horizontale --
+correcte en Playoffs (les 2 finales de conférence vivent dans 2 colonnes
+DIFFÉRENTES, Ouest/Est mirroir, les aligner les garde côte à côte).
+En NBA Cup (pas de conférence, colonne UNIQUE), les 2 demi-finales sont
+2 cartes DE LA MÊME colonne -- la même règle les empilait littéralement
+l'une sur l'autre.
+
+Corrigé : la règle "même ligne" ne s'applique plus que si les 2 séries
+qui alimentent la finale sont dans des colonnes différentes (nouveau
+columnKeyById dans TreeConnectors.tsx) -- la Cup retombe sur
+l'alignement normal (chaque demi-finale sur ses propres parents),
+Playoffs inchangé.
+
+tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
+poussé. PAS testé au clic dans un navigateur (pas d'outil disponible ici,
+confirmé par l'utilisateur : vu sur ordinateur/tablette) -- à vérifier.
+```
