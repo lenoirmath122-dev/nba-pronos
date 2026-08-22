@@ -133,20 +133,38 @@ export function TreeConnectors<T>({ columns, getId, getNextId, containerRef, car
         }
 
         // Le nœud FINAL (sans suivant — Finale NBA/finale de Cup) et ses 2
-        // parents directs (les 2 finales de conférence, ou les 2 demies de
-        // Cup) restent TOUJOURS sur la MÊME ligne horizontale (17/08/2026,
-        // demandé par l'utilisateur) — contrairement aux fusions
-        // précédentes (demi-finales), qui s'alignent chacune indépendamment
-        // sur SES propres parents et peuvent donc diverger d'un côté à
-        // l'autre. Calculé en dernier, sur les positions déjà réglées par
-        // la passe ci-dessus : la ligne partagée est la MOYENNE des 3
-        // positions déjà indépendamment calculées, pas la position d'un
-        // des 3 imposée aux 2 autres.
+        // parents directs (les 2 finales de conférence Playoffs) restent
+        // TOUJOURS sur la MÊME ligne horizontale (17/08/2026, demandé par
+        // l'utilisateur) — contrairement aux fusions précédentes (demi-
+        // finales), qui s'alignent chacune indépendamment sur SES propres
+        // parents et peuvent donc diverger d'un côté à l'autre. Calculé en
+        // dernier, sur les positions déjà réglées par la passe ci-dessus :
+        // la ligne partagée est la MOYENNE des 3 positions déjà
+        // indépendamment calculées, pas la position d'un des 3 imposée aux
+        // 2 autres.
+        //
+        // RESTREINT aux 2 parents dans des COLONNES DIFFÉRENTES (bug réel
+        // corrigé le 22/08/2026, signalé par l'utilisateur -- superposition
+        // sur le bracket NBA Cup) : en Playoffs, les 2 finales de conférence
+        // vivent chacune dans SA PROPRE colonne (Ouest/Est mirroir), les
+        // aligner sur la même hauteur les garde côte à côte, jamais l'un sur
+        // l'autre. En NBA Cup (pas de conférence, colonne UNIQUE "west"), les
+        // 2 demi-finales sont 2 CARTES DE LA MÊME COLONNE -- les forcer à la
+        // même hauteur les empile littéralement l'une sur l'autre. Ce cas ne
+        // doit jamais forcer une ligne partagée : chaque demi-finale de Cup
+        // garde l'alignement sur SES propres parents (passe ci-dessus),
+        // exactement comme n'importe quelle fusion intermédiaire.
+        const columnKeyById = new Map<string, string>();
+        for (const column of columns) {
+          for (const node of column.items) columnKeyById.set(getId(node), column.key);
+        }
         const finalNode = allNodes.find((node) => getNextId(node) === null);
         if (finalNode) {
           const finalId = getId(finalNode);
           const feederIds = feedersOf.get(finalId) ?? [];
-          if (feederIds.length === 2) {
+          const feedersInDifferentColumns =
+            feederIds.length === 2 && columnKeyById.get(feederIds[0]) !== columnKeyById.get(feederIds[1]);
+          if (feedersInDifferentColumns) {
             const rowIds = [finalId, ...feederIds];
             const rowEls = rowIds.map((id) => cardsById.get(id)).filter((el): el is HTMLElement => el !== undefined);
             if (rowEls.length === rowIds.length) {
