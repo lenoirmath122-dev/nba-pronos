@@ -27,3 +27,15 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
         run: python Cadrage/Stats/service/refresh_daily.py
+      - name: Résoudre automatiquement les paris IA calculables (Phase 6, 22/08/2026)
+        # Chaîné APRÈS le rafraîchissement ci-dessus, jamais avant : la
+        # résolution a besoin des VRAIES stats de la veille tout juste
+        # écrites dans Supabase par l'étape précédente (stats_box_scores) --
+        # /api/sync/results (toutes les 30 min) détecte déjà qu'un match est
+        # FINISHED, mais n'a pas ces stats, d'où ce 2e déclencheur ici plutôt
+        # que sur ce sync existant.
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/resolve-bets"
