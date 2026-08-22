@@ -44,33 +44,20 @@
 > le détail de la méthode (échantillon simulé, `calibrate_difficulty_
 > thresholds.py`). Retire ce point de la liste des bloquants Phase 5.
 >
-> **Point 5 (barème du fallback IA) — discussion ouverte le 21/08/2026,
-> PAS TRANCHÉ, dernier point avant de clore la Phase 5 officiellement** :
-> l'utilisateur propose de remplacer le sélecteur de difficulté 1-5 par un
-> champ où le joueur tape un nombre de points libre, borné 5-25 (accord
-> obtenu sur le plafond) — mais impacte `lib/scoring/engine.ts::scoreBet`
-> (table `BET_DIFFICULTY_POINTS` fixe indexée sur 1-5, une valeur libre
-> type 17 nécessiterait une vraie colonne "points" séparée, pas juste un
-> changement de widget). Reste à trancher : ce champ REMPLACE-t-il le
-> sélecteur actuel ou s'y AJOUTE-t-il ? Question posée, réponse détournée
-> vers la piste ci-dessous avant d'être tranchée.
->
-> **Piste plus large notée le 21/08/2026, PAS pour maintenant** : plutôt
-> que de compter sur l'IA pour extraire joueur/stat/seuil d'un texte libre
-> (source de tous les bugs corrigés aujourd'hui — mauvais joueur, faute
-> d'orthographe, joueur hors match), l'utilisateur envisage un formulaire
-> STRUCTURÉ à plusieurs champs (type de pari, joueur du match via
-> sélecteur peuplé du vrai roster, stat, seuil) pour au moins la catégorie
-> "pari joueur" (`PLAYER_PROP`, la seule que le modèle sait calculer) —
-> éliminerait la classe de bug entière plutôt que de la corriger après
-> coup, sans coût ni latence Claude pour ces cas. Le texte libre + IA
-> resterait pour tout le reste (fun, combo, hors-terrain — justement le
-> périmètre du fallback/point 5 ci-dessus). Chantier UI conséquent
-> (peupler un sélecteur avec le roster réel du match, gérer le format de
-> seuil par stat -- fraction pour %, entier sinon) : pas attaqué
-> maintenant, à reprendre dans une session dédiée. Recommandation donnée à
-> l'utilisateur : limiter le structuré à `PLAYER_PROP`, garder le texte
-> libre pour le reste plutôt que de tout transformer en formulaire.
+> **Point 5 (barème du fallback IA) — PARQUÉ PAR DÉCISION le 22/08/2026,
+> Phase 5 considérée CLOSE sans lui** : 2 pistes discutées le 21/08 (1. un
+> champ où le joueur tape un nombre de points libre borné 5-25, à la place
+> du sélecteur de difficulté 1-5 actuel -- impacte
+> `lib/scoring/engine.ts::scoreBet`, table `BET_DIFFICULTY_POINTS` fixe
+> indexée 1-5 ; 2. un formulaire STRUCTURÉ joueur/stat/seuil pour la
+> catégorie `PLAYER_PROP`, qui éliminerait par construction la classe de
+> bugs d'extraction IA corrigée cette session -- mauvais joueur, faute
+> d'orthographe, joueur hors match). L'utilisateur choisit explicitement
+> de les laisser en l'état (parquées, pas rejetées) plutôt que de trancher
+> maintenant -- le mécanisme manuel actuel (`proposed_difficulty`/
+> `validated_difficulty`, sélecteur 1-5) reste inchangé pour les paris non
+> calculables. À reprendre dans une session dédiée si besoin, en partant
+> de ces 2 pistes plutôt que de repartir de zéro.
 
 > **État au 21/08/2026 (suite 11, chantier Data NBA)** — **Contexte de
 > match ajouté à la structuration IA, 2 bugs réels corrigés**

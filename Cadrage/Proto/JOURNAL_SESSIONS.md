@@ -8884,3 +8884,20 @@ noté dans GAPS_OUVERTS.md.
 
 Détail complet : projet-data-nba.md §34.
 ```
+
+## Phase 5 close, point 5 (barème du fallback) parqué par décision (22/08/2026)
+
+```text
+Suite immédiate de la session précédente : l'utilisateur tranche
+explicitement de laisser les 2 pistes du point 5 (champ points libre vs
+formulaire structuré joueur/stat) en l'état, sans en choisir une
+maintenant -- "on laisse les points du formulaire structuré" (parquées,
+pas rejetées). Le mécanisme manuel actuel (sélecteur 1-5, BET_DIFFICULTY_
+POINTS) reste inchangé pour les paris non calculables.
+
+Phase 5 (SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md) déclarée CLOSE avec ce
+point explicitement parqué -- statut, GAPS_OUVERTS.md et REPRISE de
+projet-data-nba.md mis à jour en conséquence. Seul point encore ouvert,
+indépendant : redéployer le service Cloud Run pour le fix normalize_
+suffix() (2e ligne de défense, §31).
+```

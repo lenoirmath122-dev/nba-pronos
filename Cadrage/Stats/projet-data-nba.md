@@ -2,21 +2,18 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 21/08/2026, suite 13 — calibration + README)
+> ## 🔴 REPRISE ICI (état au 22/08/2026, suite 14 — Phase 5 CLOSE)
 >
-> **Seuils proba->difficulté CALIBRÉS (§34, Phase 5 §7 point 2 FAIT)** :
-> remplace les seuils provisoires 80/60/40/20% par des seuils calibrés par
-> quintile (66.4/52.9/39.4/24.9%) sur un échantillon simulé de 62 280
-> probas (868 joueurs réels) -- 3 vrais paris seulement en base, bien trop
-> peu pour calibrer sur du réel. `lib/ai/difficultyTiers.ts` mis à jour,
-> `tsc`/`eslint`/`vitest`/`next build` propres, commité et poussé.
-> `README.pdf` régénéré avec les nouvelles sections Cloud Run/refresh
-> quotidien/paris IA + un récap des enchaînements courants (§34).
-> - **Reste pour clore la Phase 5** : point 5 (barème du fallback IA) --
->   discussion ouverte, pas tranchée, voir `GAPS_OUVERTS.md` (piste "champ
->   points libre" vs piste plus large "formulaire structuré joueur/stat").
-> - **Reste comme avant** : redéployer le service Cloud Run (§29) puis
->   retester de bout en bout via l'appli.
+> **Phase 5 (paris persos pilotés par la proba) CLOSE** : les 4 points
+> réalisables (modèle, calibration, contexte à jour, structuration IA)
+> sont FAITS (§34). Le point 5 restant (barème du fallback pour les paris
+> non calculables) est PARQUÉ PAR DÉCISION explicite de l'utilisateur
+> (22/08/2026), pas un oubli -- 2 pistes notées pour reprise future dans
+> `GAPS_OUVERTS.md` ("champ points libre 5-25" et "formulaire structuré
+> joueur/stat/seuil"), mécanisme manuel actuel inchangé en attendant.
+> - **Reste** : redéployer le service Cloud Run (§29) puis retester de
+>   bout en bout via l'appli -- seul point encore ouvert, indépendant de
+>   la clôture de Phase 5.
 >
 > Plus tôt (état au 21/08/2026, suite 12 — proba 0% pour joueur hors match)
 > — **Nouveau champ `player_not_in_match` : un pari sur un joueur absent des

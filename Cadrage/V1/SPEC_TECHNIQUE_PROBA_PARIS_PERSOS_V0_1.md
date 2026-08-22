@@ -5,11 +5,12 @@
 > une probabilité calculée automatiquement, pour les paris que le modèle
 > sait calculer.
 >
-> **Statut : PREMIÈRE VERSION CODÉE ET DÉPLOYÉE (21/08/2026)** — voir §7bis.
-> Points 1 (modèle qui tourne), 2 (seuils calibrés), 3 (pont contexte à
-> jour) et 4 (structuration IA) sont FAITS. Point 5 (barème du fallback —
-> inchangé, pas de nouveau barème créé, discussion en cours) reste ouvert,
-> détail §7bis. Décisions de principe
+> **Statut : PHASE 5 CLOSE (22/08/2026)** — voir §7bis. Points 1 (modèle
+> qui tourne), 2 (seuils calibrés), 3 (pont contexte à jour) et 4
+> (structuration IA) FAITS. Point 5 (barème du fallback) PARQUÉ PAR
+> DÉCISION de l'utilisateur, pas un oubli — le mécanisme manuel actuel
+> (sélecteur 1-5) reste inchangé pour les paris non calculables, 2 pistes
+> notées pour une reprise future (`GAPS_OUVERTS.md`). Décisions de principe
 > actées avec l'utilisateur le 19/08/2026 ; le modèle de probabilité tourne
 > désormais pour de vrai (`Cadrage/Stats/projet-data-nba.md`, chantier Data
 > NBA, service déployé §24 de ce document).
@@ -231,22 +232,19 @@ palier 5 <24.9% (remplace 80/60/40/20%). Vérifié : Curry "+ de 20% à
 3-points" (quasi-certain, career ~42%) donne bien 94.7% de proba réelle et
 tombe en palier 1 -- cohérence confirmée avec l'utilisateur.
 
-**Point 5 (barème du fallback) -- PAS TRANCHÉ, discussion ouverte le
-21/08/2026** : aucun nouveau barème créé pour les paris non calculables,
-ils utilisent encore le mécanisme manuel existant tel quel
-(`proposed_difficulty`/`validated_difficulty`, `BET_DIFFICULTY_POINTS`).
-Piste proposée par l'utilisateur : remplacer le sélecteur 1-5
-(`BetForm.tsx`, libellés "Très accessible"/.../"Jackpot") par un champ où
-le joueur tape directement un nombre de points, borné 5-25 (accord :
-plafond conservé pour l'équilibre du jeu, mais N'IMPORTE QUELLE valeur
-dans cette fourchette, pas seulement des multiples de 5) -- IMPACTE
-`lib/scoring/engine.ts::scoreBet` (`BET_DIFFICULTY_POINTS` est aujourd'hui
-une table fixe indexée sur `validated_difficulty` 1-5, un nombre libre
-type 17 n'y a pas d'entrée -- nécessiterait une colonne "points" séparée
-plutôt qu'un simple changement de widget de saisie). Remplace ou s'ajoute
-au sélecteur actuel : PAS TRANCHÉ, la discussion a bifurqué sur une piste
-plus large (voir GAPS_OUVERTS.md, "formulaire structuré joueur/stat/seuil")
-avant d'y répondre -- à reprendre.
+**Point 5 (barème du fallback) -- PARQUÉ PAR DÉCISION le 22/08/2026** :
+aucun nouveau barème créé pour les paris non calculables, ils utilisent
+le mécanisme manuel existant tel quel (`proposed_difficulty`/
+`validated_difficulty`, `BET_DIFFICULTY_POINTS`, sélecteur 1-5 dans
+`BetForm.tsx`). Discuté le 21/08 : piste "champ points libre 5-25 à la
+place du sélecteur" (impacte `lib/scoring/engine.ts::scoreBet`,
+`BET_DIFFICULTY_POINTS` est une table fixe indexée 1-5, une valeur libre
+type 17 nécessiterait une colonne "points" séparée) et piste "formulaire
+structuré joueur/stat/seuil" pour `PLAYER_PROP` (voir §7bis ci-dessus).
+L'utilisateur choisit explicitement de laisser les deux en l'état
+(parquées, pas rejetées) plutôt que de trancher maintenant -- Phase 5
+considérée CLOSE sans ce point, à reprendre plus tard si besoin
+(`GAPS_OUVERTS.md` garde le détail des 2 pistes).
 
 **Vérifié** : `tsc`/`eslint`/`vitest` (37/37)/`next build` (38 routes)
 propres. Migration poussée sur la base réelle. **Pas encore vérifié en
