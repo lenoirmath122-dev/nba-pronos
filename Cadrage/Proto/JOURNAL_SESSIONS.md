@@ -9025,3 +9025,46 @@ sur la NBA Cup :
 tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
 poussé.
 ```
+
+## Fix : find_player() non paginé + pari annulé bloquant + reset finale NBA Cup (22/08/2026)
+
+```text
+Suite du signalement "Zaccharie Risacher non reconnu" : reproduit en
+local contre Supabase, cause réelle trouvée -- find_player()/find_team()
+dans service/supabase_context.py n'utilisaient PAS .range() (même bug
+déjà corrigé dans refresh_daily.py::known_game_ids, jamais appliqué ici).
+stats_joueurs compte 1052 lignes, au-delà du plafond PostgREST (1000) :
+les ~52 derniers joueurs (dont Risacher, rookie récent) étaient
+invisibles quelle que soit l'orthographe. Corrigé (fetch_all_rows()
+dupliqué localement -- refresh_daily.py n'est pas dans l'image Cloud
+Run), testé en local (find_player + compute_proba fonctionnent). gcloud
+indisponible dans cet environnement -- redéploiement demandé à
+l'utilisateur.
+
+L'utilisateur reteste avec l'orthographe corrigée : échoue encore --
+attendu, tant que le service déployé n'a pas le correctif (le test local
+Python contourne le service réel).
+
+Demande de nettoyage sur la finale NBA Cup (Atlanta-Chicago) : décaler
+le match à 13h30 Paris (11h30 UTC), effacer le pronostic de bracket sur
+CETTE série uniquement (pas tout le bracket -- aucune action per-série
+n'existait, fait via UPDATE direct Supabase, même patron que
+resetBracket()), annuler le pari Risacher (passage à CANCELLED avec le
+motif standard "Retiré par toi avant revue.", JAMAIS un vrai DELETE --
+règle D2 du projet, "aucune suppression nulle part"). Les 3 confirmés en
+base.
+
+Bug supplémentaire découvert en testant : un pari CANCELLED restait
+affiché en lecture seule (BetBlock) sur la carte du match au lieu de
+libérer la place pour un nouveau pari (InlineBetForm) -- lib/queries/
+play.ts attachait match.bet sans filtrer les statuts RELEASED
+(CANCELLED/REJECTED), contrairement à hasBetOnThisMatch/
+usedSlotsBySeries du même fichier qui le faisaient déjà. Corrigé sur la
+ligne non verrouillée uniquement (la ligne verrouillée garde
+l'historique, la fenêtre de pari y est fermée de toute façon).
+
+tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
+poussé (2 commits : find_player, puis le fix match.bet). Reste : le
+redéploiement Cloud Run et la vérification "tous les joueurs" demandés
+par l'utilisateur, en attente.
+```
