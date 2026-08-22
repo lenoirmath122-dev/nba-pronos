@@ -456,7 +456,18 @@ async function fetchUpcomingWindow(
       betSlot,
       // targetFinished=false, deadlineOpen=true : garanti par construction,
       // cette ligne vient de la fenêtre scheduled_at > now() (§3.3).
-      bet: ownBet ? toPlayAssociatedBet(ownBet, false, true, new Set()) : null,
+      //
+      // RELEASED (CANCELLED/REJECTED) exclu ici (bug réel corrigé le
+      // 22/08/2026, signalé par l'utilisateur -- un pari retiré par le
+      // joueur lui-même restait affiché en lecture seule sur cette carte
+      // NON verrouillée, empêchant d'en soumettre un nouveau) : cohérent
+      // avec hasBetOnThisMatch ci-dessus, qui traite déjà un pari relâché
+      // comme un slot libre -- match.bet doit suivre la même règle pour
+      // qu'InlineBetForm affiche le déclencheur "Proposer un pari" plutôt
+      // que BetBlock en lecture seule sur l'ancien pari. Sans effet sur les
+      // lignes VERROUILLÉES (ci-dessous, l.837) : la fenêtre de pari y est
+      // de toute façon fermée, l'historique reste affiché tel quel.
+      bet: ownBet && !RELEASED_BET_STATUSES.has(ownBet.status) ? toPlayAssociatedBet(ownBet, false, true, new Set()) : null,
     });
   }
 
