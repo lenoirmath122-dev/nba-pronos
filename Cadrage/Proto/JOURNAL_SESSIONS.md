@@ -8929,3 +8929,33 @@ poussé.
 
 Détail complet : projet-data-nba.md §35.
 ```
+
+## Repli automatique des cartes prono/pari dans "Mes pronos" (22/08/2026)
+
+```text
+Reprise de la piste UX notée le 21/08/2026 (GAPS_OUVERTS.md) : après avoir
+comparé Sonnet 5 et écarté Haiku 4.5 (2 échecs sur 5 cas piégeux, dont un
+qui reproduisait exactement le bug player_not_in_match corrigé cette
+session), l'utilisateur demande de travailler sur l'interface "Mes
+pronos" -- confirmé via question : le repli automatique après
+soumission, pas autre chose.
+
+2 endroits distincts, chacun avec son propre état d'ouverture local :
+- UpcomingRow.tsx (ligne de match entière) : nouvel effet surveillant la
+  TRANSITION de match.viewStatus vers VALIDATED pendant que la ligne est
+  ouverte -- se replie une seule fois à ce moment précis, jamais en
+  forçant une ligne déjà validée qu'on rouvrirait ensuite pour consulter
+  le récap.
+- InlineBetForm.tsx (sous-formulaire de pari, partagé avec le Bracket) :
+  handleSubmit() referme le formulaire après un succès, en inline comme
+  en modal (rien d'autre ne refermait la pop-up automatiquement).
+
+Le cas bundlé (prono + pari validés ensemble via le bouton unique) est
+couvert par le seul repli de UpcomingRow -- le sous-formulaire de pari
+est démonté avec le reste une fois la ligne repliée, pas besoin d'un 2e
+repli pour ce cas.
+
+tsc/eslint/vitest (37/37)/next build (37 routes) propres, commité et
+poussé. PAS testé au clic dans un navigateur (pas d'outil de test UI
+disponible dans cet environnement) -- à vérifier par l'utilisateur.
+```

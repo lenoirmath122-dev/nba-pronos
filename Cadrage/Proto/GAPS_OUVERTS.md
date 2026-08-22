@@ -31,12 +31,6 @@
 > spécifiquement pour Claude Opus 5, un changement de fournisseur
 > demanderait de tout revalider).
 >
-> **Piste UX notée le 21/08/2026, PAS pour maintenant** : à la saisie d'un
-> prono et/ou d'un pari dans "Mes pronos", la carte devrait se replier
-> automatiquement sur elle-même après validation, pour libérer la vue —
-> demandé par l'utilisateur en passant, pas urgent, à reprendre dans un
-> chantier UI dédié plus tard (hors périmètre Phase 5 Data NBA).
->
 > **Calibration des seuils proba->difficulté FAITE (21/08/2026)** — Phase 5
 > §7 point 2 : `lib/ai/difficultyTiers.ts` utilise désormais des seuils
 > calibrés (66.4/52.9/39.4/24.9%) plutôt que les seuils provisoires
