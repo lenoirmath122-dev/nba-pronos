@@ -9068,3 +9068,33 @@ poussé (2 commits : find_player, puis le fix match.bet). Reste : le
 redéploiement Cloud Run et la vérification "tous les joueurs" demandés
 par l'utilisateur, en attente.
 ```
+
+## Suite et clôture : chaîne complète Risacher résolue (22/08/2026)
+
+```text
+Suite directe de l'entrée précédente. 2 rebondissements avant résolution
+complète :
+
+1. 1er redéploiement Cloud Run lancé depuis le mauvais dossier
+   (Cadrage/Stats/scripts au lieu de Cadrage/Stats) -- "Building using
+   Buildpacks" au lieu du Dockerfile, échec de build. Corrigé en
+   relançant depuis Cadrage/Stats -- succès.
+
+2. Une fois le service à jour, resoumettre le pari Risacher échouait
+   avec "duplicate key value violates unique constraint
+   uniq_active_match_bet" -- 2e bug réel, distinct du fix match.bet de
+   l'entrée précédente. Cause : l'index unique partiel
+   uniq_active_match_bet (schéma initial, 18/07/2026) excluait
+   seulement REJECTED, jamais mis à jour quand CANCELLED a été introduit
+   comme 2e statut "relâché" (migration #29, delete_bet, 18/08/2026) --
+   sa jumelle uniq_active_series_bet, elle, excluait déjà les 2. Migration
+   corrective écrite (20260822120000_fix_uniq_active_match_bet_cancelled.
+   sql, DROP + CREATE de l'index avec le bon prédicat) -- appliquée par
+   l'utilisateur via l'éditeur SQL du dashboard Supabase (pas d'accès
+   CLI/DB direct dans cet environnement), guidé pas à pas.
+
+Confirmé par l'utilisateur : pari Risacher soumis avec succès, structuré
+correctement par l'IA, cohérent. Chaîne de bugs (find_player non paginé
+-> match.bet non filtré sur CANCELLED -> uniq_active_match_bet non mis à
+jour) entièrement résolue et vérifiée en conditions réelles.
+```
