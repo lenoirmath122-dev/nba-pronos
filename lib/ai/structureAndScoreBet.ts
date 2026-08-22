@@ -52,6 +52,7 @@ export async function structureAndScoreBet(betId: string, description: string, s
       await supabase.rpc("update_bet_structuration", {
         p_bet_id: betId,
         p_structured_player_name: null,
+        p_structured_player_id: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -92,9 +93,17 @@ export async function structureAndScoreBet(betId: string, description: string, s
     // l'utilisateur pour ne jamais bloquer une soumission (même principe
     // que decisions_0.2.4 §4).
     if (structuration.player_not_in_match) {
+      // p_structured_player_id: null -- le micro-service n'est jamais appelé
+      // dans ce cas précis (voir plus bas), donc jamais de vrai player_id
+      // résolu ici. Sans conséquence pour la résolution automatique (Phase
+      // 6) : ce pari perd de toute façon à coup sûr (joueur absent du
+      // match), pas besoin de retrouver sa vraie stat pour le savoir --
+      // reste néanmoins non résolu automatiquement pour l'instant, noté
+      // dans GAPS_OUVERTS.md comme amélioration possible.
       await supabase.rpc("update_bet_structuration", {
         p_bet_id: betId,
         p_structured_player_name: structuration.player_name,
+        p_structured_player_id: null,
         p_stat: structuration.stat,
         p_threshold: structuration.threshold,
         p_comparison: structuration.comparison,
@@ -121,6 +130,7 @@ export async function structureAndScoreBet(betId: string, description: string, s
     await supabase.rpc("update_bet_structuration", {
       p_bet_id: betId,
       p_structured_player_name: structuration.player_name,
+      p_structured_player_id: prediction.playerId,
       p_stat: structuration.stat,
       p_threshold: structuration.threshold,
       p_comparison: structuration.comparison,

@@ -126,6 +126,7 @@ def predict(req: PredictRequest):
 
     return {
         "joueur": player_name,
+        "joueur_id": player_id,
         "adversaire": opponent_name,
         "stat": req.stat,
         "seuil": req.seuil,

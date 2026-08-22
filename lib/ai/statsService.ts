@@ -11,6 +11,13 @@ export type StatsPredictResult = {
   proba: number; // toujours "P(stat > seuil)" côté service -- OVER/UNDER résolu par l'appelant (voir predictOverUnder)
   label: string;
   detail: string;
+  /** Identifiant NBA réel du joueur résolu côté service (22/08/2026, Phase 6
+   *  -- résolution automatique des paris) -- capturé ici pour ne plus jamais
+   *  re-matcher structured_player_name par nom plus tard (source de bugs
+   *  réels cette session). null seulement si le service ne le renvoie pas
+   *  encore (pas redéployé) -- traité comme "pas d'identifiant fiable",
+   *  jamais une erreur bloquante. */
+  playerId: number | null;
 };
 
 async function callPredict(body: Record<string, unknown>): Promise<StatsPredictResult | null> {
@@ -29,7 +36,12 @@ async function callPredict(body: Record<string, unknown>): Promise<StatsPredictR
     if (!res.ok) return null;
     const data = await res.json();
     if (typeof data.proba !== "number") return null;
-    return { proba: data.proba, label: data.label, detail: data.detail };
+    return {
+      proba: data.proba,
+      label: data.label,
+      detail: data.detail,
+      playerId: typeof data.joueur_id === "number" ? data.joueur_id : null,
+    };
   } catch {
     return null;
   }
