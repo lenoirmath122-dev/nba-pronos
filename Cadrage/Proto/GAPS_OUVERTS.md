@@ -5,6 +5,55 @@
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
 > **Cadrage posé le 23/08/2026, PAS CODÉ -- prêt à construire la prochaine
+> fois** : pièce (a) du chantier paris série (modèle ÉQUIPE, pour étendre
+> l'auto-calcul aux paris équipe/total -- jusqu'ici réservé aux 12 stats
+> JOUEUR, pièces a0-e toutes closes). Décidé avec l'utilisateur :
+> 1. **Un seul modèle pour commencer : `total_points`** (score combiné du
+>    match, `home_score + away_score`) -- pas les autres paris équipe
+>    (rebonds équipe, marge de victoire...) pour l'instant. Données déjà
+>    prêtes : `entrainement_matchs` (`build_targets.py`) a déjà la cible
+>    (`total_points`) ET les mêmes features équipe `home_*`/`away_*` que
+>    celles qui ont servi à entraîner `home_win` (pièce a0) -- même patron
+>    d'entraînement déjà éprouvé (`train_home_win_model.py`), juste une
+>    régression (`RandomForestRegressor`, même famille que les 8 modèles
+>    joueur régression existants) au lieu d'une classification.
+> 2. **Scope MATCH seul pour commencer, pas SÉRIE** -- même si l'exemple
+>    d'origine de l'utilisateur qui a motivé tout ce chantier était en
+>    SÉRIE ("un match de la série dépassera 200 points"). MATCH est la
+>    brique de base nécessaire avant de pouvoir faire "au moins une fois
+>    sur la série" (même schéma de reprise que a0 -> pièce (c) : modèle
+>    MATCH d'abord, extension SÉRIE ensuite en réutilisant le mécanisme déjà
+>    construit pour les paris joueur).
+> 3. **Changement de schéma d'extraction IA plus lourd que pour les autres
+>    pièces** : un pari `total_points` n'a PAS de joueur -- `structureBet.ts`
+>    (`BetStructurationSchema`) est aujourd'hui entièrement construit autour
+>    d'un joueur+stat. Décidé : nouveau champ `bet_subject: "PLAYER" |
+>    "MATCH_TOTAL"` plutôt que d'ajouter `"total_points"` aux 12
+>    `STAT_CODES` joueur existants -- ces 12 codes restent PUREMENT joueur
+>    (l'invariant "1 stat code = 1 calcul par joueur" est utilisé partout
+>    ailleurs, Python `compute_proba()`/`STATS_DISPONIBLES` inclus, le
+>    casser pour un seul cas particulier aurait fragilisé tout le reste).
+>    Quand `bet_subject="MATCH_TOTAL"` : `player_name`/`player_team` toujours
+>    `null`, `stat` vient d'une liste séparée (juste `"total_points"` pour
+>    l'instant, extensible proprement plus tard).
+> 4. **Résolution (pièce e étendue)** : comme prévu dès la cadrage initial
+>    du chantier série -- directe via `matches.home_score`/`away_score`
+>    (déjà synchronisés par le sync existant), PAS besoin du pipeline Data
+>    NBA pour vérifier après coup (seulement pour prédire avant match).
+> 5. **Service Python** : nouvel endpoint dédié (`/predict-total-points` ou
+>    équivalent), même patron que `/predict`/`/predict-series`.
+>
+> **Pas encore codé, rien commencé** -- prêt à construire la prochaine fois,
+> dans cet ordre : (i) `train_total_points_model.py` (entraînement +
+> vérification, même démarche que `train_home_win_model.py`) ; (ii)
+> `compute_total_points_proba()` côté `supabase_context.py` (réutilise
+> `build_team_context()` tel quel, pas de nouveau contexte équipe à
+> construire) ; (iii) endpoint `/predict-total-points` (`app.py`) ; (iv)
+> extension du schéma IA (`bet_subject`) + branchement dans
+> `structureAndScoreBet.ts` ; (v) extension de `resolveCalculableBets.ts`
+> pour le cas non-joueur (`home_score`/`away_score`).
+
+> **Cadrage posé le 23/08/2026, PAS CODÉ -- prêt à construire la prochaine
 > fois** : paris SÉRIE (Playoffs uniquement -- en NBA Cup une "série" est
 > un seul match, donc pas concernée), suite à la Phase 6 (résolution
 > automatique, scope volontairement limité aux paris MATCH). Discussion

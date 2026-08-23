@@ -9745,3 +9745,32 @@ déjà actée dans le code).
 
 tsc/eslint/vitest(37/37)/next build propres.
 ```
+
+## Pièce (a) -- cadrage posé, pas codé (23/08/2026, suite)
+
+```text
+Utilisateur demande d'attaquer la pièce (a) (modèle équipe), "à minima le
+cadrage" -- pas de code cette fois, juste poser la suite.
+
+Vérifié avant de proposer quoi que ce soit : entrainement_matchs
+(build_targets.py) a déjà total_points (home_score+away_score) ET les
+mêmes features équipe home_*/away_* que home_win (pièce a0) -- même patron
+d'entraînement déjà éprouvé, juste une régression au lieu d'une
+classification. Réduit nettement le risque technique de cette pièce.
+
+3 décisions actées avec l'utilisateur (AskUserQuestion + discussion) :
+1. total_points seul pour commencer (pas les autres paris équipe).
+2. Scope MATCH seul d'abord, SÉRIE ensuite en réutilisant le mécanisme déjà
+   construit pour les paris joueur (même schéma de reprise que a0 -> c).
+3. Nouveau champ bet_subject ("PLAYER"/"MATCH_TOTAL") dans
+   BetStructurationSchema plutôt que d'ajouter total_points aux 12
+   STAT_CODES joueur -- garde l'invariant "1 stat code = 1 calcul par
+   joueur" intact partout où il est déjà utilisé (Python compute_proba()/
+   STATS_DISPONIBLES inclus).
+
+GAPS_OUVERTS.md mis à jour avec le cadrage complet (5 points) + l'ordre de
+construction prévu pour la prochaine reprise (train_total_points_model.py
+-> compute_total_points_proba() -> endpoint /predict-total-points ->
+extension schéma IA -> extension resolveCalculableBets.ts). Rien codé
+cette entrée, uniquement du cadrage.
+```
