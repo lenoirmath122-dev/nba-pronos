@@ -48,13 +48,19 @@ function minutesToFloat(raw: string | null): number {
  *  n'inclut PAS dd/td (calculées, voir isDoubleOrTripleDouble) ni les
  *  stats en pourcentage (voir PCT_MAKES_ATTEMPTS_COLUMNS), qui ont chacune
  *  leur propre logique ci-dessous. */
-const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk">> = {
+const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb">> = {
   pts: "pts",
   reb: "reb",
   ast: "ast",
   fg3m: "fg3m",
   stl: "stl",
   blk: "blk",
+  // ajoutees le 23/08/2026 (extension "faciles") -- fga/fg3a sont deja
+  // presentes dans BoxScoreRow (utilisees par PCT_MAKES_ATTEMPTS_COLUMNS),
+  // pareil pour la resolution en tant que stat a seuil directe.
+  fga: "fga",
+  fg3a: "fg3a",
+  oreb: "oreb",
 };
 
 const PCT_MAKES_ATTEMPTS_COLUMNS: Partial<Record<StatCode, ["ftm" | "fgm" | "fg3m", "fta" | "fga" | "fg3a"]>> = {
@@ -76,6 +82,7 @@ type BoxScoreRow = {
   fgm: number | null;
   fga: number | null;
   fg3a: number | null;
+  oreb: number | null;
 };
 
 /** Même définition EXACTE que build_targets.py (Cadrage/Stats/scripts,
@@ -256,7 +263,7 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
 
     const { data: box } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb")
       .eq("game_id", gameId)
       .eq("player_id", bet.structured_player_id)
       .maybeSingle<BoxScoreRow>();
@@ -390,7 +397,7 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
       }
       const { data: box } = await supabase
         .from("stats_box_scores")
-        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a")
+        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb")
         .eq("game_id", gameId)
         .eq("player_id", bet.structured_player_id)
         .maybeSingle<BoxScoreRow>();
@@ -566,7 +573,8 @@ type EligibleTeamStatBetRow = {
 // geste). Distinct de teamStatCodes.ts::TEAM_STAT_LABELS_FR (celui-ci
 // contient déjà "de l'équipe", pas adapté à "X {label} du match").
 const TEAM_STAT_RESOLUTION_LABELS_FR: Record<TeamStatCode, string> = {
-  reb: "rebonds", ast: "passes décisives", fg3m: "3-points réussis", stl: "interceptions", blk: "contres",
+  pts: "points", reb: "rebonds", ast: "passes décisives", fg3m: "3-points réussis", stl: "interceptions", blk: "contres",
+  oreb: "rebonds offensifs",
 };
 
 /** Equipe NBA reelle (stats_equipes.team_id, numerique) pour une equipe de

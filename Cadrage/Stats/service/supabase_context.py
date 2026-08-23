@@ -113,7 +113,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     rows = (
         client.table("stats_box_scores")
         .select("game_date, minutes, pts, reb, ast, fg3m, stl, blk, plus_minus, "
-                 "ftm, fta, fgm, fga, fg3a, ts_pct, usg_pct, games_played_season_avant")
+                 "ftm, fta, fgm, fga, fg3a, oreb, ts_pct, usg_pct, games_played_season_avant")
         .eq("player_id", player_id)
         .order("game_date", desc=True)
         .limit(10)
@@ -140,7 +140,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"),
+        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
     ):
         context[f"{stat}_moy5"] = last5[col].mean()
         context[f"{stat}_moy10"] = recent[col].mean()
@@ -169,6 +169,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
+        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
     ):
         ecarttypes[stat] = recent[col].std()
 
@@ -317,6 +318,7 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
         team_fg3m=("fg3m", "sum"),
         team_stl=("stl", "sum"),
         team_blk=("blk", "sum"),
+        team_oreb=("oreb", "sum"),
         off_rating=("off_rating", "mean"),
         def_rating=("def_rating", "mean"),
         net_rating=("net_rating", "mean"),
@@ -451,7 +453,8 @@ def compute_total_points_proba(*args, **kwargs) -> dict:
 
 
 TEAM_STAT_LABELS_FR = {
-    "reb": "Rebonds", "ast": "Passes décisives", "fg3m": "3-points réussis", "stl": "Interceptions", "blk": "Contres",
+    "pts": "Points", "reb": "Rebonds", "ast": "Passes décisives", "fg3m": "3-points réussis",
+    "stl": "Interceptions", "blk": "Contres", "oreb": "Rebonds offensifs",
 }
 # Accord genre/nombre different de TEAM_STAT_LABELS_FR (ast/stl feminins
 # pluriels -> "combinées", pas "combinés") : dict a part plutot que deduire
@@ -462,6 +465,7 @@ TEAM_STAT_TOTAL_LABELS_FR = {
     "fg3m": "3-points réussis combinés du match",
     "stl": "Interceptions combinées du match",
     "blk": "Contres combinés du match",
+    "oreb": "Rebonds offensifs combinés du match",
 }
 
 
@@ -471,8 +475,12 @@ def _team_stat_base_cols(stat: str) -> list[str]:
     MEME formule EXACTE que celle utilisee par train_total_team_stats_model.py/
     train_team_stats_model.py (pieces (a) suite, GAPS_OUVERTS.md,
     23/08/2026) : une seule definition de "quelles features comptent pour
-    une stat d'equipe", jamais divergente entre entrainement et inference."""
-    return BASE_FEATURE_COLS + [f"{stat}_pour_moy5", f"{stat}_pour_moy10", f"{stat}_contre_moy5", f"{stat}_contre_moy10"]
+    une stat d'equipe", jamais divergente entre entrainement et inference.
+    Dedup (cas "pts", 23/08/2026) : pts_pour/contre_moy5/10 sont DEJA dans
+    BASE_FEATURE_COLS (utilisees par home_win/total_points depuis le debut)
+    -- les rajouter dupliquerait les colonnes."""
+    extra = [f"{stat}_pour_moy5", f"{stat}_pour_moy10", f"{stat}_contre_moy5", f"{stat}_contre_moy10"]
+    return BASE_FEATURE_COLS + [c for c in extra if c not in BASE_FEATURE_COLS]
 
 
 def _compute_total_team_stat_proba_once(

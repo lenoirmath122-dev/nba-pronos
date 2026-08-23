@@ -257,7 +257,15 @@ def predict_team_rebounds(req: PredictTeamReboundsRequest):
 # endpoints dedies au-dessus, gardes tels quels pour ne pas casser un
 # contrat HTTP deja deploye ; ast/fg3m/stl/blk passent par ces 2 nouveaux
 # endpoints generiques plutot que 8 endpoints dedies supplementaires).
-TEAM_STAT_CODES = ["reb", "ast", "fg3m", "stl", "blk"]
+# "pts" (23/08/2026, extension "faciles") : UNIQUEMENT la forme "equipe
+# precise" (team_pts.joblib entraine) -- PAS la forme combinee, deja
+# couverte par total_points (endpoint dedie existant) -- total_pts.joblib
+# n'existe pas, 2 listes separees plutot qu'une commune pour ne pas planter
+# sur un stat valide cote "equipe precise" mais absent cote "combine".
+# "oreb" (23/08/2026, extension "faciles") : les 2 formes, contrairement a
+# "pts" -- total_oreb.joblib ET team_oreb.joblib existent tous les 2.
+TOTAL_TEAM_STAT_CODES = ["reb", "ast", "fg3m", "stl", "blk", "oreb"]
+TEAM_STAT_CODES = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb"]
 
 
 class PredictTotalTeamStatRequest(BaseModel):
@@ -275,8 +283,8 @@ class PredictTotalTeamStatRequest(BaseModel):
 
 @app.post("/predict-total-team-stat")
 def predict_total_team_stat(req: PredictTotalTeamStatRequest):
-    if req.stat not in TEAM_STAT_CODES:
-        raise HTTPException(400, f"stat inconnue : {req.stat} (attendu parmi {TEAM_STAT_CODES})")
+    if req.stat not in TOTAL_TEAM_STAT_CODES:
+        raise HTTPException(400, f"stat inconnue : {req.stat} (attendu parmi {TOTAL_TEAM_STAT_CODES})")
 
     sb = _client()
 

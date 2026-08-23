@@ -4,6 +4,118 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Nouveau chantier cadré le 23/08/2026 : `types_de_paris_playoffs_2026.md`
+> fourni par l'utilisateur** -- 429 paris personnalisés réels répartis en 12
+> catégories, pour étendre l'auto-calcul au-delà de ce qui existait. Analyse
+> de faisabilité faite AVANT de coder quoi que ce soit (vérification factuelle
+> de ce que le pipeline de données supporte réellement, pas une supposition) :
+> - **Déjà couvert** : paris joueur simples (12 stats), total_points, les 5
+>   stats équipe reb/ast/fg3m/stl/blk (2 formes).
+> - **Extension mécanique du patron existant ("faciles", faites ce jour --
+>   voir entrée suivante)** : `team_pts`, `fga`/`fg3a` (tentatives joueur),
+>   `oreb` (rebonds offensifs, 3 formes).
+> - **Nouveau mécanisme réutilisable, PAS ENCORE FAIT** : comparaison/duel
+>   (36 paris, P(A>B) entre 2 entités -- joueur vs joueur, équipe vs équipe,
+>   "meilleur marqueur du match" = vs le reste des joueurs), combos
+>   multi-conditions (PRA, double-condition, cumuls multi-joueurs, ~30 paris),
+>   % tir équipe (7 paris, agrégation attempts/makes équipe à construire),
+>   prolongation (7 paris, classifieur binaire à construire depuis
+>   `play_by_play.period`, jamais synchronisé vers Supabase actuellement).
+> - **Gros chantier d'infrastructure, PAS ENCORE FAIT** : pari "période"
+>   (47 paris, quarts-temps/mi-temps -- AUCUNE donnée par quart-temps
+>   côté Supabase, seulement un `play_by_play` local jamais poussé),
+>   titulaires/banc (~10 paris, colonne `position` présente dans les CSV
+>   NBA bruts mais jetée dès l'ETL `load_to_sqlite.py`, rien en base),
+>   filtres nominaux (nationalité, initiale du nom -- connaissance externe
+>   non présente dans les données), événements rares (fautes techniques,
+>   blessures, buzzer beater, temps morts -- données absentes du pipeline).
+> - **Non automatisable par design** (le doc le confirme déjà) : "Aucun
+>   pari" (15), "Fun/hors terrain" (14), "Invalide/impossible" (5),
+>   "Ambigu" (2) = 36 paris à rejeter tels quels, rien à faire.
+>
+> Décidé avec l'utilisateur : on commence par les extensions faciles
+> (ci-dessous), puis on enchaîne dans l'ordre croissant de complexité
+> (comparaison/duel -> combos multi-conditions -> infrastructure
+> quart-temps), sans rien écarter.
+
+> **Extensions "faciles" -- team_pts / fga+fg3a / oreb, CODÉES le
+> 23/08/2026** (types_de_paris_playoffs_2026.md, voir entrée au-dessus) :
+>
+> **1. `team_pts`** (catégorie "Points équipe") : il manquait la perspective
+> own/opp d'UNE équipe précise (`total_points` ne couvrait que le combiné
+> domicile/extérieur). `pts` ajoutée à `TEAM_TARGET_STATS` (`build_targets.py`)
+> -> `pts_reel` dans `entrainement_equipe`. Nouveau modèle `team_pts.joblib`
+> (`train_team_stats_model.py`, R²=0.124, calibration 0.6-5.1pp). Piège
+> trouvé et corrigé : `pts_pour/contre_moy5/10` étaient DÉJÀ dans
+> `BASE_FEATURE_COLS` (utilisées par home_win/total_points depuis le début)
+> -- `_team_stat_base_cols()`/`feature_cols_for()` dédupliquent maintenant
+> au lieu de dupliquer la colonne (aurait cassé `X[feature_cols]`). PAS de
+> `total_pts` (forme combinée) : `total_points` fait déjà ce travail --
+> 2 listes séparées côté `app.py` (`TEAM_STAT_CODES` vs
+> `TOTAL_TEAM_STAT_CODES`) pour ne pas planter sur un stat valide d'un côté
+> mais absent de l'autre.
+>
+> **2. `fga`/`fg3a`** (catégorie "Tentatives joueur", ex. "Tyrese Maxey tente
+> plus de 7 tirs à 3 points") : les moyennes `fga_moy5/10`/`fg3a_moy5/10`
+> existaient déjà (utilisées en interne par les modèles de %), juste pas
+> exposées comme stat à seuil pariable. Ajout de `fga_ecarttype10`/
+> `fg3a_ecarttype10` (`build_features.py`), entrées dans `REGRESSION_STATS`
+> (`tester_modele.py`, réutilisé tel quel par `supabase_context.py` --
+> AUCUN changement de logique de service nécessaire, juste la déclaration).
+> `fga.joblib`/`fg3a.joblib` (`train_stat_model.py`, R²=0.611/0.528,
+> calibration 0.1-2.8pp / 0.1-7.5pp).
+>
+> **3. `oreb`** (catégorie "Rebonds offensifs équipe", LES 3 FORMES : joueur
+> précis, équipe précise, combiné match) -- le plus gros morceau des 3,
+> seul à nécessiter une vraie extension de schéma Supabase :
+>    - **Migration `20260823210000_stats_box_scores_oreb.sql`** (poussée) :
+>      `stats_box_scores.oreb integer` -- donnée déjà présente EN LOCAL
+>      (`box_scores.oreb`, jamais répliquée vers Supabase jusqu'ici, choix
+>      de conception délibéré à l'origine : "table volontairement allégée
+>      aux seules colonnes lues par build_context()"). PAS de `dreb` ajouté
+>      (aucun pari "rebonds défensifs" dans la liste fournie).
+>    - **`refresh_daily.py`** (futurs matchs) et **`backfill_supabase.py`**
+>      (historique) mis à jour pour propager `oreb` -- backfill complet
+>      relancé (140016 lignes stats_box_scores re-seedées, upsert donc
+>      rejouable), vérifié en conditions réelles (0 valeur NULL après coup).
+>    - Pipeline local généralisé partout où `pts`/`reb`/etc. l'étaient déjà :
+>      `TEAM_COUNTING_STATS`/`TEAM_TARGET_STATS` (+oreb, généralisation
+>      automatique côté équipe), `ecarttype_cols`/`PLAYER_SCHEMA` (+oreb côté
+>      joueur), `MATCH_FEATURE_COLS` (oubliée au 1er passage -- piège trouvé
+>      en conditions réelles : `entrainement_matchs`/`entrainement_equipe` ne
+>      contenaient pas encore `oreb_pour_moy5` au moment du 1er entraînement,
+>      `build_targets.py` corrigé et relancé avant de reprendre).
+>    - **3 modèles entraînés** : `oreb.joblib` (joueur, Poisson -- comme
+>      fg3m/stl/blk, même profil "événement rare", calibration 0.2-1.4pp,
+>      vérifié empiriquement AVANT de généraliser Poisson, pas supposé) ;
+>      `team_oreb.joblib` (équipe précise, own/opp, R²=0.060, calibration
+>      1.1-7.1pp) ; `total_oreb.joblib` (combiné match, R²=0.031, calibration
+>      0.3-4.4pp).
+>    - `build_team_context()`/`build_context()` (`supabase_context.py`,
+>      Supabase) ET leurs équivalents locaux (`tester_modele.py`, SQLite --
+>      utilisé par la CLI de test) étendus en parallèle, mêmes colonnes.
+>
+> **Schéma IA** : `STAT_CODES` (+fga/fg3a/oreb), `TEAM_STAT_CODES`
+> (+pts/oreb), `MATCH_STAT_CODES` (+total_oreb) -- aucun changement
+> structurel requis côté `structureBet.ts` (déjà généralisé depuis les
+> listes de codes). `resolveCalculableBets.ts` : `COUNTING_STAT_COLUMN`
+> (+fga/fg3a/oreb, résolution paris JOUEUR) et `TEAM_STAT_RESOLUTION_LABELS_FR`
+> (+pts/oreb) étendus.
+>
+> Testé en conditions réelles à chaque étape (Lakers vs Celtics) : appels
+> directs `supabase_context`, HTTP local réel (uvicorn, tous les nouveaux
+> endpoints + regression `reb`/`total_points` bit-identiques), 9 vrais
+> appels Claude Sonnet 5 (fga/fg3a/oreb dans les 3 formes + régressions
+> pts/total_points/triple-double/joueur-hors-match). Un cas a déclenché
+> l'instabilité numérique rare déjà connue (`team_oreb`, 1 essai sur ~10-15,
+> CONSISTENCY_CHECK_NOTE) -- refusé correctement par le garde-fou existant,
+> 3 retries suivants cohérents entre eux (confirmé transitoire, pas un
+> problème propre à oreb). `tsc`/`eslint`/`vitest` (37/37)/`next build`
+> propres.
+>
+> **Pas encore redéployé sur Cloud Run. Pas testé en conditions réelles
+> depuis l'appli.**
+
 > **Pièce (a) suite -- AST/FG3M/STL/BLK D'ÉQUIPE, CODÉES le 23/08/2026**
 > (généralisation de la pièce rebonds ci-dessous, comme annoncé dans sa
 > propre note "généralisation prête" -- même patron mécanique, éprouvé une

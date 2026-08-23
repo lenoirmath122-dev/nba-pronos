@@ -15,6 +15,7 @@ Usage:
 
 Codes --stat disponibles :
     pts, reb, ast, fg3m, stl, blk, min   -> régression + distribution (normale ou Poisson)
+    fga, fg3a, oreb                      -> tirs tentés / tirs à 3-points tentés / rebonds offensifs, régression
     dd, td                               -> double-double / triple-double (probabilité directe, pas de --seuil)
     ft, fg, fg3                          -> % de tir (lancers francs / tirs au panier / 3-points),
                                              --seuil en fraction (0.80 = 80%)
@@ -51,6 +52,14 @@ REGRESSION_STATS = {
     "stl": ("stl", "stl", "Interceptions"),
     "blk": ("blk", "blk", "Contres"),
     "min": ("min", "minutes_f", "Minutes jouées"),
+    # ajoutees le 23/08/2026 (extension "faciles",
+    # types_de_paris_playoffs_2026.md, categorie "Tentatives joueur", ex.
+    # "Tyrese Maxey tente plus de 7 tirs a 3 points") -- moy5/moy10 deja
+    # calculees pour les modeles de % (fg/fg3), juste pas exposees comme
+    # stat a seuil pariable directement jusqu'ici.
+    "fga": ("fga", "fga", "Tirs tentés"),
+    "fg3a": ("fg3a", "fg3a", "Tirs à 3-points tentés"),
+    "oreb": ("oreb", "oreb", "Rebonds offensifs"),
 }
 CLASSIFIER_STATS = {
     "dd": ("double_double", "Double-double"),
@@ -137,7 +146,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     recent = pd.read_sql(
         """
         SELECT m.game_date, b.minutes, b.pts, b.reb, b.ast, b.fg3m, b.stl, b.blk,
-               b.plus_minus, b.ftm, b.fta, b.fgm, b.fga, b.fg3a,
+               b.plus_minus, b.ftm, b.fta, b.fgm, b.fga, b.fg3a, b.oreb,
                a.ts_pct, a.usg_pct,
                f.games_played_season_avant
         FROM box_scores b
@@ -167,7 +176,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"),
+        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
     ):
         context[f"{stat}_moy5"] = last5[col].mean()
         context[f"{stat}_moy10"] = recent[col].mean()
@@ -196,6 +205,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
+        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
     ):
         ecarttypes[stat] = recent[col].std()
 

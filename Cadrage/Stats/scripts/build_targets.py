@@ -63,6 +63,7 @@ CREATE TABLE labels_joueur (
     pts REAL, reb REAL, ast REAL, fg3m REAL, stl REAL, blk REAL, minutes REAL,
     ftm REAL, fta REAL,
     fgm REAL, fga REAL, fg3a REAL,
+    oreb REAL,
     double_double INTEGER,
     triple_double INTEGER,
     PRIMARY KEY (game_id, player_id)
@@ -90,6 +91,7 @@ MATCH_FEATURE_COLS = [
     "fg3m_pour_moy5", "fg3m_pour_moy10", "fg3m_contre_moy5", "fg3m_contre_moy10",
     "stl_pour_moy5", "stl_pour_moy10", "stl_contre_moy5", "stl_contre_moy10",
     "blk_pour_moy5", "blk_pour_moy10", "blk_contre_moy5", "blk_contre_moy10",
+    "oreb_pour_moy5", "oreb_pour_moy10", "oreb_contre_moy5", "oreb_contre_moy10",
     "victoires_pct_moy5", "victoires_pct_moy10",
     "off_rating_moy5", "off_rating_moy10", "def_rating_moy5", "def_rating_moy10",
     "net_rating_moy5", "net_rating_moy10", "pace_moy5", "pace_moy10",
@@ -102,12 +104,23 @@ MATCH_FEATURE_COLS = [
 # ajoutee en 1er (pieces total_reb/team_reb), ast/fg3m/stl/blk generalisees
 # dans la foulee, meme geste a chaque fois (home_{stat}/away_{stat}/
 # total_{stat} dans entrainement_matchs, {stat}_reel dans entrainement_equipe).
-TEAM_TARGET_STATS = ["reb", "ast", "fg3m", "stl", "blk"]
+# "pts" ajoutee le meme jour (extension "faciles" -- types_de_paris_playoffs_2026.md,
+# categorie "Points equipe") : home_pts/away_pts/total_pts dans
+# entrainement_matchs sont redondants avec home_score/away_score/total_points
+# (deja presents, calcules directement depuis matchs) -- generes quand meme
+# via la boucle commune plutot que d'exclure "pts" au prix d'un cas
+# particulier ; ce qui manquait reellement est pts_reel dans
+# entrainement_equipe (perspective own/opp, absente jusqu'ici -- total_points
+# ne couvrait que le combine domicile/exterieur, pas "CETTE equipe precise").
+# "oreb" ajoutee le meme jour (extension "faciles", categorie "Rebonds
+# offensifs equipe" -- forme combinee, cf. TEAM_COUNTING_STATS dans
+# build_features.py).
+TEAM_TARGET_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb"]
 
 
 def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
     box = pd.read_sql(
-        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a "
+        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a, oreb "
         "FROM box_scores",
         conn, dtype={"game_id": str},
     )

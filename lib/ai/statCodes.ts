@@ -4,9 +4,17 @@
 // entre les 2 dépôts/langages). Utilisé à la fois pour guider l'extraction
 // IA (structureBet.ts) et pour l'appel au service (statsService.ts).
 
-export type StatCode = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "min" | "dd" | "td" | "ft" | "fg" | "fg3";
+// "fga"/"fg3a"/"oreb" ajoutees le 23/08/2026 (extension "faciles",
+// types_de_paris_playoffs_2026.md, categories "Tentatives joueur" et
+// "Rebonds offensifs equipe" forme joueur) -- stats a seuil comme
+// pts/reb/etc, rien de special cote schema.
+export type StatCode =
+  | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "min" | "dd" | "td" | "ft" | "fg" | "fg3"
+  | "fga" | "fg3a" | "oreb";
 
-export const STAT_CODES: StatCode[] = ["pts", "reb", "ast", "fg3m", "stl", "blk", "min", "dd", "td", "ft", "fg", "fg3"];
+export const STAT_CODES: StatCode[] = [
+  "pts", "reb", "ast", "fg3m", "stl", "blk", "min", "dd", "td", "ft", "fg", "fg3", "fga", "fg3a", "oreb",
+];
 
 // Stats sans seuil (probabilité directe, pas de "> X") — dd/td dans
 // tester_modele.py CLASSIFIER_STATS.
@@ -29,4 +37,7 @@ export const STAT_LABELS_FR: Record<StatCode, string> = {
   ft: "% aux lancers francs",
   fg: "% aux tirs",
   fg3: "% à 3-points",
+  fga: "tirs tentés",
+  fg3a: "tirs à 3-points tentés",
+  oreb: "rebonds offensifs",
 };

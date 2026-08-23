@@ -28,17 +28,27 @@ MODELS_DIR = SCRIPT_DIR.parent / "models"
 TEST_FRACTION = 0.2
 
 # (stat, libellé FR, seuils de calibration) -- reb deja fait a part
-# (train_team_rebounds_model.py), pas repris ici.
+# (train_team_rebounds_model.py), pas repris ici. "pts" ajoutee le
+# 23/08/2026 (extension "faciles", types_de_paris_playoffs_2026.md,
+# categorie "Points equipe") -- manquait la perspective own/opp d'UNE
+# equipe precise (total_points ne couvre que le combine domicile/exterieur).
 STATS_TO_TRAIN = [
+    ("pts", "Points", (95, 100, 105, 110, 115, 120)),
     ("ast", "Passes décisives", (18, 21, 24, 27, 30)),
     ("fg3m", "3-points réussis", (9, 11, 13, 15, 17)),
     ("stl", "Interceptions", (5, 6, 7, 8, 9)),
     ("blk", "Contres", (3, 4, 5, 6, 7)),
+    ("oreb", "Rebonds offensifs", (8, 10, 12, 14, 16)),
 ]
 
 
 def feature_cols_for(stat: str) -> tuple[list, list]:
-    own_base_cols = BASE_FEATURE_COLS + [f"{stat}_pour_moy5", f"{stat}_pour_moy10", f"{stat}_contre_moy5", f"{stat}_contre_moy10"]
+    # dedup (23/08/2026, cas "pts") : pts_pour/contre_moy5/10 sont DEJA dans
+    # BASE_FEATURE_COLS (utilisees par home_win/total_points depuis le
+    # debut) -- contrairement a reb/ast/fg3m/stl/blk, les rajouter dupliquerait
+    # les colonnes (X[feature_cols] casserait avec des noms en double).
+    extra = [f"{stat}_pour_moy5", f"{stat}_pour_moy10", f"{stat}_contre_moy5", f"{stat}_contre_moy10"]
+    own_base_cols = BASE_FEATURE_COLS + [c for c in extra if c not in BASE_FEATURE_COLS]
     feature_cols = ["own_is_home"] + [f"own_{c}" for c in own_base_cols] + [f"opp_{c}" for c in own_base_cols]
     return own_base_cols, feature_cols
 

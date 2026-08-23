@@ -9940,3 +9940,82 @@ GAPS_OUVERTS.md mis à jour : nouvelle entrée en tête détaillant les 7
 points, note "généralisation prête, pas fait" de la pièce reb remplacée
 par un pointeur vers cette entrée.
 ```
+
+## Nouveau chantier : liste réelle des 429 paris (23/08/2026, même jour)
+
+```text
+"je vais te fournir la liste exacte de tous les paris qu'on doit pouvoir
+faire, pour qu'on les ajoute tous !" -- l'utilisateur dépose
+Cadrage/Stats/types_de_paris_playoffs_2026.md (429 paris personnalisés
+réels, 12 catégories, "dans la limite de ce qu'on peut automatiser").
+
+Avant de coder quoi que ce soit : lecture complète du fichier + vérification
+FACTUELLE (pas supposée) de ce que le pipeline supporte déjà, via une
+recherche dédiée sur 6 points précis (données quart-temps, titulaires/banc,
+oreb/dreb, fga/fg3a exposées ou non, indicateur prolongation, % tir équipe).
+Résultat : le tableau est bien plus disparate qu'anticipé -- certaines
+catégories sont une extension mécanique du patron ast/fg3m/stl/blk d'hier,
+d'autres nécessitent une infrastructure de données qui n'existe pas du
+tout (quart-temps : aucune donnée côté Supabase, seulement un play_by_play
+local jamais synchronisé ; titulaires/banc : colonne présente dans les CSV
+NBA bruts mais jetée dès l'ETL).
+
+Présenté à l'utilisateur en 4 paliers (déjà couvert / extension mécanique
+facile / nouveau mécanisme réutilisable / gros chantier d'infrastructure)
++ les 36 paris non-automatisables par design (fun/invalide/ambigu, déjà
+correctement rejetés). Question posée : par où commencer ? Réponse :
+"Les extensions faciles d'abord mais on fera tout au final, tu me
+confirmes ça ?" -- confirmé : ordre croissant de complexité (faciles ->
+comparaison/duel -> combos multi-conditions -> infrastructure
+quart-temps), rien n'est écarté.
+
+Chantier "extensions faciles" enchaîné dans la foulée (team_pts / fga+fg3a
+/ oreb) :
+
+1. team_pts : ajouté "pts" à TEAM_TARGET_STATS (build_targets.py) pour
+   avoir pts_reel en perspective own/opp (total_points ne couvrait que le
+   combiné). Piège trouvé en codant (pas en testant) : pts_pour/contre
+   étaient déjà dans BASE_FEATURE_COLS depuis le tout début du projet
+   (home_win) -- _team_stat_base_cols()/feature_cols_for() auraient
+   dupliqué la colonne. Corrigé par une dédup générique (filtre les
+   colonnes déjà présentes) plutôt qu'un cas particulier sur "pts". Pas de
+   total_pts (total_points fait déjà ce travail) -- 2 listes séparées côté
+   app.py pour ne pas valider un stat absent d'un des 2 côtés.
+
+2. fga/fg3a : la donnée et les moyennes existaient déjà (utilisées en
+   interne pour les modèles de %), seulement pas exposées comme stat à
+   seuil. Découverte utile en lisant le code AVANT d'écrire quoi que ce
+   soit : supabase_context.py (le service EN PRODUCTION) importe
+   REGRESSION_STATS/CLASSIFIER_STATS/PCT_STATS directement depuis
+   tester_modele.py (le script CLI local) -- un seul endroit à étendre
+   suffit pour que la prod suive automatiquement, pas de duplication à
+   synchroniser à la main.
+
+3. oreb (les 3 formes -- joueur, équipe précise, combiné) : le plus gros
+   des 3, seul à toucher le schéma Supabase. Migration additive (ADD
+   COLUMN, non destructive) + backfill_supabase.py relancé en entier
+   (140016 lignes, upsert donc rejouable) -- confirmé avec l'utilisateur
+   avant de lancer (action sur la prod). Généralisation mécanique du même
+   patron partout ailleurs, SAUF un oubli réel trouvé en testant :
+   MATCH_FEATURE_COLS (build_targets.py) n'avait pas oreb_pour_moy5 --
+   entrainement_matchs/entrainement_equipe construits AVANT le fix,
+   2 scripts d'entraînement plantés sur "no such column". build_targets.py
+   corrigé, relancé, tout reparti proprement. Modèle joueur en Poisson
+   (comme fg3m/stl/blk, même profil "faible valeur souvent nulle") --
+   vérifié empiriquement (calibration 0.2-1.4pp), pas supposé par analogie.
+
+Testé en conditions réelles à chaque étape (Lakers vs Celtics) : HTTP
+local (tous les nouveaux endpoints), 9 vrais appels Claude Sonnet 5. Un
+faux "bug" trouvé en testant l'extraction IA (calculable=false alors que
+player_not_in_match=true) -- en fait une erreur dans mon PROPRE script de
+test jetable (prompt système simplifié, instruction manquante), pas un
+bug réel : reconfirmé avec le prompt de production complet, comportement
+correct. Un vrai cas d'instabilité numérique rare (team_oreb, garde-fou
+CONSISTENCY_CHECK_NOTE déjà connu) déclenché une fois sur ~10 essais --
+refusé correctement, 3 retries suivants cohérents (transitoire, pas
+spécifique à oreb). tsc/eslint/vitest(37/37)/next build propres.
+
+Pas encore redéployé sur Cloud Run. GAPS_OUVERTS.md mis à jour avec le
+détail des 3 morceaux + la cartographie complète des 429 paris pour la
+suite du chantier.
+```

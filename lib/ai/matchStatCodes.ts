@@ -14,10 +14,13 @@
 // (23/08/2026, meme patron exactement) -- cf. teamStatCodes.ts pour la
 // forme "equipe precise" equivalente de chacune de ces 4 stats.
 
-export type MatchStatCode = "total_points" | "total_reb" | "total_ast" | "total_fg3m" | "total_stl" | "total_blk";
+// total_oreb ajoute le 23/08/2026 (extension "faciles", categorie
+// "Rebonds offensifs equipe" forme combinee).
+export type MatchStatCode =
+  | "total_points" | "total_reb" | "total_ast" | "total_fg3m" | "total_stl" | "total_blk" | "total_oreb";
 
 export const MATCH_STAT_CODES: MatchStatCode[] = [
-  "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk",
+  "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk", "total_oreb",
 ];
 
 export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
@@ -27,4 +30,5 @@ export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
   total_fg3m: "3-points réussis combinés du match (les 2 équipes additionnées)",
   total_stl: "interceptions combinées du match (les 2 équipes additionnées)",
   total_blk: "contres combinés du match (les 2 équipes additionnées)",
+  total_oreb: "rebonds offensifs combinés du match (les 2 équipes additionnées)",
 };

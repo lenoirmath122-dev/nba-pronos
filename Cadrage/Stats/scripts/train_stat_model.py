@@ -52,7 +52,11 @@ MODELS_DIR = SCRIPT_DIR.parent / "models"
 # Stats à faible valeur/souvent nulles -> Poisson au lieu de la normale
 # (vérifié empiriquement, cf. docstring). Toute stat absente de ce set garde
 # la normale + dispersion personnalisée par joueur (déjà bonne pour elles).
-POISSON_STATS = {"fg3m", "stl", "blk"}
+# "oreb" ajoutee le 23/08/2026 (extension "faciles") : meme profil que fg3m/
+# stl/blk (moyenne ~1, mediane 1, 25e percentile 0) -- Poisson essaye
+# directement plutot que normale, a reverifier empiriquement comme les 3
+# autres (calibration_check ci-dessous).
+POISSON_STATS = {"fg3m", "stl", "blk", "oreb"}
 
 SHARED_COLS = [
     "min_moy5", "min_moy10",
@@ -160,6 +164,11 @@ def main():
     run("stl", "Interceptions", thresholds=(1, 2, 3, 4))
     run("blk", "Contres", thresholds=(1, 2, 3))
     run("min", "Minutes jouées", thresholds=(15, 20, 25, 30, 35), label_col="minutes")
+    # ajoutees le 23/08/2026 (extension "faciles",
+    # types_de_paris_playoffs_2026.md, categorie "Tentatives joueur")
+    run("fga", "Tirs tentés", thresholds=(8, 12, 15, 18, 21))
+    run("fg3a", "Tirs à 3-points tentés", thresholds=(3, 5, 7, 9, 11))
+    run("oreb", "Rebonds offensifs", thresholds=(1, 2, 3, 4, 5))
 
 
 if __name__ == "__main__":
