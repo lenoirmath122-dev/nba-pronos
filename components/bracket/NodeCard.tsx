@@ -1,5 +1,6 @@
 import type { BracketNode } from "@/lib/queries/bracket";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { BetBlock } from "@/components/play/BetBlock";
 import { useLiveSeriesStatus, useLiveWinnerAbbreviation } from "./LiveSeriesSubscriber";
 import { clickableRowProps } from "@/lib/hooks/clickableRow";
 import styles from "./NodeCard.module.css";
@@ -254,6 +255,18 @@ export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: Node
         >
           {node.myBetAction.kind === "EDIT" ? "Modifier le pari" : "Parier"}
         </a>
+      )}
+
+      {/* Pari SÉRIE déjà engagé (VALIDATED/WON/LOST), affiché en lecture
+          seule -- bug réel corrigé le 23/08/2026, ce contenu n'avait aucun
+          affichage nulle part depuis la suppression de l'ancien écran "Mes
+          paris" (cf. commentaire de BracketNode::myBet). stopPropagation
+          nécessaire : BetBlock imbrique un <form>/<Link>, même raison que
+          le bouton Parier/Modifier ci-dessus. */}
+      {showBetLink && node.myBet && (
+        <div onClick={(event) => event.stopPropagation()}>
+          <BetBlock bet={node.myBet} returnTo="/bracket" />
+        </div>
       )}
     </div>
   );

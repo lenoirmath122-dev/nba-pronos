@@ -381,9 +381,47 @@
 > stable (~36.5%, 3 essais). Non-régression : le cas Tatum/Boston/Lakers déjà
 > validé (pièce (d)) redonne le même résultat (~24.7-24.9%) sans `season`
 > explicite cette fois (comme le fera l'appli en vrai). **Redéploiement
-> Cloud Run PAS ENCORE refait avec ce correctif** -- à faire avant de
-> retester depuis l'appli (même commande que la 1ère fois, voir en-tête du
-> `Dockerfile`).
+> Cloud Run FAIT par l'utilisateur, revérifié en HTTP réel sur le vrai
+> service** -- même résultat (~36.5%) qu'en local.
+>
+> **4e essai réel (23/08/2026, même session) : pari AUTO-VALIDÉ avec succès
+> (calculated_proba=0.3647, status=VALIDATED, difficulté 4) -- mais l'IA
+> n'est plus le problème, un AUTRE bug réel (préexistant, pas lié au
+> chantier série) trouvé** : l'utilisateur ne trouve son pari VALIDATED
+> NULLE PART dans l'appli, ni où était le bouton "Parier" (normal, un
+> pari actif existe déjà -- `getRemainingSeriesBets()`,
+> `lib/queries/series-bets.ts`, l'exclut à raison), ni ailleurs.
+>
+> **Diagnostic (agent Explore dédié)** : la refonte du 18/08/2026
+> (`JOURNAL_SESSIONS.md`, "SPEC_REFONTE_ONGLET_JOUER") a supprimé l'ancien
+> écran "Mes paris" (lecture seule, tous statuts, tous scopes) et migré la
+> consultation des paris MATCH vers les nouveaux onglets Jouer
+> (`lib/queries/play.ts`) -- mais **jamais fait l'équivalent pour les paris
+> SÉRIE**. `lib/queries/bracket.ts::BracketMyBetAction` ne gère QUE
+> PROPOSE/EDIT ; dès qu'un pari série sort de DRAFT/SUBMITTED (VALIDATED/
+> WON/LOST), `myBetAction` devient `null` et la carte série
+> (`NodeCard.tsx`) n'affiche plus rien du tout -- ni bouton, ni contenu,
+> ni indice qu'un pari existe. Le commentaire de code de
+> `lib/queries/bracket.ts` (ligne ~64-70) dit pourtant explicitement
+> l'intention inverse ("mon propre pari m'est toujours visible") -- jamais
+> implémentée pour ce cas précis. Non lié au chantier paris série
+> d'aujourd'hui : c'est la 1ère fois qu'un pari série atteint VALIDATED en
+> conditions réelles, donc la 1ère fois que ce trou se révèle.
+>
+> **Corrigé (23/08/2026)** : `BracketNode` gagne un champ `myBet:
+> PlayAssociatedBet | null` (réutilise TEL QUEL le type/composant déjà
+> construits pour les paris MATCH, `lib/queries/play.ts` +
+> `components/play/BetBlock.tsx` -- aucune duplication) -- peuplé
+> exactement quand `myBetAction` est `null` À CAUSE d'un pari engagé (pas
+> d'une série non-pariable). `NodeCard.tsx` affiche `<BetBlock>` en
+> lecture seule dans ce cas (description, catégorie, difficulté, proba
+> calculée, points, motif de résolution, formulaire "Signaler à un admin"
+> si pari oublié -- même contenu que côté MATCH). Requête `bets` de
+> `getBracket()` étendue aux champs nécessaires ; requête
+> `correction_requests` ajoutée pour le statut "pari oublié". `tsc`/
+> `eslint`/`vitest` (37/37)/`next build` (37 routes) propres. **Pas encore
+> vérifié au clic** (pas d'accès navigateur dans cet environnement) --
+> signalé explicitement, à confirmer par l'utilisateur après déploiement.
 
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**

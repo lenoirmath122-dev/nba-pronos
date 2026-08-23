@@ -9663,3 +9663,48 @@ nécessaire avant de retester depuis l'appli.
 
 GAPS_OUVERTS.md mis à jour avec le détail complet des 2 correctifs.
 ```
+
+## Bug préexistant trouvé : pari série VALIDATED invisible partout (23/08/2026, suite)
+
+```text
+Utilisateur redéploie Cloud Run -- revérifié en HTTP réel sur le vrai
+service (résultat identique au local, ~36.5%). Pari série resoumis :
+auto-validé avec succès (calculated_proba=0.3647, VALIDATED, difficulté 4).
+Mais l'utilisateur ne le trouve plus nulle part dans l'appli -- ni le
+bouton "Parier" (normal, un pari actif existe), ni ailleurs.
+
+Investigation déléguée à un agent Explore (pas de piste évidente en tête --
+préférable de tracer précisément où "mes paris" est censé se rendre
+aujourd'hui plutôt que deviner). Diagnostic clair et net : bug préexistant,
+pas lié au chantier paris série -- la refonte du 18/08/2026 a supprimé
+l'ancien écran "Mes paris" (lecture seule, tous statuts/scopes) et migré la
+consultation MATCH vers lib/queries/play.ts, mais jamais fait l'équivalent
+pour SÉRIE. bracket.ts::myBetAction ne gère que PROPOSE/EDIT -- dès qu'un
+pari série sort de DRAFT/SUBMITTED, plus rien ne s'affiche, alors que le
+commentaire de code du fichier dit explicitement l'intention contraire
+("mon propre pari m'est toujours visible"), jamais implémentée pour ce cas.
+1ère fois qu'un pari série atteint VALIDATED en conditions réelles depuis
+la refonte -- donc 1ère fois que ce trou se révèle, indépendamment du
+travail du jour.
+
+Confirmé avec l'utilisateur avant de coder (AskUserQuestion) : corriger
+maintenant plutôt que documenter pour plus tard.
+
+Corrigé en réutilisant TEL QUEL l'infrastructure déjà construite pour les
+paris MATCH (aucune duplication) : BracketNode gagne myBet: PlayAssociatedBet
+| null (lib/queries/bracket.ts), peuplé quand myBetAction est null À CAUSE
+d'un pari engagé (VALIDATED/WON/LOST) plutôt que d'une série non-pariable.
+NodeCard.tsx affiche <BetBlock> (components/play/BetBlock.tsx, déjà
+existant côté MATCH) en lecture seule dans ce cas -- description,
+catégorie, difficulté, proba calculée, points, "Signaler à un admin" pour
+un pari oublié. Requête bets étendue aux champs nécessaires + requête
+correction_requests ajoutée (statut "pari oublié", même mécanisme que
+play.ts).
+
+tsc/eslint/vitest(37/37)/next build (37 routes) propres. Pas de vérification
+au clic possible (pas d'accès navigateur dans cet environnement) -- signalé
+explicitement à l'utilisateur, à confirmer après déploiement.
+
+GAPS_OUVERTS.md mis à jour avec le diagnostic complet et le détail du
+correctif.
+```

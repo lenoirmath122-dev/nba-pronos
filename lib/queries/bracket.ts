@@ -2,6 +2,8 @@ import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
+import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import type { PlayAssociatedBet, BetStatusValue } from "@/lib/queries/play";
 
 // Lecture de l'écran Bracket (vue globale de consultation), composants
 // serveur uniquement — SPEC_ECRAN_CLASSEMENT_BRACKET §15.2. Un seul module,
@@ -84,6 +86,18 @@ export type BracketNode = {
   groups: SeriesPickGroup[]; // VIDE avant la deadline
   myPick: BracketMyPick | null; // VIDE avant la deadline, même garde que groups
   myBetAction: BracketMyBetAction | null;
+  /** Contenu en lecture seule du pari SÉRIE déjà engagé (VALIDATED/WON/LOST
+   *  -- statuts pour lesquels myBetAction est null, cf. son propre
+   *  commentaire) -- bug réel corrigé le 23/08/2026 : ce cas n'avait AUCUN
+   *  affichage nulle part depuis la suppression de l'ancien écran "Mes
+   *  paris" (18/08/2026, JOURNAL_SESSIONS.md) -- migré pour les paris MATCH
+   *  vers lib/queries/play.ts, jamais pour les paris SÉRIE. Réutilise
+   *  PlayAssociatedBet/BetBlock.tsx tels quels (même contrat que côté
+   *  MATCH), même garde de confidentialité que myBetAction ci-dessus (mon
+   *  propre pari m'est toujours visible). null tant que myBetAction n'est
+   *  pas lui-même null (pari éditable ou inexistant -- rien à afficher en
+   *  lecture seule, le bouton Parier/Modifier suffit). */
+  myBet: PlayAssociatedBet | null;
   /** Cascade d'avancement (16/08/2026, chantier arbre visuel connecté) —
    *  même colonne que lib/queries/bracket-fill.ts::CascadeSeriesRow, jamais
    *  exposée jusqu'ici sur l'écran de consultation globale. `null` en
@@ -157,7 +171,23 @@ type SeriesRow = {
 
 type TeamRow = { id: string; name: string; abbreviation: string };
 
-type OwnSeriesBetRow = { id: string; series_id: string; status: string };
+type OwnSeriesBetRow = {
+  id: string;
+  series_id: string;
+  status: BetStatusValue;
+  description: string;
+  proposed_category: BetCategory;
+  validated_category: BetCategory | null;
+  proposed_difficulty: BetDifficulty;
+  validated_difficulty: BetDifficulty | null;
+  is_admin_corrected: boolean;
+  refusal_reason: string | null;
+  resolution_reason: string | null;
+  points_awarded: number | null;
+  is_calculable: boolean | null;
+  calculated_proba: number | null;
+  suggested_difficulty: BetDifficulty | null;
+};
 
 export async function getBracket(leagueId?: string | null): Promise<BracketData> {
   const supabase = await getServerClient();
@@ -217,7 +247,11 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
     user
       ? supabase
           .from("bets")
-          .select("id, series_id, status")
+          .select(
+            "id, series_id, status, description, proposed_category, validated_category, proposed_difficulty, " +
+              "validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, " +
+              "is_calculable, calculated_proba, suggested_difficulty"
+          )
           .eq("user_id", user.id)
           .eq("competition_id", competition.id)
           .eq("scope", "SERIES")
@@ -236,13 +270,27 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
   // REJECTED/CANCELLED sont exclus d'emblée (toujours libérés, 0.2.4 §6) —
   // absent de cette map = aucun pari actif = bouton "Parier" par défaut plus
   // bas ; présent = DRAFT/SUBMITTED (éditable, bouton "Modifier") ou
-  // VALIDATED/WON/LOST (engagé, pas de bouton du tout).
+  // VALIDATED/WON/LOST (engagé, contenu affiché en lecture seule via myBet,
+  // cf. son propre commentaire -- plus AUCUN bouton du tout dans ce cas).
   const EDITABLE_SERIES_BET_STATUSES = new Set(["DRAFT", "SUBMITTED"]);
-  const activeBetBySeriesId = new Map<string, { betId: string; status: string }>();
+  const activeBetBySeriesId = new Map<string, OwnSeriesBetRow>();
   for (const row of (ownBetsData ?? []) as OwnSeriesBetRow[]) {
     if (RELEASED_BET_STATUSES.has(row.status)) continue;
-    activeBetBySeriesId.set(row.series_id, { betId: row.id, status: row.status });
+    activeBetBySeriesId.set(row.series_id, row);
   }
+
+  // "Pari oublié" (myBet.isForgottenResolution, même mécanisme que
+  // lib/queries/play.ts pour les paris MATCH) : une requête PENDING bloque
+  // déjà un 2e dépôt côté base (migration #11) -- juste besoin de savoir
+  // laquelle est déjà en attente pour ne pas reproposer le formulaire.
+  const engagedBetIds = [...activeBetBySeriesId.values()]
+    .filter((row) => !EDITABLE_SERIES_BET_STATUSES.has(row.status))
+    .map((row) => row.id);
+  const { data: pendingCorrectionsData } =
+    engagedBetIds.length > 0
+      ? await supabase.from("correction_requests").select("target_bet_id").eq("status", "PENDING").in("target_bet_id", engagedBetIds)
+      : { data: [] as { target_bet_id: string }[] };
+  const pendingCorrectionBetIds = new Set((pendingCorrectionsData ?? []).map((row) => row.target_bet_id as string));
 
   // Correctif (16/08/2026, bug trouvé en audit) : une série TERMINÉE/
   // ANNULÉE/REPORTÉE n'accepte plus de pari — `BetForm.tsx::isSeriesSelectable`
@@ -357,8 +405,34 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
           const activeBet = activeBetBySeriesId.get(row.id);
           if (!activeBet) return { kind: "PROPOSE" as const };
           return EDITABLE_SERIES_BET_STATUSES.has(activeBet.status)
-            ? { kind: "EDIT" as const, betId: activeBet.betId }
+            ? { kind: "EDIT" as const, betId: activeBet.id }
             : null;
+        })(),
+        myBet: (() => {
+          const activeBet = activeBetBySeriesId.get(row.id);
+          if (!activeBet || EDITABLE_SERIES_BET_STATUSES.has(activeBet.status)) return null;
+          const bet: PlayAssociatedBet = {
+            betId: activeBet.id,
+            description: activeBet.description,
+            category: activeBet.validated_category ?? activeBet.proposed_category,
+            difficulty: activeBet.validated_difficulty ?? activeBet.proposed_difficulty,
+            isDifficultyValidated: activeBet.validated_difficulty !== null,
+            status: activeBet.status,
+            isAdminCorrected: activeBet.is_admin_corrected,
+            refusalReason: activeBet.refusal_reason,
+            resolutionReason: activeBet.resolution_reason,
+            pointsAwarded: activeBet.points_awarded,
+            // "Pari oublié" (même principe que lib/queries/play.ts) : VALIDATED
+            // + série déjà décidée pour de vrai (official_status FINISHED) =
+            // aurait dû être résolu (WON/LOST) mais ne l'est pas encore.
+            isForgottenResolution: activeBet.status === "VALIDATED" && row.official_status === "FINISHED",
+            hasPendingCorrectionRequest: pendingCorrectionBetIds.has(activeBet.id),
+            reproposeHref: null, // REJECTED déjà exclu de activeBetBySeriesId (toujours libéré, 0.2.4 §6) -- jamais ce cas ici
+            isCalculable: activeBet.is_calculable ?? false,
+            calculatedProba: activeBet.calculated_proba,
+            suggestedDifficulty: activeBet.suggested_difficulty,
+          };
+          return bet;
         })(),
         nextSeriesId: row.next_series_id,
         nextSeriesSlot: row.next_series_slot,
