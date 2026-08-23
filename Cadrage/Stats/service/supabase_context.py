@@ -36,6 +36,7 @@ from tester_modele import (  # noqa: E402
 )
 from build_features import CORE_MINUTES_SHARE  # noqa: E402
 from train_home_win_model import BASE_FEATURE_COLS, FEATURE_COLS  # noqa: E402
+from series_probability import simulate_series_with_stat  # noqa: E402
 
 
 PAGE_SIZE = 1000  # limite par defaut de PostgREST (meme constante que
@@ -371,4 +372,56 @@ def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is
             None if opponent_id is None or pd.isna(context["vs_adversaire_pts_moy"])
             else float(context["vs_adversaire_pts_moy"])
         ),
+    }
+
+
+def compute_series_stat_proba(
+    client, player_id: int, stat: str, seuil,
+    team_a_id: int, team_b_id: int, player_team_id: int,
+    season: str, as_of_date, best_of: int = 7,
+) -> dict:
+    """Pari SERIE (brique (c) du chantier, GAPS_OUVERTS.md) -- semantique
+    retenue avec l'utilisateur le 23/08/2026 pour un pari serie ambigu : "au
+    moins une fois sur la serie" (proba qu'un evenement se produise sur AU
+    MOINS UN des matchs REELEMENT joues). Generique : wrappe n'IMPORTE
+    LEQUEL des 12 modeles joueur existants via compute_proba() ci-dessus,
+    sans aucune logique specifique a une stat ici -- seule la combinaison
+    avec l'issue de la serie (simulate_series_with_stat(), series_
+    probability.py) est nouvelle.
+
+    team_a_id = equipe avec l'avantage du terrain sur la serie (mieux
+    classee, recoit aux matchs 1/2/5/7 -- meme convention que
+    series_probability.py). player_team_id doit valoir team_a_id ou
+    team_b_id (l'equipe du joueur vise par le pari).
+
+    2 appels a compute_home_win_proba() (deja fidele domicile/exterieur, cf.
+    build_team_context()) + 2 appels a compute_proba() pour le JOUEUR (une
+    fois avec is_home=1, une fois is_home=0, meme adversaire fixe tout au
+    long de la serie) -- combines par simulate_series_with_stat(), qui fait
+    l'hypothese que resultat du match et stat du joueur sont independants
+    (aucune correlation modelisee entre "l'equipe gagne" et "le joueur
+    performe" ce soir-la)."""
+    if player_team_id not in (team_a_id, team_b_id):
+        raise ValueError("player_team_id doit etre team_a_id ou team_b_id.")
+    stat_team = "A" if player_team_id == team_a_id else "B"
+    opponent_id = team_b_id if stat_team == "A" else team_a_id
+
+    p_a_home = compute_home_win_proba(client, team_a_id, team_b_id, season, as_of_date)["p_home_win"]
+    p_a_away = 1 - compute_home_win_proba(client, team_b_id, team_a_id, season, as_of_date)["p_home_win"]
+
+    stat_home = compute_proba(client, player_id, stat, seuil, opponent_id=opponent_id, is_home=1)
+    stat_away = compute_proba(client, player_id, stat, seuil, opponent_id=opponent_id, is_home=0)
+
+    series = simulate_series_with_stat(
+        p_a_home, p_a_away, stat_home["proba"], stat_away["proba"], stat_team, best_of=best_of,
+    )
+
+    return {
+        "label": stat_home["label"],
+        "proba": series["p_stat_at_least_once"],
+        "p_a_wins_series": series["p_a_wins_series"],
+        "p_b_wins_series": series["p_b_wins_series"],
+        "length_distribution": series["length_distribution"],
+        "proba_match_domicile": stat_home["proba"],
+        "proba_match_exterieur": stat_away["proba"],
     }

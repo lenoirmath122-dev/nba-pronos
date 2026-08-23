@@ -9378,3 +9378,52 @@ dédié) volontairement pas fait cette session -- pas demandé, la pièce a0
 GAPS_OUVERTS.md mis à jour : bloquant retiré, section réécrite en
 "entièrement levé", détail des 4 étapes conservé pour trace.
 ```
+
+## Paris SÉRIE, pièce (c) -- mécanisme générique d'agrégation (23/08/2026, suite)
+
+```text
+L'utilisateur demande son avis sur la prochaine pièce à construire.
+Recommandé et retenu : pièce (c) plutôt que le modèle équipe total_points
+-- profite immédiatement aux 12 modèles joueur déjà entraînés, alors que
+total_points ne couvrirait qu'une catégorie de paris plus étroite.
+
+2 décisions structurantes tranchées AVANT de coder (toutes les 2
+explicitement notées comme "pas abordées en détail" dans GAPS_OUVERTS.md),
+via AskUserQuestion, options recommandées retenues sans hésitation :
+1. Sémantique d'un pari série ambigu ("marque 30+") : "au moins une fois
+   sur la série" (pas "en moyenne", pas "prochain match précis").
+2. Fidélité domicile/extérieur : comme le modèle d'équipe (pas 1 seule
+   proba moyenne) -- coûte un peu plus de code, cohérent avec le refus
+   déjà exprimé par l'utilisateur de la simplification p=0.5 pour le
+   modèle d'équipe (séance précédente).
+
+simulate_series_with_stat() (series_probability.py) : extension de
+simulate_series(), DP sur l'état (victoires A, victoires B, stat déjà
+arrivée ?) -- une fois le flag "arrivée" à True, la stat de la suite ne
+compte plus, seul le vainqueur reste à déterminer. Hypothèse assumée :
+résultat du match et stat du joueur indépendants (pas de corrélation
+modélisée). Vérifié : cas limites (p_stat=0 -> 0%, p_stat=1 -> 100%
+garanti dès le match 1) + cross-check EXACT contre la formule fermée
+1-(1-p)^N marginalisée sur la distribution de longueur, dans le cas
+particulier où domicile=extérieur (doit alors coïncider puisque la stat
+n'influence plus qui gagne ni la longueur) -- coïncide au bit près.
+
+compute_series_stat_proba() (supabase_context.py) : la vraie pièce
+GÉNÉRIQUE -- wrappe compute_proba() (n'importe lequel des 12 modèles
+joueur) SANS aucune logique spécifique à une stat, 2 appels
+(is_home=1/0, même adversaire fixe toute la série) + 2 appels à
+compute_home_win_proba() (domicile A, domicile B) déjà construits la
+session précédente, combinés par simulate_series_with_stat().
+
+Testé en conditions réelles contre la vraie base (pas de test
+synthétique) : Jayson Tatum, "30+ points", Boston vs Lakers, saison
+2025-26 -- ~5%/match (cohérent avec un joueur à ~27-28 pts de moyenne),
+~24.7% sur la série entière, cohérent avec la longueur moyenne de la
+série (~5.6 matchs) et la formule attendue.
+
+GAPS_OUVERTS.md mis à jour : les 2 décisions tranchées documentées, pièce
+(c) marquée FAITE, liste des 6 pièces mise à jour (a0/(b)/(c) faites,
+restent (a) modèle équipe, (d) extraction IA, (e) résolution). Câblage
+service/app.py volontairement pas fait -- pas de consommateur tant que
+(d) ne reconnaît pas un pari série à l'extraction.
+```

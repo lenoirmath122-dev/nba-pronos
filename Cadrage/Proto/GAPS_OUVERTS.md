@@ -142,27 +142,50 @@
 > ouvert pour la pièce (c) (mécanisme générique d'agrégation "sur la série")
 > et les pièces (a)/(d)/(e) listées plus haut.
 >
-> **Reste à trancher avant de coder** (pas abordé en détail) : la sémantique
-> par défaut d'un pari série ambigu ("marque 30+" sans préciser) --
-> "au moins une fois sur la série" (proba la plus haute, cohérent avec
-> l'exemple total_points de l'utilisateur), "en moyenne sur la série", ou
-> "au prochain match précis" (dans ce cas, un pari MATCH déguisé, réductible
-> à l'existant). **6 pièces identifiées pour le pipeline complet**, à
-> construire une par une comme Phase 5/6 : (a0, AJOUTÉ 23/08 -- prérequis
-> décidé en 1er) modèle de proba de victoire PAR MATCH (`home_win`,
-> `entrainement_matchs`, domicile/extérieur inclus) + calcul récursif de
-> la longueur/du vainqueur de série qui s'en sert ; (a) modèle(s) équipe
-> (ex. `total_points`, entraînable dès maintenant sur `entrainement_matchs`,
-> indépendant de a0) ; (b) contexte équipe roulant en production (Supabase
-> `stats_equipes` n'a aujourd'hui que des infos statiques, pas de moyennes
-> glissantes -- à ajouter au rafraîchissement quotidien) ; (c) le mécanisme générique
-> d'agrégation "sur la série" (formule N-matchs ci-dessus) ; (d)
+> **Sémantique du pari série ambigu -- TRANCHÉE avec l'utilisateur le
+> 23/08/2026** : "au moins une fois sur la série" (proba qu'un événement se
+> produise sur AU MOINS UN des matchs réellement joués -- cohérent avec
+> l'exemple total_points de l'utilisateur). Les 2 autres options ("en
+> moyenne sur la série", "au prochain match précis" = pari MATCH déguisé)
+> écartées.
+>
+> **Pièce (c) -- mécanisme générique d'agrégation "sur la série" -- CODÉE ET
+> TESTÉE le 23/08/2026** : `simulate_series_with_stat()`
+> (`scripts/series_probability.py`, extension de `simulate_series()` --
+> DP sur l'état (victoires A, victoires B, stat déjà arrivée ?)) +
+> `compute_series_stat_proba()` (`service/supabase_context.py`), qui
+> wrappe N'IMPORTE LEQUEL des 12 modèles joueur existants via
+> `compute_proba()` SANS AUCUNE logique spécifique à une stat -- seule la
+> combinaison avec l'issue de la série est nouvelle. **2e décision tranchée
+> la même session** : fidèle domicile/extérieur (comme le modèle
+> d'équipe), pas une seule proba moyenne -- `p_stat_home`/`p_stat_away` du
+> joueur combinées à `p_a_home`/`p_a_away` de l'équipe via une DP qui
+> suppose résultat du match et stat du joueur INDÉPENDANTS (aucune
+> corrélation modélisée, hypothèse assumée). Vérifié : cas limites
+> (p_stat=0/1) + cross-check EXACT contre la formule fermée `1-(1-p)^N`
+> marginalisée sur la distribution de longueur quand domicile=extérieur
+> (doit coïncider dans ce cas précis, coïncide). Testé en conditions
+> réelles contre la vraie base (Jayson Tatum "30+points" vs Lakers,
+> saison 2025-26) : ~5%/match → ~24,7% sur la série, cohérent avec la
+> longueur moyenne (~5,6 matchs).
+>
+> **6 pièces identifiées pour le pipeline complet** (a0 et (c) FAITES) :
+> (a0, FAIT 23/08) modèle de proba de victoire PAR MATCH (`home_win`,
+> domicile/extérieur inclus) + calcul récursif de la longueur/du vainqueur
+> de série ; (a) modèle(s) équipe (ex. `total_points`, entraînable dès
+> maintenant sur `entrainement_matchs`, indépendant de a0) ; (b) contexte
+> équipe roulant en production (FAIT 23/08, `build_team_context()`) ; (c,
+> FAIT 23/08) le mécanisme générique d'agrégation "sur la série" ; (d)
 > extraction IA étendue (reconnaître un pari série + son type, y compris
 > hors joueur) ; (e) résolution étendue (`resolveCalculableBets.ts` : gérer
 > `scope=SERIES` en cherchant TOUS les vrais matchs déjà joués de la série,
 > pas un seul, et gérer les paris non-joueur via `matches.home_score`/
 > `away_score`, déjà synchronisé -- pas besoin du pipeline Data NBA pour ce
-> cas précis).
+> cas précis). **Restent à construire : (a), (d), (e).** Pas encore fait
+> non plus : câblage de `compute_series_stat_proba()`/`compute_home_win_
+> proba()` dans `service/app.py` (endpoint dédié) -- naturel une fois (d)
+> écrit (l'extraction IA doit d'abord reconnaître un pari série avant
+> qu'un endpoint ait de quoi être appelé).
 
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**
