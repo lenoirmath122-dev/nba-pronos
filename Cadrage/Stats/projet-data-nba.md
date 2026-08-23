@@ -2,15 +2,30 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 22/08/2026, suite 15 — coût IA optimisé)
+> ## 🔴 REPRISE ICI (état au 23/08/2026, suite 16 — Phase 6 COMPLÈTE)
 >
-> **Coût des appels de structuration IA optimisé (§35)** : modèle par
-> défaut Opus 5 -> Sonnet 5 (~2.6x moins cher, résultats identiques sur
-> les cas à risque testés) + descriptions du schéma Zod condensées (vrai
-> poste de coût, ~2000 tokens/appel, incompressible par cache -- pas
-> `system` qui lui ne pèse que ~450 tokens, sous le seuil de mise en
-> cache). Revalidé sur 7 cas réels, aucune régression.
-> `tsc`/`eslint`/`vitest`/`next build` propres, commité et poussé.
+> **Phase 6 (résolution automatique des paris IA calculables) COMPLÈTE ET
+> VÉRIFIÉE DE BOUT EN BOUT** : `lib/ai/resolveCalculableBets.ts` (pont
+> match appli <-> vrai match NBA via `entity_mappings`/NBA_API, comparaison
+> de la vraie stat au seuil, écriture WON/LOST + points) + route
+> `/api/resolve-bets`, chaînée en bout du rafraîchissement quotidien Data
+> NBA. Testé en conditions réelles avec un vrai match passé (Atlanta @ NY
+> Knicks, 23/04/2026) monté temporairement dans la compétition active,
+> résolu correctement (WON, points corrects), puis entièrement nettoyé --
+> aucune trace laissée. Détail complet : `JOURNAL_SESSIONS.md`.
+> - **Reste ouvert** : cette compétition NBA Cup de test (dates fictives
+>   d'août) ne pourra jamais déclencher ce mécanisme pour de vrai --
+>   seule une compétition alignée sur le vrai calendrier NBA (saison
+>   réelle, dès octobre) le fera tourner naturellement.
+>
+> Plus tôt (état au 22/08/2026, suite 15) — **Coût des appels de
+> structuration IA optimisé (§35)** : modèle par défaut Opus 5 -> Sonnet 5
+> (~2.6x moins cher, résultats identiques sur les cas à risque testés) +
+> descriptions du schéma Zod condensées (vrai poste de coût, ~2000
+> tokens/appel, incompressible par cache -- pas `system` qui lui ne pèse
+> que ~450 tokens, sous le seuil de mise en cache). Revalidé sur 7 cas
+> réels, aucune régression. `tsc`/`eslint`/`vitest`/`next build` propres,
+> commité et poussé.
 >
 > Plus tôt (état au 22/08/2026, suite 14) — **Phase 5 (paris persos
 > pilotés par la proba) CLOSE** : les 4 points réalisables (modèle,
@@ -2020,4 +2035,54 @@ dans le SDK).
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (37 routes) propres, commité
 et poussé. `structureBet()` garde un paramètre `model` optionnel (défaut
 Sonnet 5) -- permet de comparer/revenir à Opus 5 sans dupliquer le code.
+```
+
+## 36. Phase 6 — résolution automatique des paris IA calculables (22-23/08/2026)
+
+```text
+Demandé par l'utilisateur : résoudre WON/LOST automatiquement les paris
+IA calculables, via les vraies stats déjà collectées par le rafraîchissement
+quotidien (§25/§26) plutôt que manuellement par un admin. 2 forks tranchés
+avec l'utilisateur avant de coder : (1) scope MATCH uniquement pour ce 1er
+jet (paris SÉRIE trop ambigus, restent manuels) ; (2) pont match appli <->
+vraies stats NBA via `entity_mappings` (déjà prévue pour ce genre de pont,
+jusqu'ici limitée à Highlightly), nouveau `source_type` NBA_API.
+
+4 blocs :
+1. `structured_player_id` capturé à la structuration (Cloud Run renvoie
+   désormais `joueur_id`, colonne + RPC `update_bet_structuration` mis à
+   jour) -- remplace le re-matching par nom, source de bugs cette
+   session.
+2-3. `lib/ai/resolveCalculableBets.ts` : `resolveNbaGameId()` (rapprochement
+   déterministe date America/New_York + paire d'équipes, cache-first via
+   entity_mappings, même philosophie que le rapprochement Highlightly
+   existant) + `computeOutcome()` (même définition EXACTE double-double/
+   triple-double que build_targets.py, égalité au seuil = perdu) +
+   `resolveCalculableBets()` (boucle, écrit WON/LOST, appelle
+   `recomputeBet()` déjà existant pour les points).
+4. Route `/api/resolve-bets` (même auth Bearer SYNC_SECRET que
+   /api/sync/*), chaînée en bout de `refresh-stats-supabase.yml` --
+   jamais sur le sync Highlightly 30 min (qui détecte FINISHED mais n'a
+   pas les vraies stats de boîte, rafraîchies 1x/jour).
+
+Vérification de bout en bout en conditions réelles : la compétition de
+test NBA Cup utilise des dates fictives d'août (hors saison NBA réelle),
+donc aucun vrai match ne pouvait servir de cas de test directement.
+Créé TEMPORAIREMENT dans la compétition active (accord explicite de
+l'utilisateur) une série + un match + un pari pointant vers un vrai
+match passé (Atlanta Hawks @ New York Knicks, 23/04/2026, game_id NBA
+0042500123, Jalen Johnson réellement auteur de 24 points ce jour-là) --
+pari test "+ de 20 points" résolu WON, points_awarded=15 corrects,
+entity_mappings NBA_API créé correctement, le vrai pari en attente de
+l'utilisateur (Bam Adebayo) correctement ignoré ("match pas encore
+terminé") sans effet de bord. Les 4 lignes de test supprimées juste
+après, aucune trace laissée.
+
+tsc/eslint/vitest (37/37)/next build (38 routes) propres à chaque étape,
+commité et poussé.
+
+Limite connue, notée pour plus tard : cette compétition de test précise
+ne pourra jamais déclencher ce mécanisme pour de vrai (dates fictives) --
+seule une compétition alignée sur le vrai calendrier NBA le fera tourner
+naturellement (saison réelle, dès octobre 2026).
 ```

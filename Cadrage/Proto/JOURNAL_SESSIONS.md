@@ -9169,3 +9169,46 @@ poussé. Reste (bloc 4 restant) : redéployer Cloud Run + appliquer la
 migration structured_player_id (toujours en attente, bloc 1) avant que
 quoi que ce soit ici puisse tourner pour de vrai.
 ```
+
+## Phase 6 : vérification complète en conditions réelles (22-23/08/2026)
+
+```text
+Cloud Run redéployé + migration structured_player_id appliquée par
+l'utilisateur. Vérifiés séparément :
+- Service /predict renvoie bien joueur_id (curl direct).
+- Colonne structured_player_id existe (requête directe).
+- Pari réel "Moussa Diabate marque +10 points" -> proba 0%,
+  structured_player_id NULL : d'abord pris pour un bug, en fait
+  COMPORTEMENT CORRECT -- vérifié que Diabaté joue pour Charlotte, pas
+  pour Denver/Boston (le match visé) -- branche player_not_in_match,
+  qui n'appelle jamais le service donc ne capture jamais de player_id
+  par construction. L'utilisateur confirme que c'était un test voulu
+  ("je me suis emmêlé les pinceaux").
+- Pari réel suivant "Bam plante plus de 30 points" (Bam Adebayo, joueur
+  réellement dans le match visé) -> structured_player_id=1628389 capturé
+  correctement. Chemin normal confirmé bout en bout.
+
+Test COMPLET du bloc 4 (résolution automatique), demandé par
+l'utilisateur ("on peut faire un test sur des matchs antérieurs ?") :
+la compétition de test utilise des dates fictives d'août (aucun vrai
+match NBA ce jour-là), donc impossible d'utiliser un match déjà en
+place. Créé TEMPORAIREMENT dans la compétition ACTIVE (accord explicite
+de l'utilisateur) : une série + un match + un pari pointant vers un VRAI
+match passé (Atlanta Hawks @ New York Knicks, 23/04/2026, game_id NBA
+0042500123) avec un vrai joueur (Jalen Johnson, 24 points réels ce
+jour-là) et un pari test "+ de 20 points" (WON attendu).
+
+Résultat de POST /api/resolve-bets sur ces données réelles :
+- Pari test résolu WON, points_awarded=15 (barème palier 3), resolution_
+  reason correct, resolved_by_admin_id=null (signal système).
+- entity_mappings NBA_API créé et correct (source_ref = le bon game_id).
+- Le pari réel en attente (Bam Adebayo, match pas encore terminé) a été
+  correctement IGNORÉ ("match pas encore terminé") -- aucun effet de
+  bord sur les vrais paris de l'utilisateur.
+
+Nettoyage : les 4 lignes de test (série/match/pari/mapping) supprimées
+juste après vérification -- confirmé qu'il n'en reste aucune trace,
+rien d'autre touché.
+
+PHASE 6 COMPLÈTE ET VÉRIFIÉE DE BOUT EN BOUT EN CONDITIONS RÉELLES.
+```
