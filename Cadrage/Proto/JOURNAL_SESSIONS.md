@@ -9291,3 +9291,23 @@ pièces manquantes.
 
 Détail complet : projet-data-nba.md §37.
 ```
+
+## Gap Supabase trouvé (team_id/stats avancées manquantes), pause décidée (23/08/2026)
+
+```text
+L'utilisateur donne le feu vert pour continuer (pièce b, contexte équipe
+en production). Vérifié en direct sur Supabase avant de coder : la table
+stats_box_scores n'a ni team_id ni off_rating/def_rating/net_rating/pace
+-- justement les features les plus importantes du modèle home_win tout
+juste entraîné. Ces colonnes existent déjà en local (box_scores/
+box_scores_advanced, niveau joueur, déjà agrégées par équipe dans
+build_team_games()) -- rien à extraire de nouveau depuis nba_api, juste
+à étendre ce qui est copié vers Supabase (jamais fait jusqu'ici, le
+projet n'avait besoin que de stats joueur avant cette session).
+
+Proposé à l'utilisateur : continuer (migration + backfill_supabase.py +
+refresh_daily.py + contexte équipe à la volée dans supabase_context.py,
+même philosophie sans état que pour les joueurs) ou s'arrêter là.
+Décidé : s'arrêter (session déjà très longue) -- plan complet documenté
+dans GAPS_OUVERTS.md pour reprise directe.
+```

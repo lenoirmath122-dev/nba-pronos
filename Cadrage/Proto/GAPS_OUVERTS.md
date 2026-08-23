@@ -96,6 +96,40 @@
 > un vrai affrontement. Détail complet : `projet-data-nba.md` §37. Retire
 > la pièce a0 de la liste des pièces manquantes ci-dessous.
 >
+> **BLOQUANT trouvé juste après, PAS CODÉ, prêt à reprendre directement** :
+> pour utiliser le modèle `home_win` en PRODUCTION (donc pour la pièce b,
+> "contexte équipe roulant"), la table Supabase `stats_box_scores`
+> (vérifiée en direct le 23/08/2026) **n'a ni `team_id` ni les 4 stats
+> avancées équipe** (`off_rating`/`def_rating`/`net_rating`/`pace`) --
+> or ce sont justement les features les PLUS importantes du modèle
+> `home_win` (vérifié dans le classement d'importance). Ces colonnes
+> existent bien EN LOCAL (`box_scores`/`box_scores_advanced` dans
+> `nba.db`, au niveau JOUEUR -- `build_team_games()` dans
+> `build_features.py` les agrège déjà par équipe via `.groupby(["game_id",
+> "team_id"])`), donc **rien à extraire de nouveau depuis nba_api** --
+> juste étendre ce qui est copié vers Supabase. Jamais fait jusqu'ici
+> car le projet n'avait besoin que de stats JOUEUR jusqu'à cette session.
+> Plan pour la prochaine fois (décidé de s'arrêter avant de coder, session
+> déjà longue) :
+> 1. Migration Supabase : ajouter `team_id integer`, `off_rating numeric`,
+>    `def_rating numeric`, `net_rating numeric`, `pace numeric` à
+>    `stats_box_scores`.
+> 2. Mettre à jour `backfill_supabase.py` pour copier ces 5 colonnes
+>    (déjà dispo localement), relancer un backfill (au moins pour
+>    remplir les lignes déjà en base -- à voir si un backfill ciblé
+>    "juste ces colonnes" suffit plutôt qu'un backfill complet).
+> 3. Mettre à jour `refresh_daily.py` pour continuer à les alimenter
+>    chaque jour.
+> 4. Construire le contexte ÉQUIPE **à la volée** dans
+>    `supabase_context.py` (même philosophie "sans état" que
+>    `build_context()` pour les joueurs aujourd'hui -- PAS de nouvelle
+>    table précalculée de moyennes glissantes équipe, juste lire les N
+>    derniers matchs et calculer au moment de la requête). Logique à
+>    reproduire depuis `build_team_games()`/`add_team_rolling_features()`
+>    (`build_features.py`) : agrégation pts marqués/encaissés par
+>    (game_id, team_id), moyennes 5/10 matchs, split victoires
+>    domicile/extérieur, historique confrontations directes.
+>
 > **Reste à trancher avant de coder** (pas abordé en détail) : la sémantique
 > par défaut d'un pari série ambigu ("marque 30+" sans préciser) --
 > "au moins une fois sur la série" (proba la plus haute, cohérent avec
