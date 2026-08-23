@@ -62,6 +62,26 @@ function MyPickContent({
   );
 }
 
+// Petite indication "Ton pari" sur la carte repliée (23/08/2026, demandé
+// par l'utilisateur juste après l'affichage au clic ci-dessous) -- même
+// patron que MyPickContent (tag + libellé court), mais ne révèle JAMAIS le
+// contenu du pari (description/proba) ici : ça reste réservé au clic
+// (BetBlock, SeriesDrillDown.tsx) pour ne pas rendre la carte trop chargée.
+function MyBetContent({ myBet }: { myBet: NonNullable<BracketNode["myBet"]> }) {
+  const label = myBet.status === "WON" ? "gagné" : myBet.status === "LOST" ? "perdu" : "en jeu";
+  const className =
+    myBet.status === "WON" ? styles.myBetWon : myBet.status === "LOST" ? styles.myBetLost : styles.myBetNeutral;
+  return (
+    <>
+      <span className={styles.myBetTag}>— Ton pari</span>
+      <span className={className}>
+        {label}
+        {myBet.pointsAwarded !== null && ` (${myBet.pointsAwarded} pt${myBet.pointsAwarded > 1 ? "s" : ""})`}
+      </span>
+    </>
+  );
+}
+
 function TeamLabel({
   team,
   isChampion,
@@ -232,6 +252,12 @@ export function NodeCard({ node, isOpen, disabled, onToggle, showBetLink }: Node
       {!isLive && node.myPick && (
         <span className={styles.myPickLine}>
           <MyPickContent myPick={node.myPick} isCorrect={isMyPickCorrect} showPoints={liveStatus === "FINISHED"} />
+        </span>
+      )}
+
+      {node.myBet && (
+        <span className={styles.myPickLine}>
+          <MyBetContent myBet={node.myBet} />
         </span>
       )}
 

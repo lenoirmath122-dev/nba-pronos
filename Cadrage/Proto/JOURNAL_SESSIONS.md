@@ -9726,3 +9726,22 @@ openNode). Réutilise openSeriesId/isOpen déjà en place, aucun nouvel état.
 
 tsc/eslint/vitest(37/37)/next build propres.
 ```
+
+## Pari série : petite indication sur la carte repliée (23/08/2026, suite)
+
+```text
+Utilisateur demande une indication visible sans avoir à cliquer, une fois
+le détail complet déplacé derrière le clic (entrée précédente).
+
+Ajouté MyBetContent (NodeCard.tsx) -- même patron que MyPickContent déjà
+en place pour le pronostic de bracket (tag + libellé court, jamais le
+contenu complet du pari ici, qui reste réservé au clic). "— Ton pari" +
+statut court (en jeu/gagné/perdu) + points si scoré. Nouvelles classes CSS
+myBetTag/myBetNeutral/myBetWon/myBetLost (NodeCard.module.css), mêmes
+tokens couleur que BetBlock.module.css (--color-win/--color-loss) --
+différent de myPickNeutral/myPickCorrect qui, eux, ne portent jamais de
+rouge (un pronostic manqué n'est pas un résultat de pari réel, distinction
+déjà actée dans le code).
+
+tsc/eslint/vitest(37/37)/next build propres.
+```

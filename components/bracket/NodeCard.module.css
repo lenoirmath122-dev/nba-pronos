@@ -257,6 +257,32 @@
   font-weight: var(--font-weight-semibold);
 }
 
+/* --- Pari personnalisé du joueur sur cette série (23/08/2026) --- */
+/* Même registre que .myPickTag/.myPickNeutral/.myPickCorrect ci-dessus,
+   mais un pari GAGNÉ/PERDU est un résultat réel de pari (pas un pronostic
+   manqué) -- contrairement à .myPickNeutral, .myPickLost porte bien
+   --color-loss, même convention que BetBlock.module.css::statusLost. */
+.myBetTag {
+  flex-shrink: 0;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.myBetNeutral {
+  color: var(--color-text-secondary);
+}
+
+.myBetWon {
+  color: var(--color-win);
+  font-weight: var(--font-weight-semibold);
+}
+
+.myBetLost {
+  color: var(--color-loss);
+}
+
 /* Petit bouton Parier/Modifier (15/08/2026) : aligné à droite (align-self,
    `.card` est en colonne donc étire ses enfants par défaut), jamais toute la
    largeur — reste un geste secondaire à côté du contenu de la carte, pas
