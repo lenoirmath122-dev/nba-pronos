@@ -7,10 +7,14 @@
 // de statCodes.ts (STAT_CODES, joueur) -- meme raison de separation que
 // matchStatCodes.ts (aucun invariant partage).
 
-export type TeamStatCode = "reb";
+export type TeamStatCode = "reb" | "ast" | "fg3m" | "stl" | "blk";
 
-export const TEAM_STAT_CODES: TeamStatCode[] = ["reb"];
+export const TEAM_STAT_CODES: TeamStatCode[] = ["reb", "ast", "fg3m", "stl", "blk"];
 
 export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
   reb: "rebonds de l'équipe",
+  ast: "passes décisives de l'équipe",
+  fg3m: "3-points réussis de l'équipe",
+  stl: "interceptions de l'équipe",
+  blk: "contres de l'équipe",
 };

@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { nyDateString } from "@/lib/dates/newyork";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import { NO_THRESHOLD_STATS, PERCENTAGE_STATS, type StatCode } from "./statCodes";
+import { TEAM_STAT_CODES, type TeamStatCode } from "./teamStatCodes";
 
 // Phase 6 (résolution automatique des paris IA calculables, 22/08/2026,
 // demandé par l'utilisateur) -- bloc 2-3 du plan (voir JOURNAL_SESSIONS.md).
@@ -551,13 +552,21 @@ export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSumm
   return summary;
 }
 
-type EligibleReboundsBetRow = {
+type EligibleTeamStatBetRow = {
   id: string;
   match_id: string | null;
-  structured_stat: string | null; // "reb" (TEAM_STAT, vise structured_team_id) ou "total_reb" (MATCH_TOTAL, combiné)
-  structured_team_id: string | null; // non-null uniquement pour "reb"
+  structured_stat: string | null; // "{stat}" (TEAM_STAT, vise structured_team_id) ou "total_{stat}" (MATCH_TOTAL, combiné)
+  structured_team_id: string | null; // non-null uniquement pour la forme "{stat}"
   structured_threshold: number | null;
   structured_comparison: "OVER" | "UNDER" | null;
+};
+
+// Libellés FR pour le message de résolution (23/08/2026, piece (a) suite --
+// reb fait 1er en pilote, ast/fg3m/stl/blk généralisés dans la foulée, même
+// geste). Distinct de teamStatCodes.ts::TEAM_STAT_LABELS_FR (celui-ci
+// contient déjà "de l'équipe", pas adapté à "X {label} du match").
+const TEAM_STAT_RESOLUTION_LABELS_FR: Record<TeamStatCode, string> = {
+  reb: "rebonds", ast: "passes décisives", fg3m: "3-points réussis", stl: "interceptions", blk: "contres",
 };
 
 /** Equipe NBA reelle (stats_equipes.team_id, numerique) pour une equipe de
@@ -581,27 +590,29 @@ async function resolveNbaTeamId(supabase: SupabaseServiceClient, appTeamId: stri
 }
 
 /** Pièce (a) du chantier paris équipe, suite (GAPS_OUVERTS.md, 23/08/2026)
- *  -- résolution des paris rebonds (les 2 formes : TEAM_STAT "reb" pour une
- *  équipe précise, MATCH_TOTAL "total_reb" combiné). Contrairement à
- *  resolveCalculableMatchTotalBets() (total_points, direct via
- *  matches.home_score/away_score) : les rebonds n'existent PAS sur
- *  `matches`, seulement dans stats_box_scores (pipeline Data NBA) --
- *  réutilise resolveNbaGameId() (déjà éprouvée côté joueur) + une nouvelle
- *  résolution d'équipe NBA (resolveNbaTeamId(), même rapprochement par
- *  tricode) pour filtrer/sommer les vraies stats. MATCH uniquement (même
- *  limite que la prédiction). */
-export async function resolveCalculableReboundsBets(): Promise<ResolveBetsSummary> {
+ *  -- résolution des paris stat équipe (les 2 formes, pour reb/ast/fg3m/stl/
+ *  blk : TEAM_STAT "{stat}" pour une équipe précise, MATCH_TOTAL "total_{stat}"
+ *  combiné -- reb fait 1er en pilote, généralisé aux 4 autres dans la foulée,
+ *  même geste). Contrairement à resolveCalculableMatchTotalBets()
+ *  (total_points, direct via matches.home_score/away_score) : ces stats
+ *  n'existent PAS sur `matches`, seulement dans stats_box_scores (pipeline
+ *  Data NBA) -- réutilise resolveNbaGameId() (déjà éprouvée côté joueur) +
+ *  une nouvelle résolution d'équipe NBA (resolveNbaTeamId(), même
+ *  rapprochement par tricode) pour filtrer/sommer les vraies stats. MATCH
+ *  uniquement (même limite que la prédiction). */
+export async function resolveCalculableTeamStatBets(): Promise<ResolveBetsSummary> {
   const supabase = getServiceClient();
   const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
 
+  const eligibleStats = TEAM_STAT_CODES.flatMap((stat) => [stat, `total_${stat}`]);
   const { data: betsData } = await supabase
     .from("bets")
     .select("id, match_id, structured_stat, structured_team_id, structured_threshold, structured_comparison")
     .eq("scope", "MATCH")
     .eq("is_calculable", true)
     .eq("status", "VALIDATED")
-    .in("structured_stat", ["reb", "total_reb"]);
-  const bets = (betsData ?? []) as EligibleReboundsBetRow[];
+    .in("structured_stat", eligibleStats);
+  const bets = (betsData ?? []) as EligibleTeamStatBetRow[];
   if (bets.length === 0) return summary;
 
   const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
@@ -633,7 +644,9 @@ export async function resolveCalculableReboundsBets(): Promise<ResolveBetsSummar
       summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
       continue;
     }
-    if (bet.structured_stat === "reb" && !bet.structured_team_id) {
+    const isTotal = bet.structured_stat?.startsWith("total_") ?? false;
+    const stat = (isTotal ? bet.structured_stat?.slice("total_".length) : bet.structured_stat) as TeamStatCode;
+    if (!isTotal && !bet.structured_team_id) {
       summary.skipped.push({ betId: bet.id, reason: "équipe manquante" });
       continue;
     }
@@ -644,14 +657,14 @@ export async function resolveCalculableReboundsBets(): Promise<ResolveBetsSummar
       continue;
     }
 
-    let actualReb: number;
-    if (bet.structured_stat === "total_reb") {
-      const { data: rows } = await supabase.from("stats_box_scores").select("reb").eq("game_id", gameId);
+    let actualStat: number;
+    if (isTotal) {
+      const { data: rows } = await supabase.from("stats_box_scores").select(stat).eq("game_id", gameId);
       if (!rows || rows.length === 0) {
         summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
         continue;
       }
-      actualReb = rows.reduce((sum, r) => sum + ((r.reb as number | null) ?? 0), 0);
+      actualStat = rows.reduce((sum, r) => sum + (((r as Record<string, number | null>)[stat]) ?? 0), 0);
     } else {
       const nbaTeamId = await resolveNbaTeamId(supabase, bet.structured_team_id as string);
       if (nbaTeamId === null) {
@@ -660,25 +673,27 @@ export async function resolveCalculableReboundsBets(): Promise<ResolveBetsSummar
       }
       const { data: rows } = await supabase
         .from("stats_box_scores")
-        .select("reb")
+        .select(stat)
         .eq("game_id", gameId)
         .eq("team_id", nbaTeamId);
       if (!rows || rows.length === 0) {
         summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour cette équipe" });
         continue;
       }
-      actualReb = rows.reduce((sum, r) => sum + ((r.reb as number | null) ?? 0), 0);
+      actualStat = rows.reduce((sum, r) => sum + (((r as Record<string, number | null>)[stat]) ?? 0), 0);
     }
 
     const won =
-      bet.structured_comparison === "UNDER" ? actualReb < bet.structured_threshold : actualReb > bet.structured_threshold;
+      bet.structured_comparison === "UNDER" ? actualStat < bet.structured_threshold : actualStat > bet.structured_threshold;
     const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
 
     const { data: updated } = await supabase
       .from("bets")
       .update({
         status: outcome,
-        resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${actualReb} rebonds).`,
+        resolution_reason:
+          `Résolu automatiquement via les statistiques officielles du match ` +
+          `(${actualStat} ${TEAM_STAT_RESOLUTION_LABELS_FR[stat]}).`,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

@@ -1,6 +1,7 @@
 import "server-only";
 import { NO_THRESHOLD_STATS } from "./statCodes";
 import type { StatCode } from "./statCodes";
+import type { TeamStatCode } from "./teamStatCodes";
 
 // Appel HTTP au micro-service Python déployé sur Google Cloud Run
 // (Cadrage/Stats/service/app.py, projet-data-nba.md §24) -- SEULE
@@ -139,8 +140,9 @@ export async function predictSeriesStat(
 
 /**
  * Pari MATCH_TOTAL (pièce (a) du chantier, GAPS_OUVERTS.md) -- pari SANS
- * JOUEUR, stat COMBINÉE d'UN match précis (total_points, puis total_reb --
- * 23/08/2026, même contrat HTTP pour les 2, factorisé ici). Contrairement à
+ * JOUEUR, total_points : la seule stat combinée qui n'est PAS un
+ * TEAM_STAT_CODE (reb/ast/fg3m/stl/blk passent par predictTotalTeamStat()
+ * ci-dessous, endpoint générique). Contrairement à
  * predictSeriesStat(), l'inversion OVER/UNDER (1-proba) est SÛRE côté
  * service ici (voir supabase_context.py::compute_total_points_proba pour le
  * pourquoi -- une prédiction à l'échelle d'un seul match, pas une
@@ -196,28 +198,62 @@ export async function predictTotalPoints(
   return callMatchTotalPredict("/predict-total-points", homeTeamName, awayTeamName, threshold, comparison, asOfDate);
 }
 
-export async function predictTotalRebounds(
+/**
+ * Pari MATCH_TOTAL pour une stat de TEAM_STAT_CODES (reb/ast/fg3m/stl/blk --
+ * pièce (a) suite, GAPS_OUVERTS.md, 23/08/2026 : reb fait 1er via un endpoint
+ * dédié /predict-total-rebounds, généralisé côté Python (app.py) le jour même
+ * pour appeler la même fonction générique -- côté TS, un seul appelant pour
+ * les 5 stats via l'endpoint générique /predict-total-team-stat plutôt que
+ * 5 fonctions dédiées ; total_points n'est PAS un TEAM_STAT_CODE, reste séparé
+ * (predictTotalPoints ci-dessus).
+ */
+export async function predictTotalTeamStat(
+  stat: TeamStatCode,
   homeTeamName: string,
   awayTeamName: string,
   threshold: number,
   comparison: "OVER" | "UNDER",
   asOfDate: string,
 ): Promise<{ proba: number; label: string } | null> {
-  return callMatchTotalPredict("/predict-total-rebounds", homeTeamName, awayTeamName, threshold, comparison, asOfDate);
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-total-team-stat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stat,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        seuil: threshold,
+        comparison,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba, label: data.label };
+  } catch {
+    return null;
+  }
 }
 
 /**
  * Pari TEAM_STAT (pièce (a) suite, GAPS_OUVERTS.md, 23/08/2026) -- stat
  * d'UNE équipe précise sur CE match (perspective "own"/"opp", pas
- * domicile/extérieur -- contrairement à predictTotalPoints/predictTotalRebounds).
- * isHome : contexte RÉEL du match visé (pas un choix arbitraire) -- résolu
- * par l'appelant depuis matches.home_team_id/away_team_id.
+ * domicile/extérieur -- contrairement à predictTotalPoints/predictTotalTeamStat).
+ * isHome : contexte RÉEL du match visé (pas un choix
+ * arbitraire) -- résolu par l'appelant depuis matches.home_team_id/away_team_id.
  *
- * Endpoint /predict-team-rebounds codé en dur : seul code TEAM_STAT_CODES
- * pour l'instant ("reb"). À généraliser (comme callMatchTotalPredict()
- * ci-dessus) le jour où un 2e code équipe s'ajoute (ast/fg3m/stl/blk).
+ * Généralisé (23/08/2026) via l'endpoint générique /predict-team-stat
+ * (app.py, `stat` transmis tel quel) pour couvrir reb/ast/fg3m/stl/blk sans
+ * 5 fonctions dédiées.
  */
 export async function predictTeamStat(
+  stat: TeamStatCode,
   teamName: string,
   opponentName: string,
   isHome: boolean,
@@ -229,10 +265,11 @@ export async function predictTeamStat(
   if (!url) return null;
 
   try {
-    const res = await fetch(`${url.replace(/\/$/, "")}/predict-team-rebounds`, {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-team-stat`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
+        stat,
         equipe: teamName,
         adversaire: opponentName,
         equipe_domicile: isHome,

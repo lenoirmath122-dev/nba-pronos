@@ -1,7 +1,8 @@
 import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
-import { predictOverUnder, predictSeriesStat, predictTotalPoints, predictTotalRebounds, predictTeamStat } from "./statsService";
+import { predictOverUnder, predictSeriesStat, predictTotalPoints, predictTotalTeamStat, predictTeamStat } from "./statsService";
+import type { TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 
@@ -166,14 +167,23 @@ export async function structureAndScoreBet(
       // as_of_date = date RÉELLE du match visé (pas "aujourd'hui" comme pour
       // un pari série) -- un match précis a une vraie date connue, plus
       // fidèle pour le calcul de repos/contexte équipe.
-      const predictMatchTotal = structuration.match_stat === "total_reb" ? predictTotalRebounds : predictTotalPoints;
-      const prediction = await predictMatchTotal(
-        matchTeams.homeTeamName,
-        matchTeams.awayTeamName,
-        structuration.threshold,
-        structuration.comparison,
-        matchTeams.scheduledAt.slice(0, 10),
-      );
+      const prediction =
+        structuration.match_stat === "total_points"
+          ? await predictTotalPoints(
+              matchTeams.homeTeamName,
+              matchTeams.awayTeamName,
+              structuration.threshold,
+              structuration.comparison,
+              matchTeams.scheduledAt.slice(0, 10),
+            )
+          : await predictTotalTeamStat(
+              structuration.match_stat.slice("total_".length) as TeamStatCode,
+              matchTeams.homeTeamName,
+              matchTeams.awayTeamName,
+              structuration.threshold,
+              structuration.comparison,
+              matchTeams.scheduledAt.slice(0, 10),
+            );
       if (!prediction) {
         await markNotCalculable();
         return;
@@ -221,6 +231,7 @@ export async function structureAndScoreBet(
       const opponentName = isHome ? matchTeams.awayTeamName : matchTeams.homeTeamName;
       const teamId = isHome ? matchTeams.homeTeamId : matchTeams.awayTeamId;
       const prediction = await predictTeamStat(
+        structuration.team_stat as TeamStatCode,
         teamName,
         opponentName,
         isHome,

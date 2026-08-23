@@ -9881,3 +9881,62 @@ GAPS_OUVERTS.md mis à jour avec le détail complet des 7 morceaux + une
 note sur la généralisation à ast/fg3m/stl/blk (patron désormais éprouvé 2
 fois, mécanique mais pas fait).
 ```
+
+## Pièce (a) suite -- généralisation ast/fg3m/stl/blk (23/08/2026, même jour)
+
+```text
+"Commit et on enchaine, je redéploye en parallèle" -- juste après avoir
+commité la pièce rebonds, l'utilisateur enchaîne directement sur la
+généralisation notée "pas fait" dans GAPS_OUVERTS.md, pendant qu'il
+redéploie Cloud Run pour la pièce rebonds de son côté.
+
+Patron désormais éprouvé 2 fois (pts -> reb), appliqué une 3e fois à 4
+stats d'un coup (ast/fg3m/stl/blk) plutôt qu'une par une -- le geste est
+mécanique, pas de raison de le refaire 4x séparément :
+
+1. build_features.py/build_targets.py généralisés en boucle
+   (TEAM_COUNTING_STATS/TEAM_TARGET_STATS) plutôt que dupliqués --
+   contrairement à la pièce reb (qui avait ajouté reb à la main à côté de
+   pts), ici toute la liste est traitée uniformément. Vérifié par
+   exécution réelle des 2 scripts + spot-check des valeurs.
+2. 2 nouveaux scripts d'entraînement (train_total_team_stats_model.py/
+   train_team_stats_model.py) qui bouclent sur les 4 stats plutôt que 8
+   scripts dédiés de plus -- les 2 scripts reb dédiés restent tels quels,
+   pas fusionnés (fonctionnent, pas de raison de toucher).
+3. Décision prise en cours de route : plutôt que garder les 4 fonctions
+   dédiées rebonds à côté de nouvelles fonctions génériques (duplication),
+   remplacé purement et simplement par des versions paramétrées par
+   `stat` -- reb passe maintenant par le même chemin de code que les 4
+   autres. Revérifié par un appel réel : même proba qu'avant (0.2173,
+   bit-identique) sur le même cas test.
+4. 2 endpoints génériques /predict-total-team-stat et /predict-team-stat
+   (champ `stat`, 400 clair si code inconnu) -- les 2 endpoints dédiés reb
+   restent déployés (contrat HTTP déjà en usage), appellent en interne les
+   mêmes fonctions génériques désormais.
+5. Rien à changer côté schéma Zod (structureBet.ts) -- déjà généralisé
+   depuis les listes de codes dès la pièce reb, juste étendre les listes
+   elles-mêmes (teamStatCodes.ts/matchStatCodes.ts).
+6. statsService.ts : predictTotalRebounds (dédiée) supprimée -- plus
+   personne ne l'appelait une fois predictTotalTeamStat(stat, ...) en
+   place pour les 5 stats. predictTeamStat gagne un paramètre stat.
+7. resolveCalculableReboundsBets() renommée resolveCalculableTeamStatBets()
+   comme annoncé dans la note de la pièce reb -- filtre généralisé
+   (TEAM_STAT_CODES.flatMap), logique if/in remplacée par isTotal/stat
+   dérivés dynamiquement, .select(stat) au lieu de .select("reb") figé.
+
+Testé en conditions réelles à chaque étape : appel direct supabase_context
+(10 prédictions, Boston vs Lakers) + serveur HTTP local réel (uvicorn) sur
+les 2 nouveaux endpoints + un appel de régression sur l'endpoint dédié reb
+(même proba qu'avant, confirmé) + 10 vrais appels Claude Sonnet 5
+(ast/fg3m/stl/blk × équipe précise/combiné, plus 4 cas de régression :
+joueur, total_points, reb, rejet d'un pari cumulé sur la série). Tous
+corrects. tsc/eslint/vitest(37/37)/next build propres.
+
+Pas encore redéployé sur Cloud Run (l'utilisateur redéploie la pièce reb
+en parallèle -- cette généralisation nécessitera un 2e redéploiement pour
+être active en prod). Pas testé en conditions réelles depuis l'appli.
+
+GAPS_OUVERTS.md mis à jour : nouvelle entrée en tête détaillant les 7
+points, note "généralisation prête, pas fait" de la pièce reb remplacée
+par un pointeur vers cette entrée.
+```

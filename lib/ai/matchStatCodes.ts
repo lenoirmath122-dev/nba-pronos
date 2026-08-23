@@ -10,12 +10,21 @@
 // reste symetrique match entier (ex. "90+ rebonds au total") -- 2 formes du
 // meme pari, demandees explicitement par l'utilisateur (23/08/2026).
 // total_reb ajoute le meme jour (rebonds combines, a cote de total_points).
+// total_ast/total_fg3m/total_stl/total_blk generalises dans la foulee
+// (23/08/2026, meme patron exactement) -- cf. teamStatCodes.ts pour la
+// forme "equipe precise" equivalente de chacune de ces 4 stats.
 
-export type MatchStatCode = "total_points" | "total_reb";
+export type MatchStatCode = "total_points" | "total_reb" | "total_ast" | "total_fg3m" | "total_stl" | "total_blk";
 
-export const MATCH_STAT_CODES: MatchStatCode[] = ["total_points", "total_reb"];
+export const MATCH_STAT_CODES: MatchStatCode[] = [
+  "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk",
+];
 
 export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
   total_points: "points combinés du match (les 2 équipes additionnées)",
   total_reb: "rebonds combinés du match (les 2 équipes additionnées)",
+  total_ast: "passes décisives combinées du match (les 2 équipes additionnées)",
+  total_fg3m: "3-points réussis combinés du match (les 2 équipes additionnées)",
+  total_stl: "interceptions combinées du match (les 2 équipes additionnées)",
+  total_blk: "contres combinés du match (les 2 équipes additionnées)",
 };

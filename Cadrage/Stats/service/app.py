@@ -196,8 +196,8 @@ def predict_total_rebounds(req: PredictTotalReboundsRequest):
         raise HTTPException(400, str(e)) from e
 
     try:
-        result = supabase_context.compute_total_rebounds_proba(
-            sb, home_id, away_id, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        result = supabase_context.compute_total_team_stat_proba(
+            sb, "reb", home_id, away_id, req.seuil, req.comparison, req.as_of_date, season=req.season,
         )
     except ValueError as e:
         raise HTTPException(400, str(e)) from e
@@ -236,8 +236,103 @@ def predict_team_rebounds(req: PredictTeamReboundsRequest):
         raise HTTPException(400, str(e)) from e
 
     try:
-        result = supabase_context.compute_team_rebounds_proba(
-            sb, team_id, opponent_id, req.equipe_domicile, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        result = supabase_context.compute_team_stat_proba(
+            sb, "reb", team_id, opponent_id, req.equipe_domicile, req.seuil, req.comparison, req.as_of_date,
+            season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe": team_name,
+        "adversaire": opponent_name,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
+# Codes stat generalisables aux formes "combinee"/"equipe precise"
+# ci-dessous (23/08/2026, piece (a) suite -- reb deja servi par les
+# endpoints dedies au-dessus, gardes tels quels pour ne pas casser un
+# contrat HTTP deja deploye ; ast/fg3m/stl/blk passent par ces 2 nouveaux
+# endpoints generiques plutot que 8 endpoints dedies supplementaires).
+TEAM_STAT_CODES = ["reb", "ast", "fg3m", "stl", "blk"]
+
+
+class PredictTotalTeamStatRequest(BaseModel):
+    """Forme "combinee" (23/08/2026, piece (a) suite) generalisee a
+    n'importe quelle stat de TEAM_STAT_CODES -- MEME contrat que
+    PredictTotalReboundsRequest, + le champ `stat`."""
+    stat: str
+    equipe_domicile: str
+    equipe_exterieur: str
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-total-team-stat")
+def predict_total_team_stat(req: PredictTotalTeamStatRequest):
+    if req.stat not in TEAM_STAT_CODES:
+        raise HTTPException(400, f"stat inconnue : {req.stat} (attendu parmi {TEAM_STAT_CODES})")
+
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_total_team_stat_proba(
+            sb, req.stat, home_id, away_id, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
+class PredictTeamStatRequest(BaseModel):
+    """Forme "equipe precise" (23/08/2026, piece (a) suite) generalisee a
+    n'importe quelle stat de TEAM_STAT_CODES -- MEME contrat que
+    PredictTeamReboundsRequest, + le champ `stat`."""
+    stat: str
+    equipe: str
+    adversaire: str
+    equipe_domicile: bool
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-team-stat")
+def predict_team_stat(req: PredictTeamStatRequest):
+    if req.stat not in TEAM_STAT_CODES:
+        raise HTTPException(400, f"stat inconnue : {req.stat} (attendu parmi {TEAM_STAT_CODES})")
+
+    sb = _client()
+
+    try:
+        team_id, team_name = supabase_context.find_team(sb, req.equipe)
+        opponent_id, opponent_name = supabase_context.find_team(sb, req.adversaire)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_team_stat_proba(
+            sb, req.stat, team_id, opponent_id, req.equipe_domicile, req.seuil, req.comparison, req.as_of_date,
+            season=req.season,
         )
     except ValueError as e:
         raise HTTPException(400, str(e)) from e

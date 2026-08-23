@@ -65,6 +65,14 @@ CREATE TABLE features_equipe (
     pts_contre_moy5 REAL, pts_contre_moy10 REAL,
     reb_pour_moy5 REAL, reb_pour_moy10 REAL,
     reb_contre_moy5 REAL, reb_contre_moy10 REAL,
+    ast_pour_moy5 REAL, ast_pour_moy10 REAL,
+    ast_contre_moy5 REAL, ast_contre_moy10 REAL,
+    fg3m_pour_moy5 REAL, fg3m_pour_moy10 REAL,
+    fg3m_contre_moy5 REAL, fg3m_contre_moy10 REAL,
+    stl_pour_moy5 REAL, stl_pour_moy10 REAL,
+    stl_contre_moy5 REAL, stl_contre_moy10 REAL,
+    blk_pour_moy5 REAL, blk_pour_moy10 REAL,
+    blk_contre_moy5 REAL, blk_contre_moy10 REAL,
     victoires_pct_moy5 REAL, victoires_pct_moy10 REAL,
     off_rating_moy5 REAL, off_rating_moy10 REAL,
     def_rating_moy5 REAL, def_rating_moy10 REAL,
@@ -183,21 +191,26 @@ def compute_roster_continuity(conn: sqlite3.Connection) -> pd.DataFrame:
     return per_game[["game_id", "team_id", "continuite_effectif_saison"]]
 
 
+# Stats d'equipe "comptees" agregees ici (23/08/2026, chantier paris equipe
+# piece (a) suite) -- TOUTES selon le MEME patron que "pts" (deja en place
+# avant ce chantier) : somme par equipe/match, PUIS le meme swap
+# team_id<->opponent_team_id pour obtenir la version "encaissee" (feature
+# predictive au meme titre que opp_pts). "reb" ajoute en 1er (piece (a)
+# suite, rebonds), ast/fg3m/stl/blk ajoutes dans la foulee, meme geste --
+# toutes deja presentes dans box_scores, rien de nouveau a extraire.
+TEAM_COUNTING_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk"]
+
+
 def build_team_games(conn: sqlite3.Connection) -> pd.DataFrame:
-    # "reb" ajoute ici (23/08/2026, chantier paris equipe piece (a) suite --
-    # rebonds d'equipe) selon le MEME patron que "pts" : somme par equipe/
-    # match, PUIS le meme swap team_id<->opponent_team_id pour obtenir la
-    # version "encaissee" (opp_reb, feature predictive au meme titre que
-    # opp_pts deja en place). Generalise directement a ast/fg3m/stl/blk plus
-    # tard (memes colonnes deja dans box_scores, meme geste).
-    box_scores = pd.read_sql("SELECT game_id, team_id, pts, reb FROM box_scores", conn, dtype={"game_id": str})
-    team_totals = box_scores.groupby(["game_id", "team_id"], as_index=False)[["pts", "reb"]].sum().rename(
-        columns={"pts": "team_pts", "reb": "team_reb"}
+    cols = ", ".join(TEAM_COUNTING_STATS)
+    box_scores = pd.read_sql(f"SELECT game_id, team_id, {cols} FROM box_scores", conn, dtype={"game_id": str})
+    own_rename = {"pts": "team_pts", **{s: f"team_{s}" for s in TEAM_COUNTING_STATS if s != "pts"}}
+    team_totals = box_scores.groupby(["game_id", "team_id"], as_index=False)[TEAM_COUNTING_STATS].sum().rename(
+        columns=own_rename
     )
 
-    opp_totals = team_totals.rename(
-        columns={"team_id": "opponent_team_id", "team_pts": "opp_pts", "team_reb": "opp_reb"}
-    )
+    opp_rename = {"team_id": "opponent_team_id", **{f"team_{s}": f"opp_{s}" for s in TEAM_COUNTING_STATS}}
+    opp_totals = team_totals.rename(columns=opp_rename)
     team_games = team_totals.merge(opp_totals, on="game_id")
     team_games = team_games[team_games["team_id"] != team_games["opponent_team_id"]].copy()
 
@@ -236,12 +249,13 @@ def add_team_rolling_features(team_games: pd.DataFrame) -> pd.DataFrame:
     df["games_played_season_avant"] = df.groupby(["team_id", "season"]).cumcount()
 
     for window in ROLLING_WINDOWS:
-        df[f"pts_pour_moy{window}"] = g["team_pts"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
-        df[f"pts_contre_moy{window}"] = g["opp_pts"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
-        # reb_pour/reb_contre (23/08/2026, paris equipe piece (a) suite) --
-        # meme patron que pts_pour/pts_contre.
-        df[f"reb_pour_moy{window}"] = g["team_reb"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
-        df[f"reb_contre_moy{window}"] = g["opp_reb"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
+        # {stat}_pour/{stat}_contre pour TOUTES les stats comptees d'equipe
+        # (23/08/2026, paris equipe piece (a) suite -- pts deja la avant ce
+        # chantier, reb/ast/fg3m/stl/blk generalisees dans la foulee, meme
+        # patron).
+        for stat in TEAM_COUNTING_STATS:
+            df[f"{stat}_pour_moy{window}"] = g[f"team_{stat}"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
+            df[f"{stat}_contre_moy{window}"] = g[f"opp_{stat}"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"victoires_pct_moy{window}"] = g["win"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"off_rating_moy{window}"] = g["off_rating"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"def_rating_moy{window}"] = g["def_rating"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
@@ -390,6 +404,10 @@ TEAM_TABLE_COLUMNS = [
     "rest_days", "is_back_to_back", "games_played_season_avant",
     "pts_pour_moy5", "pts_pour_moy10", "pts_contre_moy5", "pts_contre_moy10",
     "reb_pour_moy5", "reb_pour_moy10", "reb_contre_moy5", "reb_contre_moy10",
+    "ast_pour_moy5", "ast_pour_moy10", "ast_contre_moy5", "ast_contre_moy10",
+    "fg3m_pour_moy5", "fg3m_pour_moy10", "fg3m_contre_moy5", "fg3m_contre_moy10",
+    "stl_pour_moy5", "stl_pour_moy10", "stl_contre_moy5", "stl_contre_moy10",
+    "blk_pour_moy5", "blk_pour_moy10", "blk_contre_moy5", "blk_contre_moy10",
     "victoires_pct_moy5", "victoires_pct_moy10",
     "off_rating_moy5", "off_rating_moy10", "def_rating_moy5", "def_rating_moy10",
     "net_rating_moy5", "net_rating_moy10", "pace_moy5", "pace_moy10",

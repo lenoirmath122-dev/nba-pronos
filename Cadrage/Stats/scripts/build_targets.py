@@ -86,6 +86,10 @@ MATCH_FEATURE_COLS = [
     "rest_days", "is_back_to_back", "games_played_season_avant",
     "pts_pour_moy5", "pts_pour_moy10", "pts_contre_moy5", "pts_contre_moy10",
     "reb_pour_moy5", "reb_pour_moy10", "reb_contre_moy5", "reb_contre_moy10",
+    "ast_pour_moy5", "ast_pour_moy10", "ast_contre_moy5", "ast_contre_moy10",
+    "fg3m_pour_moy5", "fg3m_pour_moy10", "fg3m_contre_moy5", "fg3m_contre_moy10",
+    "stl_pour_moy5", "stl_pour_moy10", "stl_contre_moy5", "stl_contre_moy10",
+    "blk_pour_moy5", "blk_pour_moy10", "blk_contre_moy5", "blk_contre_moy10",
     "victoires_pct_moy5", "victoires_pct_moy10",
     "off_rating_moy5", "off_rating_moy10", "def_rating_moy5", "def_rating_moy10",
     "net_rating_moy5", "net_rating_moy10", "pace_moy5", "pace_moy10",
@@ -93,6 +97,12 @@ MATCH_FEATURE_COLS = [
     "confrontations_directes_nb", "confrontations_directes_victoires_pct",
     "confrontations_directes_ecart_moy", "continuite_effectif_saison",
 ]
+
+# Stats d'equipe cibles (23/08/2026, paris equipe piece (a) suite) -- reb
+# ajoutee en 1er (pieces total_reb/team_reb), ast/fg3m/stl/blk generalisees
+# dans la foulee, meme geste a chaque fois (home_{stat}/away_{stat}/
+# total_{stat} dans entrainement_matchs, {stat}_reel dans entrainement_equipe).
+TEAM_TARGET_STATS = ["reb", "ast", "fg3m", "stl", "blk"]
 
 
 def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
@@ -129,18 +139,25 @@ def build_matchs_training(conn: sqlite3.Connection) -> pd.DataFrame:
     df["ecart"] = df["home_score"] - df["away_score"]
     df["total_points"] = df["home_score"] + df["away_score"]
 
-    # Rebonds d'equipe REELS (23/08/2026, paris equipe piece (a) suite) --
-    # cibles pour team_rebounds (perspective equipe) ET total_rebounds
-    # (combine, meme patron que total_points). Somme par (match, equipe)
-    # depuis box_scores, PAS depuis features_equipe (qui ne porte que des
-    # moyennes glissantes shift(1), jamais le vrai resultat du match lui-meme).
-    box_reb = pd.read_sql("SELECT game_id, team_id, reb FROM box_scores", conn, dtype={"game_id": str})
-    team_reb = box_reb.groupby(["game_id", "team_id"], as_index=False)["reb"].sum()
-    home_reb = team_reb.rename(columns={"team_id": "home_team_id", "reb": "home_reb"})
-    away_reb = team_reb.rename(columns={"team_id": "away_team_id", "reb": "away_reb"})
-    df = df.merge(home_reb, on=["game_id", "home_team_id"], how="left")
-    df = df.merge(away_reb, on=["game_id", "away_team_id"], how="left")
-    df["total_reb"] = df["home_reb"] + df["away_reb"]
+    # Stats d'equipe REELLES (23/08/2026, paris equipe piece (a) suite) --
+    # cibles pour team_{stat} (perspective equipe) ET total_{stat} (combine,
+    # meme patron que total_points). Somme par (match, equipe) depuis
+    # box_scores, PAS depuis features_equipe (qui ne porte que des moyennes
+    # glissantes shift(1), jamais le vrai resultat du match lui-meme).
+    box_stats = pd.read_sql(
+        f"SELECT game_id, team_id, {', '.join(TEAM_TARGET_STATS)} FROM box_scores", conn, dtype={"game_id": str}
+    )
+    team_stats = box_stats.groupby(["game_id", "team_id"], as_index=False)[TEAM_TARGET_STATS].sum()
+    for stat in TEAM_TARGET_STATS:
+        home_stat = team_stats[["game_id", "team_id", stat]].rename(
+            columns={"team_id": "home_team_id", stat: f"home_{stat}"}
+        )
+        away_stat = team_stats[["game_id", "team_id", stat]].rename(
+            columns={"team_id": "away_team_id", stat: f"away_{stat}"}
+        )
+        df = df.merge(home_stat, on=["game_id", "home_team_id"], how="left")
+        df = df.merge(away_stat, on=["game_id", "away_team_id"], how="left")
+        df[f"total_{stat}"] = df[f"home_{stat}"] + df[f"away_{stat}"]
 
     return df
 
@@ -167,9 +184,13 @@ def build_team_perspective_dataset(conn: sqlite3.Connection) -> pd.DataFrame:
     )
     df = own.merge(opp, on=["game_id", "opponent_team_id"])
 
-    box = pd.read_sql("SELECT game_id, team_id, reb FROM box_scores", conn, dtype={"game_id": str})
-    team_reb = box.groupby(["game_id", "team_id"], as_index=False)["reb"].sum().rename(columns={"reb": "reb_reel"})
-    df = df.merge(team_reb, on=["game_id", "team_id"], how="left")
+    box = pd.read_sql(
+        f"SELECT game_id, team_id, {', '.join(TEAM_TARGET_STATS)} FROM box_scores", conn, dtype={"game_id": str}
+    )
+    team_stats = box.groupby(["game_id", "team_id"], as_index=False)[TEAM_TARGET_STATS].sum().rename(
+        columns={stat: f"{stat}_reel" for stat in TEAM_TARGET_STATS}
+    )
+    df = df.merge(team_stats, on=["game_id", "team_id"], how="left")
 
     return df
 

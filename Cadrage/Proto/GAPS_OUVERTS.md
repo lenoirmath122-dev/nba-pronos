@@ -4,6 +4,80 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Pièce (a) suite -- AST/FG3M/STL/BLK D'ÉQUIPE, CODÉES le 23/08/2026**
+> (généralisation de la pièce rebonds ci-dessous, comme annoncé dans sa
+> propre note "généralisation prête" -- même patron mécanique, éprouvé une
+> 3e fois) :
+>
+> **1. Pipeline de données** (`build_features.py`/`build_targets.py`) :
+> `TEAM_COUNTING_STATS = [pts, reb, ast, fg3m, stl, blk]` généralise
+> `build_team_games()`/`add_team_rolling_features()` (boucle au lieu de
+> colonnes figées) -- 16 nouvelles colonnes `{stat}_pour/contre_moy5/10`
+> dans `TEAM_SCHEMA`/`TEAM_TABLE_COLUMNS`. `TEAM_TARGET_STATS`/
+> `TEAM_TARGET_STATS` généralisent les cibles réelles (`entrainement_matchs`
+> home/away/total, `entrainement_equipe` `{stat}_reel`) en boucle. Vérifié :
+> `features_equipe` 13204 lignes, `entrainement_matchs` 6602,
+> `entrainement_equipe` 13204 -- valeurs plausibles spot-check (ast~25,
+> fg3m~12, stl~7, blk~5).
+>
+> **2. 4×2 modèles entraînés** (nouveaux scripts `train_total_team_stats_model.py`/
+> `train_team_stats_model.py`, boucle `STATS_TO_TRAIN` -- `train_total_rebounds_model.py`/
+> `train_team_rebounds_model.py` restent les scripts dédiés reb, pas touchés,
+> pas fusionnés) : `total_ast/fg3m/stl/blk.joblib` (R² 0.20/0.14/0.05/0.04),
+> `team_ast/fg3m/stl/blk.joblib` (R² 0.16/0.12/0.05/0.05 -- `team_blk` calibration
+> la plus faible, 10-13pp d'écart aux seuils bas, cohérent avec les limites
+> déjà connues des stats "événement rare" côté joueur -- accepté comme
+> limite v1).
+>
+> **3. `supabase_context.py` généralisé** : `build_team_context()` calcule
+> désormais `{stat}_pour/contre` pour TOUTES les `TEAM_COUNTING_STATS` (plus
+> seulement reb). Les 4 fonctions dédiées rebonds
+> (`_compute_total_rebounds_proba_once`/`compute_total_rebounds_proba`/
+> `_compute_team_rebounds_proba_once`/`compute_team_rebounds_proba`)
+> **remplacées** (pas gardées en doublon) par des versions génériques
+> paramétrées par `stat` (`_team_stat_base_cols`,
+> `compute_total_team_stat_proba`, `compute_team_stat_proba`) -- reb passe
+> maintenant par ces mêmes fonctions génériques (`stat="reb"`), vérifié
+> bit-identique à avant (même proba 0.2173 sur un cas test répété).
+>
+> **4. 2 nouveaux endpoints génériques** (`app.py`) :
+> `/predict-total-team-stat`/`/predict-team-stat` (champ `stat`, validé
+> contre `TEAM_STAT_CODES` côté service, 400 clair sinon) -- remplacent
+> l'usage TS des anciens `/predict-total-rebounds`/`/predict-team-rebounds`
+> dédiés pour TOUTES les stats désormais (reb inclus), mais ces 2 derniers
+> restent déployés tels quels (contrat HTTP déjà en prod, inoffensif de les
+> garder, appellent en interne les mêmes fonctions génériques).
+>
+> **5. Schéma IA étendu** : `TEAM_STAT_CODES`/`MATCH_STAT_CODES` gagnent
+> `ast`/`fg3m`/`stl`/`blk` (et `total_ast`/`total_fg3m`/`total_stl`/`total_blk`)
+> -- aucun changement structurel requis côté `structureBet.ts` (déjà
+> généralisé depuis les listes de codes, pas de valeurs figées).
+>
+> **6. `statsService.ts` généralisé** : `predictTotalRebounds` (dédiée)
+> **supprimée**, remplacée par `predictTotalTeamStat(stat, ...)` (endpoint
+> générique) pour les 5 stats ; `predictTeamStat` gagne un paramètre `stat`
+> (même généralisation). `structureAndScoreBet.ts` mis à jour aux 2 points
+> d'appel (`match_stat`/`team_stat` transmis comme `TeamStatCode`).
+>
+> **7. Résolution généralisée** : `resolveCalculableReboundsBets()`
+> **renommée** `resolveCalculableTeamStatBets()` (comme annoncé dans la note
+> "généralisation prête" ci-dessous) -- filtre désormais sur
+> `TEAM_STAT_CODES.flatMap(stat => [stat, total_${stat}])`, logique
+> `if`/`in` généralisée (`isTotal`/`stat` dérivés de `structured_stat`,
+> `.select(stat)` dynamique au lieu de `.select("reb")` figé). `/api/resolve-bets`
+> mis à jour (import renommé).
+>
+> Testé en conditions réelles à chaque étape (Boston vs Lakers) : les 10
+> nouvelles prédictions Python (appel direct `supabase_context` + HTTP local
+> uvicorn réel sur les 2 nouveaux endpoints + regression `/predict-team-rebounds`
+> dédié, proba identique), 10 cas d'extraction IA (vrais appels Claude
+> Sonnet 5 : ast/fg3m/stl/blk × {équipe précise, combiné}, + 4 régressions
+> joueur/total_points/reb/rejet-série-cumulée). `tsc`/`eslint`/`vitest`
+> (37/37)/`next build` propres. **Pas encore redéployé sur Cloud Run**
+> (utilisateur en train de redéployer la pièce reb en parallèle -- ce
+> generalisation nécessite un 2e redéploiement pour être active en prod).
+> **Pas testé en conditions réelles depuis l'appli.**
+
 > **Pièce (a) suite -- REBONDS D'ÉQUIPE, CODÉE le 23/08/2026, les 2 FORMES**
 > (GAPS_OUVERTS.md, décidé avec l'utilisateur : "les deux ! ça dépendra de
 > l'énoncé") -- 1ère extension du chantier paris équipe au-delà de
@@ -96,14 +170,8 @@
 > conditions réelles depuis l'appli** (comme pour les pièces précédentes,
 > à confirmer par l'utilisateur après déploiement).
 >
-> **Généralisation prête pour ast/fg3m/stl/blk** (pas fait, juste noté) :
-> chaque étape ci-dessus suit un patron mécanique désormais éprouvé 2 fois
-> (`pts` -> `reb`) -- ajouter 4 colonnes à `build_features.py`/
-> `build_targets.py`, 2 scripts d'entraînement copiés/adaptés, 2 entrées
-> dans `MATCH_STAT_CODES`/`TEAM_STAT_CODES`, 2 endpoints, extension des
-> `if`/`in` dans `resolveCalculableReboundsBets()` (renommer en
-> "resolveCalculable[Stat]Bets" générique le jour où ça vaut la peine de
-> factoriser plutôt que dupliquer).
+> Généralisé à ast/fg3m/stl/blk le même jour (23/08/2026, même patron
+> mécanique) -- voir l'entrée au-dessus.
 
 > **Cadrage posé le 23/08/2026, PAS CODÉ -- prêt à construire la prochaine
 > fois** : pièce (a) du chantier paris série (modèle ÉQUIPE, pour étendre
