@@ -9427,3 +9427,79 @@ restent (a) modèle équipe, (d) extraction IA, (e) résolution). Câblage
 service/app.py volontairement pas fait -- pas de consommateur tant que
 (d) ne reconnaît pas un pari série à l'extraction.
 ```
+
+## Paris SÉRIE, pièce (d) -- extraction IA étendue (23/08/2026, suite)
+
+```text
+Investigation déléguée à un agent Explore (pipeline structuration IA
+existant : structureAndScoreBet.ts, structureBet.ts, resolveCalculableBets.ts,
+schéma DB) pour ne pas saturer le contexte avant de coder -- confirme que
+scope=SERIES existe déjà en DB/UI (bet_scope enum, BetForm.tsx) mais est
+invisible à l'étape IA (jamais transmis à structureAndScoreBet), et que
+resolveCalculableBets.ts filtre déjà explicitement scope=MATCH (SERIES
+jamais auto-résolu).
+
+Bug réel trouvé AVANT de coder l'endpoint : Dockerfile du service Cloud Run
+ne copiait que tester_modele.py, pas les 3 fichiers dont dépendent les
+fonctions de la session (build_features.py/train_home_win_model.py/
+series_probability.py) -- aurait fait planter le service au redéploiement.
+Corrigé.
+
+Nouvel endpoint /predict-series (app.py), wrappe compute_series_stat_proba().
+Détermination de l'équipe à l'avantage du terrain : pas de "seed" explicite
+en base -- dérivée du vrai match 1 de la série (matches.game_number=1,
+home_team_id réel) plutôt qu'un ordre arbitraire team1/team2.
+
+Champ player_team ajouté au schéma zod de structureBet.ts (l'IA indique
+désormais QUELLE équipe le joueur représente, pas seulement s'il joue dans
+le match) -- testé avec 3 vrais appels Claude Sonnet 5 (script jetable,
+supprimé après test) : Tatum -> team1 correct, LeBron -> team2 correct,
+pari équipe/total total_points -> calculable=false inchangé (pièce (a)
+toujours hors périmètre). 3/3.
+
+Correctif de conception (trouvé en écrivant le code, pas en testant) :
+contrairement au patron MATCH (1-proba après coup pour UNDER),
+compute_series_stat_proba() DOIT inverser la proba PAR MATCH avant de
+refaire tourner la simulation de série -- P(au moins un match UNDER) !=
+1 - P(au moins un match OVER) à l'échelle d'une série. Vérifié : Tatum
+"30+points" UNDER vs Lakers donne ~99.9998% sur la série (quasi garanti,
+correct), pas 75.3% qu'aurait donné le calcul naïf.
+
+Instabilité réelle trouvée en testant `/predict-series` plusieurs fois de
+suite : ~1 fois sur 10-15 appels, mêmes entrées exactes -> résultat
+différent (p_a_wins_series 0.7940 au lieu de 0.7799). Investigation
+approfondie AVANT de continuer (flaggé à l'utilisateur, feu vert reçu pour
+la mitigation) : isolée par élimination à la combinaison complète de
+compute_series_stat_proba() (2 modèles .joblib différents dans le même
+calcul) -- ni les features équipe seules (10/10 stables), ni
+compute_home_win_proba() seul (8/8), ni compute_proba() joueur seul (8/8)
+ne reproduisent le problème. Hypothèse "race du pool joblib" testée
+(n_jobs=1 forcé) et écartée -- ne corrige pas. Cause exacte non trouvée
+avec un effort raisonnable. PAS un bug introduit cette session -- la même
+architecture sert déjà en prod pour les paris MATCH, compute_series_stat_
+proba() est juste le 1er endroit à combiner 2 modèles dans un calcul.
+Mitigation : recalcule jusqu'à 3 fois, ne renvoie qu'un résultat où au
+moins 2 essais s'accordent (tolérance 1e-6), sinon erreur explicite.
+Revérifié stable sur 10+ appels après le correctif (process isolés ET via
+HTTP réel, service lancé en local avec uvicorn).
+
+lib/ai/statsService.ts : nouvelle predictSeriesStat() (même contrat de
+retour que predictOverUnder(), timeout 40s au lieu de 20s -- jusqu'à 3
+recalculs possibles côté service). lib/ai/structureAndScoreBet.ts : reçoit
+scope désormais (transmis depuis submitBet(), lib/actions/bets.ts),
+resolveSeriesHomeCourtTeam() nouveau (requête matches.game_number=1),
+branche vers predictSeriesStat() si scope=SERIES sinon comportement MATCH
+inchangé.
+
+tsc/eslint/vitest (37/37)/next build (37 routes) propres. Testé bout en
+bout : service local (uvicorn) + /predict-series réel (OVER et UNDER) +
+3 vrais appels Claude pour player_team. Pas fait cette session : redéploiement
+Cloud Run (gcloud absent de cet environnement, action de l'utilisateur) et
+test réel en soumettant un vrai pari série depuis l'appli (bloqué tant que
+le redéploiement n'est pas fait, STATS_SERVICE_URL pointe sur l'ancien
+service sans /predict-series).
+
+GAPS_OUVERTS.md mis à jour : pièce (d) marquée FAITE (paris série joueur
+uniquement, équipe/total toujours hors périmètre), détail complet des
+correctifs conservé pour trace, next step = redéploiement puis pièce (e).
+```

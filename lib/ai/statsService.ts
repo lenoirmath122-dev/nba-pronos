@@ -72,3 +72,67 @@ export async function predictOverUnder(
   }
   return result;
 }
+
+/**
+ * Pari SÉRIE (brique (c) du chantier, GAPS_OUVERTS.md) -- proba qu'un
+ * événement se produise AU MOINS UNE FOIS sur la série (semantique retenue
+ * avec l'utilisateur le 23/08/2026). Contrairement à predictOverUnder(),
+ * l'inversion OVER/UNDER se fait CÔTÉ SERVICE (avant la simulation de série,
+ * pas 1-proba après coup -- voir supabase_context.py::compute_series_stat_proba
+ * pour le pourquoi) : `comparison` est transmis tel quel dans le body,
+ * jamais retraité ici.
+ *
+ * homeCourtTeamName/otherTeamName : l'équipe avec l'avantage du terrain sur
+ * la série (reçoit aux matchs 1/2/5/7) et l'autre -- déterminées par
+ * l'appelant depuis le match 1 réel de la série (structureAndScoreBet.ts).
+ * playerTeamName doit correspondre à l'une des 2.
+ */
+export async function predictSeriesStat(
+  playerName: string,
+  stat: StatCode,
+  threshold: number | null,
+  comparison: "OVER" | "UNDER" | null,
+  homeCourtTeamName: string,
+  otherTeamName: string,
+  playerTeamName: string,
+): Promise<StatsPredictResult | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  const body: Record<string, unknown> = {
+    joueur: playerName,
+    stat,
+    comparison,
+    equipe_domicile_serie: homeCourtTeamName,
+    equipe_exterieur_serie: otherTeamName,
+    equipe_joueur: playerTeamName,
+    as_of_date: new Date().toISOString().slice(0, 10),
+  };
+  if (!NO_THRESHOLD_STATS.has(stat)) {
+    if (threshold === null) return null;
+    body.seuil = threshold;
+  }
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-series`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      // 3 recalculs possibles côté service (verification de coherence,
+      // supabase_context.py::compute_series_stat_proba) -- delai plus large
+      // que /predict, en plus du cold start Cloud Run possible.
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return {
+      proba: data.proba,
+      label: data.label,
+      detail: "", // pas de detail textuel cote service pour /predict-series
+      playerId: typeof data.joueur_id === "number" ? data.joueur_id : null,
+    };
+  } catch {
+    return null;
+  }
+}

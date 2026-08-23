@@ -40,6 +40,13 @@ const BetStructurationSchema = z.object({
       "Orthographe standard NBA (ex: \"Michael Porter Jr.\" pas \"Junior\") -- corrige les fautes évidentes, " +
         "null si non calculable.",
     ),
+  player_team: z
+    .enum(["team1", "team2"])
+    .nullable()
+    .describe(
+      "team1 ou team2 selon l'ordre du contexte de match/série ci-dessous -- laquelle des 2 équipes le joueur " +
+        "représente. null si player_not_in_match=true ou non calculable.",
+    ),
   stat: z.enum(STAT_CODES as [string, ...string[]]).nullable().describe("Code de la stat concernée, null si non calculable."),
   threshold: z
     .number()
@@ -62,10 +69,11 @@ export type BetStructuration = z.infer<typeof BetStructurationSchema>;
 function buildSystemPrompt(teamNames: [string, string] | null): string {
   const statList = STAT_CODES.map((code) => `- "${code}" : ${STAT_LABELS_FR[code]}${NO_THRESHOLD_STATS.has(code) ? " (pas de seuil, probabilité directe)" : ""}`).join("\n");
   const matchContext = teamNames
-    ? `\n\nCe pari concerne un match entre **${teamNames[0]}** et **${teamNames[1]}**. Vérifie que le joueur nommé ` +
-      "joue actuellement pour l'une de ces 2 équipes (utilise ta connaissance des effectifs NBA réels) -- si ce " +
-      "n'est pas le cas (joueur d'une autre équipe, joueur retraité, nom inventé...), marque player_not_in_match=true " +
-      "(calculable reste true, voir la description du champ) plutôt que calculable=false. Corrige aussi " +
+    ? `\n\nCe pari concerne un match/une série entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**. ` +
+      "Vérifie que le joueur nommé joue actuellement pour l'une de ces 2 équipes (utilise ta connaissance des " +
+      "effectifs NBA réels) -- si ce n'est pas le cas (joueur d'une autre équipe, joueur retraité, nom inventé...), " +
+      "marque player_not_in_match=true (calculable reste true, voir la description du champ) plutôt que " +
+      "calculable=false. Sinon, remplis player_team (team1 ou team2) selon l'équipe réelle du joueur. Corrige aussi " +
       "l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> \"Jr.\") plutôt que de reprendre le " +
       "texte exact du joueur, qui peut contenir des fautes de frappe."
     : "";

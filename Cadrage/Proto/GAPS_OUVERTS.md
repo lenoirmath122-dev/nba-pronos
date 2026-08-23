@@ -175,17 +175,80 @@
 > de série ; (a) modèle(s) équipe (ex. `total_points`, entraînable dès
 > maintenant sur `entrainement_matchs`, indépendant de a0) ; (b) contexte
 > équipe roulant en production (FAIT 23/08, `build_team_context()`) ; (c,
-> FAIT 23/08) le mécanisme générique d'agrégation "sur la série" ; (d)
-> extraction IA étendue (reconnaître un pari série + son type, y compris
-> hors joueur) ; (e) résolution étendue (`resolveCalculableBets.ts` : gérer
-> `scope=SERIES` en cherchant TOUS les vrais matchs déjà joués de la série,
-> pas un seul, et gérer les paris non-joueur via `matches.home_score`/
-> `away_score`, déjà synchronisé -- pas besoin du pipeline Data NBA pour ce
-> cas précis). **Restent à construire : (a), (d), (e).** Pas encore fait
-> non plus : câblage de `compute_series_stat_proba()`/`compute_home_win_
-> proba()` dans `service/app.py` (endpoint dédié) -- naturel une fois (d)
-> écrit (l'extraction IA doit d'abord reconnaître un pari série avant
-> qu'un endpoint ait de quoi être appelé).
+> FAIT 23/08) le mécanisme générique d'agrégation "sur la série" ; (d, FAIT
+> 23/08) extraction IA étendue pour les paris série JOUEUR (équipe/total
+> reste hors périmètre, pièce (a) pas construite) ; (e) résolution étendue
+> (`resolveCalculableBets.ts` : gérer `scope=SERIES` en cherchant TOUS les
+> vrais matchs déjà joués de la série, pas un seul, et gérer les paris
+> non-joueur via `matches.home_score`/`away_score`, déjà synchronisé -- pas
+> besoin du pipeline Data NBA pour ce cas précis). **Restent à construire :
+> (a), (e).**
+>
+> **Pièce (d) -- CODÉE, TESTÉE (vrais appels Claude), DÉPLOIEMENT PAS ENCORE
+> FAIT le 23/08/2026** :
+> - `service/app.py` : nouvel endpoint `/predict-series` (wrappe
+>   `compute_series_stat_proba()`) -- même contrat de réponse que `/predict`
+>   (`{proba, label, joueur_id, ...}`), reçoit `equipe_domicile_serie`/
+>   `equipe_exterieur_serie`/`equipe_joueur` (noms, résolus côté service via
+>   `find_team()`, même patron que `/predict` pour l'adversaire).
+> - **Bug réel trouvé avant même de coder l'endpoint** : `Dockerfile` du
+>   service Cloud Run ne copiait que `tester_modele.py` -- pas
+>   `build_features.py`/`train_home_win_model.py`/`series_probability.py`,
+>   dont dépendent `build_team_context()`/`compute_home_win_proba()` (déjà
+>   mergées la session précédente). Si redéployé tel quel, ces fonctions
+>   auraient planté au chargement. Corrigé.
+> - **Détermination de l'équipe à l'avantage du terrain** : pas de "seed"
+>   explicite dans le schéma -- dérivée du VRAI match 1 de la série
+>   (`matches.game_number = 1`, `home_team_id` réel). Si ce match n'existe
+>   pas encore en base (série pas programmée), le pari reste non-calculable
+>   (repli déjà établi partout ailleurs dans ce fichier).
+> - `lib/ai/structureBet.ts` : nouveau champ `player_team` ("team1"/"team2")
+>   dans `BetStructurationSchema` -- l'IA indique désormais QUELLE équipe le
+>   joueur représente (pas seulement s'il joue dans le match), nécessaire
+>   pour router vers la bonne équipe côté service. Testé avec 3 vrais appels
+>   Claude Sonnet 5 (Tatum -> team1, LeBron -> team2, pari équipe/total ->
+>   `calculable=false` inchangé, piece (a) toujours hors périmètre) --
+>   3/3 corrects.
+> - `lib/ai/structureAndScoreBet.ts` : reçoit désormais `scope` (transmis
+>   depuis `submitBet()`, `lib/actions/bets.ts`) -- branche vers
+>   `predictSeriesStat()` (nouveau, `statsService.ts`) si `scope="SERIES"`,
+>   sinon comportement MATCH inchangé (`predictOverUnder()`).
+> - **Correctif important trouvé en concevant, PAS en testant** : contrairement
+>   à `predictOverUnder()` (MATCH, `1-proba` après coup pour UNDER),
+>   inverser le résultat final serait FAUX à l'échelle d'une série
+>   (`P(au moins un match UNDER) != 1 - P(au moins un match OVER)`, 2
+>   événements différents). `compute_series_stat_proba()` inverse la proba
+>   PAR MATCH (1-p) puis refait tourner la simulation de série -- vérifié en
+>   conditions réelles (Tatum "30+points" UNDER vs Lakers : ~95%/match ->
+>   ~99.9998% sur la série, très différent du calcul naïf 1-24.7%=75.3%
+>   qu'aurait donné le patron MATCH).
+> - **Instabilité réelle et rare trouvée en testant** (~1 fois sur 10-15
+>   appels, entrées identiques -> résultats différents, ex. `p_a_wins_series`
+>   0.7940 au lieu de 0.7799) : isolée par élimination à la combinaison
+>   complète de `compute_series_stat_proba()` (2 modèles `.joblib`
+>   différents utilisés dans le même calcul -- `home_win` ET le modèle
+>   joueur) ; ni les features équipe seules, ni `compute_home_win_proba()`
+>   seul, ni `compute_proba()` joueur seul ne reproduisent le problème sur
+>   8-10 essais chacun. Forcer `n_jobs=1` sur les modèles n'a PAS éliminé le
+>   problème (hypothèse "race du pool joblib" écartée). Cause exacte non
+>   trouvée avec un effort raisonnable (probablement une interaction bas
+>   niveau scikit-learn/BLAS entre 2 modèles différents dans le même
+>   process). **PAS un bug introduit par ce chantier** : la même
+>   architecture sert déjà en production pour les paris MATCH -- `compute_
+>   series_stat_proba()` est juste le 1er endroit à combiner 2 modèles dans
+>   un seul calcul. **Mitigation ajoutée** (`supabase_context.py`) :
+>   `compute_series_stat_proba()` recalcule jusqu'à 3 fois et ne renvoie un
+>   résultat que si au moins 2 essais s'accordent (tolérance 1e-6) -- lève
+>   une erreur explicite plutôt qu'une proba silencieusement fausse. Détail
+>   complet en commentaire `CONSISTENCY_CHECK_NOTE` dans le fichier.
+> - Testé bout en bout via HTTP réel (service lancé en local, `uvicorn`) :
+>   `/predict-series` OVER et UNDER, cohérent, stable sur 10+ appels après
+>   la mitigation.
+> - **Pas encore fait** : redéploiement Cloud Run (`gcloud` non installé
+>   dans cet environnement -- action de l'utilisateur, commande dans
+>   l'en-tête du `Dockerfile`) ; test réel en soumettant un vrai pari série
+>   depuis l'appli (nécessite le redéploiement d'abord, `STATS_SERVICE_URL`
+>   pointe sur le service déployé).
 
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**

@@ -134,6 +134,76 @@ def predict(req: PredictRequest):
     }
 
 
+class PredictSeriesRequest(BaseModel):
+    joueur: str | None = None
+    joueur_id: int | None = None
+    stat: str
+    seuil: float | None = None
+    comparison: str | None = None  # "OVER" | "UNDER" | None (dd/td, sans seuil)
+    equipe_domicile_serie: str  # equipe avec l'avantage du terrain (recoit aux matchs 1/2/5/7)
+    equipe_exterieur_serie: str
+    equipe_joueur: str  # doit correspondre a equipe_domicile_serie ou equipe_exterieur_serie
+    as_of_date: str
+    season: str | None = None  # deduite de as_of_date si omise
+    best_of: int = 7
+
+    @model_validator(mode="after")
+    def _un_seul_identifiant_joueur(self):
+        if (self.joueur is None) == (self.joueur_id is None):
+            raise ValueError("fournir exactement un de joueur / joueur_id")
+        return self
+
+
+@app.post("/predict-series")
+def predict_series(req: PredictSeriesRequest):
+    """Pari SERIE (brique (c), GAPS_OUVERTS.md) -- proba qu'un evenement se
+    produise AU MOINS UNE FOIS sur la serie, fidele domicile/exterieur.
+    Reutilise les 12 memes modeles joueur que /predict (rien de specifique
+    a une stat ici)."""
+    if req.stat not in STATS_DISPONIBLES:
+        raise HTTPException(400, f"stat inconnue \"{req.stat}\" -- disponibles : {STATS_DISPONIBLES}")
+
+    sb = _client()
+
+    if req.joueur_id is not None:
+        player_id, player_name = req.joueur_id, f"player_id={req.joueur_id}"
+    else:
+        try:
+            player_id, player_name = supabase_context.find_player(sb, req.joueur)
+        except ValueError as e:
+            raise HTTPException(400, str(e)) from e
+
+    try:
+        team_a_id, team_a_name = supabase_context.find_team(sb, req.equipe_domicile_serie)
+        team_b_id, team_b_name = supabase_context.find_team(sb, req.equipe_exterieur_serie)
+        player_team_id, _ = supabase_context.find_team(sb, req.equipe_joueur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    if player_team_id not in (team_a_id, team_b_id):
+        raise HTTPException(400, f"\"{req.equipe_joueur}\" ne correspond a aucune des 2 equipes de la serie.")
+
+    try:
+        result = supabase_context.compute_series_stat_proba(
+            sb, player_id, req.stat, req.seuil,
+            team_a_id=team_a_id, team_b_id=team_b_id, player_team_id=player_team_id,
+            as_of_date=req.as_of_date, season=req.season, comparison=req.comparison, best_of=req.best_of,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "joueur": player_name,
+        "joueur_id": player_id,
+        "equipe_domicile_serie": team_a_name,
+        "equipe_exterieur_serie": team_b_name,
+        "stat": req.stat,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
 @app.post("/refresh")
 def refresh():
     """Stub -- le fetch incrémental nba_api (nouveaux matchs depuis le

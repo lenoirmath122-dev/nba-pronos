@@ -1,7 +1,7 @@
 import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
-import { predictOverUnder } from "./statsService";
+import { predictOverUnder, predictSeriesStat } from "./statsService";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 
@@ -38,7 +38,37 @@ async function resolveMatchTeamNames(
   return name1 && name2 ? [name1, name2] : null;
 }
 
-export async function structureAndScoreBet(betId: string, description: string, seriesId: string): Promise<void> {
+/** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
+ *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
+ *  la serie (game_number = 1, pas un "seed" explicite, cf. GAPS_OUVERTS.md
+ *  piece (d)). null si ce match n'existe pas encore en base (serie pas
+ *  encore programmee) -- le pari serie reste alors non-calculable, meme
+ *  repli que le reste de ce fichier. */
+async function resolveSeriesHomeCourtTeam(
+  supabase: Awaited<ReturnType<typeof getServerClient>>,
+  seriesId: string,
+): Promise<{ homeTeamName: string; awayTeamName: string } | null> {
+  const { data: game1 } = await supabase
+    .from("matches")
+    .select("home_team_id, away_team_id")
+    .eq("series_id", seriesId)
+    .eq("game_number", 1)
+    .maybeSingle<{ home_team_id: string | null; away_team_id: string | null }>();
+  if (!game1?.home_team_id || !game1?.away_team_id) return null;
+
+  const { data: teams } = await supabase.from("teams").select("id, name").in("id", [game1.home_team_id, game1.away_team_id]);
+  const nameById = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
+  const homeTeamName = nameById.get(game1.home_team_id);
+  const awayTeamName = nameById.get(game1.away_team_id);
+  return homeTeamName && awayTeamName ? { homeTeamName, awayTeamName } : null;
+}
+
+export async function structureAndScoreBet(
+  betId: string,
+  description: string,
+  seriesId: string,
+  scope: "MATCH" | "SERIES" = "MATCH",
+): Promise<void> {
   const supabase = await getServerClient();
 
   /** Écrit is_calculable=false explicitement (jamais laissé NULL) -- bug
@@ -114,12 +144,39 @@ export async function structureAndScoreBet(betId: string, description: string, s
       return;
     }
 
-    const prediction = await predictOverUnder(
-      structuration.player_name,
-      stat,
-      structuration.threshold,
-      structuration.comparison,
-    );
+    // Pari SERIE (brique (d) du chantier, GAPS_OUVERTS.md) : proba "au moins
+    // une fois sur la série" plutôt que "au prochain match", cf.
+    // predictSeriesStat()/compute_series_stat_proba(). Nécessite l'équipe du
+    // joueur (structuration.player_team, résolue par l'IA depuis
+    // matchContext) ET le match 1 réel de la série (avantage du terrain) --
+    // repli non-calculable si l'un des deux manque (série pas encore
+    // programmée, ou équipe non résolue), jamais bloquant.
+    let prediction: Awaited<ReturnType<typeof predictOverUnder>> = null;
+    if (scope === "SERIES") {
+      const homeCourt = await resolveSeriesHomeCourtTeam(supabase, seriesId);
+      const playerTeamName =
+        structuration.player_team === "team1" ? teamNames?.[0]
+        : structuration.player_team === "team2" ? teamNames?.[1]
+        : null;
+      if (homeCourt && playerTeamName) {
+        prediction = await predictSeriesStat(
+          structuration.player_name,
+          stat,
+          structuration.threshold,
+          structuration.comparison,
+          homeCourt.homeTeamName,
+          homeCourt.awayTeamName,
+          playerTeamName,
+        );
+      }
+    } else {
+      prediction = await predictOverUnder(
+        structuration.player_name,
+        stat,
+        structuration.threshold,
+        structuration.comparison,
+      );
+    }
     if (!prediction) {
       await markNotCalculable();
       return;

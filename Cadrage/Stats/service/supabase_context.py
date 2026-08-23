@@ -174,6 +174,17 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     return context, ecarttypes, recent
 
 
+def _season_label_for_date(date) -> str:
+    """"2024-25" style -- meme convention que current_season_label()
+    (service/refresh_daily.py, PAS importable ici : pas copie dans l'image
+    Cloud Run, cf. Dockerfile) : une saison NBA commence en octobre, a
+    partir d'aout (intersaison/presaison) on considere que la saison "en
+    cours" est celle qui demarre l'octobre suivant."""
+    date = pd.Timestamp(date)
+    year = date.year if date.month >= 8 else date.year - 1
+    return f"{year}-{str(year + 1)[2:]}"
+
+
 def _prior_season(seasons_known, target_season: str):
     """Saison immediatement anterieure a target_season parmi celles connues
     -- comparaison sur l'annee de debut ("2024-25" -> 2024), pas sur l'ordre
@@ -232,7 +243,7 @@ def _team_roster_continuity(client, team_id: int, season: str, seasons_known) ->
     return core_minutes / total_minutes
 
 
-def build_team_context(client, team_id: int, opponent_id: int, season: str, as_of_date) -> dict:
+def build_team_context(client, team_id: int, opponent_id: int, as_of_date, season: str | None = None) -> dict:
     """Les 21 features BASE_FEATURE_COLS (train_home_win_model.py) pour
     team_id, calculees EN DIRECT depuis stats_box_scores -- equivalent
     Supabase de build_team_games()/add_team_rolling_features()
@@ -254,8 +265,11 @@ def build_team_context(client, team_id: int, opponent_id: int, season: str, as_o
     en base.
 
     as_of_date : date du match a predire (str ISO ou Timestamp) -- sert a
-    calculer rest_days par rapport au dernier match REELEMENT connu.
+    calculer rest_days par rapport au dernier match REELEMENT connu. season :
+    "2024-25" style, deduite de as_of_date si omise (meme convention que
+    current_season_label(), service/refresh_daily.py).
     """
+    season = season or _season_label_for_date(as_of_date)
     own_rows = fetch_all_rows(
         lambda start, end: client.table("stats_box_scores")
         .select("game_id, game_date, season, opponent_team_id, pts, off_rating, def_rating, net_rating, pace")
@@ -316,13 +330,13 @@ def build_team_context(client, team_id: int, opponent_id: int, season: str, as_o
     return context
 
 
-def compute_home_win_proba(client, home_team_id: int, away_team_id: int, season: str, as_of_date) -> dict:
+def compute_home_win_proba(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> dict:
     """P(home_team_id gagne CE match, a domicile) -- charge home_win.joblib
     (train_home_win_model.py), construit le vecteur home_*/away_* complet en
     appelant build_team_context() une fois par equipe (l'adversaire de l'une
-    est l'autre)."""
-    home_ctx = build_team_context(client, home_team_id, away_team_id, season, as_of_date)
-    away_ctx = build_team_context(client, away_team_id, home_team_id, season, as_of_date)
+    est l'autre). season deduite de as_of_date si omise."""
+    home_ctx = build_team_context(client, home_team_id, away_team_id, as_of_date, season=season)
+    away_ctx = build_team_context(client, away_team_id, home_team_id, as_of_date, season=season)
 
     row = {f"home_{c}": home_ctx[c] for c in BASE_FEATURE_COLS}
     row.update({f"away_{c}": away_ctx[c] for c in BASE_FEATURE_COLS})
@@ -375,10 +389,10 @@ def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is
     }
 
 
-def compute_series_stat_proba(
+def _compute_series_stat_proba_once(
     client, player_id: int, stat: str, seuil,
-    team_a_id: int, team_b_id: int, player_team_id: int,
-    season: str, as_of_date, best_of: int = 7,
+    team_a_id: int, team_b_id: int, player_team_id: int, as_of_date,
+    season: str | None = None, comparison: str | None = None, best_of: int = 7,
 ) -> dict:
     """Pari SERIE (brique (c) du chantier, GAPS_OUVERTS.md) -- semantique
     retenue avec l'utilisateur le 23/08/2026 pour un pari serie ambigu : "au
@@ -394,6 +408,17 @@ def compute_series_stat_proba(
     series_probability.py). player_team_id doit valoir team_a_id ou
     team_b_id (l'equipe du joueur vise par le pari).
 
+    comparison : "OVER" (defaut, compute_proba() renvoie deja P(stat >
+    seuil)) ou "UNDER". IMPORTANT -- contrairement au cas MATCH (statsService.
+    ts::predictOverUnder, qui se contente de 1-proba APRES coup), inverser le
+    resultat final ICI serait FAUX : P(au moins un match UNDER) != 1 -
+    P(au moins un match OVER) (2 evenements differents, pas complementaires
+    a l'echelle de la serie). Il faut inverser la proba PAR MATCH (1-p) puis
+    refaire tourner la simulation de serie avec cette proba inversee --
+    c'est ce que fait ce bloc, avant l'appel a simulate_series_with_stat().
+    Ignore comme predictOverUnder() pour les stats sans seuil (dd/td,
+    CLASSIFIER_STATS) : comparison n'a pas de sens pour elles.
+
     2 appels a compute_home_win_proba() (deja fidele domicile/exterieur, cf.
     build_team_context()) + 2 appels a compute_proba() pour le JOUEUR (une
     fois avec is_home=1, une fois is_home=0, meme adversaire fixe tout au
@@ -406,14 +431,18 @@ def compute_series_stat_proba(
     stat_team = "A" if player_team_id == team_a_id else "B"
     opponent_id = team_b_id if stat_team == "A" else team_a_id
 
-    p_a_home = compute_home_win_proba(client, team_a_id, team_b_id, season, as_of_date)["p_home_win"]
-    p_a_away = 1 - compute_home_win_proba(client, team_b_id, team_a_id, season, as_of_date)["p_home_win"]
+    p_a_home = compute_home_win_proba(client, team_a_id, team_b_id, as_of_date, season=season)["p_home_win"]
+    p_a_away = 1 - compute_home_win_proba(client, team_b_id, team_a_id, as_of_date, season=season)["p_home_win"]
 
     stat_home = compute_proba(client, player_id, stat, seuil, opponent_id=opponent_id, is_home=1)
     stat_away = compute_proba(client, player_id, stat, seuil, opponent_id=opponent_id, is_home=0)
 
+    p_stat_home, p_stat_away = stat_home["proba"], stat_away["proba"]
+    if comparison == "UNDER" and stat not in CLASSIFIER_STATS:
+        p_stat_home, p_stat_away = 1 - p_stat_home, 1 - p_stat_away
+
     series = simulate_series_with_stat(
-        p_a_home, p_a_away, stat_home["proba"], stat_away["proba"], stat_team, best_of=best_of,
+        p_a_home, p_a_away, p_stat_home, p_stat_away, stat_team, best_of=best_of,
     )
 
     return {
@@ -422,6 +451,49 @@ def compute_series_stat_proba(
         "p_a_wins_series": series["p_a_wins_series"],
         "p_b_wins_series": series["p_b_wins_series"],
         "length_distribution": series["length_distribution"],
-        "proba_match_domicile": stat_home["proba"],
-        "proba_match_exterieur": stat_away["proba"],
+        "proba_match_domicile": p_stat_home,
+        "proba_match_exterieur": p_stat_away,
     }
+
+
+# Tolerance de comparaison entre 2 calculs -- volontairement large (le bruit
+# normal d'un vrai recalcul stable est de l'ordre de 1e-9 a 1e-12, jamais
+# 1e-6) : voir CONSISTENCY_CHECK_NOTE ci-dessous.
+_CONSISTENCY_TOLERANCE = 1e-6
+
+CONSISTENCY_CHECK_NOTE = """Instabilite reelle et rare trouvee en testant le 23/08/2026 (~1 fois sur
+10-15 appels) : sur des entrees IDENTIQUES, _compute_series_stat_proba_once() peut renvoyer 2 resultats
+differents (ex. p_a_wins_series = 0.7940 au lieu de 0.7799, ecart bien au-dela du bruit flottant normal).
+Isole par elimination (feature equipe seules stables sur 10/10 ; compute_home_win_proba() seul stable
+sur 8/8 ; compute_proba() joueur seul stable sur 8/8 ; SEULE la combinaison complete des 2 -- home_win.joblib
+ET le modele joueur charges/utilises dans le meme process -- montre l'instabilite). Forcer n_jobs=1 sur les
+modeles n'a PAS elimine le probleme (hypothese "race du pool joblib" ecartee). Cause exacte non trouvee avec
+un effort raisonnable (probablement une interaction bas niveau scikit-learn/BLAS entre 2 modeles differents
+dans le meme process -- pas verifiable sans le vrai conteneur Linux Cloud Run). PAS un bug introduit par ce
+chantier : la meme architecture (modeles .joblib, RandomForest, n_jobs=-1 fige a l'entrainement) sert deja
+en production pour les paris MATCH -- compute_series_stat_proba() est juste le 1er endroit a combiner 2
+modeles differents dans un seul calcul, ce qui semble declencher le probleme plus souvent."""
+
+
+def compute_series_stat_proba(*args, **kwargs) -> dict:
+    """Enveloppe compute_series_stat_proba() d'une verification de coherence
+    -- voir CONSISTENCY_CHECK_NOTE ci-dessus pour le POURQUOI. Recalcule
+    jusqu'a 3 fois et ne renvoie un resultat QUE si au moins 2 des essais
+    s'accordent (a _CONSISTENCY_TOLERANCE pres) -- mieux vaut un appel plus
+    lent (et parfois 3 aller-retours Supabase au lieu de 1) qu'une probabilite
+    silencieusement fausse utilisee pour auto-valider un vrai pari."""
+    results = [_compute_series_stat_proba_once(*args, **kwargs) for _ in range(2)]
+    if abs(results[0]["proba"] - results[1]["proba"]) <= _CONSISTENCY_TOLERANCE:
+        return results[0]
+
+    results.append(_compute_series_stat_proba_once(*args, **kwargs))
+    for i in range(3):
+        for j in range(i + 1, 3):
+            if abs(results[i]["proba"] - results[j]["proba"]) <= _CONSISTENCY_TOLERANCE:
+                return results[i]
+
+    raise ValueError(
+        "Calcul instable : 3 essais avec les memes entrees ont donne 3 probabilites differentes "
+        f"({[r['proba'] for r in results]}) -- refuse de renvoyer un resultat non fiable. "
+        "Voir supabase_context.CONSISTENCY_CHECK_NOTE."
+    )

@@ -20,7 +20,7 @@ WORKDIR /app
 COPY service/requirements.txt ./service/requirements.txt
 RUN pip install --no-cache-dir -r ./service/requirements.txt
 
-COPY scripts/tester_modele.py ./scripts/tester_modele.py
+COPY scripts/tester_modele.py scripts/build_features.py scripts/train_home_win_model.py scripts/series_probability.py ./scripts/
 COPY models/ ./models/
 COPY service/app.py service/supabase_context.py ./service/
 
