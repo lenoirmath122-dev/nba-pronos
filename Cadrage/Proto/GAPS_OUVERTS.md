@@ -277,6 +277,66 @@
 > - **Chantier "paris série" (a0/(b)/(c)/(d)/(e)) considéré COMPLET pour
 >   les paris JOUEUR** -- reste (a) modèle(s) équipe pour étendre aux paris
 >   équipe/total (ex. `total_points`), hors périmètre demandé cette session.
+>
+> **Test réel effectué (23/08/2026) : 1er vrai pari série soumis depuis
+> l'appli, révèle une LIMITE DE PÉRIMÈTRE réelle (PAS un bug)** -- "Doncic
+> marquera + de 100 points sur la série" a été rejeté par l'IA
+> (`calculable=false`, reasoning : *"Pari sur total série (plusieurs matchs),
+> pas un seuil par match unique"*). Vérifié en reproduisant l'appel Claude en
+> isolation, comportement confirmé volontaire, pas une panne technique
+> (aucune erreur dans les logs Vercel de la même fenêtre). **2 formes de
+> pari série existent en français, toutes deux naturelles, mais SEULE la
+> 1ère est gérée** :
+> 1. **"Au moins une fois"** (construit, pièces c/d/e) : UN match de la
+>    série dépasse un seuil -- ex. "un match dépassera 200 points au total"
+>    (l'exemple d'origine de l'utilisateur qui a motivé la sémantique).
+> 2. **"Cumulé sur la série"** (PAS construit) : la SOMME sur tous les
+>    matchs dépasse un seuil -- ex. "Doncic marquera 100+ points sur la
+>    série", "il aura 30+ rebonds sur la série". Demanderait un calcul
+>    statistique différent (distribution d'une somme de plusieurs matchs,
+>    avec un nombre de matchs LUI-MÊME aléatoire, cf. `series_probability.py`)
+>    -- pas juste un ajustement de prompt.
+>
+> **Décidé avec l'utilisateur (23/08/2026)** : rester sur "au moins une
+> fois" pour l'instant -- les paris cumulés restent `calculable=false`,
+> retombent sur la file de validation manuelle admin (comportement déjà
+> existant, rien de cassé, juste moins de couverture auto que l'idéal). Le
+> "cumulé sur la série" est noté ici comme un chantier séparé possible,
+> à cadrer explicitement si repris plus tard -- ne pas le construire à la
+> légère en réutilisant telle quelle la DP de `simulate_series_with_stat()`
+> (conçue pour "au moins une fois", pas pour une somme).
+>
+> **Pour retester un pari série qui DEVRAIT marcher** : une formulation
+> "au moins une fois" implicite (sans qualificatif "sur la série"/"cumulé"),
+> ex. "LeBron James marquera 25 points ou plus" avec le scope Série
+> sélectionné dans le formulaire -- même patron que le test réussi "Jayson
+> Tatum 30+ points" (pièce (d), plus haut dans ce fichier).
+>
+> **2e essai réel (23/08/2026, même session) : nouvelle LIMITE DE PÉRIMÈTRE
+> trouvée, PAS un bug** -- "Tatum marquera +30 pts sur un match" (scope
+> SÉRIE, formulation cette fois sans ambiguïté "au moins une fois") soumis
+> sur la série Boston-Knicks (CONF_SEMIS) : reste non-calculable. Cause
+> identifiée en base, pas besoin de reproduire l'appel IA : **cette série
+> n'a ENCORE AUCUN match dans `matches`** (0 ligne -- calendrier jamais
+> synchronisé, contrairement à Lakers-Rockets qui avait déjà ses matchs 1/2).
+> `resolveSeriesHomeCourtTeam()` (pièce (d)) a besoin du VRAI match 1
+> (`game_number=1`, `home_team_id`) pour savoir qui a l'avantage du terrain
+> -- sans lui, `homeCourt` est `null`, la prédiction est sautée, repli sur
+> non-calculable (comportement voulu : ne jamais deviner qui reçoit plutôt
+> que risquer une proba faussée).
+>
+> **Conséquence pratique, à garder en tête** : un pari SÉRIE peut être créé
+> par l'app dès que les 2 équipes de la série sont connues (le bracket
+> avance), mais il ne peut être auto-calculé qu'une fois le calendrier réel
+> du match 1 synchronisé -- avant ça, il tombe systématiquement en
+> validation manuelle, quelle que soit la qualité de la formulation. Pas de
+> correctif prévu pour l'instant (pas demandé) -- consigné ici pour que la
+> prochaine reprise ne redécouvre pas ce cas à froid.
+>
+> **Pour retester, cette fois avec de vraies chances de marcher** : rester
+> sur la série Lakers-Rockets (matchs 1/2 déjà programmés) -- éditer
+> ("Modifier") le pari série déjà existant dessus (1 seul pari série par
+> série, quota déjà pris) plutôt que d'en créer un 2e.
 
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**

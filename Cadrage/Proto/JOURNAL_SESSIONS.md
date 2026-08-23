@@ -9542,3 +9542,80 @@ paris série (a0/b/c/d/e) considéré complet pour les paris JOUEUR -- seule
 la pièce (a) (modèle(s) équipe, pour les paris équipe/total) reste à
 construire, hors périmètre demandé cette session.
 ```
+
+## Paris SÉRIE, 1er test réel + limite de périmètre découverte (23/08/2026, suite)
+
+```text
+Setup de test : seule compétition ACTIVE était une Cup (scope SÉRIE
+désactivé par design). Confirmé jetable avec l'utilisateur, archivée
+directement en base (service_role, pas via closeCompetition() -- exige une
+session admin réelle, inutilisable depuis un script). "Playoffs simulation"
+(archivée, données 100% simulées avec de vrais IDs d'équipe) réactivée à sa
+place.
+
+1er essai (série Lakers-Rockets) : pari indisponible côté utilisateur alors
+que Boston-Knicks marchait. Cause trouvée en lisant bet_deadline_open() (SQL,
+migration RLS) : pour un scope SÉRIE, la deadline = MIN(scheduled_at) sur
+TOUS les matchs déjà connus de la série, pas seulement le match 1. Le match
+2 de Lakers-Rockets était resté à une date passée (seul le match 1 avait été
+avancé) -- corrigé (les 2 matchs avancés dans le futur). Boston-Knicks
+marchait par accident : aucun match n'existe encore pour cette série
+(CONF_SEMIS), donc deadline = infini.
+
+1er vrai pari série soumis : "Doncic marquera + de 100 points sur la
+série" -- resté SUBMITTED, is_calculable=false, aucun champ structuré
+rempli (l'utilisateur ne voyait que "Modifier"). Vérifié aucune erreur dans
+les logs runtime Vercel (mcp Vercel, get_runtime_errors) sur la fenêtre
+concernée -- pas une panne technique. Reproduit l'appel Claude en isolation
+(script jetable, supprimé après) avec la description et le contexte exacts :
+l'IA renvoie calculable=false avec le reasoning "Pari sur total série
+(plusieurs matchs), pas un seuil par match unique" -- comportement VOULU,
+pas un bug.
+
+Vrai trou de conception trouvé par ce test : "sur la série" a 2 lectures
+naturelles en français -- "au moins une fois" (ce qui a été construit,
+motivé par l'exemple d'origine de l'utilisateur "un match dépassera 200
+points") vs "cumulé/sommé sur la série" (ex. "100+ points sur la série" pour
+UN joueur -- lecture la plus naturelle ici, et le pipeline actuel ne sait
+pas la faire : demanderait une distribution de somme sur un nombre de
+matchs lui-même aléatoire, pas juste un réglage de prompt).
+
+Décidé avec l'utilisateur : rester sur "au moins une fois" pour l'instant,
+le cumulé reste calculable=false (repli manuel existant, rien de cassé) --
+noté comme chantier séparé possible si repris plus tard, pas construit à la
+légère par-dessus la DP existante (conçue pour une sémantique différente).
+
+GAPS_OUVERTS.md mis à jour avec le détail complet (2 formes de pari série,
+décision, formulation de test qui devrait marcher à la place). Aucun
+changement de code cette entrée -- uniquement investigation + documentation
++ setup de données de test.
+```
+
+## Paris SÉRIE, 2e essai réel -- limite du calendrier non synchronisé (23/08/2026, suite)
+
+```text
+Utilisateur retente avec une formulation sans ambiguïté cette fois ("Tatum
+marquera +30 pts sur un match", scope SÉRIE) -- mais sur la série
+Boston-Knicks (CONF_SEMIS), pas Lakers-Rockets. Toujours "Modifier"
+uniquement côté utilisateur.
+
+Diagnostic direct en base cette fois (pas besoin de reproduire l'appel IA
+comme pour Doncic -- la cause est visible dans les données) : la série
+Boston-Knicks n'a ENCORE AUCUNE ligne dans matches (calendrier jamais
+synchronisé pour ce tour, contrairement à Lakers-Rockets dont les matchs 1/2
+avaient été avancés manuellement plus tôt). resolveSeriesHomeCourtTeam()
+(pièce (d)) cherche le match game_number=1 pour connaître l'avantage du
+terrain -- absent ici, donc homeCourt=null, prediction jamais tentée,
+repli non-calculable. Comportement voulu (jamais deviner qui reçoit), mais
+révèle une limite de couverture réelle : un pari série peut être créé dès
+que le bracket connaît les 2 équipes, mais reste non-calculable tant que le
+calendrier réel n'est pas synchronisé -- indépendamment de la qualité de la
+formulation du pari.
+
+Pas de correctif de code -- pas demandé, juste consigné dans
+GAPS_OUVERTS.md pour que ça ne soit pas redécouvert à froid la prochaine
+fois. Redirigé l'utilisateur vers la série Lakers-Rockets (calendrier déjà
+présent) pour le prochain essai -- via "Modifier" sur le pari Doncic déjà
+soumis dessus (quota 1 pari série/série déjà pris, pas une nouvelle
+création).
+```
