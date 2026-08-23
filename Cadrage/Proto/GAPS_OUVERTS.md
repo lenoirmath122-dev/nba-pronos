@@ -89,6 +89,13 @@
 >   (simple à implémenter, juste pas une formule à une ligne). Plus fidèle
 >   qu'un `p` moyen unique appliqué à tous les matchs restants.
 >
+> **Pièce a0 CODÉE ET VÉRIFIÉE le 23/08/2026** (même session) :
+> `Cadrage/Stats/scripts/train_home_win_model.py` (modèle, `models/
+> home_win.joblib`) + `series_probability.py` (calcul récursif) --
+> vérifié exact contre le résultat classique connu (p=0,5) et testé sur
+> un vrai affrontement. Détail complet : `projet-data-nba.md` §37. Retire
+> la pièce a0 de la liste des pièces manquantes ci-dessous.
+>
 > **Reste à trancher avant de coder** (pas abordé en détail) : la sémantique
 > par défaut d'un pari série ambigu ("marque 30+" sans préciser) --
 > "au moins une fois sur la série" (proba la plus haute, cohérent avec

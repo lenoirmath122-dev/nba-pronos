@@ -9261,3 +9261,33 @@ GAPS_OUVERTS.md mis à jour en conséquence (6 pièces au lieu de 5, le
 modèle de victoire par match ajouté comme prérequis explicite). Toujours
 PAS CODÉ, cadrage uniquement.
 ```
+
+## Paris SÉRIE, pièce a0 codée et vérifiée (23/08/2026)
+
+```text
+Suite immédiate du cadrage : l'utilisateur donne le feu vert ("oui") pour
+coder la pièce a0 (modèle de victoire par match + calcul de série).
+
+train_home_win_model.py : entraîné sur entrainement_matchs, jamais
+utilisée par aucun script d'entraînement jusqu'ici. Bug réel trouvé au
+1er essai (dataset à 0 ligne) : 2 colonnes toujours NULL
+(victoires_pct_domicile_saison côté away, _exterieur_saison côté home --
+calculées seulement pour le lieu réellement joué) -- retirées. 5216/6602
+lignes utilisables, bat le taux constant (log loss 0.630 vs 0.688, Brier
+0.220 vs 0.247), calibration correcte, testé sur 5 vrais matchs récents.
+
+series_probability.py : calcul récursif (programmation dynamique) de la
+longueur et du vainqueur de série à partir de ce P(victoire) par match,
+respecte le format domicile/extérieur 2-2-1-1-1 -- vérifié EXACT contre
+le résultat classique connu (p=0.5 -> 12.5/25/31.25/31.25%, longueur
+moyenne 5.8125). Testé sur un vrai affrontement (2 vraies équipes) :
+75.9% de victoire de série pour la favorite, longueur moyenne 5.65
+matchs (cohérent, plus court qu'à 50/50).
+
+models/home_win.joblib généré localement (non versionné, même convention
+que les 12 autres modèles). Scripts commités et poussés. GAPS_OUVERTS.md/
+projet-data-nba.md (§37) mis à jour, pièce a0 retirée de la liste des
+pièces manquantes.
+
+Détail complet : projet-data-nba.md §37.
+```

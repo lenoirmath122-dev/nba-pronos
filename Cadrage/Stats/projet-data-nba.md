@@ -2,9 +2,23 @@
 
 *Résumé de notre échange — à reprendre plus tard*
 
-> ## 🔴 REPRISE ICI (état au 23/08/2026, suite 16 — Phase 6 COMPLÈTE)
+> ## 🔴 REPRISE ICI (état au 23/08/2026, suite 17 — paris SÉRIE, pièce a0)
 >
-> **Phase 6 (résolution automatique des paris IA calculables) COMPLÈTE ET
+> **Chantier paris SÉRIE démarré (§37)** : 1re brique codée --
+> `train_home_win_model.py` (modèle de proba de victoire PAR MATCH,
+> `entrainement_matchs`/`home_win`, jamais utilisée jusqu'ici) +
+> `series_probability.py` (calcul récursif de la longueur/du vainqueur de
+> série à partir de ce modèle, respecte le format domicile/extérieur
+> 2-2-1-1-1 -- vérifié exact contre le résultat classique connu p=0.5).
+> Testés avec de vraies données, `models/home_win.joblib` généré. Scripts
+> commités et poussés.
+> - **Reste** : pièces b à e du cadrage (`GAPS_OUVERTS.md`) -- contexte
+>   équipe roulant en production, modèle `total_points`, extraction IA
+>   étendue, résolution étendue. Pas encore décidé où exposer
+>   `series_probability.py` (nouvel endpoint Cloud Run vs calcul côté app).
+>
+> Plus tôt (état au 23/08/2026, suite 16) — **Phase 6 (résolution
+> automatique des paris IA calculables) COMPLÈTE ET
 > VÉRIFIÉE DE BOUT EN BOUT** : `lib/ai/resolveCalculableBets.ts` (pont
 > match appli <-> vrai match NBA via `entity_mappings`/NBA_API, comparaison
 > de la vraie stat au seuil, écriture WON/LOST + points) + route
@@ -2085,4 +2099,50 @@ Limite connue, notée pour plus tard : cette compétition de test précise
 ne pourra jamais déclencher ce mécanisme pour de vrai (dates fictives) --
 seule une compétition alignée sur le vrai calendrier NBA le fera tourner
 naturellement (saison réelle, dès octobre 2026).
+```
+
+## 37. Chantier paris SÉRIE, pièce a0 : modèle de victoire par match + calcul de série (23/08/2026)
+
+```text
+1re brique codée du cadrage posé le 23/08/2026 (JOURNAL_SESSIONS.md,
+GAPS_OUVERTS.md) : le modèle de proba de victoire PAR MATCH décidé comme
+prérequis, avant la simplification p=0.5 initialement envisagée.
+
+`train_home_win_model.py` -- entraîné sur `entrainement_matchs`
+(build_targets.py), jamais utilisée par aucun script d'entraînement
+jusqu'ici malgré son existence de longue date. Cible `home_win` déjà
+calculée, features déjà dupliquées `home_*`/`away_*` (mêmes colonnes que
+`features_equipe`, `MATCH_FEATURE_COLS`). Bug réel trouvé au 1er
+entraînement (dataset à 0 ligne) : 2 colonnes prévues
+(`victoires_pct_domicile_saison` côté away, `_exterieur_saison` côté
+home) sont TOUJOURS NULL -- calculées côté source seulement pour le lieu
+RÉELLEMENT joué ce jour-là, jamais pour "l'autre" lieu. Retirées de la
+liste de features (le signal équivalent reste capté par les moyennes de
+forme récente `victoires_pct_moy5/10`). Résultat sur 5216/6602 lignes
+utilisables : bat le taux constant (log loss 0.630 vs 0.688 ; Brier 0.220
+vs 0.247), calibration correcte, testé sur 5 vrais matchs récents.
+
+`series_probability.py` -- combine ce P(victoire) par match avec le
+format domicile/extérieur 2-2-1-1-1 d'une série best-of-7, connu à
+l'avance : calcul RÉCURSIF (programmation dynamique sur les scores de
+série possibles), PAS une formule fermée à un seul p constant (rejetée
+avec l'utilisateur -- écraserait la différence domicile/extérieur match
+par match). Vérifié contre le résultat classique connu (deux équipes
+égales, p=0.5 -> 12.5%/25%/31.25%/31.25% pour 4/5/6/7 matchs, longueur
+moyenne 5.8125) : exact au calcul près. Testé sur un vrai affrontement
+(2 vraies équipes, p_home=67.6%/p_away=55.7% obtenus via le modèle) :
+75.9% de victoire de série pour l'équipe favorite, longueur moyenne 5.65
+matchs (plus courte que 5.81, cohérent -- une série déséquilibrée finit
+plus vite).
+
+`models/home_win.joblib` généré localement, non versionné (même
+convention que les 12 autres modèles). Scripts commités et poussés.
+
+Reste pour la suite (pièces b à e du cadrage, GAPS_OUVERTS.md) : contexte
+équipe roulant en production (Supabase `stats_equipes` n'a que des infos
+statiques aujourd'hui), le modèle `total_points` (données déjà prêtes,
+indépendant de cette brique), extraction IA étendue aux paris série/
+équipe, résolution étendue. Pas encore décidé où ce calcul de série sera
+exposé (nouvel endpoint Cloud Run ? calculé côté app directement, puisque
+`series_probability.py` est une fonction pure sans dépendance Supabase ?).
 ```
