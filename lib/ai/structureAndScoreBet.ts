@@ -1,7 +1,7 @@
 import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
-import { predictOverUnder, predictSeriesStat, predictTotalPoints } from "./statsService";
+import { predictOverUnder, predictSeriesStat, predictTotalPoints, predictTotalRebounds, predictTeamStat } from "./statsService";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 
@@ -74,7 +74,9 @@ async function resolveSeriesHomeCourtTeam(
 async function resolveMatchTeams(
   supabase: Awaited<ReturnType<typeof getServerClient>>,
   matchId: string,
-): Promise<{ homeTeamName: string; awayTeamName: string; scheduledAt: string } | null> {
+): Promise<
+  { homeTeamId: string; awayTeamId: string; homeTeamName: string; awayTeamName: string; scheduledAt: string } | null
+> {
   const { data: match } = await supabase
     .from("matches")
     .select("home_team_id, away_team_id, scheduled_at")
@@ -86,7 +88,15 @@ async function resolveMatchTeams(
   const nameById = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
   const homeTeamName = nameById.get(match.home_team_id);
   const awayTeamName = nameById.get(match.away_team_id);
-  return homeTeamName && awayTeamName ? { homeTeamName, awayTeamName, scheduledAt: match.scheduled_at } : null;
+  return homeTeamName && awayTeamName
+    ? {
+        homeTeamId: match.home_team_id,
+        awayTeamId: match.away_team_id,
+        homeTeamName,
+        awayTeamName,
+        scheduledAt: match.scheduled_at,
+      }
+    : null;
 }
 
 export async function structureAndScoreBet(
@@ -110,6 +120,7 @@ export async function structureAndScoreBet(
         p_bet_id: betId,
         p_structured_player_name: null,
         p_structured_player_id: null,
+        p_structured_team_id: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -155,7 +166,8 @@ export async function structureAndScoreBet(
       // as_of_date = date RÉELLE du match visé (pas "aujourd'hui" comme pour
       // un pari série) -- un match précis a une vraie date connue, plus
       // fidèle pour le calcul de repos/contexte équipe.
-      const prediction = await predictTotalPoints(
+      const predictMatchTotal = structuration.match_stat === "total_reb" ? predictTotalRebounds : predictTotalPoints;
+      const prediction = await predictMatchTotal(
         matchTeams.homeTeamName,
         matchTeams.awayTeamName,
         structuration.threshold,
@@ -170,7 +182,62 @@ export async function structureAndScoreBet(
         p_bet_id: betId,
         p_structured_player_name: null,
         p_structured_player_id: null,
+        p_structured_team_id: null,
         p_stat: structuration.match_stat,
+        p_threshold: structuration.threshold,
+        p_comparison: structuration.comparison,
+        p_is_calculable: true,
+        p_calculated_proba: prediction.proba,
+        p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      });
+      return;
+    }
+
+    // Pari TEAM_STAT (pièce (a) suite, GAPS_OUVERTS.md) -- stat d'UNE
+    // équipe précise sur CE match, perspective "own"/"opp" (pas domicile/
+    // extérieur) -- MATCH uniquement, même limite que MATCH_TOTAL ci-dessus.
+    if (structuration.bet_subject === "TEAM_STAT") {
+      if (
+        scope !== "MATCH" ||
+        !matchId ||
+        !structuration.team_stat ||
+        !structuration.team_stat_team ||
+        structuration.threshold === null ||
+        !structuration.comparison
+      ) {
+        await markNotCalculable();
+        return;
+      }
+      const teamName =
+        structuration.team_stat_team === "team1" ? teamNames?.[0]
+        : structuration.team_stat_team === "team2" ? teamNames?.[1]
+        : null;
+      const matchTeams = await resolveMatchTeams(supabase, matchId);
+      if (!teamName || !matchTeams || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
+        await markNotCalculable();
+        return;
+      }
+      const isHome = teamName === matchTeams.homeTeamName;
+      const opponentName = isHome ? matchTeams.awayTeamName : matchTeams.homeTeamName;
+      const teamId = isHome ? matchTeams.homeTeamId : matchTeams.awayTeamId;
+      const prediction = await predictTeamStat(
+        teamName,
+        opponentName,
+        isHome,
+        structuration.threshold,
+        structuration.comparison,
+        matchTeams.scheduledAt.slice(0, 10),
+      );
+      if (!prediction) {
+        await markNotCalculable();
+        return;
+      }
+      await supabase.rpc("update_bet_structuration", {
+        p_bet_id: betId,
+        p_structured_player_name: null,
+        p_structured_player_id: null,
+        p_structured_team_id: teamId,
+        p_stat: structuration.team_stat,
         p_threshold: structuration.threshold,
         p_comparison: structuration.comparison,
         p_is_calculable: true,
@@ -218,6 +285,7 @@ export async function structureAndScoreBet(
         p_bet_id: betId,
         p_structured_player_name: structuration.player_name,
         p_structured_player_id: null,
+        p_structured_team_id: null,
         p_stat: structuration.player_stat,
         p_threshold: structuration.threshold,
         p_comparison: structuration.comparison,
@@ -272,6 +340,7 @@ export async function structureAndScoreBet(
       p_bet_id: betId,
       p_structured_player_name: structuration.player_name,
       p_structured_player_id: prediction.playerId,
+      p_structured_team_id: null,
       p_stat: structuration.player_stat,
       p_threshold: structuration.threshold,
       p_comparison: structuration.comparison,

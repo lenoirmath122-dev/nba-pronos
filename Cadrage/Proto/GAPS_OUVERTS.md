@@ -4,6 +4,107 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Pièce (a) suite -- REBONDS D'ÉQUIPE, CODÉE le 23/08/2026, les 2 FORMES**
+> (GAPS_OUVERTS.md, décidé avec l'utilisateur : "les deux ! ça dépendra de
+> l'énoncé") -- 1ère extension du chantier paris équipe au-delà de
+> `total_points`, généralise directement à ast/fg3m/stl/blk plus tard (même
+> geste à chaque étape, détaillé ci-dessous) :
+>
+> **1. Pipeline de données étendu** (`build_features.py`/`build_targets.py`) :
+> - `build_team_games()`/`add_team_rolling_features()` : `reb_pour_moy5/10`,
+>   `reb_contre_moy5/10` ajoutées, même patron EXACT que `pts_pour`/`pts_contre`
+>   (swap team_id<->opponent_team_id). Colonnes ajoutées à `TEAM_SCHEMA`/
+>   `TEAM_TABLE_COLUMNS` (oubli facile -- `to_sql` silencieux si absent de
+>   la liste).
+> - `entrainement_matchs` (`build_matchs_training()`) : `home_reb`/`away_reb`/
+>   `total_reb` ajoutés (cibles RÉELLES depuis `box_scores`, pas les moyennes
+>   glissantes de `features_equipe`).
+> - **Nouvelle table `entrainement_equipe`** (`build_team_perspective_dataset()`)
+>   -- 1 ligne par (match, équipe), perspective **"own"/"opp"** (PAS domicile/
+>   extérieur) : nécessaire pour "CETTE équipe aura 45+ rebonds", qui doit
+>   rester valide que l'équipe reçoive ou se déplace -- `own_is_home` devient
+>   une feature EXPLICITE, pas un axe figé comme pour `home_win`/`total_points`
+>   (ceux-là ont besoin de savoir QUI reçoit, celui-ci non). Basée directement
+>   sur `features_equipe` (déjà 1 ligne par (match, équipe)), pas sur
+>   `entrainement_matchs`. 13204 lignes (= 6602 matchs × 2).
+>
+> **2. 2 modèles entraînés** :
+> - `train_total_rebounds_model.py` (`total_reb.joblib`) -- symétrique,
+>   MÊME patron que `train_total_points_model.py` (domicile/extérieur),
+>   mais avec les 4 features rebonds en plus des 21 `BASE_FEATURE_COLS`
+>   (contrairement à `total_points`, la tendance au rebond de chaque équipe
+>   est directement prédictive ici). R² 0.050, MAE 7.17 (cible bruitée,
+>   attendu).
+> - `train_team_rebounds_model.py` (`team_reb.joblib`) -- perspective
+>   own/opp, entraîné sur `entrainement_equipe`. Features : `own_is_home` +
+>   `BASE_FEATURE_COLS`+4 dupliquées `own_*`/`opp_*` (51 au total). R² 0.103,
+>   MAE 5.19. Feature la plus importante : `own_reb_pour_moy10` (tendance
+>   propre au rebond), puis `opp_reb_contre_moy10` (rebonds concédés par
+>   l'adversaire) -- cohérent.
+>
+> **3. Refactor `supabase_context.py` pour partager le contexte entre
+> modèles** : `build_team_context()` calcule désormais AUSSI `reb_pour`/
+> `reb_contre` (utilisé par home_win/total_points ou pas -- les clés en
+> trop sont juste ignorées par ces 2-là). `_build_match_feature_row()`
+> gagne un paramètre `base_cols` (défaut `BASE_FEATURE_COLS`) au lieu d'un
+> `FEATURE_COLS` figé -- `home_win`/`total_points` passent `BASE_FEATURE_COLS`
+> explicitement (comportement inchangé), `compute_total_rebounds_proba()`
+> passe `TOTAL_REB_BASE_COLS` (liste élargie). `compute_team_rebounds_proba()`
+> réutilise `build_team_context()` deux fois (own/opp, même mécanique que
+> home/away) + `is_home` fourni explicitement par l'appelant (contexte RÉEL
+> du match visé, pas un choix arbitraire).
+>
+> **4. 2 nouveaux endpoints** (`app.py`) : `/predict-total-rebounds` (même
+> contrat que `/predict-total-points`), `/predict-team-rebounds` (nouveau
+> contrat : `equipe`/`adversaire`/`equipe_domicile` au lieu de
+> `equipe_domicile_serie`/`equipe_exterieur_serie`).
+>
+> **5. Schéma IA étendu, 2 nouveaux fichiers de codes** : `matchStatCodes.ts`
+> gagne `total_reb` (déjà là pour `total_points`) ; nouveau `teamStatCodes.ts`
+> (`TEAM_STAT_CODES`, juste `"reb"` pour l'instant) -- volontairement
+> SÉPARÉ de `matchStatCodes.ts` (une stat combinée symétrique et une stat
+> visant une équipe précise ne partagent aucun invariant). `bet_subject`
+> gagne `"TEAM_STAT"` (en plus de `PLAYER`/`MATCH_TOTAL`), nouveaux champs
+> `team_stat_team`/`team_stat` (même patron que `player_team`/`player_stat`,
+> mais pour une équipe). Testé avec 5 vrais appels Claude Sonnet 5 : équipe
+> précise OVER, équipe précise UNDER, combiné total_reb, combiné
+> total_points (non-régression), pari joueur (non-régression). 5/5.
+>
+> **6. VRAI MANQUE DE CONCEPTION comblé avant de coder la résolution** :
+> rien ne mémorisait QUELLE équipe un pari TEAM_STAT vise -- ni `structured_player_id`
+> (paris joueur), ni les 2 équipes du match (symétrique pour MATCH_TOTAL) ne
+> suffisaient. **Migration `20260823140000_bets_structured_team_id.sql`**
+> (poussée) : nouvelle colonne `bets.structured_team_id uuid references
+> teams(id)`, `update_bet_structuration()` étendue (`p_structured_team_id`,
+> tous les points d'appel de `structureAndScoreBet.ts` mis à jour, y compris
+> PLAYER/MATCH_TOTAL avec `null`).
+>
+> **7. Résolution (`resolveCalculableReboundsBets()`, nouvelle)** :
+> contrairement à `total_points` (direct via `matches.home_score`/
+> `away_score`), les rebonds n'existent PAS sur `matches` -- seulement dans
+> `stats_box_scores` (pipeline Data NBA). Réutilise `resolveNbaGameId()`
+> (déjà éprouvée côté joueur) + nouvelle `resolveNbaTeamId()` (même
+> rapprochement par tricode, pour retrouver l'équipe NBA numérique depuis
+> `structured_team_id`). Câblée en parallèle des 3 autres resolvers dans
+> `/api/resolve-bets`.
+>
+> Testé en conditions réelles à chaque étape (Boston vs Lakers) : les 2
+> modèles Python (HTTP local), les 5 cas d'extraction IA (vrais appels
+> Claude). `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. **Pas
+> encore redéployé sur Cloud Run** (action de l'utilisateur) -- à faire
+> avant de tester un vrai pari rebonds depuis l'appli. **Pas testé en
+> conditions réelles depuis l'appli** (comme pour les pièces précédentes,
+> à confirmer par l'utilisateur après déploiement).
+>
+> **Généralisation prête pour ast/fg3m/stl/blk** (pas fait, juste noté) :
+> chaque étape ci-dessus suit un patron mécanique désormais éprouvé 2 fois
+> (`pts` -> `reb`) -- ajouter 4 colonnes à `build_features.py`/
+> `build_targets.py`, 2 scripts d'entraînement copiés/adaptés, 2 entrées
+> dans `MATCH_STAT_CODES`/`TEAM_STAT_CODES`, 2 endpoints, extension des
+> `if`/`in` dans `resolveCalculableReboundsBets()` (renommer en
+> "resolveCalculable[Stat]Bets" générique le jour où ça vaut la peine de
+> factoriser plutôt que dupliquer).
+
 > **Cadrage posé le 23/08/2026, PAS CODÉ -- prêt à construire la prochaine
 > fois** : pièce (a) du chantier paris série (modèle ÉQUIPE, pour étendre
 > l'auto-calcul aux paris équipe/total -- jusqu'ici réservé aux 12 stats

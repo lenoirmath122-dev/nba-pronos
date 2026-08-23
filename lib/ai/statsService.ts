@@ -138,19 +138,21 @@ export async function predictSeriesStat(
 }
 
 /**
- * Pari MATCH_TOTAL (pièce (a) du chantier, GAPS_OUVERTS.md) -- 1er pari SANS
- * JOUEUR : score combiné d'UN match précis. Contrairement à predictSeriesStat(),
- * l'inversion OVER/UNDER (1-proba) est SÛRE côté service ici (voir
- * supabase_context.py::compute_total_points_proba pour le pourquoi -- une
- * prédiction à l'échelle d'un seul match, pas une agrégation sur une série),
- * mais reste faite CÔTÉ SERVICE (pas ici) pour rester cohérent avec le
- * contrat HTTP déjà établi par predictSeriesStat (comparison transmis tel
- * quel, jamais retraité côté TypeScript).
+ * Pari MATCH_TOTAL (pièce (a) du chantier, GAPS_OUVERTS.md) -- pari SANS
+ * JOUEUR, stat COMBINÉE d'UN match précis (total_points, puis total_reb --
+ * 23/08/2026, même contrat HTTP pour les 2, factorisé ici). Contrairement à
+ * predictSeriesStat(), l'inversion OVER/UNDER (1-proba) est SÛRE côté
+ * service ici (voir supabase_context.py::compute_total_points_proba pour le
+ * pourquoi -- une prédiction à l'échelle d'un seul match, pas une
+ * agrégation sur une série), mais reste faite CÔTÉ SERVICE (pas ici) pour
+ * rester cohérent avec le contrat HTTP déjà établi par predictSeriesStat
+ * (comparison transmis tel quel, jamais retraité côté TypeScript).
  *
  * asOfDate : date RÉELLE du match visé (pas "aujourd'hui") -- résolue par
  * l'appelant (structureAndScoreBet.ts) depuis matches.scheduled_at.
  */
-export async function predictTotalPoints(
+async function callMatchTotalPredict(
+  endpoint: string,
   homeTeamName: string,
   awayTeamName: string,
   threshold: number,
@@ -161,7 +163,7 @@ export async function predictTotalPoints(
   if (!url) return null;
 
   try {
-    const res = await fetch(`${url.replace(/\/$/, "")}/predict-total-points`, {
+    const res = await fetch(`${url.replace(/\/$/, "")}${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -172,8 +174,72 @@ export async function predictTotalPoints(
         as_of_date: asOfDate,
       }),
       // 3 recalculs possibles côté service (verification de coherence,
-      // supabase_context.py::compute_total_points_proba) -- meme delai que
-      // predictSeriesStat.
+      // supabase_context.py) -- meme delai que predictSeriesStat.
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba, label: data.label };
+  } catch {
+    return null;
+  }
+}
+
+export async function predictTotalPoints(
+  homeTeamName: string,
+  awayTeamName: string,
+  threshold: number,
+  comparison: "OVER" | "UNDER",
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  return callMatchTotalPredict("/predict-total-points", homeTeamName, awayTeamName, threshold, comparison, asOfDate);
+}
+
+export async function predictTotalRebounds(
+  homeTeamName: string,
+  awayTeamName: string,
+  threshold: number,
+  comparison: "OVER" | "UNDER",
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  return callMatchTotalPredict("/predict-total-rebounds", homeTeamName, awayTeamName, threshold, comparison, asOfDate);
+}
+
+/**
+ * Pari TEAM_STAT (pièce (a) suite, GAPS_OUVERTS.md, 23/08/2026) -- stat
+ * d'UNE équipe précise sur CE match (perspective "own"/"opp", pas
+ * domicile/extérieur -- contrairement à predictTotalPoints/predictTotalRebounds).
+ * isHome : contexte RÉEL du match visé (pas un choix arbitraire) -- résolu
+ * par l'appelant depuis matches.home_team_id/away_team_id.
+ *
+ * Endpoint /predict-team-rebounds codé en dur : seul code TEAM_STAT_CODES
+ * pour l'instant ("reb"). À généraliser (comme callMatchTotalPredict()
+ * ci-dessus) le jour où un 2e code équipe s'ajoute (ast/fg3m/stl/blk).
+ */
+export async function predictTeamStat(
+  teamName: string,
+  opponentName: string,
+  isHome: boolean,
+  threshold: number,
+  comparison: "OVER" | "UNDER",
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-team-rebounds`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        equipe: teamName,
+        adversaire: opponentName,
+        equipe_domicile: isHome,
+        seuil: threshold,
+        comparison,
+        as_of_date: asOfDate,
+      }),
       signal: AbortSignal.timeout(40_000),
     });
     if (!res.ok) return null;

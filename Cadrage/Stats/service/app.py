@@ -173,6 +173,84 @@ def predict_total_points(req: PredictTotalPointsRequest):
     }
 
 
+class PredictTotalReboundsRequest(BaseModel):
+    """Piece (a) suite (GAPS_OUVERTS.md, 23/08/2026) -- 2e forme du pari
+    rebonds : rebonds COMBINES du match (a cote de /predict-team-rebounds,
+    perspective par equipe). MEME contrat que PredictTotalPointsRequest."""
+    equipe_domicile: str
+    equipe_exterieur: str
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-total-rebounds")
+def predict_total_rebounds(req: PredictTotalReboundsRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_total_rebounds_proba(
+            sb, home_id, away_id, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
+class PredictTeamReboundsRequest(BaseModel):
+    """Piece (a) suite (GAPS_OUVERTS.md, 23/08/2026) -- 1ere forme du pari
+    rebonds : rebonds d'UNE equipe precise sur CE match (perspective "own"/
+    "opp", pas domicile/exterieur -- reutilisable que l'equipe visee recoive
+    ou se deplace)."""
+    equipe: str  # equipe visee par le pari
+    adversaire: str
+    equipe_domicile: bool  # True si `equipe` recoit sur CE match precis
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-team-rebounds")
+def predict_team_rebounds(req: PredictTeamReboundsRequest):
+    sb = _client()
+
+    try:
+        team_id, team_name = supabase_context.find_team(sb, req.equipe)
+        opponent_id, opponent_name = supabase_context.find_team(sb, req.adversaire)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_team_rebounds_proba(
+            sb, team_id, opponent_id, req.equipe_domicile, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe": team_name,
+        "adversaire": opponent_name,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
 class PredictSeriesRequest(BaseModel):
     joueur: str | None = None
     joueur_id: int | None = None

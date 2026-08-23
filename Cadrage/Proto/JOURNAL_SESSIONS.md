@@ -9823,3 +9823,61 @@ tsc/eslint/vitest(37/37)/next build propres. Redéploiement Cloud Run pas
 encore fait (action de l'utilisateur) -- à faire avant de tester un vrai
 pari MATCH_TOTAL depuis l'appli.
 ```
+
+## Pièce (a) suite -- rebonds d'équipe, les 2 formes (23/08/2026, suite)
+
+```text
+Après confirmation que le pari MATCH_TOTAL marchait en vrai (redéploiement
+Cloud Run fait, pari "score total" testé par l'utilisateur), demande
+d'étendre la pièce (a). Question posée avant de proposer une direction :
+"c'est quoi la marge de victoire ?" -- expliqué, puis l'utilisateur note
+que les pronostics de match couvrent déjà l'écart, pas la peine de
+dupliquer en pari perso. Décidé ensemble : direction rebonds d'équipe,
+sous 2 formes (équipe précise ET combiné) -- "les deux ! ça dépendra de
+l'énoncé".
+
+Chantier nettement plus gros que total_points, en 7 morceaux :
+1. Pipeline de données étendu (build_features.py : reb_pour/reb_contre,
+   même patron que pts_pour/pts_contre ; build_targets.py : home_reb/
+   away_reb/total_reb dans entrainement_matchs). Nouvelle table
+   entrainement_equipe (build_team_perspective_dataset()) -- 1 ligne par
+   (match, équipe), perspective "own"/"opp" plutôt que domicile/extérieur,
+   nécessaire pour qu'un pari "CETTE équipe" reste valide qu'elle reçoive
+   ou se déplace. own_is_home devient une feature explicite plutôt qu'un
+   axe figé (contrairement à home_win/total_points).
+2. 2 modèles entraînés en conditions réelles (total_reb R²=0.050,
+   team_reb R²=0.103 -- cibles bruitées, attendu, feature importances
+   cohérentes : tendance propre au rebond + rebonds concédés par
+   l'adversaire en tête).
+3. Refactor supabase_context.py pour partager le contexte entre modèles :
+   build_team_context() calcule désormais aussi reb_pour/contre (ignoré
+   par home_win/total_points, utilisé par les 2 nouveaux) ;
+   _build_match_feature_row() gagne un paramètre base_cols au lieu d'un
+   FEATURE_COLS figé -- évite de dupliquer la construction de contexte
+   pour chaque nouveau modèle MATCH.
+4. 2 nouveaux endpoints Python, testés en HTTP local.
+5. Schéma IA étendu : bet_subject gagne TEAM_STAT, nouveau fichier
+   teamStatCodes.ts (volontairement séparé de matchStatCodes.ts -- stat
+   visant une équipe vs stat combinée symétrique, aucun invariant
+   partagé). Testé 5 vrais appels Claude Sonnet 5 (équipe OVER, équipe
+   UNDER, combiné reb, combiné points non-régression, joueur
+   non-régression). 5/5.
+6. Vrai manque de conception trouvé EN CONCEVANT (pas en testant, cette
+   fois) : rien ne mémorisait quelle équipe un pari TEAM_STAT vise --
+   ajouté structured_team_id (migration 20260823140000, poussée),
+   update_bet_structuration() étendue, tous les points d'appel de
+   structureAndScoreBet.ts mis à jour.
+7. resolveCalculableReboundsBets() (nouveau) : contrairement à
+   total_points (direct via matches.home_score/away_score), les rebonds
+   n'existent que dans stats_box_scores -- réutilise resolveNbaGameId()
+   (déjà éprouvée côté joueur) + nouvelle resolveNbaTeamId() (même
+   rapprochement par tricode). Câblée en parallèle des 3 autres resolvers.
+
+tsc/eslint/vitest(37/37)/next build propres. Migration poussée.
+Redéploiement Cloud Run pas encore fait -- à faire avant de tester un vrai
+pari rebonds depuis l'appli.
+
+GAPS_OUVERTS.md mis à jour avec le détail complet des 7 morceaux + une
+note sur la généralisation à ast/fg3m/stl/blk (patron désormais éprouvé 2
+fois, mécanique mais pas fait).
+```

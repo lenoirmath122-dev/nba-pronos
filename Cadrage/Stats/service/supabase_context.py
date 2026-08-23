@@ -37,6 +37,8 @@ from tester_modele import (  # noqa: E402
 )
 from build_features import CORE_MINUTES_SHARE  # noqa: E402
 from train_home_win_model import BASE_FEATURE_COLS, FEATURE_COLS  # noqa: E402
+from train_total_rebounds_model import TOTAL_REB_BASE_COLS  # noqa: E402
+from train_team_rebounds_model import OWN_BASE_FEATURE_COLS, FEATURE_COLS as TEAM_REB_FEATURE_COLS  # noqa: E402
 from series_probability import simulate_series_with_stat  # noqa: E402
 
 
@@ -259,7 +261,13 @@ def _team_roster_continuity(client, team_id: int, season: str, seasons_known) ->
 
 def build_team_context(client, team_id: int, opponent_id: int, as_of_date, season: str | None = None) -> dict:
     """Les 21 features BASE_FEATURE_COLS (train_home_win_model.py) pour
-    team_id, calculees EN DIRECT depuis stats_box_scores -- equivalent
+    team_id + 4 features rebonds (reb_pour/reb_contre moy5/10, ajoutees
+    23/08/2026, paris equipe piece (a) suite -- non utilisees par home_win/
+    total_points, presentes ici quand meme : cette fonction reste LA seule
+    construction de contexte equipe, tout futur modele qui en a besoin
+    (team_reb, total_reb, et generalisable a ast/fg3m/stl/blk) pioche dans
+    le meme dict plutot que d'en recalculer un a part), calculees EN DIRECT
+    depuis stats_box_scores -- equivalent
     Supabase de build_team_games()/add_team_rolling_features()
     (build_features.py), sans etat precalcule (meme philosophie que
     build_context() ci-dessus pour les joueurs), reduit a UNE SEULE equipe
@@ -284,9 +292,12 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     equipe si omise (voir _latest_known_season -- PAS une regle calendaire
     sur as_of_date, casse pendant l'intersaison reelle).
     """
+    # "reb" ajoute ici (23/08/2026, paris equipe piece (a) suite -- rebonds
+    # d'equipe) selon le MEME patron que "pts" -- generalisable directement a
+    # ast/fg3m/stl/blk plus tard (memes colonnes deja dans stats_box_scores).
     own_rows = fetch_all_rows(
         lambda start, end: client.table("stats_box_scores")
-        .select("game_id, game_date, season, opponent_team_id, pts, off_rating, def_rating, net_rating, pace")
+        .select("game_id, game_date, season, opponent_team_id, pts, reb, off_rating, def_rating, net_rating, pace")
         .eq("team_id", team_id)
         .range(start, end)
     )
@@ -299,6 +310,7 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
         game_date=("game_date", "first"),
         opponent_team_id=("opponent_team_id", "first"),
         team_pts=("pts", "sum"),
+        team_reb=("reb", "sum"),
         off_rating=("off_rating", "mean"),
         def_rating=("def_rating", "mean"),
         net_rating=("net_rating", "mean"),
@@ -308,12 +320,14 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
 
     opp_rows = fetch_all_rows(
         lambda start, end: client.table("stats_box_scores")
-        .select("game_id, pts")
+        .select("game_id, pts, reb")
         .eq("opponent_team_id", team_id)
         .range(start, end)
     )
-    opp_pts = pd.DataFrame(opp_rows).groupby("game_id", as_index=False)["pts"].sum().rename(columns={"pts": "opp_pts"})
-    team_games = team_games.merge(opp_pts, on="game_id", how="inner")
+    opp_totals = pd.DataFrame(opp_rows).groupby("game_id", as_index=False)[["pts", "reb"]].sum().rename(
+        columns={"pts": "opp_pts", "reb": "opp_reb"}
+    )
+    team_games = team_games.merge(opp_totals, on="game_id", how="inner")
     team_games["win"] = (team_games["team_pts"] > team_games["opp_pts"]).astype(int)
     team_games["margin"] = team_games["team_pts"] - team_games["opp_pts"]
     team_games = team_games.sort_values("game_date", ascending=False).reset_index(drop=True)
@@ -329,6 +343,7 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     }
     for stat, col in (
         ("pts_pour", "team_pts"), ("pts_contre", "opp_pts"), ("victoires_pct", "win"),
+        ("reb_pour", "team_reb"), ("reb_contre", "opp_reb"),
         ("off_rating", "off_rating"), ("def_rating", "def_rating"),
         ("net_rating", "net_rating"), ("pace", "pace"),
     ):
@@ -346,19 +361,24 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     return context
 
 
-def _build_match_feature_row(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None) -> pd.DataFrame:
-    """Vecteur home_*/away_* complet (les 21 BASE_FEATURE_COLS de chaque
-    equipe, train_home_win_model.py) -- partage entre TOUS les modeles au
-    niveau MATCH (home_win, total_points, futurs modeles equipe) : une seule
-    construction de contexte, jamais dupliquee par modele. season deduite de
-    as_of_date si omise (independamment pour chaque equipe, cf.
-    build_team_context())."""
+def _build_match_feature_row(
+    client, home_team_id: int, away_team_id: int, as_of_date, season: str | None, base_cols: list[str] = BASE_FEATURE_COLS
+) -> pd.DataFrame:
+    """Vecteur home_*/away_* complet -- partage entre TOUS les modeles au
+    niveau MATCH (home_win, total_points, total_reb, futurs modeles equipe) :
+    une seule construction de contexte, jamais dupliquee par modele.
+    base_cols : quelles features de build_team_context() garder (par defaut
+    les 21 BASE_FEATURE_COLS, train_home_win_model.py -- total_reb.py passe
+    une liste etendue avec les features rebonds en plus, cf. son propre
+    fichier). season deduite de as_of_date si omise (independamment pour
+    chaque equipe, cf. build_team_context())."""
     home_ctx = build_team_context(client, home_team_id, away_team_id, as_of_date, season=season)
     away_ctx = build_team_context(client, away_team_id, home_team_id, as_of_date, season=season)
 
-    row = {f"home_{c}": home_ctx[c] for c in BASE_FEATURE_COLS}
-    row.update({f"away_{c}": away_ctx[c] for c in BASE_FEATURE_COLS})
-    X = pd.DataFrame([row])[FEATURE_COLS]
+    row = {f"home_{c}": home_ctx[c] for c in base_cols}
+    row.update({f"away_{c}": away_ctx[c] for c in base_cols})
+    feature_cols = [f"home_{c}" for c in base_cols] + [f"away_{c}" for c in base_cols]
+    X = pd.DataFrame([row])[feature_cols]
 
     if X.isna().any(axis=None):
         missing = X.columns[X.isna().iloc[0]].tolist()
@@ -373,7 +393,7 @@ def _build_match_feature_row(client, home_team_id: int, away_team_id: int, as_of
 def compute_home_win_proba(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> dict:
     """P(home_team_id gagne CE match, a domicile) -- charge home_win.joblib
     (train_home_win_model.py). season deduite de as_of_date si omise."""
-    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
     bundle = joblib.load(MODELS_DIR / "home_win.joblib")
     proba = float(bundle["model"].predict_proba(X)[:, 1][0])
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "p_home_win": proba}
@@ -418,6 +438,95 @@ def compute_total_points_proba(*args, **kwargs) -> dict:
     modele -- l'hypothese initiale "seulement en combinant 2 modeles"
     s'est averee incomplete)."""
     return _compute_with_consistency_check(lambda: _compute_total_points_proba_once(*args, **kwargs))
+
+
+def _compute_total_rebounds_proba_once(
+    client, home_team_id: int, away_team_id: int, seuil: float, comparison: str, as_of_date, season: str | None = None
+) -> dict:
+    """P(rebonds combines du match > seuil) -- 2e forme du pari rebonds
+    (piece (a) suite, GAPS_OUVERTS.md, 23/08/2026), a cote de
+    compute_team_rebounds_proba() (perspective par equipe) -- les 2 formes
+    demandees explicitement par l'utilisateur. MEME structure EXACTE que
+    compute_total_points_proba() (domicile/exterieur, inversion OVER/UNDER
+    sure ici -- prediction a l'echelle d'UN match), sauf la liste de
+    features (TOTAL_REB_BASE_COLS, avec les 4 features rebonds en plus des
+    21 BASE_FEATURE_COLS -- contrairement a total_points, la tendance au
+    rebond de chaque equipe est directement predictive ici) et le modele
+    charge (total_reb.joblib, train_total_rebounds_model.py)."""
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=TOTAL_REB_BASE_COLS)
+    bundle = joblib.load(MODELS_DIR / "total_reb.joblib")
+    pred_mean = float(bundle["model"].predict(X)[0])
+    scale = max(bundle["resid_std"], 0.5)
+    proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+    proba = proba_over if comparison == "OVER" else 1 - proba_over
+
+    return {
+        "label": "Rebonds combinés du match",
+        "proba": float(proba),
+        "detail": f"prediction moyenne = {pred_mean:.1f} (+/- {scale:.1f}, normale)",
+        "home_team_id": home_team_id,
+        "away_team_id": away_team_id,
+    }
+
+
+def compute_total_rebounds_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_total_rebounds_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_total_rebounds_proba_once(*args, **kwargs))
+
+
+def _compute_team_rebounds_proba_once(
+    client, team_id: int, opponent_id: int, is_home: bool, seuil: float, comparison: str, as_of_date,
+    season: str | None = None,
+) -> dict:
+    """P(rebonds de team_id sur CE match > seuil) -- 1ere forme du pari
+    rebonds (piece (a) suite, GAPS_OUVERTS.md, 23/08/2026) : perspective
+    "own"/"opp" (PAS domicile/exterieur comme home_win/total_points/
+    total_reb) -- predit "combien de rebonds va prendre CETTE equipe",
+    reutilisable qu'elle recoive ou se deplace, contrairement aux modeles
+    symetriques match entier. is_home : contexte REEL du match vise (feature
+    explicite own_is_home, pas un axe fige) -- a fournir par l'appelant,
+    connu depuis matches.home_team_id/away_team_id (meme source que pour
+    resolveSeriesHomeCourtTeam()/resolveMatchTeams(), cote TypeScript).
+
+    Charge team_reb.joblib (train_team_rebounds_model.py). comparison :
+    inversion (1-proba) SURE ici -- prediction a l'echelle d'UN match pour
+    UNE equipe, pas une agregation sur une serie."""
+    own_ctx = build_team_context(client, team_id, opponent_id, as_of_date, season=season)
+    opp_ctx = build_team_context(client, opponent_id, team_id, as_of_date, season=season)
+
+    row = {"own_is_home": int(is_home)}
+    row.update({f"own_{c}": own_ctx[c] for c in OWN_BASE_FEATURE_COLS})
+    row.update({f"opp_{c}": opp_ctx[c] for c in OWN_BASE_FEATURE_COLS})
+    X = pd.DataFrame([row])[TEAM_REB_FEATURE_COLS]
+
+    if X.isna().any(axis=None):
+        missing = X.columns[X.isna().iloc[0]].tolist()
+        raise ValueError(
+            f"Contexte incomplet pour predire ce match (features manquantes : {missing}) -- "
+            "probablement une equipe avec trop peu d'historique connu en base (1ere saison de "
+            "donnees, ou aucune confrontation/continuite calculable)."
+        )
+
+    bundle = joblib.load(MODELS_DIR / "team_reb.joblib")
+    pred_mean = float(bundle["model"].predict(X)[0])
+    scale = max(bundle["resid_std"], 0.5)
+    proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+    proba = proba_over if comparison == "OVER" else 1 - proba_over
+
+    return {
+        "label": "Rebonds de l'équipe",
+        "proba": float(proba),
+        "detail": f"prediction moyenne = {pred_mean:.1f} (+/- {scale:.1f}, normale)",
+        "team_id": team_id,
+        "opponent_id": opponent_id,
+    }
+
+
+def compute_team_rebounds_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_team_rebounds_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_team_rebounds_proba_once(*args, **kwargs))
 
 
 def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is_home: int = 1, rest_days: int = 2) -> dict:

@@ -550,3 +550,150 @@ export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSumm
 
   return summary;
 }
+
+type EligibleReboundsBetRow = {
+  id: string;
+  match_id: string | null;
+  structured_stat: string | null; // "reb" (TEAM_STAT, vise structured_team_id) ou "total_reb" (MATCH_TOTAL, combiné)
+  structured_team_id: string | null; // non-null uniquement pour "reb"
+  structured_threshold: number | null;
+  structured_comparison: "OVER" | "UNDER" | null;
+};
+
+/** Equipe NBA reelle (stats_equipes.team_id, numerique) pour une equipe de
+ *  l'appli -- meme rapprochement par tricode que resolveNbaGameId()
+ *  ci-dessus (dupliquee ici plutot que factorisee : cette fonction n'a pas
+ *  besoin du match/de la date, juste de l'equipe). */
+async function resolveNbaTeamId(supabase: SupabaseServiceClient, appTeamId: string): Promise<number | null> {
+  const { data: team } = await supabase
+    .from("teams")
+    .select("abbreviation")
+    .eq("id", appTeamId)
+    .maybeSingle<{ abbreviation: string }>();
+  if (!team?.abbreviation) return null;
+
+  const { data: statsTeam } = await supabase
+    .from("stats_equipes")
+    .select("team_id")
+    .eq("tricode", team.abbreviation)
+    .maybeSingle<{ team_id: number }>();
+  return statsTeam?.team_id ?? null;
+}
+
+/** Pièce (a) du chantier paris équipe, suite (GAPS_OUVERTS.md, 23/08/2026)
+ *  -- résolution des paris rebonds (les 2 formes : TEAM_STAT "reb" pour une
+ *  équipe précise, MATCH_TOTAL "total_reb" combiné). Contrairement à
+ *  resolveCalculableMatchTotalBets() (total_points, direct via
+ *  matches.home_score/away_score) : les rebonds n'existent PAS sur
+ *  `matches`, seulement dans stats_box_scores (pipeline Data NBA) --
+ *  réutilise resolveNbaGameId() (déjà éprouvée côté joueur) + une nouvelle
+ *  résolution d'équipe NBA (resolveNbaTeamId(), même rapprochement par
+ *  tricode) pour filtrer/sommer les vraies stats. MATCH uniquement (même
+ *  limite que la prédiction). */
+export async function resolveCalculableReboundsBets(): Promise<ResolveBetsSummary> {
+  const supabase = getServiceClient();
+  const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, match_id, structured_stat, structured_team_id, structured_threshold, structured_comparison")
+    .eq("scope", "MATCH")
+    .eq("is_calculable", true)
+    .eq("status", "VALIDATED")
+    .in("structured_stat", ["reb", "total_reb"]);
+  const bets = (betsData ?? []) as EligibleReboundsBetRow[];
+  if (bets.length === 0) return summary;
+
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const { data: matchesData } = await supabase.from("matches").select("id, status").in("id", matchIds);
+  const finishedMatchIds = new Set(
+    (matchesData ?? []).filter((m) => m.status === "FINISHED").map((m) => m.id as string)
+  );
+
+  const { data: pendingCorrections } = await supabase
+    .from("correction_requests")
+    .select("target_bet_id")
+    .eq("status", "PENDING")
+    .in(
+      "target_bet_id",
+      bets.map((b) => b.id)
+    );
+  const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
+
+  for (const bet of bets) {
+    if (!bet.match_id || !finishedMatchIds.has(bet.match_id)) {
+      summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
+      continue;
+    }
+    if (contestedBetIds.has(bet.id)) {
+      summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
+      continue;
+    }
+    if (bet.structured_threshold === null || !bet.structured_comparison) {
+      summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
+      continue;
+    }
+    if (bet.structured_stat === "reb" && !bet.structured_team_id) {
+      summary.skipped.push({ betId: bet.id, reason: "équipe manquante" });
+      continue;
+    }
+
+    const gameId = await resolveNbaGameId(supabase, bet.match_id);
+    if (!gameId) {
+      summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
+      continue;
+    }
+
+    let actualReb: number;
+    if (bet.structured_stat === "total_reb") {
+      const { data: rows } = await supabase.from("stats_box_scores").select("reb").eq("game_id", gameId);
+      if (!rows || rows.length === 0) {
+        summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
+        continue;
+      }
+      actualReb = rows.reduce((sum, r) => sum + ((r.reb as number | null) ?? 0), 0);
+    } else {
+      const nbaTeamId = await resolveNbaTeamId(supabase, bet.structured_team_id as string);
+      if (nbaTeamId === null) {
+        summary.skipped.push({ betId: bet.id, reason: "équipe NBA correspondante introuvable" });
+        continue;
+      }
+      const { data: rows } = await supabase
+        .from("stats_box_scores")
+        .select("reb")
+        .eq("game_id", gameId)
+        .eq("team_id", nbaTeamId);
+      if (!rows || rows.length === 0) {
+        summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour cette équipe" });
+        continue;
+      }
+      actualReb = rows.reduce((sum, r) => sum + ((r.reb as number | null) ?? 0), 0);
+    }
+
+    const won =
+      bet.structured_comparison === "UNDER" ? actualReb < bet.structured_threshold : actualReb > bet.structured_threshold;
+    const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+
+    const { data: updated } = await supabase
+      .from("bets")
+      .update({
+        status: outcome,
+        resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${actualReb} rebonds).`,
+        resolved_at: new Date().toISOString(),
+        resolved_by_admin_id: null,
+      })
+      .eq("id", bet.id)
+      .eq("status", "VALIDATED")
+      .select("id")
+      .maybeSingle();
+    if (!updated) {
+      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
+      continue;
+    }
+
+    await recomputeBet(bet.id);
+    summary.resolved.push({ betId: bet.id, outcome });
+  }
+
+  return summary;
+}

@@ -27,6 +27,17 @@ prioritaires identifiées dans la taxonomie réelle des paris persos
     entrainement_matchs -> 1 ligne par match, features_equipe dupliquées
                            home_*/away_*, + labels home_win/ecart/total_points.
                            Couvre "issue du match" et "score/total match".
+    entrainement_equipe -> 1 ligne par (match, équipe) -- perspective "own"/
+                           "opp" (PAS domicile/extérieur comme entrainement_
+                           matchs) : chaque match génère 2 lignes, une par
+                           équipe. Ajouté le 23/08/2026 (paris équipe pièce
+                           (a) suite, rebonds -- généralisable à ast/fg3m/
+                           stl/blk) pour un pari du type "CETTE équipe aura
+                           45+ rebonds", peu importe si elle reçoit ou se
+                           déplace ce soir-là (own_is_home reste une feature
+                           explicite, pas un axe figé comme pour home_win/
+                           total_points -- ces 2-là ont besoin de savoir QUI
+                           reçoit, pas ceux-ci).
 
 Ne contient QUE les matchs où home_team_id/score sont connus (nécessite
 play-by-play récupéré, cf. matchs.md). Reconstruit entièrement à chaque
@@ -74,6 +85,7 @@ def minutes_to_float(m):
 MATCH_FEATURE_COLS = [
     "rest_days", "is_back_to_back", "games_played_season_avant",
     "pts_pour_moy5", "pts_pour_moy10", "pts_contre_moy5", "pts_contre_moy10",
+    "reb_pour_moy5", "reb_pour_moy10", "reb_contre_moy5", "reb_contre_moy10",
     "victoires_pct_moy5", "victoires_pct_moy10",
     "off_rating_moy5", "off_rating_moy10", "def_rating_moy5", "def_rating_moy10",
     "net_rating_moy5", "net_rating_moy10", "pace_moy5", "pace_moy10",
@@ -116,6 +128,49 @@ def build_matchs_training(conn: sqlite3.Connection) -> pd.DataFrame:
     df["home_win"] = (df["home_score"] > df["away_score"]).astype(int)
     df["ecart"] = df["home_score"] - df["away_score"]
     df["total_points"] = df["home_score"] + df["away_score"]
+
+    # Rebonds d'equipe REELS (23/08/2026, paris equipe piece (a) suite) --
+    # cibles pour team_rebounds (perspective equipe) ET total_rebounds
+    # (combine, meme patron que total_points). Somme par (match, equipe)
+    # depuis box_scores, PAS depuis features_equipe (qui ne porte que des
+    # moyennes glissantes shift(1), jamais le vrai resultat du match lui-meme).
+    box_reb = pd.read_sql("SELECT game_id, team_id, reb FROM box_scores", conn, dtype={"game_id": str})
+    team_reb = box_reb.groupby(["game_id", "team_id"], as_index=False)["reb"].sum()
+    home_reb = team_reb.rename(columns={"team_id": "home_team_id", "reb": "home_reb"})
+    away_reb = team_reb.rename(columns={"team_id": "away_team_id", "reb": "away_reb"})
+    df = df.merge(home_reb, on=["game_id", "home_team_id"], how="left")
+    df = df.merge(away_reb, on=["game_id", "away_team_id"], how="left")
+    df["total_reb"] = df["home_reb"] + df["away_reb"]
+
+    return df
+
+
+def build_team_perspective_dataset(conn: sqlite3.Connection) -> pd.DataFrame:
+    """1 ligne par (match, équipe) -- perspective "own"/"opp", PAS domicile/
+    extérieur. Base directement sur features_equipe (déjà 1 ligne par
+    (match, équipe), déjà les moyennes glissantes) -- pas besoin de repasser
+    par entrainement_matchs. own_is_home reste une feature explicite (pas un
+    axe figé) : le modèle qui s'entraîne dessus doit apprendre "la stat de
+    CETTE équipe" quelle que soit sa place réelle ce soir-là, réutilisable
+    pour prédire n'importe quelle équipe visée par un pari, domicile ou
+    extérieur, sans avoir à choisir un "sens" a priori (contrairement à
+    home_win/total_points, symétriques par construction match entier)."""
+    cols = ", ".join(MATCH_FEATURE_COLS)
+    fe = pd.read_sql(
+        f"SELECT game_id, team_id, opponent_team_id, is_home, game_date, season, {cols} FROM features_equipe",
+        conn, dtype={"game_id": str},
+    )
+
+    own = fe.rename(columns={"is_home": "own_is_home", **{c: f"own_{c}" for c in MATCH_FEATURE_COLS}})
+    opp = fe[["game_id", "team_id", *MATCH_FEATURE_COLS]].rename(
+        columns={"team_id": "opponent_team_id", **{c: f"opp_{c}" for c in MATCH_FEATURE_COLS}}
+    )
+    df = own.merge(opp, on=["game_id", "opponent_team_id"])
+
+    box = pd.read_sql("SELECT game_id, team_id, reb FROM box_scores", conn, dtype={"game_id": str})
+    team_reb = box.groupby(["game_id", "team_id"], as_index=False)["reb"].sum().rename(columns={"reb": "reb_reel"})
+    df = df.merge(team_reb, on=["game_id", "team_id"], how="left")
+
     return df
 
 
@@ -133,14 +188,19 @@ def main():
     matchs_training = build_matchs_training(conn)
     matchs_training.to_sql("entrainement_matchs", conn, if_exists="replace", index=False)
 
+    equipe_perspective = build_team_perspective_dataset(conn)
+    equipe_perspective.to_sql("entrainement_equipe", conn, if_exists="replace", index=False)
+
     conn.commit()
 
     n1 = cur.execute("SELECT COUNT(*) FROM labels_joueur").fetchone()[0]
     n2 = cur.execute("SELECT COUNT(*) FROM entrainement_matchs").fetchone()[0]
+    n3 = cur.execute("SELECT COUNT(*) FROM entrainement_equipe").fetchone()[0]
     conn.close()
 
     print(f"labels_joueur: {n1} lignes")
     print(f"entrainement_matchs: {n2} lignes")
+    print(f"entrainement_equipe: {n3} lignes")
 
 
 if __name__ == "__main__":

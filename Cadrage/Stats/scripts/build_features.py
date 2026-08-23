@@ -63,6 +63,8 @@ CREATE TABLE features_equipe (
     games_played_season_avant INTEGER,
     pts_pour_moy5 REAL, pts_pour_moy10 REAL,
     pts_contre_moy5 REAL, pts_contre_moy10 REAL,
+    reb_pour_moy5 REAL, reb_pour_moy10 REAL,
+    reb_contre_moy5 REAL, reb_contre_moy10 REAL,
     victoires_pct_moy5 REAL, victoires_pct_moy10 REAL,
     off_rating_moy5 REAL, off_rating_moy10 REAL,
     def_rating_moy5 REAL, def_rating_moy10 REAL,
@@ -182,11 +184,21 @@ def compute_roster_continuity(conn: sqlite3.Connection) -> pd.DataFrame:
 
 
 def build_team_games(conn: sqlite3.Connection) -> pd.DataFrame:
-    box_scores = pd.read_sql("SELECT game_id, team_id, pts FROM box_scores", conn, dtype={"game_id": str})
-    team_pts = box_scores.groupby(["game_id", "team_id"], as_index=False)["pts"].sum().rename(columns={"pts": "team_pts"})
+    # "reb" ajoute ici (23/08/2026, chantier paris equipe piece (a) suite --
+    # rebonds d'equipe) selon le MEME patron que "pts" : somme par equipe/
+    # match, PUIS le meme swap team_id<->opponent_team_id pour obtenir la
+    # version "encaissee" (opp_reb, feature predictive au meme titre que
+    # opp_pts deja en place). Generalise directement a ast/fg3m/stl/blk plus
+    # tard (memes colonnes deja dans box_scores, meme geste).
+    box_scores = pd.read_sql("SELECT game_id, team_id, pts, reb FROM box_scores", conn, dtype={"game_id": str})
+    team_totals = box_scores.groupby(["game_id", "team_id"], as_index=False)[["pts", "reb"]].sum().rename(
+        columns={"pts": "team_pts", "reb": "team_reb"}
+    )
 
-    opp_pts = team_pts.rename(columns={"team_id": "opponent_team_id", "team_pts": "opp_pts"})
-    team_games = team_pts.merge(opp_pts, on="game_id")
+    opp_totals = team_totals.rename(
+        columns={"team_id": "opponent_team_id", "team_pts": "opp_pts", "team_reb": "opp_reb"}
+    )
+    team_games = team_totals.merge(opp_totals, on="game_id")
     team_games = team_games[team_games["team_id"] != team_games["opponent_team_id"]].copy()
 
     matchs = pd.read_sql(
@@ -226,6 +238,10 @@ def add_team_rolling_features(team_games: pd.DataFrame) -> pd.DataFrame:
     for window in ROLLING_WINDOWS:
         df[f"pts_pour_moy{window}"] = g["team_pts"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"pts_contre_moy{window}"] = g["opp_pts"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
+        # reb_pour/reb_contre (23/08/2026, paris equipe piece (a) suite) --
+        # meme patron que pts_pour/pts_contre.
+        df[f"reb_pour_moy{window}"] = g["team_reb"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
+        df[f"reb_contre_moy{window}"] = g["opp_reb"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"victoires_pct_moy{window}"] = g["win"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"off_rating_moy{window}"] = g["off_rating"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"def_rating_moy{window}"] = g["def_rating"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
@@ -373,6 +389,7 @@ TEAM_TABLE_COLUMNS = [
     "game_id", "team_id", "opponent_team_id", "game_date", "season", "is_home", "win",
     "rest_days", "is_back_to_back", "games_played_season_avant",
     "pts_pour_moy5", "pts_pour_moy10", "pts_contre_moy5", "pts_contre_moy10",
+    "reb_pour_moy5", "reb_pour_moy10", "reb_contre_moy5", "reb_contre_moy10",
     "victoires_pct_moy5", "victoires_pct_moy10",
     "off_rating_moy5", "off_rating_moy10", "def_rating_moy5", "def_rating_moy10",
     "net_rating_moy5", "net_rating_moy10", "pace_moy5", "pace_moy10",
