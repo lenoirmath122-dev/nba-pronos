@@ -9503,3 +9503,42 @@ GAPS_OUVERTS.md mis à jour : pièce (d) marquée FAITE (paris série joueur
 uniquement, équipe/total toujours hors périmètre), détail complet des
 correctifs conservé pour trace, next step = redéploiement puis pièce (e).
 ```
+
+## Paris SÉRIE, redéploiement Cloud Run + pièce (e) résolution (23/08/2026, suite)
+
+```text
+Redéploiement Cloud Run fait par l'utilisateur (commande PowerShell adaptée
+en cours de route -- le 1er essai en syntaxe bash avec des `\` de
+continuation de ligne a échoué sous PowerShell, corrigé avec des backticks/
+une seule ligne). Revérifié /predict-series en HTTP réel sur le VRAI
+service déployé (pas juste local) : résultat identique (~24,8%), mitigation
+de cohérence confirmée active en production.
+
+Utilisateur donne le feu vert pour enchaîner directement sur la pièce (e),
+avec l'intention de tout tester ensemble plus tard (un vrai pari série
+soumis depuis l'appli).
+
+resolveCalculableSeriesBets() (lib/ai/resolveCalculableBets.ts) : équivalent
+SERIES de resolveCalculableBets() (MATCH), câblée en parallèle dans
+/api/resolve-bets. Réutilise SANS LES MODIFIER resolveNbaGameId()/
+computeOutcome()/recomputeBet() (déjà éprouvées en prod côté MATCH) --
+seule la logique d'agrégation par série est neuve : résout WON dès qu'UN
+match réellement joué de la série satisfait le seuil (pas besoin d'attendre
+la fin de la série), résout LOST seulement si series.official_status=
+FINISHED (plus aucun match à venir) ET tous les matchs FINISHED ont une
+ligne stats_box_scores pour ce joueur -- sinon reste en attente (même
+prudence que le resolver MATCH : jamais trancher sur une absence de
+donnée).
+
+tsc/eslint/vitest (37/37) propres. PAS testé en conditions réelles :
+vérifié en base qu'aucun pari scope=SERIES n'est encore is_calculable=true
+(9 paris SERIES existants, tous antérieurs à la pièce (d), aucun
+calculable) -- décidé de ne PAS insérer de faux pari dans la vraie table
+pour tester, conformément à la demande de l'utilisateur de tout tester
+ensemble à la fin plutôt que pièce par pièce à partir de maintenant.
+
+GAPS_OUVERTS.md mis à jour : pièce (e) marquée FAITE/pas testée, chantier
+paris série (a0/b/c/d/e) considéré complet pour les paris JOUEUR -- seule
+la pièce (a) (modèle(s) équipe, pour les paris équipe/total) reste à
+construire, hors périmètre demandé cette session.
+```

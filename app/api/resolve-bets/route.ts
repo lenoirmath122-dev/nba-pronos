@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
-import { resolveCalculableBets } from "@/lib/ai/resolveCalculableBets";
+import { resolveCalculableBets, resolveCalculableSeriesBets, type ResolveBetsSummary } from "@/lib/ai/resolveCalculableBets";
 
 // Phase 6 (résolution automatique des paris IA calculables, 22/08/2026) --
 // même authentification que /api/sync/* (Bearer SYNC_SECRET, lib/sync/
@@ -21,7 +21,11 @@ async function handle(request: Request): Promise<Response> {
   }
 
   try {
-    const summary = await resolveCalculableBets();
+    const [matchSummary, seriesSummary] = await Promise.all([resolveCalculableBets(), resolveCalculableSeriesBets()]);
+    const summary: ResolveBetsSummary = {
+      resolved: [...matchSummary.resolved, ...seriesSummary.resolved],
+      skipped: [...matchSummary.skipped, ...seriesSummary.skipped],
+    };
     return NextResponse.json(summary);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur inconnue.";

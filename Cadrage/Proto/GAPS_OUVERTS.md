@@ -177,12 +177,13 @@
 > équipe roulant en production (FAIT 23/08, `build_team_context()`) ; (c,
 > FAIT 23/08) le mécanisme générique d'agrégation "sur la série" ; (d, FAIT
 > 23/08) extraction IA étendue pour les paris série JOUEUR (équipe/total
-> reste hors périmètre, pièce (a) pas construite) ; (e) résolution étendue
-> (`resolveCalculableBets.ts` : gérer `scope=SERIES` en cherchant TOUS les
-> vrais matchs déjà joués de la série, pas un seul, et gérer les paris
-> non-joueur via `matches.home_score`/`away_score`, déjà synchronisé -- pas
-> besoin du pipeline Data NBA pour ce cas précis). **Restent à construire :
-> (a), (e).**
+> reste hors périmètre, pièce (a) pas construite) ; (e, FAIT 23/08, pas
+> encore testé en conditions réelles -- voir plus bas) résolution étendue
+> (`resolveCalculableBets.ts` : gère `scope=SERIES` en cherchant TOUS les
+> vrais matchs déjà joués de la série, pas un seul ; gérer les paris
+> non-joueur via `matches.home_score`/`away_score` reste à faire quand (a)
+> existera). **Reste à construire : (a)** (modèle(s) équipe, pour étendre
+> le chantier aux paris équipe/total).
 >
 > **Pièce (d) -- CODÉE, TESTÉE (vrais appels Claude), DÉPLOIEMENT PAS ENCORE
 > FAIT le 23/08/2026** :
@@ -244,11 +245,38 @@
 > - Testé bout en bout via HTTP réel (service lancé en local, `uvicorn`) :
 >   `/predict-series` OVER et UNDER, cohérent, stable sur 10+ appels après
 >   la mitigation.
-> - **Pas encore fait** : redéploiement Cloud Run (`gcloud` non installé
->   dans cet environnement -- action de l'utilisateur, commande dans
->   l'en-tête du `Dockerfile`) ; test réel en soumettant un vrai pari série
->   depuis l'appli (nécessite le redéploiement d'abord, `STATS_SERVICE_URL`
->   pointe sur le service déployé).
+> - **Redéploiement Cloud Run FAIT par l'utilisateur (23/08/2026)** --
+>   `/predict-series` revérifié en HTTP réel sur le VRAI service déployé
+>   (pas juste en local) : résultat identique au test local (~24,8%),
+>   mitigation de cohérence active en production.
+>
+> **Pièce (e) -- résolution automatique des paris série, CODÉE le
+> 23/08/2026, PAS ENCORE TESTÉE EN CONDITIONS RÉELLES** (aucun pari série
+> calculable n'existe encore en base -- la pièce (d) vient d'être construite,
+> aucun faux pari inséré exprès pour tester, l'utilisateur veut tout tester
+> ensemble en soumettant un vrai pari) :
+> - `resolveCalculableSeriesBets()` (`lib/ai/resolveCalculableBets.ts`),
+>   appelée en parallèle de `resolveCalculableBets()` (MATCH) depuis
+>   `/api/resolve-bets`. Réutilise TELLES QUELLES `resolveNbaGameId()`/
+>   `computeOutcome()`/`recomputeBet()`, déjà éprouvées en prod pour MATCH --
+>   seule la logique d'agrégation par série est neuve.
+> - Sémantique "au moins une fois" : dès qu'UN match réellement joué de la
+>   série satisfait le seuil, le pari est gagné IMMÉDIATEMENT (pas besoin
+>   d'attendre la fin de la série). Si aucun hit, résolu LOST SEULEMENT si
+>   `series.official_status = 'FINISHED'` (plus aucun match à venir) ET que
+>   tous les matchs FINISHED de la série ont bien une ligne `stats_box_scores`
+>   pour ce joueur -- même prudence que le resolver MATCH : jamais trancher
+>   sur une absence de donnée, le pari reste en attente plutôt qu'un LOST à
+>   tort.
+> - `tsc`/`eslint`/`vitest` (37/37) propres. **Pas testé en conditions
+>   réelles** (voir ci-dessus) -- à vérifier à la prochaine soumission d'un
+>   vrai pari série calculable, une fois une série concernée terminée.
+> - Paris équipe/total (non-joueur) toujours hors périmètre -- piece (a)
+>   pas construite, la mention `matches.home_score`/`away_score` de la
+>   description initiale de cette pièce reste à faire le jour où (a) existe.
+> - **Chantier "paris série" (a0/(b)/(c)/(d)/(e)) considéré COMPLET pour
+>   les paris JOUEUR** -- reste (a) modèle(s) équipe pour étendre aux paris
+>   équipe/total (ex. `total_points`), hors périmètre demandé cette session.
 
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**
