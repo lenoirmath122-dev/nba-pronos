@@ -10019,3 +10019,77 @@ Pas encore redéployé sur Cloud Run. GAPS_OUVERTS.md mis à jour avec le
 détail des 3 morceaux + la cartographie complète des 429 paris pour la
 suite du chantier.
 ```
+
+## Comparaison/duel (24/08/2026, chantier suivant)
+
+```text
+"on enchaine" -- 2e chantier de la liste des 429 paris, dans l'ordre
+convenu (faciles -> comparaison/duel -> combos -> quart-temps).
+
+Relu la catégorie "Comparaison/duel" (36 paris) de près : très hétérogène
+(joueur vs joueur, joueur vs somme, équipe vs équipe, multiplicateur,
+écart borné, "meilleur marqueur du match" vs le reste des joueurs,
+égalité exacte, contre sur un joueur précis...). Avant de coder, cadrage
+présenté à l'utilisateur : scope réduit au "duel simple" (le gros du
+volume), "meilleur marqueur" repoussé (nécessite une simulation Monte
+Carlo, mécanisme différent), 2 cas explicitement exclus (contre sur un
+joueur précis -- donnée play-by-play absente ; égalité exacte -- mécanisme
+combinatoire différent). Confirmé.
+
+2 décisions de conception posées avant de coder (pas décidées seul) :
+1. Stockage : nouvelle colonne JSONB (bets.structured_duel) plutôt que des
+   colonnes séparées -- un duel a 2 côtés, chacun pouvant être 1 joueur,
+   une somme de joueurs, ou une équipe, ça ne rentre pas dans
+   structured_player_id/structured_team_id (conçus pour UNE entité).
+2. Approximation normale de la différence pour comparer 2 prédictions
+   (indépendance assumée entre les 2 côtés), MÊME pour les stats Poisson
+   (fg3m/stl/blk/oreb) plutôt que la vraie loi de Skellam -- accepté comme
+   simplification v1, cohérent avec le reste du projet.
+Les deux confirmés par l'utilisateur avant de commencer à coder.
+
+Construction :
+- Découverte utile en lisant le code (pas en supposant) : supabase_context.py
+  a déjà tout ce qu'il faut pour calculer une moyenne/dispersion SANS
+  seuil -- juste besoin d'extraire compute_proba()/_compute_team_stat_proba_once()
+  jusqu'à l'étape AVANT le norm.cdf(seuil,...) final. Nouvelles fonctions
+  _player_stat_mean_scale()/_team_stat_mean_scale() (le cœur extrait),
+  réutilisées à la fois par les fonctions existantes (refactor, pas de
+  duplication) ET par le nouveau calcul de duel.
+- Nouveauté réelle : _player_current_team_id() -- un duel peut nommer
+  n'importe quel joueur du match sans que l'appelant sache d'avance de
+  quel côté (domicile/extérieur) il se trouve, contrairement à un pari
+  PLAYER classique où l'IA résout déjà player_team. Résolu depuis la ligne
+  stats_box_scores la plus récente du joueur.
+- Nouvel endpoint /predict-comparison, testé en HTTP local réel (joueur vs
+  joueur, joueur vs somme de 2, équipe vs équipe, écart borné,
+  multiplicateur, duel cross-stat blk/stl, rejet si un joueur nommé n'est
+  dans aucune des 2 équipes du match) -- tous corrects.
+- Migration 20260824090000 (bets.structured_duel) -- découverte en
+  cadrant (pas en codant) : structured_comparison existait déjà (colonne
+  texte OVER/UNDER), donc nouveau nom structured_duel pour éviter la
+  collision.
+
+Vrai problème trouvé en TESTANT le schéma IA (pas en le concevant) :
+premier jet à champs séparés (comparison_left_kind/comparison_left_team/
+comparison_relation/comparison_multiplier, symétrique côté droit) portait
+le schéma à 19 champs nullable/union -- l'API Claude a rejeté l'appel
+("too many parameters with union types... limit: 16"), jamais rencontré
+avant dans ce projet (les schémas précédents restaient sous la limite).
+Compressé à 13 en fusionnant kind+team (comparison_*_kind vaut
+directement "team1"/"team2"), en réutilisant le champ comparison existant
+pour porter GT/DIFF_LT, en réutilisant threshold pour le multiplicateur,
+et en rendant les tableaux de joueurs non-nullable. Revérifié avec 8 vrais
+appels Claude Sonnet 5 après la compression -- tous corrects, y compris
+les 2 rejets attendus (égalité exacte, contre sur un joueur précis) et une
+régression sur un pari PLAYER simple.
+
+Résolution (resolveCalculableComparisonBets(), nouveau) : lit
+structured_duel plutôt que structured_stat, somme la vraie stat sur TOUS
+les player_ids d'un côté (1 ou N joueurs, même geste que la construction
+de la prédiction).
+
+tsc/eslint/vitest(37/37)/next build propres. Pas encore redéployé sur
+Cloud Run. GAPS_OUVERTS.md mis à jour avec le détail complet + la
+cartographie des 429 paris rafraîchie (comparaison/duel passé de "pas
+fait" à "duel simple codé, meilleur marqueur restant").
+```

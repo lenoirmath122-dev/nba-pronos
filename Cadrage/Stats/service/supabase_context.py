@@ -10,6 +10,7 @@ par backfill_supabase.py (une fois) puis tenues a jour par le rafraichissement
 quotidien (pas encore ecrit, voir GAPS_OUVERTS.md).
 """
 
+import math
 import sys
 from pathlib import Path
 
@@ -24,6 +25,7 @@ from scipy.stats import norm  # noqa: E402
 
 from tester_modele import (  # noqa: E402
     CLASSIFIER_STATS,
+    MIN_SCALE,
     MODELS_DIR,
     PCT_STATS,
     REGRESSION_STATS,
@@ -514,22 +516,16 @@ def compute_total_team_stat_proba(*args, **kwargs) -> dict:
     return _compute_with_consistency_check(lambda: _compute_total_team_stat_proba_once(*args, **kwargs))
 
 
-def _compute_team_stat_proba_once(
-    client, stat: str, team_id: int, opponent_id: int, is_home: bool, seuil: float, comparison: str, as_of_date,
-    season: str | None = None,
-) -> dict:
-    """P(stat de team_id sur CE match > seuil) -- forme "equipe precise"
-    d'un pari equipe (piece (a) suite, GAPS_OUVERTS.md, 23/08/2026) :
-    perspective "own"/"opp" (PAS domicile/exterieur) -- GENERALISE a
-    reb/ast/fg3m/stl/blk (stat = code, charge team_{stat}.joblib). Predit
-    "combien de {stat} va prendre CETTE equipe", reutilisable qu'elle
-    recoive ou se deplace, contrairement aux modeles symetriques match
-    entier. is_home : contexte REEL du match vise (feature explicite
-    own_is_home, pas un axe fige) -- a fournir par l'appelant, connu depuis
-    matches.home_team_id/away_team_id (meme source que pour
-    resolveSeriesHomeCourtTeam()/resolveMatchTeams(), cote TypeScript).
-    comparison : inversion (1-proba) SURE ici -- prediction a l'echelle
-    d'UN match pour UNE equipe, pas une agregation sur une serie."""
+def _team_stat_mean_scale(
+    client, stat: str, team_id: int, opponent_id: int, is_home: bool, as_of_date, season: str | None = None,
+) -> tuple[float, float]:
+    """(pred_mean, scale) pour team_id sur CE match, perspective own/opp --
+    coeur de _compute_team_stat_proba_once() extrait sans l'etape finale
+    norm.cdf(seuil,...) (24/08/2026, chantier duel/comparaison,
+    GAPS_OUVERTS.md) : reutilise par _compute_team_stat_proba_once()
+    ci-dessous ET par _resolve_comparison_operand() (calcul de duel,
+    n'a pas de seuil fixe -- besoin de la moyenne/dispersion brute pour
+    combiner 2 predictions AVANT de comparer)."""
     own_base_cols = _team_stat_base_cols(stat)
     own_ctx = build_team_context(client, team_id, opponent_id, as_of_date, season=season)
     opp_ctx = build_team_context(client, opponent_id, team_id, as_of_date, season=season)
@@ -551,6 +547,26 @@ def _compute_team_stat_proba_once(
     bundle = joblib.load(MODELS_DIR / f"team_{stat}.joblib")
     pred_mean = float(bundle["model"].predict(X)[0])
     scale = max(bundle["resid_std"], 0.5)
+    return pred_mean, scale
+
+
+def _compute_team_stat_proba_once(
+    client, stat: str, team_id: int, opponent_id: int, is_home: bool, seuil: float, comparison: str, as_of_date,
+    season: str | None = None,
+) -> dict:
+    """P(stat de team_id sur CE match > seuil) -- forme "equipe precise"
+    d'un pari equipe (piece (a) suite, GAPS_OUVERTS.md, 23/08/2026) :
+    perspective "own"/"opp" (PAS domicile/exterieur) -- GENERALISE a
+    reb/ast/fg3m/stl/blk (stat = code, charge team_{stat}.joblib). Predit
+    "combien de {stat} va prendre CETTE equipe", reutilisable qu'elle
+    recoive ou se deplace, contrairement aux modeles symetriques match
+    entier. is_home : contexte REEL du match vise (feature explicite
+    own_is_home, pas un axe fige) -- a fournir par l'appelant, connu depuis
+    matches.home_team_id/away_team_id (meme source que pour
+    resolveSeriesHomeCourtTeam()/resolveMatchTeams(), cote TypeScript).
+    comparison : inversion (1-proba) SURE ici -- prediction a l'echelle
+    d'UN match pour UNE equipe, pas une agregation sur une serie."""
+    pred_mean, scale = _team_stat_mean_scale(client, stat, team_id, opponent_id, is_home, as_of_date, season=season)
     proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
     proba = proba_over if comparison == "OVER" else 1 - proba_over
 
@@ -601,6 +617,153 @@ def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is
             else float(context["vs_adversaire_pts_moy"])
         ),
     }
+
+
+def _player_stat_mean_scale(
+    client, player_id: int, stat: str, opponent_id=None, is_home: int = 1, rest_days: int = 2,
+) -> tuple[float, float]:
+    """(pred_mean, scale) pour un joueur, SANS seuil -- coeur de
+    compute_proba() (regression uniquement) extrait pour le chantier
+    duel/comparaison (24/08/2026, GAPS_OUVERTS.md) : un duel compare 2
+    predictions AVANT de connaitre un seuil (P(A>B), pas P(A>seuil)),
+    besoin de la moyenne/dispersion brute plutot que d'une proba deja
+    calculee contre un seuil fixe.
+
+    Limite volontaire : REGRESSION_STATS uniquement (pts/reb/ast/fg3m/stl/
+    blk/min/fga/fg3a/oreb) -- dd/td (CLASSIFIER_STATS, pas de moyenne
+    numerique, proba directe) et ft/fg/fg3 (PCT_STATS, mecanisme
+    Beta-Binomial different, difference de 2 taux pas modelisee ici) ne
+    font pas partie des exemples reels de duel fournis (types_de_paris_
+    playoffs_2026.md) -- pas construit avant d'en avoir besoin.
+
+    Poisson (fg3m/stl/blk/oreb) : variance = moyenne, donc scale =
+    sqrt(moyenne) -- approximation normale de la difference en aval
+    (_compute_comparison_proba_once), pas la vraie loi de Skellam (choix
+    assume avec l'utilisateur le 24/08/2026, coherent avec les autres
+    simplifications deja acceptees dans ce projet -- UNDER = 1-OVER,
+    independance des 2 cotes d'un duel, etc)."""
+    if stat not in REGRESSION_STATS:
+        raise ValueError(
+            f"stat non supportee pour un duel : {stat} (seules les stats comptees le sont : "
+            f"{sorted(REGRESSION_STATS)})"
+        )
+    model_file, raw_col_key, _ = REGRESSION_STATS[stat]
+    context, ecarttypes, _ = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
+    bundle = joblib.load(MODELS_DIR / f"{model_file}.joblib")
+    X = pd.DataFrame([context])[bundle["feature_cols"]]
+    pred_mean = float(bundle["model"].predict(X)[0])
+
+    if bundle["distribution"] == "poisson":
+        scale = max(math.sqrt(max(pred_mean, 0.0)), MIN_SCALE)
+    else:
+        ect = ecarttypes.get(raw_col_key)
+        scale = max(ect if pd.notna(ect) else bundle["resid_std"], MIN_SCALE)
+    return pred_mean, scale
+
+
+def _player_current_team_id(client, player_id: int) -> int:
+    """Equipe NBA reelle actuelle d'un joueur -- team_id de sa ligne
+    stats_box_scores la plus recente. Necessaire pour un duel : deduire
+    is_home (feature reelle des modeles joueur, cf. SHARED_COLS dans
+    train_stat_model.py) exige de savoir de quel cote du match (domicile/
+    exterieur) ce joueur precis se trouve, information que l'appelant ne
+    connait pas forcement a l'avance (contrairement a un pari PLAYER
+    simple, ou player_team est deja resolu par l'IA)."""
+    rows = (
+        client.table("stats_box_scores")
+        .select("team_id, game_date")
+        .eq("player_id", player_id)
+        .order("game_date", desc=True)
+        .limit(1)
+        .execute()
+        .data
+    )
+    if not rows or rows[0].get("team_id") is None:
+        raise ValueError(f"Impossible de determiner l'equipe actuelle du joueur (player_id={player_id}).")
+    return int(rows[0]["team_id"])
+
+
+def _resolve_comparison_operand(
+    client, operand: dict, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> tuple[float, float, dict]:
+    """Un cote d'un duel ("gauche" ou "droite") -- soit une equipe
+    (kind=TEAM, {"equipe": "domicile"|"exterieur", "stat": ...}), soit une
+    liste d'UN OU PLUSIEURS joueurs de MEME stat sommes (kind=PLAYER,
+    {"joueurs": [...], "stat": ...} -- 1 nom = joueur seul, 2+ noms =
+    cumul, memes formule EXACTE, pas de distinction de cas). Somme des
+    moyennes + combinaison des variances en supposant l'INDEPENDANCE entre
+    joueurs (approximation assumee, comme le reste du chantier duel).
+
+    home_team_id/away_team_id : les 2 VRAIES equipes du match vise (deja
+    resolues cote appelant, comme pour /predict-team-stat) -- necessaires
+    ici pour deduire le contexte domicile/exterieur de chaque operande
+    (equipe ou joueur)."""
+    stat = operand["stat"]
+
+    if operand["kind"] == "TEAM":
+        is_home = operand["equipe"] == "domicile"
+        team_id = home_team_id if is_home else away_team_id
+        opponent_id = away_team_id if is_home else home_team_id
+        mean, scale = _team_stat_mean_scale(client, stat, team_id, opponent_id, is_home, as_of_date, season=season)
+        return mean, scale, {"team_id": team_id}
+
+    means, variances, player_ids = [], [], []
+    for name in operand["joueurs"]:
+        player_id, _ = find_player(client, name)
+        player_team_id = _player_current_team_id(client, player_id)
+        if player_team_id not in (home_team_id, away_team_id):
+            raise ValueError(f"\"{name}\" ne joue pour aucune des 2 equipes de ce match.")
+        is_home = 1 if player_team_id == home_team_id else 0
+        opponent_id = away_team_id if is_home else home_team_id
+        mean, scale = _player_stat_mean_scale(client, player_id, stat, opponent_id=opponent_id, is_home=is_home)
+        means.append(mean)
+        variances.append(scale ** 2)
+        player_ids.append(player_id)
+    return sum(means), math.sqrt(sum(variances)), {"player_ids": player_ids}
+
+
+def _compute_comparison_proba_once(
+    client, left: dict, right: dict, relation: str, multiplier: float, threshold: float | None,
+    home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> dict:
+    """Pari DUEL/COMPARAISON (24/08/2026, GAPS_OUVERTS.md) -- P(gauche >
+    multiplier * droite) [relation="GT"] ou P(|gauche - droite| < threshold)
+    [relation="DIFF_LT"]. Combine 2 predictions (moyenne, dispersion)
+    resolues independamment via _resolve_comparison_operand() par une
+    approximation NORMALE de la difference (gauche - k*droite ~ Normale,
+    moyenne = moyG - k*moyD, ecart-type = sqrt(scaleG^2 + (k*scaleD)^2)) --
+    hypothese d'INDEPENDANCE entre les 2 cotes (aucune correlation
+    modelisee, ex. un match a rythme eleve qui booste les 2 cotes a la
+    fois) et approximation normale meme pour les stats Poisson (assumees
+    avec l'utilisateur le 24/08/2026, cf. _player_stat_mean_scale)."""
+    mean_l, scale_l, meta_l = _resolve_comparison_operand(client, left, home_team_id, away_team_id, as_of_date, season)
+    mean_r, scale_r, meta_r = _resolve_comparison_operand(client, right, home_team_id, away_team_id, as_of_date, season)
+
+    if relation == "GT":
+        diff_mean = mean_l - multiplier * mean_r
+        diff_scale = max(math.sqrt(scale_l ** 2 + (multiplier * scale_r) ** 2), MIN_SCALE)
+        proba = 1 - norm.cdf(0, loc=diff_mean, scale=diff_scale)
+    else:  # "DIFF_LT"
+        if threshold is None:
+            raise ValueError("threshold obligatoire pour la relation DIFF_LT.")
+        diff_mean = mean_l - mean_r
+        diff_scale = max(math.sqrt(scale_l ** 2 + scale_r ** 2), MIN_SCALE)
+        proba = float(norm.cdf(threshold, loc=diff_mean, scale=diff_scale) - norm.cdf(-threshold, loc=diff_mean, scale=diff_scale))
+
+    return {
+        "proba": float(proba),
+        "detail": (
+            f"gauche : moyenne={mean_l:.1f} (+/-{scale_l:.1f}) | droite : moyenne={mean_r:.1f} (+/-{scale_r:.1f})"
+        ),
+        "left_meta": meta_l,
+        "right_meta": meta_r,
+    }
+
+
+def compute_comparison_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_comparison_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_comparison_proba_once(*args, **kwargs))
 
 
 def _compute_series_stat_proba_once(

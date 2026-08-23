@@ -5,6 +5,7 @@ import {
   resolveCalculableSeriesBets,
   resolveCalculableMatchTotalBets,
   resolveCalculableTeamStatBets,
+  resolveCalculableComparisonBets,
   type ResolveBetsSummary,
 } from "@/lib/ai/resolveCalculableBets";
 
@@ -27,15 +28,28 @@ async function handle(request: Request): Promise<Response> {
   }
 
   try {
-    const [matchSummary, seriesSummary, matchTotalSummary, teamStatSummary] = await Promise.all([
+    const [matchSummary, seriesSummary, matchTotalSummary, teamStatSummary, comparisonSummary] = await Promise.all([
       resolveCalculableBets(),
       resolveCalculableSeriesBets(),
       resolveCalculableMatchTotalBets(),
       resolveCalculableTeamStatBets(),
+      resolveCalculableComparisonBets(),
     ]);
     const summary: ResolveBetsSummary = {
-      resolved: [...matchSummary.resolved, ...seriesSummary.resolved, ...matchTotalSummary.resolved, ...teamStatSummary.resolved],
-      skipped: [...matchSummary.skipped, ...seriesSummary.skipped, ...matchTotalSummary.skipped, ...teamStatSummary.skipped],
+      resolved: [
+        ...matchSummary.resolved,
+        ...seriesSummary.resolved,
+        ...matchTotalSummary.resolved,
+        ...teamStatSummary.resolved,
+        ...comparisonSummary.resolved,
+      ],
+      skipped: [
+        ...matchSummary.skipped,
+        ...seriesSummary.skipped,
+        ...matchTotalSummary.skipped,
+        ...teamStatSummary.skipped,
+        ...comparisonSummary.skipped,
+      ],
     };
     return NextResponse.json(summary);
   } catch (error) {

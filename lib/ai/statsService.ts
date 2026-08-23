@@ -287,3 +287,75 @@ export async function predictTeamStat(
     return null;
   }
 }
+
+/** Un côté d'un duel (24/08/2026, GAPS_OUVERTS.md, chantier comparaison/
+ *  duel) -- kind=PLAYER : `players` (1 nom = joueur seul, 2+ = somme
+ *  cumulée, même stat pour tous). kind=TEAM : `team` ("domicile"/
+ *  "exterieur" -- PAS team1/team2, résolu par l'appelant depuis le match
+ *  réel, même contrat que predictTeamStat). */
+export type DuelOperand = {
+  kind: "PLAYER" | "TEAM";
+  players?: string[];
+  team?: "domicile" | "exterieur";
+  stat: string;
+};
+
+export type ComparisonPredictResult = {
+  proba: number;
+  /** Ids NBA réels résolus côté service (find_player()) -- capturés ici
+   *  pour être stockés dans bets.structured_duel, jamais re-matchés par nom
+   *  plus tard (même leçon que structured_player_id, migration
+   *  20260822130000). null pour un côté kind=TEAM. */
+  leftPlayerIds: number[] | null;
+  rightPlayerIds: number[] | null;
+};
+
+/**
+ * Pari COMPARISON (24/08/2026, GAPS_OUVERTS.md) -- P(gauche > multiplier×
+ * droite) [relation=GT] ou P(|gauche-droite| < threshold) [relation=
+ * DIFF_LT]. Contrairement aux autres fonctions de ce fichier, aucune
+ * inversion OVER/UNDER : un duel n'a pas de notion OVER/UNDER, juste 2
+ * côtés comparés directement (comparison_relation, pas comparison, dans le
+ * schéma structureBet.ts).
+ */
+export async function predictComparison(
+  left: DuelOperand,
+  right: DuelOperand,
+  relation: "GT" | "DIFF_LT",
+  multiplier: number,
+  threshold: number | null,
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<ComparisonPredictResult | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-comparison`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        left: { kind: left.kind, joueurs: left.players, equipe: left.team, stat: left.stat },
+        right: { kind: right.kind, joueurs: right.players, equipe: right.team, stat: right.stat },
+        relation,
+        multiplier,
+        threshold,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return {
+      proba: data.proba,
+      leftPlayerIds: Array.isArray(data.left_meta?.player_ids) ? data.left_meta.player_ids : null,
+      rightPlayerIds: Array.isArray(data.right_meta?.player_ids) ? data.right_meta.player_ids : null,
+    };
+  } catch {
+    return null;
+  }
+}

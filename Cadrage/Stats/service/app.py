@@ -354,6 +354,79 @@ def predict_team_stat(req: PredictTeamStatRequest):
     }
 
 
+class ComparisonOperand(BaseModel):
+    """Un cote d'un duel (24/08/2026, GAPS_OUVERTS.md, chantier
+    comparaison/duel) -- kind=TEAM (equipe "domicile"/"exterieur" du match
+    vise + stat) ou kind=PLAYER (1+ joueurs de MEME stat, sommes si
+    plusieurs -- 1 nom = joueur seul, 2+ = cumul, meme formule)."""
+    kind: str  # "PLAYER" | "TEAM"
+    joueurs: list[str] | None = None  # kind=PLAYER uniquement
+    equipe: str | None = None  # kind=TEAM uniquement, "domicile" | "exterieur"
+    stat: str
+
+    @model_validator(mode="after")
+    def _champs_coherents_avec_kind(self):
+        if self.kind == "PLAYER" and not self.joueurs:
+            raise ValueError("joueurs (1+) requis pour kind=PLAYER")
+        if self.kind == "TEAM" and self.equipe not in ("domicile", "exterieur"):
+            raise ValueError("equipe doit valoir \"domicile\" ou \"exterieur\" pour kind=TEAM")
+        if self.kind not in ("PLAYER", "TEAM"):
+            raise ValueError(f"kind inconnu : {self.kind}")
+        return self
+
+
+class PredictComparisonRequest(BaseModel):
+    """Pari DUEL/COMPARAISON (24/08/2026, GAPS_OUVERTS.md) -- P(gauche >
+    multiplier*droite) [relation=GT] ou P(|gauche-droite| < threshold)
+    [relation=DIFF_LT]. equipe_domicile/equipe_exterieur : les 2 VRAIES
+    equipes du match vise (meme contrat que PredictTeamReboundsRequest),
+    necessaires pour resoudre le contexte domicile/exterieur de chaque
+    operande (equipe ou joueur)."""
+    left: ComparisonOperand
+    right: ComparisonOperand
+    relation: str  # "GT" | "DIFF_LT"
+    multiplier: float = 1.0
+    threshold: float | None = None  # relation=DIFF_LT uniquement
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+    @model_validator(mode="after")
+    def _relation_coherente(self):
+        if self.relation not in ("GT", "DIFF_LT"):
+            raise ValueError(f"relation inconnue : {self.relation}")
+        if self.relation == "DIFF_LT" and self.threshold is None:
+            raise ValueError("threshold obligatoire pour relation=DIFF_LT")
+        return self
+
+
+@app.post("/predict-comparison")
+def predict_comparison(req: PredictComparisonRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_comparison_proba(
+            sb, req.left.model_dump(), req.right.model_dump(), req.relation, req.multiplier, req.threshold,
+            home_id, away_id, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "relation": req.relation,
+        **result,
+    }
+
+
 class PredictSeriesRequest(BaseModel):
     joueur: str | None = None
     joueur_id: int | None = None

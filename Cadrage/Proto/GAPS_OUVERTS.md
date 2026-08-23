@@ -4,6 +4,81 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Comparaison/duel, CODÉ le 24/08/2026** (2e chantier de la liste des 429
+> paris, après les extensions "faciles" -- voir entrée suivante pour le
+> détail des 4 paliers de faisabilité). Nouveau `bet_subject=COMPARISON` :
+> compare 2 côtés entre eux plutôt que contre un seuil fixe.
+>
+> **Cadrage posé avant de coder** (2 décisions confirmées avec
+> l'utilisateur) :
+> 1. Scope réduit au "duel simple" (joueur vs joueur, joueur vs somme de
+>    joueurs, équipe vs équipe, avec multiplicateur) -- "meilleur marqueur
+>    du match" (vs le MAX de tous les autres joueurs, nécessite une
+>    simulation Monte Carlo) repoussé en 2e sous-pièce, pas fait.
+> 2. **2 cas explicitement exclus** (non automatisables) : "contre SUR un
+>    joueur précis" (donnée play-by-play absente du pipeline) et "égalité
+>    EXACTE entre ≥2 joueurs" (mécanisme combinatoire différent). L'IA les
+>    rejette nativement (calculable=false), vérifié en conditions réelles.
+> 3. Stockage : nouvelle colonne `bets.structured_duel jsonb` (PAS
+>    `structured_comparison`, déjà pris -- colonne texte OVER/UNDER
+>    existante) -- migration `20260824090000_bets_structured_duel.sql`,
+>    `update_bet_structuration()` étendue (`p_structured_duel`).
+> 4. Approximation statistique : différence normale (moyG - k×moyD,
+>    écart-type = √(scaleG²+(k×scaleD)²)) -- INDÉPENDANCE entre les 2 côtés
+>    assumée (aucune corrélation modélisée), et approximation normale même
+>    pour les stats Poisson (fg3m/stl/blk/oreb -- la vraie différence de 2
+>    Poisson suit une loi de Skellam, pas utilisée en V1, confirmé avec
+>    l'utilisateur).
+>
+> **Service Python** (`supabase_context.py`) : `_player_stat_mean_scale()`/
+> `_team_stat_mean_scale()` -- cœur de `compute_proba()`/
+> `_compute_team_stat_proba_once()` extrait SANS l'étape finale
+> `norm.cdf(seuil,...)` (un duel compare 2 moyennes avant de connaître un
+> seuil). `_player_current_team_id()` (nouveau -- résout l'équipe ACTUELLE
+> d'un joueur nommé depuis sa ligne `stats_box_scores` la plus récente,
+> nécessaire pour déduire `is_home`, une vraie feature des modèles joueur).
+> `_resolve_comparison_operand()` (1 joueur, somme de joueurs, ou équipe --
+> même formule pour 1 ou N joueurs) + `_compute_comparison_proba_once()`
+> (combine les 2 côtés). Limité aux stats COMPTÉES (`REGRESSION_STATS`) --
+> pas dd/td/ft/fg/fg3 (aucun exemple réel de duel sur ces stats).
+>
+> **Nouvel endpoint** `/predict-comparison` (`app.py`) : `left`/`right`
+> (`kind` PLAYER/TEAM + `joueurs`/`equipe`+`stat`), `relation` (GT/DIFF_LT),
+> `multiplier`, `threshold`, `equipe_domicile`/`equipe_exterieur` (contexte
+> du VRAI match, même contrat que `/predict-team-stat`).
+>
+> **Schéma IA** : `bet_subject` gagne `COMPARISON`. **Piège réel trouvé en
+> testant** (pas en cadrant) : le 1er jet du schéma (champs séparés
+> `comparison_left_kind`/`comparison_left_team`/`comparison_relation`/
+> `comparison_multiplier`) portait le total de champs nullable/union du
+> schéma à 19 -- l'API Claude a rejeté l'appel ("too many parameters with
+> union types... limit: 16"). Compressé à 13 en fusionnant `kind`+`team`
+> (`comparison_*_kind` vaut directement `"team1"`/`"team2"` plutôt qu'un
+> champ équipe séparé), en réutilisant le champ `comparison` existant pour
+> porter GT/DIFF_LT (au lieu d'un `comparison_relation` à part), en
+> réutilisant `threshold` pour le multiplicateur GT, et en rendant les
+> tableaux de joueurs non-nullable (tableau vide plutôt que null).
+> Nouveau fichier `comparisonCodes.ts` (listes de stats valides par côté,
+> réutilisées par le prompt ET par la validation runtime).
+>
+> **Résolution** (`resolveCalculableComparisonBets()`, nouveau) : lit
+> `structured_duel` (pas `structured_stat`/`structured_team_id` -- filtre
+> `.not("structured_duel", "is", null)`), somme la vraie stat sur TOUS les
+> `player_ids` d'un côté joueur (1 ou N, même geste), même résolution
+> d'équipe NBA que `resolveCalculableTeamStatBets()` pour un côté équipe.
+>
+> Testé en conditions réelles à chaque étape (Lakers vs Celtics) : 7 appels
+> HTTP locaux réels (joueur vs joueur, joueur vs somme, équipe vs équipe,
+> écart borné, multiplicateur, duel cross-stat blk/stl, rejet équipe hors
+> match), 8 vrais appels Claude Sonnet 5 (les 5 formes + 2 rejets attendus
+> + 1 régression PLAYER). `tsc`/`eslint`/`vitest`(37/37)/`next build`
+> propres.
+>
+> **Pas encore redéployé sur Cloud Run. Pas testé en conditions réelles
+> depuis l'appli.** Reste à faire : "meilleur marqueur du match" (Monte
+> Carlo), puis les 2 chantiers suivants de la liste (combos
+> multi-conditions, infrastructure quart-temps).
+
 > **Nouveau chantier cadré le 23/08/2026 : `types_de_paris_playoffs_2026.md`
 > fourni par l'utilisateur** -- 429 paris personnalisés réels répartis en 12
 > catégories, pour étendre l'auto-calcul au-delà de ce qui existait. Analyse
@@ -14,10 +89,11 @@
 > - **Extension mécanique du patron existant ("faciles", faites ce jour --
 >   voir entrée suivante)** : `team_pts`, `fga`/`fg3a` (tentatives joueur),
 >   `oreb` (rebonds offensifs, 3 formes).
-> - **Nouveau mécanisme réutilisable, PAS ENCORE FAIT** : comparaison/duel
->   (36 paris, P(A>B) entre 2 entités -- joueur vs joueur, équipe vs équipe,
->   "meilleur marqueur du match" = vs le reste des joueurs), combos
->   multi-conditions (PRA, double-condition, cumuls multi-joueurs, ~30 paris),
+> - **Nouveau mécanisme réutilisable** : comparaison/duel (36 paris, P(A>B)
+>   entre 2 entités -- **duel simple CODÉ le 24/08/2026, voir entrée
+>   au-dessus** ; "meilleur marqueur du match" = vs le reste des joueurs,
+>   PAS ENCORE FAIT), combos multi-conditions (PRA, double-condition,
+>   cumuls multi-joueurs, ~30 paris, PAS ENCORE FAIT),
 >   % tir équipe (7 paris, agrégation attempts/makes équipe à construire),
 >   prolongation (7 paris, classifieur binaire à construire depuis
 >   `play_by_play.period`, jamais synchronisé vers Supabase actuellement).
