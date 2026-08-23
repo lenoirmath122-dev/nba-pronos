@@ -20,6 +20,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import joblib  # noqa: E402
+from scipy.stats import norm  # noqa: E402
 
 from tester_modele import (  # noqa: E402
     CLASSIFIER_STATS,
@@ -345,11 +346,13 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     return context
 
 
-def compute_home_win_proba(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> dict:
-    """P(home_team_id gagne CE match, a domicile) -- charge home_win.joblib
-    (train_home_win_model.py), construit le vecteur home_*/away_* complet en
-    appelant build_team_context() une fois par equipe (l'adversaire de l'une
-    est l'autre). season deduite de as_of_date si omise."""
+def _build_match_feature_row(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None) -> pd.DataFrame:
+    """Vecteur home_*/away_* complet (les 21 BASE_FEATURE_COLS de chaque
+    equipe, train_home_win_model.py) -- partage entre TOUS les modeles au
+    niveau MATCH (home_win, total_points, futurs modeles equipe) : une seule
+    construction de contexte, jamais dupliquee par modele. season deduite de
+    as_of_date si omise (independamment pour chaque equipe, cf.
+    build_team_context())."""
     home_ctx = build_team_context(client, home_team_id, away_team_id, as_of_date, season=season)
     away_ctx = build_team_context(client, away_team_id, home_team_id, as_of_date, season=season)
 
@@ -364,10 +367,57 @@ def compute_home_win_proba(client, home_team_id: int, away_team_id: int, as_of_d
             "probablement une equipe avec trop peu d'historique connu en base (1ere saison de "
             "donnees, ou aucune confrontation/continuite calculable)."
         )
+    return X
 
+
+def compute_home_win_proba(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> dict:
+    """P(home_team_id gagne CE match, a domicile) -- charge home_win.joblib
+    (train_home_win_model.py). season deduite de as_of_date si omise."""
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)
     bundle = joblib.load(MODELS_DIR / "home_win.joblib")
     proba = float(bundle["model"].predict_proba(X)[:, 1][0])
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "p_home_win": proba}
+
+
+def _compute_total_points_proba_once(
+    client, home_team_id: int, away_team_id: int, seuil: float, comparison: str, as_of_date, season: str | None = None
+) -> dict:
+    """P(points combines du match [home_score+away_score] > seuil) -- pièce
+    (a) du chantier paris equipe (GAPS_OUVERTS.md, cadre le 23/08/2026),
+    1er modele EQUIPE (pas JOUEUR). Charge total_points.joblib
+    (train_total_points_model.py) -- regression + residu normal, MEME
+    principe que run_regression() (tester_modele.py) pour les stats joueur,
+    mais sans dispersion par equipe (aucun equivalent de {stat}_ecarttype10
+    calcule pour les equipes a ce jour) -- repli direct sur l'ecart-type
+    global du residu (meme plancher MIN_SCALE que train_stat_model.py).
+
+    comparison : "OVER" ou "UNDER" -- inversion simple (1-proba) SURE ici
+    (contrairement a compute_series_stat_proba()) : ceci est une prediction
+    a l'echelle d'UN SEUL match, pas une agregation sur une serie -- OVER et
+    UNDER sont bien complementaires pour un match unique."""
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)
+    bundle = joblib.load(MODELS_DIR / "total_points.joblib")
+    pred_mean = float(bundle["model"].predict(X)[0])
+    scale = max(bundle["resid_std"], 0.5)
+    proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+    proba = proba_over if comparison == "OVER" else 1 - proba_over
+
+    return {
+        "label": "Points combinés du match",
+        "proba": float(proba),
+        "detail": f"prediction moyenne = {pred_mean:.1f} (+/- {scale:.1f}, normale)",
+        "home_team_id": home_team_id,
+        "away_team_id": away_team_id,
+    }
+
+
+def compute_total_points_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_total_points_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE (plus bas dans ce fichier) pour
+    le POURQUOI (instabilite rare reproduite ici aussi, meme avec un seul
+    modele -- l'hypothese initiale "seulement en combinant 2 modeles"
+    s'est averee incomplete)."""
+    return _compute_with_consistency_check(lambda: _compute_total_points_proba_once(*args, **kwargs))
 
 
 def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is_home: int = 1, rest_days: int = 2) -> dict:
@@ -489,31 +539,46 @@ sur 8/8 ; compute_proba() joueur seul stable sur 8/8 ; SEULE la combinaison comp
 ET le modele joueur charges/utilises dans le meme process -- montre l'instabilite). Forcer n_jobs=1 sur les
 modeles n'a PAS elimine le probleme (hypothese "race du pool joblib" ecartee). Cause exacte non trouvee avec
 un effort raisonnable (probablement une interaction bas niveau scikit-learn/BLAS entre 2 modeles differents
-dans le meme process -- pas verifiable sans le vrai conteneur Linux Cloud Run). PAS un bug introduit par ce
-chantier : la meme architecture (modeles .joblib, RandomForest, n_jobs=-1 fige a l'entrainement) sert deja
-en production pour les paris MATCH -- compute_series_stat_proba() est juste le 1er endroit a combiner 2
-modeles differents dans un seul calcul, ce qui semble declencher le probleme plus souvent."""
+dans le meme process -- pas verifiable sans le vrai conteneur Linux Cloud Run).
+
+MISE A JOUR 23/08/2026 (piece (a), compute_total_points_proba()) : l'hypothese "seulement quand on
+combine 2 modeles differents" ci-dessus etait INCOMPLETE -- la meme instabilite (memes entrees, valeurs
+differentes) reproduite avec UN SEUL modele (total_points.joblib), ~1 fois sur 3-15 appels egalement.
+Diagnostic affine : le VECTEUR DE FEATURES est bit-identique entre 2 appels (verifie), la prediction brute
+du modele ne varie qu'a la 13e decimale (bruit flottant normal, negligeable) -- pourtant la proba finale
+(apres passage dans norm.cdf) peut differer de ~0.007 (0.7 point) entre 2 appels. Cause exacte TOUJOURS pas
+identifiee. PAS un bug introduit par ce chantier : la meme architecture (modeles .joblib, RandomForest,
+n_jobs=-1 fige a l'entrainement) sert deja en production pour les paris MATCH -- la mitigation ci-dessous
+est desormais appliquee a TOUT calcul passant par un modele .joblib, pas seulement compute_series_stat_proba()."""
 
 
-def compute_series_stat_proba(*args, **kwargs) -> dict:
-    """Enveloppe compute_series_stat_proba() d'une verification de coherence
-    -- voir CONSISTENCY_CHECK_NOTE ci-dessus pour le POURQUOI. Recalcule
-    jusqu'a 3 fois et ne renvoie un resultat QUE si au moins 2 des essais
-    s'accordent (a _CONSISTENCY_TOLERANCE pres) -- mieux vaut un appel plus
-    lent (et parfois 3 aller-retours Supabase au lieu de 1) qu'une probabilite
-    silencieusement fausse utilisee pour auto-valider un vrai pari."""
-    results = [_compute_series_stat_proba_once(*args, **kwargs) for _ in range(2)]
-    if abs(results[0]["proba"] - results[1]["proba"]) <= _CONSISTENCY_TOLERANCE:
+def _compute_with_consistency_check(compute_once, proba_key: str = "proba") -> dict:
+    """Generalise le patron construit pour compute_series_stat_proba() (pieces
+    d puis a, cf. CONSISTENCY_CHECK_NOTE ci-dessus) : appelle compute_once()
+    (sans argument, un thunk -- typiquement une lambda fermee sur les vrais
+    arguments) jusqu'a 3 fois et ne renvoie un resultat QUE si au moins 2 des
+    essais s'accordent sur result[proba_key] (a _CONSISTENCY_TOLERANCE pres).
+    Mieux vaut un appel plus lent (et parfois 3 aller-retours Supabase au lieu
+    de 1) qu'une probabilite silencieusement fausse utilisee pour auto-valider
+    un vrai pari."""
+    results = [compute_once(), compute_once()]
+    if abs(results[0][proba_key] - results[1][proba_key]) <= _CONSISTENCY_TOLERANCE:
         return results[0]
 
-    results.append(_compute_series_stat_proba_once(*args, **kwargs))
+    results.append(compute_once())
     for i in range(3):
         for j in range(i + 1, 3):
-            if abs(results[i]["proba"] - results[j]["proba"]) <= _CONSISTENCY_TOLERANCE:
+            if abs(results[i][proba_key] - results[j][proba_key]) <= _CONSISTENCY_TOLERANCE:
                 return results[i]
 
     raise ValueError(
         "Calcul instable : 3 essais avec les memes entrees ont donne 3 probabilites differentes "
-        f"({[r['proba'] for r in results]}) -- refuse de renvoyer un resultat non fiable. "
+        f"({[r[proba_key] for r in results]}) -- refuse de renvoyer un resultat non fiable. "
         "Voir supabase_context.CONSISTENCY_CHECK_NOTE."
     )
+
+
+def compute_series_stat_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_series_stat_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE ci-dessus pour le POURQUOI."""
+    return _compute_with_consistency_check(lambda: _compute_series_stat_proba_once(*args, **kwargs))

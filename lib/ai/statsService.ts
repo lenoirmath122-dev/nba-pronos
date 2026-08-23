@@ -136,3 +136,51 @@ export async function predictSeriesStat(
     return null;
   }
 }
+
+/**
+ * Pari MATCH_TOTAL (pièce (a) du chantier, GAPS_OUVERTS.md) -- 1er pari SANS
+ * JOUEUR : score combiné d'UN match précis. Contrairement à predictSeriesStat(),
+ * l'inversion OVER/UNDER (1-proba) est SÛRE côté service ici (voir
+ * supabase_context.py::compute_total_points_proba pour le pourquoi -- une
+ * prédiction à l'échelle d'un seul match, pas une agrégation sur une série),
+ * mais reste faite CÔTÉ SERVICE (pas ici) pour rester cohérent avec le
+ * contrat HTTP déjà établi par predictSeriesStat (comparison transmis tel
+ * quel, jamais retraité côté TypeScript).
+ *
+ * asOfDate : date RÉELLE du match visé (pas "aujourd'hui") -- résolue par
+ * l'appelant (structureAndScoreBet.ts) depuis matches.scheduled_at.
+ */
+export async function predictTotalPoints(
+  homeTeamName: string,
+  awayTeamName: string,
+  threshold: number,
+  comparison: "OVER" | "UNDER",
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-total-points`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        seuil: threshold,
+        comparison,
+        as_of_date: asOfDate,
+      }),
+      // 3 recalculs possibles côté service (verification de coherence,
+      // supabase_context.py::compute_total_points_proba) -- meme delai que
+      // predictSeriesStat.
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba, label: data.label };
+  } catch {
+    return null;
+  }
+}

@@ -9774,3 +9774,52 @@ construction prévu pour la prochaine reprise (train_total_points_model.py
 extension schéma IA -> extension resolveCalculableBets.ts). Rien codé
 cette entrée, uniquement du cadrage.
 ```
+
+## Pièce (a) -- codée et testée (23/08/2026, suite immédiate)
+
+```text
+Utilisateur donne le feu vert pour coder, suite directe du cadrage. Les 5
+étapes prévues enchaînées dans l'ordre sans blocage.
+
+(i) train_total_points_model.py : réutilise BASE_FEATURE_COLS/FEATURE_COLS
+de train_home_win_model.py (import direct) plutôt que MATCH_FEATURE_COLS
+brut -- évite de redécouvrir le bug des 2 colonnes toujours NULL déjà
+corrigé pour home_win. Entraîné en conditions réelles : 5216 lignes, MAE
+15.3, R² 0.115, calibration correcte (écarts 1-5 points).
+
+(ii) compute_total_points_proba() : factorisé _build_match_feature_row()
+depuis compute_home_win_proba() (même construction de contexte, partagée
+entre tout futur modèle MATCH). Testé : ~38.6% sur Boston/Lakers (220
+points), cohérent avec la moyenne prédite (215.4).
+
+Bug de calcul évité en amont (pas trouvé en testant, anticipé en écrivant
+le code) : contrairement à predictSeriesStat, l'inversion OVER/UNDER pour
+total_points est mathématiquement sûre en 1-proba (prédiction à l'échelle
+d'un seul match) -- documenté explicitement dans le code pour éviter
+qu'une future pièce mélange les 2 cas par analogie hâtive.
+
+(iii) endpoint /predict-total-points (app.py), testé en HTTP réel local.
+
+(iv) structureBet.ts : bet_subject (PLAYER/MATCH_TOTAL) + match_stat,
+stat renommé player_stat. structureAndScoreBet.ts reçoit matchId (jamais
+transmis avant), nouvelle fonction resolveMatchTeams() (équipes RÉELLES du
+match precis, distinct de resolveMatchTeamNames qui donne team1/team2 de
+la série, pas forcément dans le même ordre domicile/extérieur). Testé 4
+vrais appels Claude Sonnet 5 (script jetable, supprimé après) : score
+combiné, pari joueur (non-régression), marge de victoire (rejet correct),
+total cumulé sur série (rejet correct, garde explicite ajoutée au prompt).
+4/4.
+
+(v) resolveCalculableMatchTotalBets(), câblée en parallèle des 2 autres
+resolvers.
+
+Instabilité numérique de la pièce (d) reproduite ICI AUSSI avec un SEUL
+modèle -- l'hypothèse "seulement 2 modèles combinés" était incomplète.
+Mitigation généralisée en _compute_with_consistency_check() (factorisée,
+réutilisée par compute_series_stat_proba() ET compute_total_points_proba()
+au lieu d'être dupliquée).
+
+tsc/eslint/vitest(37/37)/next build propres. Redéploiement Cloud Run pas
+encore fait (action de l'utilisateur) -- à faire avant de tester un vrai
+pari MATCH_TOTAL depuis l'appli.
+```

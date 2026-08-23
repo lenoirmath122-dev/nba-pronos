@@ -1,7 +1,7 @@
 import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
-import { predictOverUnder, predictSeriesStat } from "./statsService";
+import { predictOverUnder, predictSeriesStat, predictTotalPoints } from "./statsService";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 
@@ -63,11 +63,38 @@ async function resolveSeriesHomeCourtTeam(
   return homeTeamName && awayTeamName ? { homeTeamName, awayTeamName } : null;
 }
 
+/** Equipe domicile/exterieure REELLES pour un match precis
+ *  (matches.home_team_id/away_team_id, deja synchronisees) -- utilise pour
+ *  un pari MATCH_TOTAL (piece (a), GAPS_OUVERTS.md) : pas besoin de
+ *  player_team ici, juste les 2 vraies equipes du match vise + sa date
+ *  reelle (contexte "au moment de CE match", pas "aujourd'hui" comme pour
+ *  un pari serie -- un match precis a une vraie date connue). Distinct de
+ *  resolveMatchTeamNames() (team1/team2 de la SERIE, ordre arbitraire, sert
+ *  seulement au contexte du prompt IA pour verifier un JOUEUR). */
+async function resolveMatchTeams(
+  supabase: Awaited<ReturnType<typeof getServerClient>>,
+  matchId: string,
+): Promise<{ homeTeamName: string; awayTeamName: string; scheduledAt: string } | null> {
+  const { data: match } = await supabase
+    .from("matches")
+    .select("home_team_id, away_team_id, scheduled_at")
+    .eq("id", matchId)
+    .maybeSingle<{ home_team_id: string | null; away_team_id: string | null; scheduled_at: string | null }>();
+  if (!match?.home_team_id || !match?.away_team_id || !match?.scheduled_at) return null;
+
+  const { data: teams } = await supabase.from("teams").select("id, name").in("id", [match.home_team_id, match.away_team_id]);
+  const nameById = new Map((teams ?? []).map((t) => [t.id as string, t.name as string]));
+  const homeTeamName = nameById.get(match.home_team_id);
+  const awayTeamName = nameById.get(match.away_team_id);
+  return homeTeamName && awayTeamName ? { homeTeamName, awayTeamName, scheduledAt: match.scheduled_at } : null;
+}
+
 export async function structureAndScoreBet(
   betId: string,
   description: string,
   seriesId: string,
   scope: "MATCH" | "SERIES" = "MATCH",
+  matchId: string | null = null,
 ): Promise<void> {
   const supabase = await getServerClient();
 
@@ -98,7 +125,64 @@ export async function structureAndScoreBet(
   try {
     const teamNames = await resolveMatchTeamNames(supabase, seriesId);
     const structuration = await structureBet(description, teamNames);
-    if (!structuration || !structuration.calculable || !structuration.player_name || !structuration.stat) {
+    if (!structuration || !structuration.calculable || !structuration.bet_subject) {
+      await markNotCalculable();
+      return;
+    }
+
+    // Pari MATCH_TOTAL (pièce (a) du chantier, GAPS_OUVERTS.md) -- 1er pari
+    // SANS JOUEUR : score combiné du match. MATCH uniquement pour l'instant
+    // (pas SÉRIE -- décidé avec l'utilisateur, viendra dans un 2e temps,
+    // même schéma de reprise que a0 -> pièces c/d/e). Branche entièrement
+    // séparée de la suite (spécifique aux paris JOUEUR) : aucun joueur à
+    // résoudre, aucune notion d'avantage du terrain sur une série.
+    if (structuration.bet_subject === "MATCH_TOTAL") {
+      if (
+        scope !== "MATCH" ||
+        !matchId ||
+        !structuration.match_stat ||
+        structuration.threshold === null ||
+        !structuration.comparison
+      ) {
+        await markNotCalculable();
+        return;
+      }
+      const matchTeams = await resolveMatchTeams(supabase, matchId);
+      if (!matchTeams) {
+        await markNotCalculable();
+        return;
+      }
+      // as_of_date = date RÉELLE du match visé (pas "aujourd'hui" comme pour
+      // un pari série) -- un match précis a une vraie date connue, plus
+      // fidèle pour le calcul de repos/contexte équipe.
+      const prediction = await predictTotalPoints(
+        matchTeams.homeTeamName,
+        matchTeams.awayTeamName,
+        structuration.threshold,
+        structuration.comparison,
+        matchTeams.scheduledAt.slice(0, 10),
+      );
+      if (!prediction) {
+        await markNotCalculable();
+        return;
+      }
+      await supabase.rpc("update_bet_structuration", {
+        p_bet_id: betId,
+        p_structured_player_name: null,
+        p_structured_player_id: null,
+        p_stat: structuration.match_stat,
+        p_threshold: structuration.threshold,
+        p_comparison: structuration.comparison,
+        p_is_calculable: true,
+        p_calculated_proba: prediction.proba,
+        p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      });
+      return;
+    }
+
+    // bet_subject === "PLAYER" à partir d'ici (comportement inchangé,
+    // seul le nom du champ change : stat -> player_stat, cf. structureBet.ts).
+    if (!structuration.player_name || !structuration.player_stat) {
       await markNotCalculable();
       return;
     }
@@ -107,7 +191,7 @@ export async function structureAndScoreBet(
     // réel trouvé en testant le 21/08/2026 : la condition d'origine
     // exigeait comparison partout, faisant tomber TOUS les paris dd/td en
     // "non calculable" alors qu'ils le sont bel et bien.
-    const stat = structuration.stat as StatCode;
+    const stat = structuration.player_stat as StatCode;
     if (!NO_THRESHOLD_STATS.has(stat) && !structuration.comparison) {
       await markNotCalculable();
       return;
@@ -134,7 +218,7 @@ export async function structureAndScoreBet(
         p_bet_id: betId,
         p_structured_player_name: structuration.player_name,
         p_structured_player_id: null,
-        p_stat: structuration.stat,
+        p_stat: structuration.player_stat,
         p_threshold: structuration.threshold,
         p_comparison: structuration.comparison,
         p_is_calculable: true,
@@ -188,7 +272,7 @@ export async function structureAndScoreBet(
       p_bet_id: betId,
       p_structured_player_name: structuration.player_name,
       p_structured_player_id: prediction.playerId,
-      p_stat: structuration.stat,
+      p_stat: structuration.player_stat,
       p_threshold: structuration.threshold,
       p_comparison: structuration.comparison,
       p_is_calculable: true,

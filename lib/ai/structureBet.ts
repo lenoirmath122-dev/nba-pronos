@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
+import { MATCH_STAT_CODES, MATCH_STAT_LABELS_FR } from "./matchStatCodes";
 
 // Structuration IA d'un pari perso en texte libre (SPEC_TECHNIQUE_PROBA_
 // PARIS_PERSOS_V0_1.md §3, décidé le 21/08/2026 : Claude Opus 5, appel
@@ -22,38 +23,57 @@ const BetStructurationSchema = z.object({
   calculable: z
     .boolean()
     .describe(
-      "true si UN seul joueur + UNE stat listée + seuil clair (même si le joueur ne joue pas dans ce match, " +
-        "voir player_not_in_match). false pour pari équipe, combo, score total, fun/hors-terrain, ou formulation " +
+      "true si (UN joueur + UNE stat joueur listée + seuil clair) OU (score combiné du match + seuil clair) -- " +
+        "voir bet_subject. false pour pari équipe (hors score combiné), combo, fun/hors-terrain, ou formulation " +
         "ambiguë -- ne force jamais une extraction incertaine.",
+    ),
+  bet_subject: z
+    .enum(["PLAYER", "MATCH_TOTAL"])
+    .nullable()
+    .describe(
+      "PLAYER si le pari porte sur UN joueur (remplis player_*), MATCH_TOTAL si le pari porte sur le score " +
+        "COMBINÉ du match (remplis match_stat, jamais de joueur). null si non calculable.",
     ),
   player_not_in_match: z
     .boolean()
     .describe(
-      "true si le joueur (vrai joueur NBA) ne joue pour AUCUNE des 2 équipes de ce match (utilise ta connaissance " +
-        "des effectifs réels). calculable reste true, remplis quand même les autres champs -- l'appli forcera " +
-        "proba=0%. false sinon.",
+      "Uniquement pour bet_subject=PLAYER. true si le joueur (vrai joueur NBA) ne joue pour AUCUNE des 2 équipes " +
+        "de ce match (utilise ta connaissance des effectifs réels). calculable reste true, remplis quand même les " +
+        "autres champs -- l'appli forcera proba=0%. false sinon (y compris pour MATCH_TOTAL, sans objet).",
     ),
   player_name: z
     .string()
     .nullable()
     .describe(
-      "Orthographe standard NBA (ex: \"Michael Porter Jr.\" pas \"Junior\") -- corrige les fautes évidentes, " +
-        "null si non calculable.",
+      "Uniquement pour bet_subject=PLAYER. Orthographe standard NBA (ex: \"Michael Porter Jr.\" pas \"Junior\") -- " +
+        "corrige les fautes évidentes. null pour MATCH_TOTAL, ou si non calculable.",
     ),
   player_team: z
     .enum(["team1", "team2"])
     .nullable()
     .describe(
-      "team1 ou team2 selon l'ordre du contexte de match/série ci-dessous -- laquelle des 2 équipes le joueur " +
-        "représente. null si player_not_in_match=true ou non calculable.",
+      "Uniquement pour bet_subject=PLAYER. team1 ou team2 selon l'ordre du contexte de match/série ci-dessous -- " +
+        "laquelle des 2 équipes le joueur représente. null si player_not_in_match=true, MATCH_TOTAL, ou non " +
+        "calculable.",
     ),
-  stat: z.enum(STAT_CODES as [string, ...string[]]).nullable().describe("Code de la stat concernée, null si non calculable."),
+  player_stat: z
+    .enum(STAT_CODES as [string, ...string[]])
+    .nullable()
+    .describe("Uniquement pour bet_subject=PLAYER. Code de la stat JOUEUR concernée, null sinon."),
+  match_stat: z
+    .enum(MATCH_STAT_CODES as [string, ...string[]])
+    .nullable()
+    .describe(
+      "Uniquement pour bet_subject=MATCH_TOTAL. \"total_points\" = les 2 équipes additionnées, POUR CE MATCH " +
+        "PRÉCIS (jamais une somme sur plusieurs matchs d'une série -- marque calculable=false dans ce cas, voir " +
+        "note plus bas). null sinon.",
+    ),
   threshold: z
     .number()
     .nullable()
     .describe(
       "Seuil numérique. null pour dd/td (proba directe). Pour ft/fg/fg3, une FRACTION 0-1 (0.85 pour \"85%\"), " +
-        "jamais 85.",
+        "jamais 85. Pour total_points, un nombre de points brut (ex: 220).",
     ),
   comparison: z
     .enum(["OVER", "UNDER"])
@@ -77,14 +97,21 @@ function buildSystemPrompt(teamNames: [string, string] | null): string {
       "l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> \"Jr.\") plutôt que de reprendre le " +
       "texte exact du joueur, qui peut contenir des fautes de frappe."
     : "";
+  const matchStatList = MATCH_STAT_CODES.map((code) => `- "${code}" : ${MATCH_STAT_LABELS_FR[code]}`).join("\n");
   return (
     "Tu structures des paris personnalisés NBA écrits en texte libre par des joueurs d'une ligue entre amis, " +
-    "pour un calcul de probabilité automatique. Le service de calcul ne sait gérer QUE les 12 stats suivantes, " +
-    "un seul joueur, un seul seuil par pari :\n\n" +
+    "pour un calcul de probabilité automatique. Le service de calcul sait gérer 2 types de paris, chacun avec un " +
+    "seul seuil par pari :\n\n" +
+    "1. bet_subject=PLAYER -- UN seul joueur + UNE des 12 stats suivantes :\n" +
     statList +
-    "\n\nTout le reste (paris équipe, score du match, combo plusieurs joueurs, événement de match, paris fun/" +
-    "hors-terrain comme \"l'entraîneur criera au moins 3 fois\", scénarios complexes, ou une formulation trop " +
-    "vague pour être sûr) doit être marqué calculable=false — ne force jamais une extraction incertaine." +
+    "\n\n2. bet_subject=MATCH_TOTAL -- le score COMBINÉ d'UN match précis (jamais une somme sur plusieurs matchs " +
+    "d'une série -- si le pari cumule explicitement sur \"la série\"/\"les matchs\", marque calculable=false, ce " +
+    "cas n'est pas encore géré) :\n" +
+    matchStatList +
+    "\n\nTout le reste (paris équipe autre que le score combiné, combo plusieurs joueurs, événement de match, " +
+    "paris fun/hors-terrain comme \"l'entraîneur criera au moins 3 fois\", scénarios complexes, formulation trop " +
+    "vague, ou total cumulé sur une série) doit être marqué calculable=false — ne force jamais une extraction " +
+    "incertaine." +
     matchContext
   );
 }

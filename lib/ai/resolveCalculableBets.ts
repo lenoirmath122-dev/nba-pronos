@@ -445,3 +445,108 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
 
   return summary;
 }
+
+type EligibleMatchTotalBetRow = {
+  id: string;
+  match_id: string | null;
+  structured_threshold: number | null;
+  structured_comparison: "OVER" | "UNDER" | null;
+};
+
+type MatchScoreRow = { id: string; status: string; home_score: number | null; away_score: number | null };
+
+/** Pièce (a) du chantier paris équipe (GAPS_OUVERTS.md, cadré le
+ *  23/08/2026) -- résolution des paris MATCH_TOTAL (structured_stat=
+ *  "total_points", jamais de structured_player_id -- 1er type de pari SANS
+ *  JOUEUR). Contrairement à resolveCalculableBets()/resolveCalculableSeriesBets()
+ *  (qui lisent stats_box_scores, le pipeline Data NBA), la résolution ici
+ *  n'a besoin QUE de `matches.home_score`/`away_score` -- déjà synchronisés
+ *  par le sync existant, aucune dépendance au pipeline Data NBA pour
+ *  VÉRIFIER après coup (seulement pour PRÉDIRE avant le match, cf.
+ *  compute_total_points_proba() côté service). MATCH uniquement pour
+ *  l'instant (même limite que la prédiction, pas encore de SÉRIE). */
+export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSummary> {
+  const supabase = getServiceClient();
+  const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, match_id, structured_threshold, structured_comparison")
+    .eq("scope", "MATCH")
+    .eq("is_calculable", true)
+    .eq("status", "VALIDATED")
+    .eq("structured_stat", "total_points")
+    .is("structured_player_id", null); // discrimine des paris JOUEUR -- garde explicite, jamais coexistant avec un vrai player_id
+  const bets = (betsData ?? []) as EligibleMatchTotalBetRow[];
+  if (bets.length === 0) return summary;
+
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const { data: matchesData } = await supabase.from("matches").select("id, status, home_score, away_score").in("id", matchIds);
+  const matchById = new Map(((matchesData ?? []) as MatchScoreRow[]).map((m) => [m.id, m]));
+
+  // Paris déjà contestés -- jamais résolus automatiquement, même garde que
+  // les 2 resolvers ci-dessus.
+  const { data: pendingCorrections } = await supabase
+    .from("correction_requests")
+    .select("target_bet_id")
+    .eq("status", "PENDING")
+    .in(
+      "target_bet_id",
+      bets.map((b) => b.id)
+    );
+  const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
+
+  for (const bet of bets) {
+    if (!bet.match_id) {
+      summary.skipped.push({ betId: bet.id, reason: "match manquant" });
+      continue;
+    }
+    if (contestedBetIds.has(bet.id)) {
+      summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
+      continue;
+    }
+    if (bet.structured_threshold === null || !bet.structured_comparison) {
+      summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
+      continue;
+    }
+
+    const match = matchById.get(bet.match_id);
+    if (!match || match.status !== "FINISHED") {
+      summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
+      continue;
+    }
+    if (match.home_score === null || match.away_score === null) {
+      // Match FINISHED mais score pas encore synchronisé -- ne tranche
+      // jamais sur une absence de donnée, même prudence que les 2 resolvers
+      // ci-dessus (réessaiera à la prochaine passe).
+      summary.skipped.push({ betId: bet.id, reason: "score du match pas encore synchronisé" });
+      continue;
+    }
+
+    const total = match.home_score + match.away_score;
+    const won = bet.structured_comparison === "UNDER" ? total < bet.structured_threshold : total > bet.structured_threshold;
+    const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+
+    const { data: updated } = await supabase
+      .from("bets")
+      .update({
+        status: outcome,
+        resolution_reason: `Résolu automatiquement via le score officiel du match (${total} points combinés).`,
+        resolved_at: new Date().toISOString(),
+        resolved_by_admin_id: null,
+      })
+      .eq("id", bet.id)
+      .eq("status", "VALIDATED")
+      .select("id")
+      .maybeSingle();
+    if (!updated) {
+      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
+      continue;
+    }
+
+    await recomputeBet(bet.id);
+    summary.resolved.push({ betId: bet.id, outcome });
+  }
+
+  return summary;
+}

@@ -43,15 +43,73 @@
 > 5. **Service Python** : nouvel endpoint dédié (`/predict-total-points` ou
 >    équivalent), même patron que `/predict`/`/predict-series`.
 >
-> **Pas encore codé, rien commencé** -- prêt à construire la prochaine fois,
-> dans cet ordre : (i) `train_total_points_model.py` (entraînement +
-> vérification, même démarche que `train_home_win_model.py`) ; (ii)
-> `compute_total_points_proba()` côté `supabase_context.py` (réutilise
-> `build_team_context()` tel quel, pas de nouveau contexte équipe à
-> construire) ; (iii) endpoint `/predict-total-points` (`app.py`) ; (iv)
-> extension du schéma IA (`bet_subject`) + branchement dans
-> `structureAndScoreBet.ts` ; (v) extension de `resolveCalculableBets.ts`
-> pour le cas non-joueur (`home_score`/`away_score`).
+> **CODÉE ET TESTÉE le 23/08/2026 (même session, suite immédiate), les 5
+> étapes prévues** :
+> - (i) `train_total_points_model.py` : même démarche que
+>   `train_home_win_model.py`, réutilise `BASE_FEATURE_COLS`/`FEATURE_COLS`
+>   TELS QUELS (pas `MATCH_FEATURE_COLS` brut de `build_targets.py`, qui
+>   inclut les 2 colonnes toujours NULL déjà exclues pour `home_win` -- une
+>   seule liste "quelles features comptent pour un match", pas de
+>   divergence). Régression + résidu normal (même recette que
+>   `train_stat_model.py`), sans dispersion par équipe (aucun équivalent de
+>   `{stat}_ecarttype10` calculé pour les équipes à ce jour) -- repli sur
+>   l'écart-type global. Entraîné : 5216 lignes, MAE 15.3, R² 0.115 (cible
+>   difficile, bruit inhérent au score combiné -- calibration correcte,
+>   écarts 1-5 points sur les seuils 190-250).
+> - (ii) `compute_total_points_proba()` (`supabase_context.py`) : réutilise
+>   `build_team_context()` tel quel via un nouveau helper partagé
+>   `_build_match_feature_row()` (factorisé depuis `compute_home_win_proba()`,
+>   même vecteur de features pour tout futur modèle MATCH). Contrairement à
+>   `compute_series_stat_proba()`, l'inversion OVER/UNDER (1-proba) est SÛRE
+>   ici (prédiction à l'échelle d'UN match, pas une agrégation sur une
+>   série).
+> - (iii) Endpoint `/predict-total-points` (`app.py`), même patron que
+>   `/predict`/`/predict-series`.
+> - (iv) `structureBet.ts` : nouveau champ `bet_subject`
+>   ("PLAYER"/"MATCH_TOTAL") + `match_stat` (liste séparée, `"total_points"`
+>   seul pour l'instant) -- `stat` renommé `player_stat` pour clarté.
+>   `structureAndScoreBet.ts` reçoit désormais aussi `matchId` (jusqu'ici pas
+>   transmis du tout), branche entièrement séparée pour MATCH_TOTAL (aucun
+>   joueur à résoudre) -- nouvelle fonction `resolveMatchTeams()` (équipes
+>   RÉELLES du match précis via `matches.home_team_id`/`away_team_id`, PAS
+>   `series.team1_id`/`team2_id` qui ne garantit pas le même ordre) ;
+>   `as_of_date` = date RÉELLE du match visé (plus fidèle que "aujourd'hui",
+>   possible ici car un match précis a une date connue, contrairement à un
+>   pari série). Testé avec 4 vrais appels Claude Sonnet 5 : score combiné
+>   -> MATCH_TOTAL correct, pari joueur -> PLAYER inchangé (non-régression),
+>   marge de victoire -> `calculable=false` correct (hors périmètre), total
+>   cumulé sur une série -> `calculable=false` correct (garde explicite
+>   ajoutée au prompt, cohérente avec la limite déjà actée pour les paris
+>   joueur série). 4/4.
+> - (v) `resolveCalculableMatchTotalBets()` (`resolveCalculableBets.ts`),
+>   câblée en parallèle des 2 autres resolvers dans `/api/resolve-bets`.
+>   Directe via `matches.home_score`/`away_score` (déjà synchronisés),
+>   aucune dépendance au pipeline Data NBA pour résoudre -- même prudence
+>   que les 2 autres resolvers (jamais de LOST sur un score pas encore
+>   synchronisé).
+>
+> **Instabilité numérique (déjà trouvée pour la pièce (d)) reproduite ICI
+> AUSSI, avec un SEUL modèle cette fois** -- l'hypothèse "seulement en
+> combinant 2 modèles différents" (notée lors de la pièce (d)) était donc
+> INCOMPLÈTE. Diagnostic affiné : le vecteur de features est bit-identique
+> entre 2 appels, la prédiction brute du modèle ne varie qu'à la 13e
+> décimale (bruit flottant négligeable) -- pourtant la proba finale peut
+> différer de ~0.007 après passage dans `norm.cdf`. Cause exacte toujours
+> pas identifiée. Mitigation déjà construite pour la pièce (d)
+> **généralisée** : `_compute_with_consistency_check()`, réutilisée par
+> `compute_series_stat_proba()` ET `compute_total_points_proba()` (et
+> disponible pour tout futur modèle équipe) plutôt que dupliquée.
+>
+> Testé en conditions réelles contre la vraie base (Boston vs Lakers,
+> `total_points > 220`) : ~38.6% (moyenne prédite 215.4 ± 15.9), stable
+> après la mitigation, OVER+UNDER somment bien à 1.0 (prédiction à
+> l'échelle d'un seul match). `tsc`/`eslint`/`vitest` (37/37)/`next build`
+> propres. **Pas encore redéployé sur Cloud Run** (action de l'utilisateur,
+> `gcloud` absent de cet environnement) -- à faire avant de tester un vrai
+> pari MATCH_TOTAL depuis l'appli. Paris équipe/total en scope SÉRIE,
+> et tout pari équipe autre que `total_points` (rebonds équipe, marge de
+> victoire...), restent hors périmètre -- chantiers séparés si repris plus
+> tard.
 
 > **Cadrage posé le 23/08/2026, PAS CODÉ -- prêt à construire la prochaine
 > fois** : paris SÉRIE (Playoffs uniquement -- en NBA Cup une "série" est

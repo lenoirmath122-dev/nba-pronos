@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
-import { resolveCalculableBets, resolveCalculableSeriesBets, type ResolveBetsSummary } from "@/lib/ai/resolveCalculableBets";
+import {
+  resolveCalculableBets,
+  resolveCalculableSeriesBets,
+  resolveCalculableMatchTotalBets,
+  type ResolveBetsSummary,
+} from "@/lib/ai/resolveCalculableBets";
 
 // Phase 6 (résolution automatique des paris IA calculables, 22/08/2026) --
 // même authentification que /api/sync/* (Bearer SYNC_SECRET, lib/sync/
@@ -21,10 +26,14 @@ async function handle(request: Request): Promise<Response> {
   }
 
   try {
-    const [matchSummary, seriesSummary] = await Promise.all([resolveCalculableBets(), resolveCalculableSeriesBets()]);
+    const [matchSummary, seriesSummary, matchTotalSummary] = await Promise.all([
+      resolveCalculableBets(),
+      resolveCalculableSeriesBets(),
+      resolveCalculableMatchTotalBets(),
+    ]);
     const summary: ResolveBetsSummary = {
-      resolved: [...matchSummary.resolved, ...seriesSummary.resolved],
-      skipped: [...matchSummary.skipped, ...seriesSummary.skipped],
+      resolved: [...matchSummary.resolved, ...seriesSummary.resolved, ...matchTotalSummary.resolved],
+      skipped: [...matchSummary.skipped, ...seriesSummary.skipped, ...matchTotalSummary.skipped],
     };
     return NextResponse.json(summary);
   } catch (error) {

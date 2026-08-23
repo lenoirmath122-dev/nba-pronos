@@ -134,6 +134,45 @@ def predict(req: PredictRequest):
     }
 
 
+class PredictTotalPointsRequest(BaseModel):
+    """Piece (a) du chantier paris equipe (GAPS_OUVERTS.md, cadre le
+    23/08/2026) -- 1er pari SANS JOUEUR : points combines du match
+    (home_score+away_score). MATCH uniquement pour l'instant (pas SERIES,
+    decide avec l'utilisateur -- viendra dans un 2e temps)."""
+    equipe_domicile: str
+    equipe_exterieur: str
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-total-points")
+def predict_total_points(req: PredictTotalPointsRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_total_points_proba(
+            sb, home_id, away_id, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
 class PredictSeriesRequest(BaseModel):
     joueur: str | None = None
     joueur_id: int | None = None
