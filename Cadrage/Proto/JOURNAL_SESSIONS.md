@@ -9311,3 +9311,70 @@ même philosophie sans état que pour les joueurs) ou s'arrêter là.
 Décidé : s'arrêter (session déjà très longue) -- plan complet documenté
 dans GAPS_OUVERTS.md pour reprise directe.
 ```
+
+## Paris SÉRIE, bloquant Supabase levé -- contexte équipe en production (23/08/2026, reprise)
+
+```text
+Reprise directe depuis GAPS_OUVERTS.md (plan à 4 étapes déjà posé). Feu
+vert de l'utilisateur pour l'étape 1 (migration).
+
+Étape 1 -- migration `20260823090000_stats_box_scores_team_advanced.sql`
+(team_id, off_rating, def_rating, net_rating, pace + index team_id/
+game_date). `npx supabase db push` a d'abord échoué : la migration
+20260822130000 (session précédente) était déjà appliquée sur la base
+réelle mais absente de l'historique de suivi Supabase -- probable reliquat
+d'un push manuel après un blocage classifieur (même catégorie que déjà
+rencontrée, voir mémoire `claude-code-auto-mode-classifier-blocks-
+credentials`). Signalé explicitement à l'utilisateur avant d'agir (écart
+d'état, pas une action destructive) : `supabase migration repair --status
+applied 20260822130000` (répare juste la table de suivi, ne rejoue aucun
+SQL), confirmé par l'utilisateur, puis push normal réussi.
+
+Étape 2 -- `backfill_supabase.py` : 5 colonnes ajoutées au SELECT
+(team_id déjà dans box_scores local, les 4 autres dans box_scores_
+advanced -- rien à récupérer de nouveau). Relancé en tâche de fond
+(~140k lignes, quelques minutes) pendant que l'étape 3 était codée en
+parallèle. Vérifié après coup par une vraie requête Supabase (pas
+seulement le code de sortie du script) : 140016/140016 lignes avec
+team_id renseigné.
+
+Étape 3 -- `refresh_daily.py` : `STATS_BOX_SCORE_TRAD_COLUMNS` étend
+team_id, `box_adv_rows` étend off_rating/def_rating/net_rating/pace --
+même patron que le reste du fichier (colonnes déjà renommées par
+TRADITIONAL_COLUMNS/ADVANCED_COLUMNS de load_to_sqlite.py, réutilisées
+telles quelles).
+
+Étape 4 -- `build_team_context()`/`compute_home_win_proba()` dans
+service/supabase_context.py, équivalent Supabase de build_team_games()/
+add_team_rolling_features()/compute_roster_continuity()
+(build_features.py), réduit à UNE équipe par appel (2 requêtes filtrées
+team_id=X / opponent_team_id=X, aucune jointure nécessaire -- opponent_
+team_id déjà stocké ligne par ligne). 2 simplifications trouvées en
+relisant le code d'entraînement avant de coder : is_home n'est PAS une
+des 21 features du modèle (déjà exclu à l'entraînement pour trou de
+données) ; aucun shift(1) nécessaire en inférence live (contrairement à
+l'entraînement, tous les matchs récupérés sont déjà joués, le match visé
+n'existe pas encore en base). Continuité d'effectif reproduite à
+l'identique (coeur d'effectif = joueurs couvrant CORE_MINUTES_SHARE des
+minutes de la saison précédente) mais limitée aux 2 seules saisons
+utiles au lieu de toute la base.
+
+Testé en conditions réelles contre la vraie base (pas de test synthétique)
+: Boston vs Lakers, saison 2025-26. 1er essai avec une date de test trop
+ancienne (rest_days négatif, repéré immédiatement -- la base contient déjà
+des matchs plus récents que la date choisie) ; corrigé avec une vraie
+date future réaliste. build_team_context() → compute_home_win_proba() →
+series_probability.simulate_series() bout en bout : ~78% de victoire de
+série pour Boston, longueur moyenne 5.6 matchs (cohérent). Garde-fou
+vérifié aussi : compute_home_win_proba() lève une erreur explicite si la
+saison ciblée n'a pas encore commencé pour une équipe (testé avec
+2026-27), plutôt que de renvoyer une proba silencieusement fausse.
+
+tsc --noEmit propre (fichiers Python, aucun impact sur l'app Next.js).
+Pas de migration/donnée cassée. Câblage dans service/app.py (endpoint
+dédié) volontairement pas fait cette session -- pas demandé, la pièce a0
++ le contexte équipe suffisaient à lever ce bloquant précis.
+
+GAPS_OUVERTS.md mis à jour : bloquant retiré, section réécrite en
+"entièrement levé", détail des 4 étapes conservé pour trace.
+```

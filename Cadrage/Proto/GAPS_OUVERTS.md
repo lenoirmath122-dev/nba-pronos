@@ -96,39 +96,51 @@
 > un vrai affrontement. Détail complet : `projet-data-nba.md` §37. Retire
 > la pièce a0 de la liste des pièces manquantes ci-dessous.
 >
-> **BLOQUANT trouvé juste après, PAS CODÉ, prêt à reprendre directement** :
-> pour utiliser le modèle `home_win` en PRODUCTION (donc pour la pièce b,
-> "contexte équipe roulant"), la table Supabase `stats_box_scores`
-> (vérifiée en direct le 23/08/2026) **n'a ni `team_id` ni les 4 stats
-> avancées équipe** (`off_rating`/`def_rating`/`net_rating`/`pace`) --
-> or ce sont justement les features les PLUS importantes du modèle
-> `home_win` (vérifié dans le classement d'importance). Ces colonnes
-> existent bien EN LOCAL (`box_scores`/`box_scores_advanced` dans
-> `nba.db`, au niveau JOUEUR -- `build_team_games()` dans
-> `build_features.py` les agrège déjà par équipe via `.groupby(["game_id",
-> "team_id"])`), donc **rien à extraire de nouveau depuis nba_api** --
-> juste étendre ce qui est copié vers Supabase. Jamais fait jusqu'ici
-> car le projet n'avait besoin que de stats JOUEUR jusqu'à cette session.
-> Plan pour la prochaine fois (décidé de s'arrêter avant de coder, session
-> déjà longue) :
-> 1. Migration Supabase : ajouter `team_id integer`, `off_rating numeric`,
->    `def_rating numeric`, `net_rating numeric`, `pace numeric` à
->    `stats_box_scores`.
-> 2. Mettre à jour `backfill_supabase.py` pour copier ces 5 colonnes
->    (déjà dispo localement), relancer un backfill (au moins pour
->    remplir les lignes déjà en base -- à voir si un backfill ciblé
->    "juste ces colonnes" suffit plutôt qu'un backfill complet).
-> 3. Mettre à jour `refresh_daily.py` pour continuer à les alimenter
->    chaque jour.
-> 4. Construire le contexte ÉQUIPE **à la volée** dans
->    `supabase_context.py` (même philosophie "sans état" que
->    `build_context()` pour les joueurs aujourd'hui -- PAS de nouvelle
->    table précalculée de moyennes glissantes équipe, juste lire les N
->    derniers matchs et calculer au moment de la requête). Logique à
->    reproduire depuis `build_team_games()`/`add_team_rolling_features()`
->    (`build_features.py`) : agrégation pts marqués/encaissés par
->    (game_id, team_id), moyennes 5/10 matchs, split victoires
->    domicile/extérieur, historique confrontations directes.
+> **BLOQUANT du 23/08/2026 -- ENTIÈREMENT LEVÉ le 23/08/2026 (suite, même
+> session reprise)** : pour utiliser le modèle `home_win` en PRODUCTION, la
+> table Supabase `stats_box_scores` n'avait ni `team_id` ni les 4 stats
+> avancées équipe (`off_rating`/`def_rating`/`net_rating`/`pace`). Les 4
+> étapes prévues ont toutes été codées, poussées et vérifiées en conditions
+> réelles :
+> 1. **Migration Supabase** (`20260823090000_stats_box_scores_team_advanced.sql`)
+>    : `team_id`, `off_rating`, `def_rating`, `net_rating`, `pace` + index
+>    `(team_id, game_date desc)`. Poussée (`npx supabase db push`) -- au
+>    passage, un vrai écart d'état trouvé et corrigé : la migration
+>    `20260822130000` était déjà appliquée sur la base réelle mais absente de
+>    l'historique de suivi (probable reliquat d'un push manuel après un
+>    blocage classifieur antérieur) -- réparé via `supabase migration repair
+>    --status applied` (aucun SQL rejoué), puis push normal.
+> 2. **`backfill_supabase.py`** étendu (5 colonnes ajoutées au SELECT,
+>    toutes déjà dispo localement dans `box_scores`/`box_scores_advanced`) et
+>    relancé en entier -- 140 016/140 016 lignes vérifiées remplies après
+>    coup (requête directe Supabase, pas juste le code de sortie du script).
+> 3. **`refresh_daily.py`** mis à jour pour continuer à alimenter ces 5
+>    colonnes à chaque rafraîchissement quotidien (`STATS_BOX_SCORE_TRAD_
+>    COLUMNS` + `box_adv_rows`).
+> 4. **Contexte équipe à la volée** : nouvelles fonctions `build_team_context()`
+>    / `compute_home_win_proba()` dans `service/supabase_context.py`,
+>    équivalent Supabase de `build_team_games()`/`add_team_rolling_features()`/
+>    `compute_roster_continuity()` (`build_features.py`), réduites à UNE SEULE
+>    équipe par appel (2 requêtes filtrées `team_id=X`/`opponent_team_id=X`,
+>    aucune jointure). Simplification propre à l'inférence en direct (par
+>    opposition à l'entraînement) : **`is_home` n'est PAS dans les 21
+>    features du modèle** (déjà exclu à l'entraînement, trou de données) et
+>    **aucun `shift(1)`** n'est nécessaire (tous les matchs récupérés sont
+>    déjà joués, le match à prédire n'existe pas encore en base).
+>
+> **Testé en conditions réelles contre la vraie base** (Boston vs Lakers,
+> saison 2025-26, matchs déjà connus) : `build_team_context()` →
+> `compute_home_win_proba()` → `series_probability.simulate_series()` bout en
+> bout, résultat cohérent (~78% Boston, longueur moyenne 5,6 matchs). Garde-
+> fou vérifié aussi : `compute_home_win_proba()` refuse explicitement (erreur
+> claire) si une équipe n'a pas encore joué la saison ciblée (`continuite_
+> effectif_saison` NaN par construction dans ce cas, testé avec la saison
+> 2026-27 pas encore commencée). `tsc --noEmit` propre sur l'app Next.js
+> (fichiers Python, aucun impact dessus). **Pas encore fait** : câblage dans
+> `service/app.py` (endpoint dédié) -- pas demandé cette session, la pièce
+> a0 + le contexte équipe suffisaient à lever CE bloquant précis. Reste
+> ouvert pour la pièce (c) (mécanisme générique d'agrégation "sur la série")
+> et les pièces (a)/(d)/(e) listées plus haut.
 >
 > **Reste à trancher avant de coder** (pas abordé en détail) : la sémantique
 > par défaut d'un pari série ambigu ("marque 30+" sans préciser) --

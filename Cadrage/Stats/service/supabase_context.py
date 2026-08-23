@@ -34,6 +34,8 @@ from tester_modele import (  # noqa: E402
     run_regression,
     strip_accents,
 )
+from build_features import CORE_MINUTES_SHARE  # noqa: E402
+from train_home_win_model import BASE_FEATURE_COLS, FEATURE_COLS  # noqa: E402
 
 
 PAGE_SIZE = 1000  # limite par defaut de PostgREST (meme constante que
@@ -169,6 +171,173 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
         ecarttypes[stat] = recent[col].std()
 
     return context, ecarttypes, recent
+
+
+def _prior_season(seasons_known, target_season: str):
+    """Saison immediatement anterieure a target_season parmi celles connues
+    -- comparaison sur l'annee de debut ("2024-25" -> 2024), pas sur l'ordre
+    alphabetique (qui coinciderait ici mais serait fragile). None si aucune
+    saison anterieure n'est connue (1ere saison de donnees)."""
+    def start_year(s):
+        return int(s.split("-")[0])
+
+    candidates = [s for s in seasons_known if start_year(s) < start_year(target_season)]
+    return max(candidates, key=start_year) if candidates else None
+
+
+def _team_roster_continuity(client, team_id: int, season: str, seasons_known) -> float:
+    """Equivalent Supabase de compute_roster_continuity() (build_features.py),
+    reduit a une SEULE equipe et aux 2 seules saisons utiles (prealable +
+    cible) -- au lieu de toute la base. Meme regle : "coeur d'effectif" =
+    joueurs couvrant CORE_MINUTES_SHARE des minutes de la SAISON PRECEDENTE
+    par ordre decroissant ; continuite = part des minutes de la saison EN
+    COURS deja jouees par des joueurs qui en faisaient partie. NaN si pas de
+    saison anterieure connue ou si l'equipe n'a pas encore joue cette saison
+    (memes cas que la version originale)."""
+    prior = _prior_season(seasons_known, season)
+    if prior is None:
+        return np.nan
+
+    rows = fetch_all_rows(
+        lambda start, end: client.table("stats_box_scores")
+        .select("player_id, minutes, season")
+        .eq("team_id", team_id)
+        .in_("season", [prior, season])
+        .range(start, end)
+    )
+    if not rows:
+        return np.nan
+    df = pd.DataFrame(rows)
+    df["minutes_f"] = df["minutes"].apply(minutes_to_float)
+
+    prior_totals = df[df["season"] == prior].groupby("player_id")["minutes_f"].sum().sort_values(ascending=False)
+    if prior_totals.empty:
+        return np.nan
+    total_prior = prior_totals.sum()
+    if total_prior <= 0:
+        core = set()
+    else:
+        cum_share = prior_totals.cumsum() / total_prior
+        cutoff = int((cum_share < CORE_MINUTES_SHARE).sum()) + 1  # inclut le joueur qui franchit le seuil
+        core = set(prior_totals.index[:cutoff])
+
+    current = df[df["season"] == season]
+    if current.empty:
+        return np.nan
+    total_minutes = current["minutes_f"].sum()
+    if total_minutes <= 0:
+        return np.nan
+    core_minutes = current[current["player_id"].isin(core)]["minutes_f"].sum()
+    return core_minutes / total_minutes
+
+
+def build_team_context(client, team_id: int, opponent_id: int, season: str, as_of_date) -> dict:
+    """Les 21 features BASE_FEATURE_COLS (train_home_win_model.py) pour
+    team_id, calculees EN DIRECT depuis stats_box_scores -- equivalent
+    Supabase de build_team_games()/add_team_rolling_features()
+    (build_features.py), sans etat precalcule (meme philosophie que
+    build_context() ci-dessus pour les joueurs), reduit a UNE SEULE equipe
+    par appel.
+
+    2 requetes suffisent pour l'historique propre a l'equipe : team_id=X
+    (ses propres points/ratings/pace, ET l'adversaire de chaque match, deja
+    stocke ligne par ligne -- sert aussi aux confrontations directes) et
+    opponent_team_id=X (les points marques par l'adversaire a chacun de ces
+    matchs -- donne les points ENCAISSES par X, sans avoir besoin de
+    connaitre l'identite de l'adversaire a l'avance).
+
+    Contrairement a l'entrainement (shift(1) pour ne jamais fuiter le
+    resultat du match cible dans ses propres features, necessaire puisque ce
+    match EST dans les donnees d'entrainement) : aucun shift ici, tous les
+    matchs recuperes sont deja joues, le match a predire n'existe pas encore
+    en base.
+
+    as_of_date : date du match a predire (str ISO ou Timestamp) -- sert a
+    calculer rest_days par rapport au dernier match REELEMENT connu.
+    """
+    own_rows = fetch_all_rows(
+        lambda start, end: client.table("stats_box_scores")
+        .select("game_id, game_date, season, opponent_team_id, pts, off_rating, def_rating, net_rating, pace")
+        .eq("team_id", team_id)
+        .range(start, end)
+    )
+    if not own_rows:
+        raise ValueError(f"Aucun match trouve en base pour cette equipe (team_id={team_id}).")
+    own = pd.DataFrame(own_rows)
+    team_games = own.groupby(["game_id", "season"], as_index=False).agg(
+        game_date=("game_date", "first"),
+        opponent_team_id=("opponent_team_id", "first"),
+        team_pts=("pts", "sum"),
+        off_rating=("off_rating", "mean"),
+        def_rating=("def_rating", "mean"),
+        net_rating=("net_rating", "mean"),
+        pace=("pace", "mean"),
+    )
+    team_games["game_date"] = pd.to_datetime(team_games["game_date"])
+
+    opp_rows = fetch_all_rows(
+        lambda start, end: client.table("stats_box_scores")
+        .select("game_id, pts")
+        .eq("opponent_team_id", team_id)
+        .range(start, end)
+    )
+    opp_pts = pd.DataFrame(opp_rows).groupby("game_id", as_index=False)["pts"].sum().rename(columns={"pts": "opp_pts"})
+    team_games = team_games.merge(opp_pts, on="game_id", how="inner")
+    team_games["win"] = (team_games["team_pts"] > team_games["opp_pts"]).astype(int)
+    team_games["margin"] = team_games["team_pts"] - team_games["opp_pts"]
+    team_games = team_games.sort_values("game_date", ascending=False).reset_index(drop=True)
+
+    as_of_date = pd.Timestamp(as_of_date)
+    rest_days = (as_of_date - team_games["game_date"].iloc[0]).days
+
+    last5, last10 = team_games.head(5), team_games.head(10)
+    context = {
+        "rest_days": rest_days,
+        "is_back_to_back": int(rest_days == 1),
+        "games_played_season_avant": int((team_games["season"] == season).sum()),
+    }
+    for stat, col in (
+        ("pts_pour", "team_pts"), ("pts_contre", "opp_pts"), ("victoires_pct", "win"),
+        ("off_rating", "off_rating"), ("def_rating", "def_rating"),
+        ("net_rating", "net_rating"), ("pace", "pace"),
+    ):
+        context[f"{stat}_moy5"] = last5[col].mean()
+        context[f"{stat}_moy10"] = last10[col].mean()
+
+    h2h = team_games[team_games["opponent_team_id"] == opponent_id]
+    context["confrontations_directes_nb"] = len(h2h)
+    context["confrontations_directes_victoires_pct"] = h2h["win"].mean() if len(h2h) else np.nan
+    context["confrontations_directes_ecart_moy"] = h2h["margin"].mean() if len(h2h) else np.nan
+
+    seasons_known = sorted(team_games["season"].unique())
+    context["continuite_effectif_saison"] = _team_roster_continuity(client, team_id, season, seasons_known)
+
+    return context
+
+
+def compute_home_win_proba(client, home_team_id: int, away_team_id: int, season: str, as_of_date) -> dict:
+    """P(home_team_id gagne CE match, a domicile) -- charge home_win.joblib
+    (train_home_win_model.py), construit le vecteur home_*/away_* complet en
+    appelant build_team_context() une fois par equipe (l'adversaire de l'une
+    est l'autre)."""
+    home_ctx = build_team_context(client, home_team_id, away_team_id, season, as_of_date)
+    away_ctx = build_team_context(client, away_team_id, home_team_id, season, as_of_date)
+
+    row = {f"home_{c}": home_ctx[c] for c in BASE_FEATURE_COLS}
+    row.update({f"away_{c}": away_ctx[c] for c in BASE_FEATURE_COLS})
+    X = pd.DataFrame([row])[FEATURE_COLS]
+
+    if X.isna().any(axis=None):
+        missing = X.columns[X.isna().iloc[0]].tolist()
+        raise ValueError(
+            f"Contexte incomplet pour predire ce match (features manquantes : {missing}) -- "
+            "probablement une equipe avec trop peu d'historique connu en base (1ere saison de "
+            "donnees, ou aucune confrontation/continuite calculable)."
+        )
+
+    bundle = joblib.load(MODELS_DIR / "home_win.joblib")
+    proba = float(bundle["model"].predict_proba(X)[:, 1][0])
+    return {"home_team_id": home_team_id, "away_team_id": away_team_id, "p_home_win": proba}
 
 
 def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is_home: int = 1, rest_days: int = 2) -> dict:
