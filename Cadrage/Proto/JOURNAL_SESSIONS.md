@@ -9212,3 +9212,30 @@ rien d'autre touché.
 
 PHASE 6 COMPLÈTE ET VÉRIFIÉE DE BOUT EN BOUT EN CONDITIONS RÉELLES.
 ```
+
+## Cadrage des paris SÉRIE, non codé (23/08/2026)
+
+```text
+Discussion de fond sur l'extension de l'auto-résolution aux paris SÉRIE
+(exclus du scope Phase 6). Points clés : la structuration IA ne distingue
+déjà pas MATCH/SERIES aujourd'hui (proba = celle du prochain match, pas
+de la série) ; l'utilisateur précise avec un exemple ("un match dépasse
+200 points au total") que les paris série peuvent porter sur N'IMPORTE
+QUELLE stat, y compris des catégories équipe qu'aucun des 12 modèles
+actuels ne sait calculer -- l'agrégation "sur la série" est un mécanisme
+générique à construire une fois, pas par type de pari.
+
+Trouvaille : entrainement_matchs (build_targets.py) a déjà total_points
+et home_win comme cibles prêtes, avec des features équipe riches --
+jamais utilisée par aucun script train_*.py existant.
+
+Nœud technique identifié par l'utilisateur : N (nombre de matchs d'une
+série) varie 4-7 selon l'issue, affecte la proba mais pas la résolution.
+Décidé : simplifier d'abord (N = matchs déjà programmés au moment du
+pari, figé comme P10) plutôt que construire un modèle de victoire par
+match en prérequis.
+
+Décision explicite : documenter comme cadrage prêt à construire plutôt
+que coder maintenant (session déjà longue). Détail complet dans
+GAPS_OUVERTS.md (5 pièces identifiées pour le pipeline complet).
+```

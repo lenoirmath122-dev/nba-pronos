@@ -4,6 +4,75 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Cadrage posé le 23/08/2026, PAS CODÉ -- prêt à construire la prochaine
+> fois** : paris SÉRIE (Playoffs uniquement -- en NBA Cup une "série" est
+> un seul match, donc pas concernée), suite à la Phase 6 (résolution
+> automatique, scope volontairement limité aux paris MATCH). Discussion
+> complète avec l'utilisateur, résumée ici pour reprise directe :
+>
+> 1. **Constat de départ** : la structuration IA (`structureAndScoreBet.ts`)
+>    ne distingue déjà PAS scope MATCH/SERIES aujourd'hui -- un pari série
+>    calculable est déjà auto-validé avec une proba, mais cette proba est
+>    celle du PROCHAIN match du joueur (le service n'a aucune notion de
+>    série), pas une vraie proba "sur la série".
+> 2. **Ce n'est pas qu'un problème d'agrégation joueur** -- l'utilisateur a
+>    donné un exemple concret bien plus large : "un match de la série va
+>    dépasser les 200 points au total" -- un pari ÉQUIPE/TOTAL COMBINÉ, une
+>    catégorie qu'aucun des 12 modèles actuels (tous joueur) ne sait
+>    calculer, indépendamment du scope MATCH/SERIES. Précisé ensuite par
+>    l'utilisateur : les paris série peuvent porter sur N'IMPORTE QUEL type
+>    de stat (y compris joueur, comme aujourd'hui) -- la seule différence
+>    est "sur la série" plutôt que "sur le prochain match". L'agrégation
+>    "sur la série" est donc un mécanisme GÉNÉRIQUE, à construire une seule
+>    fois, qui enveloppera n'importe quel modèle (les 12 existants ET de
+>    futurs modèles équipe).
+> 3. **Trouvaille utile** : `build_targets.py` génère déjà une table
+>    `entrainement_matchs` (via `build_matchs_training()`) avec une colonne
+>    `total_points` (= `home_score + away_score`, déjà calculée) ET des
+>    features équipe riches (`home_*`/`away_*` -- pts marqués/encaissés
+>    moy5/10, pace, ratings off/def, `home_win`, `ecart`) -- **jamais
+>    utilisée par aucun script `train_*.py` existant**. Prête à l'emploi
+>    pour un futur modèle `total_points`, et `home_win` est prête pour un
+>    futur modèle "probabilité de victoire par match" (bonus : débloquerait
+>    aussi un pari "vainqueur de la série" calculable).
+> 4. **Le vrai nœud technique, soulevé par l'utilisateur** : le nombre de
+>    matchs N d'une série varie de 4 à 7 selon l'issue -- affecte SEULEMENT
+>    la PROBA affichée avant/pendant la série (P(au moins un match dépasse
+>    X) = 1-(1-p)^N nécessite de connaître N), PAS la résolution (une fois
+>    la série terminée, on sait exactement combien de matchs ont été joués,
+>    on vérifie juste les vrais matchs réels). Calculer N proprement
+>    demanderait un modèle de probabilité de victoire PAR MATCH comme
+>    prérequis (pour dériver la distribution de la longueur de série) --
+>    chantier en soi.
+> 5. **Décidé avec l'utilisateur** : simplifier d'abord plutôt que construire
+>    le modèle de victoire en prérequis. Règle proposée : **N = nombre de
+>    matchs déjà PROGRAMMÉS (connus) pour la série au moment du pari**
+>    (les matchs "si nécessaire" 5-7 n'existent souvent pas encore comme
+>    lignes `matches` tant que la série n'y est pas arrivée) -- **figé à la
+>    validation du pari, jamais recalculé après** (même principe P10 déjà
+>    appliqué en Phase 5). Sous-estimation possible si la série se
+>    prolonge, mais un chiffre réel plutôt qu'une hypothèse inventée
+>    (rejeté : N=7 fixe arbitraire).
+>
+> **Reste à trancher avant de coder** (pas abordé en détail) : la sémantique
+> par défaut d'un pari série ambigu ("marque 30+" sans préciser) --
+> "au moins une fois sur la série" (proba la plus haute, cohérent avec
+> l'exemple total_points de l'utilisateur), "en moyenne sur la série", ou
+> "au prochain match précis" (dans ce cas, un pari MATCH déguisé, réductible
+> à l'existant). **5 pièces identifiées pour le pipeline complet**, à
+> construire une par une comme Phase 5/6 : (a) modèle(s) équipe (ex.
+> `total_points`, entraînable dès maintenant sur `entrainement_matchs`) ;
+> (b) contexte équipe roulant en production (Supabase `stats_equipes`
+> n'a aujourd'hui que des infos statiques, pas de moyennes glissantes --
+> à ajouter au rafraîchissement quotidien) ; (c) le mécanisme générique
+> d'agrégation "sur la série" (formule N-matchs ci-dessus) ; (d)
+> extraction IA étendue (reconnaître un pari série + son type, y compris
+> hors joueur) ; (e) résolution étendue (`resolveCalculableBets.ts` : gérer
+> `scope=SERIES` en cherchant TOUS les vrais matchs déjà joués de la série,
+> pas un seul, et gérer les paris non-joueur via `matches.home_score`/
+> `away_score`, déjà synchronisé -- pas besoin du pipeline Data NBA pour ce
+> cas précis).
+
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**
 > (`projet-data-nba.md` §33) — un pari sur un joueur qui ne joue pour
