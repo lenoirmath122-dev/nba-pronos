@@ -9619,3 +9619,47 @@ présent) pour le prochain essai -- via "Modifier" sur le pari Doncic déjà
 soumis dessus (quota 1 pari série/série déjà pris, pas une nouvelle
 création).
 ```
+
+## Paris SÉRIE, 3e essai réel -- vrai bug de saison trouvé et corrigé (23/08/2026, suite)
+
+```text
+Utilisateur édite le pari Doncic ("+ de 50 points sur un match", formulation
+sans ambiguïté cette fois) sur Lakers-Rockets (calendrier synchronisé,
+contrairement à Boston-Knicks juste avant). Toujours "Modifier" seulement.
+
+Reproduit en 2 temps : d'abord l'extraction IA seule (script jetable) --
+calculable=true, player_team=team1, tout correct. Puis appel DIRECT au vrai
+service Cloud Run déployé avec les paramètres exacts que l'appli aurait
+envoyés : erreur claire (pas un rejet silencieux) -- features manquantes
+home_continuite_effectif_saison/away_continuite_effectif_saison.
+
+Cause : predictSeriesStat() (TS) envoie as_of_date=aujourd'hui (23/08/2026)
+sans season explicite -- build_team_context() (Python) déduisait la saison
+par une règle calendaire (_season_label_for_date, "à partir d'août on est
+sur la saison suivante") -- donnant "2026-27", saison réelle pas encore
+commencée (0 match connu, vrai intersaison actuelle). Le garde-fou de
+compute_home_win_proba() (posé lors de sa construction, pièce (b)) a
+refusé à raison de deviner -- c'est la déduction de saison en AMONT qui
+était fausse, pas le garde-fou.
+
+Corrigé : _season_label_for_date() (regle calendaire) remplacée par
+_latest_known_season() (derniere saison REELEMENT connue en base pour
+cette equipe, calculee depuis l'historique deja recupere). Correct en
+cours de saison ET en intersaison reelle (retombe sur la derniere saison
+terminee).
+
+2e correctif trouvé en revérifiant après le 1er : la tolérance de
+cohérence (mitigation pièce (d) de l'instabilité rare) était calibrée
+1e-6 sur un SEUL cas (Tatum/Boston/Lakers, accord par chance à ~1e-9). Le
+cas Doncic/Lakers/Rockets a montré un bruit normal ~1000x plus large
+(~0.001-0.002) -- systématiquement rejeté à tort. Recalibrée à 1e-2 (1
+point de proba), toujours nettement sous le vrai bug déjà observé (~1.4
+point).
+
+Revérifié : Doncic 50+points/match stable (~36.5%, 3 essais). Non-régression
+sur Tatum/Boston/Lakers (~24.7-24.9%, sans season explicite cette fois,
+comme le fera l'appli). Redéploiement Cloud Run PAS ENCORE refait --
+nécessaire avant de retester depuis l'appli.
+
+GAPS_OUVERTS.md mis à jour avec le détail complet des 2 correctifs.
+```

@@ -337,6 +337,53 @@
 > sur la série Lakers-Rockets (matchs 1/2 déjà programmés) -- éditer
 > ("Modifier") le pari série déjà existant dessus (1 seul pari série par
 > série, quota déjà pris) plutôt que d'en créer un 2e.
+>
+> **3e essai réel (23/08/2026, même session) : vrai BUG DE CONCEPTION trouvé
+> et CORRIGÉ** -- "Doncic marquera + de 50 points sur un match" (formulation
+> "au moins une fois" cette fois sans ambiguïté, série Lakers-Rockets, qui A
+> son calendrier synchronisé) : toujours non-calculable. Reproduit
+> directement contre le VRAI service Cloud Run déployé (mêmes paramètres
+> exacts que l'appli) : erreur claire, pas un rejet silencieux --
+> `"Contexte incomplet ... features manquantes : ['home_continuite_effectif
+> _saison', 'away_continuite_effectif_saison']"`.
+>
+> **Cause racine** : `predictSeriesStat()` envoie `as_of_date` = date du
+> jour (23/08/2026) sans `season` explicite -- `build_team_context()`
+> déduisait alors la saison par une règle CALENDAIRE (`_season_label_for_date`,
+> "à partir d'août on est déjà sur la saison suivante") -- donnant
+> **"2026-27"**, une saison réelle qui n'a pas encore commencé (0 match
+> connu). Continuité d'effectif incalculable pour une saison à 0 match --
+> le garde-fou de `compute_home_win_proba()` (posé lors de sa construction,
+> pièce (b)) a refusé À RAISON de deviner. Le garde-fou marchait comme prévu
+> -- c'est la déduction de la saison en amont qui était fausse.
+>
+> **Corrigé** : `_season_label_for_date()` remplacée par
+> `_latest_known_season()` -- au lieu de déduire la saison de la date du
+> jour, on prend la DERNIÈRE saison réellement connue en base pour cette
+> équipe (calculée depuis l'historique déjà récupéré, pas une requête en
+> plus). Correct aussi bien en cours de saison (la dernière connue EST la
+> saison en cours) qu'en pleine intersaison réelle (retombe sur la dernière
+> saison terminée, seule option avec de vraies données) -- l'intersaison
+> réelle (juin-septembre) était justement le trou que la règle calendaire
+> ne couvrait pas.
+>
+> **2e correctif au passage, trouvé en revérifiant après le 1er** : la
+> tolérance de cohérence (`_CONSISTENCY_TOLERANCE`, pièce (d), mitigation de
+> l'instabilité rare) était calibrée à `1e-6` sur la base d'un SEUL cas
+> réel (Tatum/Boston/Lakers, où les essais répétés concordaient par chance à
+> ~1e-9). Un 2e cas réel (Doncic/Lakers/Rockets) a montré un bruit "normal"
+> bien plus large (~0.001-0.002, soit ~0.1-0.2 point de proba) -- 1000x le
+> seuil, donc systématiquement rejeté à tort (3 essais, jamais d'accord).
+> Recalibrée à `1e-2` (1 point de proba) -- reste nettement en dessous du
+> vrai bug déjà observé (~1.4 point) tout en tolérant ce bruit normal.
+>
+> Revérifié après les 2 correctifs : Doncic 50+points/match sur Lakers-Rockets
+> stable (~36.5%, 3 essais). Non-régression : le cas Tatum/Boston/Lakers déjà
+> validé (pièce (d)) redonne le même résultat (~24.7-24.9%) sans `season`
+> explicite cette fois (comme le fera l'appli en vrai). **Redéploiement
+> Cloud Run PAS ENCORE refait avec ce correctif** -- à faire avant de
+> retester depuis l'appli (même commande que la 1ère fois, voir en-tête du
+> `Dockerfile`).
 
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**

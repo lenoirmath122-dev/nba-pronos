@@ -174,15 +174,28 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     return context, ecarttypes, recent
 
 
-def _season_label_for_date(date) -> str:
-    """"2024-25" style -- meme convention que current_season_label()
-    (service/refresh_daily.py, PAS importable ici : pas copie dans l'image
-    Cloud Run, cf. Dockerfile) : une saison NBA commence en octobre, a
-    partir d'aout (intersaison/presaison) on considere que la saison "en
-    cours" est celle qui demarre l'octobre suivant."""
-    date = pd.Timestamp(date)
-    year = date.year if date.month >= 8 else date.year - 1
-    return f"{year}-{str(year + 1)[2:]}"
+def _latest_known_season(seasons_known) -> str:
+    """Derniere saison REELEMENT connue en base (celle avec le plus grand
+    "annee de debut" parmi seasons_known) -- utilisee comme "saison en
+    cours" par defaut au lieu d'une regle purement calendaire (ex.
+    current_season_label() de service/refresh_daily.py, PAS importable ici
+    -- pas copie dans l'image Cloud Run, cf. Dockerfile).
+
+    Bug reel trouve le 23/08/2026 en testant un vrai pari serie pendant
+    l'intersaison : une regle calendaire ("a partir d'aout, on est deja sur
+    la saison suivante") deduisait "2026-27" pour un as_of_date au 23/08 --
+    une saison qui n'a pas encore commence, 0 match connu, continuite
+    d'effectif incalculable (garde-fou de compute_home_win_proba() refusant
+    a raison de deviner). La derniere saison CONNUE (avec de vraies donnees)
+    est le contexte le plus utile independamment de la date calendaire du
+    jour -- correct aussi bien en cours de saison (la derniere connue EST la
+    saison en cours, deja synchronisee au jour le jour par refresh_daily.py)
+    qu'en pleine intersaison (retombe sur la derniere saison terminee,
+    seule option avec de vraies donnees)."""
+    def start_year(s):
+        return int(s.split("-")[0])
+
+    return max(seasons_known, key=start_year)
 
 
 def _prior_season(seasons_known, target_season: str):
@@ -266,10 +279,10 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
 
     as_of_date : date du match a predire (str ISO ou Timestamp) -- sert a
     calculer rest_days par rapport au dernier match REELEMENT connu. season :
-    "2024-25" style, deduite de as_of_date si omise (meme convention que
-    current_season_label(), service/refresh_daily.py).
+    "2024-25" style, deduite de la DERNIERE saison connue en base pour cette
+    equipe si omise (voir _latest_known_season -- PAS une regle calendaire
+    sur as_of_date, casse pendant l'intersaison reelle).
     """
-    season = season or _season_label_for_date(as_of_date)
     own_rows = fetch_all_rows(
         lambda start, end: client.table("stats_box_scores")
         .select("game_id, game_date, season, opponent_team_id, pts, off_rating, def_rating, net_rating, pace")
@@ -279,6 +292,8 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     if not own_rows:
         raise ValueError(f"Aucun match trouve en base pour cette equipe (team_id={team_id}).")
     own = pd.DataFrame(own_rows)
+    if season is None:
+        season = _latest_known_season(own["season"].unique())
     team_games = own.groupby(["game_id", "season"], as_index=False).agg(
         game_date=("game_date", "first"),
         opponent_team_id=("opponent_team_id", "first"),
@@ -456,10 +471,15 @@ def _compute_series_stat_proba_once(
     }
 
 
-# Tolerance de comparaison entre 2 calculs -- volontairement large (le bruit
-# normal d'un vrai recalcul stable est de l'ordre de 1e-9 a 1e-12, jamais
-# 1e-6) : voir CONSISTENCY_CHECK_NOTE ci-dessous.
-_CONSISTENCY_TOLERANCE = 1e-6
+# Tolerance de comparaison entre 2 calculs, en points de proba absolus.
+# Recalibree le 23/08/2026 (1e-6 -> 1e-2) : un vrai cas reel (Doncic/Lakers/
+# Rockets) a montre un bruit "normal" de l'ordre de 0.001-0.002 (~0.1-0.2
+# point) d'un essai a l'autre -- 1000x plus large que le 1e-9/1e-12 observe
+# sur le SEUL cas teste au moment du 1er calibrage (Tatum/Boston/Lakers, cf.
+# CONSISTENCY_CHECK_NOTE), qui n'etait donc pas representatif. 1e-2 (1 point
+# de proba) reste nettement en dessous du vrai bug deja observe (~0.014,
+# 1.4 point sur p_a_wins_series) tout en tolerant ce bruit normal.
+_CONSISTENCY_TOLERANCE = 1e-2
 
 CONSISTENCY_CHECK_NOTE = """Instabilite reelle et rare trouvee en testant le 23/08/2026 (~1 fois sur
 10-15 appels) : sur des entrees IDENTIQUES, _compute_series_stat_proba_once() peut renvoyer 2 resultats
