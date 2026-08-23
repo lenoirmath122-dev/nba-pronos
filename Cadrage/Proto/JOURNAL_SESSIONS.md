@@ -9708,3 +9708,21 @@ explicitement à l'utilisateur, à confirmer après déploiement.
 GAPS_OUVERTS.md mis à jour avec le diagnostic complet et le détail du
 correctif.
 ```
+
+## Pari série visible : ajustement affichage au clic (23/08/2026, suite)
+
+```text
+Utilisateur confirme voir son pari, mais il s'affichait EN PERMANENCE sur
+la carte de série -- demande de ne l'afficher qu'au clic.
+
+Déplacé pour suivre le patron déjà établi de l'écran (même règle que
+SeriesGroups, le détail des pronostics des autres joueurs, déjà replié
+jusqu'au clic) plutôt que d'inventer un nouveau mécanisme : <BetBlock>
+retiré de NodeCard.tsx (où il s'affichait sans condition d'ouverture) et
+déplacé dans SeriesDrillDown.tsx, à côté de <SeriesGroups>, dans les 2
+zones d'expansion déjà existantes (vue A : détail inline sous la carte,
+condition node.nodeId === openSeriesId ; vue B : feuille par le bas,
+openNode). Réutilise openSeriesId/isOpen déjà en place, aucun nouvel état.
+
+tsc/eslint/vitest(37/37)/next build propres.
+```

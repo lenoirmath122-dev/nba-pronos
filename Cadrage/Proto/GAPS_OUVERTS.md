@@ -422,6 +422,18 @@
 > `eslint`/`vitest` (37/37)/`next build` (37 routes) propres. **Pas encore
 > vérifié au clic** (pas d'accès navigateur dans cet environnement) --
 > signalé explicitement, à confirmer par l'utilisateur après déploiement.
+>
+> **Ajustement demandé par l'utilisateur (23/08/2026, même session) une fois
+> déployé** : le pari s'affichait EN PERMANENCE sur la carte plutôt qu'au
+> clic. Déplacé pour suivre le patron déjà établi de l'écran (même règle que
+> `SeriesGroups`, le détail des pronostics des autres joueurs) : contenu
+> replié tant que la série n'est pas "ouverte" (drill-down), affiché
+> seulement au clic. `<BetBlock>` retiré de `NodeCard.tsx` (toujours visible)
+> et déplacé dans `SeriesDrillDown.tsx`, à côté de `<SeriesGroups>`, dans les
+> 2 zones d'expansion existantes (vue A : détail inline sous la carte ; vue
+> B : feuille/sheet par le bas) -- aucun nouveau mécanisme d'ouverture créé,
+> réutilise `openSeriesId`/`isOpen` déjà en place. Revérifié propre
+> (`tsc`/`eslint`/`vitest`/`next build`).
 
 > **État au 21/08/2026 (suite 13, chantier Data NBA)** — **Joueur hors du
 > match visé : proba 0% au lieu d'un rejet silencieux**

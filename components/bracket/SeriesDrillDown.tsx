@@ -5,6 +5,7 @@ import type { BracketNode, BracketRound } from "@/lib/queries/bracket";
 import { NodeCard } from "./NodeCard";
 import { useLiveSeriesMap } from "./LiveSeriesSubscriber";
 import { SeriesGroups } from "./SeriesGroups";
+import { BetBlock } from "@/components/play/BetBlock";
 import { RoundBanner } from "./RoundBanner";
 import { TreeConnectors } from "./TreeConnectors";
 import { buildMirroredPosterColumns, type PosterColumn } from "./posterColumns";
@@ -131,6 +132,13 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
         {renderNode(node)}
         {node.nodeId === openSeriesId && (
           <div className={styles.inlineDetail}>
+            {/* Pari SÉRIE déjà engagé (VALIDATED/WON/LOST), lecture seule --
+                bug réel corrigé le 23/08/2026 : ce contenu n'avait aucun
+                affichage nulle part depuis la suppression de l'ancien écran
+                "Mes paris" (cf. commentaire de BracketNode::myBet). Affiché
+                seulement au clic (comme SeriesGroups), pas en permanence sur
+                la carte, sur demande explicite de l'utilisateur. */}
+            {showBetLink && node.myBet && <BetBlock bet={node.myBet} returnTo="/bracket" />}
             <SeriesGroups groups={node.groups} />
           </div>
         )}
@@ -192,6 +200,7 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
                   ×
                 </button>
               </div>
+              {showBetLink && openNode.myBet && <BetBlock bet={openNode.myBet} returnTo="/bracket" />}
               <SeriesGroups groups={openNode.groups} />
             </div>
           </>
