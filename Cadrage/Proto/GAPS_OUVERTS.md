@@ -54,17 +54,55 @@
 >    prolonge, mais un chiffre réel plutôt qu'une hypothèse inventée
 >    (rejeté : N=7 fixe arbitraire).
 >
+> **REVU juste après (même session, 23/08/2026)** : discussion complémentaire
+> avec l'utilisateur sur la longueur de série, qui **remplace** la
+> simplification `p=0,5` du point 5 ci-dessus par une approche plus fidèle,
+> décidée avec l'utilisateur :
+> - La distribution de la longueur d'une série (4 à 7 matchs) suit un
+>   modèle probabiliste connu (loi binomiale négative / combinatoire
+>   classique des séries best-of-N), PAS un problème de machine learning en
+>   soi -- donné `p` (proba de victoire à un match), la formule est exacte.
+>   Cas connu p=0,5 (équipes égales) : 12,5%/25%/31,25%/31,25% pour
+>   4/5/6/7 matchs (espérance ≈5,8 matchs) -- utile comme repère/vérification
+>   contre les vraies longueurs de séries historiques déjà en base, mais
+>   PAS comme valeur de départ retenue (voir ci-dessous).
+> - Idée initiale de l'utilisateur (moyenne historique de la longueur des
+>   séries) écartée : une moyenne unique écrase la différence entre un
+>   affrontement déséquilibré (série courte probable) et un duel serré
+>   (série longue probable).
+> - **Décidé avec l'utilisateur : construire le modèle de proba de victoire
+>   PAR MATCH d'abord, plutôt que démarrer avec p=0,5 fixe** -- l'utilisateur
+>   veut un système fidèle à la forme réelle des équipes dès le départ,
+>   pas une version approximative à corriger plus tard. Prérequis déjà
+>   identifié comme prêt (`entrainement_matchs`, `home_win`, point 3
+>   ci-dessus) : prédit qui gagne LE PROCHAIN MATCH (pas directement la
+>   série) -- la formule/le calcul ci-dessus s'en sert ensuite pour remonter
+>   au niveau série (longueur ET vainqueur de la série, en bonus).
+> - **Domicile/extérieur, signalé comme important par l'utilisateur** :
+>   `entrainement_matchs` structure déjà ses features en `home_*`/`away_*`
+>   séparément (données prêtes, rien à construire de plus), donc l'avantage
+>   du terrain est nativement une dimension du modèle de victoire par match.
+>   Conséquence sur le CALCUL de longueur de série : le format best-of-7
+>   connu à l'avance (2-2-1-1-1, qui reçoit à quel match) implique un `p`
+>   DIFFÉRENT pour chaque match restant selon qui reçoit -- pas une formule
+>   fermée à un seul `p` constant, mais un calcul récursif match par match
+>   (simple à implémenter, juste pas une formule à une ligne). Plus fidèle
+>   qu'un `p` moyen unique appliqué à tous les matchs restants.
+>
 > **Reste à trancher avant de coder** (pas abordé en détail) : la sémantique
 > par défaut d'un pari série ambigu ("marque 30+" sans préciser) --
 > "au moins une fois sur la série" (proba la plus haute, cohérent avec
 > l'exemple total_points de l'utilisateur), "en moyenne sur la série", ou
 > "au prochain match précis" (dans ce cas, un pari MATCH déguisé, réductible
-> à l'existant). **5 pièces identifiées pour le pipeline complet**, à
-> construire une par une comme Phase 5/6 : (a) modèle(s) équipe (ex.
-> `total_points`, entraînable dès maintenant sur `entrainement_matchs`) ;
-> (b) contexte équipe roulant en production (Supabase `stats_equipes`
-> n'a aujourd'hui que des infos statiques, pas de moyennes glissantes --
-> à ajouter au rafraîchissement quotidien) ; (c) le mécanisme générique
+> à l'existant). **6 pièces identifiées pour le pipeline complet**, à
+> construire une par une comme Phase 5/6 : (a0, AJOUTÉ 23/08 -- prérequis
+> décidé en 1er) modèle de proba de victoire PAR MATCH (`home_win`,
+> `entrainement_matchs`, domicile/extérieur inclus) + calcul récursif de
+> la longueur/du vainqueur de série qui s'en sert ; (a) modèle(s) équipe
+> (ex. `total_points`, entraînable dès maintenant sur `entrainement_matchs`,
+> indépendant de a0) ; (b) contexte équipe roulant en production (Supabase
+> `stats_equipes` n'a aujourd'hui que des infos statiques, pas de moyennes
+> glissantes -- à ajouter au rafraîchissement quotidien) ; (c) le mécanisme générique
 > d'agrégation "sur la série" (formule N-matchs ci-dessus) ; (d)
 > extraction IA étendue (reconnaître un pari série + son type, y compris
 > hors joueur) ; (e) résolution étendue (`resolveCalculableBets.ts` : gérer

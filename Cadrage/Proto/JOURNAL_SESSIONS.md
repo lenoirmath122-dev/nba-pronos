@@ -9239,3 +9239,25 @@ Décision explicite : documenter comme cadrage prêt à construire plutôt
 que coder maintenant (session déjà longue). Détail complet dans
 GAPS_OUVERTS.md (5 pièces identifiées pour le pipeline complet).
 ```
+
+## Suite du cadrage paris SÉRIE : modèle de victoire par match (23/08/2026)
+
+```text
+Juste après l'entrée précédente, discussion complémentaire (même session)
+qui AFFINE la décision sur N : la longueur d'une série suit un modèle
+probabiliste connu (loi binomiale négative, best-of-N classique -- pas du
+machine learning), formule exacte donné un p par match. L'utilisateur
+propose d'abord une moyenne historique de longueur de série -- écarté
+avec lui (écrase la différence entre affrontement déséquilibré/série
+serrée). Décidé : construire le modèle de proba de victoire PAR MATCH
+d'abord (entrainement_matchs/home_win, déjà prêt) plutôt que démarrer
+avec p=0,5 -- l'utilisateur veut un système fidèle à la forme réelle des
+équipes dès le départ. L'utilisateur signale l'importance du domicile/
+extérieur : déjà présent nativement dans entrainement_matchs (features
+home_*/away_*), implique un calcul récursif match par match (format
+2-2-1-1-1 connu à l'avance) plutôt qu'un p constant unique.
+
+GAPS_OUVERTS.md mis à jour en conséquence (6 pièces au lieu de 5, le
+modèle de victoire par match ajouté comme prérequis explicite). Toujours
+PAS CODÉ, cadrage uniquement.
+```
