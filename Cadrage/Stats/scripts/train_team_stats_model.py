@@ -39,6 +39,12 @@ STATS_TO_TRAIN = [
     ("stl", "Interceptions", (5, 6, 7, 8, 9)),
     ("blk", "Contres", (3, 4, 5, 6, 7)),
     ("oreb", "Rebonds offensifs", (8, 10, 12, 14, 16)),
+    # "fga" ajoutee le 24/08/2026 (chantier "petits gains groupes",
+    # GAPS_OUVERTS.md, categorie "Comparaison volume tirs") -- fga_pour/
+    # contre_moy5/10 (features) ET fga_reel (label, entrainement_equipe)
+    # deja presents depuis le chantier "% tir equipe" (24/08/2026), jamais
+    # entraine comme cible directe jusqu'ici.
+    ("fga", "Tirs tentés", (75, 80, 85, 90, 95)),
 ]
 
 

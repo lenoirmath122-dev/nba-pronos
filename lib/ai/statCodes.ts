@@ -8,12 +8,17 @@
 // types_de_paris_playoffs_2026.md, categories "Tentatives joueur" et
 // "Rebonds offensifs equipe" forme joueur) -- stats a seuil comme
 // pts/reb/etc, rien de special cote schema.
+// "plus_minus" ajoutee le 24/08/2026 (chantier "petits gains groupes",
+// GAPS_OUVERTS.md) -- deja une colonne brute (stats_box_scores.plus_minus),
+// juste jamais entrainee comme cible dediee (plus_minus.joblib desormais
+// present, meme recette train_stat_model.py que les autres stats comptees).
 export type StatCode =
   | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "min" | "dd" | "td" | "ft" | "fg" | "fg3"
-  | "fga" | "fg3a" | "oreb";
+  | "fga" | "fg3a" | "oreb" | "plus_minus";
 
 export const STAT_CODES: StatCode[] = [
   "pts", "reb", "ast", "fg3m", "stl", "blk", "min", "dd", "td", "ft", "fg", "fg3", "fga", "fg3a", "oreb",
+  "plus_minus",
 ];
 
 // Stats sans seuil (probabilité directe, pas de "> X") — dd/td dans
@@ -40,4 +45,5 @@ export const STAT_LABELS_FR: Record<StatCode, string> = {
   fga: "tirs tentés",
   fg3a: "tirs à 3-points tentés",
   oreb: "rebonds offensifs",
+  plus_minus: "+/-",
 };

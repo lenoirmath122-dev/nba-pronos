@@ -137,13 +137,18 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
         "games_played_season_avant": int(recent["games_played_season_avant"].iloc[0]) + 1,
         "ts_pct_moy5": last5["ts_pct"].mean(),
         "usg_pct_moy5": last5["usg_pct"].mean(),
-        "plus_minus_moy5": last5["plus_minus"].mean(),
         "matchs_manques_depuis_dernier": 0,
     }
+    # "plus_minus" ajoutee au groupe standard le 24/08/2026 (chantier
+    # "petits gains groupes", GAPS_OUVERTS.md) -- avant, seul plus_minus_moy5
+    # etait calcule a part (feature partagee par d'autres modeles) ;
+    # plus_minus_moy10 manquait, necessaire pour le NOUVEAU modele
+    # plus_minus.joblib (ses propres features, comme pts/reb/etc).
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
         ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
+        ("plus_minus", "plus_minus"),
     ):
         context[f"{stat}_moy5"] = last5[col].mean()
         context[f"{stat}_moy10"] = recent[col].mean()

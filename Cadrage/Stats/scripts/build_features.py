@@ -125,7 +125,7 @@ CREATE TABLE features_joueur (
     oreb_moy5 REAL, oreb_moy10 REAL, oreb_ecarttype10 REAL,
     ts_pct_moy5 REAL, ts_pct_moy10 REAL,
     usg_pct_moy5 REAL, usg_pct_moy10 REAL,
-    plus_minus_moy5 REAL, plus_minus_moy10 REAL,
+    plus_minus_moy5 REAL, plus_minus_moy10 REAL, plus_minus_ecarttype10 REAL,
     vs_adversaire_pts_moy REAL,
     vs_adversaire_nb_matchs INTEGER,
     matchs_manques_depuis_dernier INTEGER,
@@ -418,6 +418,11 @@ def add_player_rolling_features(players: pd.DataFrame) -> pd.DataFrame:
     ecarttype_cols = {
         "pts": "pts", "reb": "reb", "ast": "ast", "fg3m": "fg3m", "stl": "stl", "blk": "blk", "min": "minutes_f",
         "fga": "fga", "fg3a": "fg3a", "oreb": "oreb",
+        # "plus_minus" ajoute le 24/08/2026 (chantier "petits gains groupes",
+        # GAPS_OUVERTS.md) -- moy5/moy10 deja calcules plus haut (utilises
+        # comme feature partagee par d'autres modeles), seul l'ecart-type
+        # manquait pour en faire une stat a seuil pariable directement.
+        "plus_minus": "plus_minus",
     }
     for prefix, col in ecarttype_cols.items():
         df[f"{prefix}_ecarttype10"] = g[col].transform(lambda s: shifted_rolling_std(s, 10))
@@ -479,7 +484,7 @@ PLAYER_TABLE_COLUMNS = [
     "blk_moy5", "blk_moy10", "blk_ecarttype10",
     "oreb_moy5", "oreb_moy10", "oreb_ecarttype10",
     "ts_pct_moy5", "ts_pct_moy10", "usg_pct_moy5", "usg_pct_moy10",
-    "plus_minus_moy5", "plus_minus_moy10",
+    "plus_minus_moy5", "plus_minus_moy10", "plus_minus_ecarttype10",
     "vs_adversaire_pts_moy", "vs_adversaire_nb_matchs",
     "matchs_manques_depuis_dernier",
     "fta_moy5", "fta_moy10",

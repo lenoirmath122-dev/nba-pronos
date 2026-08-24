@@ -65,6 +65,7 @@ CREATE TABLE labels_joueur (
     ftm REAL, fta REAL,
     fgm REAL, fga REAL, fg3a REAL,
     oreb REAL,
+    plus_minus REAL,
     double_double INTEGER,
     triple_double INTEGER,
     PRIMARY KEY (game_id, player_id)
@@ -184,7 +185,8 @@ def _quarter_scores_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
 
 def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
     box = pd.read_sql(
-        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a, oreb "
+        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a, oreb, "
+        "plus_minus "
         "FROM box_scores",
         conn, dtype={"game_id": str},
     )
@@ -278,6 +280,15 @@ def build_team_perspective_dataset(conn: sqlite3.Connection) -> pd.DataFrame:
         "fg3a_pour_moy5", "fg3a_pour_moy10",
         "ftm_pour_sum10", "fta_pour_sum10", "fgm_pour_sum10", "fga_pour_sum10",
         "fg3m_pour_sum10", "fg3a_pour_sum10",
+        # "fga_contre_moy5/10" ajoutees le 24/08/2026 (chantier "petits gains
+        # groupes", categorie "Comparaison volume tirs equipe") -- cote
+        # "contre" du volume de tirs, jamais recupere jusqu'ici (le
+        # retrecissement bayesien de train_team_pct_model.py n'a besoin que
+        # du cote "pour"). Necessaire pour donner a train_team_stats_model.py
+        # le meme patron own_/opp_ que reb/ast/etc, derive a part plus bas
+        # (PAS ajoute a MATCH_FEATURE_COLS : aurait duplique fga_pour_moy5/10
+        # dans la meme requete SQL, deja presentes ci-dessus).
+        "fga_contre_moy5", "fga_contre_moy10",
     ]
     extra_cols = ", ".join(PCT_EXTRA_COLS)
     fe = pd.read_sql(
@@ -290,6 +301,25 @@ def build_team_perspective_dataset(conn: sqlite3.Connection) -> pd.DataFrame:
         columns={"team_id": "opponent_team_id", **{c: f"opp_{c}" for c in MATCH_FEATURE_COLS}}
     )
     df = own.merge(opp, on=["game_id", "opponent_team_id"])
+
+    # fga own_/opp_ x pour_/contre_ (24/08/2026, train_team_stats_model.py,
+    # chantier "petits gains groupes") -- own_fga_pour_moy5/10 et
+    # own_fga_contre_moy5/10 viennent directement de "own" (fga_pour_moy5/10/
+    # fga_contre_moy5/10 non touchees par le rename ci-dessus, toujours sous
+    # leur nom brut) ; le cote opp_ demande un merge séparé (fe filtré sur
+    # ces 4 colonnes uniquement, cote opponent_team_id).
+    df["own_fga_pour_moy5"] = df["fga_pour_moy5"]
+    df["own_fga_pour_moy10"] = df["fga_pour_moy10"]
+    df["own_fga_contre_moy5"] = df["fga_contre_moy5"]
+    df["own_fga_contre_moy10"] = df["fga_contre_moy10"]
+    opp_fga = fe[["game_id", "team_id", "fga_pour_moy5", "fga_pour_moy10", "fga_contre_moy5", "fga_contre_moy10"]].rename(
+        columns={
+            "team_id": "opponent_team_id",
+            "fga_pour_moy5": "opp_fga_pour_moy5", "fga_pour_moy10": "opp_fga_pour_moy10",
+            "fga_contre_moy5": "opp_fga_contre_moy5", "fga_contre_moy10": "opp_fga_contre_moy10",
+        }
+    )
+    df = df.merge(opp_fga, on=["game_id", "opponent_team_id"], how="left")
 
     box = pd.read_sql(
         f"SELECT game_id, team_id, {', '.join(TEAM_TARGET_STATS)} FROM box_scores", conn, dtype={"game_id": str}

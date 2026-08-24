@@ -60,6 +60,9 @@ REGRESSION_STATS = {
     "fga": ("fga", "fga", "Tirs tentés"),
     "fg3a": ("fg3a", "fg3a", "Tirs à 3-points tentés"),
     "oreb": ("oreb", "oreb", "Rebonds offensifs"),
+    # ajoutee le 24/08/2026 (chantier "petits gains groupes",
+    # GAPS_OUVERTS.md) -- plus_minus.joblib entraine (train_stat_model.py).
+    "plus_minus": ("plus_minus", "plus_minus", "+/-"),
 }
 CLASSIFIER_STATS = {
     "dd": ("double_double", "Double-double"),

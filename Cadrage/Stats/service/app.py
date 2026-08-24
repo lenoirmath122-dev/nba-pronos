@@ -298,7 +298,10 @@ def predict_team_rebounds(req: PredictTeamReboundsRequest):
 # "oreb" (23/08/2026, extension "faciles") : les 2 formes, contrairement a
 # "pts" -- total_oreb.joblib ET team_oreb.joblib existent tous les 2.
 TOTAL_TEAM_STAT_CODES = ["reb", "ast", "fg3m", "stl", "blk", "oreb"]
-TEAM_STAT_CODES = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb"]
+# "fga" ajoutee le 24/08/2026 (chantier "petits gains groupes",
+# GAPS_OUVERTS.md) -- team_fga.joblib entraine, meme famille regression que
+# pts/reb/ast/etc (PAS TOTAL_TEAM_STAT_CODES : pas de modele total_fga).
+TEAM_STAT_CODES = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga"]
 
 
 class PredictTotalTeamStatRequest(BaseModel):

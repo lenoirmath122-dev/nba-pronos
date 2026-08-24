@@ -4,9 +4,10 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **Étape 2 du plan de reprise (partielle), CODÉ le 24/08/2026** -- "petits
-> gains groupés". 2 des 4 items faits, 2 requalifiés en gros lots (voir
-> plus bas) en creusant :
+> **Étape 2 du plan de reprise, CODÉ EN ENTIER le 24/08/2026** -- "petits
+> gains groupés". Les 2 items requalifiés en gros lots (+/- joueur, fga
+> équipe) ont finalement été entraînés le jour même à la demande de
+> l'utilisateur -- 4/4 items faits.
 >
 > 1. **OU logique entre 2 entités nommées** (relation="OR" sur COMPARISON,
 >    ex. "Hauser ou Pritchard marque au moins 3 paniers à 3 points") --
@@ -32,25 +33,42 @@
 >    contrainte. Testé avec 1 vrai appel Claude : décompose bien en 2
 >    conditions.
 >
-> 3. **+/- comme stat pariable, REQUALIFIÉ** -- la colonne `plus_minus`
->    est bien déjà synchronisée (vérifié), mais contrairement à ce qui
->    était supposé, l'exposer comme stat pariable a besoin d'un VRAI
->    modèle entraîné (aucun `plusminus.joblib` n'existe -- toutes les
->    autres stats de STAT_CODES ont chacune leur modèle dédié). Pas fait
->    dans cette passe -- nécessite le même travail qu'un ajout de stat
->    "classique" (build_targets.py + entraînement), pas un simple ajout
->    de code.
-> 4. **Comparaison volume tirs équipe (fga), REQUALIFIÉ** -- même
->    découverte : `fga` est déjà une feature calculée pour d'autres
->    modèles (`TEAM_COUNTING_STATS`, build_features.py) mais n'a PAS son
->    propre modèle `team_fga.joblib` entraîné (contrairement à pts/reb/
->    ast/fg3m/stl/blk/oreb, qui en ont chacun un) -- `fga` n'est même pas
->    dans `TEAM_STAT_CODES` aujourd'hui. Pas fait dans cette passe, même
->    raison que le point précédent.
+> 3. **+/- comme stat pariable** -- `plus_minus.joblib` entraîné
+>    (`train_stat_model.py`, même recette RandomForest que les autres
+>    stats comptées). 2 bugs réels trouvés en câblant côté service (pas
+>    juste en entraînant) :
+>    - `entrainement_equipe`/`features_joueur` : `plus_minus_ecarttype10`
+>      manquait (build_features.py) -- ajouté à `ecarttype_cols` et à
+>      `PLAYER_TABLE_COLUMNS`.
+>    - `supabase_context.py::build_context()` (service déployé, PAS le
+>      script d'entraînement local) : `plus_minus_moy10` n'était jamais
+>      calculé (seul `plus_minus_moy5` existait, en feature partagée par
+>      d'autres modèles) -- `KeyError` reproduit en HTTP réel avant d'être
+>      corrigé, `plus_minus` intégré à la boucle standard moy5/moy10.
+>    Testé en HTTP local réel (`/predict`) : proba cohérente. R²=0.039
+>    (faible, attendu -- le +/- est intrinsèquement bruité).
+> 4. **Comparaison volume tirs équipe (fga)** -- `team_fga.joblib`
+>    entraîné (`train_team_stats_model.py`). 1 bug réel trouvé en
+>    entraînant : `entrainement_equipe` n'avait PAS les colonnes
+>    `own_fga_pour_moy5`/`opp_fga_pour_moy5`/etc attendues par ce script
+>    généraliste (`fga` vivait dans `PCT_EXTRA_COLS`, un mécanisme "own
+>    uniquement, jamais renommé" propre à `train_team_pct_model.py`) --
+>    corrigé en dérivant les 8 colonnes own_/opp_ x pour_/contre_ À PART
+>    dans `build_targets.py`, SANS toucher `PCT_EXTRA_COLS` (aurait cassé
+>    le chantier "% tir équipe" déjà en prod). `fga` ajouté à
+>    `TEAM_STAT_CODES` (TS ET la liste Python séparée de `app.py`, jamais
+>    partagée entre les 2 langages). Testé en HTTP réel
+>    (`/predict-team-stat` ET `/predict-comparison`, la comparaison de
+>    volume de tirs qui avait motivé ce point) : probas cohérentes.
 >
-> Décision à prendre avec l'utilisateur : entraîner ces 2 modèles
-> maintenant (même ampleur qu'un ajout de stat classique) ou les traiter
-> comme leurs propres petits chantiers plus tard.
+> Impact schéma mesuré avant déploiement (STAT_CODES/TEAM_STAT_CODES
+> utilisés à plusieurs endroits du schéma partagé) : +68 caractères
+> (8275->8343), cumul de +254 depuis la baseline (8089) -- toujours très
+> en dessous du seuil qui avait cassé PERIOD (+467). Testé avec 3 vrais
+> appels Claude (plus_minus joueur, fga équipe, non-régression) + phrase
+> originale du CSV utilisateur ("La différence de tirs tentés entre les
+> deux équipes est inférieure à 5") rejouée de bout en bout (Claude +
+> service) avec succès. tsc/eslint/vitest(37/37)/next build propres.
 
 > **Étape 1 du plan de reprise -- "5 majeur / banc", CODÉ le 24/08/2026**
 > (répartition points, cumul 5 majeur, banc). Colonne `stats_box_scores.

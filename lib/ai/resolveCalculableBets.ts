@@ -624,7 +624,7 @@ type EligibleTeamStatBetRow = {
 // contient déjà "de l'équipe", pas adapté à "X {label} du match").
 const TEAM_STAT_RESOLUTION_LABELS_FR: Record<TeamStatCode, string> = {
   pts: "points", reb: "rebonds", ast: "passes décisives", fg3m: "3-points réussis", stl: "interceptions", blk: "contres",
-  oreb: "rebonds offensifs", ft: "% aux lancers francs", fg: "% au tir", fg3: "% à 3-points",
+  oreb: "rebonds offensifs", ft: "% aux lancers francs", fg: "% au tir", fg3: "% à 3-points", fga: "tirs tentés",
 };
 
 // Chantier "% tir équipe" (24/08/2026, GAPS_OUVERTS.md) -- ft/fg/fg3 n'ont

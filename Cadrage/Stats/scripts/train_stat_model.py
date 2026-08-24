@@ -169,6 +169,11 @@ def main():
     run("fga", "Tirs tentés", thresholds=(8, 12, 15, 18, 21))
     run("fg3a", "Tirs à 3-points tentés", thresholds=(3, 5, 7, 9, 11))
     run("oreb", "Rebonds offensifs", thresholds=(1, 2, 3, 4, 5))
+    # ajoutee le 24/08/2026 (chantier "petits gains groupes", GAPS_OUVERTS.md,
+    # categorie "+/- comme stat pariable") -- plus_minus_moy5/10 deja
+    # calculees (feature partagee par d'autres modeles), seul l'ecart-type
+    # (plus_minus_ecarttype10, build_features.py) et la cible manquaient.
+    run("plus_minus", "+/-", thresholds=(-10, -5, 0, 5, 10))
 
 
 if __name__ == "__main__":

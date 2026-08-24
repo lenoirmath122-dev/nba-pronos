@@ -10571,3 +10571,41 @@ avec la requalification des 2 items restants et une question ouverte pour
 l'utilisateur (entraîner maintenant vs traiter comme 2 petits chantiers
 séparés plus tard).
 ```
+
+## Étape 2 terminée -- entraînement +/- et fga (24/08/2026, même jour)
+
+```text
+L'utilisateur choisit d'entraîner les 2 modèles requalifiés maintenant
+plutôt que plus tard. build_features.py/build_targets.py régénérés en
+local (140933/6602/13204 lignes, comptes inchangés -- pas de perte de
+données), train_stat_model.py et train_team_stats_model.py relancés.
+
+plus_minus.joblib entraîné du premier coup (R²=0.039, faible mais attendu
+-- le +/- est un agrégat d'équipe, intrinsèquement bruité au niveau
+individuel). En le câblant côté service déployé (supabase_context.py,
+PAS le script d'entraînement local -- 2 chemins de code séparés pour la
+même feature), KeyError réel reproduit en HTTP (`plus_minus_moy10`
+jamais calculé, seul moy5 existait). Corrigé, retesté, proba cohérente.
+
+team_fga.joblib : échec réel EN ENTRAÎNANT (pas en câblant) --
+`entrainement_equipe` n'avait pas les colonnes own_/opp_ attendues par
+train_team_stats_model.py, `fga` vivant dans un mécanisme "own uniquement"
+distinct (PCT_EXTRA_COLS, propre à train_team_pct_model.py, chantier "%
+tir équipe" déjà en prod). Corrigé en dérivant les 8 colonnes manquantes
+À PART dans build_targets.py, sans toucher PCT_EXTRA_COLS -- vérifié que
+ça ne casse rien côté % tir équipe (rien d'autre modifié). Modèle
+re-entraîné avec succès (R²=0.133).
+
+fga ajouté à TEAM_STAT_CODES des DEUX côtés (TS et la liste Python séparée
+de app.py -- pas partagée entre les 2 langages, piège déjà documenté en
+tête de statCodes.ts). Testé en conditions réelles : /predict (plus_minus),
+/predict-team-stat (fga), /predict-comparison (fga en DIFF_LT -- le cas
+"comparaison volume tirs" du CSV original), et la phrase EXACTE du CSV
+utilisateur rejouée via Claude + service, succès de bout en bout.
+
+Impact schéma partagé mesuré avant déploiement (STAT_CODES/TEAM_STAT_CODES
+apparaissent à plusieurs endroits) : +68 caractères, cumul +254 depuis la
+baseline (8089), loin sous le seuil qui avait cassé PERIOD (+467).
+tsc/eslint/vitest(37/37)/next build propres. GAPS_OUVERTS.md mis à jour --
+étape 2 du plan de reprise entièrement terminée (4/4).
+```

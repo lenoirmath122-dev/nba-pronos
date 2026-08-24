@@ -21,9 +21,17 @@
 // de cette liste ou `threshold` est une FRACTION 0-1 (comme PERCENTAGE_STATS
 // cote joueur, statCodes.ts), pas une valeur comptee. Voir
 // TEAM_PERCENTAGE_STATS ci-dessous.
-export type TeamStatCode = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "oreb" | "ft" | "fg" | "fg3";
+// "fga" ajoutee le 24/08/2026 (chantier "petits gains groupes",
+// GAPS_OUVERTS.md, categorie "Comparaison volume tirs equipe") --
+// team_fga.joblib desormais entraine (meme recette train_team_stats_model.py
+// que les autres stats comptees d'equipe). Debloque au passage la
+// comparaison de volume de tirs (COMPARISON_TEAM_STAT_CODES = TEAM_STAT_CODES
+// au complet, comparisonCodes.ts).
+export type TeamStatCode = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "oreb" | "ft" | "fg" | "fg3" | "fga";
 
-export const TEAM_STAT_CODES: TeamStatCode[] = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "ft", "fg", "fg3"];
+export const TEAM_STAT_CODES: TeamStatCode[] = [
+  "pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "ft", "fg", "fg3", "fga",
+];
 
 // Meme role que PERCENTAGE_STATS (statCodes.ts, cote joueur) -- threshold
 // est une fraction 0-1 pour ces 3 stats, une valeur brute pour les autres.
@@ -40,4 +48,5 @@ export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
   ft: "pourcentage aux lancers francs de l'équipe (FT%)",
   fg: "pourcentage au tir de l'équipe (FG%)",
   fg3: "pourcentage à 3-points de l'équipe (3P%)",
+  fga: "tirs tentés de l'équipe",
 };
