@@ -552,6 +552,63 @@ def predict_player_period(req: PredictPlayerPeriodRequest):
     }
 
 
+class PredictRosterSplitRequest(BaseModel):
+    """Chantier "5 majeur / banc" (24/08/2026, GAPS_OUVERTS.md) --
+    kind="STARTERS_SUM" (somme des titulaires), "BENCH_SUM" (total equipe
+    moins titulaires) ou "STARTERS_SHARE" (part du total equipe marquee
+    par les titulaires, seuil = fraction 0-1). equipe_visee designe
+    laquelle des 2 equipes du match est ciblee ("domicile"/"exterieur")."""
+    kind: str
+    stat: str
+    equipe_visee: str  # "domicile" | "exterieur"
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-roster-split")
+def predict_roster_split(req: PredictRosterSplitRequest):
+    if req.kind not in ("STARTERS_SUM", "BENCH_SUM", "STARTERS_SHARE"):
+        raise HTTPException(400, f"kind inconnu : {req.kind}")
+    if req.equipe_visee not in ("domicile", "exterieur"):
+        raise HTTPException(400, f"equipe_visee invalide : {req.equipe_visee}")
+
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    if req.equipe_visee == "domicile":
+        team_id, opponent_id, is_home = home_id, away_id, 1
+    else:
+        team_id, opponent_id, is_home = away_id, home_id, 0
+
+    try:
+        result = supabase_context.compute_roster_split_proba(
+            sb, req.kind, req.stat, team_id, opponent_id, is_home,
+            req.seuil, req.comparison, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "equipe_visee": req.equipe_visee,
+        "kind": req.kind,
+        "stat": req.stat,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
 class ComparisonOperand(BaseModel):
     """Un cote d'un duel (24/08/2026, GAPS_OUVERTS.md, chantier
     comparaison/duel) -- kind=TEAM (equipe "domicile"/"exterieur" du match

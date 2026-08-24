@@ -1,0 +1,134 @@
+1 · Pari joueur,,,,
+163 paris,,,,"Idée générale : Ajouter dans les règles et le tuto, des indications pour construire et rédiger son pari"
+152 géré11 non géré,,,,
+Sous-catégorie,N,Statut,Pourquoi,Idée
+Points joueur,72,Géré,"bet_subject=PLAYER, stat=pts",
+Stat joueur combinée,18,Géré,"PLAYER stat=td, ou COMBO pour les variantes multi-stats",
+Rebonds joueur,9,Géré,PLAYER stat=reb,
+3 points joueur,9,Géré,PLAYER stat=fg3m,
+Pourcentage tir joueur,9,Géré,PLAYER stat=ft/fg/fg3 (Beta-Binomial),
+Double-double,8,Géré,"PLAYER stat=dd, ou COMBO (2 stats)",
+Triple-double,7,Géré,PLAYER stat=td,
+Meilleur marqueur,6,Non géré,"superlatif implicite (01/03) — ""plus que tout autre joueur""","Comparer le nombre de points moyens (et le nombre de fois ou le joueur a marqué plus que la moyenne des autres joueurs, ou le nombre de fois ou c'est le meilleur marqueur) ?"
+Combo points + passes,4,Géré,"COMBO, 2 conditions",
+Tentatives joueur,3,Géré,PLAYER stat=fga/fg3a,
+Cumul points joueurs,3,Non géré,"sous-ensemble de roster (01) — nationalité, initiale du nom","Si on fait en sorte que tous les rosters soient à jour tous les jours, est-ce qu'on pourrait avoir cette donnée ?"
+Passes joueur,2,Géré,"COMBO, somme sur 2 joueurs nommés",
+Contres joueur,2,Géré,PLAYER stat=blk,
+Cumul statistiques joueurs,2,Géré,"COMBO, 2 conditions multi-joueurs",
+PRA joueur,2,Géré,"COMBO, 1 condition 3 stats sommées",
+Combo multi-conditions,2,Géré,"COMBO, 2 conditions même joueur",
+Pourcentage 3 points joueur,1,Non géré,"OU logique (05) — ""Hauser OU Pritchard""",Propose moi quelque chose
+Combo points + rebonds,1,Géré,"COMBO, 2 conditions",
+Interceptions joueur,1,Géré,"COMBO, somme sur 2 joueurs",
+Rebonds offensifs équipe*,1,Géré,"*mal classé dans le corpus, en fait PLAYER stat=oreb",
+Performance joueur spécifique,1,Non géré,"% des points PROPRES sur une période — testé ce jour, rejet confirmé (distinct d'un seuil brut)",Je n'ai pas compris
+2 · Pari période,,,,
+47 paris,,,,
+42 géré5 partiel,,,,
+Chantier livré et testé en conditions réelles le 24/08/2026 (équipe + joueur) — le plus récent et le plus complètement vérifié de tout le corpus.,,,,
+,,,,
+Sous-catégorie,N,Statut,Pourquoi,
+Scénario mi-temps / fin de match,11,Géré,LEADS_HALF_RESULT — testé en prod (Cleveland),
+Quarts-temps gagnés,10,Géré,QUARTERS_WON_COUNT — testé en prod,
+Vainqueur quart-temps,6,Géré,QUARTER_WINNER — testé en prod (Denver),
+Performance quart-temps,5,Partiel,"""gagne chacun des 4"" géré (QUARTERS_WON_COUNT) ; ""perd son avance OU mauvaise perf"" rejeté (formulation floue + OU, 10)",Quelle formulation il faudrait ?
+Vainqueur mi-temps,3,Géré,HALF_WINNER — testé en prod,
+Prolongation,3,Géré,reste MATCH_TOTAL/went_to_ot — exclusion vérifiée en prod,
+Écart période,3,Géré,MARGIN ou HALF_WINNER selon formulation,
+Écart de points,2,Géré,MARGIN cumulatif — testé en prod (Minnesota/GSW),
+Score exact,1,Géré,"""égalité + prolongation"" = trivialement went_to_ot",
+Cumul points joueurs*,1,Géré,"*mal classé, en fait TOTAL_POINTS combiné sur la période",
+Répartition points équipe,1,Géré,POINT_SHARE_PCT — testé en prod (Lakers),
+Total points période,1,Géré,TOTAL_POINTS — testé en prod,
+3 · Score / total match,,,,
+39 paris,,,,
+32 géré1 partiel6 non géré,,,,
+Sous-catégorie,N,Statut,Pourquoi,
+Total points match,24,Géré,MATCH_TOTAL stat=total_points,
+Score exact,6,Non géré,comptage exact hors période (08) — aucune prédiction jointe du score des 2 équipes,Je n'ai pas compris
+Total points équipe,4,Géré,TEAM_STAT stat=pts,
+Prolongation,4,Géré,MATCH_TOTAL went_to_ot,
+Points équipe,1,Partiel,"plage ""entre 101 et 110"" — probablement exprimable en 2 conditions COMBO, jamais vérifié en réel",Il faut qu'on vérifie
+4 · Comparaison / duel,,,,
+36 paris,,,,
+25 géré6 partiel5 non géré,,,,
+Sous-catégorie,N,Statut,Pourquoi,
+Comparaison pourcentage tir,7,Géré,"COMPARISON, stats équipe pct, DIFF_LT",
+Duel points,6,Géré,"COMPARISON, GT/DIFF_LT",
+Duel statistiques,5,Partiel,"stats croisées (blk vs stl) géré structurellement ; ""même nombre de minutes"" = égalité exacte, exclue (04)",Possible de travailler plus en profondeur la dessus ?
+Comparaison pourcentage 3 points,3,Géré,"COMBO, 2 conditions équipe indépendantes",
+Meilleur marqueur,3,Non géré,superlatif implicite (03),"Quand on dit meilleur marqueur, ça veut dire ""celui qui aura le plus de points"""
+Points joueur,2,Géré,"COMPARISON, joueur vs somme de 2 joueurs",
+Cumul points joueurs,2,Géré,"COMPARISON, somme de 3 vs somme de 3",
+Comparaison équipe,2,Géré,"COMPARISON équipe, avec multiplicateur si besoin",
+Comparaison volume tirs,1,Partiel,DIFF_LT sur tirs tentés équipe — code fga à confirmer dans la liste comparaison équipe,Continuer sur cette piste
+Contres joueur,1,Géré,"COMPARISON, blk vs blk",
+Égalité statistique,1,Non géré,comptage roster-wide (02) + égalité exacte (04) cumulés,Explique moi
+Rebonds équipe,1,Géré,"COMPARISON, reb vs reb",
+Duel contres,1,Non géré,"événement granulaire (07) — ""contre SUR un joueur précis"" = attribution possession par possession",Baisser la proba de manière arbitraire et générique en fonction des profils des joueurs ?
+Duel rebonds,1,Géré,"COMPARISON, reb vs reb",
+5 · Pari équipe,,,,
+34 paris,,,,
+15 géré14 partiel5 non géré,,,,
+Sous-catégorie,N,Statut,Pourquoi,
+Pourcentage tir équipe,7,Géré,TEAM_STAT ft/fg/fg3,
+Performance collective,6,Partiel,"""FG% > 50%"" géré ; ""la meilleure équipe gagne"" = vague, rejet voulu (10)",La meilleure équipe gagne = rejet voulu
+Pourcentage 3 points équipe,6,Partiel,2 conditions équipe indépendantes géré ; combo mélangeant période (09) rejeté — vérifié ce jour,Explique moi
+Points équipe,4,Géré,TEAM_STAT stat=pts,
+Répartition points équipe,2,Non géré,"sous-ensemble de roster (01) — ""5 majeur"", ""titulaires""",Est-il possible de récupérer les 5 majeurs dans les play-by-play ? Généralement ce sont les joueurs qui commencent le match sur le terrain et ils sont identifiés (en haut de la feuille de match généralement)
+Pourcentage lancers francs équipe,2,Partiel,"comparaison FT% géré ; ""LF suite à fautes personnelles"" formulation ambiguë, à vérifier",Est-ce qu'on peut avoir la typologie des fautes commises et subies dans un match ? Le pari portait la dessus
+Cumul points joueurs,1,Non géré,"sous-ensemble de roster (01) — ""5 majeur des Lakers"" non nommé",Est-il possible de récupérer les 5 majeurs dans les play-by-play ? Généralement ce sont les joueurs qui commencent le match sur le terrain et ils sont identifiés (en haut de la feuille de match généralement)
+3 points joueur*,1,Non géré,"*en fait équipe — ""exactement 15"" = comptage exact hors période (08)",Ajouter une proba plus basse pour les évènements exacts ?
+Rebonds équipe,1,Géré,TEAM_STAT stat=reb,
+Interceptions équipe,1,Géré,TEAM_STAT stat=stl,
+Rebonds offensifs équipe,1,Géré,MATCH_TOTAL total_oreb,
+Combo multi-conditions,1,Géré,"COMBO, 2 conditions équipe",
+Points du banc,1,Non géré,"sous-ensemble de roster (01) — ""le banc"" non défini",Le banc = tous les joueurs qui ne sont pas dans le cinq majeur
+6 · Rotation / temps de jeu,,,,
+33 paris,,,,
+25 partiel8 non géré,,,,
+Sous-catégorie,N,Statut,Pourquoi,
+Temps de jeu joueur,14,Partiel,"seuil de minutes géré (PLAYER stat=min, y compris par période) ; ""exactement 0 minute en Q4"" = comptage exact hors période (08)",Explique moi
+Temps de jeu cumulé,7,Partiel,joueurs nommés géré (COMBO) ; filtre par initiale du nom = sous-ensemble de roster (01),Pas possible de pousser en récupérant et en actualisant les rosters tous les jours ?
+Minutes jouées,4,Partiel,"joueur nommé géré ; ""les deux 5 majeurs"" = sous-ensemble de roster (01)",Idem
+Points du banc,4,Non géré,sous-ensemble de roster (01),Idem
+Nombre de joueurs utilisés,3,Non géré,comptage roster-wide (02),Idem
+DNP / joueur ne joue pas,1,Non géré,comptage roster-wide (02),Idem
+7 · Combo multi-joueurs,,,,
+21 paris,,,,
+3 géré15 partiel3 non géré,,,,
+Sous-catégorie,N,Statut,Pourquoi,
+Combo multi-conditions,13,Partiel,l'essentiel géré (ET entre conditions) ; OU imbriqué dans un ET explicitement exclu (05),Possibilité de travailler pour arriver à gérer le ou dans le et ?
+Cumul points joueurs,2,Partiel,"2 joueurs nommés géré ; ""10 titulaires marquent chacun 8+"" = sous-ensemble + comptage (01+02)",Trouver les joueurs qui débutent le match dans les feuilles de match ?
+Nombre de joueurs avec seuil,2,Non géré,"comptage roster-wide (02), explicitement exclu ; +/- n'est en plus pas une stat modélisée (06)",Explique moi ?
+Stat joueur combinée,1,Géré,"COMBO, 1 joueur 3 stats sommées",
+Pourcentage 3 points joueur,1,Géré,"COMBO, 2 équipes",
+Points joueur,1,Non géré,"""et au moins 2 AUTRES joueurs"" non nommés = comptage roster-wide (02)",Au moins deux autres joueurs = deux autres joueurs sur tous ceux capables de jouer le match en question. Gérable ?
+Cumul statistiques joueurs,1,Géré,"COMBO, somme sur 2 joueurs nommés",
+8 · Événement de match,,,,
+20 paris,,,,
+4 géré16 non géré,,,,
+Sous-catégorie,N,Statut,Pourquoi,
+Fautes techniques,3,Non géré,stat jamais modélisée (06),Trouver la donnée ? Ajouter la donnée au modèle
+Événement arbitral,2,Non géré,aucune donnée + formulation souvent vague (10),Trouver la donnée ? Ajouter la donnée au modèle
+Blessure,2,Non géré,stat jamais modélisée (06),Trouver la donnée ? Ajouter la donnée au modèle
+Action rare,2,Non géré,panier à 4 points / retour de blessure — aucun mécanisme,Panier à 4 points : n'existe pas. retour de blessure ?
+Interceptions équipe,2,Géré,MATCH_TOTAL total_stl (combiné 2 équipes),
+Buzzer beater,2,Non géré,événement granulaire play-by-play (07),"Granulaire au play by play, possible de l'ajouter ?"
+Contres joueur,2,Géré,MATCH_TOTAL total_blk (combiné 2 équipes),
+Faute technique,2,Non géré,stat jamais modélisée (06),Trouver la donnée ? Ajouter la donnée au modèle
+Temps morts,1,Non géré,stat jamais modélisée (06),Trouver la donnée ? Ajouter la donnée au modèle
+Triple-double (joueur non nommé),1,Non géré,"comptage roster-wide (02) — ""au moins un joueur"", lequel ?",Lequel = peu importe tant qu'il y en a un qui y arrive
+Violation de jeu,1,Non géré,événement granulaire play-by-play (07),Trouver la donnée ? Ajouter la donnée au modèle
+9-12 · Hors périmètre par conception,,,,
+36 paris,,,,
+Ces 4 catégories ne sont pas des trous — le principe du projet est de ne jamais forcer une extraction incertaine (10). Rejetées volontairement dès la conception du prompt IA.,,,,
+,,,,
+"Aucun pari (15) — catégorie administrative (soumission vide/non-pari), sans objet.",,,,
+,,,,
+"Fun / hors terrain (14) — pom-pom girl, mascotte, célébrités en tribune : hors du domaine sportif calculable par nature.",,,,
+,,,,
+"Invalide / impossible (5) — discriminatoire, physiquement impossible, autre sport, non vérifiable.",,,,
+,,,,
+Ambigu / non vérifiable (2) — texte illisible ou incomplet.,,,,

@@ -532,6 +532,48 @@ export async function predictPeriodTeamOutcome(
 }
 
 /**
+ * Pari "5 majeur / banc" (24/08/2026, GAPS_OUVERTS.md) -- kind=
+ * STARTERS_SUM/BENCH_SUM/STARTERS_SHARE, cf. structureRosterSplitBet.ts.
+ */
+export async function predictRosterSplit(
+  kind: "STARTERS_SUM" | "BENCH_SUM" | "STARTERS_SHARE",
+  stat: StatCode,
+  equipeVisee: "domicile" | "exterieur",
+  threshold: number,
+  comparison: "OVER" | "UNDER",
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-roster-split`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        kind,
+        stat,
+        equipe_visee: equipeVisee,
+        seuil: threshold,
+        comparison,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba, label: data.label };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Pari PERIOD, forme JOUEUR (24/08/2026, GAPS_OUVERTS.md, chantier "pari
  * période") -- une stat JOUEUR normale (mêmes codes que predictOverUnder)
  * mais limitée à UNE période (ex. "3 contres en 1ère mi-temps"). Contrat

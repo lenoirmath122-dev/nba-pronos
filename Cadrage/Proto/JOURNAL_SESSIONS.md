@@ -10496,3 +10496,44 @@ l'appli, 400 avant/200 après pour les 2). Les 2 paris déjà soumis en échec
 restent en l'état (pas de correction rétroactive) -- à re-soumettre.
 GAPS_OUVERTS.md mis à jour.
 ```
+
+## Plan de reprise post-audit + étape 1 "5 majeur/banc" (24/08/2026, même jour)
+
+```text
+Utilisateur revient avec `Cadrage/Stats/Paris gérés_non gérés - Feuille
+1.csv`, l'audit des 429 paris annoté ligne par ligne (idées, questions,
+propositions). Recherche faite dans les données brutes déjà téléchargées
+avant de proposer un plan : colonne `position` (titulaire/remplaçant)
+présente dans les box scores locaux, jamais capturée ; fautes techniques/
+temps morts/retour en zone/flagrant/ejection tous présents comme
+actionType structurés dans le play-by-play, jamais agrégés. Plan en 8
+étapes validé avec l'utilisateur, 4 points explicitement différés notés
+dans GAPS_OUVERTS.md pour ne pas les perdre, 5 points vraiment
+impossibles écartés (blessures, score exact, panier à 4 points...).
+
+Étape 1 -- "5 majeur/banc" : `position` ajoutée à
+STATS_BOX_SCORE_TRAD_COLUMNS (synchro quotidienne) + backfillée pour les
+6602 matchs déjà connus (`backfill_starter_position.py`, aucun appel API,
+1:1 vérifié entre CSV locaux et matchs Supabase). Bug réel trouvé en
+codant le backfill : un upsert à payload partiel échoue sur cette table
+(Postgres valide les NOT NULL de l'INSERT avant le conflit) -- corrigé
+avec une fonction SQL de mise à jour en masse dédiée
+(`bulk_update_box_score_position()`).
+
+Aucun modèle dédié entraîné : `_team_starters()` (nouveau,
+supabase_context.py) approxime les titulaires par fréquence d'apparition
+en position non vide sur les 10 derniers matchs -- pas de confirmation
+officielle de composition avant le match dans ce projet.
+`compute_roster_split_proba()` réutilise `_player_stat_mean_scale()`/
+`_team_stat_mean_scale()` déjà là, combinés par somme/soustraction sous
+indépendance. Nouveau schéma IA séparé (`structureRosterSplitBet.ts`),
+routé par mot-clé comme PERIOD -- schéma principal toujours inchangé.
+
+Testé : 5 vrais appels Claude Sonnet 5 (3/3 corrects, 2/2 rejets corrects)
++ 3/3 `/predict-roster-split` en HTTP local réel + garde stat non
+supportée vérifiée. Portée v1 volontairement limitée ("10 titulaires
+marquent chacun 8+" = condition individuelle, pas une somme, différé à
+l'étape 3 comptage roster-wide). `tsc`/`eslint`/`vitest`(37/37)/`next
+build` propres. Pas encore testé de bout en bout via l'appli (vrai pari
+soumis) ni redéployé sur Cloud Run/Vercel. GAPS_OUVERTS.md mis à jour.
+```

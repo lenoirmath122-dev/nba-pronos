@@ -71,6 +71,10 @@ SEASON_INDEX_RETRIES = 1
 STATS_BOX_SCORE_TRAD_COLUMNS = [
     "game_id", "player_id", "team_id", "minutes", "pts", "reb", "ast", "fg3m", "stl", "blk",
     "plus_minus", "ftm", "fta", "fgm", "fga", "fg3a", "oreb",
+    # "position" (24/08/2026, chantier "5 majeur/banc") -- déjà renvoyée
+    # telle quelle par BoxScoreTraditionalV3 sous ce nom exact ("F"/"C"/"G"
+    # = titulaire, "" = remplaçant), pas de renommage nécessaire.
+    "position",
 ]
 
 # Chantier "paris joueur+periode" (GAPS_OUVERTS.md, 24/08/2026) -- colonnes

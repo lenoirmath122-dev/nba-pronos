@@ -12,6 +12,7 @@ quotidien (pas encore ecrit, voir GAPS_OUVERTS.md).
 
 import math
 import sys
+from collections import Counter
 from pathlib import Path
 
 import numpy as np
@@ -983,6 +984,34 @@ def _player_current_team_id(client, player_id: int) -> int:
     return int(rows[0]["team_id"])
 
 
+def _team_starters(client, team_id: int, as_of_date, n_recent_games: int = 10) -> list[int]:
+    """5 titulaires "typiques" d'une equipe (chantier "5 majeur/banc",
+    24/08/2026, GAPS_OUVERTS.md) -- aucune confirmation officielle de
+    composition n'est disponible avant le match dans ce projet (pas de
+    source temps reel), approxime par la frequence d'apparition en
+    position non vide (colonne stats_box_scores.position, "F"/"C"/"G" =
+    titulaire, "" = remplaçant -- deja capturee par BoxScoreTraditionalV3,
+    juste jamais retenue jusqu'ici) sur les n_recent_games derniers matchs
+    de cette equipe avant as_of_date. Les 5 PLUS FREQUENTS, pas les 5 plus
+    recents seuls -- resiste a une sortie/blessure ponctuelle d'un match."""
+    rows = (
+        client.table("stats_box_scores")
+        .select("player_id, position, game_date")
+        .eq("team_id", team_id)
+        .lt("game_date", str(as_of_date))
+        .neq("position", "")
+        .order("game_date", desc=True)
+        .limit(n_recent_games * 5)
+        .execute()
+        .data
+    )
+    counts = Counter(r["player_id"] for r in rows if r.get("position"))
+    starters = [pid for pid, _ in counts.most_common(5)]
+    if len(starters) < 5:
+        raise ValueError(f"Moins de 5 titulaires distincts trouves recemment pour l'equipe (team_id={team_id}).")
+    return starters
+
+
 def _resolve_weighted_operand(
     client, kind: str, players: list[str], team_side: str | None, stats: list[str],
     home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
@@ -1329,3 +1358,84 @@ def compute_series_stat_proba(*args, **kwargs) -> dict:
     """Enveloppe _compute_series_stat_proba_once() d'une verification de
     coherence -- voir CONSISTENCY_CHECK_NOTE ci-dessus pour le POURQUOI."""
     return _compute_with_consistency_check(lambda: _compute_series_stat_proba_once(*args, **kwargs))
+
+
+def _compute_roster_split_proba_once(
+    client, kind: str, stat: str, team_id: int, opponent_id: int, is_home: int,
+    threshold: float, comparison: str, as_of_date, season: str | None = None,
+) -> dict:
+    """Paris "5 majeur"/"banc" (24/08/2026, GAPS_OUVERTS.md, chantier "5
+    majeur/banc") -- AUCUN modele dedie entraine : reutilise
+    _player_stat_mean_scale() pour les 5 titulaires (approximes via
+    _team_starters(), aucune confirmation officielle de composition avant
+    le match disponible dans ce projet) et _team_stat_mean_scale() pour le
+    total equipe, combines par somme/soustraction sous hypothese
+    d'INDEPENDANCE -- meme simplification deja acceptee ailleurs (chantier
+    duel/comparaison : "aucune correlation modelisee, ex. un match a
+    rythme eleve qui booste les 2 cotes a la fois").
+
+    kind="STARTERS_SUM" : somme des 5 titulaires vs seuil.
+    kind="BENCH_SUM" : total equipe MOINS somme des titulaires -- le banc
+    n'est jamais nomme joueur par joueur (effectif variable), approxime
+    par soustraction plutot que par somme des remplaçants un par un.
+    kind="STARTERS_SHARE" : part du total equipe marquee par les
+    titulaires -- P(titulaires > seuil * total), meme mecanisme que le
+    multiplicateur du chantier duel/comparaison (_compute_comparison_
+    proba_once, relation GT)."""
+    if stat not in REGRESSION_STATS:
+        raise ValueError(
+            f"stat non supportee pour un pari 5 majeur/banc : {stat} (seules les stats comptees le sont : "
+            f"{sorted(REGRESSION_STATS)})"
+        )
+    starters = _team_starters(client, team_id, as_of_date)
+    means, variances = [], []
+    for pid in starters:
+        mean, scale = _player_stat_mean_scale(client, pid, stat, opponent_id=opponent_id, is_home=is_home)
+        means.append(mean)
+        variances.append(scale ** 2)
+    starters_mean = sum(means)
+    starters_scale = max(math.sqrt(sum(variances)), MIN_SCALE)
+
+    if kind == "STARTERS_SUM":
+        proba_over = 1 - norm.cdf(threshold, loc=starters_mean, scale=starters_scale)
+        proba = proba_over if comparison == "OVER" else 1 - proba_over
+        return {
+            "label": "Total cumulé des titulaires",
+            "proba": float(proba),
+            "detail": f"prediction moyenne = {starters_mean:.1f} (+/- {starters_scale:.1f}, normale, {len(starters)} titulaires)",
+        }
+
+    team_total_mean, team_total_scale = _team_stat_mean_scale(
+        client, stat, team_id, opponent_id, bool(is_home), as_of_date, season=season,
+    )
+
+    if kind == "BENCH_SUM":
+        bench_mean = team_total_mean - starters_mean
+        bench_scale = max(math.sqrt(team_total_scale ** 2 + starters_scale ** 2), MIN_SCALE)
+        proba_over = 1 - norm.cdf(threshold, loc=bench_mean, scale=bench_scale)
+        proba = proba_over if comparison == "OVER" else 1 - proba_over
+        return {
+            "label": "Total cumulé du banc",
+            "proba": float(proba),
+            "detail": f"prediction moyenne = {bench_mean:.1f} (+/- {bench_scale:.1f}, normale, total equipe moins titulaires)",
+        }
+
+    if kind == "STARTERS_SHARE":
+        diff_mean = starters_mean - threshold * team_total_mean
+        diff_scale = max(math.sqrt(starters_scale ** 2 + (threshold * team_total_scale) ** 2), MIN_SCALE)
+        proba_over = 1 - norm.cdf(0, loc=diff_mean, scale=diff_scale)
+        proba = proba_over if comparison == "OVER" else 1 - proba_over
+        share = starters_mean / team_total_mean if team_total_mean else float("nan")
+        return {
+            "label": "Part du total équipe marquée par les titulaires",
+            "proba": float(proba),
+            "detail": f"titulaires ~{starters_mean:.1f}, équipe ~{team_total_mean:.1f} ({share:.0%})",
+        }
+
+    raise ValueError(f"kind inconnu pour un pari 5 majeur/banc : {kind}")
+
+
+def compute_roster_split_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_roster_split_proba_once() d'une verification de
+    coherence, meme patron que les autres compute_*_proba()."""
+    return _compute_with_consistency_check(lambda: _compute_roster_split_proba_once(*args, **kwargs))

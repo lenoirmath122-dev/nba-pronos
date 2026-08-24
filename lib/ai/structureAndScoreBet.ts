@@ -2,6 +2,7 @@ import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
 import { structurePeriodBet } from "./structurePeriodBet";
+import { structureRosterSplitBet } from "./structureRosterSplitBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -13,6 +14,7 @@ import {
   predictOvertime,
   predictPeriodTeamOutcome,
   predictPlayerPeriodStat,
+  predictRosterSplit,
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
@@ -77,6 +79,15 @@ async function resolveMatchTeamNames(
  *  fausse. Voir structurePeriodBet.ts pour le POURQUOI de ce routage (pas
  *  un 2e schéma dans structureBet.ts). */
 const PERIOD_KEYWORD_REGEX = /quart[s]?[\s-]?temps|mi[\s-]?temps|\bqt\d*\b|\bmt\d*\b/i;
+
+/** Détecte un texte "de forme" pari 5 majeur/banc AVANT tout appel Claude
+ *  (24/08/2026, GAPS_OUVERTS.md, chantier "5 majeur/banc") -- même
+ *  patron/mêmes raisons que PERIOD_KEYWORD_REGEX ci-dessus (schéma
+ *  partagé au plafond, routage dédié plutôt qu'un bet_subject de plus).
+ *  Vocabulaire volontairement spécifique au sous-ensemble de roster visé
+ *  (titulaires/5 majeur/banc/remplaçants), peu de risque de faux positif
+ *  dans un contexte de paris NBA. */
+const ROSTER_SPLIT_KEYWORD_REGEX = /cinq\s*majeur|5\s*majeur|titulaires?|\bbancs?\b|rempla[cç]ants?/i;
 
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
@@ -164,6 +175,7 @@ export async function structureAndScoreBet(
         p_structured_duel: null,
         p_structured_combo: null,
         p_structured_period: null,
+        p_structured_roster_split: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -242,6 +254,7 @@ export async function structureAndScoreBet(
           player_id: prediction.playerId,
           exact_count: null,
         },
+        p_structured_roster_split: null,
         p_stat: periodBet.player_stat,
         p_threshold: periodBet.threshold,
         p_comparison: periodBet.comparison,
@@ -319,6 +332,7 @@ export async function structureAndScoreBet(
         player_id: null,
         exact_count: periodBet.exact_count,
       },
+      p_structured_roster_split: null,
       p_stat: null,
       p_threshold: periodBet.threshold,
       p_comparison: periodBet.comparison,
@@ -326,6 +340,77 @@ export async function structureAndScoreBet(
       p_calculated_proba: prediction.proba,
       p_suggested_difficulty: probaToDifficulty(prediction.proba),
       p_category: "PERIOD" satisfies BetCategory,
+    });
+  }
+
+  /** Pari "5 majeur / banc" (24/08/2026, GAPS_OUVERTS.md, chantier "5
+   *  majeur/banc") -- kind=STARTERS_SUM/BENCH_SUM/STARTERS_SHARE, cf.
+   *  structureRosterSplitBet.ts. MATCH uniquement, même limite que les
+   *  autres branches. Appelée UNIQUEMENT quand ROSTER_SPLIT_KEYWORD_REGEX
+   *  matche (cf. try ci-dessous) -- structuration vient de
+   *  structureRosterSplitBet(), un schéma séparé de structureBet.ts (voir
+   *  sa docstring pour le pourquoi). */
+  async function handleRosterSplitBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structureRosterSplitBet(description, teamNames);
+    if (!structuration || !structuration.calculable || structuration.bet_subject !== "ROSTER_SPLIT") {
+      await markNotCalculable();
+      return;
+    }
+    const rosterSplitBet = structuration.roster_split_bet;
+    if (scope !== "MATCH" || !matchId || !rosterSplitBet) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+    const asOfDate = matchTeams.scheduledAt.slice(0, 10);
+
+    const teamName = rosterSplitBet.team === "team1" ? teamNames?.[0] : teamNames?.[1];
+    if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
+      await markNotCalculable();
+      return;
+    }
+    const equipeVisee: "domicile" | "exterieur" = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
+    const teamId = teamName === matchTeams.homeTeamName ? matchTeams.homeTeamId : matchTeams.awayTeamId;
+
+    const prediction = await predictRosterSplit(
+      rosterSplitBet.kind,
+      rosterSplitBet.stat as StatCode,
+      equipeVisee,
+      rosterSplitBet.threshold,
+      rosterSplitBet.comparison,
+      matchTeams.homeTeamName,
+      matchTeams.awayTeamName,
+      asOfDate,
+    );
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      p_structured_player_name: null,
+      p_structured_player_id: null,
+      p_structured_team_id: teamId,
+      p_structured_duel: null,
+      p_structured_combo: null,
+      p_structured_period: null,
+      p_structured_roster_split: {
+        kind: rosterSplitBet.kind,
+        team_id: teamId,
+        stat: rosterSplitBet.stat,
+      },
+      p_stat: rosterSplitBet.stat,
+      p_threshold: rosterSplitBet.threshold,
+      p_comparison: rosterSplitBet.comparison,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: "TEAM_PROP" satisfies BetCategory,
     });
   }
 
@@ -349,6 +434,13 @@ export async function structureAndScoreBet(
     // lexicale -- un mot-clé ne peut pas les séparer de façon fiable.
     if (PERIOD_KEYWORD_REGEX.test(description)) {
       await handlePeriodBet(teamNames);
+      return;
+    }
+
+    // Routage 5 majeur/banc par mot-clé (24/08/2026, GAPS_OUVERTS.md,
+    // chantier "5 majeur/banc") -- même raisonnement que PERIOD ci-dessus.
+    if (ROSTER_SPLIT_KEYWORD_REGEX.test(description)) {
+      await handleRosterSplitBet(teamNames);
       return;
     }
 
@@ -418,6 +510,7 @@ export async function structureAndScoreBet(
         p_structured_duel: null,
         p_structured_combo: null,
         p_structured_period: null,
+        p_structured_roster_split: null,
         p_stat: matchTotal.stat,
         p_threshold: matchTotal.threshold,
         p_comparison: matchTotal.comparison,
@@ -468,6 +561,7 @@ export async function structureAndScoreBet(
         p_structured_duel: null,
         p_structured_combo: null,
         p_structured_period: null,
+        p_structured_roster_split: null,
         p_stat: teamStat.stat,
         p_threshold: teamStat.threshold,
         p_comparison: teamStat.comparison,
@@ -573,6 +667,7 @@ export async function structureAndScoreBet(
         p_structured_duel: structuredDuel,
         p_structured_combo: null,
         p_structured_period: null,
+        p_structured_roster_split: null,
         p_stat: null,
         p_threshold: diffThreshold,
         p_comparison: null,
@@ -680,6 +775,7 @@ export async function structureAndScoreBet(
         p_structured_duel: null,
         p_structured_combo: structuredCombo,
         p_structured_period: null,
+        p_structured_roster_split: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -733,6 +829,7 @@ export async function structureAndScoreBet(
         p_structured_duel: null,
         p_structured_combo: null,
         p_structured_period: null,
+        p_structured_roster_split: null,
         p_stat: player.stat,
         p_threshold: player.threshold,
         p_comparison: player.comparison,
@@ -787,6 +884,7 @@ export async function structureAndScoreBet(
       p_structured_duel: null,
       p_structured_combo: null,
       p_structured_period: null,
+        p_structured_roster_split: null,
       p_stat: player.stat,
       p_threshold: player.threshold,
       p_comparison: player.comparison,

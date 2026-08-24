@@ -4,6 +4,112 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Étape 1 du plan de reprise -- "5 majeur / banc", CODÉ le 24/08/2026**
+> (répartition points, cumul 5 majeur, banc). Colonne `stats_box_scores.
+> position` (F/C/G = titulaire, "" = remplaçant) déjà renvoyée par
+> BoxScoreTraditionalV3, juste jamais capturée -- ajoutée à
+> `STATS_BOX_SCORE_TRAD_COLUMNS` (`refresh_daily.py`, synchro quotidienne
+> à partir de maintenant) + backfillée pour les 6602 matchs déjà connus
+> (`backfill_starter_position.py`, AUCUN appel API -- vérifié 1:1 entre les
+> CSV locaux déjà téléchargés et les matchs Supabase, quasi instantané
+> contrairement aux backfills précédents).
+>
+> **Bug réel trouvé en codant le backfill** : un upsert à payload partiel
+> (juste game_id/player_id/position) échoue sur cette table -- Postgres
+> valide les contraintes NOT NULL (game_date...) de la clause INSERT AVANT
+> de tenter le conflit, même si la ligne existe déjà et qu'on veut juste
+> UPDATE une colonne. Corrigé avec une vraie fonction SQL de mise à jour en
+> masse (`bulk_update_box_score_position()`, migration
+> `20260824190000`) plutôt que `client.table().upsert()`.
+>
+> **AUCUN modèle dédié entraîné** -- `_team_starters()` approxime les 5
+> titulaires par fréquence d'apparition en position non vide sur les 10
+> derniers matchs de l'équipe (pas de confirmation officielle de
+> composition avant le match dans ce projet). `compute_roster_split_proba()`
+> réutilise `_player_stat_mean_scale()` (déjà là pour le chantier duel) et
+> `_team_stat_mean_scale()`, combinés par somme/soustraction sous
+> hypothèse d'indépendance -- même simplification déjà acceptée ailleurs.
+> Restreint aux stats comptées (REGRESSION_STATS), testé.
+>
+> **Nouveau schéma IA séparé** (`structureRosterSplitBet.ts`), routé en
+> amont par mot-clé (`ROSTER_SPLIT_KEYWORD_REGEX`, "5 majeur"/"titulaires"/
+> "banc"/"remplaçants") -- même patron que PERIOD, `structureBet.ts`
+> inchangé. Testé avec 5 vrais appels Claude Sonnet 5 : 3/3 cas réels
+> corrects (STARTERS_SUM/BENCH_SUM/STARTERS_SHARE), 2/2 rejets corrects
+> (2 équipes à la fois, condition individuelle par joueur).
+>
+> **`/predict-roster-split` testé en HTTP local réel** : 3/3 kind corrects
+> (valeurs cohérentes), garde stat non supportée (dd) correctement
+> rejetée en 400. **Portée v1 volontairement limitée** : "10 titulaires
+> marquent chacun 8+" (condition INDIVIDUELLE sur chaque titulaire, pas une
+> somme) explicitement hors périmètre -- relève du comptage roster-wide,
+> étape 3 du plan.
+>
+> **Résolution** (`resolveCalculableRosterSplitBets()`) lit
+> `stats_box_scores` directement, réutilise `resolveNbaTeamId()` (pont
+> déjà établi app `teams.id` uuid -> `stats_equipes.team_id` numérique
+> NBA, chantier % tir équipe -- piège déjà connu, pas recontourné).
+>
+> **Pas encore testé de bout en bout via l'appli** (vrai pari soumis avec
+> une vraie session) -- seuls les appels directs (schéma isolé + service
+> HTTP) sont vérifiés pour l'instant, même limite que chaque chantier
+> précédent à ce stade.
+
+> **Plan de reprise post-audit (24/08/2026)** -- suite à
+> `AUDIT_TYPES_PARIS_24_08_2026.md` (état des lieux des 429 paris) annoté
+> par l'utilisateur (`Cadrage/Stats/Paris gérés_non gérés - Feuille 1.csv`,
+> idées/réponses ligne par ligne). Recherche faite dans les données brutes
+> déjà synchronisées avant de proposer un plan (`boxscores/*.csv`,
+> `playbyplay/*.csv`) : plusieurs gaps de l'audit sont en fait déjà
+> réalisables sans nouvelle source de données -- colonne `position`
+> (F/C/G = titulaire, vide = remplaçant) déjà présente dans les box
+> scores, jamais exploitée ; `Foul / Technical`, `Timeout / Regular`,
+> `Foul / Flagrant Type 1`, `Ejection / Other`, `Turnover / Backcourt
+> Turnover` tous présents comme actionType/subType structurés dans le
+> play-by-play déjà téléchargé, jamais agrégés en stat pariable.
+>
+> **Plan validé avec l'utilisateur, dans l'ordre** : (1) 5 majeur/banc via
+> `position` -- débloque répartition points 5 majeur, cumul 5 majeur,
+> points du banc, "10 titulaires marquent chacun 8+" ; (2) petits gains
+> groupés -- OU logique simple entre 2 entités (P(A∪B)=P(A)+P(B)-P(A)P(B),
+> indépendance), proba "exactement N" généralisée (point de la
+> distribution Poisson/Binomiale déjà utilisée, pas seulement pour
+> QUARTERS_WON_COUNT), +/- exposé comme stat pariable (déjà en colonne
+> brute `plusMinusPoints`), + vérifications rapides (fga en comparaison
+> équipe, plage de points équipe via COMBO) ; (3) comptage roster-wide
+> générique (loi de Poisson-binomiale, proba individuelle par joueur déjà
+> disponible via les modèles existants) -- débloque triple-double
+> n'importe qui, DNP, nombre de joueurs utilisés, "au moins N joueurs avec
+> seuil" ; (4) meilleur marqueur (réutilise la mécanique de comparaison de
+> l'étape 3) ; (5) événements de match (fautes techniques, temps morts,
+> retour en zone) -- nouveau pipeline stat + modèles, comparable en
+> taille au chantier période ; (6) événements granulaires (buzzer beater,
+> contre "sur" un joueur précis -- corrélation d'événements play-by-play,
+> ex. rapprocher une ligne BLOCK de la ligne Missed Shot adjacente) ; (7)
+> OU imbriqué dans un ET (refonte du schéma combo) ; (8) guide de
+> rédaction des paris dans les règles/tuto (contenu, pas du code -- en
+> dernier pour refléter les capacités réelles une fois posées).
+>
+> **Explicitement laissé de côté, PAS dans ce plan** (repris plus tard si
+> l'utilisateur le souhaite, à ne pas oublier) :
+> - Performance joueur spécifique (% des points PROPRES d'un joueur sur
+>   une période, ex. Wembanyama 40% de ses points au Q4) -- ratio de 2
+>   quantités corrélées, mécanisme à part entière.
+> - Égalité exacte entre 2 joueurs nommés (duel statistiques, ex. "même
+>   nombre de minutes que").
+> - Égalité statistique sur tout le roster (cumule le comptage roster-wide
+>   ET l'égalité exacte -- 2 problèmes en un).
+> - "LF suite à des fautes personnelles" -- probablement quasi équivalent
+>   à la stat FT équipe déjà gérée, mais pas vérifié.
+>
+> **Vraiment impossible, pas juste différé** : blessures (aucune donnée de
+> jeu NBA ne capture ça), score exact du match (distribution jointe des 2
+> scores jamais construite), panier à 4 points (n'existe pas comme
+> catégorie d'événement réelle), événements arbitraux à la formulation
+> intraitable ("l'arbitre siffle le début du match"). Categories
+> Fun/Invalide/Ambigu (36 paris) exclues par conception depuis le début du
+> projet, pas un manque technique.
+
 > **Pari période (équipe + joueur), CODÉ le 24/08/2026** (dernier morceau de
 > la liste des 429 paris -- "pari période", 47 paris équipe -- + un
 > chantier connexe découvert en le cadrant, "paris joueur+période", ex.
@@ -145,6 +251,12 @@
 > Une fois le backfill terminé, un vrai modèle entraîné
 > (`train_player_period_model.py`, à écrire) devra remplacer
 > l'approximation v1 côté joueur.
+>
+> **3e petit bug trouvé en testant** (24/08/2026, même jour) : "QT" (ex.
+> "3 rebonds pour Tatum au 4e QT") n'était pas reconnu par
+> `PERIOD_KEYWORD_REGEX` (seulement "quart-temps"/"mi-temps" sous leurs
+> graphies courantes) -- ajouté `\bqt\d*\b` (couvre "QT", "QT4", "QT 4",
+> `\b` évite les faux positifs type "qualité").
 
 > **% tir équipe (ft/fg/fg3), CODÉ le 24/08/2026** (5e chantier de la liste
 > des 429 paris, après overtime -- voir l'entrée overtime plus bas pour
