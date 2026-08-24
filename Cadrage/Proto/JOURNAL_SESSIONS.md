@@ -10537,3 +10537,37 @@ l'étape 3 comptage roster-wide). `tsc`/`eslint`/`vitest`(37/37)/`next
 build` propres. Pas encore testé de bout en bout via l'appli (vrai pari
 soumis) ni redéployé sur Cloud Run/Vercel. GAPS_OUVERTS.md mis à jour.
 ```
+
+## Étape 2 (partielle) "petits gains groupés" (24/08/2026, même jour)
+
+```text
+2 des 4 items faits, 2 requalifiés en creusant (pas juste codés à
+l'aveugle) : "+/- comme stat pariable" et "comparaison volume tirs
+équipe (fga)" ont besoin chacun d'un VRAI modèle entraîné (aucun
+plusminus.joblib/team_fga.joblib n'existe, contrairement à ce que le plan
+supposait) -- pas fait dans cette passe, noté dans GAPS_OUVERTS.md pour
+décision avec l'utilisateur plutôt que bâclé.
+
+OU logique (relation="OR" sur COMPARISON) : ajout d'1 valeur d'enum +
+réutilisation du champ threshold existant (pas de nouveau champ) --
+mesuré avant de déployer : +186 caractères sur le schéma compilé
+(8089->8275), loin sous le seuil qui avait cassé PERIOD (+467). Restreint
+aux stats comptées comme le reste de COMPARISON (pas les %, mécanisme
+Beta-Binomial différent) -- l'exemple original du CSV utilisateur (%
+plutôt que comptage) n'est donc pas couvert par cette version. Testé avec
+2 vrais appels Claude + 2 appels HTTP réels (calcul + garde).
+
+Pari "fourchette" (ex. "Minnesota marque entre 101 et 110 points") :
+finalement pas un nouveau mécanisme, juste un exemple ajouté au prompt
+COMBO existant (2 conditions même équipe/stat). Découverte utile en le
+mesurant : le TEXTE du prompt statique n'entre PAS dans le calcul de la
+grammaire compilée par l'API Claude, seule la FORME du schéma Zod compte
+-- vérifié (même taille de schéma avant/après l'ajout de l'exemple). Les
+exemples du prompt peuvent donc être étoffés librement à l'avenir, sans
+risque de replonger dans le plafond de complexité.
+
+tsc/eslint/vitest(37/37)/next build propres. GAPS_OUVERTS.md mis à jour
+avec la requalification des 2 items restants et une question ouverte pour
+l'utilisateur (entraîner maintenant vs traiter comme 2 petits chantiers
+séparés plus tard).
+```

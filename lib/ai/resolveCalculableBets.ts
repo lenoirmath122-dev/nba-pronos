@@ -825,7 +825,7 @@ type DuelOperandMeta = {
 type StructuredDuel = {
   left: DuelOperandMeta;
   right: DuelOperandMeta;
-  relation: "GT" | "DIFF_LT";
+  relation: "GT" | "DIFF_LT" | "OR";
   multiplier: number;
 };
 
@@ -932,8 +932,8 @@ export async function resolveCalculableComparisonBets(): Promise<ResolveBetsSumm
       continue;
     }
     const { left, right, relation, multiplier } = bet.structured_duel;
-    if (relation === "DIFF_LT" && bet.structured_threshold === null) {
-      summary.skipped.push({ betId: bet.id, reason: "seuil manquant pour un duel à écart borné" });
+    if ((relation === "DIFF_LT" || relation === "OR") && bet.structured_threshold === null) {
+      summary.skipped.push({ betId: bet.id, reason: "seuil manquant pour ce duel" });
       continue;
     }
 
@@ -953,7 +953,9 @@ export async function resolveCalculableComparisonBets(): Promise<ResolveBetsSumm
     const won =
       relation === "GT"
         ? actualLeft > multiplier * actualRight
-        : Math.abs(actualLeft - actualRight) < (bet.structured_threshold as number);
+        : relation === "OR"
+          ? actualLeft > (bet.structured_threshold as number) || actualRight > (bet.structured_threshold as number)
+          : Math.abs(actualLeft - actualRight) < (bet.structured_threshold as number);
     const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
 
     const { data: updated } = await supabase

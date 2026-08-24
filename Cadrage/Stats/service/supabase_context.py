@@ -1082,15 +1082,21 @@ def _compute_comparison_proba_once(
     home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> dict:
     """Pari DUEL/COMPARAISON (24/08/2026, GAPS_OUVERTS.md) -- P(gauche >
-    multiplier * droite) [relation="GT"] ou P(|gauche - droite| < threshold)
-    [relation="DIFF_LT"]. Combine 2 predictions (moyenne, dispersion)
-    resolues independamment via _resolve_comparison_operand() par une
-    approximation NORMALE de la difference (gauche - k*droite ~ Normale,
-    moyenne = moyG - k*moyD, ecart-type = sqrt(scaleG^2 + (k*scaleD)^2)) --
-    hypothese d'INDEPENDANCE entre les 2 cotes (aucune correlation
-    modelisee, ex. un match a rythme eleve qui booste les 2 cotes a la
-    fois) et approximation normale meme pour les stats Poisson (assumees
-    avec l'utilisateur le 24/08/2026, cf. _player_stat_mean_scale)."""
+    multiplier * droite) [relation="GT"], P(|gauche - droite| < threshold)
+    [relation="DIFF_LT"], ou P(gauche > threshold OU droite > threshold)
+    [relation="OR", ajoute le 24/08/2026, chantier "petits gains groupes" --
+    cas "Hauser OU Pritchard reussit au moins 3 paniers a 3 points", CHAQUE
+    cote compare a un MEME seuil fixe plutot qu'a l'autre cote]. Combine 2
+    predictions (moyenne, dispersion) resolues independamment via
+    _resolve_comparison_operand() par une approximation NORMALE de la
+    difference (gauche - k*droite ~ Normale, moyenne = moyG - k*moyD,
+    ecart-type = sqrt(scaleG^2 + (k*scaleD)^2)) -- hypothese d'INDEPENDANCE
+    entre les 2 cotes (aucune correlation modelisee, ex. un match a rythme
+    eleve qui booste les 2 cotes a la fois) et approximation normale meme
+    pour les stats Poisson (assumees avec l'utilisateur le 24/08/2026, cf.
+    _player_stat_mean_scale). OR reutilise la MEME hypothese d'independance
+    pour combiner les 2 probas individuelles (P(A union B) = P(A)+P(B)-
+    P(A)*P(B))."""
     mean_l, scale_l, meta_l = _resolve_comparison_operand(client, left, home_team_id, away_team_id, as_of_date, season)
     mean_r, scale_r, meta_r = _resolve_comparison_operand(client, right, home_team_id, away_team_id, as_of_date, season)
 
@@ -1098,12 +1104,18 @@ def _compute_comparison_proba_once(
         diff_mean = mean_l - multiplier * mean_r
         diff_scale = max(math.sqrt(scale_l ** 2 + (multiplier * scale_r) ** 2), MIN_SCALE)
         proba = 1 - norm.cdf(0, loc=diff_mean, scale=diff_scale)
-    else:  # "DIFF_LT"
+    elif relation == "DIFF_LT":
         if threshold is None:
             raise ValueError("threshold obligatoire pour la relation DIFF_LT.")
         diff_mean = mean_l - mean_r
         diff_scale = max(math.sqrt(scale_l ** 2 + scale_r ** 2), MIN_SCALE)
         proba = float(norm.cdf(threshold, loc=diff_mean, scale=diff_scale) - norm.cdf(-threshold, loc=diff_mean, scale=diff_scale))
+    else:  # "OR"
+        if threshold is None:
+            raise ValueError("threshold obligatoire pour la relation OR.")
+        proba_l = 1 - norm.cdf(threshold, loc=mean_l, scale=max(scale_l, MIN_SCALE))
+        proba_r = 1 - norm.cdf(threshold, loc=mean_r, scale=max(scale_r, MIN_SCALE))
+        proba = proba_l + proba_r - proba_l * proba_r
 
     return {
         "proba": float(proba),

@@ -632,16 +632,18 @@ class ComparisonOperand(BaseModel):
 
 class PredictComparisonRequest(BaseModel):
     """Pari DUEL/COMPARAISON (24/08/2026, GAPS_OUVERTS.md) -- P(gauche >
-    multiplier*droite) [relation=GT] ou P(|gauche-droite| < threshold)
-    [relation=DIFF_LT]. equipe_domicile/equipe_exterieur : les 2 VRAIES
-    equipes du match vise (meme contrat que PredictTeamReboundsRequest),
-    necessaires pour resoudre le contexte domicile/exterieur de chaque
-    operande (equipe ou joueur)."""
+    multiplier*droite) [relation=GT], P(|gauche-droite| < threshold)
+    [relation=DIFF_LT], ou P(gauche>threshold OU droite>threshold)
+    [relation=OR, ajoute le 24/08/2026, chantier "petits gains groupes"].
+    equipe_domicile/equipe_exterieur : les 2 VRAIES equipes du match vise
+    (meme contrat que PredictTeamReboundsRequest), necessaires pour
+    resoudre le contexte domicile/exterieur de chaque operande (equipe ou
+    joueur)."""
     left: ComparisonOperand
     right: ComparisonOperand
-    relation: str  # "GT" | "DIFF_LT"
+    relation: str  # "GT" | "DIFF_LT" | "OR"
     multiplier: float = 1.0
-    threshold: float | None = None  # relation=DIFF_LT uniquement
+    threshold: float | None = None  # relation=DIFF_LT/OR uniquement
     equipe_domicile: str
     equipe_exterieur: str
     as_of_date: str
@@ -649,10 +651,10 @@ class PredictComparisonRequest(BaseModel):
 
     @model_validator(mode="after")
     def _relation_coherente(self):
-        if self.relation not in ("GT", "DIFF_LT"):
+        if self.relation not in ("GT", "DIFF_LT", "OR"):
             raise ValueError(f"relation inconnue : {self.relation}")
-        if self.relation == "DIFF_LT" and self.threshold is None:
-            raise ValueError("threshold obligatoire pour relation=DIFF_LT")
+        if self.relation in ("DIFF_LT", "OR") and self.threshold is None:
+            raise ValueError(f"threshold obligatoire pour relation={self.relation}")
         return self
 
 

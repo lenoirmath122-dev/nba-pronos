@@ -363,7 +363,7 @@ export type ComparisonPredictResult = {
 export async function predictComparison(
   left: DuelOperand,
   right: DuelOperand,
-  relation: "GT" | "DIFF_LT",
+  relation: "GT" | "DIFF_LT" | "OR",
   multiplier: number,
   threshold: number | null,
   homeTeamName: string,

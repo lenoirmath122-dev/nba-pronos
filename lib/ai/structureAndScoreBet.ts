@@ -619,8 +619,9 @@ export async function structureAndScoreBet(
       }
 
       const multiplier = comparisonBet.multiplier ?? 1;
-      const diffThreshold = comparisonBet.relation === "DIFF_LT" ? comparisonBet.threshold : null;
-      if (comparisonBet.relation === "DIFF_LT" && diffThreshold === null) {
+      const needsThreshold = comparisonBet.relation === "DIFF_LT" || comparisonBet.relation === "OR";
+      const relationThreshold = needsThreshold ? comparisonBet.threshold : null;
+      if (needsThreshold && relationThreshold === null) {
         await markNotCalculable();
         return;
       }
@@ -630,7 +631,7 @@ export async function structureAndScoreBet(
         right,
         comparisonBet.relation,
         multiplier,
-        diffThreshold,
+        relationThreshold,
         matchTeams.homeTeamName,
         matchTeams.awayTeamName,
         matchTeams.scheduledAt.slice(0, 10),
@@ -669,7 +670,7 @@ export async function structureAndScoreBet(
         p_structured_period: null,
         p_structured_roster_split: null,
         p_stat: null,
-        p_threshold: diffThreshold,
+        p_threshold: relationThreshold,
         p_comparison: null,
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,

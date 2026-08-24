@@ -4,6 +4,54 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Étape 2 du plan de reprise (partielle), CODÉ le 24/08/2026** -- "petits
+> gains groupés". 2 des 4 items faits, 2 requalifiés en gros lots (voir
+> plus bas) en creusant :
+>
+> 1. **OU logique entre 2 entités nommées** (relation="OR" sur COMPARISON,
+>    ex. "Hauser ou Pritchard marque au moins 3 paniers à 3 points") --
+>    P(A∪B)=P(A)+P(B)-P(A)*P(B), indépendance (même simplification déjà
+>    acceptée pour GT/DIFF_LT). Restreint à REGRESSION_STATS comme le
+>    reste de COMPARISON (PAS les stats en %, mécanisme Beta-Binomial
+>    différent -- l'exemple original du CSV, "Hauser OU Pritchard 50%+ à
+>    3 points", n'est donc PAS couvert par celui-ci, seule une version
+>    comptée l'est). Ajout d'1 seule valeur d'enum + champ `threshold`
+>    réutilisé (pas de nouveau champ) -- mesuré : +186 caractères sur le
+>    schéma compilé (8089->8275), très en dessous du seuil qui avait cassé
+>    PERIOD (+467). Testé avec 2 vrais appels Claude (cas OR + non-
+>    régression sur un cas existant) + 2 appels HTTP réels (OR calculé +
+>    garde threshold manquant).
+> 2. **Pari "fourchette"** ("Minnesota marque entre 101 et 110 points
+>    inclus") -- PAS un nouveau mécanisme : juste un exemple ajouté au
+>    prompt COMBO (2 conditions même équipe/stat, seuils OVER/UNDER
+>    opposés). Découverte utile en le testant : le TEXTE du prompt
+>    statique n'entre PAS dans le calcul de la grammaire compilée
+>    (seulement la FORME du schéma Zod) -- confirmé en mesurant AVANT/APRÈS
+>    (8275 caractères identiques les 2 fois) -- on peut étoffer les
+>    exemples du prompt librement, seule la structure du schéma est
+>    contrainte. Testé avec 1 vrai appel Claude : décompose bien en 2
+>    conditions.
+>
+> 3. **+/- comme stat pariable, REQUALIFIÉ** -- la colonne `plus_minus`
+>    est bien déjà synchronisée (vérifié), mais contrairement à ce qui
+>    était supposé, l'exposer comme stat pariable a besoin d'un VRAI
+>    modèle entraîné (aucun `plusminus.joblib` n'existe -- toutes les
+>    autres stats de STAT_CODES ont chacune leur modèle dédié). Pas fait
+>    dans cette passe -- nécessite le même travail qu'un ajout de stat
+>    "classique" (build_targets.py + entraînement), pas un simple ajout
+>    de code.
+> 4. **Comparaison volume tirs équipe (fga), REQUALIFIÉ** -- même
+>    découverte : `fga` est déjà une feature calculée pour d'autres
+>    modèles (`TEAM_COUNTING_STATS`, build_features.py) mais n'a PAS son
+>    propre modèle `team_fga.joblib` entraîné (contrairement à pts/reb/
+>    ast/fg3m/stl/blk/oreb, qui en ont chacun un) -- `fga` n'est même pas
+>    dans `TEAM_STAT_CODES` aujourd'hui. Pas fait dans cette passe, même
+>    raison que le point précédent.
+>
+> Décision à prendre avec l'utilisateur : entraîner ces 2 modèles
+> maintenant (même ampleur qu'un ajout de stat classique) ou les traiter
+> comme leurs propres petits chantiers plus tard.
+
 > **Étape 1 du plan de reprise -- "5 majeur / banc", CODÉ le 24/08/2026**
 > (répartition points, cumul 5 majeur, banc). Colonne `stats_box_scores.
 > position` (F/C/G = titulaire, "" = remplaçant) déjà renvoyée par

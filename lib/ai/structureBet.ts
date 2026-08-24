@@ -120,17 +120,21 @@ const BetStructurationSchema = z.object({
         stat: z.enum(COMPARISON_STAT_CODES as [string, ...string[]]),
       }),
       relation: z
-        .enum(["GT", "DIFF_LT"])
+        .enum(["GT", "DIFF_LT", "OR"])
         .describe(
-          "GT si le pari dit \"plus que\"/\"au moins X fois plus\". DIFF_LT si le pari porte sur un ÉCART borné " +
-            "(\"la différence est inférieure à X\"). Une ÉGALITÉ EXACTE (\"le même nombre de minutes\") n'est PAS " +
-            "gérée -- calculable=false dans ce cas.",
+          "GT si \"plus que\"/\"au moins X fois plus\". DIFF_LT pour un ÉCART borné (\"la différence est " +
+            "inférieure à X\"). OR si \"A OU B\" atteint CHACUN indépendamment un même seuil (ex. \"Hauser OU " +
+            "Pritchard marque au moins 3 paniers à 3 points\") -- gagné si au moins un des deux dépasse threshold. " +
+            "Une ÉGALITÉ EXACTE (\"le même nombre de minutes\") n'est PAS gérée -- calculable=false dans ce cas.",
         ),
       multiplier: z
         .number()
         .nullable()
         .describe("Uniquement pour relation=GT. Facteur multiplicatif du côté droit (ex. \"deux fois plus\" -> 2). null si aucun facteur mentionné."),
-      threshold: z.number().nullable().describe("Uniquement pour relation=DIFF_LT : la borne de l'écart. null sinon."),
+      threshold: z
+        .number()
+        .nullable()
+        .describe("DIFF_LT : la borne de l'écart. OR : le seuil comparé indépendamment aux 2 côtés. null pour GT."),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=COMPARISON, sinon null."),
@@ -193,20 +197,23 @@ function buildStaticSystemText(): string {
     "\n\n3. bet_subject=MATCH_TOTAL -- une stat COMBINÉE des 2 équipes, SANS viser une équipe en particulier " +
     "(ex. \"90+ rebonds au total\") :\n" +
     matchStatList +
-    "\n\n4. bet_subject=COMPARISON -- COMPARE 2 côtés entre eux (jamais contre un seuil fixe). Chaque côté est " +
-    "soit UN joueur, soit une SOMME de plusieurs joueurs (même stat pour tous), soit UNE équipe. Stats valides " +
-    "côté joueur : " + comparisonPlayerStatList + ". Stats valides côté équipe : " + comparisonTeamStatList + ". " +
-    "Exemples : \"Holmgren marque plus de points que Brooks\" (2 joueurs, GT), \"SGA marque plus que " +
-    "Booker+Brooks cumulés\" (joueur vs somme de 2, GT), \"Boston prend plus de rebonds que Philadelphie\" " +
-    "(2 équipes, GT), \"écart de points entre LeBron et Bronny inférieur à 20\" (2 joueurs, DIFF_LT), \"les Spurs " +
-    "ont au moins 2 fois plus d'interceptions que les Knicks\" (2 équipes, GT, multiplicateur).\n\n" +
+    "\n\n4. bet_subject=COMPARISON -- COMPARE 2 côtés entre eux (GT/DIFF_LT) OU chacun contre un même seuil fixe " +
+    "(OR). Chaque côté est soit UN joueur, soit une SOMME de plusieurs joueurs (même stat pour tous), soit UNE " +
+    "équipe. Stats valides côté joueur : " + comparisonPlayerStatList + ". Stats valides côté équipe : " +
+    comparisonTeamStatList + ". Exemples : \"Holmgren marque plus de points que Brooks\" (2 joueurs, GT), \"SGA " +
+    "marque plus que Booker+Brooks cumulés\" (joueur vs somme de 2, GT), \"Boston prend plus de rebonds que " +
+    "Philadelphie\" (2 équipes, GT), \"écart de points entre LeBron et Bronny inférieur à 20\" (2 joueurs, " +
+    "DIFF_LT), \"les Spurs ont au moins 2 fois plus d'interceptions que les Knicks\" (2 équipes, GT, " +
+    "multiplicateur), \"Hauser ou Pritchard marque au moins 3 paniers à 3 points\" (2 joueurs, OR, threshold=3).\n\n" +
     "5. bet_subject=COMBO -- PLUSIEURS conditions reliées par un ET (TOUTES doivent être vraies). Chaque " +
     "condition vise UN joueur, une SOMME de plusieurs joueurs (même stat), ou UNE équipe, avec sa propre stat/" +
     "seuil/comparaison. Une condition peut aussi sommer PLUSIEURS stats pour UN MÊME joueur (style PRA). " +
     "Exemples : \"Cunningham marque plus de 25 points et réalise plus de 5 passes\" (2 conditions, même joueur, " +
     "stats différentes), \"Wembanyama réalise au moins 25 points, 12 rebonds et 8 passes\" (1 condition, 3 stats " +
     "sommées pour Wembanyama), \"le cumul des points de Castle et Harper est supérieur à 40\" (1 condition, 2 " +
-    "joueurs, 1 stat sommée), \"Sengun marque au moins 23 points et prend au moins 13 rebonds\" (2 conditions). " +
+    "joueurs, 1 stat sommée), \"Sengun marque au moins 23 points et prend au moins 13 rebonds\" (2 conditions), " +
+    "\"Minnesota marque entre 101 et 110 points inclus\" (2 conditions SUR LA MÊME équipe/stat : pts>=101 OVER et " +
+    "pts<=110 UNDER -- une fourchette est toujours 2 conditions, jamais un seul seuil). " +
     "PAS géré (calculable=false) : un OU entre conditions (ex. \"triple-double AVEC 40+points ET (20+rebonds OU " +
     "20+passes)\"), et \"au moins N joueurs remplissent une condition\" (ex. \"8 joueurs marquent 11+ points\" -- " +
     "nécessite de compter sur tout le roster, pas encore géré).\n\n" +
