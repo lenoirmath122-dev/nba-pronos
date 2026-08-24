@@ -4,6 +4,72 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **% tir équipe (ft/fg/fg3), CODÉ le 24/08/2026** (5e chantier de la liste
+> des 429 paris, après overtime -- voir l'entrée overtime plus bas pour
+> l'annonce "reste : % tir équipe, puis quart-temps"). Nouveau
+> `TeamStatCode` `ft`/`fg`/`fg3`, seuls membres de `TEAM_STAT_CODES` dont le
+> `threshold` est une FRACTION 0-1 (comme `PERCENTAGE_STATS` côté joueur,
+> `statCodes.ts`) plutôt qu'une valeur comptée -- nouveau
+> `TEAM_PERCENTAGE_STATS` (`teamStatCodes.ts`) pour distinguer les deux
+> familles au moment de la résolution et de l'affichage (`Math.round(x*100)%`
+> plutôt que la valeur brute dans `resolution_reason`).
+>
+> **Résolution** (`resolveCalculableTeamStatBets()`, étendue) : ft/fg/fg3
+> n'ont PAS de colonne pré-calculée dans `stats_box_scores` (contrairement
+> aux autres `TEAM_STAT_CODES`, sommables directement) -- agrège
+> makes/attempts sur tous les joueurs de l'équipe pour CE match, puis
+> calcule le ratio. `.select()` LITTÉRAL fixe des 6 colonnes
+> (`"ftm, fta, fgm, fga, fg3m, fg3a"`), PAS un template dynamique
+> `` `${a}, ${b}` `` : le typage généré par `@supabase/supabase-js` pour
+> `.select()` analyse la chaîne littéralement, un template casse ce typage
+> (TS2352) -- piège trouvé en codant. Forme "combinée" (`total_`)
+> explicitement rejetée pour un pourcentage (jamais produite par
+> `structureAndScoreBet.ts` -- aucun modèle/mécanisme pour un pourcentage
+> combiné n'existe -- garde explicite plutôt qu'un calcul silencieusement
+> faux si ce cas apparaissait un jour).
+>
+> **Modèle Python** (`train_team_pct_model.py`, nouveau) : même principe que
+> côté joueur (`train_pct_model.py`) -- rétrécissement bayésien +
+> Binomiale/Beta-Binomiale plutôt que moyenne/écart-type normale -- à
+> l'échelle équipe. Entraîné avec succès (`team_ft_pct.joblib`/
+> `team_fg_pct.joblib`/`team_fg3_pct.joblib` générés). Nouvel endpoint
+> `/predict-team-pct` (`app.py`), même contrat que `/predict-team-stat`.
+> `compute_team_pct_proba()`/`_compute_team_pct_proba_once()`
+> (`supabase_context.py`) enveloppée dans `_compute_with_consistency_check()`
+> comme les autres modèles, par défaut (pas supposée stable).
+>
+> **Pipeline features/targets étendu** (`build_features.py`/
+> `build_targets.py`) : `fga`/`fgm`/`fta`/`ftm`/`fg3a` ajoutées à
+> `TEAM_COUNTING_STATS`/`TEAM_TARGET_STATS` (généralise automatiquement les
+> boucles déjà en place) + nouvelles colonnes rolling
+> `{stat}_pour/contre_moy5/10` et `{makes/attempts}_pour_sum10` -- perspective
+> "pour" UNIQUEMENT (pas de version "opp") : le taux de tir propre d'une
+> équipe ne dépend pas du volume de tir tenté par l'adversaire.
+>
+> **Vrai bug trouvé EN CODANT** (pas en testant), `supabase_context.py::
+> build_team_context()` : le `.agg()` qui construit `team_games` était codé
+> en dur à 7 stats (pts/reb/ast/fg3m/stl/blk/oreb une par une) au lieu
+> d'être généré depuis `TEAM_COUNTING_STATS` comme `opp_totals` juste en
+> dessous -- plafonnait SILENCIEUSEMENT dès qu'une 8e stat rejoignait la
+> liste, cassant même les endpoints DÉJÀ en prod (`/predict-team-stat`) sans
+> erreur visible dès que `fga`/`fgm`/`fta`/`ftm`/`fg3a` s'y sont ajoutées.
+> Rendu dynamique pour de bon (`agg_kwargs` construit depuis
+> `TEAM_COUNTING_STATS`).
+>
+> **Session interrompue par un freeze** juste après avoir écrit le fix
+> `.select()` littéral ci-dessus et lancé la re-vérification `tsc` -- reprise
+> dans la session suivante : `tsc`/`eslint`/`vitest` (37/37)/`next build`
+> reconfirmés propres avant de commit (`e95cc68`).
+>
+> **Contrairement aux chantiers précédents, PAS encore testé en HTTP local
+> réel ni via de vrais appels Claude Sonnet 5 sur ft/fg/fg3** -- seuls les
+> modèles ont été entraînés avec succès (joblib générés le 24/08/2026) et la
+> vérification statique (types/lint/tests/build) est propre. À faire avant
+> redéploiement, comme pour les autres chantiers.
+>
+> **Pas encore redéployé sur Cloud Run.** Reste, dans l'ordre du chantier
+> 429 paris : l'infrastructure quart-temps (le vrai gros morceau, 47 paris).
+
 > **Pertes de balle (tov), pas encore une stat pariable** -- trouvé par
 > l'utilisateur en testant le 24/08/2026 ("Les Warriors font au moins 5
 > pertes de balle" ne se calcule pas). Même situation que `oreb` avant son

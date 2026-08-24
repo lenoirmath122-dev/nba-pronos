@@ -10213,3 +10213,146 @@ Cloud Run. GAPS_OUVERTS.md mis à jour avec le détail complet du refactor
 schéma+cache, du chantier combo, des 3+1 exclusions, et la cartographie
 des 429 paris rafraîchie.
 ```
+
+## Prolongation / overtime (24/08/2026, chantier suivant)
+
+```text
+4e chantier de la liste des 429 paris, après comparaison/duel et combo.
+Nouveau `bet_subject=MATCH_TOTAL`, `match_stat="went_to_ot"` : probabilité
+directe que LE match aille en prolongation, sans seuil ni comparaison
+(même absence que dd/td côté joueur).
+
+Reformulation trouvée en scopant, AVANT de coder : le cadrage initial
+supposait qu'il fallait synchroniser tout `play_by_play` vers Supabase --
+faux. Le payload live Highlightly (`lib/nba/client.ts`,
+`state.score.homeTeam/awayTeam`) a déjà 5 valeurs au lieu de 4 en
+prolongation, jusqu'ici sommé puis jeté par `sumQuarters()`. Nouvelle
+fonction `wentToOvertime()` (même fichier) -- aucune synchro `play_by_play`
+nécessaire. Chantier ramené au tier "nouveau mécanisme réutilisable", pas
+à l'infrastructure lourde initialement crainte.
+
+Cible d'entraînement LOCALE (`build_targets.py::build_matchs_training()`)
+dérivée de `play_by_play.period` (MAX > 4 = prolongation jouée) -- jamais
+synchronisée vers Supabase et pas nécessaire de l'y synchroniser : ce
+signal ne sert QU'à l'entraînement local, le signal de PRODUCTION vient de
+`wentToOvertime()`. 0 NaN sur les 6602 lignes (couverture 100%). Taux de
+base réel : 5.01% (confirme l'estimation ~5-8%).
+
+Modèle `train_overtime_model.py` (calque de `train_home_win_model.py`) :
+`RandomForestClassifier`, PAS de `class_weight="balanced"` (leçon dd/td du
+20/08/2026 : "balanced" casse la calibration sur un événement rare).
+Calibration 0.7-3.9pp, dans la fourchette déjà acceptée pour d'autres
+modèles "difficiles" (total_points, team_blk...).
+
+Instabilité numérique reproduite ICI AUSSI, sur un CLASSIFIEUR PUR cette
+fois -- l'hypothèse de départ ("jamais observée sauf régression+norm.cdf")
+s'est avérée FAUSSE en testant : 1 appel sur 9 a renvoyé une proba
+différente lors de la vérification manuelle. `compute_overtime_proba()`
+enveloppée dans `_compute_with_consistency_check()` comme les autres
+modèles.
+
+Migration `20260824110000_matches_went_to_ot.sql` (poussée) :
+`matches.went_to_ot boolean`, peuplée par la synchro
+(`lib/sync/results.ts::processOneMatch()`). Pas de backfill de
+l'historique (nouveau type de pari, aucun pari existant n'en dépend).
+
+Testé en conditions réelles (Boston Celtics vs Los Angeles Lakers) : HTTP
+local réel (`/predict-overtime` + régression `/predict-total-points`
+bit-identique), 4 vrais appels Claude Sonnet 5, chaîne complète
+structuration→prédiction→service Python vérifiée de bout en bout.
+tsc/eslint/vitest(37/37)/next build (38 routes) propres.
+
+Pas encore redéployé sur Cloud Run (2e redéploiement nécessaire, après
+celui de duel/combo). Pas testé en conditions réelles depuis l'appli.
+GAPS_OUVERTS.md mis à jour avec le détail complet.
+```
+
+## Fix : la catégorie auto-validée reflète le vrai bet_subject (24/08/2026)
+
+```text
+Bug réel trouvé par l'utilisateur en testant "prolongation" le même jour,
+corrigé le jour même. Symptôme : un pari auto-calculable affichait
+TOUJOURS "Pari joueur" (`PLAYER_PROP`), quel que soit son vrai
+`bet_subject` -- ex. "Le match ira en prolongation" (MATCH_TOTAL, aucun
+joueur) affiché comme pari joueur.
+
+Cause : `validated_category` recopiait `proposed_category` sans jamais le
+corriger -- `proposed_category` est le défaut du formulaire de soumission
+(`DEFAULT_BET_CATEGORY="PLAYER_PROP"`, `lib/labels/bets.ts`), jamais
+aligné sur le `bet_subject` réel déterminé par l'IA (celui qui sert
+pourtant déjà à calculer la proba). Concerne TOUS les bet_subject
+auto-calculables, pas seulement `went_to_ot` -- présent depuis la 1ère
+auto-validation (Phase 5, 21/08/2026), jamais remarqué avant faute d'avoir
+eu plusieurs bet_subject différents à comparer côte à côte.
+
+Corrigé : nouveau paramètre `p_category` sur `update_bet_structuration()`
+(migration `20260824120000_bets_auto_category.sql`, poussée) --
+`validated_category = coalesce(p_category, v_proposed_category)`,
+uniquement dans la branche `calculable=true` (le repli manuel garde la
+main comme avant). `structureAndScoreBet.ts` dérive `p_category` à chacun
+des 6 points d'appel. Pas rétroactif : les paris déjà validés avant ce
+déploiement gardent leur catégorie existante, potentiellement fausse --
+hors scope de ce fix ponctuel.
+
+tsc/eslint/vitest(37/37)/next build propres. Pas encore testé de bout en
+bout via l'appli (nécessite un vrai pari soumis avec une vraie session
+utilisateur, pas testable en `service_role`). GAPS_OUVERTS.md mis à jour.
+```
+
+## Gap noté : pertes de balle (tov), pas encore une stat pariable (24/08/2026)
+
+```text
+Trouvé par l'utilisateur en testant ("Les Warriors font au moins 5 pertes
+de balle" ne se calcule pas). Même situation que `oreb` avant son chantier
+"extension facile" du 23/08/2026 : la donnée brute existe déjà localement
+(`box_scores.tov`, récupérée depuis l'API NBA, jamais exposée), mais `tov`
+est absente de `STAT_CODES` (joueur) et `TEAM_STAT_CODES`/
+`MATCH_STAT_CODES` (équipe). Décidé avec l'utilisateur : pas fait
+maintenant, à reprendre plus tard -- même patron mécanique que oreb
+(pipeline + modèle(s) + schéma IA + résolution) si repris. Noté dans
+GAPS_OUVERTS.md, pas de code touché.
+```
+
+## % tir équipe (24/08/2026, chantier suivant -- session interrompue puis reprise)
+
+```text
+5e chantier de la liste des 429 paris, après overtime (annoncé en fin de
+l'entrée overtime ci-dessus : "reste : % tir équipe, puis quart-temps").
+
+Nouveau `TeamStatCode` `ft`/`fg`/`fg3`, seuls membres dont le `threshold`
+est une FRACTION 0-1 (comme `PERCENTAGE_STATS` côté joueur) plutôt qu'une
+valeur comptée -- nouveau `TEAM_PERCENTAGE_STATS` (`teamStatCodes.ts`)
+pour distinguer les deux familles à la résolution et à l'affichage.
+
+Résolution (`resolveCalculableTeamStatBets()`, étendue) : ft/fg/fg3 n'ont
+pas de colonne pré-calculée dans `stats_box_scores` -- agrège
+makes/attempts sur tous les joueurs de l'équipe pour le match, puis
+calcule le ratio. Piège trouvé en codant : un `.select()` en template
+dynamique (`` `${a}, ${b}` ``) casse le typage généré par
+`@supabase/supabase-js` (TS2352) -- remplacé par une sélection littérale
+fixe des 6 colonnes.
+
+Modèle Python (`train_team_pct_model.py`, nouveau) : même principe que
+côté joueur -- rétrécissement bayésien + Binomiale/Beta-Binomiale, à
+l'échelle équipe. Entraîné avec succès (3 `.joblib` générés). Nouvel
+endpoint `/predict-team-pct`, même contrat que `/predict-team-stat`.
+Pipeline `build_features.py`/`build_targets.py` étendu pour fournir les
+nouvelles colonnes tentatives/sum10 nécessaires au rétrécissement.
+
+Vrai bug trouvé EN CODANT (pas en testant) dans
+`supabase_context.py::build_team_context()` : le `.agg()` était codé en
+dur à 7 stats au lieu d'être généré depuis `TEAM_COUNTING_STATS` -- 
+plafonnait SILENCIEUSEMENT dès qu'une 8e stat rejoignait la liste,
+cassant même les endpoints DÉJÀ en prod sans erreur visible. Rendu
+dynamique pour de bon.
+
+Session interrompue par un freeze juste après ce fix, avant la fin de la
+vérification -- reprise dans la session suivante : tsc/eslint/
+vitest(37/37)/next build reconfirmés propres, commit `e95cc68`.
+
+Contrairement aux chantiers précédents, PAS encore testé en HTTP local
+réel ni via de vrais appels Claude Sonnet 5 sur ft/fg/fg3 -- seuls les
+modèles ont été entraînés avec succès et la vérification statique est
+propre. Pas encore redéployé sur Cloud Run. GAPS_OUVERTS.md mis à jour
+avec une nouvelle entrée en tête détaillant le chantier.
+```
