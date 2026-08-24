@@ -683,43 +683,69 @@ def _player_current_team_id(client, player_id: int) -> int:
     return int(rows[0]["team_id"])
 
 
-def _resolve_comparison_operand(
-    client, operand: dict, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+def _resolve_weighted_operand(
+    client, kind: str, players: list[str], team_side: str | None, stats: list[str],
+    home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> tuple[float, float, dict]:
-    """Un cote d'un duel ("gauche" ou "droite") -- soit une equipe
-    (kind=TEAM, {"equipe": "domicile"|"exterieur", "stat": ...}), soit une
-    liste d'UN OU PLUSIEURS joueurs de MEME stat sommes (kind=PLAYER,
-    {"joueurs": [...], "stat": ...} -- 1 nom = joueur seul, 2+ noms =
-    cumul, memes formule EXACTE, pas de distinction de cas). Somme des
-    moyennes + combinaison des variances en supposant l'INDEPENDANCE entre
-    joueurs (approximation assumee, comme le reste du chantier duel).
+    """Somme de moyennes + combinaison des variances (INDEPENDANCE assumee)
+    sur UN OU PLUSIEURS joueurs ET/OU UNE OU PLUSIEURS stats -- generalise
+    _resolve_comparison_operand() (chantier duel, 24/08/2026) au cas
+    MULTI-STATS (24/08/2026, chantier combo, GAPS_OUVERTS.md -- ex. PRA :
+    "Wembanyama 25+ points, 12+ rebonds ET 8+ passes cumules" = 1 joueur, 3
+    stats sommees) en plus du multi-joueurs deja gere (ex. "Castle+Harper
+    > 40 points cumules" = 2 joueurs, 1 stat). Meme geste dans les 2 cas :
+    additionner les moyennes de chaque (joueur, stat), combiner les
+    variances -- pas de distinction de code entre "1 vs plusieurs".
+
+    kind="TEAM" : team_side ("domicile"/"exterieur"), players ignore.
+    kind="PLAYER" : players (1+ noms), team_side ignore.
 
     home_team_id/away_team_id : les 2 VRAIES equipes du match vise (deja
-    resolues cote appelant, comme pour /predict-team-stat) -- necessaires
-    ici pour deduire le contexte domicile/exterieur de chaque operande
-    (equipe ou joueur)."""
-    stat = operand["stat"]
-
-    if operand["kind"] == "TEAM":
-        is_home = operand["equipe"] == "domicile"
+    resolues cote appelant) -- necessaires pour deduire le contexte
+    domicile/exterieur de chaque operande (equipe ou joueur)."""
+    if kind == "TEAM":
+        is_home = team_side == "domicile"
         team_id = home_team_id if is_home else away_team_id
         opponent_id = away_team_id if is_home else home_team_id
-        mean, scale = _team_stat_mean_scale(client, stat, team_id, opponent_id, is_home, as_of_date, season=season)
-        return mean, scale, {"team_id": team_id}
+        means, variances = [], []
+        for stat in stats:
+            mean, scale = _team_stat_mean_scale(client, stat, team_id, opponent_id, is_home, as_of_date, season=season)
+            means.append(mean)
+            variances.append(scale ** 2)
+        return sum(means), math.sqrt(sum(variances)), {"team_id": team_id}
 
     means, variances, player_ids = [], [], []
-    for name in operand["joueurs"]:
+    for name in players:
         player_id, _ = find_player(client, name)
         player_team_id = _player_current_team_id(client, player_id)
         if player_team_id not in (home_team_id, away_team_id):
             raise ValueError(f"\"{name}\" ne joue pour aucune des 2 equipes de ce match.")
         is_home = 1 if player_team_id == home_team_id else 0
         opponent_id = away_team_id if is_home else home_team_id
-        mean, scale = _player_stat_mean_scale(client, player_id, stat, opponent_id=opponent_id, is_home=is_home)
-        means.append(mean)
-        variances.append(scale ** 2)
+        for stat in stats:
+            mean, scale = _player_stat_mean_scale(client, player_id, stat, opponent_id=opponent_id, is_home=is_home)
+            means.append(mean)
+            variances.append(scale ** 2)
         player_ids.append(player_id)
     return sum(means), math.sqrt(sum(variances)), {"player_ids": player_ids}
+
+
+def _resolve_comparison_operand(
+    client, operand: dict, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> tuple[float, float, dict]:
+    """Un cote d'un duel ("gauche" ou "droite") -- soit une equipe
+    (kind=TEAM, {"equipe": "domicile"|"exterieur", "stat": ...}), soit une
+    liste d'UN OU PLUSIEURS joueurs de MEME stat sommes (kind=PLAYER,
+    {"joueurs": [...], "stat": ...}). Fine enveloppe de
+    _resolve_weighted_operand() (cas particulier : UNE seule stat) --
+    generalise au multi-stats pour le chantier combo, cf. sa docstring."""
+    if operand["kind"] == "TEAM":
+        return _resolve_weighted_operand(
+            client, "TEAM", [], operand["equipe"], [operand["stat"]], home_team_id, away_team_id, as_of_date, season,
+        )
+    return _resolve_weighted_operand(
+        client, "PLAYER", operand["joueurs"], None, [operand["stat"]], home_team_id, away_team_id, as_of_date, season,
+    )
 
 
 def _compute_comparison_proba_once(
@@ -764,6 +790,115 @@ def compute_comparison_proba(*args, **kwargs) -> dict:
     """Enveloppe _compute_comparison_proba_once() d'une verification de
     coherence -- voir CONSISTENCY_CHECK_NOTE."""
     return _compute_with_consistency_check(lambda: _compute_comparison_proba_once(*args, **kwargs))
+
+
+def _condition_proba(
+    client, condition: dict, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> tuple[float, dict]:
+    """P(1 condition d'un pari COMBO) + metadonnees pour stockage
+    (24/08/2026, GAPS_OUVERTS.md, chantier combo). condition :
+    {"kind": "PLAYER"|"TEAM", "joueurs": [...], "equipe":
+    "domicile"|"exterieur", "stats": [...], "seuil": float|None,
+    "comparison": "OVER"|"UNDER"}.
+
+    2 chemins selon le nombre d'entites/stats impliquees :
+    - SIMPLE (1 entite, 1 stat) : reutilise TEL QUEL compute_proba()/
+      _compute_team_stat_proba_once() -- couverture complete (regression,
+      classifier dd/td, pourcentage ft/fg/fg3), aucune restriction, aucun
+      nouveau code de calcul.
+    - SOMME (plusieurs entites et/ou plusieurs stats, ex. PRA "25pts+
+      12reb+8pas" ou cumul multi-joueurs "Castle+Harper>40pts") :
+      _resolve_weighted_operand() (moyenne/variance combinees, meme
+      mecanisme que le chantier duel) + norm.cdf -- restreint aux stats
+      COMPTEES (REGRESSION_STATS cote joueur) : pas de moyenne pour un
+      pourcentage/classifieur."""
+    kind = condition["kind"]
+    stats = condition["stats"]
+    seuil = condition.get("seuil")
+    comparison = condition["comparison"]
+    players = condition.get("joueurs") or []
+
+    is_simple = (kind == "TEAM" and len(stats) == 1) or (kind == "PLAYER" and len(players) == 1 and len(stats) == 1)
+
+    if is_simple:
+        stat = stats[0]
+        if kind == "TEAM":
+            is_home = condition["equipe"] == "domicile"
+            team_id = home_team_id if is_home else away_team_id
+            opponent_id = away_team_id if is_home else home_team_id
+            result = _compute_team_stat_proba_once(
+                client, stat, team_id, opponent_id, is_home, seuil, comparison, as_of_date, season=season,
+            )
+            return result["proba"], {"kind": "TEAM", "team_id": team_id, "stats": stats}
+
+        name = players[0]
+        player_id, _ = find_player(client, name)
+        player_team_id = _player_current_team_id(client, player_id)
+        if player_team_id not in (home_team_id, away_team_id):
+            raise ValueError(f"\"{name}\" ne joue pour aucune des 2 equipes de ce match.")
+        is_home = 1 if player_team_id == home_team_id else 0
+        opponent_id = away_team_id if is_home else home_team_id
+        result = compute_proba(client, player_id, stat, seuil, opponent_id=opponent_id, is_home=is_home)
+        proba = result["proba"]
+        if comparison == "UNDER" and stat not in CLASSIFIER_STATS:
+            proba = 1 - proba
+        return proba, {"kind": "PLAYER", "player_ids": [player_id], "stats": stats}
+
+    # Cas SOMME -- plusieurs entites et/ou plusieurs stats.
+    for s in stats:
+        if s not in REGRESSION_STATS:
+            raise ValueError(
+                f"stat non supportee pour une condition combo a plusieurs entites/stats : {s} "
+                f"(seules les stats comptees le sont : {sorted(REGRESSION_STATS)})"
+            )
+    if seuil is None:
+        raise ValueError("seuil obligatoire pour une condition combo somme (pas de forme dd/td multi-entites).")
+    team_side = condition.get("equipe") if kind == "TEAM" else None
+    mean, scale, meta = _resolve_weighted_operand(
+        client, kind, players, team_side, stats, home_team_id, away_team_id, as_of_date, season,
+    )
+    proba_over = 1 - norm.cdf(seuil, loc=mean, scale=max(scale, MIN_SCALE))
+    proba = proba_over if comparison == "OVER" else 1 - proba_over
+    # "kind" ajoute ici (pas dans _resolve_weighted_operand()) -- forme de
+    # retour uniforme avec la branche SIMPLE ci-dessus, cote appelant
+    # (statsService.ts) n'a pas besoin de deviner kind depuis les cles
+    # presentes (player_ids vs team_id).
+    meta["kind"] = kind
+    meta["stats"] = stats
+    return proba, meta
+
+
+def _compute_combo_proba_once(
+    client, conditions: list[dict], home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> dict:
+    """Pari COMBO (24/08/2026, GAPS_OUVERTS.md) -- ET de N conditions
+    INDEPENDANTES (P(combo) = produit des P(condition_i)), chaque condition
+    resolue via _condition_proba() (simple ou somme selon son nombre
+    d'entites/stats). INDEPENDANCE entre conditions assumee (aucune
+    correlation modelisee -- ex. une mauvaise soiree au tir correle
+    naturellement plusieurs stats du meme joueur) -- meme simplification
+    que le reste du chantier duel/combo, documentee explicitement plutot
+    que cachee. Portee volontairement limitee a un ET simple (pas de OU
+    imbrique, pas de comptage sur tout le roster) -- cf. GAPS_OUVERTS.md
+    pour les exclusions et leur raison."""
+    proba = 1.0
+    conditions_meta = []
+    for condition in conditions:
+        p, meta = _condition_proba(client, condition, home_team_id, away_team_id, as_of_date, season=season)
+        proba *= p
+        conditions_meta.append(meta)
+
+    return {
+        "proba": float(proba),
+        "detail": f"{len(conditions)} conditions combinees (independance assumee)",
+        "conditions_meta": conditions_meta,
+    }
+
+
+def compute_combo_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_combo_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_combo_proba_once(*args, **kwargs))
 
 
 def _compute_series_stat_proba_once(

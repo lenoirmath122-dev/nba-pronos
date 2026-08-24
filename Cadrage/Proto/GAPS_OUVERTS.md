@@ -4,6 +4,108 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Combo multi-conditions, CODÉ le 24/08/2026** (3e chantier de la liste
+> des 429 paris, après comparaison/duel -- voir 2 entrées plus bas pour les
+> 4 paliers de faisabilité). Nouveau `bet_subject=COMBO` : ET de N
+> conditions (TOUTES doivent être vraies), chaque condition étant un
+> joueur/somme de joueurs/équipe + 1 ou plusieurs stats sommées + seuil +
+> comparaison.
+>
+> **Même jour : refactor du schéma IA en objets IMBRIQUÉS** (`player`/
+> `team_stat`/`match_total`/`comparison_bet`/`combo_bet`, un par
+> `bet_subject`, au lieu de champs à plat à la racine) + **cache de
+> prompt** -- décidés ensemble AVANT de coder combo (voir échange avec
+> l'utilisateur), appliqués aux 4 `bet_subject` existants ET au nouveau :
+> - Motif : le schéma plat était déjà à 13 champs nullable/union après le
+>   chantier duel (compressé dans l'urgence depuis 19, rejeté une fois par
+>   l'API -- "too many parameters with union types... limit: 16"). COMBO a
+>   besoin d'un TABLEAU de conditions (inexprimable proprement à plat) --
+>   le même mur allait revenir, et se reproduirait à chaque futur
+>   `bet_subject`.
+> - Vérifié empiriquement (vrais appels API) avant de choisir cette
+>   direction : un objet NULLABLE à la racine ne compte que pour 1 dans la
+>   limite, quel que soit le nombre de champs NON-nullable à l'intérieur.
+>   Résultat : 6 champs racine au lieu de 13+, marge pour plusieurs
+>   chantiers futurs (période, etc.). Bénéfice collatéral : les champs
+>   surchargés faute de place (`threshold` servant à la fois de seuil, de
+>   multiplicateur GT et de borne DIFF_LT ; `comparison` portant OVER/UNDER
+>   ET GT/DIFF_LT) retrouvent chacun leur propre champ nommé.
+> - **Cache de prompt** (`cache_control: {type: "ephemeral"}` sur le bloc
+>   STATIQUE du system prompt -- instructions + listes de stats + LE SCHÉMA,
+>   automatiquement inclus par l'API sans cache_control séparé sur
+>   `output_config`, vérifié empiriquement) : TTL 5 minutes (défaut SDK),
+>   choisi explicitement par l'utilisateur malgré des horaires de paris
+>   étalés sur la journée ("on part sur le cache 5 min et on verra après"
+>   -- 1h envisagé, discuté, reporté). Vérifié sur 12 vrais appels
+>   consécutifs (cf. plus bas) : 1er appel écrit 4688 tokens en cache,
+>   les 11 suivants les LISENT (0 nouvelle écriture), quel que soit le
+>   match/pari -- confirme le calcul théorique de ~80% de réduction du
+>   coût d'entrée effectif.
+>
+> **Service Python** (`supabase_context.py`) : `_condition_proba()` (1
+> condition) dispatché en 2 chemins -- SIMPLE (1 entité, 1 stat) réutilise
+> TEL QUEL `compute_proba()`/`_compute_team_stat_proba_once()` (couverture
+> complète : régression, dd/td, pourcentages ft/fg/fg3, AUCUN nouveau code
+> de calcul) ; SOMME (2+ entités et/ou 2+ stats, ex. PRA "25pts+12reb+8pas"
+> ou cumul multi-joueurs) réutilise `_resolve_weighted_operand()`, généralisé
+> depuis `_resolve_comparison_operand()` (chantier duel) pour sommer
+> PLUSIEURS stats en plus de PLUSIEURS joueurs -- restreint aux stats
+> comptées (REGRESSION_STATS), même raison que le duel. `_compute_combo_proba_once()` :
+> produit des probas de chaque condition (INDÉPENDANCE entre conditions
+> assumée -- documentée, pas cachée). Nouvel endpoint `/predict-combo`.
+>
+> **Résolution** (`resolveCalculableComboBets()`, nouveau, migration
+> `20260824100000_bets_structured_combo.sql`) : même dispatch simple/somme
+> que côté prédiction -- une condition simple réutilise TEL QUEL
+> `computeOutcome()` (déjà éprouvée, gère dd/td/pourcentages/comptées),
+> une condition somme additionne les colonnes brutes. Court-circuite dès
+> la 1ère condition FAUSSE (combo perdu, pas besoin d'attendre les stats
+> des conditions suivantes).
+>
+> **3 cas exclus explicitement** (comme le duel, pour qu'on les reprenne
+> facilement) :
+> 1. **Conditions ET/OU imbriquées** (ex. "triple-double AVEC 40pts ET
+>    (20reb OU 20pas)") -- extension naturelle du MÊME mécanisme combo
+>    (schéma/logique à étendre, pas un système différent) -- à reprendre
+>    si ça s'avère fréquent en usage réel.
+> 2. **"Au moins N joueurs remplissent une condition"** (comptage sur tout
+>    le roster) -- regroupé avec "meilleur marqueur du match" (déjà
+>    reporté au chantier duel) : même mécanique de simulation sur tout le
+>    roster nécessaire pour les deux, à traiter ensemble.
+> 3. **Titulaires / % tir équipe** -- toujours bloqués par des données
+>    manquantes (colonne titulaire absente, agrégation tirs équipe non
+>    construite), chantier d'infrastructure à part, indépendant de
+>    combo/duel.
+>
+> **4e cas trouvé EN TESTANT (pas prévu au cadrage)** : un joueur nommé
+> dans un pari COMPARISON ou COMBO mais absent des 2 équipes du match fait
+> tomber calculable=false (repli manuel), alors qu'un pari PLAYER simple
+> dans le même cas reste calculable avec proba forcée à 0% (mécanisme
+> `not_in_match`, décidé le 21/08/2026). Le mécanisme `not_in_match`
+> n'existe QUE sur `player` -- ni `comparison_bet`, ni `combo_bet` n'ont
+> d'équivalent pour signaler QUEL joueur précis est hors match. Comportement
+> actuel SÛR (repli manuel, jamais un résultat faux) mais sous-optimal
+> (un cas auto-calculable à 0%/100% de façon triviale retombe sur la
+> validation manuelle). Concerne aussi COMPARISON (chantier précédent,
+> jamais remarqué faute d'avoir testé ce cas précis à l'époque). Pas
+> corrigé maintenant (ajouterait des champs juste après avoir compressé le
+> schéma) -- à soupeser lors d'un futur passage sur COMPARISON/COMBO :
+> soit un champ `not_in_match_players: string[]` par objet, soit une
+> vérification côté `structureAndScoreBet.ts` (lister tous les joueurs
+> nommés, vérifier leur équipe via le même mécanisme que PLAYER, avant même
+> d'appeler le service).
+>
+> Testé en conditions réelles à chaque étape (Lakers vs Celtics) : appels
+> HTTP locaux réels sur `/predict-combo` (simple, PRA, cumul multi-joueurs,
+> dd/td mêlé à une stat comptée, mix joueur+équipe, rejet stat non
+> supportée), régression `/predict-comparison` bit-identique. 12 vrais
+> appels Claude Sonnet 5 couvrant les 5 `bet_subject` + les 2 exclusions +
+> la vérification du cache (résultats ci-dessus). `tsc`/`eslint`/
+> `vitest`(37/37)/`next build` propres.
+>
+> **Pas encore redéployé sur Cloud Run. Pas testé en conditions réelles
+> depuis l'appli.**
+
 > **Comparaison/duel, CODÉ le 24/08/2026** (2e chantier de la liste des 429
 > paris, après les extensions "faciles" -- voir entrée suivante pour le
 > détail des 4 paliers de faisabilité). Nouveau `bet_subject=COMPARISON` :
@@ -90,10 +192,11 @@
 >   voir entrée suivante)** : `team_pts`, `fga`/`fg3a` (tentatives joueur),
 >   `oreb` (rebonds offensifs, 3 formes).
 > - **Nouveau mécanisme réutilisable** : comparaison/duel (36 paris, P(A>B)
->   entre 2 entités -- **duel simple CODÉ le 24/08/2026, voir entrée
->   au-dessus** ; "meilleur marqueur du match" = vs le reste des joueurs,
->   PAS ENCORE FAIT), combos multi-conditions (PRA, double-condition,
->   cumuls multi-joueurs, ~30 paris, PAS ENCORE FAIT),
+>   entre 2 entités -- **duel simple CODÉ le 24/08/2026** ; "meilleur
+>   marqueur du match" = vs le reste des joueurs, PAS ENCORE FAIT), combos
+>   multi-conditions (PRA, double-condition, cumuls multi-joueurs, ~30
+>   paris -- **ET simple CODÉ le 24/08/2026, voir 2 entrées au-dessus** ;
+>   OU imbriqué et comptage sur le roster PAS ENCORE FAIT),
 >   % tir équipe (7 paris, agrégation attempts/makes équipe à construire),
 >   prolongation (7 paris, classifieur binaire à construire depuis
 >   `play_by_play.period`, jamais synchronisé vers Supabase actuellement).

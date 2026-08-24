@@ -359,3 +359,83 @@ export async function predictComparison(
     return null;
   }
 }
+
+/** Une condition d'un pari COMBO (24/08/2026, GAPS_OUVERTS.md, chantier
+ *  combo -- ET de N conditions). `stats` : 1+ codes -- 1 seul = condition
+ *  normale, 2+ = somme de plusieurs stats pour LE MÊME joueur (style PRA).
+ *  Même contrat kind/players/team que DuelOperand. */
+export type ComboCondition = {
+  kind: "PLAYER" | "TEAM";
+  players?: string[];
+  team?: "domicile" | "exterieur";
+  stats: string[];
+  threshold: number | null;
+  comparison: "OVER" | "UNDER";
+};
+
+export type ComboConditionMeta = {
+  kind: "PLAYER" | "TEAM";
+  playerIds: number[] | null;
+  teamId: number | null;
+  stats: string[];
+};
+
+export type ComboPredictResult = {
+  proba: number;
+  /** Ids/équipes REELS résolus côté service pour CHAQUE condition, dans le
+   *  même ordre que `conditions` -- capturés pour être stockés dans
+   *  bets.structured_combo, jamais re-matchés par nom plus tard (même
+   *  leçon que structured_player_id/structured_duel). */
+  conditionsMeta: ComboConditionMeta[];
+};
+
+/**
+ * Pari COMBO (24/08/2026, GAPS_OUVERTS.md) -- ET de N conditions
+ * INDEPENDANTES (P(combo) = produit des P(condition_i)). Comme
+ * predictComparison(), aucune notion OVER/UNDER au niveau du pari entier --
+ * chaque condition porte la sienne.
+ */
+export async function predictCombo(
+  conditions: ComboCondition[],
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<ComboPredictResult | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-combo`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conditions: conditions.map((c) => ({
+          kind: c.kind,
+          joueurs: c.players,
+          equipe: c.team,
+          stats: c.stats,
+          seuil: c.threshold,
+          comparison: c.comparison,
+        })),
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number" || !Array.isArray(data.conditions_meta)) return null;
+    const conditionsMeta: ComboConditionMeta[] = data.conditions_meta.map(
+      (m: { kind: "PLAYER" | "TEAM"; player_ids?: number[]; team_id?: number; stats: string[] }) => ({
+        kind: m.kind,
+        playerIds: Array.isArray(m.player_ids) ? m.player_ids : null,
+        teamId: typeof m.team_id === "number" ? m.team_id : null,
+        stats: m.stats,
+      }),
+    );
+    return { proba: data.proba, conditionsMeta };
+  } catch {
+    return null;
+  }
+}

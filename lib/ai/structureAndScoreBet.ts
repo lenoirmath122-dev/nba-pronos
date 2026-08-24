@@ -8,7 +8,9 @@ import {
   predictTotalTeamStat,
   predictTeamStat,
   predictComparison,
+  predictCombo,
   type DuelOperand,
+  type ComboCondition,
 } from "./statsService";
 import type { TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
@@ -23,6 +25,12 @@ import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comp
 // est avalée silencieusement : le pari reste soumis normalement, avec le
 // mécanisme manuel existant (difficulté proposée/validée à la main) comme
 // seul repli, jamais bloquant pour le joueur.
+//
+// Champs de structuration lus en objets IMBRIQUÉS (structuration.player/
+// team_stat/match_total/comparison_bet/combo_bet) depuis le refactor du
+// 24/08/2026 (chantier combo, GAPS_OUVERTS.md) -- cf. structureBet.ts pour
+// le POURQUOI (limite API de 16 champs nullable/union par schéma de sortie
+// structurée, dépassée à plat).
 
 /** Bug réel corrigé le 21/08/2026 : sans le contexte du match, l'IA validait
  *  des paris sur des joueurs qui ne jouent même pas dans le match visé
@@ -132,6 +140,7 @@ export async function structureAndScoreBet(
         p_structured_player_id: null,
         p_structured_team_id: null,
         p_structured_duel: null,
+        p_structured_combo: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -154,18 +163,13 @@ export async function structureAndScoreBet(
 
     // Pari MATCH_TOTAL (pièce (a) du chantier, GAPS_OUVERTS.md) -- 1er pari
     // SANS JOUEUR : score combiné du match. MATCH uniquement pour l'instant
-    // (pas SÉRIE -- décidé avec l'utilisateur, viendra dans un 2e temps,
-    // même schéma de reprise que a0 -> pièces c/d/e). Branche entièrement
-    // séparée de la suite (spécifique aux paris JOUEUR) : aucun joueur à
-    // résoudre, aucune notion d'avantage du terrain sur une série.
+    // (pas SÉRIE -- décidé avec l'utilisateur, viendra dans un 2e temps).
+    // Branche entièrement séparée de la suite (spécifique aux paris
+    // JOUEUR) : aucun joueur à résoudre, aucune notion d'avantage du
+    // terrain sur une série.
     if (structuration.bet_subject === "MATCH_TOTAL") {
-      if (
-        scope !== "MATCH" ||
-        !matchId ||
-        !structuration.match_stat ||
-        structuration.threshold === null ||
-        (structuration.comparison !== "OVER" && structuration.comparison !== "UNDER")
-      ) {
+      const matchTotal = structuration.match_total;
+      if (scope !== "MATCH" || !matchId || !matchTotal) {
         await markNotCalculable();
         return;
       }
@@ -178,20 +182,20 @@ export async function structureAndScoreBet(
       // un pari série) -- un match précis a une vraie date connue, plus
       // fidèle pour le calcul de repos/contexte équipe.
       const prediction =
-        structuration.match_stat === "total_points"
+        matchTotal.stat === "total_points"
           ? await predictTotalPoints(
               matchTeams.homeTeamName,
               matchTeams.awayTeamName,
-              structuration.threshold,
-              structuration.comparison,
+              matchTotal.threshold,
+              matchTotal.comparison,
               matchTeams.scheduledAt.slice(0, 10),
             )
           : await predictTotalTeamStat(
-              structuration.match_stat.slice("total_".length) as TeamStatCode,
+              matchTotal.stat.slice("total_".length) as TeamStatCode,
               matchTeams.homeTeamName,
               matchTeams.awayTeamName,
-              structuration.threshold,
-              structuration.comparison,
+              matchTotal.threshold,
+              matchTotal.comparison,
               matchTeams.scheduledAt.slice(0, 10),
             );
       if (!prediction) {
@@ -204,9 +208,10 @@ export async function structureAndScoreBet(
         p_structured_player_id: null,
         p_structured_team_id: null,
         p_structured_duel: null,
-        p_stat: structuration.match_stat,
-        p_threshold: structuration.threshold,
-        p_comparison: structuration.comparison,
+        p_structured_combo: null,
+        p_stat: matchTotal.stat,
+        p_threshold: matchTotal.threshold,
+        p_comparison: matchTotal.comparison,
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
@@ -218,21 +223,12 @@ export async function structureAndScoreBet(
     // équipe précise sur CE match, perspective "own"/"opp" (pas domicile/
     // extérieur) -- MATCH uniquement, même limite que MATCH_TOTAL ci-dessus.
     if (structuration.bet_subject === "TEAM_STAT") {
-      if (
-        scope !== "MATCH" ||
-        !matchId ||
-        !structuration.team_stat ||
-        !structuration.team_stat_team ||
-        structuration.threshold === null ||
-        (structuration.comparison !== "OVER" && structuration.comparison !== "UNDER")
-      ) {
+      const teamStat = structuration.team_stat;
+      if (scope !== "MATCH" || !matchId || !teamStat) {
         await markNotCalculable();
         return;
       }
-      const teamName =
-        structuration.team_stat_team === "team1" ? teamNames?.[0]
-        : structuration.team_stat_team === "team2" ? teamNames?.[1]
-        : null;
+      const teamName = teamStat.team === "team1" ? teamNames?.[0] : teamNames?.[1];
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!teamName || !matchTeams || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
         await markNotCalculable();
@@ -242,12 +238,12 @@ export async function structureAndScoreBet(
       const opponentName = isHome ? matchTeams.awayTeamName : matchTeams.homeTeamName;
       const teamId = isHome ? matchTeams.homeTeamId : matchTeams.awayTeamId;
       const prediction = await predictTeamStat(
-        structuration.team_stat as TeamStatCode,
+        teamStat.stat as TeamStatCode,
         teamName,
         opponentName,
         isHome,
-        structuration.threshold,
-        structuration.comparison,
+        teamStat.threshold,
+        teamStat.comparison,
         matchTeams.scheduledAt.slice(0, 10),
       );
       if (!prediction) {
@@ -260,9 +256,10 @@ export async function structureAndScoreBet(
         p_structured_player_id: null,
         p_structured_team_id: teamId,
         p_structured_duel: null,
-        p_stat: structuration.team_stat,
-        p_threshold: structuration.threshold,
-        p_comparison: structuration.comparison,
+        p_structured_combo: null,
+        p_stat: teamStat.stat,
+        p_threshold: teamStat.threshold,
+        p_comparison: teamStat.comparison,
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
@@ -273,24 +270,10 @@ export async function structureAndScoreBet(
     // Pari COMPARISON (24/08/2026, GAPS_OUVERTS.md, chantier comparaison/
     // duel) -- compare 2 côtés entre eux (jamais contre un seuil fixe, sauf
     // DIFF_LT qui borne un ÉCART). MATCH uniquement, même limite que
-    // TEAM_STAT/MATCH_TOTAL ci-dessus. relation/multiplicateur portés par
-    // comparison/threshold (PAS des champs dédiés -- limite API de 16
-    // champs nullable/union par schéma de sortie structurée, dépassée à 19
-    // avec des champs séparés, cf. structureBet.ts).
+    // TEAM_STAT/MATCH_TOTAL ci-dessus.
     if (structuration.bet_subject === "COMPARISON") {
-      const relation = structuration.comparison === "GT" || structuration.comparison === "DIFF_LT"
-        ? structuration.comparison
-        : null;
-      if (
-        scope !== "MATCH" ||
-        !matchId ||
-        !structuration.comparison_left_kind ||
-        !structuration.comparison_left_stat ||
-        !structuration.comparison_right_kind ||
-        !structuration.comparison_right_stat ||
-        !relation ||
-        (relation === "DIFF_LT" && structuration.threshold === null)
-      ) {
+      const comparisonBet = structuration.comparison_bet;
+      if (scope !== "MATCH" || !matchId || !comparisonBet) {
         await markNotCalculable();
         return;
       }
@@ -312,46 +295,34 @@ export async function structureAndScoreBet(
         return null;
       };
 
-      const buildOperand = (
-        kind: "PLAYER" | "team1" | "team2" | null,
-        players: string[],
-        stat: string | null,
-      ): DuelOperand | null => {
-        if (!kind || !stat) return null;
-        if (kind === "PLAYER") {
-          if (players.length === 0 || !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(stat)) return null;
-          return { kind: "PLAYER", players, stat };
+      const buildOperand = (side: { kind: "PLAYER" | "team1" | "team2"; players: string[]; stat: string }): DuelOperand | null => {
+        if (side.kind === "PLAYER") {
+          if (side.players.length === 0 || !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(side.stat)) return null;
+          return { kind: "PLAYER", players: side.players, stat: side.stat };
         }
-        const side = resolveSide(kind);
-        if (!side || !(COMPARISON_TEAM_STAT_CODES as string[]).includes(stat)) return null;
-        return { kind: "TEAM", team: side, stat };
+        const resolvedSide = resolveSide(side.kind);
+        if (!resolvedSide || !(COMPARISON_TEAM_STAT_CODES as string[]).includes(side.stat)) return null;
+        return { kind: "TEAM", team: resolvedSide, stat: side.stat };
       };
 
-      const left = buildOperand(
-        structuration.comparison_left_kind,
-        structuration.comparison_left_players,
-        structuration.comparison_left_stat,
-      );
-      const right = buildOperand(
-        structuration.comparison_right_kind,
-        structuration.comparison_right_players,
-        structuration.comparison_right_stat,
-      );
+      const left = buildOperand(comparisonBet.left);
+      const right = buildOperand(comparisonBet.right);
       if (!left || !right) {
         await markNotCalculable();
         return;
       }
 
-      // threshold est overloadé selon la relation (cf. structureBet.ts) :
-      // multiplicateur pour GT (1 par défaut si absent), borne d'écart pour
-      // DIFF_LT (déjà validé non-null par le garde plus haut).
-      const multiplier = relation === "GT" ? (structuration.threshold ?? 1) : 1;
-      const diffThreshold = relation === "DIFF_LT" ? structuration.threshold : null;
+      const multiplier = comparisonBet.multiplier ?? 1;
+      const diffThreshold = comparisonBet.relation === "DIFF_LT" ? comparisonBet.threshold : null;
+      if (comparisonBet.relation === "DIFF_LT" && diffThreshold === null) {
+        await markNotCalculable();
+        return;
+      }
 
       const prediction = await predictComparison(
         left,
         right,
-        relation,
+        comparisonBet.relation,
         multiplier,
         diffThreshold,
         matchTeams.homeTeamName,
@@ -378,7 +349,7 @@ export async function structureAndScoreBet(
       const structuredDuel = {
         left: operandMeta(left, prediction.leftPlayerIds),
         right: operandMeta(right, prediction.rightPlayerIds),
-        relation,
+        relation: comparisonBet.relation,
         multiplier,
       };
 
@@ -388,6 +359,7 @@ export async function structureAndScoreBet(
         p_structured_player_id: null,
         p_structured_team_id: null,
         p_structured_duel: structuredDuel,
+        p_structured_combo: null,
         p_stat: null,
         p_threshold: diffThreshold,
         p_comparison: null,
@@ -398,9 +370,114 @@ export async function structureAndScoreBet(
       return;
     }
 
-    // bet_subject === "PLAYER" à partir d'ici (comportement inchangé,
-    // seul le nom du champ change : stat -> player_stat, cf. structureBet.ts).
-    if (!structuration.player_name || !structuration.player_stat) {
+    // Pari COMBO (24/08/2026, GAPS_OUVERTS.md, chantier combo) -- ET de N
+    // conditions (TOUTES doivent être vraies), chacune joueur/somme de
+    // joueurs/équipe + 1+ stats sommées + seuil + comparaison. MATCH
+    // uniquement, même limite que les branches ci-dessus. Portée
+    // volontairement limitée à un ET simple -- pas de OU imbriqué, pas de
+    // comptage sur tout le roster (cf. GAPS_OUVERTS.md pour ces exclusions
+    // et où elles seront reprises).
+    if (structuration.bet_subject === "COMBO") {
+      const comboBet = structuration.combo_bet;
+      if (scope !== "MATCH" || !matchId || !comboBet || comboBet.conditions.length === 0) {
+        await markNotCalculable();
+        return;
+      }
+
+      const matchTeams = await resolveMatchTeams(supabase, matchId);
+      if (!matchTeams) {
+        await markNotCalculable();
+        return;
+      }
+
+      const resolveSide = (kind: "team1" | "team2"): "domicile" | "exterieur" | null => {
+        const name = kind === "team1" ? teamNames?.[0] : teamNames?.[1];
+        if (!name) return null;
+        if (name === matchTeams.homeTeamName) return "domicile";
+        if (name === matchTeams.awayTeamName) return "exterieur";
+        return null;
+      };
+
+      // Reconstruit chaque condition en ComboCondition (kind/team résolus
+      // en "domicile"/"exterieur"), avec les MÊMES règles de validité que
+      // côté service (une condition "somme" -- 2+ joueurs et/ou 2+ stats --
+      // est restreinte aux stats comptées ; une condition "simple" accepte
+      // toute STAT_CODES, y compris dd/td) -- vérifié ici aussi pour éviter
+      // un aller-retour HTTP voué à l'échec.
+      const conditions: ComboCondition[] = [];
+      for (const c of comboBet.conditions) {
+        if (c.stats.length === 0) {
+          await markNotCalculable();
+          return;
+        }
+        if (c.kind === "PLAYER") {
+          if (c.players.length === 0) {
+            await markNotCalculable();
+            return;
+          }
+          const isSimple = c.players.length === 1 && c.stats.length === 1;
+          if (!isSimple && c.stats.some((s) => !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(s))) {
+            await markNotCalculable();
+            return;
+          }
+          const noThreshold = isSimple && NO_THRESHOLD_STATS.has(c.stats[0] as StatCode);
+          if (!noThreshold && c.threshold === null) {
+            await markNotCalculable();
+            return;
+          }
+          conditions.push({ kind: "PLAYER", players: c.players, stats: c.stats, threshold: c.threshold, comparison: c.comparison });
+        } else {
+          const side = resolveSide(c.kind);
+          if (!side || c.threshold === null || c.stats.some((s) => !(COMPARISON_TEAM_STAT_CODES as string[]).includes(s))) {
+            await markNotCalculable();
+            return;
+          }
+          conditions.push({ kind: "TEAM", team: side, stats: c.stats, threshold: c.threshold, comparison: c.comparison });
+        }
+      }
+
+      const prediction = await predictCombo(conditions, matchTeams.homeTeamName, matchTeams.awayTeamName, matchTeams.scheduledAt.slice(0, 10));
+      if (!prediction || prediction.conditionsMeta.length !== conditions.length) {
+        await markNotCalculable();
+        return;
+      }
+
+      // Persiste les ids/équipes REELS (memes lecon que COMPARISON
+      // ci-dessus) -- team_id derive de `conditions` (deja les VRAIES
+      // equipes cote appelant), pas de la reponse du service.
+      const structuredCombo = {
+        conditions: prediction.conditionsMeta.map((meta, i) => ({
+          kind: meta.kind,
+          player_ids: meta.playerIds,
+          team_id: conditions[i].kind === "TEAM"
+            ? (conditions[i].team === "domicile" ? matchTeams.homeTeamId : matchTeams.awayTeamId)
+            : null,
+          stats: meta.stats,
+          threshold: comboBet.conditions[i].threshold,
+          comparison: comboBet.conditions[i].comparison,
+        })),
+      };
+
+      await supabase.rpc("update_bet_structuration", {
+        p_bet_id: betId,
+        p_structured_player_name: null,
+        p_structured_player_id: null,
+        p_structured_team_id: null,
+        p_structured_duel: null,
+        p_structured_combo: structuredCombo,
+        p_stat: null,
+        p_threshold: null,
+        p_comparison: null,
+        p_is_calculable: true,
+        p_calculated_proba: prediction.proba,
+        p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      });
+      return;
+    }
+
+    // bet_subject === "PLAYER" à partir d'ici (comportement inchangé).
+    const player = structuration.player;
+    if (!player) {
       await markNotCalculable();
       return;
     }
@@ -409,16 +486,8 @@ export async function structureAndScoreBet(
     // réel trouvé en testant le 21/08/2026 : la condition d'origine
     // exigeait comparison partout, faisant tomber TOUS les paris dd/td en
     // "non calculable" alors qu'ils le sont bel et bien.
-    // overUnder (pas structuration.comparison directement) : le champ porte
-    // aussi GT/DIFF_LT depuis le chantier COMPARISON (24/08/2026) -- narrows
-    // vers OVER/UNDER|null uniquement, seules valeurs valides pour un pari
-    // PLAYER (bet_subject discrimine déjà, mais le type Zod du champ ne le
-    // sait pas).
-    const stat = structuration.player_stat as StatCode;
-    const overUnder = structuration.comparison === "OVER" || structuration.comparison === "UNDER"
-      ? structuration.comparison
-      : null;
-    if (!NO_THRESHOLD_STATS.has(stat) && !overUnder) {
+    const stat = player.stat as StatCode;
+    if (!NO_THRESHOLD_STATS.has(stat) && (player.threshold === null || !player.comparison)) {
       await markNotCalculable();
       return;
     }
@@ -432,7 +501,7 @@ export async function structureAndScoreBet(
     // perdra simplement à la résolution) plutôt que rejeté -- décidé avec
     // l'utilisateur pour ne jamais bloquer une soumission (même principe
     // que decisions_0.2.4 §4).
-    if (structuration.player_not_in_match) {
+    if (player.not_in_match) {
       // p_structured_player_id: null -- le micro-service n'est jamais appelé
       // dans ce cas précis (voir plus bas), donc jamais de vrai player_id
       // résolu ici. Sans conséquence pour la résolution automatique (Phase
@@ -442,13 +511,14 @@ export async function structureAndScoreBet(
       // dans GAPS_OUVERTS.md comme amélioration possible.
       await supabase.rpc("update_bet_structuration", {
         p_bet_id: betId,
-        p_structured_player_name: structuration.player_name,
+        p_structured_player_name: player.name,
         p_structured_player_id: null,
         p_structured_team_id: null,
         p_structured_duel: null,
-        p_stat: structuration.player_stat,
-        p_threshold: structuration.threshold,
-        p_comparison: overUnder,
+        p_structured_combo: null,
+        p_stat: player.stat,
+        p_threshold: player.threshold,
+        p_comparison: player.comparison,
         p_is_calculable: true,
         p_calculated_proba: 0,
         p_suggested_difficulty: probaToDifficulty(0),
@@ -459,35 +529,30 @@ export async function structureAndScoreBet(
     // Pari SERIE (brique (d) du chantier, GAPS_OUVERTS.md) : proba "au moins
     // une fois sur la série" plutôt que "au prochain match", cf.
     // predictSeriesStat()/compute_series_stat_proba(). Nécessite l'équipe du
-    // joueur (structuration.player_team, résolue par l'IA depuis
-    // matchContext) ET le match 1 réel de la série (avantage du terrain) --
-    // repli non-calculable si l'un des deux manque (série pas encore
-    // programmée, ou équipe non résolue), jamais bloquant.
+    // joueur (player.team, résolue par l'IA depuis matchContext) ET le
+    // match 1 réel de la série (avantage du terrain) -- repli non-calculable
+    // si l'un des deux manque (série pas encore programmée, ou équipe non
+    // résolue), jamais bloquant.
     let prediction: Awaited<ReturnType<typeof predictOverUnder>> = null;
     if (scope === "SERIES") {
       const homeCourt = await resolveSeriesHomeCourtTeam(supabase, seriesId);
       const playerTeamName =
-        structuration.player_team === "team1" ? teamNames?.[0]
-        : structuration.player_team === "team2" ? teamNames?.[1]
+        player.team === "team1" ? teamNames?.[0]
+        : player.team === "team2" ? teamNames?.[1]
         : null;
       if (homeCourt && playerTeamName) {
         prediction = await predictSeriesStat(
-          structuration.player_name,
+          player.name,
           stat,
-          structuration.threshold,
-          overUnder,
+          player.threshold,
+          player.comparison,
           homeCourt.homeTeamName,
           homeCourt.awayTeamName,
           playerTeamName,
         );
       }
     } else {
-      prediction = await predictOverUnder(
-        structuration.player_name,
-        stat,
-        structuration.threshold,
-        overUnder,
-      );
+      prediction = await predictOverUnder(player.name, stat, player.threshold, player.comparison);
     }
     if (!prediction) {
       await markNotCalculable();
@@ -498,13 +563,14 @@ export async function structureAndScoreBet(
 
     await supabase.rpc("update_bet_structuration", {
       p_bet_id: betId,
-      p_structured_player_name: structuration.player_name,
+      p_structured_player_name: player.name,
       p_structured_player_id: prediction.playerId,
       p_structured_team_id: null,
       p_structured_duel: null,
-      p_stat: structuration.player_stat,
-      p_threshold: structuration.threshold,
-      p_comparison: overUnder,
+      p_structured_combo: null,
+      p_stat: player.stat,
+      p_threshold: player.threshold,
+      p_comparison: player.comparison,
       p_is_calculable: true,
       p_calculated_proba: prediction.proba,
       p_suggested_difficulty: suggestedDifficulty,

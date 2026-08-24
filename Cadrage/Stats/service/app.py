@@ -427,6 +427,74 @@ def predict_comparison(req: PredictComparisonRequest):
     }
 
 
+class ComboCondition(BaseModel):
+    """Une condition d'un pari COMBO (24/08/2026, GAPS_OUVERTS.md, chantier
+    combo -- ET de N conditions) -- kind=TEAM (equipe "domicile"/
+    "exterieur" du match vise) ou kind=PLAYER (1+ joueurs). `stats` : 1+
+    codes de stat sommes -- 1 seul = cas normal, 2+ = style PRA
+    ("25pts+12reb+8pas cumules" pour UN joueur). seuil : None uniquement
+    pour dd/td (kind=PLAYER, stats=["dd"] ou ["td"])."""
+    kind: str  # "PLAYER" | "TEAM"
+    joueurs: list[str] | None = None  # kind=PLAYER uniquement
+    equipe: str | None = None  # kind=TEAM uniquement, "domicile" | "exterieur"
+    stats: list[str]
+    seuil: float | None = None
+    comparison: str  # "OVER" | "UNDER"
+
+    @model_validator(mode="after")
+    def _champs_coherents_avec_kind(self):
+        if self.kind == "PLAYER" and not self.joueurs:
+            raise ValueError("joueurs (1+) requis pour kind=PLAYER")
+        if self.kind == "TEAM" and self.equipe not in ("domicile", "exterieur"):
+            raise ValueError("equipe doit valoir \"domicile\" ou \"exterieur\" pour kind=TEAM")
+        if self.kind not in ("PLAYER", "TEAM"):
+            raise ValueError(f"kind inconnu : {self.kind}")
+        if not self.stats:
+            raise ValueError("stats (1+) requis")
+        return self
+
+
+class PredictComboRequest(BaseModel):
+    """Pari COMBO (24/08/2026, GAPS_OUVERTS.md) -- ET de N conditions
+    INDEPENDANTES (P(combo) = produit des P(condition_i)). Meme contrat
+    equipe_domicile/equipe_exterieur que PredictComparisonRequest."""
+    conditions: list[ComboCondition]
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+    @model_validator(mode="after")
+    def _au_moins_une_condition(self):
+        if not self.conditions:
+            raise ValueError("conditions (1+) requis")
+        return self
+
+
+@app.post("/predict-combo")
+def predict_combo(req: PredictComboRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_combo_proba(
+            sb, [c.model_dump() for c in req.conditions], home_id, away_id, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        **result,
+    }
+
+
 class PredictSeriesRequest(BaseModel):
     joueur: str | None = None
     joueur_id: int | None = None

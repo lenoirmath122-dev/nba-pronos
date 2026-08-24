@@ -10093,3 +10093,123 @@ Cloud Run. GAPS_OUVERTS.md mis à jour avec le détail complet + la
 cartographie des 429 paris rafraîchie (comparaison/duel passé de "pas
 fait" à "duel simple codé, meilleur marqueur restant").
 ```
+
+## Discussion coût des tokens IA (24/08/2026, avant le chantier combo)
+
+```text
+L'utilisateur remarque que les appels Claude ont beaucoup de champs et
+demande si ça consomme plus de tokens. Mesuré en conditions réelles (pas
+supposé) : oui, +50% d'input tokens entre le schéma d'avant COMPARISON et
+celui d'après (1263 -> 1894), pour le MÊME pari testé.
+
+Question de suivi : est-ce modifiable plus tard, vu qu'on va encore
+ajouter des catégories ? Testé la piste des objets imbriqués (au lieu de
+champs à plat) : un schéma avec PLUS de champs "utiles" au total (5
+bet_subject dont un COMBO à tableau) passe sans erreur une fois imbriqué,
+alors que le schéma plat à 19 champs avait été rejeté par l'API
+("too many parameters with union types... limit: 16"). Confirmé : la
+limite compte les champs nullable/union RACINE, pas récursivement -- un
+objet nullable ne compte que pour 1 quel que soit son contenu.
+
+Mesuré ensuite si l'imbrication réduit aussi les TOKENS (pas seulement le
+plafond) : non -- +33% d'input (objets imbriqués plus verbeux en JSON
+Schema), -49% d'output (moins de "null" répétés), net légèrement PIRE au
+total dans le test. Conclusion donnée à l'utilisateur : l'imbrication
+n'est pas un levier de coût, c'est un levier de PLAFOND STRUCTUREL --
+à faire pour éviter un futur rejet d'API, pas pour économiser.
+
+Piste alternative testée et concluante : le CACHE DE PROMPT Anthropic.
+Séparé le system prompt en bloc statique (instructions + listes de stats
++ schéma, identique à chaque appel) et bloc dynamique (noms d'équipes).
+3 vrais appels consécutifs : le 1er écrit ~2530 tokens en cache, les 2
+suivants (matchs DIFFÉRENTS) les LISENT à ~10% du prix normal --
+confirmé : le schéma de sortie structurée est automatiquement inclus dans
+le cache marqué sur le system prompt, pas besoin de cache_control séparé
+sur output_config.
+
+Question TTL : 5 minutes (défaut SDK) ou 1 heure ? L'utilisateur signale
+que ses potes parient à des horaires très variables dans la journée --
+argument en faveur de 1h (une fenêtre de 5 min raterait la plupart des
+paris suivants). Discuté, mais l'utilisateur choisit explicitement de
+partir sur 5 min pour l'instant et réévaluer selon le taux de succès réel
+observé en prod ("on part sur le cache 5 min et on verra après").
+
+Question annexe posée par l'utilisateur : regrouper tous les paris de la
+journée et les envoyer en 1-2 fois à horaires fixes, pour économiser
+encore plus ? Analysé et DÉCLINÉ (pas juste "non", expliqué pourquoi) :
+submitBet() attend structureAndScoreBet() de façon SYNCHRONE et
+auto-valide le pari immédiatement si calculable -- décision produit
+explicite du 21/08/2026 pour donner un retour instantané et sauter la
+file de validation manuelle. Un envoi groupé réintroduirait exactement
+l'attente que ce mécanisme a été construit pour éliminer, avec un risque
+réel de deadline/match dépassé avant traitement. Calcul de rentabilité
+en prime : le regroupement ne bat le cache seul qu'à partir d'environ 10
+paris par lot -- en dessous, avec des horaires étalés, il pourrait même
+coûter plus cher. Décision : ne pas construire, noté en mémoire pour ne
+pas être re-proposé sans un vrai problème de volume observé.
+
+Toute cette discussion + les décisions (imbrication + cache 5min, à faire
+lors du chantier combo ; regroupement décliné) sauvegardées en mémoire
+long terme (nba_pronos_ai_structuration_schema_plan.md) pour survivre à
+cette session.
+```
+
+## Combo multi-conditions (24/08/2026, chantier suivant -- même jour)
+
+```text
+"on s'attaque" -- 3e chantier de la liste des 429 paris. Cadrage présenté
+avant de coder (même rythme que duel) : ET de N conditions, chacune
+simple (1 entité, 1 stat) ou sommée (plusieurs entités et/ou plusieurs
+stats, réutilise le mécanisme déjà construit pour le duel). 3 exclusions
+proposées et confirmées : OU imbriqué, comptage "au moins N joueurs" sur
+le roster (regroupé avec "meilleur marqueur" déjà reporté), titulaires/%
+tir équipe (déjà bloqués par des données manquantes, chantier à part).
+Utilisateur a demandé confirmation que les cas exclus ne sont pas perdus
+-- expliqué les 3 paniers où ils atterrissent.
+
+Comme convenu la veille : le refactor du schéma IA (objets imbriqués) et
+le cache de prompt (5 min) faits DANS LA FOULÉE de ce chantier, pas
+après -- même fichier (structureBet.ts), un seul passage plutôt que deux.
+Bénéfice collatéral découvert en réécrivant : les champs auparavant
+surchargés par manque de place (threshold portant 3 sens différents selon
+le contexte, comparison portant OVER/UNDER ET GT/DIFF_LT) retrouvent
+chacun leur propre champ nommé une fois dans leur objet dédié -- code plus
+lisible, pas juste plus compact.
+
+Construction Python : découverte utile en concevant (pas en codant à
+l'aveugle) -- une condition combo "simple" (1 entité, 1 stat) peut
+réutiliser TEL QUEL compute_proba()/_compute_team_stat_proba_once(), déjà
+éprouvés, aucune nouvelle logique de calcul nécessaire pour la majorité
+des cas réels du classeur (Cunningham pts+passes, Sengun pts+rebonds...).
+Seule une condition "somme" (PRA, cumul multi-joueurs) a besoin d'un
+mécanisme nouveau -- qui se trouve être une généralisation directe de
+_resolve_comparison_operand() (chantier duel) au multi-stats en plus du
+multi-joueurs déjà géré, quasi aucun code neuf.
+
+Testé en HTTP local réel : combo simple (2 conditions), PRA (3 stats
+sommées 1 joueur), cumul multi-joueurs (2 joueurs, 1 stat), mix dd/td +
+stat comptée, mix joueur+équipe, rejet stat non supportée en somme.
+Régression /predict-comparison bit-identique.
+
+Test de régression COMPLET du nouveau schéma imbriqué (12 vrais appels
+Claude Sonnet 5, les 5 bet_subject + 2 exclusions) : tout correct, ET le
+cache de prompt confirmé fonctionnel avec le VRAI contenu de prod (1er
+appel écrit en cache, les 11 suivants lisent, quel que soit le pari/match
+-- exactement le comportement attendu).
+
+Vrai gap trouvé EN TESTANT (pas prévu au cadrage) : 2 des paris combo
+testés portaient sur des joueurs hors du match de test (Cunningham,
+Wembanyama) -- l'IA a correctement expliqué qu'elle ne pouvait PAS les
+traiter comme "joueur hors match, proba 0%" (mécanisme not_in_match
+réservé à bet_subject=PLAYER) et est retombée sur calculable=false. Même
+gap pour COMPARISON, jamais remarqué au chantier précédent faute d'avoir
+testé ce cas précis à l'époque. Comportement actuel SÛR (repli manuel,
+jamais un résultat faux), juste sous-optimal. Pas corrigé maintenant --
+noté clairement dans GAPS_OUVERTS.md avec 2 pistes de correction pour
+plus tard, pas ignoré silencieusement.
+
+tsc/eslint/vitest(37/37)/next build propres. Pas encore redéployé sur
+Cloud Run. GAPS_OUVERTS.md mis à jour avec le détail complet du refactor
+schéma+cache, du chantier combo, des 3+1 exclusions, et la cartographie
+des 429 paris rafraîchie.
+```
