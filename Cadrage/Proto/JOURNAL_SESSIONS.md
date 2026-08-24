@@ -10356,3 +10356,22 @@ modèles ont été entraînés avec succès et la vérification statique est
 propre. Pas encore redéployé sur Cloud Run. GAPS_OUVERTS.md mis à jour
 avec une nouvelle entrée en tête détaillant le chantier.
 ```
+
+## % tir équipe : redéploiement Cloud Run + vérification prod (24/08/2026, même jour)
+
+```text
+Redéployé par l'utilisateur (`gcloud run deploy nba-pronos-stats --source .
+--region europe-west1`) puis vérifié en conditions réelles :
+`/health` répond 200, `modeles_charges` liste `team_ft_pct`/`team_fg_pct`/
+`team_fg3_pct`. `/predict-team-pct` appelé en prod (Boston Celtics vs Los
+Angeles Lakers, stat `ft`, seuil 0.78, `equipe_domicile=true`) :
+`proba=0.488`, détail "tentatives predites = 21 | taux estime = 77.7%
+(ligue: 78.3%) [Beta-Binomial, incertitude sur le taux gardee]" -- cohérent
+(taux estimé proche de la moyenne ligue, proba proche de 50% vu
+l'incertitude Beta-Binomiale sur un seuil proche du taux réel).
+
+Pas encore testé via de vrais appels Claude Sonnet 5 (structuration d'un
+pari ft/fg/fg3 depuis l'appli) ni résolu automatiquement sur un vrai match
+joué -- seul l'appel HTTP direct au service est confirmé pour l'instant.
+GAPS_OUVERTS.md mis à jour avec le résultat du test.
+```

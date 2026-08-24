@@ -61,14 +61,20 @@
 > dans la session suivante : `tsc`/`eslint`/`vitest` (37/37)/`next build`
 > reconfirmés propres avant de commit (`e95cc68`).
 >
-> **Contrairement aux chantiers précédents, PAS encore testé en HTTP local
-> réel ni via de vrais appels Claude Sonnet 5 sur ft/fg/fg3** -- seuls les
-> modèles ont été entraînés avec succès (joblib générés le 24/08/2026) et la
-> vérification statique (types/lint/tests/build) est propre. À faire avant
-> redéploiement, comme pour les autres chantiers.
+> **Redéployé sur Cloud Run et vérifié le 24/08/2026** (par l'utilisateur,
+> `gcloud run deploy nba-pronos-stats --source . --region europe-west1`) :
+> `/health` répond 200, `modeles_charges` liste bien `team_ft_pct`/
+> `team_fg_pct`/`team_fg3_pct`. `/predict-team-pct` testé en prod (Boston
+> Celtics vs Los Angeles Lakers, stat `ft`, seuil 0.78) : `proba=0.488`,
+> `detail="tentatives predites = 21 | taux estime = 77.7% (ligue: 78.3%)
+> [Beta-Binomial, incertitude sur le taux gardee]"` -- valeurs cohérentes
+> (taux estimé proche de la ligue, incertitude reflétée dans la proba
+> proche de 50%).
 >
-> **Pas encore redéployé sur Cloud Run.** Reste, dans l'ordre du chantier
-> 429 paris : l'infrastructure quart-temps (le vrai gros morceau, 47 paris).
+> **PAS encore testé via de vrais appels Claude Sonnet 5** (structuration
+> d'un vrai pari ft/fg/fg3 depuis l'appli) ni résolu automatiquement sur un
+> vrai match joué -- seul l'appel HTTP direct au service Python est
+> confirmé pour l'instant.
 
 > **Pertes de balle (tov), pas encore une stat pariable** -- trouvé par
 > l'utilisateur en testant le 24/08/2026 ("Les Warriors font au moins 5
