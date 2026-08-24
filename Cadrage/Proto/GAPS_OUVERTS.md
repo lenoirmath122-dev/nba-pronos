@@ -4,6 +4,18 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Où en est le plan de reprise post-audit (24/08/2026, fin de session)** --
+> étapes 1 ("5 majeur/banc") et 2 ("petits gains groupés") codées, testées
+> en conditions réelles (Claude + HTTP local), commitées ET poussées
+> (`4ff0a44`, `1a6f36a`, `714e45f`). **Pas encore redéployé sur Cloud Run
+> ni Vercel** -- à faire avant de tester via l'appli réelle (l'utilisateur
+> s'en charge, comme d'habitude). Prochaine étape à reprendre : **étape 3,
+> comptage roster-wide** ("au moins N joueurs...", loi de Poisson-
+> binomiale, débloque triple-double n'importe qui/DNP/nombre de joueurs
+> utilisés). Le plan complet (8 étapes) et les 4 points explicitement
+> différés sont documentés dans les entrées ci-dessous et dans
+> `AUDIT_TYPES_PARIS_24_08_2026.md`.
+
 > **Étape 2 du plan de reprise, CODÉ EN ENTIER le 24/08/2026** -- "petits
 > gains groupés". Les 2 items requalifiés en gros lots (+/- joueur, fga
 > équipe) ont finalement été entraînés le jour même à la demande de
@@ -277,12 +289,15 @@
 > sinon le routage en amont n'est pas praticable sans revenir au risque de
 > régression sémantique écarté ci-dessus).
 >
-> **Backfill `stats_box_scores_by_period` toujours en cours en fin de
-> session** -- l'estimation initiale (~3h) était optimiste : débit réel
-> observé ~9-13 matchs/min (mesuré 2 fois à ~1h d'intervalle), soit plutôt
-> ~8-11h au total pour ~6600 matchs. Resumable (skip les game_id déjà
-> présents), aucune action requise pour le relancer s'il s'arrête -- juste
-> `python backfill_period_box_scores.py` depuis `Cadrage/Stats/service/`.
+> **Backfill `stats_box_scores_by_period` TERMINÉ** (confirmé 24/08/2026 en
+> fin de session, 6602/6602 matchs, 100%) -- l'estimation initiale (~3h)
+> était optimiste, débit réel observé ~9-13 matchs/min, plutôt ~8-11h au
+> total en pratique. **Débloque la vraie suite** : entraîner
+> `train_player_period_model.py` (pas encore écrit) pour remplacer
+> l'approximation v1 actuelle (`compute_player_period_proba()`, part fixe
+> de période 25%/50% sur la prédiction pleine partie) par un vrai modèle
+> appris sur les données par période désormais disponibles pour tout
+> l'historique.
 >
 > **Redéployé sur Cloud Run et testé en conditions réelles via l'appli le
 > 24/08/2026** -- 2 bugs réels trouvés en testant (ni l'un ni l'autre
