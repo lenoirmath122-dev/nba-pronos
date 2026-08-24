@@ -199,6 +199,43 @@ export async function predictTotalPoints(
 }
 
 /**
+ * Pari "prolongation" (24/08/2026, GAPS_OUVERTS.md) -- stat MATCH_TOTAL
+ * SANS seuil ni comparaison (probabilité directe que LE match aille en
+ * prolongation, même absence que dd/td côté joueur) -- pas de
+ * callMatchTotalPredict ici, signature différente (pas de threshold/
+ * comparison à transmettre).
+ */
+export async function predictOvertime(
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-overtime`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      // 3 recalculs possibles côté service (vérification de cohérence,
+      // supabase_context.py) -- même délai que callMatchTotalPredict.
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Pari MATCH_TOTAL pour une stat de TEAM_STAT_CODES (reb/ast/fg3m/stl/blk --
  * pièce (a) suite, GAPS_OUVERTS.md, 23/08/2026 : reb fait 1er via un endpoint
  * dédié /predict-total-rebounds, généralisé côté Python (app.py) le jour même

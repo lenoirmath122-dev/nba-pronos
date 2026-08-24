@@ -16,12 +16,22 @@
 
 // total_oreb ajoute le 23/08/2026 (extension "faciles", categorie
 // "Rebonds offensifs equipe" forme combinee).
+
+// went_to_ot ajoute le 24/08/2026 (chantier "prolongation", GAPS_OUVERTS.md)
+// -- SEULE stat de cette liste sans seuil (probabilite directe que LE match
+// aille en prolongation, meme principe que dd/td cote joueur -- voir
+// NO_THRESHOLD_MATCH_STATS ci-dessous).
 export type MatchStatCode =
-  | "total_points" | "total_reb" | "total_ast" | "total_fg3m" | "total_stl" | "total_blk" | "total_oreb";
+  | "total_points" | "total_reb" | "total_ast" | "total_fg3m" | "total_stl" | "total_blk" | "total_oreb"
+  | "went_to_ot";
 
 export const MATCH_STAT_CODES: MatchStatCode[] = [
-  "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk", "total_oreb",
+  "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk", "total_oreb", "went_to_ot",
 ];
+
+// Meme principe que NO_THRESHOLD_STATS (statCodes.ts, dd/td cote joueur) --
+// went_to_ot n'a ni seuil ni OVER/UNDER, juste une probabilite directe.
+export const NO_THRESHOLD_MATCH_STATS = new Set<MatchStatCode>(["went_to_ot"]);
 
 export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
   total_points: "points combinés du match (les 2 équipes additionnées)",
@@ -31,4 +41,5 @@ export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
   total_stl: "interceptions combinées du match (les 2 équipes additionnées)",
   total_blk: "contres combinés du match (les 2 équipes additionnées)",
   total_oreb: "rebonds offensifs combinés du match (les 2 équipes additionnées)",
+  went_to_ot: "le match ira en prolongation",
 };

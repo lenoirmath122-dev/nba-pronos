@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
-import { MATCH_STAT_CODES, MATCH_STAT_LABELS_FR } from "./matchStatCodes";
+import { MATCH_STAT_CODES, MATCH_STAT_LABELS_FR, NO_THRESHOLD_MATCH_STATS } from "./matchStatCodes";
 import { TEAM_STAT_CODES, TEAM_STAT_LABELS_FR } from "./teamStatCodes";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 
@@ -96,8 +96,8 @@ const BetStructurationSchema = z.object({
   match_total: z
     .object({
       stat: z.enum(MATCH_STAT_CODES as [string, ...string[]]),
-      threshold: z.number(),
-      comparison: z.enum(["OVER", "UNDER"]),
+      threshold: z.number().nullable().describe("null pour went_to_ot (probabilité directe, pas de seuil)."),
+      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour went_to_ot."),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=MATCH_TOTAL, sinon null."),
@@ -176,7 +176,7 @@ export type BetStructuration = z.infer<typeof BetStructurationSchema>;
  *  aucun cache_control séparé nécessaire sur output_config). */
 function buildStaticSystemText(): string {
   const statList = STAT_CODES.map((code) => `- "${code}" : ${STAT_LABELS_FR[code]}${NO_THRESHOLD_STATS.has(code) ? " (pas de seuil, probabilité directe)" : ""}`).join("\n");
-  const matchStatList = MATCH_STAT_CODES.map((code) => `- "${code}" : ${MATCH_STAT_LABELS_FR[code]}`).join("\n");
+  const matchStatList = MATCH_STAT_CODES.map((code) => `- "${code}" : ${MATCH_STAT_LABELS_FR[code]}${NO_THRESHOLD_MATCH_STATS.has(code) ? " (pas de seuil, probabilité directe)" : ""}`).join("\n");
   const teamStatList = TEAM_STAT_CODES.map((code) => `- "${code}" : ${TEAM_STAT_LABELS_FR[code]}`).join("\n");
   const comparisonPlayerStatList = COMPARISON_PLAYER_STAT_CODES.map((code) => `"${code}"`).join(", ");
   const comparisonTeamStatList = COMPARISON_TEAM_STAT_CODES.map((code) => `"${code}"`).join(", ");

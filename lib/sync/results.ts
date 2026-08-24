@@ -1,5 +1,5 @@
 import { getServiceClient } from "@/lib/supabase/service";
-import { getMatchesByDate, normalizeMatchStatus, sumQuarters, type RawMatch } from "@/lib/nba/client";
+import { getMatchesByDate, normalizeMatchStatus, sumQuarters, wentToOvertime, type RawMatch } from "@/lib/nba/client";
 import { nyDateString } from "@/lib/dates/newyork";
 import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
@@ -28,7 +28,14 @@ export type SyncResultsResult = {
   requestsRemaining: number | null;
 };
 
-type MatchRow = { id: string; series_id: string; status: string; home_score: number | null; away_score: number | null };
+type MatchRow = {
+  id: string;
+  series_id: string;
+  status: string;
+  home_score: number | null;
+  away_score: number | null;
+  went_to_ot: boolean | null;
+};
 
 /** `referenceDate` : "aujourd'hui" en production — override dev/test, même
  *  convention que lib/sync/schedule.ts. */
@@ -60,7 +67,7 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
   const internalIds = [...internalIdBySourceRef.values()];
   const { data: matchRowsData } =
     internalIds.length > 0
-      ? await supabase.from("matches").select("id, series_id, status, home_score, away_score").in("id", internalIds)
+      ? await supabase.from("matches").select("id, series_id, status, home_score, away_score, went_to_ot").in("id", internalIds)
       : { data: [] as MatchRow[] };
   const matchRowById = new Map<string, MatchRow>((matchRowsData ?? []).map((r) => [r.id as string, r as MatchRow]));
 
@@ -91,12 +98,19 @@ async function processOneMatch(
 
   const homeScore = sumQuarters(rawMatch.state.score.homeTeam);
   const awayScore = sumQuarters(rawMatch.state.score.awayTeam);
+  // Chantier "prolongation" (GAPS_OUVERTS.md, 24/08/2026) -- même tableau
+  // que homeScore/awayScore ci-dessus, lu une 2e fois pour son signal OT.
+  const wentToOt = wentToOvertime(rawMatch.state.score.homeTeam);
   const { status, recognized } = normalizeMatchStatus(rawMatch.state.description);
   if (!recognized) {
     result.unrecognizedStatuses.push({ highlightlyMatchId: rawMatch.id, description: rawMatch.state.description });
   }
 
-  const hasChanged = before.status !== status || before.home_score !== homeScore || before.away_score !== awayScore;
+  const hasChanged =
+    before.status !== status ||
+    before.home_score !== homeScore ||
+    before.away_score !== awayScore ||
+    before.went_to_ot !== wentToOt;
   if (!hasChanged) {
     result.unchanged++;
     return;
@@ -104,7 +118,7 @@ async function processOneMatch(
 
   const { error } = await supabase
     .from("matches")
-    .update({ status, home_score: homeScore, away_score: awayScore })
+    .update({ status, home_score: homeScore, away_score: awayScore, went_to_ot: wentToOt })
     .eq("id", internalId);
   if (error) {
     result.skipped.push({ highlightlyMatchId: rawMatch.id, reason: `échec update : ${error.message}` });

@@ -173,6 +173,39 @@ def predict_total_points(req: PredictTotalPointsRequest):
     }
 
 
+class PredictOvertimeRequest(BaseModel):
+    """Chantier "prolongation" (GAPS_OUVERTS.md, cadre le 24/08/2026) --
+    stat MATCH binaire directe, sans seuil ni comparison (meme absence que
+    dd/td cote joueur) : proba que CE match aille en prolongation. MEME
+    contrat que PredictTotalPointsRequest, moins seuil/comparison."""
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-overtime")
+def predict_overtime(req: PredictOvertimeRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_overtime_proba(sb, home_id, away_id, req.as_of_date, season=req.season)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        **result,
+    }
+
+
 class PredictTotalReboundsRequest(BaseModel):
     """Piece (a) suite (GAPS_OUVERTS.md, 23/08/2026) -- 2e forme du pari
     rebonds : rebonds COMBINES du match (a cote de /predict-team-rebounds,

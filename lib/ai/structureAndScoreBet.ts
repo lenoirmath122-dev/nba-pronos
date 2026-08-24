@@ -9,12 +9,14 @@ import {
   predictTeamStat,
   predictComparison,
   predictCombo,
+  predictOvertime,
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
 import type { TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
+import { NO_THRESHOLD_MATCH_STATS, type MatchStatCode } from "./matchStatCodes";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 
 // Orchestre la structuration IA + le calcul de proba pour UN pari, à la
@@ -178,26 +180,37 @@ export async function structureAndScoreBet(
         await markNotCalculable();
         return;
       }
+      // went_to_ot n'a ni seuil ni comparaison (probabilité directe, même
+      // principe que dd/td côté joueur, ligne ~490 plus bas) -- garde
+      // symétrique pour MATCH_TOTAL (24/08/2026, chantier "prolongation",
+      // GAPS_OUVERTS.md).
+      if (!NO_THRESHOLD_MATCH_STATS.has(matchTotal.stat as MatchStatCode) && (matchTotal.threshold === null || !matchTotal.comparison)) {
+        await markNotCalculable();
+        return;
+      }
       // as_of_date = date RÉELLE du match visé (pas "aujourd'hui" comme pour
       // un pari série) -- un match précis a une vraie date connue, plus
       // fidèle pour le calcul de repos/contexte équipe.
+      const asOfDate = matchTeams.scheduledAt.slice(0, 10);
       const prediction =
-        matchTotal.stat === "total_points"
-          ? await predictTotalPoints(
-              matchTeams.homeTeamName,
-              matchTeams.awayTeamName,
-              matchTotal.threshold,
-              matchTotal.comparison,
-              matchTeams.scheduledAt.slice(0, 10),
-            )
-          : await predictTotalTeamStat(
-              matchTotal.stat.slice("total_".length) as TeamStatCode,
-              matchTeams.homeTeamName,
-              matchTeams.awayTeamName,
-              matchTotal.threshold,
-              matchTotal.comparison,
-              matchTeams.scheduledAt.slice(0, 10),
-            );
+        matchTotal.stat === "went_to_ot"
+          ? await predictOvertime(matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate)
+          : matchTotal.stat === "total_points"
+            ? await predictTotalPoints(
+                matchTeams.homeTeamName,
+                matchTeams.awayTeamName,
+                matchTotal.threshold as number,
+                matchTotal.comparison as "OVER" | "UNDER",
+                asOfDate,
+              )
+            : await predictTotalTeamStat(
+                matchTotal.stat.slice("total_".length) as TeamStatCode,
+                matchTeams.homeTeamName,
+                matchTeams.awayTeamName,
+                matchTotal.threshold as number,
+                matchTotal.comparison as "OVER" | "UNDER",
+                asOfDate,
+              );
       if (!prediction) {
         await markNotCalculable();
         return;

@@ -4,6 +4,96 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Prolongation (overtime), CODÉE le 24/08/2026** (4e chantier de la liste
+> des 429 paris, après comparaison/duel et combo -- voir les 2 entrées
+> suivantes). Nouveau `bet_subject=MATCH_TOTAL`, `match_stat="went_to_ot"` :
+> probabilité directe que LE match aille en prolongation, sans seuil ni
+> comparaison (même absence que dd/td côté joueur).
+>
+> **Reformulation trouvée en scopant, AVANT de coder** : le cadrage initial
+> (§ ci-dessous, "gros chantier d'infrastructure") supposait qu'il fallait
+> synchroniser tout `play_by_play` vers Supabase -- **faux**. Le payload live
+> Highlightly (`lib/nba/client.ts`, `state.score.homeTeam/awayTeam`) a déjà
+> 5 valeurs au lieu de 4 en prolongation, jusqu'ici sommé puis jeté par
+> `sumQuarters()`. Nouvelle fonction `wentToOvertime()` (même fichier, lit le
+> même tableau une 2e fois) -- aucune synchro `play_by_play` nécessaire.
+> Chantier ramené au tier "nouveau mécanisme réutilisable" (comme
+> comparaison/combo), pas à l'infrastructure lourde.
+>
+> **Cible d'entraînement LOCALE** (`build_targets.py::build_matchs_training()`)
+> dérivée de `play_by_play.period` (MAX > 4 = prolongation jouée) -- jamais
+> synchronisé vers Supabase et pas nécessaire de l'y synchroniser : ce signal
+> ne sert QU'à l'entraînement local, le signal de PRODUCTION vient de
+> `wentToOvertime()` ci-dessus. NaN préservée (pas forcée à 0) si un
+> `game_id` n'a pas de `play_by_play` -- en pratique 0 NaN sur les 6602
+> lignes, couverture 100%. Taux de base réel : **5.01%** (confirme
+> l'estimation ~5-8%).
+>
+> **Modèle** (`train_overtime_model.py`, nouveau, calque de
+> `train_home_win_model.py`) : mêmes `BASE_FEATURE_COLS`/`FEATURE_COLS`
+> (importés depuis `train_home_win_model.py`), `RandomForestClassifier`,
+> PAS de `class_weight="balanced"` (précédent dd/td du 20/08/2026 :
+> "balanced" casse la calibration sur un événement rare). Calibration par
+> bucket resserrée vers le bas (comme `train_doubledouble_model.py`) --
+> écarts 0.7-3.9pp, dans la fourchette déjà acceptée pour d'autres modèles
+> "difficiles" du projet (total_points, team_blk...). Log loss/Brier à peine
+> meilleurs que la référence taux constant (0.176 vs 0.175, 0.040 vs 0.040)
+> -- attendu : la prolongation dépend surtout du déroulé EN JEU, peu
+> prévisible depuis des features d'AVANT-match. `models/overtime.joblib`.
+>
+> **Instabilité numérique reproduite ICI AUSSI, sur un CLASSIFIEUR PUR cette
+> fois** -- l'hypothèse de départ du plan ("jamais observée sur home_win,
+> seulement régression+norm.cdf") s'est avérée FAUSSE en testant : 1 appel
+> sur 9 a renvoyé une proba différente (0.083 au lieu de 0.052) lors de la
+> vérification manuelle. `compute_overtime_proba()` enveloppée dans
+> `_compute_with_consistency_check()` comme tous les autres modèles
+> (`compute_home_win_proba()`, lui, n'est toujours PAS enveloppé -- jamais
+> exposé en HTTP direct, utilisé seulement en interne par la simulation de
+> série -- pas retouché ici, hors scope).
+>
+> **Service Python** : `_compute_overtime_proba_once()`/
+> `compute_overtime_proba()` (`supabase_context.py`), réutilise
+> `_build_match_feature_row()` tel quel. Nouvel endpoint `/predict-overtime`
+> (`app.py`), même contrat que `/predict-total-points` moins seuil/
+> comparaison.
+>
+> **Migration** `20260824110000_matches_went_to_ot.sql` (poussée) :
+> `matches.went_to_ot boolean`, colonne simple peuplée par la synchro
+> (`lib/sync/results.ts::processOneMatch()`, `wentToOvertime()` ajoutée au
+> diff `hasChanged` ET à l'`update()`) -- pas de RPC à étendre (contrairement
+> aux colonnes `bets.structured_*`). **Pas de backfill de l'historique** :
+> nouveau type de pari, aucun pari existant n'en dépend.
+>
+> **Schéma IA** : `matchStatCodes.ts` gagne `went_to_ot` + nouveau
+> `NO_THRESHOLD_MATCH_STATS` (même principe que `NO_THRESHOLD_STATS` côté
+> joueur) -- `match_total.threshold`/`comparison` passent de non-nullable à
+> nullable dans `structureBet.ts` (même patron que `player.threshold`/
+> `comparison` pour dd/td). `structureAndScoreBet.ts` : garde symétrique à
+> celle du joueur + 3e branche du ternaire de prédiction
+> (`predictOvertime()`, nouveau dans `statsService.ts`, PAS de seuil/
+> comparaison à transmettre).
+>
+> **Résolution** (`resolveCalculableMatchTotalBets()`, étendue) : filtre
+> élargi `total_points`/`went_to_ot` (`structured_stat`), branche dédiée
+> `went_to_ot` (lit `matches.went_to_ot` directement, pas de seuil à
+> comparer) à côté de la branche `total_points` existante inchangée. Les
+> autres stats `total_X` (reb/ast/fg3m/stl/blk/oreb) continuent de passer
+> par `resolveCalculableTeamStatBets()`, pas concernées ici.
+>
+> Testé en conditions réelles à chaque étape (Boston Celtics vs Los Angeles
+> Lakers) : appels HTTP locaux réels (`uvicorn`, `/predict-overtime` +
+> régression `/predict-total-points` bit-identique), 4 vrais appels Claude
+> Sonnet 5 (went_to_ot correct, total_points régression, fun rejeté, dd
+> régression) + chaîne complète structuration→`predictOvertime()`→service
+> Python vérifiée de bout en bout (script jetable, `server-only` retiré
+> temporairement le temps du test puis remis). `tsc`/`eslint`/`vitest`
+> (37/37)/`next build` (38 routes) propres.
+>
+> **Pas encore redéployé sur Cloud Run (2e redéploiement nécessaire, après
+> celui de duel/combo). Pas testé en conditions réelles depuis l'appli.**
+> Reste, dans l'ordre du chantier 429 paris : % tir équipe, puis
+> l'infrastructure quart-temps (le vrai gros morceau, 47 paris).
+
 > **Combo multi-conditions, CODÉ le 24/08/2026** (3e chantier de la liste
 > des 429 paris, après comparaison/duel -- voir 2 entrées plus bas pour les
 > 4 paliers de faisabilité). Nouveau `bet_subject=COMBO` : ET de N

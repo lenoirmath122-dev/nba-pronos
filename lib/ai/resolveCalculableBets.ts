@@ -457,39 +457,54 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
 type EligibleMatchTotalBetRow = {
   id: string;
   match_id: string | null;
+  structured_stat: string | null;
   structured_threshold: number | null;
   structured_comparison: "OVER" | "UNDER" | null;
 };
 
-type MatchScoreRow = { id: string; status: string; home_score: number | null; away_score: number | null };
+type MatchScoreRow = {
+  id: string;
+  status: string;
+  home_score: number | null;
+  away_score: number | null;
+  went_to_ot: boolean | null;
+};
 
 /** Pièce (a) du chantier paris équipe (GAPS_OUVERTS.md, cadré le
  *  23/08/2026) -- résolution des paris MATCH_TOTAL (structured_stat=
- *  "total_points", jamais de structured_player_id -- 1er type de pari SANS
+ *  "total_points"/"went_to_ot", jamais de structured_player_id -- paris SANS
  *  JOUEUR). Contrairement à resolveCalculableBets()/resolveCalculableSeriesBets()
  *  (qui lisent stats_box_scores, le pipeline Data NBA), la résolution ici
- *  n'a besoin QUE de `matches.home_score`/`away_score` -- déjà synchronisés
- *  par le sync existant, aucune dépendance au pipeline Data NBA pour
- *  VÉRIFIER après coup (seulement pour PRÉDIRE avant le match, cf.
- *  compute_total_points_proba() côté service). MATCH uniquement pour
- *  l'instant (même limite que la prédiction, pas encore de SÉRIE). */
+ *  n'a besoin QUE de `matches.home_score`/`away_score`/`went_to_ot` -- déjà
+ *  synchronisés par le sync existant, aucune dépendance au pipeline Data NBA
+ *  pour VÉRIFIER après coup (seulement pour PRÉDIRE avant le match, cf.
+ *  compute_total_points_proba()/compute_overtime_proba() côté service).
+ *  MATCH uniquement pour l'instant (même limite que la prédiction, pas
+ *  encore de SÉRIE). Les autres stats "total_X" (reb/ast/fg3m/stl/blk/oreb)
+ *  passent par resolveCalculableTeamStatBets() ci-dessus (structured_stat
+ *  matché indépendamment du bet_subject qui l'a écrit) -- went_to_ot n'y a
+ *  pas sa place (pas de colonne numérique à comparer à un seuil), traité
+ *  ici à côté de total_points (24/08/2026, chantier "prolongation"). */
 export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSummary> {
   const supabase = getServiceClient();
   const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
 
   const { data: betsData } = await supabase
     .from("bets")
-    .select("id, match_id, structured_threshold, structured_comparison")
+    .select("id, match_id, structured_stat, structured_threshold, structured_comparison")
     .eq("scope", "MATCH")
     .eq("is_calculable", true)
     .eq("status", "VALIDATED")
-    .eq("structured_stat", "total_points")
+    .in("structured_stat", ["total_points", "went_to_ot"])
     .is("structured_player_id", null); // discrimine des paris JOUEUR -- garde explicite, jamais coexistant avec un vrai player_id
   const bets = (betsData ?? []) as EligibleMatchTotalBetRow[];
   if (bets.length === 0) return summary;
 
   const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
-  const { data: matchesData } = await supabase.from("matches").select("id, status, home_score, away_score").in("id", matchIds);
+  const { data: matchesData } = await supabase
+    .from("matches")
+    .select("id, status, home_score, away_score, went_to_ot")
+    .in("id", matchIds);
   const matchById = new Map(((matchesData ?? []) as MatchScoreRow[]).map((m) => [m.id, m]));
 
   // Paris déjà contestés -- jamais résolus automatiquement, même garde que
@@ -513,7 +528,10 @@ export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSumm
       summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
       continue;
     }
-    if (bet.structured_threshold === null || !bet.structured_comparison) {
+    // went_to_ot n'a ni seuil ni comparaison (probabilité directe) -- garde
+    // restreinte à total_points, même principe que la garde symétrique côté
+    // structuration (structureAndScoreBet.ts, NO_THRESHOLD_MATCH_STATS).
+    if (bet.structured_stat === "total_points" && (bet.structured_threshold === null || !bet.structured_comparison)) {
       summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
       continue;
     }
@@ -523,23 +541,42 @@ export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSumm
       summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
       continue;
     }
-    if (match.home_score === null || match.away_score === null) {
-      // Match FINISHED mais score pas encore synchronisé -- ne tranche
-      // jamais sur une absence de donnée, même prudence que les 2 resolvers
-      // ci-dessus (réessaiera à la prochaine passe).
-      summary.skipped.push({ betId: bet.id, reason: "score du match pas encore synchronisé" });
-      continue;
-    }
 
-    const total = match.home_score + match.away_score;
-    const won = bet.structured_comparison === "UNDER" ? total < bet.structured_threshold : total > bet.structured_threshold;
-    const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+    let outcome: "WON" | "LOST";
+    let resolutionReason: string;
+
+    if (bet.structured_stat === "went_to_ot") {
+      if (match.went_to_ot === null) {
+        // Match FINISHED mais signal pas encore synchronisé -- ne tranche
+        // jamais sur une absence de donnée, même prudence que le cas
+        // total_points ci-dessous.
+        summary.skipped.push({ betId: bet.id, reason: "signal de prolongation pas encore synchronisé" });
+        continue;
+      }
+      outcome = match.went_to_ot ? "WON" : "LOST";
+      resolutionReason = match.went_to_ot
+        ? "Résolu automatiquement -- le match est allé en prolongation."
+        : "Résolu automatiquement -- le match n'est pas allé en prolongation.";
+    } else {
+      if (match.home_score === null || match.away_score === null) {
+        // Match FINISHED mais score pas encore synchronisé -- ne tranche
+        // jamais sur une absence de donnée, même prudence que les 2 resolvers
+        // ci-dessus.
+        summary.skipped.push({ betId: bet.id, reason: "score du match pas encore synchronisé" });
+        continue;
+      }
+      const total = match.home_score + match.away_score;
+      const won =
+        bet.structured_comparison === "UNDER" ? total < (bet.structured_threshold as number) : total > (bet.structured_threshold as number);
+      outcome = won ? "WON" : "LOST";
+      resolutionReason = `Résolu automatiquement via le score officiel du match (${total} points combinés).`;
+    }
 
     const { data: updated } = await supabase
       .from("bets")
       .update({
         status: outcome,
-        resolution_reason: `Résolu automatiquement via le score officiel du match (${total} points combinés).`,
+        resolution_reason: resolutionReason,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

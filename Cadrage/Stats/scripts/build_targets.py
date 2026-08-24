@@ -152,6 +152,23 @@ def build_matchs_training(conn: sqlite3.Connection) -> pd.DataFrame:
     df["ecart"] = df["home_score"] - df["away_score"]
     df["total_points"] = df["home_score"] + df["away_score"]
 
+    # went_to_ot (24/08/2026, chantier paris "prolongation", GAPS_OUVERTS.md)
+    # -- derive de play_by_play.period (MAX > 4 = au moins 1 quart-temps de
+    # prolongation joue), jamais synchronise vers Supabase et pas necessaire
+    # de l'y synchroniser : uniquement utilise ICI pour la cible
+    # d'entrainement locale, le signal de PRODUCTION vient d'ailleurs
+    # (state.score.homeTeam/awayTeam, lib/nba/client.ts, cf. plan).
+    max_period = pd.read_sql(
+        "SELECT game_id, MAX(period) AS max_period FROM play_by_play GROUP BY game_id", conn, dtype={"game_id": str}
+    )
+    df = df.merge(max_period, on="game_id", how="left")
+    # NaN preservee (pas de play_by_play pour ce game_id) plutot que forcee a
+    # 0 -- sinon un match sans donnee introduirait un faux "pas de prolongation"
+    # dans une classe deja rare, biais silencieux. load_dataset() (train_overtime_
+    # model.py) filtre les NaN comme pour toutes les autres cibles.
+    df["went_to_ot"] = df["max_period"].apply(lambda p: p > 4 if pd.notna(p) else pd.NA)
+    df = df.drop(columns=["max_period"])
+
     # Stats d'equipe REELLES (23/08/2026, paris equipe piece (a) suite) --
     # cibles pour team_{stat} (perspective equipe) ET total_{stat} (combine,
     # meme patron que total_points). Somme par (match, equipe) depuis

@@ -92,6 +92,15 @@ export function sumQuarters(scoreArray: number[]): number {
   return scoreArray.reduce((total, quarter) => total + quarter, 0);
 }
 
+/** Chantier "prolongation" (GAPS_OUVERTS.md, 24/08/2026) -- MEME tableau que
+ *  sumQuarters() ci-dessus (4 valeurs normalement, 5+ en prolongation), lu
+ *  une 2e fois pour en tirer le signal OT plutot que de synchroniser tout
+ *  play_by_play vers Supabase (jamais fait, design delibere -- voir
+ *  backfill_supabase.py). */
+export function wentToOvertime(scoreArray: number[]): boolean {
+  return scoreArray.length > 4;
+}
+
 export type NormalizedMatchStatus = "SCHEDULED" | "IN_PROGRESS" | "FINISHED" | "POSTPONED" | "CANCELLED";
 
 /**

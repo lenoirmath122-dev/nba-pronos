@@ -413,6 +413,27 @@ def compute_home_win_proba(client, home_team_id: int, away_team_id: int, as_of_d
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "p_home_win": proba}
 
 
+def _compute_overtime_proba_once(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> dict:
+    """P(CE match va en prolongation) -- chantier "prolongation" (24/08/2026,
+    GAPS_OUVERTS.md), calque de compute_home_win_proba() : meme
+    _build_match_feature_row()/BASE_FEATURE_COLS, meme classifieur binaire."""
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
+    bundle = joblib.load(MODELS_DIR / "overtime.joblib")
+    proba = float(bundle["model"].predict_proba(X)[:, 1][0])
+    return {"home_team_id": home_team_id, "away_team_id": away_team_id, "proba": proba}
+
+
+def compute_overtime_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_overtime_proba_once() d'une verification de
+    coherence (CONSISTENCY_CHECK_NOTE) -- l'hypothese initiale "l'instabilite
+    ne touche que les modeles regression+norm.cdf, pas les classifieurs purs
+    comme home_win" s'est averee FAUSSE en testant : reproduite ici meme
+    (1 appel sur 9 lors de la verification manuelle, proba 0.083 au lieu de
+    0.052 sur le meme cas, meme ordre de grandeur que le taux "1/10-15"
+    deja documente pour les autres modeles)."""
+    return _compute_with_consistency_check(lambda: _compute_overtime_proba_once(*args, **kwargs))
+
+
 def _compute_total_points_proba_once(
     client, home_team_id: int, away_team_id: int, seuil: float, comparison: str, as_of_date, season: str | None = None
 ) -> dict:
