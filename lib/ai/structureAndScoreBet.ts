@@ -66,14 +66,17 @@ async function resolveMatchTeamNames(
 /** Détecte un texte "de forme" pari période AVANT tout appel Claude
  *  (24/08/2026, GAPS_OUVERTS.md) -- vocabulaire temporel volontairement
  *  large mais peu ambigu (quart-temps/mi-temps sous toutes leurs graphies
- *  courantes) : NE MATCHE PAS "prolongation" seule (ex. "va en
- *  prolongation" reste géré par structureBet.ts/MATCH_TOTAL, comportement
- *  inchangé). Un pari période formulé assez différemment pour échapper à ce
- *  filtre retombe sur structureBet.ts -> calculable=false -> file de
- *  validation manuelle admin -- même filet de sécurité que tout autre cas
- *  non géré aujourd'hui, jamais une réponse fausse. Voir structurePeriodBet.ts
- *  pour le POURQUOI de ce routage (pas un 2e schéma dans structureBet.ts). */
-const PERIOD_KEYWORD_REGEX = /quart[s]?[\s-]?temps|mi[\s-]?temps/i;
+ *  courantes, + les abréviations "QT"/"QT4"/"MT"/"MT1" trouvées en
+ *  testant en conditions réelles -- \b...\b évite les faux positifs du
+ *  type "qualité"/"métro") : NE MATCHE PAS "prolongation" seule (ex. "va
+ *  en prolongation" reste géré par structureBet.ts/MATCH_TOTAL,
+ *  comportement inchangé). Un pari période formulé assez différemment
+ *  pour échapper à ce filtre retombe sur structureBet.ts ->
+ *  calculable=false -> file de validation manuelle admin -- même filet de
+ *  sécurité que tout autre cas non géré aujourd'hui, jamais une réponse
+ *  fausse. Voir structurePeriodBet.ts pour le POURQUOI de ce routage (pas
+ *  un 2e schéma dans structureBet.ts). */
+const PERIOD_KEYWORD_REGEX = /quart[s]?[\s-]?temps|mi[\s-]?temps|\bqt\d*\b|\bmt\d*\b/i;
 
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
