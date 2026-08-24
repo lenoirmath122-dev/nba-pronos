@@ -4,6 +4,17 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Pertes de balle (tov), pas encore une stat pariable** -- trouvé par
+> l'utilisateur en testant le 24/08/2026 ("Les Warriors font au moins 5
+> pertes de balle" ne se calcule pas). Même situation que `oreb` avant son
+> chantier "extension facile" du 23/08/2026 : la donnée brute existe déjà
+> localement (`box_scores.tov`, `Cadrage/Stats/scripts/load_to_sqlite.py`
+> -- récupérée depuis l'API NBA, jamais exposée), mais `tov` est absente de
+> `STAT_CODES` (joueur) et `TEAM_STAT_CODES`/`MATCH_STAT_CODES` (équipe).
+> Décidé avec l'utilisateur : pas fait maintenant, à reprendre plus tard --
+> même patron mécanique que oreb (pipeline + modèle(s) + schéma IA +
+> résolution) si repris.
+
 > **Bug réel trouvé par l'utilisateur en testant "prolongation" le
 > 24/08/2026, CORRIGÉ le jour même** : un pari auto-calculable affichait
 > TOUJOURS "Pari joueur" (`PLAYER_PROP`), quel que soit son vrai
