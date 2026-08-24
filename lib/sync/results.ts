@@ -35,6 +35,7 @@ type MatchRow = {
   home_score: number | null;
   away_score: number | null;
   went_to_ot: boolean | null;
+  quarter_scores: { homeTeam: number[]; awayTeam: number[] } | null;
 };
 
 /** `referenceDate` : "aujourd'hui" en production — override dev/test, même
@@ -67,7 +68,10 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
   const internalIds = [...internalIdBySourceRef.values()];
   const { data: matchRowsData } =
     internalIds.length > 0
-      ? await supabase.from("matches").select("id, series_id, status, home_score, away_score, went_to_ot").in("id", internalIds)
+      ? await supabase
+          .from("matches")
+          .select("id, series_id, status, home_score, away_score, went_to_ot, quarter_scores")
+          .in("id", internalIds)
       : { data: [] as MatchRow[] };
   const matchRowById = new Map<string, MatchRow>((matchRowsData ?? []).map((r) => [r.id as string, r as MatchRow]));
 
@@ -101,6 +105,10 @@ async function processOneMatch(
   // Chantier "prolongation" (GAPS_OUVERTS.md, 24/08/2026) -- même tableau
   // que homeScore/awayScore ci-dessus, lu une 2e fois pour son signal OT.
   const wentToOt = wentToOvertime(rawMatch.state.score.homeTeam);
+  // Chantier "pari période" équipe (GAPS_OUVERTS.md, 24/08/2026) -- même
+  // tableau lu une 3e fois, persisté tel quel cette fois (pas juste sommé/
+  // sondé) pour la résolution des paris quart-temps/mi-temps.
+  const quarterScores = { homeTeam: rawMatch.state.score.homeTeam, awayTeam: rawMatch.state.score.awayTeam };
   const { status, recognized } = normalizeMatchStatus(rawMatch.state.description);
   if (!recognized) {
     result.unrecognizedStatuses.push({ highlightlyMatchId: rawMatch.id, description: rawMatch.state.description });
@@ -110,7 +118,8 @@ async function processOneMatch(
     before.status !== status ||
     before.home_score !== homeScore ||
     before.away_score !== awayScore ||
-    before.went_to_ot !== wentToOt;
+    before.went_to_ot !== wentToOt ||
+    JSON.stringify(before.quarter_scores) !== JSON.stringify(quarterScores);
   if (!hasChanged) {
     result.unchanged++;
     return;
@@ -118,7 +127,7 @@ async function processOneMatch(
 
   const { error } = await supabase
     .from("matches")
-    .update({ status, home_score: homeScore, away_score: awayScore, went_to_ot: wentToOt })
+    .update({ status, home_score: homeScore, away_score: awayScore, went_to_ot: wentToOt, quarter_scores: quarterScores })
     .eq("id", internalId);
   if (error) {
     result.skipped.push({ highlightlyMatchId: rawMatch.id, reason: `échec update : ${error.message}` });

@@ -435,6 +435,123 @@ def predict_team_pct(req: PredictTeamPctRequest):
     }
 
 
+PERIOD_OUTCOME_KINDS = (
+    "QUARTER_WINNER", "HALF_WINNER", "QUARTERS_WON_COUNT", "LEADS_HALF_RESULT",
+    "MARGIN", "TOTAL_POINTS", "POINT_SHARE_PCT",
+)
+
+
+class PredictPeriodRequest(BaseModel):
+    """Chantier "pari periode" equipe (24/08/2026, GAPS_OUVERTS.md) --
+    equipe_domicile/equipe_exterieur sont les 2 VRAIES equipes du match vise
+    (meme contrat que PredictOvertimeRequest), equipe_visee designe laquelle
+    des 2 est ciblee par le pari ("domicile"/"exterieur"/null pour
+    MARGIN/TOTAL_POINTS, symetriques). period peut etre null uniquement pour
+    QUARTERS_WON_COUNT/LEADS_HALF_RESULT (portent sur le match entier/la
+    mi-temps, pas une periode parametrable)."""
+    outcome_kind: str
+    period: str | None = None
+    equipe_visee: str | None = None  # "domicile" | "exterieur" | null
+    exact_count: bool | None = None
+    seuil: float | None = None
+    comparison: str | None = None  # "OVER" | "UNDER" | null
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-period")
+def predict_period(req: PredictPeriodRequest):
+    if req.outcome_kind not in PERIOD_OUTCOME_KINDS:
+        raise HTTPException(400, f"outcome_kind inconnu : {req.outcome_kind} (attendu parmi {PERIOD_OUTCOME_KINDS})")
+    if req.equipe_visee not in (None, "domicile", "exterieur"):
+        raise HTTPException(400, f"equipe_visee invalide : {req.equipe_visee}")
+
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    team_id = opponent_id = None
+    if req.equipe_visee == "domicile":
+        team_id, opponent_id = home_id, away_id
+    elif req.equipe_visee == "exterieur":
+        team_id, opponent_id = away_id, home_id
+
+    try:
+        result = supabase_context.compute_period_proba(
+            sb, req.outcome_kind, req.period, team_id, opponent_id, home_id, away_id,
+            req.exact_count, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "equipe_visee": req.equipe_visee,
+        "period": req.period,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
+class PredictPlayerPeriodRequest(BaseModel):
+    """Chantier "pari joueur+periode" (24/08/2026, GAPS_OUVERTS.md) -- ex.
+    "3 contres en 1ere mi-temps pour Wembanyama". equipe_domicile/
+    equipe_exterieur sont les 2 VRAIES equipes du match vise (meme contrat
+    que PredictPeriodRequest) -- necessaires pour deduire is_home/adversaire
+    du joueur (l'appelant TS ne les resout pas lui-meme, contrairement a
+    /predict ou exterieur/adversaire sont fournis directement)."""
+    joueur: str
+    stat: str
+    period: str
+    seuil: float | None = None
+    comparison: str | None = None  # "OVER" | "UNDER" | null
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+    repos: int = 2
+
+
+@app.post("/predict-player-period")
+def predict_player_period(req: PredictPlayerPeriodRequest):
+    sb = _client()
+
+    try:
+        player_id, player_name = supabase_context.find_player(sb, req.joueur)
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_player_period_proba(
+            sb, player_id, req.stat, req.period, home_id, away_id,
+            req.seuil, req.comparison, rest_days=req.repos,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "joueur": player_name,
+        "joueur_id": player_id,
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "period": req.period,
+        "stat": req.stat,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
 class ComparisonOperand(BaseModel):
     """Un cote d'un duel (24/08/2026, GAPS_OUVERTS.md, chantier
     comparaison/duel) -- kind=TEAM (equipe "domicile"/"exterieur" du match

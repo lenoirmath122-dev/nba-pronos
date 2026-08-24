@@ -1,0 +1,13 @@
+-- Chantier "pari periode" equipe (GAPS_OUVERTS.md, 24/08/2026) -- signal
+-- necessaire a la RESOLUTION des paris bet_subject=PERIOD (vainqueur de
+-- quart-temps/mi-temps, ecarts, totaux par periode...). Peuplee directement
+-- par la synchro (lib/sync/results.ts) depuis state.score.homeTeam/awayTeam
+-- (Highlightly) -- meme tableau que celui deja lu par sumQuarters()/
+-- wentToOvertime(), juste jamais persiste jusqu'ici. Forme JSONB, pas de
+-- colonnes separees par quart-temps : le nombre de valeurs varie (4 normal,
+-- 5+ en prolongation), meme motif que le tableau source.
+--
+-- Pas de backfill de l'historique : nouveau type de pari, aucun pari
+-- existant n'en depend (meme precedent que went_to_ot,
+-- 20260824110000_matches_went_to_ot.sql).
+alter table matches add column quarter_scores jsonb;

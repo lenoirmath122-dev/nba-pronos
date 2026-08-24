@@ -1,6 +1,7 @@
 import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
+import { structurePeriodBet } from "./structurePeriodBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -10,6 +11,8 @@ import {
   predictComparison,
   predictCombo,
   predictOvertime,
+  predictPeriodTeamOutcome,
+  predictPlayerPeriodStat,
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
@@ -17,6 +20,7 @@ import type { TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 import { NO_THRESHOLD_MATCH_STATS, type MatchStatCode } from "./matchStatCodes";
+import { NO_THRESHOLD_PERIOD_OUTCOMES, TEAM_TARGETED_PERIOD_OUTCOMES, type PeriodCode, type PeriodOutcomeKind } from "./periodStatCodes";
 import type { BetCategory } from "@/lib/labels/bets";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 
@@ -58,6 +62,18 @@ async function resolveMatchTeamNames(
   const name2 = nameById.get(series.team2_id);
   return name1 && name2 ? [name1, name2] : null;
 }
+
+/** Détecte un texte "de forme" pari période AVANT tout appel Claude
+ *  (24/08/2026, GAPS_OUVERTS.md) -- vocabulaire temporel volontairement
+ *  large mais peu ambigu (quart-temps/mi-temps sous toutes leurs graphies
+ *  courantes) : NE MATCHE PAS "prolongation" seule (ex. "va en
+ *  prolongation" reste géré par structureBet.ts/MATCH_TOTAL, comportement
+ *  inchangé). Un pari période formulé assez différemment pour échapper à ce
+ *  filtre retombe sur structureBet.ts -> calculable=false -> file de
+ *  validation manuelle admin -- même filet de sécurité que tout autre cas
+ *  non géré aujourd'hui, jamais une réponse fausse. Voir structurePeriodBet.ts
+ *  pour le POURQUOI de ce routage (pas un 2e schéma dans structureBet.ts). */
+const PERIOD_KEYWORD_REGEX = /quart[s]?[\s-]?temps|mi[\s-]?temps/i;
 
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
@@ -144,6 +160,7 @@ export async function structureAndScoreBet(
         p_structured_team_id: null,
         p_structured_duel: null,
         p_structured_combo: null,
+        p_structured_period: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -156,8 +173,182 @@ export async function structureAndScoreBet(
     }
   }
 
+  /** Pari PERIOD (24/08/2026, GAPS_OUVERTS.md, chantier "pari période") --
+   *  porte sur un quart-temps/mi-temps précis. 2 formes distinguées par
+   *  periodBet.player : ÉQUIPE (vainqueur de période, écart, total,
+   *  scénario mi-temps/résultat) ou JOUEUR (une stat normale limitée à
+   *  cette période). MATCH uniquement, même limite que les autres branches.
+   *  Appelée UNIQUEMENT quand PERIOD_KEYWORD_REGEX matche (cf. try
+   *  ci-dessous) -- structuration vient de structurePeriodBet(), un schéma
+   *  séparé de structureBet.ts (voir sa docstring pour le pourquoi). */
+  async function handlePeriodBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structurePeriodBet(description, teamNames);
+    if (!structuration || !structuration.calculable || structuration.bet_subject !== "PERIOD") {
+      await markNotCalculable();
+      return;
+    }
+    const periodBet = structuration.period_bet;
+    if (scope !== "MATCH" || !matchId || !periodBet) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+    const asOfDate = matchTeams.scheduledAt.slice(0, 10);
+
+    // Forme JOUEUR : player rempli -- même garde comparison/threshold que
+    // bet_subject=PLAYER classique (dd/td exceptés via NO_THRESHOLD_STATS).
+    if (periodBet.player) {
+      if (!periodBet.period || !periodBet.player_stat) {
+        await markNotCalculable();
+        return;
+      }
+      const stat = periodBet.player_stat as StatCode;
+      if (!NO_THRESHOLD_STATS.has(stat) && (periodBet.threshold === null || !periodBet.comparison)) {
+        await markNotCalculable();
+        return;
+      }
+      const prediction = await predictPlayerPeriodStat(
+        periodBet.player,
+        stat,
+        periodBet.period as PeriodCode,
+        periodBet.threshold,
+        periodBet.comparison,
+        matchTeams.homeTeamName,
+        matchTeams.awayTeamName,
+        asOfDate,
+      );
+      if (!prediction) {
+        await markNotCalculable();
+        return;
+      }
+      await supabase.rpc("update_bet_structuration", {
+        p_bet_id: betId,
+        p_structured_player_name: periodBet.player,
+        p_structured_player_id: prediction.playerId,
+        p_structured_team_id: null,
+        p_structured_duel: null,
+        p_structured_combo: null,
+        p_structured_period: {
+          period: periodBet.period,
+          outcome_kind: null,
+          team_id: null,
+          player_id: prediction.playerId,
+          exact_count: null,
+        },
+        p_stat: periodBet.player_stat,
+        p_threshold: periodBet.threshold,
+        p_comparison: periodBet.comparison,
+        p_is_calculable: true,
+        p_calculated_proba: prediction.proba,
+        p_suggested_difficulty: probaToDifficulty(prediction.proba),
+        p_category: "PERIOD" satisfies BetCategory,
+      });
+      return;
+    }
+
+    // Forme ÉQUIPE. outcome_kind requis ; period requis SAUF pour
+    // QUARTERS_WON_COUNT (porte sur le match entier).
+    const outcomeKind = periodBet.outcome_kind as PeriodOutcomeKind | null;
+    if (!outcomeKind || (outcomeKind !== "QUARTERS_WON_COUNT" && !periodBet.period)) {
+      await markNotCalculable();
+      return;
+    }
+
+    let equipeVisee: "domicile" | "exterieur" | null = null;
+    let teamId: string | null = null;
+    if (TEAM_TARGETED_PERIOD_OUTCOMES.has(outcomeKind)) {
+      const teamName = periodBet.team === "team1" ? teamNames?.[0] : periodBet.team === "team2" ? teamNames?.[1] : null;
+      if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
+        await markNotCalculable();
+        return;
+      }
+      equipeVisee = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
+      teamId = teamName === matchTeams.homeTeamName ? matchTeams.homeTeamId : matchTeams.awayTeamId;
+    }
+
+    // Bug réel trouvé en testant en conditions réelles (24/08/2026) :
+    // LEADS_HALF_RESULT n'est PAS dans NO_THRESHOLD_PERIOD_OUTCOMES (il a
+    // bien un `comparison` -- OVER/UNDER encode mène-et-gagne vs mène-et-
+    // perd) mais n'a PAS de `threshold` numérique non plus (toujours null,
+    // cf. periodStatCodes.ts) -- un pari "Cleveland mène à la mi-temps et
+    // gagne le match" (correctement classifié par Claude, threshold=null/
+    // comparison="OVER") tombait donc à tort sur markNotCalculable() ici.
+    // 3 catégories, pas 2 : QUARTER_WINNER/HALF_WINNER (ni l'un ni l'autre),
+    // LEADS_HALF_RESULT (comparison seul), le reste (les deux).
+    const needsComparison = !NO_THRESHOLD_PERIOD_OUTCOMES.has(outcomeKind);
+    const needsThreshold = needsComparison && outcomeKind !== "LEADS_HALF_RESULT";
+    if ((needsComparison && !periodBet.comparison) || (needsThreshold && periodBet.threshold === null)) {
+      await markNotCalculable();
+      return;
+    }
+
+    const prediction = await predictPeriodTeamOutcome(
+      outcomeKind,
+      (periodBet.period as PeriodCode | null) ?? null,
+      equipeVisee,
+      periodBet.exact_count,
+      periodBet.threshold,
+      periodBet.comparison,
+      matchTeams.homeTeamName,
+      matchTeams.awayTeamName,
+      asOfDate,
+    );
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      p_structured_player_name: null,
+      p_structured_player_id: null,
+      p_structured_team_id: teamId,
+      p_structured_duel: null,
+      p_structured_combo: null,
+      p_structured_period: {
+        period: periodBet.period,
+        outcome_kind: outcomeKind,
+        team_id: teamId,
+        player_id: null,
+        exact_count: periodBet.exact_count,
+      },
+      p_stat: null,
+      p_threshold: periodBet.threshold,
+      p_comparison: periodBet.comparison,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: "PERIOD" satisfies BetCategory,
+    });
+  }
+
   try {
     const teamNames = await resolveMatchTeamNames(supabase, seriesId);
+
+    // Routage PERIOD par mot-clé (24/08/2026, GAPS_OUVERTS.md) -- PAS un 7e
+    // bet_subject dans le schéma structureBet.ts : testé en conditions
+    // réelles, ce schéma est déjà au plafond de complexité accepté par
+    // l'API Claude ("compiled grammar is too large" -- reproduit sur TOUS
+    // les paris, pas seulement PERIOD, même après avoir factorisé les enums
+    // répétés). Décidé avec l'utilisateur : un texte qui RESSEMBLE à un
+    // pari période (vocabulaire temporel, peu ambigu) appelle EXCLUSIVEMENT
+    // structurePeriodBet() (son propre petit schéma dédié, testé OK en
+    // isolation) -- jamais les deux appels, jamais de repli automatique de
+    // l'un vers l'autre (ça recouplerait le coût de PERIOD à toute la
+    // population -- déjà grande et croissante -- des paris non calculables
+    // pour d'autres raisons, pas mesurable ni borné). Sciemment PAS
+    // généralisé aux 5 autres bet_subject : leur distinction est
+    // SÉMANTIQUE (comparaison vs seuil fixe vs somme de conditions), pas
+    // lexicale -- un mot-clé ne peut pas les séparer de façon fiable.
+    if (PERIOD_KEYWORD_REGEX.test(description)) {
+      await handlePeriodBet(teamNames);
+      return;
+    }
+
     const structuration = await structureBet(description, teamNames);
     if (!structuration || !structuration.calculable || !structuration.bet_subject) {
       await markNotCalculable();
@@ -223,6 +414,7 @@ export async function structureAndScoreBet(
         p_structured_team_id: null,
         p_structured_duel: null,
         p_structured_combo: null,
+        p_structured_period: null,
         p_stat: matchTotal.stat,
         p_threshold: matchTotal.threshold,
         p_comparison: matchTotal.comparison,
@@ -272,6 +464,7 @@ export async function structureAndScoreBet(
         p_structured_team_id: teamId,
         p_structured_duel: null,
         p_structured_combo: null,
+        p_structured_period: null,
         p_stat: teamStat.stat,
         p_threshold: teamStat.threshold,
         p_comparison: teamStat.comparison,
@@ -376,6 +569,7 @@ export async function structureAndScoreBet(
         p_structured_team_id: null,
         p_structured_duel: structuredDuel,
         p_structured_combo: null,
+        p_structured_period: null,
         p_stat: null,
         p_threshold: diffThreshold,
         p_comparison: null,
@@ -482,6 +676,7 @@ export async function structureAndScoreBet(
         p_structured_team_id: null,
         p_structured_duel: null,
         p_structured_combo: structuredCombo,
+        p_structured_period: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -534,6 +729,7 @@ export async function structureAndScoreBet(
         p_structured_team_id: null,
         p_structured_duel: null,
         p_structured_combo: null,
+        p_structured_period: null,
         p_stat: player.stat,
         p_threshold: player.threshold,
         p_comparison: player.comparison,
@@ -587,6 +783,7 @@ export async function structureAndScoreBet(
       p_structured_team_id: null,
       p_structured_duel: null,
       p_structured_combo: null,
+      p_structured_period: null,
       p_stat: player.stat,
       p_threshold: player.threshold,
       p_comparison: player.comparison,

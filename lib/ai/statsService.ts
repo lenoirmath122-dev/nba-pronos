@@ -2,6 +2,7 @@ import "server-only";
 import { NO_THRESHOLD_STATS } from "./statCodes";
 import type { StatCode } from "./statCodes";
 import { TEAM_PERCENTAGE_STATS, type TeamStatCode } from "./teamStatCodes";
+import type { PeriodCode, PeriodOutcomeKind } from "./periodStatCodes";
 
 // Appel HTTP au micro-service Python déployé sur Google Cloud Run
 // (Cadrage/Stats/service/app.py, projet-data-nba.md §24) -- SEULE
@@ -476,6 +477,114 @@ export async function predictCombo(
       }),
     );
     return { proba: data.proba, conditionsMeta };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pari PERIOD, forme ÉQUIPE (24/08/2026, GAPS_OUVERTS.md, chantier "pari
+ * période") -- vainqueur de quart-temps/mi-temps, écart, total combiné, part
+ * de points, ou scénario mi-temps/résultat final. `equipeVisee` : "domicile"/
+ * "exterieur" (même convention que predictComparison) -- null pour les
+ * outcome_kind symétriques (MARGIN/TOTAL_POINTS, aucune équipe visée).
+ * `period` : null uniquement pour QUARTERS_WON_COUNT (porte sur le match
+ * entier, pas une période unique).
+ */
+export async function predictPeriodTeamOutcome(
+  outcomeKind: PeriodOutcomeKind,
+  period: PeriodCode | null,
+  equipeVisee: "domicile" | "exterieur" | null,
+  exactCount: boolean | null,
+  threshold: number | null,
+  comparison: "OVER" | "UNDER" | null,
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-period`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        outcome_kind: outcomeKind,
+        period,
+        equipe_visee: equipeVisee,
+        exact_count: exactCount,
+        seuil: threshold,
+        comparison,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba, label: data.label };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pari PERIOD, forme JOUEUR (24/08/2026, GAPS_OUVERTS.md, chantier "pari
+ * période") -- une stat JOUEUR normale (mêmes codes que predictOverUnder)
+ * mais limitée à UNE période (ex. "3 contres en 1ère mi-temps"). Contrat
+ * calqué sur predictOverUnder (inversion OVER/UNDER faite ICI, côté TS, pas
+ * côté service -- même raison : prédiction à l'échelle d'un seul match).
+ */
+export async function predictPlayerPeriodStat(
+  playerName: string,
+  stat: StatCode,
+  period: PeriodCode,
+  threshold: number | null,
+  comparison: "OVER" | "UNDER" | null,
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<StatsPredictResult | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  const body: Record<string, unknown> = {
+    joueur: playerName,
+    stat,
+    period,
+    equipe_domicile: homeTeamName,
+    equipe_exterieur: awayTeamName,
+    as_of_date: asOfDate,
+  };
+  if (!NO_THRESHOLD_STATS.has(stat)) {
+    if (threshold === null) return null;
+    body.seuil = threshold;
+    body.comparison = comparison;
+  }
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-player-period`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    const result: StatsPredictResult = {
+      proba: data.proba,
+      label: data.label,
+      detail: data.detail,
+      playerId: typeof data.joueur_id === "number" ? data.joueur_id : null,
+    };
+    if (comparison === "UNDER" && !NO_THRESHOLD_STATS.has(stat)) {
+      return { ...result, proba: 1 - result.proba };
+    }
+    return result;
   } catch {
     return null;
   }

@@ -45,6 +45,7 @@ from fetch_nba_data import (  # noqa: E402
     sleep_between_requests,
 )
 from load_to_sqlite import ADVANCED_COLUMNS, TRADITIONAL_COLUMNS  # noqa: E402
+from tester_modele import minutes_to_float  # noqa: E402
 
 DEFAULT_SEASON_TYPES = ["Regular Season", "Playoffs", "PlayIn"]
 DELAY_MIN, DELAY_MAX = 0.6, 1.2
@@ -71,6 +72,12 @@ STATS_BOX_SCORE_TRAD_COLUMNS = [
     "game_id", "player_id", "team_id", "minutes", "pts", "reb", "ast", "fg3m", "stl", "blk",
     "plus_minus", "ftm", "fta", "fgm", "fga", "fg3a", "oreb",
 ]
+
+# Chantier "paris joueur+periode" (GAPS_OUVERTS.md, 24/08/2026) -- colonnes
+# de stats_box_scores_by_period (migration 20260824150000), sous-ensemble de
+# STATS_BOX_SCORE_TRAD_COLUMNS (pas de team_id/plus_minus, pas necessaires a
+# la resolution/prediction par periode).
+STATS_BOX_SCORE_PERIOD_COLUMNS = ["game_id", "player_id", "pts", "reb", "ast", "fg3m", "stl", "blk", "ftm", "fta", "fgm", "fga", "fg3a", "oreb"]
 
 PAGE_SIZE = 1000  # limite par defaut de PostgREST -- toute lecture "table
 # entiere" doit paginer avec .range(), sinon une reponse tronquee a 1000
@@ -183,6 +190,31 @@ def fetch_box_scores(game_id: str) -> tuple:
     return trad, adv
 
 
+def fetch_period_box_scores(game_id: str) -> dict:
+    """{1: df, 2: df, 3: df, 4: df} -- box-score TRADITIONNEL restreint a
+    CHAQUE quart-temps (range_type="1" + start_period=end_period=N), verifie
+    empiriquement le 24/08/2026 (chiffres differents et coherents par quart-
+    temps sur un match reel) avant de coder ce chantier -- l'API NBA donne
+    directement les stats officielles par periode, pas besoin de parser
+    play_by_play (jamais fiable pour blk/stl/ast, embarques en texte libre
+    dans description, pas en lignes structurees -- decouvert en essayant de
+    construire les cibles d'ENTRAINEMENT locales, cf. GAPS_OUVERTS.md). 4
+    appels supplementaires par match (1 par quart-temps) -- les mi-temps se
+    calculent en sommant 2 quarts-temps a la resolution, pas besoin de 2
+    appels de plus."""
+    out = {}
+    for period in (1, 2, 3, 4):
+        def call(_period=period):
+            return boxscoretraditionalv3.BoxScoreTraditionalV3(
+                game_id=game_id, range_type="1", start_period=str(_period), end_period=str(_period), timeout=REQUEST_TIMEOUT
+            ).get_data_frames()[0]
+
+        df = fetch_with_retries(call, f"boxscore period {period} {game_id}", MAX_RETRIES)
+        sleep_between_requests(DELAY_MIN, DELAY_MAX)
+        out[period] = df
+    return out
+
+
 def upsert_records(client, table: str, df: pd.DataFrame, on_conflict: str):
     """Par lots de PAGE_SIZE, même précaution que backfill_supabase.py -- un
     jour de rattrapage après une panne pourrait accumuler bien plus qu'un
@@ -215,7 +247,7 @@ def run(season: str, season_types: list):
     player_game_count = season_player_game_counts(client, season)
 
     equipes_rows, joueurs_rows, matchs_rows = [], [], []
-    box_rows, box_adv_rows = [], []
+    box_rows, box_adv_rows, box_period_rows = [], [], []
 
     for i, game_id in enumerate(new_game_ids, start=1):
         meta = season_games[game_id]
@@ -276,6 +308,21 @@ def run(season: str, season_types: list):
         for pid in trad_played["player_id"].astype(int):
             player_game_count[pid] += 1
 
+        # Chantier "paris joueur+periode" (24/08/2026, GAPS_OUVERTS.md) -- 4
+        # appels supplementaires par match (voir fetch_period_box_scores).
+        period_dfs = fetch_period_box_scores(game_id)
+        for period, pdf in period_dfs.items():
+            if pdf is None:
+                continue
+            pdf = pdf.drop_duplicates(subset=["personId"])
+            pdf_played = pdf[pdf["minutes"].notna() & (pdf["minutes"] != "")].rename(columns=TRADITIONAL_COLUMNS)
+            for _, row in pdf_played.iterrows():
+                box_period_rows.append({
+                    **{col: row[col] for col in STATS_BOX_SCORE_PERIOD_COLUMNS},
+                    "period": period,
+                    "minutes": minutes_to_float(row["minutes"]),
+                })
+
         if i % 10 == 0 or i == len(new_game_ids):
             print(f"  [{i}/{len(new_game_ids)}] traité jusqu'à {game_id}")
 
@@ -300,10 +347,13 @@ def run(season: str, season_types: list):
     else:
         nb_box_rows = 0
 
+    if box_period_rows:
+        upsert_records(client, "stats_box_scores_by_period", pd.DataFrame(box_period_rows), "game_id,player_id,period")
+
     if matchs_rows:
         upsert_records(client, "stats_matchs", pd.DataFrame(matchs_rows), "game_id")
 
-    print(f"\nTerminé : {len(matchs_rows)} matchs, {nb_box_rows} lignes box_scores ajoutés.")
+    print(f"\nTerminé : {len(matchs_rows)} matchs, {nb_box_rows} lignes box_scores, {len(box_period_rows)} lignes box_scores_by_period ajoutés.")
 
 
 def main():

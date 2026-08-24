@@ -51,6 +51,7 @@ Usage:
 import sqlite3
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -122,6 +123,63 @@ MATCH_FEATURE_COLS = [
 # aussi dans entrainement_matchs via la boucle commune, redondants mais pas
 # geants (meme raisonnement que "pts" ci-dessus, pas de cas particulier).
 TEAM_TARGET_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga", "fgm", "fta", "ftm", "fg3a"]
+
+
+# Chantier "pari periode" equipe (GAPS_OUVERTS.md, 24/08/2026) -- 6 periodes
+# valides cote pari (Q1-Q4 = quart-temps seul, H1/H2 = mi-temps = 2 quarts-
+# temps). Meme liste que lib/ai/periodStatCodes.ts (PERIOD_CODES), cote
+# Python.
+PERIOD_CODES = ["Q1", "Q2", "Q3", "Q4", "H1", "H2"]
+
+# Segment (quarts-temps COUVERTS par cette periode seule) vs cumulatif
+# (depuis le debut du match JUSQU'A la fin de cette periode) -- meme
+# distinction que periodQuarterIndices()/cumulativeQuarterIndices()
+# (resolveCalculableBets.ts) : TOTAL_POINTS/QUARTER_WINNER/HALF_WINNER sont
+# des segments ("le total du 4e quart-temps"), MARGIN est cumulatif
+# ("l'ecart A LA FIN du 3e quart-temps" = Q1+Q2+Q3, pas Q3 seul).
+_PERIOD_SEGMENT_QUARTERS = {"Q1": [1], "Q2": [2], "Q3": [3], "Q4": [4], "H1": [1, 2], "H2": [3, 4]}
+_PERIOD_CUMULATIVE_QUARTERS = {"Q1": [1], "Q2": [1, 2], "Q3": [1, 2, 3], "Q4": [1, 2, 3, 4], "H1": [1, 2], "H2": [1, 2, 3, 4]}
+
+
+def _quarter_scores_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
+    """Reconstruit le score de FIN de chaque quart-temps (1-4, quart-temps
+    seul, pas cumule) depuis play_by_play.score_home/score_away (score
+    CUMULE depuis le debut du match a chaque action) -- meme source que
+    went_to_ot (MAX(period)) ci-dessus, jamais synchronisee vers Supabase,
+    utilisee UNIQUEMENT pour les cibles d'entrainement LOCALES (chantier
+    "pari periode" equipe, GAPS_OUVERTS.md, 24/08/2026). Le signal de
+    PRODUCTION vient de state.score.homeTeam/awayTeam (Highlightly,
+    lib/nba/client.ts) -- deja par quart-temps directement, pas besoin de le
+    reconstruire cote TS.
+
+    Retourne game_id + home_q1..q4/away_q1..q4 (quart-temps SEUL). NaN
+    preservee (pas de play_by_play pour ce game_id, ou match ecourte a moins
+    de 4 quarts-temps -- jamais vu en pratique mais garde de prudence) plutot
+    que forcee a 0, meme principe que went_to_ot ci-dessus."""
+    pbp = pd.read_sql(
+        "SELECT game_id, period, action_number, score_home, score_away FROM play_by_play WHERE period BETWEEN 1 AND 4",
+        conn, dtype={"game_id": str},
+    )
+    cols = ["game_id"] + [f"{side}_q{p}" for side in ("home", "away") for p in range(1, 5)]
+    if pbp.empty:
+        return pd.DataFrame(columns=cols)
+
+    end_of_period = pbp.sort_values("action_number").groupby(["game_id", "period"], as_index=False).last()
+    cum_home = end_of_period.pivot(index="game_id", columns="period", values="score_home")
+    cum_away = end_of_period.pivot(index="game_id", columns="period", values="score_away")
+
+    q_home = cum_home.diff(axis=1)
+    q_home[1] = cum_home[1] if 1 in cum_home.columns else pd.NA
+    q_away = cum_away.diff(axis=1)
+    q_away[1] = cum_away[1] if 1 in cum_away.columns else pd.NA
+
+    q_home.columns = [f"home_q{p}" for p in q_home.columns]
+    q_away.columns = [f"away_q{p}" for p in q_away.columns]
+    out = q_home.join(q_away, how="outer").reset_index()
+    for c in cols:
+        if c not in out.columns:
+            out[c] = pd.NA
+    return out[cols]
 
 
 def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
@@ -241,7 +299,102 @@ def build_team_perspective_dataset(conn: sqlite3.Connection) -> pd.DataFrame:
     )
     df = df.merge(team_stats, on=["game_id", "team_id"], how="left")
 
+    # Chantier "pari periode" equipe (24/08/2026, GAPS_OUVERTS.md) --
+    # own_quarters_won_count (QUARTERS_WON_COUNT, multi-classe 0-4) et
+    # own_half_outcome (LEADS_HALF_RESULT, cible JOINTE 3 classes -- PAS
+    # composee via independance : NOT_LEADING/WINS/LOSES mutuellement
+    # exclusives, cf. resolveCalculableBets.ts::computePeriodTeamOutcome
+    # pour le meme raisonnement cote resolution).
+    matchs_ctx = pd.read_sql(
+        "SELECT game_id, home_team_id, home_score, away_score FROM matchs "
+        "WHERE home_team_id IS NOT NULL AND home_score IS NOT NULL",
+        conn, dtype={"game_id": str},
+    )
+    qs = _quarter_scores_from_pbp(conn)
+    ctx = df[["game_id", "team_id"]].merge(matchs_ctx, on="game_id", how="left").merge(qs, on="game_id", how="left")
+    is_home = ctx["team_id"] == ctx["home_team_id"]
+    own_q = [np.where(is_home, ctx[f"home_q{p}"], ctx[f"away_q{p}"]) for p in range(1, 5)]
+    opp_q = [np.where(is_home, ctx[f"away_q{p}"], ctx[f"home_q{p}"]) for p in range(1, 5)]
+    df["own_quarters_won_count"] = sum((oq > pq).astype(float) for oq, pq in zip(own_q, opp_q))
+
+    own_half = own_q[0] + own_q[1]
+    opp_half = opp_q[0] + opp_q[1]
+    own_total = np.where(is_home, ctx["home_score"], ctx["away_score"])
+    opp_total = np.where(is_home, ctx["away_score"], ctx["home_score"])
+    leads_half = own_half > opp_half
+    wins_match = own_total > opp_total
+    df["own_half_outcome"] = np.select(
+        [leads_half & wins_match, leads_half & (~wins_match)],
+        ["WINS", "LOSES"],
+        default="NOT_LEADING",
+    )
+    # NaN sur own_quarters_won_count/own_half_outcome pour un game_id sans
+    # play_by_play (qs) -- NOT_LEADING serait FAUX dans ce cas (donnee
+    # manquante, pas "ne mene pas"), donc invalide explicitement les 2
+    # colonnes plutot que de laisser un faux NOT_LEADING silencieux.
+    missing = ctx["home_q1"].isna().to_numpy()
+    df.loc[missing, "own_quarters_won_count"] = pd.NA
+    df.loc[missing, "own_half_outcome"] = pd.NA
+
     return df
+
+
+def build_period_match_dataset(matchs_training: pd.DataFrame, quarter_scores: pd.DataFrame) -> pd.DataFrame:
+    """Format LONG, 1 ligne par (match, periode) -- 6 periodes -- pour les
+    cibles SYMETRIQUES (MARGIN cumulatif, TOTAL_POINTS segment, team=null
+    cote pari). Reutilise matchs_training deja construit (home_*/away_*
+    MATCH_FEATURE_COLS) fusionne avec les scores par quart-temps reconstruits
+    depuis play_by_play local. `period` categoriel (one-hot a l'entrainement)
+    -- UN SEUL modele generalise par cible plutot que 6 modeles dedies, meme
+    philosophie que /predict-team-stat (parametre `stat`)."""
+    df = matchs_training.merge(quarter_scores, on="game_id", how="left")
+    home_cols = [f"home_{c}" for c in MATCH_FEATURE_COLS]
+    away_cols = [f"away_{c}" for c in MATCH_FEATURE_COLS]
+    rows = []
+    for period in PERIOD_CODES:
+        seg = _PERIOD_SEGMENT_QUARTERS[period]
+        cum = _PERIOD_CUMULATIVE_QUARTERS[period]
+        home_seg = sum(df[f"home_q{p}"] for p in seg)
+        away_seg = sum(df[f"away_q{p}"] for p in seg)
+        home_cum = sum(df[f"home_q{p}"] for p in cum)
+        away_cum = sum(df[f"away_q{p}"] for p in cum)
+        part = df[["game_id"] + home_cols + away_cols].copy()
+        part["period"] = period
+        part["margin"] = (home_cum - away_cum).abs()
+        part["total_points"] = home_seg + away_seg
+        rows.append(part)
+    return pd.concat(rows, ignore_index=True)
+
+
+def build_period_team_dataset(equipe_perspective: pd.DataFrame, conn: sqlite3.Connection, quarter_scores: pd.DataFrame) -> pd.DataFrame:
+    """Format LONG, 1 ligne par (match, equipe, periode) -- perspective
+    own/opp (comme build_team_perspective_dataset), pour QUARTER_WINNER/
+    HALF_WINNER (own_wins_period, booleen) et POINT_SHARE_PCT (own_pts_share,
+    fraction 0-1) -- pooled par periode, meme philosophie que
+    build_period_match_dataset ci-dessus."""
+    matchs_ctx = pd.read_sql(
+        "SELECT game_id, home_team_id, home_score, away_score FROM matchs "
+        "WHERE home_team_id IS NOT NULL AND home_score IS NOT NULL",
+        conn, dtype={"game_id": str},
+    )
+    base = equipe_perspective.merge(matchs_ctx, on="game_id", how="left").merge(quarter_scores, on="game_id", how="left")
+    is_home = base["team_id"] == base["home_team_id"]
+    own_cols = [f"own_{c}" for c in MATCH_FEATURE_COLS]
+    opp_cols = [f"opp_{c}" for c in MATCH_FEATURE_COLS]
+    rows = []
+    for period in PERIOD_CODES:
+        seg = _PERIOD_SEGMENT_QUARTERS[period]
+        home_seg = sum(base[f"home_q{p}"] for p in seg)
+        away_seg = sum(base[f"away_q{p}"] for p in seg)
+        own_seg = np.where(is_home, home_seg, away_seg)
+        opp_seg = np.where(is_home, away_seg, home_seg)
+        own_total = np.where(is_home, base["home_score"], base["away_score"])
+        part = base[["game_id", "team_id"] + own_cols + opp_cols].copy()
+        part["period"] = period
+        part["own_wins_period"] = own_seg > opp_seg
+        part["own_pts_share"] = own_seg / own_total
+        rows.append(part)
+    return pd.concat(rows, ignore_index=True)
 
 
 def main():
@@ -261,16 +414,30 @@ def main():
     equipe_perspective = build_team_perspective_dataset(conn)
     equipe_perspective.to_sql("entrainement_equipe", conn, if_exists="replace", index=False)
 
+    # Chantier "pari periode" equipe (24/08/2026) -- 2 tables LONG (pooled
+    # par periode) en plus des 3 existantes, cf. build_period_match_dataset/
+    # build_period_team_dataset ci-dessus.
+    quarter_scores = _quarter_scores_from_pbp(conn)
+    periode_match = build_period_match_dataset(matchs_training, quarter_scores)
+    periode_match.to_sql("entrainement_periode_match", conn, if_exists="replace", index=False)
+
+    periode_equipe = build_period_team_dataset(equipe_perspective, conn, quarter_scores)
+    periode_equipe.to_sql("entrainement_periode_equipe", conn, if_exists="replace", index=False)
+
     conn.commit()
 
     n1 = cur.execute("SELECT COUNT(*) FROM labels_joueur").fetchone()[0]
     n2 = cur.execute("SELECT COUNT(*) FROM entrainement_matchs").fetchone()[0]
     n3 = cur.execute("SELECT COUNT(*) FROM entrainement_equipe").fetchone()[0]
+    n4 = cur.execute("SELECT COUNT(*) FROM entrainement_periode_match").fetchone()[0]
+    n5 = cur.execute("SELECT COUNT(*) FROM entrainement_periode_equipe").fetchone()[0]
     conn.close()
 
     print(f"labels_joueur: {n1} lignes")
     print(f"entrainement_matchs: {n2} lignes")
     print(f"entrainement_equipe: {n3} lignes")
+    print(f"entrainement_periode_match: {n4} lignes")
+    print(f"entrainement_periode_equipe: {n5} lignes")
 
 
 if __name__ == "__main__":

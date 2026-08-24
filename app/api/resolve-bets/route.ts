@@ -7,6 +7,7 @@ import {
   resolveCalculableTeamStatBets,
   resolveCalculableComparisonBets,
   resolveCalculableComboBets,
+  resolveCalculablePeriodBets,
   type ResolveBetsSummary,
 } from "@/lib/ai/resolveCalculableBets";
 
@@ -29,14 +30,16 @@ async function handle(request: Request): Promise<Response> {
   }
 
   try {
-    const [matchSummary, seriesSummary, matchTotalSummary, teamStatSummary, comparisonSummary, comboSummary] = await Promise.all([
-      resolveCalculableBets(),
-      resolveCalculableSeriesBets(),
-      resolveCalculableMatchTotalBets(),
-      resolveCalculableTeamStatBets(),
-      resolveCalculableComparisonBets(),
-      resolveCalculableComboBets(),
-    ]);
+    const [matchSummary, seriesSummary, matchTotalSummary, teamStatSummary, comparisonSummary, comboSummary, periodSummary] =
+      await Promise.all([
+        resolveCalculableBets(),
+        resolveCalculableSeriesBets(),
+        resolveCalculableMatchTotalBets(),
+        resolveCalculableTeamStatBets(),
+        resolveCalculableComparisonBets(),
+        resolveCalculableComboBets(),
+        resolveCalculablePeriodBets(),
+      ]);
     const summary: ResolveBetsSummary = {
       resolved: [
         ...matchSummary.resolved,
@@ -45,6 +48,7 @@ async function handle(request: Request): Promise<Response> {
         ...teamStatSummary.resolved,
         ...comparisonSummary.resolved,
         ...comboSummary.resolved,
+        ...periodSummary.resolved,
       ],
       skipped: [
         ...matchSummary.skipped,
@@ -53,6 +57,7 @@ async function handle(request: Request): Promise<Response> {
         ...teamStatSummary.skipped,
         ...comparisonSummary.skipped,
         ...comboSummary.skipped,
+        ...periodSummary.skipped,
       ],
     };
     return NextResponse.json(summary);

@@ -4,6 +4,148 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Pari période (équipe + joueur), CODÉ le 24/08/2026** (dernier morceau de
+> la liste des 429 paris -- "pari période", 47 paris équipe -- + un
+> chantier connexe découvert en le cadrant, "paris joueur+période", ex.
+> "3 contres en 1ère mi-temps pour Untel").
+>
+> **Équipe** : score par quart-temps persisté (`matches.quarter_scores
+> jsonb`, déjà présent dans le payload live Highlightly, juste jamais
+> stocké) -- couvre ~43 paris nouveaux (scénario mi-temps, quarts-temps
+> gagnés, vainqueur quart/mi-temps, écart, total période, répartition
+> points) sur les 47, les 4 restants (prolongation, score exact) déjà
+> couverts par `went_to_ot`. 6 modèles Python dédiés
+> (`train_period_model.py`, un classifieur/régresseur par famille de
+> résultat, pas un moteur de simulation unique -- même patron que le reste
+> du projet), `/predict-period` (généralisé par `outcome_kind`). MARGIN
+> est CUMULATIF depuis le début du match (pas juste le quart concerné) --
+> bug de sémantique auto-corrigé avant d'entraîner quoi que ce soit
+> (`cumulativeQuarterIndices()` distinct de `periodQuarterIndices()`).
+> Testé en HTTP local réel : 7/7 `outcome_kind` corrects (Boston Celtics vs
+> Los Angeles Lakers).
+>
+> **Joueur+période** : nouvelle table `stats_box_scores_by_period` (game_id,
+> player_id, period 1-4, stats de comptage), alimentée par
+> `BoxScoreTraditionalV3(range_type="1", start_period=end_period=N)` --
+> vérifié empiriquement que l'API NBA renvoie de vraies stats officielles
+> restreintes à une période (`play_by_play` LOCAL ne suffit PAS : les
+> contres/interceptions/passes ne sont pas des colonnes structurées, juste
+> embarquées en texte libre dans `description`, jamais fiable à parser --
+> découvert en essayant de construire les cibles d'entraînement locales).
+> `refresh_daily.py` étendu (synchro quotidienne des nouveaux matchs) +
+> `backfill_period_box_scores.py` (nouveau, historique complet, ~6600
+> matchs × 4 appels, resumable) lancé en tâche de fond -- **toujours en
+> cours en fin de session** (voir plus bas). Résolution
+> (`resolveCalculablePeriodBets()`, étendue) lit cette table. Prédiction
+> `/predict-player-period` : PAS encore de modèle entraîné (le backfill
+> n'est pas fini) -- approximation v1 assumée (`compute_player_period_proba()`,
+> `supabase_context.py`) : réutilise la moyenne/dispersion pleine partie
+> déjà calculée pour le chantier duel (`_player_stat_mean_scale()`),
+> appliquée une part fixe de période (Q1-Q4=25%, H1/H2=50%, hypothèse
+> UNIFORME, pas de vraie distribution empirique par joueur avant la fin du
+> backfill) et une dispersion réduite en `sqrt(part)` (variance
+> Poisson-style). Restreint à `REGRESSION_STATS` (dd/td/ft/fg/fg3 rejetés
+> explicitement -- `markNotCalculable()`, jamais une réponse fausse). À
+> remplacer par un vrai modèle entraîné une fois le backfill fini. Testé en
+> HTTP local réel : 4/4 cas corrects (seuil respecté, stat non supportée
+> rejetée proprement, joueur hors match rejeté proprement).
+>
+> **Découverte majeure EN TESTANT avec de vrais appels Claude Sonnet 5 (pas
+> en codant)** : ajouter `period_bet` comme 7e `bet_subject` dans le schéma
+> Zod PARTAGÉ de `structureBet.ts` fait échouer TOUS les paris (pas
+> seulement PERIOD), avec `400 The compiled grammar is too large` côté API
+> Claude -- reproduit y compris sur un pari overtime n'ayant rien à voir
+> avec `period_bet`. Le schéma existant (PLAYER/TEAM_STAT/MATCH_TOTAL/
+> COMPARISON/COMBO, hérité des chantiers combo/duel) est DÉJÀ au plafond de
+> complexité accepté par l'API pour les sorties structurées -- vérifié :
+> le JSON schema compilé du schéma actuel (8089 caractères) passe de façon
+> fiable, +467 caractères (+5.8%) suffit à le faire échouer de façon
+> fiable, quelle que soit la forme de l'ajout. Factoriser les enums
+> répétés en instances Zod partagées (`z.toJSONSchema(..., {reused:"ref"})`,
+> $ref-dédupliqué) réduit la taille du JSON envoyé mais PAS la grammaire
+> compilée côté serveur (le $ref semble être déplié à la compilation) --
+> testé, n'a pas suffi.
+>
+> **Corrigé** (option choisie avec l'utilisateur après explication des
+> alternatives) : `period_bet` retiré du schéma partagé (`structureBet.ts`
+> restauré à l'identique -- **aucune régression possible** sur les 5 types
+> déjà en prod, revérifié par un vrai appel API). Nouveau fichier
+> `structurePeriodBet.ts`, schéma SÉPARÉ et minimal (juste `period_bet` +
+> `calculable` + `reasoning`, 3731 caractères compilés, testé OK). Routage
+> EN AMONT par mot-clé (`PERIOD_KEYWORD_REGEX` dans
+> `structureAndScoreBet.ts`, `/quart[s]?[\s-]?temps|mi[\s-]?temps/i`) --
+> PAS un appel de secours déclenché sur `calculable=false` (rejeté
+> explicitement : ça recouplerait le coût de PERIOD à toute la population,
+> non bornée et croissante, des paris déjà/futurs non calculables pour
+> d'autres raisons). Un texte qui matche appelle EXCLUSIVEMENT
+> `structurePeriodBet()`, jamais les deux schémas. Testé sur les 47
+> exemples réels du corpus (`types_de_paris_playoffs_2026.md`) : 17/20
+> paris période (hors prolongation, volontairement exclue du mot-clé)
+> matchent bien, 3 prolongations tombent bien sur `structureBet.ts`/
+> `went_to_ot` inchangé, 5 "faux positifs" identifiés et vérifiés un par un
+> en conditions réelles (aucun ne produit de mauvaise proba : rejet propre
+> à chaque fois, y compris le cas le plus risqué -- un pari COMBO
+> mentionnant "quarts-temps" en passant est correctement rejeté par
+> `structurePeriodBet()`, jamais mal extrait).
+>
+> **Généralisation du routage par mot-clé aux 5 autres `bet_subject`
+> explicitement écartée** (discuté avec l'utilisateur) : leur distinction
+> est SÉMANTIQUE (comparaison vs seuil fixe vs somme de conditions), pas
+> lexicale -- "Tatum marque plus de points que Booker" (COMPARISON) et
+> "Tatum marque plus de 25 points" (PLAYER) partagent les mêmes mots,
+> seule la structure de la phrase les distingue, un mot-clé ne peut pas
+> fiablement les séparer.
+>
+> **Implication structurelle pour les futurs chantiers, notée pour ne pas
+> la redécouvrir douloureusement** : le schéma partagé de `structureBet.ts`
+> est maintenant confirmé au plafond. Tout NOUVEAU type de pari futur
+> devra suivre le même patron que PERIOD (schéma séparé + routage en amont,
+> PAS un appel de secours sur échec, PAS une place dans le schéma partagé),
+> et devra avoir un signal de détection fiable (lexical si possible --
+> sinon le routage en amont n'est pas praticable sans revenir au risque de
+> régression sémantique écarté ci-dessus).
+>
+> **Backfill `stats_box_scores_by_period` toujours en cours en fin de
+> session** -- l'estimation initiale (~3h) était optimiste : débit réel
+> observé ~9-13 matchs/min (mesuré 2 fois à ~1h d'intervalle), soit plutôt
+> ~8-11h au total pour ~6600 matchs. Resumable (skip les game_id déjà
+> présents), aucune action requise pour le relancer s'il s'arrête -- juste
+> `python backfill_period_box_scores.py` depuis `Cadrage/Stats/service/`.
+>
+> **Redéployé sur Cloud Run et testé en conditions réelles via l'appli le
+> 24/08/2026** -- 2 bugs réels trouvés en testant (ni l'un ni l'autre
+> détecté par les scripts jetables isolés, qui appelaient les fonctions
+> directement sans passer par toute la chaîne `structureAndScoreBet.ts`) :
+>
+> 1. **Faux rejet de LEADS_HALF_RESULT** -- "Cleveland mène à la mi-temps
+>    et gagne le match" correctement classifié par Claude
+>    (`threshold=null`, `comparison="OVER"`) mais rejeté par le garde-fou
+>    équipe (`structureAndScoreBet.ts`) : la ligne testait `threshold` ET
+>    `comparison` ensemble dès qu'un `outcome_kind` n'était pas dans
+>    `NO_THRESHOLD_PERIOD_OUTCOMES` (QUARTER_WINNER/HALF_WINNER
+>    uniquement) -- or LEADS_HALF_RESULT a besoin de `comparison` SANS
+>    `threshold` (3e catégorie, ni "aucun des deux" ni "les deux").
+>    Corrigé : `needsComparison`/`needsThreshold` séparés.
+> 2. **`comparison` jamais envoyé au service Python côté joueur** --
+>    `predictPlayerPeriodStat()` (`statsService.ts`) construisait le corps
+>    de la requête `/predict-player-period` sans jamais y inclure
+>    `comparison` (contrairement à `predictPeriodTeamOutcome()`, qui
+>    l'envoie bien) -- le service recevait `comparison=null`,
+>    `_compute_player_period_proba_once()` (qui l'exige) renvoyait
+>    systématiquement `400`, `predictPlayerPeriodStat()` retournait `null`
+>    -> `markNotCalculable()`. Corrigé (`body.comparison = comparison`).
+>
+> Les 2 fixes vérifiés directement contre le service Cloud Run déployé
+> (mêmes requêtes exactes que celles envoyées par l'appli en échec, 400
+> avant / 200 après). `tsc`/`eslint`/`vitest` (37/37)/`next build`
+> propres. **Les 2 paris déjà soumis en échec ne sont PAS corrigés
+> rétroactivement** (même principe que les autres correctifs post-
+> validation du projet) -- à re-soumettre pour re-tester.
+>
+> Une fois le backfill terminé, un vrai modèle entraîné
+> (`train_player_period_model.py`, à écrire) devra remplacer
+> l'approximation v1 côté joueur.
+
 > **% tir équipe (ft/fg/fg3), CODÉ le 24/08/2026** (5e chantier de la liste
 > des 429 paris, après overtime -- voir l'entrée overtime plus bas pour
 > l'annonce "reste : % tir équipe, puis quart-temps"). Nouveau

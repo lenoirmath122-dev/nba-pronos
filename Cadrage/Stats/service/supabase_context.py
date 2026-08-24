@@ -691,6 +691,200 @@ def compute_team_pct_proba(*args, **kwargs) -> dict:
     return _compute_with_consistency_check(lambda: _compute_team_pct_proba_once(*args, **kwargs))
 
 
+PERIOD_CODES = ("Q1", "Q2", "Q3", "Q4", "H1", "H2")
+
+
+def _add_period_one_hot(row: dict, period: str) -> dict:
+    for p in PERIOD_CODES:
+        row[f"period_{p}"] = 1 if p == period else 0
+    return row
+
+
+def _own_opp_row(client, team_id: int, opponent_id: int, as_of_date, season: str | None) -> dict:
+    own_ctx = build_team_context(client, team_id, opponent_id, as_of_date, season=season)
+    opp_ctx = build_team_context(client, opponent_id, team_id, as_of_date, season=season)
+    row = {f"own_{c}": own_ctx[c] for c in BASE_FEATURE_COLS}
+    row.update({f"opp_{c}": opp_ctx[c] for c in BASE_FEATURE_COLS})
+    return row
+
+
+def _compute_period_proba_once(
+    client, outcome_kind: str, period: str | None, team_id: int | None, opponent_id: int | None,
+    home_team_id: int, away_team_id: int, exact_count: bool | None, seuil: float | None, comparison: str | None,
+    as_of_date, season: str | None = None,
+) -> dict:
+    """Chantier "pari periode" equipe (24/08/2026, GAPS_OUVERTS.md) -- 6
+    outcome_kind, un modele .joblib dedie par famille (train_period_model.py) :
+    QUARTERS_WON_COUNT/LEADS_HALF_RESULT = classifieurs multi-classes (pas de
+    notion de periode unique, LEADS_HALF_RESULT = cible JOINTE entrainee
+    DIRECTEMENT, pas composee via independance). QUARTER_WINNER/HALF_WINNER =
+    classifieur binaire pooled par periode (one-hot). POINT_SHARE_PCT =
+    regression + norm.cdf, pooled par periode. MARGIN/TOTAL_POINTS =
+    regression + norm.cdf, perspective DOMICILE/EXTERIEUR symetrique (pas
+    own/opp -- aucune equipe visee), pooled par periode."""
+    if outcome_kind == "QUARTERS_WON_COUNT":
+        if team_id is None or opponent_id is None or seuil is None:
+            raise ValueError("team_id/opponent_id/seuil obligatoires pour QUARTERS_WON_COUNT.")
+        bundle = joblib.load(MODELS_DIR / "period_quarters_won_count.joblib")
+        row = _own_opp_row(client, team_id, opponent_id, as_of_date, season)
+        X = pd.DataFrame([row])[bundle["feature_cols"]]
+        proba_by_class = dict(zip(bundle["model"].classes_, bundle["model"].predict_proba(X)[0]))
+        if exact_count:
+            proba = float(proba_by_class.get(float(seuil), 0.0))
+        elif comparison == "UNDER":
+            proba = float(sum(p for k, p in proba_by_class.items() if k < seuil))
+        else:
+            proba = float(sum(p for k, p in proba_by_class.items() if k > seuil))
+        return {
+            "label": "Nombre de quarts-temps remportés",
+            "proba": proba,
+            "detail": f"distribution multi-classe : {{{', '.join(f'{int(k)}: {v:.1%}' for k, v in sorted(proba_by_class.items()))}}}",
+        }
+
+    if outcome_kind == "LEADS_HALF_RESULT":
+        if team_id is None or opponent_id is None or comparison is None:
+            raise ValueError("team_id/opponent_id/comparison obligatoires pour LEADS_HALF_RESULT.")
+        bundle = joblib.load(MODELS_DIR / "period_leads_half_result.joblib")
+        row = _own_opp_row(client, team_id, opponent_id, as_of_date, season)
+        X = pd.DataFrame([row])[bundle["feature_cols"]]
+        proba_by_class = dict(zip(bundle["model"].classes_, bundle["model"].predict_proba(X)[0]))
+        target_class = "LOSES" if comparison == "UNDER" else "WINS"
+        proba = float(proba_by_class.get(target_class, 0.0))
+        return {
+            "label": "Mène à la mi-temps puis " + ("perd" if comparison == "UNDER" else "gagne"),
+            "proba": proba,
+            "detail": f"distribution 3 classes : {{{', '.join(f'{k}: {v:.1%}' for k, v in proba_by_class.items())}}}",
+        }
+
+    if outcome_kind in ("QUARTER_WINNER", "HALF_WINNER"):
+        if team_id is None or opponent_id is None or period is None:
+            raise ValueError("team_id/opponent_id/period obligatoires pour QUARTER_WINNER/HALF_WINNER.")
+        bundle = joblib.load(MODELS_DIR / "period_quarter_winner.joblib")
+        row = _add_period_one_hot(_own_opp_row(client, team_id, opponent_id, as_of_date, season), period)
+        X = pd.DataFrame([row])[bundle["feature_cols"]]
+        proba = float(bundle["model"].predict_proba(X)[0][1])
+        return {"label": f"Remporte {period}", "proba": proba, "detail": "classifieur binaire"}
+
+    if outcome_kind == "POINT_SHARE_PCT":
+        if team_id is None or opponent_id is None or period is None or seuil is None or comparison is None:
+            raise ValueError("team_id/opponent_id/period/seuil/comparison obligatoires pour POINT_SHARE_PCT.")
+        bundle = joblib.load(MODELS_DIR / "period_point_share.joblib")
+        row = _add_period_one_hot(_own_opp_row(client, team_id, opponent_id, as_of_date, season), period)
+        X = pd.DataFrame([row])[bundle["feature_cols"]]
+        pred_mean = float(bundle["model"].predict(X)[0])
+        scale = max(bundle["resid_std"], 0.01)
+        proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+        proba = proba_over if comparison == "OVER" else 1 - proba_over
+        return {
+            "label": "Part des points totaux marqués sur cette période",
+            "proba": float(proba),
+            "detail": f"prédiction moyenne = {pred_mean:.1%} (+/- {scale:.1%}, normale)",
+        }
+
+    if outcome_kind in ("MARGIN", "TOTAL_POINTS"):
+        if period is None or seuil is None or comparison is None:
+            raise ValueError("period/seuil/comparison obligatoires pour MARGIN/TOTAL_POINTS.")
+        model_name = "period_margin" if outcome_kind == "MARGIN" else "period_total_points"
+        bundle = joblib.load(MODELS_DIR / f"{model_name}.joblib")
+        base_row = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season).iloc[0].to_dict()
+        row = _add_period_one_hot(base_row, period)
+        X = pd.DataFrame([row])[bundle["feature_cols"]]
+        pred_mean = float(bundle["model"].predict(X)[0])
+        scale = max(bundle["resid_std"], 0.5)
+        proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+        proba = proba_over if comparison == "OVER" else 1 - proba_over
+        return {
+            "label": "Écart cumulé" if outcome_kind == "MARGIN" else "Total combiné sur la période",
+            "proba": float(proba),
+            "detail": f"prédiction moyenne = {pred_mean:.1f} (+/- {scale:.1f}, normale)",
+        }
+
+    raise ValueError(f"outcome_kind inconnu : {outcome_kind}")
+
+
+def compute_period_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_period_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE (instabilite deja reproduite sur
+    des classifieurs ET des regressions .joblib) -- appliquee par defaut ici
+    aussi, pas supposee absente."""
+    return _compute_with_consistency_check(lambda: _compute_period_proba_once(*args, **kwargs))
+
+
+# Part de la stat pleine partie attribuee a chaque periode -- convention v1
+# UNIFORME (aucune donnee empirique de repartition par joueur/periode encore
+# disponible : le backfill stats_box_scores_by_period tourne en tache de fond
+# au moment ou ceci est ecrit, 24/08/2026, GAPS_OUVERTS.md). A remplacer par
+# un vrai modele entraine (train_player_period_model.py) une fois le backfill
+# termine -- cette fonction restera l'implementation tant que ce modele
+# n'existe pas.
+_PLAYER_PERIOD_SHARE = {"Q1": 0.25, "Q2": 0.25, "Q3": 0.25, "Q4": 0.25, "H1": 0.5, "H2": 0.5}
+
+
+def _compute_player_period_proba_once(
+    client, player_id: int, stat: str, period: str, home_team_id: int, away_team_id: int,
+    seuil, comparison: str | None, rest_days: int = 2,
+) -> dict:
+    """Pari joueur+periode (24/08/2026, GAPS_OUVERTS.md) -- ex. "3 contres
+    en 1ere mi-temps pour Wembanyama". v1 APPROXIMATION (pas encore de
+    modele entraine sur des donnees par periode -- le backfill tourne en
+    tache de fond) : reutilise _player_stat_mean_scale() (moyenne/dispersion
+    pleine partie, meme fonction que le chantier duel) puis applique une
+    part fixe de periode (_PLAYER_PERIOD_SHARE) a la moyenne ET a la
+    dispersion (loi de Poisson -- variance = moyenne, donc pour une fraction
+    p du volume total, scale_periode = scale_pleine_partie * sqrt(p), meme
+    principe que le decoupage temps/volume deja accepte ailleurs dans ce
+    projet). Restreint a REGRESSION_STATS (meme limite que
+    _player_stat_mean_scale, dd/td/ft/fg/fg3 hors perimetre -- rejette avec
+    ValueError, capte cote TS par markNotCalculable(), jamais une reponse
+    fausse).
+
+    home_team_id/away_team_id : les 2 VRAIES equipes du match vise -- l'appelant
+    TS ne resout pas is_home/adversaire lui-meme pour ce type de pari
+    (contrairement a bet_subject=PLAYER classique), donc c'est fait ici,
+    meme geste que _resolve_weighted_operand() (chantier duel/combo)."""
+    if period not in _PLAYER_PERIOD_SHARE:
+        raise ValueError(f"period inconnue pour un pari joueur+periode : {period}")
+    if stat not in REGRESSION_STATS:
+        raise ValueError(
+            f"stat non supportee pour un pari joueur+periode : {stat} (seules les stats comptees le sont : "
+            f"{sorted(REGRESSION_STATS)})"
+        )
+    if seuil is None or comparison is None:
+        raise ValueError("seuil/comparison obligatoires pour un pari joueur+periode.")
+
+    player_team_id = _player_current_team_id(client, player_id)
+    if player_team_id not in (home_team_id, away_team_id):
+        raise ValueError(f"le joueur (player_id={player_id}) ne joue pour aucune des 2 equipes de ce match.")
+    is_home = 1 if player_team_id == home_team_id else 0
+    opponent_id = away_team_id if is_home else home_team_id
+
+    _, _, label = REGRESSION_STATS[stat]
+    pred_mean, scale = _player_stat_mean_scale(
+        client, player_id, stat, opponent_id=opponent_id, is_home=is_home, rest_days=rest_days,
+    )
+    share = _PLAYER_PERIOD_SHARE[period]
+    period_mean = pred_mean * share
+    period_scale = max(scale * math.sqrt(share), MIN_SCALE)
+
+    proba_over = 1 - norm.cdf(seuil, loc=period_mean, scale=period_scale)
+    proba = proba_over if comparison == "OVER" else 1 - proba_over
+    return {
+        "label": label,
+        "proba": float(proba),
+        "detail": (
+            f"prediction moyenne (periode) = {period_mean:.1f} (+/- {period_scale:.1f}, normale) -- "
+            f"approximation v1 : part fixe de {share:.0%} de la moyenne pleine partie {pred_mean:.1f}, "
+            "pas encore de modele entraine sur donnees par periode"
+        ),
+    }
+
+
+def compute_player_period_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_player_period_proba_once() d'une verification de
+    coherence, meme patron que compute_period_proba()."""
+    return _compute_with_consistency_check(lambda: _compute_player_period_proba_once(*args, **kwargs))
+
+
 def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is_home: int = 1, rest_days: int = 2) -> dict:
     """Equivalent Supabase de compute_proba() (tester_modele.py) -- meme
     contrat/sortie, seule la source du contexte change (build_context()
