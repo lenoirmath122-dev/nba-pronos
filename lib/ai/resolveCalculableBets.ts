@@ -3,7 +3,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { nyDateString } from "@/lib/dates/newyork";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import { NO_THRESHOLD_STATS, PERCENTAGE_STATS, type StatCode } from "./statCodes";
-import { TEAM_STAT_CODES, type TeamStatCode } from "./teamStatCodes";
+import { TEAM_STAT_CODES, TEAM_PERCENTAGE_STATS, type TeamStatCode } from "./teamStatCodes";
 
 // Phase 6 (résolution automatique des paris IA calculables, 22/08/2026,
 // demandé par l'utilisateur) -- bloc 2-3 du plan (voir JOURNAL_SESSIONS.md).
@@ -611,7 +611,20 @@ type EligibleTeamStatBetRow = {
 // contient déjà "de l'équipe", pas adapté à "X {label} du match").
 const TEAM_STAT_RESOLUTION_LABELS_FR: Record<TeamStatCode, string> = {
   pts: "points", reb: "rebonds", ast: "passes décisives", fg3m: "3-points réussis", stl: "interceptions", blk: "contres",
-  oreb: "rebonds offensifs",
+  oreb: "rebonds offensifs", ft: "% aux lancers francs", fg: "% au tir", fg3: "% à 3-points",
+};
+
+// Chantier "% tir équipe" (24/08/2026, GAPS_OUVERTS.md) -- ft/fg/fg3 n'ont
+// PAS de colonne pré-calculée dans stats_box_scores (contrairement aux
+// autres TEAM_STAT_CODES, sommables directement) : besoin de sommer les 2
+// colonnes brutes réussites/tentatives sur tous les joueurs de l'équipe
+// pour CE match, puis calculer le ratio -- même principe que
+// PCT_MAKES_ATTEMPTS_COLUMNS (résolution JOUEUR, plus haut dans ce fichier),
+// agrégé équipe entière au lieu d'un seul joueur.
+const TEAM_PCT_MAKES_ATTEMPTS_COLUMNS: Record<"ft" | "fg" | "fg3", readonly [string, string]> = {
+  ft: ["ftm", "fta"],
+  fg: ["fgm", "fga"],
+  fg3: ["fg3m", "fg3a"],
 };
 
 /** Equipe NBA reelle (stats_equipes.team_id, numerique) pour une equipe de
@@ -702,6 +715,16 @@ export async function resolveCalculableTeamStatBets(): Promise<ResolveBetsSummar
       continue;
     }
 
+    // ft/fg/fg3 n'existent QUE sous la forme "équipe précise" (pas de
+    // modèle/mécanisme "total_" pour un pourcentage combiné, décidé au
+    // cadrage du chantier "% tir équipe") -- jamais produit par
+    // structureAndScoreBet.ts, mais garde explicite ici plutôt qu'un calcul
+    // silencieusement faux si ce cas apparaissait un jour.
+    if (isTotal && TEAM_PERCENTAGE_STATS.has(stat)) {
+      summary.skipped.push({ betId: bet.id, reason: "forme combinée non supportée pour un pourcentage" });
+      continue;
+    }
+
     let actualStat: number;
     if (isTotal) {
       const { data: rows } = await supabase.from("stats_box_scores").select(stat).eq("game_id", gameId);
@@ -716,21 +739,42 @@ export async function resolveCalculableTeamStatBets(): Promise<ResolveBetsSummar
         summary.skipped.push({ betId: bet.id, reason: "équipe NBA correspondante introuvable" });
         continue;
       }
-      const { data: rows } = await supabase
-        .from("stats_box_scores")
-        .select(stat)
-        .eq("game_id", gameId)
-        .eq("team_id", nbaTeamId);
-      if (!rows || rows.length === 0) {
-        summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour cette équipe" });
-        continue;
+      if (TEAM_PERCENTAGE_STATS.has(stat)) {
+        const [makesCol, attemptsCol] = TEAM_PCT_MAKES_ATTEMPTS_COLUMNS[stat as "ft" | "fg" | "fg3"];
+        // Selection LITTERALE fixe (les 6 colonnes des 3 stats de %), pas un
+        // template dynamique -- le typage genere de @supabase/supabase-js
+        // pour .select() analyse la chaine litteralement, un template
+        // `${a}, ${b}` casse ce typage (TS2352).
+        const { data: rows } = await supabase
+          .from("stats_box_scores")
+          .select("ftm, fta, fgm, fga, fg3m, fg3a")
+          .eq("game_id", gameId)
+          .eq("team_id", nbaTeamId);
+        if (!rows || rows.length === 0) {
+          summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour cette équipe" });
+          continue;
+        }
+        const totalMakes = rows.reduce((sum, r) => sum + (((r as Record<string, number | null>)[makesCol]) ?? 0), 0);
+        const totalAttempts = rows.reduce((sum, r) => sum + (((r as Record<string, number | null>)[attemptsCol]) ?? 0), 0);
+        actualStat = totalAttempts > 0 ? totalMakes / totalAttempts : 0;
+      } else {
+        const { data: rows } = await supabase
+          .from("stats_box_scores")
+          .select(stat)
+          .eq("game_id", gameId)
+          .eq("team_id", nbaTeamId);
+        if (!rows || rows.length === 0) {
+          summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour cette équipe" });
+          continue;
+        }
+        actualStat = rows.reduce((sum, r) => sum + (((r as Record<string, number | null>)[stat]) ?? 0), 0);
       }
-      actualStat = rows.reduce((sum, r) => sum + (((r as Record<string, number | null>)[stat]) ?? 0), 0);
     }
 
     const won =
       bet.structured_comparison === "UNDER" ? actualStat < bet.structured_threshold : actualStat > bet.structured_threshold;
     const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+    const actualStatLabel = TEAM_PERCENTAGE_STATS.has(stat) ? `${Math.round(actualStat * 100)}%` : actualStat;
 
     const { data: updated } = await supabase
       .from("bets")
@@ -738,7 +782,7 @@ export async function resolveCalculableTeamStatBets(): Promise<ResolveBetsSummar
         status: outcome,
         resolution_reason:
           `Résolu automatiquement via les statistiques officielles du match ` +
-          `(${actualStat} ${TEAM_STAT_RESOLUTION_LABELS_FR[stat]}).`,
+          `(${actualStatLabel} ${TEAM_STAT_RESOLUTION_LABELS_FR[stat]}).`,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

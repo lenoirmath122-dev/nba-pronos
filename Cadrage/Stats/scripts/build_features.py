@@ -75,6 +75,19 @@ CREATE TABLE features_equipe (
     blk_contre_moy5 REAL, blk_contre_moy10 REAL,
     oreb_pour_moy5 REAL, oreb_pour_moy10 REAL,
     oreb_contre_moy5 REAL, oreb_contre_moy10 REAL,
+    fga_pour_moy5 REAL, fga_pour_moy10 REAL,
+    fga_contre_moy5 REAL, fga_contre_moy10 REAL,
+    fgm_pour_moy5 REAL, fgm_pour_moy10 REAL,
+    fgm_contre_moy5 REAL, fgm_contre_moy10 REAL,
+    fta_pour_moy5 REAL, fta_pour_moy10 REAL,
+    fta_contre_moy5 REAL, fta_contre_moy10 REAL,
+    ftm_pour_moy5 REAL, ftm_pour_moy10 REAL,
+    ftm_contre_moy5 REAL, ftm_contre_moy10 REAL,
+    fg3a_pour_moy5 REAL, fg3a_pour_moy10 REAL,
+    fg3a_contre_moy5 REAL, fg3a_contre_moy10 REAL,
+    ftm_pour_sum10 REAL, fta_pour_sum10 REAL,
+    fgm_pour_sum10 REAL, fga_pour_sum10 REAL,
+    fg3m_pour_sum10 REAL, fg3a_pour_sum10 REAL,
     victoires_pct_moy5 REAL, victoires_pct_moy10 REAL,
     off_rating_moy5 REAL, off_rating_moy10 REAL,
     def_rating_moy5 REAL, def_rating_moy10 REAL,
@@ -205,7 +218,12 @@ def compute_roster_continuity(conn: sqlite3.Connection) -> pd.DataFrame:
 # types_de_paris_playoffs_2026.md, categorie "Rebonds offensifs equipe" --
 # forme combinee, ex. "total des rebonds offensifs cumules des Pistons et
 # des Cavaliers superieur a 25").
-TEAM_COUNTING_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb"]
+# fga/fgm/fta/ftm/fg3a ajoutees le 24/08/2026 (chantier "% tir equipe",
+# GAPS_OUVERTS.md) -- generalisent automatiquement build_team_games()/
+# add_team_rolling_features() (deja en boucle) pour donner {stat}_pour/
+# contre_moy5/10 equipe, prerequis de l'etage "tentatives" de
+# train_team_pct_model.py. fg3m deja present (compte comptee historique).
+TEAM_COUNTING_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga", "fgm", "fta", "ftm", "fg3a"]
 
 
 def build_team_games(conn: sqlite3.Connection) -> pd.DataFrame:
@@ -284,6 +302,16 @@ def add_team_rolling_features(team_games: pd.DataFrame) -> pd.DataFrame:
     df["confrontations_directes_victoires_pct"] = h2h["win"].transform(lambda s: s.shift(1).expanding().mean())
     df["margin"] = df["team_pts"] - df["opp_pts"]
     df["confrontations_directes_ecart_moy"] = h2h["margin"].transform(lambda s: s.shift(1).expanding().mean())
+
+    # Sommes BRUTES equipe (pas de ratio deja calcule) des reussites/
+    # tentatives sur les 10 derniers matchs, meme motif EXACT que le joueur
+    # ci-dessus (chantier "% tir equipe", 24/08/2026) -- prerequis du
+    # retrecissement bayesien de train_team_pct_model.py. Perspective "pour"
+    # (l'equipe elle-meme) uniquement : le taux de tir propre d'une equipe
+    # ne depend pas de ce que l'adversaire tente.
+    for makes_col, attempts_col in (("ftm", "fta"), ("fgm", "fga"), ("fg3m", "fg3a")):
+        df[f"{makes_col}_pour_sum10"] = g[f"team_{makes_col}"].transform(lambda s: shifted_rolling_sum(s, 10))
+        df[f"{attempts_col}_pour_sum10"] = g[f"team_{attempts_col}"].transform(lambda s: shifted_rolling_sum(s, 10))
 
     return df
 
@@ -425,6 +453,12 @@ TEAM_TABLE_COLUMNS = [
     "stl_pour_moy5", "stl_pour_moy10", "stl_contre_moy5", "stl_contre_moy10",
     "blk_pour_moy5", "blk_pour_moy10", "blk_contre_moy5", "blk_contre_moy10",
     "oreb_pour_moy5", "oreb_pour_moy10", "oreb_contre_moy5", "oreb_contre_moy10",
+    "fga_pour_moy5", "fga_pour_moy10", "fga_contre_moy5", "fga_contre_moy10",
+    "fgm_pour_moy5", "fgm_pour_moy10", "fgm_contre_moy5", "fgm_contre_moy10",
+    "fta_pour_moy5", "fta_pour_moy10", "fta_contre_moy5", "fta_contre_moy10",
+    "ftm_pour_moy5", "ftm_pour_moy10", "ftm_contre_moy5", "ftm_contre_moy10",
+    "fg3a_pour_moy5", "fg3a_pour_moy10", "fg3a_contre_moy5", "fg3a_contre_moy10",
+    "ftm_pour_sum10", "fta_pour_sum10", "fgm_pour_sum10", "fga_pour_sum10", "fg3m_pour_sum10", "fg3a_pour_sum10",
     "victoires_pct_moy5", "victoires_pct_moy10",
     "off_rating_moy5", "off_rating_moy10", "def_rating_moy5", "def_rating_moy10",
     "net_rating_moy5", "net_rating_moy10", "pace_moy5", "pace_moy10",

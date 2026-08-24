@@ -387,6 +387,54 @@ def predict_team_stat(req: PredictTeamStatRequest):
     }
 
 
+TEAM_PCT_CODES = ("ft", "fg", "fg3")
+
+
+class PredictTeamPctRequest(BaseModel):
+    """Chantier "% tir equipe" (24/08/2026, GAPS_OUVERTS.md) -- MEME contrat
+    que PredictTeamStatRequest, restreint a ft/fg/fg3 (retrecissement
+    bayesien + Binomiale/Beta-Binomiale au lieu de moyenne/ecart-type
+    normale, cf. compute_team_pct_proba)."""
+    stat: str
+    equipe: str
+    adversaire: str
+    equipe_domicile: bool
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-team-pct")
+def predict_team_pct(req: PredictTeamPctRequest):
+    if req.stat not in TEAM_PCT_CODES:
+        raise HTTPException(400, f"stat inconnue : {req.stat} (attendu parmi {TEAM_PCT_CODES})")
+
+    sb = _client()
+
+    try:
+        team_id, team_name = supabase_context.find_team(sb, req.equipe)
+        opponent_id, opponent_name = supabase_context.find_team(sb, req.adversaire)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_team_pct_proba(
+            sb, req.stat, team_id, opponent_id, req.equipe_domicile, req.seuil, req.comparison, req.as_of_date,
+            season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe": team_name,
+        "adversaire": opponent_name,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
 class ComparisonOperand(BaseModel):
     """Un cote d'un duel (24/08/2026, GAPS_OUVERTS.md, chantier
     comparaison/duel) -- kind=TEAM (equipe "domicile"/"exterieur" du match

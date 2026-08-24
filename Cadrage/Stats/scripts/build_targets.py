@@ -115,7 +115,13 @@ MATCH_FEATURE_COLS = [
 # "oreb" ajoutee le meme jour (extension "faciles", categorie "Rebonds
 # offensifs equipe" -- forme combinee, cf. TEAM_COUNTING_STATS dans
 # build_features.py).
-TEAM_TARGET_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb"]
+# fga/fgm/fta/ftm/fg3a ajoutees le 24/08/2026 (chantier "% tir equipe") :
+# {stat}_reel dans entrainement_equipe sert de cible REELLE a l'etage
+# "tentatives" de train_team_pct_model.py (RandomForestRegressor qui predit
+# le NOMBRE de tirs tentes) -- home_{stat}/away_{stat}/total_{stat} generes
+# aussi dans entrainement_matchs via la boucle commune, redondants mais pas
+# geants (meme raisonnement que "pts" ci-dessus, pas de cas particulier).
+TEAM_TARGET_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga", "fgm", "fta", "ftm", "fg3a"]
 
 
 def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
@@ -203,8 +209,21 @@ def build_team_perspective_dataset(conn: sqlite3.Connection) -> pd.DataFrame:
     extérieur, sans avoir à choisir un "sens" a priori (contrairement à
     home_win/total_points, symétriques par construction match entier)."""
     cols = ", ".join(MATCH_FEATURE_COLS)
+    # Colonnes tentatives/sum10 (24/08/2026, chantier "% tir equipe") --
+    # cote "own" UNIQUEMENT (pas de version "opp" necessaire : le taux de
+    # tir propre d'une equipe ne depend pas du volume de tir adverse), donc
+    # ajoutees a part plutot que via la boucle own/opp de MATCH_FEATURE_COLS
+    # ci-dessous. Prerequis de train_team_pct_model.py (etage tentatives +
+    # retrecissement bayesien, meme patron que le joueur).
+    PCT_EXTRA_COLS = [
+        "fga_pour_moy5", "fga_pour_moy10", "fta_pour_moy5", "fta_pour_moy10",
+        "fg3a_pour_moy5", "fg3a_pour_moy10",
+        "ftm_pour_sum10", "fta_pour_sum10", "fgm_pour_sum10", "fga_pour_sum10",
+        "fg3m_pour_sum10", "fg3a_pour_sum10",
+    ]
+    extra_cols = ", ".join(PCT_EXTRA_COLS)
     fe = pd.read_sql(
-        f"SELECT game_id, team_id, opponent_team_id, is_home, game_date, season, {cols} FROM features_equipe",
+        f"SELECT game_id, team_id, opponent_team_id, is_home, game_date, season, {cols}, {extra_cols} FROM features_equipe",
         conn, dtype={"game_id": str},
     )
 

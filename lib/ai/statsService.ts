@@ -1,7 +1,7 @@
 import "server-only";
 import { NO_THRESHOLD_STATS } from "./statCodes";
 import type { StatCode } from "./statCodes";
-import type { TeamStatCode } from "./teamStatCodes";
+import { TEAM_PERCENTAGE_STATS, type TeamStatCode } from "./teamStatCodes";
 
 // Appel HTTP au micro-service Python déployé sur Google Cloud Run
 // (Cadrage/Stats/service/app.py, projet-data-nba.md §24) -- SEULE
@@ -287,7 +287,10 @@ export async function predictTotalTeamStat(
  *
  * Généralisé (23/08/2026) via l'endpoint générique /predict-team-stat
  * (app.py, `stat` transmis tel quel) pour couvrir reb/ast/fg3m/stl/blk sans
- * 5 fonctions dédiées.
+ * 5 fonctions dédiées. Routé vers /predict-team-pct (24/08/2026, chantier
+ * "% tir équipe") pour ft/fg/fg3 -- TEAM_PERCENTAGE_STATS -- même signature
+ * pour l'appelant (structureAndScoreBet.ts), le service Python change de
+ * mécanisme (rétrécissement bayésien + Binomiale) mais pas le contrat TS.
  */
 export async function predictTeamStat(
   stat: TeamStatCode,
@@ -301,8 +304,9 @@ export async function predictTeamStat(
   const url = process.env.STATS_SERVICE_URL;
   if (!url) return null;
 
+  const endpoint = TEAM_PERCENTAGE_STATS.has(stat) ? "/predict-team-pct" : "/predict-team-stat";
   try {
-    const res = await fetch(`${url.replace(/\/$/, "")}/predict-team-stat`, {
+    const res = await fetch(`${url.replace(/\/$/, "")}${endpoint}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

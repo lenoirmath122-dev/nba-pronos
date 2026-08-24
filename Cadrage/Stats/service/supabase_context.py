@@ -21,7 +21,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import joblib  # noqa: E402
-from scipy.stats import norm  # noqa: E402
+from scipy.stats import betabinom, binom, norm  # noqa: E402
 
 from tester_modele import (  # noqa: E402
     CLASSIFIER_STATS,
@@ -311,21 +311,22 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     own = pd.DataFrame(own_rows)
     if season is None:
         season = _latest_known_season(own["season"].unique())
-    team_games = own.groupby(["game_id", "season"], as_index=False).agg(
-        game_date=("game_date", "first"),
-        opponent_team_id=("opponent_team_id", "first"),
-        team_pts=("pts", "sum"),
-        team_reb=("reb", "sum"),
-        team_ast=("ast", "sum"),
-        team_fg3m=("fg3m", "sum"),
-        team_stl=("stl", "sum"),
-        team_blk=("blk", "sum"),
-        team_oreb=("oreb", "sum"),
-        off_rating=("off_rating", "mean"),
-        def_rating=("def_rating", "mean"),
-        net_rating=("net_rating", "mean"),
-        pace=("pace", "mean"),
-    )
+    # Bug reel trouve le 24/08/2026 (chantier "% tir equipe") : ce .agg()
+    # etait code en dur (pts/reb/ast/fg3m/stl/blk/oreb un par un) au lieu
+    # d'etre genere depuis TEAM_COUNTING_STATS comme opp_totals juste en
+    # dessous -- silencieusement plafonne a 7 stats, cassait meme les
+    # endpoints DEJA en prod (/predict-team-stat) des que TEAM_COUNTING_STATS
+    # gagnait une 8e entree (fga/fgm/fta/ftm/fg3a). Rendu dynamique pour de bon.
+    agg_kwargs = {
+        "game_date": ("game_date", "first"),
+        "opponent_team_id": ("opponent_team_id", "first"),
+        "off_rating": ("off_rating", "mean"),
+        "def_rating": ("def_rating", "mean"),
+        "net_rating": ("net_rating", "mean"),
+        "pace": ("pace", "mean"),
+    }
+    agg_kwargs.update({f"team_{s}": (s, "sum") for s in TEAM_COUNTING_STATS})
+    team_games = own.groupby(["game_id", "season"], as_index=False).agg(**agg_kwargs)
     team_games["game_date"] = pd.to_datetime(team_games["game_date"])
 
     opp_rows = fetch_all_rows(
@@ -371,6 +372,15 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
 
     seasons_known = sorted(team_games["season"].unique())
     context["continuite_effectif_saison"] = _team_roster_continuity(client, team_id, season, seasons_known)
+
+    # Sommes BRUTES equipe sur les 10 derniers matchs (24/08/2026, chantier
+    # "% tir equipe") -- equivalent Supabase des colonnes {col}_pour_sum10
+    # (build_features.py), meme motif que build_context() joueur : necessaire
+    # au retrecissement bayesien de compute_team_pct_proba(), un ratio deja
+    # calcule perdrait le nombre de tentatives sous-jacent.
+    for makes_col, attempts_col in (("ftm", "fta"), ("fgm", "fga"), ("fg3m", "fg3a")):
+        context[f"{makes_col}_pour_sum10"] = last10[f"team_{makes_col}"].sum()
+        context[f"{attempts_col}_pour_sum10"] = last10[f"team_{attempts_col}"].sum()
 
     return context
 
@@ -604,6 +614,81 @@ def compute_team_stat_proba(*args, **kwargs) -> dict:
     """Enveloppe _compute_team_stat_proba_once() d'une verification de
     coherence -- voir CONSISTENCY_CHECK_NOTE."""
     return _compute_with_consistency_check(lambda: _compute_team_stat_proba_once(*args, **kwargs))
+
+
+TEAM_PCT_LABELS_FR = {"ft": "Lancers francs", "fg": "Tirs au panier", "fg3": "3-points"}
+TEAM_PCT_MAKES_ATTEMPTS = {"ft": ("ftm", "fta"), "fg": ("fgm", "fga"), "fg3": ("fg3m", "fg3a")}
+
+
+def _compute_team_pct_proba_once(
+    client, stat: str, team_id: int, opponent_id: int, is_home: bool, seuil: float, comparison: str, as_of_date,
+    season: str | None = None,
+) -> dict:
+    """P(pourcentage de tir [ft/fg/fg3] de team_id sur CE match > seuil) --
+    chantier "% tir equipe" (24/08/2026, GAPS_OUVERTS.md). MEME formule
+    EXACTE que run_pct() (tester_modele.py, cote joueur, importee ci-dessus
+    mais PAS directement reutilisable ici) -- reecrite car le vecteur de
+    features equipe combine own_ctx/opp_ctx prefixes (comme
+    _team_stat_mean_scale() plus haut), une forme que run_pct() ne connait
+    pas (contexte joueur = un seul dict plat)."""
+    if stat not in TEAM_PCT_MAKES_ATTEMPTS:
+        raise ValueError(f"stat de pourcentage equipe inconnue : {stat}")
+    bundle = joblib.load(MODELS_DIR / f"team_{stat}_pct.joblib")
+    feature_cols = bundle["attempts_feature_cols"]
+    makes_col, attempts_col = TEAM_PCT_MAKES_ATTEMPTS[stat]
+
+    own_ctx = build_team_context(client, team_id, opponent_id, as_of_date, season=season)
+    opp_ctx = build_team_context(client, opponent_id, team_id, as_of_date, season=season)
+
+    row = {"own_is_home": int(is_home)}
+    row.update({f"own_{c}": own_ctx[c] for c in BASE_FEATURE_COLS})
+    row.update({f"opp_{c}": opp_ctx[c] for c in BASE_FEATURE_COLS})
+    row[f"{attempts_col}_pour_moy5"] = own_ctx[f"{attempts_col}_pour_moy5"]
+    row[f"{attempts_col}_pour_moy10"] = own_ctx[f"{attempts_col}_pour_moy10"]
+    X = pd.DataFrame([row])[feature_cols]
+    if X.isna().any(axis=None):
+        missing = X.columns[X.isna().iloc[0]].tolist()
+        raise ValueError(f"Contexte incomplet pour team_id={team_id} (colonnes manquantes : {missing}).")
+
+    n_hat = max(round(float(bundle["attempts_model"].predict(X)[0])), 1)
+    k = bundle["shrinkage_k"]
+    league_avg = bundle["league_avg"]
+    makes_sum = own_ctx[f"{makes_col}_pour_sum10"]
+    attempts_sum = own_ctx[f"{attempts_col}_pour_sum10"]
+    min_makes = math.floor(seuil * n_hat) + 1
+
+    if bundle.get("distribution") == "beta_binomial":
+        alpha_post = k * league_avg + makes_sum
+        beta_post = k * (1 - league_avg) + (attempts_sum - makes_sum)
+        proba_over = 1 - betabinom.cdf(min_makes - 1, n_hat, alpha_post, beta_post)
+        p_hat = alpha_post / (alpha_post + beta_post)
+        detail = (f"tentatives predites = {n_hat} | taux estime = {p_hat:.1%} (ligue: {league_avg:.1%}) "
+                  f"[Beta-Binomial, incertitude sur le taux gardee]")
+    else:
+        p_hat = (makes_sum + k * league_avg) / (attempts_sum + k)
+        proba_over = 1 - binom.cdf(min_makes - 1, n_hat, p_hat)
+        detail = f"tentatives predites = {n_hat} | taux estime = {p_hat:.1%} (ligue: {league_avg:.1%})"
+
+    # comparison : inversion (1-proba) SURE ici -- meme raison que
+    # _compute_team_stat_proba_once (prediction a l'echelle d'UN match pour
+    # UNE equipe, pas une agregation sur une serie).
+    proba = proba_over if comparison == "OVER" else 1 - proba_over
+
+    return {
+        "label": f"{TEAM_PCT_LABELS_FR.get(stat, stat)} de l'équipe",
+        "proba": float(proba),
+        "detail": detail,
+        "team_id": team_id,
+        "opponent_id": opponent_id,
+    }
+
+
+def compute_team_pct_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_team_pct_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE (instabilite deja reproduite sur
+    un classifieur pur, overtime -- appliquee par defaut ici aussi, pas
+    supposee absente)."""
+    return _compute_with_consistency_check(lambda: _compute_team_pct_proba_once(*args, **kwargs))
 
 
 def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is_home: int = 1, rest_days: int = 2) -> dict:

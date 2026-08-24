@@ -15,9 +15,19 @@
 // total_points fait déjà le travail).
 // "oreb" ajoutee le meme jour (categorie "Rebonds offensifs equipe" --
 // forme equipe precise, meme modele own/opp que reb/ast/fg3m/stl/blk).
-export type TeamStatCode = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "oreb";
 
-export const TEAM_STAT_CODES: TeamStatCode[] = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb"];
+// ft/fg/fg3 ajoutees le 24/08/2026 (chantier "% tir equipe", GAPS_OUVERTS.md,
+// derniere piece du tier "nouveau mecanisme reutilisable") -- SEULES stats
+// de cette liste ou `threshold` est une FRACTION 0-1 (comme PERCENTAGE_STATS
+// cote joueur, statCodes.ts), pas une valeur comptee. Voir
+// TEAM_PERCENTAGE_STATS ci-dessous.
+export type TeamStatCode = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "oreb" | "ft" | "fg" | "fg3";
+
+export const TEAM_STAT_CODES: TeamStatCode[] = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "ft", "fg", "fg3"];
+
+// Meme role que PERCENTAGE_STATS (statCodes.ts, cote joueur) -- threshold
+// est une fraction 0-1 pour ces 3 stats, une valeur brute pour les autres.
+export const TEAM_PERCENTAGE_STATS = new Set<TeamStatCode>(["ft", "fg", "fg3"]);
 
 export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
   pts: "points de l'équipe",
@@ -27,4 +37,7 @@ export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
   stl: "interceptions de l'équipe",
   blk: "contres de l'équipe",
   oreb: "rebonds offensifs de l'équipe",
+  ft: "pourcentage aux lancers francs de l'équipe (FT%)",
+  fg: "pourcentage au tir de l'équipe (FG%)",
+  fg3: "pourcentage à 3-points de l'équipe (3P%)",
 };
