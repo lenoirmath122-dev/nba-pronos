@@ -4,6 +4,40 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Bug réel trouvé par l'utilisateur en testant "prolongation" le
+> 24/08/2026, CORRIGÉ le jour même** : un pari auto-calculable affichait
+> TOUJOURS "Pari joueur" (`PLAYER_PROP`), quel que soit son vrai
+> `bet_subject` -- ex. "Le match ira en prolongation" (MATCH_TOTAL, aucun
+> joueur) affiché comme pari joueur. Cause : `validated_category`
+> recopiait `proposed_category` sans jamais le corriger --
+> `proposed_category` est le défaut du formulaire de soumission
+> (`DEFAULT_BET_CATEGORY="PLAYER_PROP"`, `lib/labels/bets.ts`), jamais
+> aligné sur le `bet_subject` réel déterminé par l'IA (celui qui sert
+> pourtant déjà à calculer la proba). Concerne TOUS les bet_subject
+> auto-calculables, pas seulement `went_to_ot` -- présent depuis la 1ère
+> auto-validation (Phase 5, 21/08/2026), jamais remarqué avant faute
+> d'avoir eu plusieurs bet_subject différents à comparer côte à côte.
+>
+> **Corrigé** : nouveau paramètre `p_category` sur `update_bet_structuration()`
+> (migration `20260824120000_bets_auto_category.sql`, poussée) --
+> `validated_category = coalesce(p_category, v_proposed_category)`,
+> uniquement dans la branche `calculable=true` (le repli manuel,
+> `calculable=false`, ne touche jamais à la catégorie, l'admin garde la
+> main comme avant). `structureAndScoreBet.ts` dérive `p_category` à
+> chacun des 6 points d'appel : `PLAYER` (2 branches, y compris
+> `not_in_match`) -> `PLAYER_PROP`, `TEAM_STAT` -> `TEAM_PROP`,
+> `MATCH_TOTAL` -> `GAME_EVENT` si `went_to_ot`, sinon `SCORE_TOTAL`,
+> `COMPARISON` -> `HEAD_TO_HEAD`, `COMBO` -> `MULTI_PLAYER_COMBO`.
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. **Pas rétroactif**
+> (même principe P10 déjà appliqué ailleurs) : les paris déjà validés
+> avant ce déploiement gardent leur catégorie existante, potentiellement
+> fausse -- pas corrigé en masse, hors scope de ce fix ponctuel.
+>
+> **Pas encore testé de bout en bout via l'appli après ce correctif**
+> (nécessite un vrai pari soumis avec une vraie session utilisateur, pas
+> testable en `service_role` -- `update_bet_structuration` vérifie
+> `auth.uid()`).
+
 > **Prolongation (overtime), CODÉE le 24/08/2026** (4e chantier de la liste
 > des 429 paris, après comparaison/duel et combo -- voir les 2 entrées
 > suivantes). Nouveau `bet_subject=MATCH_TOTAL`, `match_stat="went_to_ot"` :

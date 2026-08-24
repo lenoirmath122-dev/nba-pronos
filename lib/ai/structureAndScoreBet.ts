@@ -17,6 +17,7 @@ import type { TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 import { NO_THRESHOLD_MATCH_STATS, type MatchStatCode } from "./matchStatCodes";
+import type { BetCategory } from "@/lib/labels/bets";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 
 // Orchestre la structuration IA + le calcul de proba pour UN pari, à la
@@ -228,6 +229,7 @@ export async function structureAndScoreBet(
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
+        p_category: (matchTotal.stat === "went_to_ot" ? "GAME_EVENT" : "SCORE_TOTAL") satisfies BetCategory,
       });
       return;
     }
@@ -276,6 +278,7 @@ export async function structureAndScoreBet(
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
+        p_category: "TEAM_PROP" satisfies BetCategory,
       });
       return;
     }
@@ -379,6 +382,7 @@ export async function structureAndScoreBet(
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
+        p_category: "HEAD_TO_HEAD" satisfies BetCategory,
       });
       return;
     }
@@ -484,6 +488,7 @@ export async function structureAndScoreBet(
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
+        p_category: "MULTI_PLAYER_COMBO" satisfies BetCategory,
       });
       return;
     }
@@ -535,6 +540,7 @@ export async function structureAndScoreBet(
         p_is_calculable: true,
         p_calculated_proba: 0,
         p_suggested_difficulty: probaToDifficulty(0),
+        p_category: "PLAYER_PROP" satisfies BetCategory,
       });
       return;
     }
@@ -587,6 +593,7 @@ export async function structureAndScoreBet(
       p_is_calculable: true,
       p_calculated_proba: prediction.proba,
       p_suggested_difficulty: suggestedDifficulty,
+      p_category: "PLAYER_PROP" satisfies BetCategory,
     });
   } catch {
     // Best-effort : ne jamais faire échouer submitBet à cause de cette
