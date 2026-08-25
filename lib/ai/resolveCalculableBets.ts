@@ -485,6 +485,7 @@ type EligibleMatchTotalBetRow = {
   structured_stat: string | null;
   structured_threshold: number | null;
   structured_comparison: "OVER" | "UNDER" | null;
+  structured_negation: boolean | null;
 };
 
 type MatchScoreRow = {
@@ -528,7 +529,7 @@ export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSumm
 
   const { data: betsData } = await supabase
     .from("bets")
-    .select("id, match_id, structured_stat, structured_threshold, structured_comparison")
+    .select("id, match_id, structured_stat, structured_threshold, structured_comparison, structured_negation")
     .eq("scope", "MATCH")
     .eq("is_calculable", true)
     .eq("status", "VALIDATED")
@@ -590,7 +591,14 @@ export async function resolveCalculableMatchTotalBets(): Promise<ResolveBetsSumm
         summary.skipped.push({ betId: bet.id, reason: "signal de prolongation pas encore synchronisé" });
         continue;
       }
-      outcome = match.went_to_ot ? "WON" : "LOST";
+      // Négation (même correctif que had_buzzer_beater, GAPS_OUVERTS.md
+      // 25/08/2026, appliqué ici par précaution même sans exemple réel du
+      // corpus -- "le match n'ira pas en prolongation" resterait sinon mal
+      // résolu comme had_buzzer_beater l'a été).
+      {
+        const won = bet.structured_negation ? !match.went_to_ot : match.went_to_ot;
+        outcome = won ? "WON" : "LOST";
+      }
       resolutionReason = match.went_to_ot
         ? "Résolu automatiquement -- le match est allé en prolongation."
         : "Résolu automatiquement -- le match n'est pas allé en prolongation.";
@@ -2010,6 +2018,7 @@ type EligibleGameEventMatchTotalBetRow = {
   structured_stat: string | null;
   structured_threshold: number | null;
   structured_comparison: "OVER" | "UNDER" | null;
+  structured_negation: boolean | null;
 };
 
 export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSummary> {
@@ -2018,7 +2027,7 @@ export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSumma
 
   const { data: betsData } = await supabase
     .from("bets")
-    .select("id, match_id, structured_stat, structured_threshold, structured_comparison")
+    .select("id, match_id, structured_stat, structured_threshold, structured_comparison, structured_negation")
     .eq("scope", "MATCH")
     .eq("is_calculable", true)
     .eq("status", "VALIDATED")
@@ -2096,11 +2105,16 @@ export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSumma
         continue;
       }
       const total = rows.reduce((sum, r) => sum + ((r.backcourt_turnovers as number | null) ?? 0), 0);
-      outcome = total > 0 ? "WON" : "LOST";
-      resolutionReason =
-        total > 0
-          ? "Résolu automatiquement -- au moins un retour en zone a eu lieu durant le match."
-          : "Résolu automatiquement -- aucun retour en zone n'a eu lieu durant le match.";
+      // Négation (bug réel trouvé le 25/08/2026, GAPS_OUVERTS.md) -- "aucun
+      // retour en zone durant le match" est le miroir exact du bug trouvé
+      // sur had_buzzer_beater (voir ci-dessous), corrigé par précaution ici
+      // aussi même sans exemple réel du corpus (même champ, même risque).
+      const eventOccurred = total > 0;
+      const won = bet.structured_negation ? !eventOccurred : eventOccurred;
+      outcome = won ? "WON" : "LOST";
+      resolutionReason = eventOccurred
+        ? "Résolu automatiquement -- au moins un retour en zone a eu lieu durant le match."
+        : "Résolu automatiquement -- aucun retour en zone n'a eu lieu durant le match.";
     } else {
       // had_buzzer_beater (étape 6, GAPS_OUVERTS.md) -- flag MATCH direct
       // (stats_matchs.had_buzzer_beater), contrairement à
@@ -2115,8 +2129,16 @@ export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSumma
         summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
         continue;
       }
-      outcome = match.had_buzzer_beater ? "WON" : "LOST";
-      resolutionReason = match.had_buzzer_beater
+      // Bug réel trouvé en testant en conditions réelles (25/08/2026,
+      // GAPS_OUVERTS.md) : le pari réel du corpus ("Aucun panier marqué au
+      // buzzer durant le match") est une NÉGATION -- résolu à tort en LOST
+      // sur un vrai match SANS buzzer beater avant ce correctif
+      // (structured_negation inverse le résultat quand le texte affirme
+      // l'ABSENCE de l'événement, cf. migration 20260825190000).
+      const eventOccurred = match.had_buzzer_beater;
+      const won = bet.structured_negation ? !eventOccurred : eventOccurred;
+      outcome = won ? "WON" : "LOST";
+      resolutionReason = eventOccurred
         ? "Résolu automatiquement -- au moins un panier a été marqué au buzzer durant le match."
         : "Résolu automatiquement -- aucun panier n'a été marqué au buzzer durant le match.";
     }

@@ -259,6 +259,7 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
         p_structured_last_basket: null,
         p_structured_block_on_player: null,
+        p_structured_negation: false,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -343,6 +344,7 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
         p_structured_last_basket: null,
         p_structured_block_on_player: null,
+        p_structured_negation: false,
         p_stat: periodBet.player_stat,
         p_threshold: periodBet.threshold,
         p_comparison: periodBet.comparison,
@@ -426,6 +428,7 @@ export async function structureAndScoreBet(
       p_structured_technical_fouls_count: null,
       p_structured_last_basket: null,
       p_structured_block_on_player: null,
+      p_structured_negation: false,
       p_stat: null,
       p_threshold: periodBet.threshold,
       p_comparison: periodBet.comparison,
@@ -502,6 +505,7 @@ export async function structureAndScoreBet(
       p_structured_technical_fouls_count: null,
       p_structured_last_basket: null,
       p_structured_block_on_player: null,
+      p_structured_negation: false,
       p_stat: rosterSplitBet.stat,
       p_threshold: rosterSplitBet.threshold,
       p_comparison: rosterSplitBet.comparison,
@@ -603,6 +607,7 @@ export async function structureAndScoreBet(
       p_structured_technical_fouls_count: null,
       p_structured_last_basket: null,
       p_structured_block_on_player: null,
+      p_structured_negation: false,
       p_stat: rosterCountBet.stat,
       p_threshold: rosterCountBet.stat_threshold,
       p_comparison: rosterCountBet.stat_comparison,
@@ -662,6 +667,7 @@ export async function structureAndScoreBet(
       p_structured_technical_fouls_count: null,
       p_structured_last_basket: null,
       p_structured_block_on_player: null,
+      p_structured_negation: false,
       p_stat: superlativeBet.stat,
       // threshold/comparison volontairement null -- probabilité DIRECTE
       // (même principe que dd/td), et surtout ça empêche
@@ -742,6 +748,7 @@ export async function structureAndScoreBet(
       p_structured_technical_fouls_count: { scope: countBet.scope, count_relation: countBet.count_relation },
       p_structured_last_basket: null,
       p_structured_block_on_player: null,
+      p_structured_negation: false,
       p_stat: null,
       p_threshold: countBet.count_threshold,
       p_comparison: null,
@@ -793,6 +800,7 @@ export async function structureAndScoreBet(
       p_structured_technical_fouls_count: null,
       p_structured_last_basket: true,
       p_structured_block_on_player: null,
+      p_structured_negation: false,
       p_stat: null,
       // threshold/comparison volontairement null -- probabilité DIRECTE,
       // même garde que SUPERLATIVE (empêche resolveCalculableBets(), le
@@ -866,6 +874,7 @@ export async function structureAndScoreBet(
       p_structured_technical_fouls_count: null,
       p_structured_last_basket: null,
       p_structured_block_on_player: { blocker_player_id: prediction.blockerId, victim_player_id: prediction.victimId },
+      p_structured_negation: false,
       p_stat: null,
       p_threshold: null,
       p_comparison: null,
@@ -1027,6 +1036,16 @@ export async function structureAndScoreBet(
         await markNotCalculable();
         return;
       }
+      // Bug réel trouvé en testant en conditions réelles (25/08/2026,
+      // GAPS_OUVERTS.md) : le pari réel du corpus "Aucun panier marqué au
+      // buzzer durant le match" est une NÉGATION de had_buzzer_beater --
+      // sans ceci, la proba stockée/affichée était TOUJOURS celle de
+      // l'événement positif, jamais de son absence (Claude comprenait bien
+      // la négation dans son reasoning, mais rien ne la capturait). Ne
+      // s'applique qu'aux 3 stats SANS seuil (`negated`) -- jamais aux
+      // stats à seuil, où la négation s'exprime déjà via comparison=UNDER.
+      const negated = NO_THRESHOLD_MATCH_STATS.has(matchTotal.stat as MatchStatCode) && matchTotal.negation;
+      const finalProba = negated ? 1 - prediction.proba : prediction.proba;
       await supabase.rpc("update_bet_structuration", {
         p_bet_id: betId,
         p_structured_player_name: null,
@@ -1041,12 +1060,13 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
         p_structured_last_basket: null,
         p_structured_block_on_player: null,
+        p_structured_negation: negated,
         p_stat: matchTotal.stat,
         p_threshold: matchTotal.threshold,
         p_comparison: matchTotal.comparison,
         p_is_calculable: true,
-        p_calculated_proba: prediction.proba,
-        p_suggested_difficulty: probaToDifficulty(prediction.proba),
+        p_calculated_proba: finalProba,
+        p_suggested_difficulty: probaToDifficulty(finalProba),
         p_category: (
           matchTotal.stat === "went_to_ot" || matchTotal.stat === "had_backcourt_turnover" ||
           matchTotal.stat === "had_buzzer_beater" || matchTotal.stat === "total_timeouts"
@@ -1102,6 +1122,7 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
         p_structured_last_basket: null,
         p_structured_block_on_player: null,
+        p_structured_negation: false,
         p_stat: teamStat.stat,
         p_threshold: teamStat.threshold,
         p_comparison: teamStat.comparison,
@@ -1214,6 +1235,7 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
         p_structured_last_basket: null,
         p_structured_block_on_player: null,
+        p_structured_negation: false,
         p_stat: null,
         p_threshold: relationThreshold,
         p_comparison: null,
@@ -1327,6 +1349,7 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
         p_structured_last_basket: null,
         p_structured_block_on_player: null,
+        p_structured_negation: false,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -1386,6 +1409,7 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
         p_structured_last_basket: null,
         p_structured_block_on_player: null,
+        p_structured_negation: false,
         p_stat: player.stat,
         p_threshold: player.threshold,
         p_comparison: player.comparison,
@@ -1446,6 +1470,7 @@ export async function structureAndScoreBet(
         p_structured_technical_fouls_count: null,
       p_structured_last_basket: null,
       p_structured_block_on_player: null,
+      p_structured_negation: false,
       p_stat: player.stat,
       p_threshold: player.threshold,
       p_comparison: player.comparison,

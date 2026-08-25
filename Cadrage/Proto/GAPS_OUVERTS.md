@@ -6,26 +6,137 @@
 
 > **Où en est le plan de reprise post-audit (25/08/2026, fin de session)** --
 > étapes 1 ("5 majeur/banc"), 2 ("petits gains groupés"), 3 ("comptage
-> roster-wide"), 4 ("meilleur marqueur") et 5 ("événements de match")
-> codées, testées en conditions réelles (Claude + HTTP local). Étapes 1/2/3
-> commitées ET poussées (`4ff0a44`, `1a6f36a`, `714e45f`, `94db7a4`) ;
-> étape 4 commitée ET poussée (`332ac92`) ; étape 5 codée cette session,
-> PAS ENCORE commitée (attend confirmation utilisateur, cf.
-> JOURNAL_SESSIONS.md). **Pas encore redéployé sur Cloud Run ni Vercel** --
-> à faire avant de tester via l'appli réelle (l'utilisateur s'en charge,
-> comme d'habitude). **Backfill historique étape 5 (jouer+match) PAS
-> ENCORE lancé** (contrairement au code, qui est prêt) -- nécessite la
-> migration `20260825150000` poussée d'abord, laissé à l'utilisateur avec
-> le reste du redéploiement (`backfill_game_events.py`, aucun appel API,
-> testé en dry-run sur 200 matchs). Prochaine étape à reprendre : **étape
-> 6, événements granulaires** (buzzer beater, contre "sur" un joueur
-> précis -- corrélation d'événements play-by-play, mécanisme différent des
-> étapes 1-5 : attribution possession par possession). Sinon, entraîner un
-> vrai modèle joueur+période (`train_player_period_model.py`, pas encore
-> écrit) -- le backfill `stats_box_scores_by_period` est fini depuis la
-> session du 24/08/2026. Le plan complet (8 étapes) et les points
-> explicitement différés sont documentés dans les entrées ci-dessous et dans
+> roster-wide"), 4 ("meilleur marqueur"), 5 ("événements de match") et 6
+> ("événements granulaires") codées, testées en conditions réelles (Claude +
+> HTTP local + HTTP Cloud Run réel). Étapes 1/2/3 commitées ET poussées
+> (`4ff0a44`, `1a6f36a`, `714e45f`, `94db7a4`) ; étape 4 commitée ET poussée
+> (`332ac92`) ; étapes 5 et 6 commitées ET poussées ensemble (`4efa285` --
+> étape 5 avait été codée puis validée avant l'étape 6 dans la même session,
+> jamais commitée seule). Backfill historique étape 5 (joueur+match)
+> **LANCÉ ET TERMINÉ** (`backfill_game_events.py`, 5262 lignes joueur/6602
+> matchs mis à jour, aucun appel API) -- redéployé sur Cloud Run
+> (`nba-pronos-stats-00021-fqg` puis `00022-z4w` pour l'étape 6) et testé en
+> HTTP réel. **Étape 6 également redéployée et backfillée** (voir
+> l'entrée ci-dessous pour le détail) -- migrations poussées, backfill
+> terminé (63965 lignes `stats_block_events`, 6602 matchs
+> `had_buzzer_beater`/`last_basket_player_id`), Cloud Run + Vercel
+> redéployés. **Pas encore testé de bout en bout via l'appli réelle** (vrai
+> pari soumis par l'utilisateur) pour les étapes 5 ET 6 -- seuls les appels
+> directs (structuration IA + service HTTP) sont vérifiés pour l'instant,
+> même limite que chaque chantier précédent à ce stade. Prochaine étape à
+> reprendre : **étape 7, OU imbriqué dans un ET** (refonte du schéma combo),
+> puis **étape 8, guide de rédaction des paris** (contenu, pas du code).
+> Sinon, entraîner un vrai modèle joueur+période
+> (`train_player_period_model.py`, pas encore écrit) -- le backfill
+> `stats_box_scores_by_period` est fini depuis la session du 24/08/2026. Le
+> plan complet (8 étapes) et les points explicitement différés sont
+> documentés dans les entrées ci-dessous et dans
 > `AUDIT_TYPES_PARIS_24_08_2026.md`.
+
+> **Étape 6 du plan de reprise, CODÉE et DÉPLOYÉE le 25/08/2026** --
+> "événements granulaires" -- buzzer beater ("aucun panier marqué au
+> buzzer durant le match", "Devin Vassell inscrit le dernier panier du
+> match") et "contre SUR un joueur précis" ("Victor Wembanyama réalise au
+> moins 1 contre sur Chet Holmgren") -- cause racine "événement granulaire
+> play-by-play" de l'audit (catégorie 4/8), 3 paris réels du corpus, 2
+> mécanismes distincts, aucun nécessitant de nouvel appel API (même
+> play-by-play déjà téléchargé pour l'historique + déjà appelé
+> quotidiennement depuis l'étape 5, `PlayByPlayV3`).
+>
+> **had_buzzer_beater** -- classifieur binaire MATCH, se glisse TEL QUEL
+> dans le mécanisme MATCH_TOTAL déjà en place (même patron EXACT que
+> `had_backcourt_turnover`, ajouté à `MATCH_STAT_CODES`/
+> `NO_THRESHOLD_MATCH_STATS`, zéro nouveau routage/schéma). Seuil de
+> détection (panier marqué à <=0.3s du buzzer) calibré EMPIRIQUEMENT sur
+> les CSV locaux avant d'entraîner (pas deviné) : un seuil plus large
+> (<=2s) capturait surtout des paniers normaux de fin de possession, pas
+> vraiment "au buzzer" (~52% des matchs) -- 0.3s donne ~24% des matchs
+> concernés (échantillon 300 matchs, confirmé sur les 6602 matchs
+> historiques), ni trop rare ni trop fréquent pour un classifieur utile.
+> Cible construite dans `build_targets.py::_match_buzzer_beater_from_pbp()`
+> (parse le champ `clock`, format texte "PTxxMxx.xxS", jamais convertible
+> en SQL direct). Entraîné (`train_game_event_model.py`, réutilise
+> `train_binary_classifier()` tel quel) : log loss quasi égal à la
+> référence taux constant (0.543 vs 0.545) -- prévisibilité intrinsèquement
+> faible, attendu (un buzzer beater dépend du money-time réel, pas du
+> contexte pré-match), honnêtement documenté comme `total_timeouts`
+> (étape 5).
+>
+> **LAST_BASKET/BLOCK_ON_PLAYER, vraiment nouveaux** -- 2 nouveaux
+> `bet_subject`, schémas dédiés routés par mot-clé
+> (`LAST_BASKET_KEYWORD_REGEX`/`BLOCK_ON_PLAYER_KEYWORD_REGEX`, même patron
+> que SUPERLATIVE/ROSTER_COUNT -- schéma partagé `structureBet.ts` déjà au
+> plafond, cf. leçon PERIOD). **AUCUN nouveau modèle .joblib entraîné** --
+> réutilisent tels quels `blk`/`fga` (REGRESSION_STATS, déjà modélisés
+> depuis longtemps) et `fg_pct` (PCT_STATS, chantier "% tir équipe",
+> 24/08/2026) via 2 combinaisons nouvelles :
+> - **LAST_BASKET** ("X inscrit le dernier panier du match") : approximation
+>   par PART attendue de paniers (fgm = n_hat_fga * p_hat_fg%, mêmes
+>   internals EXACTS que `run_pct()` mais sans l'étape finale de
+>   comparaison à un seuil -- nouvelle fonction `_player_expected_fgm()`)
+>   parmi TOUS les joueurs du match (bassin ÉLARGI des 2 équipes via
+>   `_team_rotation()`, même bassin que ROSTER_COUNT/SUPERLATIVE), sous
+>   hypothèse d'échangeabilité. **Le mécanisme le plus faible de cette
+>   étape** -- ne capture PAS la vraie dynamique du money-time (qui joue
+>   les derniers tirs, pas juste "qui tire le plus en moyenne") -- **choix
+>   confirmé avec l'utilisateur avant de coder** (proba honnêtement faible
+>   plutôt que non calculable, même principe déjà accepté pour
+>   `plus_minus`/`total_timeouts`).
+> - **BLOCK_ON_PLAYER** ("X réalise au moins 1 contre sur Y") :
+>   amincissement de Poisson (thinning) -- lambda_bloqueur (moyenne de
+>   contres déjà modélisée, `blk`, distribution Poisson) × part attendue
+>   des tirs de l'équipe ADVERSE pris par le joueur visé (fga du joueur /
+>   fga attendu de SON équipe, `team_fga.joblib` déjà entraîné, chantier
+>   "petits gains groupés" du 24/08/2026). Garde explicite : bloqueur et
+>   victime doivent être dans des équipes OPPOSÉES du match visé (sinon
+>   `ValueError` -> non calculable) -- un contre ne peut physiquement viser
+>   qu'un adversaire.
+>
+> **Bug réel trouvé en testant en HTTP local** (pas en codant) :
+> `_player_expected_fgm()` appelait `build_context()` sans son paramètre
+> `rest_days` (obligatoire, pas de valeur par défaut côté `build_context`)
+> -- `TypeError` reproduit sur `/predict-last-basket`, corrigé en ajoutant
+> `rest_days: int = 2` à `_player_expected_fgm()` (même défaut que
+> `_player_stat_mean_scale()`), revérifié OK avant de continuer.
+>
+> **Stockage** : nouvelle table `stats_block_events` (id/game_id/
+> blocker_player_id/victim_player_id, 1 ligne PAR ÉVÉNEMENT -- PAS "1 ligne
+> courante par clé" comme le reste des tables `stats_*` de ce projet, un
+> même bloqueur peut contrer un même adversaire plusieurs fois dans le même
+> match) + `stats_matchs.had_buzzer_beater`/`last_basket_player_id`.
+> **Découverte clé en explorant les CSV locaux** (déjà notée dans
+> GAPS_OUVERTS avant de coder, confirmée en codant) : une ligne "Block" du
+> play-by-play porte le MÊME `actionNumber` que la ligne "Missed Shot" juste
+> avant elle (`personId` du Block = bloqueur, `personId` du Missed Shot =
+> tireur bloqué) -- aucun autre lien structuré entre les 2 lignes. Un Block
+> n'a PAS d'`actionType` structuré (`NaN` dans le play-by-play brut,
+> identifié via le texte de `description`, "X BLOCK (N BLK)").
+>
+> **Backfill historique LANCÉ ET TERMINÉ** (`backfill_game_events.py`
+> étendu, même script que l'étape 5 -- aucun appel API, un seul passage sur
+> les CSV déjà téléchargés) : 6602 matchs (`had_buzzer_beater`/
+> `last_basket_player_id`) + 63965 lignes `stats_block_events` insérées.
+> `refresh_daily.py` étendu (même play-by-play déjà récupéré depuis
+> l'étape 5, aucun appel supplémentaire) pour le quotidien.
+>
+> Testé avec de vrais appels Claude Sonnet 5 (LAST_BASKET : 3/3 corrects,
+> dont l'exemple réel du corpus ; BLOCK_ON_PLAYER : 3/3 corrects, dont
+> l'exemple réel du corpus -- 1er essai faussement rejeté car testé avec le
+> mauvais contexte d'équipe [Celtics/Lakers au lieu de Spurs/Thunder], PAS
+> un bug -- revérifié avec le bon contexte, calculable=true correct ;
+> `structureBet()`/MATCH_TOTAL `had_buzzer_beater` : 1/1 correct + 2/2
+> non-régression [`went_to_ot`, PLAYER simple]) + HTTP réel Cloud Run
+> déployé (buzzer_beater 23.8%, dernier panier Tatum/LeBron 7.8%/8.2% --
+> cohérent, somme des 30 joueurs du bassin ≈ 100%, contre Ayton→Tatum
+> 12.1%/Tatum→Ayton 2.6% -- cohérent, un pivot bloque plus qu'un ailier,
+> garde même équipe -> 400 correctement rejetée).
+>
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. Migrations poussées
+> (`20260825170000`/`20260825180000`), Cloud Run redéployé
+> (`nba-pronos-stats-00022-z4w`) et vérifié en HTTP réel, code commité ET
+> poussé (`4efa285`, avec l'étape 5). **Pas encore testé de bout en bout
+> via l'appli** (vrai pari soumis) -- même limite que chaque chantier
+> précédent à ce stade.
 
 > **Étape 5 du plan de reprise, CODÉE le 25/08/2026** -- "événements de
 > match" (fautes techniques, temps morts, retour en zone) -- cause racine

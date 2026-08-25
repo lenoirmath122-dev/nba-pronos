@@ -98,6 +98,15 @@ const BetStructurationSchema = z.object({
       stat: z.enum(MATCH_STAT_CODES as [string, ...string[]]),
       threshold: z.number().nullable().describe("null pour went_to_ot/had_backcourt_turnover/had_buzzer_beater (probabilité directe, pas de seuil)."),
       comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour went_to_ot/had_backcourt_turnover/had_buzzer_beater."),
+      negation: z
+        .boolean()
+        .describe(
+          "UNIQUEMENT pertinent pour went_to_ot/had_backcourt_turnover/had_buzzer_beater (les 3 stats SANS seuil) " +
+            "-- true si le texte affirme l'ABSENCE de l'événement (ex: \"aucun panier marqué au buzzer\", \"pas de " +
+            "retour en zone\", \"le match n'ira pas en prolongation\"), false si le texte affirme l'événement " +
+            "positivement (ex: \"au moins un retour en zone\", \"le match ira en prolongation\"). Toujours false " +
+            "pour les stats À SEUIL (la négation s'y exprime déjà via comparison=UNDER).",
+        ),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=MATCH_TOTAL, sinon null."),
@@ -197,6 +206,9 @@ function buildStaticSystemText(): string {
     "\n\n3. bet_subject=MATCH_TOTAL -- une stat COMBINÉE des 2 équipes, SANS viser une équipe en particulier " +
     "(ex. \"90+ rebonds au total\") :\n" +
     matchStatList +
+    "\nPour went_to_ot/had_backcourt_turnover/had_buzzer_beater (sans seuil), le texte peut affirmer l'événement " +
+    "(\"le match ira en prolongation\") OU son ABSENCE (\"aucun panier marqué au buzzer durant le match\", " +
+    "\"pas de retour en zone\") -- remplis `negation` en conséquence dans les 2 cas, ne l'ignore jamais." +
     "\n\n4. bet_subject=COMPARISON -- COMPARE 2 côtés entre eux (GT/DIFF_LT) OU chacun contre un même seuil fixe " +
     "(OR). Chaque côté est soit UN joueur, soit une SOMME de plusieurs joueurs (même stat pour tous), soit UNE " +
     "équipe. Stats valides côté joueur : " + comparisonPlayerStatList + ". Stats valides côté équipe : " +
