@@ -3,6 +3,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
 import { structurePeriodBet } from "./structurePeriodBet";
 import { structureRosterSplitBet } from "./structureRosterSplitBet";
+import { structureRosterCountBet } from "./structureRosterCountBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -15,6 +16,7 @@ import {
   predictPeriodTeamOutcome,
   predictPlayerPeriodStat,
   predictRosterSplit,
+  predictRosterCount,
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
@@ -88,6 +90,22 @@ const PERIOD_KEYWORD_REGEX = /quart[s]?[\s-]?temps|mi[\s-]?temps|\bqt\d*\b|\bmt\
  *  (titulaires/5 majeur/banc/remplaçants), peu de risque de faux positif
  *  dans un contexte de paris NBA. */
 const ROSTER_SPLIT_KEYWORD_REGEX = /cinq\s*majeur|5\s*majeur|titulaires?|\bbancs?\b|rempla[cç]ants?/i;
+
+/** Détecte un texte "de forme" comptage roster-wide AVANT tout appel Claude
+ *  (étape 3 du plan de reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) --
+ *  même patron que PERIOD_KEYWORD_REGEX/ROSTER_SPLIT_KEYWORD_REGEX ci-dessus.
+ *  Signature lexicale : un quantificateur (au moins/plus de/moins de/
+ *  exactement) suivi d'un nombre puis de "joueur(s)", OU "joueur(s)...
+ *  chacun" (ex. "les 10 titulaires marquent CHACUN 8+"), OU "DNP" en toutes
+ *  lettres. Testée AVANT ROSTER_SPLIT_KEYWORD_REGEX dans le routage
+ *  ci-dessous (pas après) : "les 10 joueurs titulaires marquent CHACUN
+ *  plus de 8 points" contient "titulaires" (matcherait ROSTER_SPLIT) ET
+ *  "chacun" (comptage individuel, pas une somme) -- la 2e lecture est la
+ *  bonne, ROSTER_SPLIT rejette déjà explicitement ce cas dans son propre
+ *  prompt ("condition INDIVIDUELLE sur chaque titulaire, pas une somme --
+ *  non géré"), confirmant que ce n'est jamais le bon schéma pour ce texte. */
+const ROSTER_COUNT_KEYWORD_REGEX =
+  /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b/i;
 
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
@@ -176,6 +194,7 @@ export async function structureAndScoreBet(
         p_structured_combo: null,
         p_structured_period: null,
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -255,6 +274,7 @@ export async function structureAndScoreBet(
           exact_count: null,
         },
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
         p_stat: periodBet.player_stat,
         p_threshold: periodBet.threshold,
         p_comparison: periodBet.comparison,
@@ -333,6 +353,7 @@ export async function structureAndScoreBet(
         exact_count: periodBet.exact_count,
       },
       p_structured_roster_split: null,
+      p_structured_roster_count: null,
       p_stat: null,
       p_threshold: periodBet.threshold,
       p_comparison: periodBet.comparison,
@@ -404,6 +425,7 @@ export async function structureAndScoreBet(
         team_id: teamId,
         stat: rosterSplitBet.stat,
       },
+      p_structured_roster_count: null,
       p_stat: rosterSplitBet.stat,
       p_threshold: rosterSplitBet.threshold,
       p_comparison: rosterSplitBet.comparison,
@@ -411,6 +433,103 @@ export async function structureAndScoreBet(
       p_calculated_proba: prediction.proba,
       p_suggested_difficulty: probaToDifficulty(prediction.proba),
       p_category: "TEAM_PROP" satisfies BetCategory,
+    });
+  }
+
+  /** Pari "comptage roster-wide" (étape 3 du plan de reprise post-audit,
+   *  25/08/2026, GAPS_OUVERTS.md) -- "au moins N joueurs remplissent une
+   *  condition", cf. structureRosterCountBet.ts. MATCH uniquement, même
+   *  limite que les autres branches. Appelée UNIQUEMENT quand
+   *  ROSTER_COUNT_KEYWORD_REGEX matche (cf. try ci-dessous, testé AVANT
+   *  ROSTER_SPLIT_KEYWORD_REGEX -- voir sa docstring pour le pourquoi). */
+  async function handleRosterCountBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structureRosterCountBet(description, teamNames);
+    if (!structuration || !structuration.calculable || structuration.bet_subject !== "ROSTER_COUNT") {
+      await markNotCalculable();
+      return;
+    }
+    const rosterCountBet = structuration.roster_count_bet;
+    if (scope !== "MATCH" || !matchId || !rosterCountBet) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+    const asOfDate = matchTeams.scheduledAt.slice(0, 10);
+
+    const stat = rosterCountBet.stat as StatCode;
+    if (!NO_THRESHOLD_STATS.has(stat) && (rosterCountBet.stat_threshold === null || !rosterCountBet.stat_comparison)) {
+      await markNotCalculable();
+      return;
+    }
+
+    // scope=MATCH -> "MATCH" (les 2 équipes, cas de LOIN le plus fréquent) ;
+    // team1/team2 -> résolu en "domicile"/"exterieur" depuis les VRAIES
+    // équipes du match visé (même geste que resolveSide() dans les branches
+    // COMPARISON/COMBO plus bas).
+    let resolvedScope: "MATCH" | "domicile" | "exterieur";
+    if (rosterCountBet.scope === "MATCH") {
+      resolvedScope = "MATCH";
+    } else {
+      const teamName = rosterCountBet.scope === "team1" ? teamNames?.[0] : teamNames?.[1];
+      if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
+        await markNotCalculable();
+        return;
+      }
+      resolvedScope = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
+    }
+
+    const prediction = await predictRosterCount(
+      resolvedScope,
+      rosterCountBet.pool,
+      stat,
+      rosterCountBet.stat_threshold,
+      rosterCountBet.stat_comparison,
+      rosterCountBet.min_players,
+      rosterCountBet.count_relation,
+      matchTeams.homeTeamName,
+      matchTeams.awayTeamName,
+      asOfDate,
+    );
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
+
+    // Catégorie déduite de la stat CONDITION (même geste que went_to_ot ->
+    // GAME_EVENT plus bas) : min = rotation/temps de jeu (nombre de joueurs
+    // utilisés, DNP), dd/td = événement de match (triple-double n'importe
+    // qui), le reste = combo multi-joueurs (comptage à seuil, ex. "8
+    // joueurs marquent 11+").
+    const category: BetCategory =
+      stat === "min" ? "PLAYING_TIME" : stat === "dd" || stat === "td" ? "GAME_EVENT" : "MULTI_PLAYER_COMBO";
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      p_structured_player_name: null,
+      p_structured_player_id: null,
+      p_structured_team_id: null,
+      p_structured_duel: null,
+      p_structured_combo: null,
+      p_structured_period: null,
+      p_structured_roster_split: null,
+      p_structured_roster_count: {
+        scope: rosterCountBet.scope,
+        pool: rosterCountBet.pool,
+        count_relation: rosterCountBet.count_relation,
+        min_players: rosterCountBet.min_players,
+        player_ids: prediction.playerIds,
+      },
+      p_stat: rosterCountBet.stat,
+      p_threshold: rosterCountBet.stat_threshold,
+      p_comparison: rosterCountBet.stat_comparison,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: category,
     });
   }
 
@@ -434,6 +553,17 @@ export async function structureAndScoreBet(
     // lexicale -- un mot-clé ne peut pas les séparer de façon fiable.
     if (PERIOD_KEYWORD_REGEX.test(description)) {
       await handlePeriodBet(teamNames);
+      return;
+    }
+
+    // Routage comptage roster-wide par mot-clé (étape 3 du plan de reprise
+    // post-audit, 25/08/2026, GAPS_OUVERTS.md) -- TESTÉ AVANT ROSTER_SPLIT
+    // ci-dessous : "les 10 joueurs titulaires marquent CHACUN 8+" matche
+    // les 2 regex (contient "titulaires" ET "chacun"), mais seule la
+    // lecture comptage est correcte ici (condition individuelle, pas une
+    // somme) -- voir la docstring de ROSTER_COUNT_KEYWORD_REGEX.
+    if (ROSTER_COUNT_KEYWORD_REGEX.test(description)) {
+      await handleRosterCountBet(teamNames);
       return;
     }
 
@@ -511,6 +641,7 @@ export async function structureAndScoreBet(
         p_structured_combo: null,
         p_structured_period: null,
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
         p_stat: matchTotal.stat,
         p_threshold: matchTotal.threshold,
         p_comparison: matchTotal.comparison,
@@ -562,6 +693,7 @@ export async function structureAndScoreBet(
         p_structured_combo: null,
         p_structured_period: null,
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
         p_stat: teamStat.stat,
         p_threshold: teamStat.threshold,
         p_comparison: teamStat.comparison,
@@ -669,6 +801,7 @@ export async function structureAndScoreBet(
         p_structured_combo: null,
         p_structured_period: null,
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
         p_stat: null,
         p_threshold: relationThreshold,
         p_comparison: null,
@@ -777,6 +910,7 @@ export async function structureAndScoreBet(
         p_structured_combo: structuredCombo,
         p_structured_period: null,
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -831,6 +965,7 @@ export async function structureAndScoreBet(
         p_structured_combo: null,
         p_structured_period: null,
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
         p_stat: player.stat,
         p_threshold: player.threshold,
         p_comparison: player.comparison,
@@ -886,6 +1021,7 @@ export async function structureAndScoreBet(
       p_structured_combo: null,
       p_structured_period: null,
         p_structured_roster_split: null,
+        p_structured_roster_count: null,
       p_stat: player.stat,
       p_threshold: player.threshold,
       p_comparison: player.comparison,

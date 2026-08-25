@@ -10609,3 +10609,85 @@ baseline (8089), loin sous le seuil qui avait cassé PERIOD (+467).
 tsc/eslint/vitest(37/37)/next build propres. GAPS_OUVERTS.md mis à jour --
 étape 2 du plan de reprise entièrement terminée (4/4).
 ```
+
+## Étape 3 du plan de reprise -- comptage roster-wide (25/08/2026)
+
+```text
+Reprise de session : utilisateur choisit d'enchaîner directement sur
+l'étape 3 (comptage roster-wide) plutôt que de redéployer/tester l'étape 2
+d'abord -- "je testerai demain matin", même geste que les sessions
+précédentes (l'utilisateur gère le redéploiement Cloud Run/Vercel lui-même).
+
+Nouveau bet_subject=ROSTER_COUNT -- "au moins N joueurs remplissent une
+condition individuelle" (loi de Poisson-binomiale, proba individuelle par
+joueur déjà disponible via compute_proba()). Débloque triple-double
+n'importe qui, DNP, nombre de joueurs utilisés, "8 joueurs marquent 11+",
+et le cas "10 titulaires marquent chacun 8+" explicitement différé de
+ROSTER_SPLIT (étape 1) à l'époque.
+
+Design en amont (avant de coder) : exploration complète du code existant
+(structureRosterSplitBet.ts, supabase_context.py compute_roster_split_proba/
+_team_starters/_player_stat_mean_scale/compute_proba, resolveCalculableBets.ts
+resolveCalculableRosterSplitBets/resolveComboConditionSatisfied) pour
+identifier le bon point de réutilisation -- compute_proba() couvre déjà
+TOUTE stat (regression/classifier dd-td/pourcentage), donc la condition par
+joueur ne nécessite AUCUNE restriction contrairement au chantier duel/
+ROSTER_SPLIT (limités à REGRESSION_STATS). Découverte importante en
+explorant refresh_daily.py : stats_box_scores ne contient QUE des lignes
+"a joué" (DNP filtrés à l'ingestion) -- implique que le "bassin" de joueurs
+considérés doit être résolu par fréquence d'apparition récente (nouvelle
+_team_rotation(), top 15/équipe, généralise _team_starters() sans filtre
+position) plutôt que par une liste de roster officielle qui n'existe pas
+dans ce projet, et que la résolution d'un DNP doit traiter un joueur ABSENT
+du box score comme une ligne à 0 (pas une donnée manquante) -- décision
+documentée en détail dans GAPS_OUVERTS.md (divergence assumée par rapport à
+resolveComboConditionSatisfied, qui renvoie null dans ce même cas pour des
+joueurs NOMMÉS).
+
+Poisson-binomiale calculée EXACTEMENT (poisson_binomial_pmf(), DP O(n²)) --
+PAS une approximation normale comme le reste du projet, inutile ici vu la
+taille des bassins (10-30 joueurs). Décision de conception notable :
+count_relation à 3 valeurs (AT_LEAST/MORE_THAN/FEWER_THAN) plutôt que
+l'OVER/UNDER binaire habituel -- l'inclusif/exclusif ne peut pas être
+"absorbé" par une approximation continue ici, contrairement au reste de
+l'appli, donc autant le rendre explicite côté schéma plutôt que de
+demander à l'IA d'ajuster un seuil de +/-1 silencieusement.
+
+Persistance des player_ids RÉELS résolus côté service dans
+structured_roster_count (migration 20260825120000, même patron que
+structured_duel/combo) -- la résolution doit voir EXACTEMENT le même
+bassin que la prédiction, jamais recalculé après coup.
+
+Routage par mot-clé (ROSTER_COUNT_KEYWORD_REGEX, nouveau schéma dédié
+structureRosterCountBet.ts) testé AVANT ROSTER_SPLIT_KEYWORD_REGEX dans
+structureAndScoreBet.ts -- collision lexicale réelle identifiée en
+concevant le routage ("titulaires" + "chacun" matchent les 2 regex pour
+"les 10 joueurs titulaires marquent chacun 8+"), résolue par ordre de
+priorité (comptage testé en premier).
+
+Bug réel trouvé en testant la regex de routage en conditions réelles (pas
+en codant, en VÉRIFIANT après coup) : fenêtre de tolérance entre "joueurs"
+et "chacun" trop courte de 1 caractère pour la phrase exacte du corpus
+("joueurs titulaires marquent chacun" = 21 caractères, regex à 20)
+-- élargie à 40, retestée sur 9 cas (6 routages ROSTER_COUNT attendus, 2
+ROSTER_SPLIT non-régression, 1 générique) : 9/9 corrects après correction.
+
+Testé avec 8 vrais appels Claude Sonnet 5 (les 6 exemples calculable=true
+du corpus réel + 2 calculable=false, dont le cas explicitement différé
+"les Knicks utilisent 3 joueurs de plus que les 76ers" -- comparaison de 2
+comptages entre équipes, pas un comptage contre un seuil fixe) : 8/8
+corrects, count_relation/min_players toujours bien distingués sans
+ajustement +/-1 côté IA. /predict-roster-count testé en HTTP local réel
+(uvicorn + vraies requêtes Supabase, Boston Celtics/New York Knicks,
+as_of_date=2026-06-14) : 8 cas (MATCH/ALL, MATCH/STARTERS, scope=domicile
+seul, les 3 count_relation, garde stat invalide -> 400 propre) -- probas
+cohérentes (P(≥8 joueurs marquent 11+ pts)=85%, P(≥1 triple-double dans le
+match)=9.4%, P(10 titulaires marquent chacun 8+)=8.7%, P(≥2 DNP)=37%).
+
+tsc/eslint/vitest(37/37)/next build propres. GAPS_OUVERTS.md mis à jour --
+étape 3 du plan de reprise terminée. PAS commité (attend confirmation
+utilisateur) -- migration 20260825120000 pas poussée (npx supabase db push
+laissé à l'utilisateur, comme le reste du redéploiement). Pas testé de
+bout en bout via l'appli (vrai pari soumis), même limite que chaque
+chantier précédent à ce stade.
+```

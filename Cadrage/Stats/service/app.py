@@ -612,6 +612,74 @@ def predict_roster_split(req: PredictRosterSplitRequest):
     }
 
 
+class PredictRosterCountRequest(BaseModel):
+    """Pari "comptage roster-wide" (etape 3 du plan de reprise post-audit,
+    25/08/2026, GAPS_OUVERTS.md) -- "au moins N joueurs remplissent une
+    condition individuelle" (ex. "8 joueurs marquent 11+ points", "un joueur
+    realise un triple-double", "2 joueurs ne jouent aucune minute" -- DNP).
+
+    scope : "match" (les 2 equipes combinees) ou "domicile"/"exterieur" (une
+    seule). pool : "ALL" (bassin elargi, ~15 joueurs/equipe habituels) ou
+    "STARTERS" (5 titulaires/equipe uniquement). stat/stat_seuil/
+    stat_comparison : condition verifiee sur CHAQUE joueur individuellement
+    (stat_seuil/stat_comparison None uniquement pour dd/td). min_joueurs +
+    count_relation ("AT_LEAST"/"MORE_THAN"/"FEWER_THAN") : le seuil sur le
+    NOMBRE de joueurs qui remplissent la condition."""
+    scope: str  # "match" | "domicile" | "exterieur"
+    pool: str  # "ALL" | "STARTERS"
+    stat: str
+    stat_seuil: float | None = None
+    stat_comparison: str | None = None  # "OVER" | "UNDER"
+    min_joueurs: int
+    count_relation: str  # "AT_LEAST" | "MORE_THAN" | "FEWER_THAN"
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+    @model_validator(mode="after")
+    def _champs_coherents(self):
+        if self.scope not in ("match", "domicile", "exterieur"):
+            raise ValueError(f"scope invalide : {self.scope}")
+        if self.pool not in ("ALL", "STARTERS"):
+            raise ValueError(f"pool invalide : {self.pool}")
+        if self.count_relation not in ("AT_LEAST", "MORE_THAN", "FEWER_THAN"):
+            raise ValueError(f"count_relation invalide : {self.count_relation}")
+        if self.stat not in CLASSIFIER_STATS and (self.stat_seuil is None or self.stat_comparison is None):
+            raise ValueError("stat_seuil/stat_comparison obligatoires sauf pour dd/td.")
+        return self
+
+
+@app.post("/predict-roster-count")
+def predict_roster_count(req: PredictRosterCountRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_roster_count_proba(
+            sb, req.scope, req.pool, req.stat, req.stat_seuil, req.stat_comparison,
+            req.min_joueurs, req.count_relation, home_id, away_id, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "scope": req.scope,
+        "pool": req.pool,
+        "stat": req.stat,
+        "min_joueurs": req.min_joueurs,
+        "count_relation": req.count_relation,
+        **result,
+    }
+
+
 class ComparisonOperand(BaseModel):
     """Un cote d'un duel (24/08/2026, GAPS_OUVERTS.md, chantier
     comparaison/duel) -- kind=TEAM (equipe "domicile"/"exterieur" du match

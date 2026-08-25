@@ -4,17 +4,101 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **Où en est le plan de reprise post-audit (24/08/2026, fin de session)** --
-> étapes 1 ("5 majeur/banc") et 2 ("petits gains groupés") codées, testées
-> en conditions réelles (Claude + HTTP local), commitées ET poussées
-> (`4ff0a44`, `1a6f36a`, `714e45f`). **Pas encore redéployé sur Cloud Run
-> ni Vercel** -- à faire avant de tester via l'appli réelle (l'utilisateur
-> s'en charge, comme d'habitude). Prochaine étape à reprendre : **étape 3,
-> comptage roster-wide** ("au moins N joueurs...", loi de Poisson-
-> binomiale, débloque triple-double n'importe qui/DNP/nombre de joueurs
-> utilisés). Le plan complet (8 étapes) et les 4 points explicitement
+> **Où en est le plan de reprise post-audit (25/08/2026, fin de session)** --
+> étapes 1 ("5 majeur/banc"), 2 ("petits gains groupés") et 3 ("comptage
+> roster-wide") codées, testées en conditions réelles (Claude + HTTP
+> local). Étapes 1/2 commitées ET poussées (`4ff0a44`, `1a6f36a`,
+> `714e45f`, jusqu'à `ef0f862`) ; étape 3 codée cette session, PAS ENCORE
+> commitée (attend confirmation utilisateur, cf. JOURNAL_SESSIONS.md).
+> **Pas encore redéployé sur Cloud Run ni Vercel** -- à faire avant de
+> tester via l'appli réelle (l'utilisateur s'en charge, comme d'habitude).
+> Prochaine étape à reprendre : **étape 4, meilleur marqueur** (réutilise
+> la mécanique de comparaison de l'étape 3 -- superlatif implicite contre
+> TOUS les autres joueurs du match). Sinon, entraîner un vrai modèle
+> joueur+période (`train_player_period_model.py`, pas encore écrit) --
+> le backfill `stats_box_scores_by_period` est fini depuis la session du
+> 24/08/2026. Le plan complet (8 étapes) et les points explicitement
 > différés sont documentés dans les entrées ci-dessous et dans
 > `AUDIT_TYPES_PARIS_24_08_2026.md`.
+
+> **Étape 3 du plan de reprise, CODÉE le 25/08/2026** -- "comptage
+> roster-wide" (`ROSTER_COUNT`), "au moins N joueurs remplissent une
+> condition individuelle" -- débloque triple-double n'importe qui, DNP,
+> nombre de joueurs utilisés, "8 joueurs marquent 11+ points", "10
+> titulaires marquent chacun 8+" (explicitement différé de l'étape 1
+> ROSTER_SPLIT à l'époque).
+>
+> **Mécanisme, 2 étapes** : (1) résoudre un BASSIN de joueurs -- `scope`
+> (MATCH = 2 équipes combinées, de loin le cas le plus fréquent du corpus
+> réel / team1 / team2) × `pool` (ALL = bassin élargi via nouvelle
+> `_team_rotation()` -- top 15 joueurs/équipe par fréquence d'apparition
+> récente en boxscore, généralise `_team_starters()` sans filtre position
+> / STARTERS = 5 titulaires, réutilise `_team_starters()` tel quel) ; (2)
+> proba individuelle de CHAQUE joueur du bassin via `compute_proba()`
+> réutilisé TEL QUEL (`_player_condition_proba()`, AUCUNE restriction de
+> stat contrairement au chantier duel/ROSTER_SPLIT -- toute stat valide, y
+> compris dd/td/ft/fg/fg3) ; (3) combinées en distribution de
+> **Poisson-binomiale EXACTE** (`poisson_binomial_pmf()`, DP O(n²), PAS une
+> approximation normale comme le reste du projet -- ici superflu, un
+> bassin de 10-30 joueurs est instantané en calcul direct).
+>
+> **Décision de conception notable** : `count_relation` a 3 valeurs
+> (AT_LEAST/MORE_THAN/FEWER_THAN) plutôt que l'OVER/UNDER binaire habituel
+> du reste de l'appli -- ailleurs OVER/UNDER s'appliquent à une
+> approximation NORMALE (continue) d'une quantité discrète, où "au moins
+> N" vs "plus de N" ne change quasi rien (mesure nulle). Ici la
+> distribution est EXACTE et discrète -- l'ambiguïté inclusif/exclusif
+> change vraiment le résultat pour un petit N, d'où un enum explicite
+> plutôt que de deviner un ajustement +/-1 côté IA.
+>
+> **DNP** : `stats_box_scores` ne contient QUE des lignes "a joué" (DNP
+> filtrés à l'ingestion, `refresh_daily.py`) -- un DNP est donc approximé
+> par `stat=min, comparison=UNDER, threshold=1` sur un joueur du bassin
+> `_team_rotation()` (proba tirée du modèle de minutes existant, pas
+> besoin de lignes DNP en base pour cette approximation). Persistance des
+> `player_ids` RÉELS du bassin (`structured_roster_count.player_ids`,
+> migration `20260825120000`) -- même leçon que structured_duel/combo : la
+> résolution doit voir EXACTEMENT le même bassin qu'au calcul de proba.
+> Résolution (`resolveCalculableRosterCountBets()`) traite un joueur du
+> bassin ABSENT du box score réel comme une ligne "vide" (0 partout) --
+> PAS comme une donnée manquante (divergence assumée par rapport au
+> chantier combo, où un joueur NOMMÉ absent bloque la résolution : ici le
+> bassin est structurellement un grand groupe où des DNP sont un résultat
+> normal et attendu, le pari DNP lui-même en dépend pour être résolu).
+>
+> **Routage par mot-clé** (`ROSTER_COUNT_KEYWORD_REGEX`, nouveau schéma
+> dédié `structureRosterCountBet.ts`, même patron que PERIOD/ROSTER_SPLIT)
+> testé AVANT `ROSTER_SPLIT_KEYWORD_REGEX` : "les 10 joueurs titulaires
+> marquent CHACUN 8+" matche les 2 regex (contient "titulaires" ET
+> "chacun") mais seule la lecture comptage est correcte. **Bug réel trouvé
+> en testant la regex en conditions réelles** : la fenêtre de tolérance
+> entre "joueurs" et "chacun" (`[^.!?]{0,20}`) était too courte de 1
+> caractère pour cette phrase exacte ("joueurs titulaires marquent
+> chacun" = 21 caractères d'écart) -- élargie à 40, retestée sur les 9 cas
+> (routage + non-régression ROSTER_SPLIT/générique).
+>
+> Testé avec 8 vrais appels Claude Sonnet 5 (6 calculable=true dont les 6
+> exemples réels du corpus, 2 calculable=false dont le cas différé "les
+> Knicks utilisent 3 joueurs de plus que les 76ers") : 8/8 corrects,
+> `count_relation`/`min_players` bien distingués sans ajustement +/-1.
+> `/predict-roster-count` testé en HTTP local réel : 8 cas (MATCH/ALL,
+> MATCH/STARTERS, scope=domicile seul, AT_LEAST/MORE_THAN/FEWER_THAN,
+> garde stat invalide -> 400) -- probas cohérentes (ex. P(≥8 joueurs
+> marquent 11+) = 85%, P(≥1 triple-double dans le match) = 9.4%, P(10
+> titulaires marquent chacun 8+) = 8.7%).
+>
+> **PAS géré en v1, différé** : comparer 2 COMPTAGES entre équipes ("les
+> Knicks utilisent 3 joueurs de plus que les 76ers") -- 2 distributions de
+> Poisson-binomiale comparées entre elles, mécanisme différent (pas "au
+> moins N contre un seuil fixe"), pas encore construit. Idem égalité
+> exacte entre 2 comptages (cumule ce différé + l'égalité exacte déjà
+> différée à l'étape 2).
+>
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. **Pas encore
+> testé de bout en bout via l'appli** (vrai pari soumis) -- la migration
+> (`20260825120000`) n'a pas été poussée (`npx supabase db push` pas
+> lancé cette session, laissé à l'utilisateur avec le reste du
+> redéploiement).
 
 > **Étape 2 du plan de reprise, CODÉ EN ENTIER le 24/08/2026** -- "petits
 > gains groupés". Les 2 items requalifiés en gros lots (+/- joueur, fga

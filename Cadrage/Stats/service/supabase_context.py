@@ -1017,6 +1017,45 @@ def _team_starters(client, team_id: int, as_of_date, n_recent_games: int = 10) -
     return starters
 
 
+def _team_rotation(client, team_id: int, as_of_date, n_recent_games: int = 15, top_n: int = 15) -> list[int]:
+    """Bassin ELARGI d'une equipe (chantier "comptage roster-wide", etape 3
+    du plan de reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- generalise
+    _team_starters() ci-dessus (5 titulaires seulement) a "tous les joueurs
+    qui jouent regulierement", necessaire pour des paris comme "au moins 8
+    joueurs marquent 11+ points" ou le nombre de joueurs utilises. AUCUN
+    filtre position (contrairement aux titulaires) : classe simplement par
+    frequence d'apparition en boxscore sur les n_recent_games derniers
+    matchs -- stats_box_scores ne contient QUE des lignes "a joue" (les DNP
+    sont filtres a l'ingestion, cf. refresh_daily.py/load_to_sqlite.py), donc
+    la frequence d'apparition EST deja un proxy direct du temps de jeu
+    habituel. Plafonne a top_n (15, taille type d'un roster actif NBA) --
+    au-dela, un joueur apparait trop rarement pour qu'une proba individuelle
+    fiable en soit tiree de toute facon.
+
+    Limite volontaire assumee, meme esprit que _team_starters() : aucune
+    confirmation officielle de qui sera sur la feuille de match ce soir-la
+    (pas de source temps reel dans ce projet) -- un joueur blesse/en
+    load-management la veille du calcul mais absent depuis longtemps de ce
+    classement (donc PAS dans le bassin) est simplement exclu comme s'il
+    n'existait pas, plutot que force a une proba de DNP artificiellement
+    haute."""
+    rows = (
+        client.table("stats_box_scores")
+        .select("player_id, game_date")
+        .eq("team_id", team_id)
+        .lt("game_date", str(as_of_date))
+        .order("game_date", desc=True)
+        .limit(n_recent_games * 15)
+        .execute()
+        .data
+    )
+    counts = Counter(r["player_id"] for r in rows)
+    roster = [pid for pid, _ in counts.most_common(top_n)]
+    if not roster:
+        raise ValueError(f"Aucun joueur recent trouve pour l'equipe (team_id={team_id}).")
+    return roster
+
+
 def _resolve_weighted_operand(
     client, kind: str, players: list[str], team_side: str | None, stats: list[str],
     home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
@@ -1456,3 +1495,131 @@ def compute_roster_split_proba(*args, **kwargs) -> dict:
     """Enveloppe _compute_roster_split_proba_once() d'une verification de
     coherence, meme patron que les autres compute_*_proba()."""
     return _compute_with_consistency_check(lambda: _compute_roster_split_proba_once(*args, **kwargs))
+
+
+# ============================================================================
+# Chantier "comptage roster-wide" (etape 3 du plan de reprise post-audit,
+# 25/08/2026, GAPS_OUVERTS.md) -- "au moins N joueurs remplissent une
+# condition individuelle", debloque triple-double n'importe qui, DNP, nombre
+# de joueurs utilises, "au moins N joueurs marquent X+".
+# ============================================================================
+
+def poisson_binomial_pmf(probs: list[float]) -> list[float]:
+    """Distribution EXACTE (pas une approximation normale comme le reste du
+    projet -- ici superflu, le calcul direct est trivial) du nombre de succes
+    parmi des essais de Bernoulli INDEPENDANTS de probabilites DIFFERENTES
+    (loi de Poisson-binomiale, pas Binomiale classique -- chaque joueur a sa
+    propre proba). DP standard O(n^2) : un roster de 10-30 joueurs est donc
+    instantane. Retourne pmf ou pmf[k] = P(exactement k succes).
+
+    Meme hypothese d'INDEPENDANCE deja acceptee partout ailleurs dans ce
+    projet (duel/comparaison/combo) : aucune correlation entre joueurs
+    modelisee (ex. si un titulaire explose, l'usage des autres peut baisser -
+    pas capture ici, cohérent avec le reste)."""
+    pmf = [1.0]
+    for p in probs:
+        p = min(max(p, 0.0), 1.0)
+        new_pmf = [0.0] * (len(pmf) + 1)
+        for k, mass in enumerate(pmf):
+            if mass == 0.0:
+                continue
+            new_pmf[k] += mass * (1 - p)
+            new_pmf[k + 1] += mass * p
+        pmf = new_pmf
+    return pmf
+
+
+def _player_condition_proba(client, player_id: int, stat: str, threshold, comparison, opponent_id: int, is_home: int) -> float:
+    """P(1 joueur remplit la condition stat/threshold/comparison) --
+    reutilise TEL QUEL compute_proba() (couverture complete : regression,
+    classifier dd/td, pourcentage ft/fg/fg3, aucune restriction contrairement
+    au chantier duel/roster-split qui se limitent a REGRESSION_STATS) puis
+    inverse pour UNDER -- meme geste EXACT que _condition_proba() (chantier
+    combo, cas SIMPLE PLAYER)."""
+    result = compute_proba(client, player_id, stat, threshold, opponent_id=opponent_id, is_home=is_home)
+    proba = result["proba"]
+    if comparison == "UNDER" and stat not in CLASSIFIER_STATS:
+        proba = 1 - proba
+    return float(proba)
+
+
+def _resolve_roster_count_pool(
+    client, team_id: int, opponent_id: int, is_home: int, as_of_date, pool: str,
+) -> list[tuple[int, int, int]]:
+    """Bassin de joueurs (player_id, opponent_id, is_home) pour UNE equipe --
+    pool="STARTERS" reutilise _team_starters() (chantier 5 majeur/banc),
+    pool="ALL" reutilise _team_rotation() (bassin elargi, ci-dessus)."""
+    player_ids = _team_starters(client, team_id, as_of_date) if pool == "STARTERS" else _team_rotation(client, team_id, as_of_date)
+    return [(pid, opponent_id, is_home) for pid in player_ids]
+
+
+def _compute_roster_count_proba_once(
+    client, scope: str, pool: str, stat: str, stat_threshold, stat_comparison,
+    min_players: int, count_relation: str, home_team_id: int, away_team_id: int,
+    as_of_date, season: str | None = None,
+) -> dict:
+    """Pari "au moins N joueurs remplissent une condition" (etape 3 du plan
+    de reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- 2 etapes :
+    (1) resoudre le BASSIN de joueurs consideres (scope="match" = les 2
+    equipes combinees, "domicile"/"exterieur" = une seule ; pool="ALL" =
+    bassin elargi via _team_rotation(), "STARTERS" = 5 titulaires via
+    _team_starters()) ; (2) pour CHAQUE joueur du bassin, calculer sa proba
+    individuelle de remplir stat/stat_threshold/stat_comparison
+    (_player_condition_proba(), AUCUNE restriction de stat -- toute
+    STAT_CODES valide, y compris dd/td/ft/fg/fg3) ; (3) combiner en
+    Poisson-binomiale (poisson_binomial_pmf()) et sommer la queue voulue.
+
+    count_relation a 3 valeurs (AT_LEAST/MORE_THAN/FEWER_THAN) plutot que le
+    OVER/UNDER habituel du reste du projet : partout ailleurs OVER/UNDER
+    s'appliquent a une approximation NORMALE (continue) d'une quantite
+    discrete, ou "au moins N" vs "plus de N" ne change quasi rien (mesure
+    nulle). Ici la distribution est EXACTE et discrete (Poisson-binomiale,
+    aucune approximation) -- l'ambiguite inclusif/exclusif compte reellement
+    pour un petit N (ex. "au moins 8 joueurs" != "plus de 8 joueurs"), d'ou
+    un enum explicite plutot que de deviner un seuil -1/+1 cote IA."""
+    if stat not in REGRESSION_STATS and stat not in CLASSIFIER_STATS and stat not in PCT_STATS:
+        raise ValueError(f"stat inconnue pour un comptage roster-wide : {stat}")
+    if stat not in CLASSIFIER_STATS and (stat_threshold is None or stat_comparison is None):
+        raise ValueError("stat_threshold/stat_comparison obligatoires sauf pour dd/td.")
+    if pool not in ("ALL", "STARTERS"):
+        raise ValueError(f"pool inconnu : {pool}")
+    if scope not in ("match", "domicile", "exterieur"):
+        raise ValueError(f"scope inconnu : {scope}")
+    if count_relation not in ("AT_LEAST", "MORE_THAN", "FEWER_THAN"):
+        raise ValueError(f"count_relation inconnue : {count_relation}")
+
+    entries: list[tuple[int, int, int]] = []
+    if scope in ("match", "domicile"):
+        entries += _resolve_roster_count_pool(client, home_team_id, away_team_id, 1, as_of_date, pool)
+    if scope in ("match", "exterieur"):
+        entries += _resolve_roster_count_pool(client, away_team_id, home_team_id, 0, as_of_date, pool)
+
+    probs = [
+        _player_condition_proba(client, pid, stat, stat_threshold, stat_comparison, opp_id, is_home)
+        for pid, opp_id, is_home in entries
+    ]
+    pmf = poisson_binomial_pmf(probs)
+
+    if count_relation == "AT_LEAST":
+        proba = sum(pmf[min_players:])
+    elif count_relation == "MORE_THAN":
+        proba = sum(pmf[min_players + 1:])
+    else:
+        proba = sum(pmf[:min_players])
+
+    return {
+        "label": "Nombre de joueurs remplissant la condition",
+        "proba": float(proba),
+        "detail": (
+            f"{len(entries)} joueurs consideres ({pool}, scope={scope}), proba individuelle moyenne "
+            f"{(sum(probs) / len(probs)) if probs else 0.0:.1%}, distribution de Poisson-binomiale exacte"
+        ),
+        "player_ids": [pid for pid, _, _ in entries],
+    }
+
+
+def compute_roster_count_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_roster_count_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE. proba_key par defaut ("proba")
+    convient tel quel."""
+    return _compute_with_consistency_check(lambda: _compute_roster_count_proba_once(*args, **kwargs))

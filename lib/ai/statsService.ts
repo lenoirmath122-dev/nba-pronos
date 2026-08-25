@@ -574,6 +574,60 @@ export async function predictRosterSplit(
 }
 
 /**
+ * Pari "comptage roster-wide" (étape 3 du plan de reprise post-audit,
+ * 25/08/2026, GAPS_OUVERTS.md) -- "au moins N joueurs remplissent une
+ * condition individuelle" (triple-double n'importe qui, DNP, nombre de
+ * joueurs utilisés, "8 joueurs marquent 11+"). Contrairement aux autres
+ * predict*() : retourne aussi `playerIds`, le bassin RÉEL résolu côté
+ * service (via _team_rotation()/_team_starters()) -- persisté tel quel dans
+ * bets.structured_roster_count, jamais recalculé à la résolution (même
+ * leçon que structured_duel/structured_combo : la résolution doit voir
+ * EXACTEMENT le même bassin que celui utilisé pour le calcul de proba).
+ */
+export async function predictRosterCount(
+  scope: "MATCH" | "domicile" | "exterieur",
+  pool: "ALL" | "STARTERS",
+  stat: StatCode,
+  statThreshold: number | null,
+  statComparison: "OVER" | "UNDER" | null,
+  minPlayers: number,
+  countRelation: "AT_LEAST" | "MORE_THAN" | "FEWER_THAN",
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number; label: string; playerIds: number[] } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+  if (!NO_THRESHOLD_STATS.has(stat) && (statThreshold === null || !statComparison)) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-roster-count`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scope: scope === "MATCH" ? "match" : scope,
+        pool,
+        stat,
+        stat_seuil: statThreshold,
+        stat_comparison: statComparison,
+        min_joueurs: minPlayers,
+        count_relation: countRelation,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number" || !Array.isArray(data.player_ids)) return null;
+    return { proba: data.proba, label: data.label, playerIds: data.player_ids };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Pari PERIOD, forme JOUEUR (24/08/2026, GAPS_OUVERTS.md, chantier "pari
  * période") -- une stat JOUEUR normale (mêmes codes que predictOverUnder)
  * mais limitée à UNE période (ex. "3 contres en 1ère mi-temps"). Contrat
