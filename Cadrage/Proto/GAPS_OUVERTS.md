@@ -6,21 +6,138 @@
 
 > **Où en est le plan de reprise post-audit (25/08/2026, fin de session)** --
 > étapes 1 ("5 majeur/banc"), 2 ("petits gains groupés"), 3 ("comptage
-> roster-wide") et 4 ("meilleur marqueur") codées, testées en conditions
-> réelles (Claude + HTTP local). Étapes 1/2/3 commitées ET poussées
-> (`4ff0a44`, `1a6f36a`, `714e45f`, `94db7a4`) ; étape 4 codée cette
-> session, PAS ENCORE commitée (attend confirmation utilisateur, cf.
+> roster-wide"), 4 ("meilleur marqueur") et 5 ("événements de match")
+> codées, testées en conditions réelles (Claude + HTTP local). Étapes 1/2/3
+> commitées ET poussées (`4ff0a44`, `1a6f36a`, `714e45f`, `94db7a4`) ;
+> étape 4 commitée ET poussée (`332ac92`) ; étape 5 codée cette session,
+> PAS ENCORE commitée (attend confirmation utilisateur, cf.
 > JOURNAL_SESSIONS.md). **Pas encore redéployé sur Cloud Run ni Vercel** --
 > à faire avant de tester via l'appli réelle (l'utilisateur s'en charge,
-> comme d'habitude). Prochaine étape à reprendre : **étape 5, événements
-> de match** (fautes techniques, temps morts, retour en zone -- nouveau
-> pipeline stat + modèles, comparable en taille au chantier période).
-> Sinon, entraîner un vrai modèle joueur+période
-> (`train_player_period_model.py`, pas encore écrit) -- le backfill
-> `stats_box_scores_by_period` est fini depuis la session du 24/08/2026. Le
-> plan complet (8 étapes) et les points explicitement différés sont
-> documentés dans les entrées ci-dessous et dans
+> comme d'habitude). **Backfill historique étape 5 (jouer+match) PAS
+> ENCORE lancé** (contrairement au code, qui est prêt) -- nécessite la
+> migration `20260825150000` poussée d'abord, laissé à l'utilisateur avec
+> le reste du redéploiement (`backfill_game_events.py`, aucun appel API,
+> testé en dry-run sur 200 matchs). Prochaine étape à reprendre : **étape
+> 6, événements granulaires** (buzzer beater, contre "sur" un joueur
+> précis -- corrélation d'événements play-by-play, mécanisme différent des
+> étapes 1-5 : attribution possession par possession). Sinon, entraîner un
+> vrai modèle joueur+période (`train_player_period_model.py`, pas encore
+> écrit) -- le backfill `stats_box_scores_by_period` est fini depuis la
+> session du 24/08/2026. Le plan complet (8 étapes) et les points
+> explicitement différés sont documentés dans les entrées ci-dessous et dans
 > `AUDIT_TYPES_PARIS_24_08_2026.md`.
+
+> **Étape 5 du plan de reprise, CODÉE le 25/08/2026** -- "événements de
+> match" (fautes techniques, temps morts, retour en zone) -- cause racine
+> "stat jamais modélisée" de l'audit, PAS "événement granulaire" (buzzer
+> beater/contre sur un joueur précis restent différés à l'étape 6, seule
+> vraie différence : ces 3 events se comptent directement depuis le
+> play-by-play sans corréler 2 lignes entre elles). 5 paris réels du
+> corpus, 4 mécanismes distincts.
+>
+> **Découverte clé AVANT de coder** : le play-by-play est déjà téléchargé
+> localement pour les 6602 matchs connus (5 saisons,
+> `data/raw/*/playbyplay/*.csv`) -- AUCUN appel API pour le backfill
+> historique ni pour l'entraînement (table locale `play_by_play` déjà
+> chargée dans `nba.db`, jamais interrogée pour actionType/subType
+> jusqu'ici). Un vrai appel `nba_api.PlayByPlayV3` en direct renvoie
+> **exactement le même schéma** (vérifié) -- même logique d'agrégation
+> réutilisable pour l'historique ET le quotidien.
+>
+> **3 des 4 mécanismes réutilisent une infrastructure DÉJÀ existante, zéro
+> nouveau schéma IA** :
+> - **Faute technique JOUEUR** ("Jokic reçoit au moins une faute
+>   technique") -- nouveau code `tech` dans `STAT_CODES`/`CLASSIFIER_STATS`
+>   (classifieur direct, même patron EXACT que dd/td -- `tech.joblib`
+>   entraîné en import-réutilisant `train_doubledouble_model.py::run()`
+>   telle quelle, aucune nouvelle fonction d'entraînement).
+> - **Temps morts** ("aucun temps mort pris par les 2 équipes") -- nouveau
+>   stat `total_timeouts` dans `MATCH_STAT_CODES` (régression, même patron
+>   EXACT que `total_points` -- seuil=1/UNDER approxime "exactement 0",
+>   même principe déjà accepté pour le DNP roster-wide étape 3).
+> - **Retour en zone** ("au moins un retour en zone") -- nouveau stat
+>   `had_backcourt_turnover` dans `MATCH_STAT_CODES` (classifieur direct,
+>   même patron EXACT que `went_to_ot`).
+>
+> Ces 3 stats se glissent dans les schémas PARTAGÉS existants
+> (`structureBet.ts`/bet_subject=PLAYER et MATCH_TOTAL) -- **bug réel
+> trouvé** en vérifiant : les descriptions Zod `threshold`/`comparison`
+> mentionnaient explicitement "dd/td"/"went_to_ot" en dur (pas généré
+> dynamiquement depuis `NO_THRESHOLD_STATS`/`NO_THRESHOLD_MATCH_STATS`) --
+> l'IA n'aurait pas su que `tech`/`had_backcourt_turnover` sont AUSSI sans
+> seuil. Corrigé avant tout test.
+>
+> **4e mécanisme, vraiment nouveau** -- **fautes techniques ÉQUIPE/MATCH,
+> comptage EXACT** ("Orlando reçoit exactement 2 fautes techniques",
+> "il y aura exactement 2 fautes techniques dans le match") : nouveau
+> `bet_subject=TECHNICAL_FOULS_COUNT`, schéma dédié routé par mot-clé
+> (`TECHNICAL_FOULS_COUNT_KEYWORD_REGEX`, volontairement ÉTROIT --
+> "exactement" à proximité de "faute(s) technique(s)", ne matche PAS le
+> cas joueur "au moins une faute technique"). 2 classifieurs MULTI-CLASSE
+> (`team_technical_fouls.joblib` 0/1/2/3+ own/opp, `match_technical_fouls.joblib`
+> 0/1/2/3/4+ home/away symétrique) -- MÊME patron EXACT que
+> `period_quarters_won_count` (étape période) : `count_relation` à 4
+> valeurs (AT_LEAST/MORE_THAN/FEWER_THAN/EXACTLY) plutôt que exact_count+
+> OVER/UNDER, même raisonnement que ROSTER_COUNT (étape 3) -- distribution
+> discrète EXACTE, l'inclusif/exclusif compte réellement.
+>
+> **Stockage** : réutilise les tables EXISTANTES plutôt qu'une nouvelle
+> table -- `stats_box_scores.technical_fouls`/`backcourt_turnovers`
+> (PLAYER, migration `20260825150000`) + `stats_matchs.home_timeouts`/
+> `away_timeouts` (pas d'attribution joueur possible, teamId="0" dans le
+> play-by-play aussi). **Piège réel trouvé en explorant les données** :
+> une faute technique D'ENTRAÎNEUR a `teamId="0"` et un `personId` qui
+> N'EST PAS un joueur (ex. Gregg Popovich) -- exclue du comptage joueur
+> (`team_id != "0"`), sans quoi une jointure vers `stats_box_scores`
+> échouerait silencieusement (aucune ligne pour un coach). Les temps morts
+> n'ont AUCUNE attribution structurée -- seule l'équipe qui les a appelés
+> est identifiable via son NOM en texte libre dans `description` (ex.
+> "Nets Timeout: Regular"), résolu en comparant ce préfixe aux 2 VRAIES
+> équipes du match (fermé à 2 candidats, pas un matching flou sur 30
+> équipes) -- **vérifié 0 texte non résolu sur un échantillon de 200
+> matchs** avant de coder le backfill complet.
+>
+> **Pipeline local d'entraînement** (`build_targets.py`) : nouvelles
+> requêtes sur la table `play_by_play` LOCALE déjà chargée (aucune
+> nouvelle colonne locale nécessaire, contrairement au côté Supabase) --
+> `technical_fouls`/`backcourt_turnovers`/`tech` dans `labels_joueur`,
+> `own_technical_fouls`/`opp_technical_fouls` dans `entrainement_equipe`,
+> `home_timeouts`/`away_timeouts`/`total_timeouts`/`had_backcourt_turnover`/
+> `total_technical_fouls` dans `entrainement_matchs`. `train_game_event_model.py`
+> (nouveau, mais AUCUNE nouvelle fonction d'entraînement -- réutilise
+> `train_regressor`/`train_binary_classifier`/`train_multiclass_classifier`
+> de `train_period_model.py` et `run()` de `train_doubledouble_model.py`
+> telles quelles). 5 modèles entraînés et validés (`tsc`/dry-run local) :
+> `tech` (Brier quasi égal à la référence -- faute technique intrinsèquement
+> peu prévisible, attendu), `had_backcourt_turnover` (idem), `total_timeouts`
+> (R²=0.010 -- très faible, timeouts dépendent surtout du DÉROULÉ du match,
+> pas prévisible depuis le contexte pré-match, honnêtement documenté comme
+> `plus_minus` en étape 2), `team_technical_fouls`/`match_technical_fouls`
+> (distributions de classes raisonnablement peuplées 0-3/0-4).
+>
+> **refresh_daily.py étendu** (1 nouvel appel API par match, `PlayByPlayV3`
+> -- confirmé avec l'utilisateur avant de coder) : `fetch_play_by_play()` +
+> agrégation réutilisant la MÊME logique EXACTE que `backfill_game_events.py`
+> (dupliquée, aucun module partagé entre les scripts locaux/service comme
+> le reste du projet) -- panne tolérante (colonnes NULL pour ce match si
+> l'appel échoue, jamais bloquant pour le reste de la synchro quotidienne).
+>
+> Testé avec 4+3 vrais appels Claude Sonnet 5 (schéma PARTAGÉ : tech/
+> total_timeouts/had_backcourt_turnover + non-régression PLAYER classique,
+> 4/4 corrects ; schéma dédié TECHNICAL_FOULS_COUNT : 2 calculable=true +
+> 1 calculable=false correctement rejeté vers le cas joueur, 3/3 corrects)
+> + 7 appels HTTP réels au service local (tech 6.7%, total_timeouts
+> P(UNDER 1)≈0% -- cohérent avec une moyenne de 11.4 temps morts,
+> had_backcourt_turnover 30.2%, comptage fautes techniques équipe/match
+> EXACTLY/AT_LEAST cohérents avec les distributions d'entraînement, garde
+> scope invalide -> 422). Routage par mot-clé vérifié sans collision sur 8
+> cas (leçon de l'étape 3, appliquée systématiquement depuis).
+>
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. **Backfill
+> historique PAS ENCORE lancé** (`backfill_game_events.py` prêt et testé
+> en dry-run, mais nécessite les migrations `20260825150000`/
+> `20260825160000` poussées d'abord) -- laissé à l'utilisateur avec le
+> reste du redéploiement, même limite que chaque chantier précédent.
 
 > **Étape 4 du plan de reprise, CODÉE le 25/08/2026** -- "meilleur
 > marqueur" (`SUPERLATIVE`), "X marque plus de {stat} que TOUT AUTRE

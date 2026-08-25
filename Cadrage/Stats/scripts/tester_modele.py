@@ -67,6 +67,12 @@ REGRESSION_STATS = {
 CLASSIFIER_STATS = {
     "dd": ("double_double", "Double-double"),
     "td": ("triple_double", "Triple-double"),
+    # ajoutee le 25/08/2026 (etape 5 du plan de reprise post-audit,
+    # GAPS_OUVERTS.md, chantier "evenements de match") -- tech.joblib
+    # (train_game_event_model.py, meme squelette EXACT que dd/td via
+    # train_doubledouble_model.py::run()). Probabilite DIRECTE (au moins 1
+    # faute technique sur le match), pas de seuil -- meme principe que dd/td.
+    "tech": ("tech", "Faute technique"),
 }
 PCT_STATS = {
     "ft": ("ft_pct", "ftm", "fta", "Lancers francs (FT%)"),

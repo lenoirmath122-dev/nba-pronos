@@ -95,6 +95,7 @@ type BoxScoreRow = {
   fg3a: number | null;
   oreb: number | null;
   plus_minus: number | null;
+  technical_fouls: number | null;
 };
 
 /** Même définition EXACTE que build_targets.py (Cadrage/Stats/scripts,
@@ -115,9 +116,21 @@ function computeOutcome(
   comparison: "OVER" | "UNDER" | null,
   box: BoxScoreRow
 ): boolean | null {
-  if (NO_THRESHOLD_STATS.has(stat)) {
+  if (stat === "dd" || stat === "td") {
     const categories = categoriesAtTen(box);
     return stat === "dd" ? categories >= 2 : categories >= 3;
+  }
+
+  // "tech" ajoutee le 25/08/2026 (etape 5, GAPS_OUVERTS.md) -- AUSSI dans
+  // NO_THRESHOLD_STATS mais PAS dd/td (probabilite directe pour une raison
+  // differente : au moins 1 faute technique, pas un seuil de categories).
+  // Bug reel trouve en cablant cette resolution : le check generique
+  // `NO_THRESHOLD_STATS.has(stat)` ci-dessus aurait fait tomber "tech" dans
+  // la branche dd/td (categoriesAtTen >= 3, comme "td") -- jamais teste
+  // avant d'ajouter "tech" a NO_THRESHOLD_STATS, corrige avant tout
+  // deploiement.
+  if (stat === "tech") {
+    return (box.technical_fouls ?? 0) >= 1;
   }
 
   if (PERCENTAGE_STATS.has(stat)) {
@@ -275,7 +288,7 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
 
     const { data: box } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
       .eq("game_id", gameId)
       .eq("player_id", bet.structured_player_id)
       .maybeSingle<BoxScoreRow>();
@@ -409,7 +422,7 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
       }
       const { data: box } = await supabase
         .from("stats_box_scores")
-        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
+        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
         .eq("game_id", gameId)
         .eq("player_id", bet.structured_player_id)
         .maybeSingle<BoxScoreRow>();
@@ -1041,7 +1054,7 @@ async function resolveComboConditionSatisfied(
     if (!playerId) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
       .eq("game_id", gameId)
       .eq("player_id", playerId);
     if (!rows || rows.length === 0) return null;
@@ -1433,6 +1446,10 @@ export async function resolveCalculablePeriodBets(): Promise<ResolveBetsSummary>
         // maintenant (demande un nouveau backfill, hors périmètre de ce
         // chantier).
         plus_minus: null,
+        // Même limite pour technical_fouls (étape 5, GAPS_OUVERTS.md) --
+        // "tech" n'a de toute façon pas de sens à l'échelle d'une seule
+        // période (probabilité directe "au moins 1 sur le match entier").
+        technical_fouls: null,
       };
       const won = computeOutcome(stat, bet.structured_threshold, bet.structured_comparison, box);
       if (won === null) {
@@ -1543,6 +1560,7 @@ function sumBoxRows(rows: RosterSplitBoxRow[]): BoxScoreRow {
     stl: sum("stl"), blk: sum("blk"), ftm: sum("ftm"), fta: sum("fta"),
     fgm: sum("fgm"), fga: sum("fga"), fg3a: sum("fg3a"), oreb: sum("oreb"),
     plus_minus: sum("plus_minus"),
+    technical_fouls: sum("technical_fouls"),
   };
 }
 
@@ -1612,7 +1630,7 @@ export async function resolveCalculableRosterSplitBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
+      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
     if (!rows || rows.length === 0) {
@@ -1714,7 +1732,7 @@ type EligibleRosterCountBetRow = {
  *  minute") dépend justement de ce comptage pour être résolu du tout. */
 const ZERO_BOX_ROW: BoxScoreRow = {
   minutes: null, pts: 0, reb: 0, ast: 0, fg3m: 0, stl: 0, blk: 0,
-  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0,
+  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0, technical_fouls: 0,
 };
 
 /** Résolution des paris ROSTER_COUNT -- lit stats_box_scores PAR
@@ -1792,7 +1810,7 @@ export async function resolveCalculableRosterCountBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
       .eq("game_id", gameId)
       .in("player_id", rc.player_ids);
     const boxByPlayer = new Map(
@@ -1957,6 +1975,263 @@ export async function resolveCalculableSuperlativeBets(): Promise<ResolveBetsSum
       .update({
         status: outcome,
         resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${playerValue} vs le reste du match).`,
+        resolved_at: new Date().toISOString(),
+        resolved_by_admin_id: null,
+      })
+      .eq("id", bet.id)
+      .eq("status", "VALIDATED")
+      .select("id")
+      .maybeSingle();
+    if (!updated) {
+      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
+      continue;
+    }
+
+    await recomputeBet(bet.id);
+    summary.resolved.push({ betId: bet.id, outcome });
+  }
+
+  return summary;
+}
+
+// ============================================================================
+// Chantier "événements de match" (étape 5 du plan de reprise post-audit,
+// 25/08/2026, GAPS_OUVERTS.md) -- total_timeouts/had_backcourt_turnover,
+// bet_subject=MATCH_TOTAL. Résolveur SÉPARÉ de resolveCalculableMatchTotalBets()
+// ci-dessus (total_points/went_to_ot) : celui-ci lit `matches` (app-side,
+// peuplé par lib/sync/results.ts), ces 2 nouvelles stats vivent côté
+// Data NBA (stats_matchs/stats_box_scores, peuplées par refresh_daily.py) --
+// même pont resolveNbaGameId() que resolveCalculableTeamStatBets().
+// ============================================================================
+
+type EligibleGameEventMatchTotalBetRow = {
+  id: string;
+  match_id: string | null;
+  structured_stat: string | null;
+  structured_threshold: number | null;
+  structured_comparison: "OVER" | "UNDER" | null;
+};
+
+export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSummary> {
+  const supabase = getServiceClient();
+  const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, match_id, structured_stat, structured_threshold, structured_comparison")
+    .eq("scope", "MATCH")
+    .eq("is_calculable", true)
+    .eq("status", "VALIDATED")
+    .in("structured_stat", ["total_timeouts", "had_backcourt_turnover"])
+    .is("structured_player_id", null); // discrimine des paris JOUEUR, même garde que resolveCalculableMatchTotalBets()
+  const bets = (betsData ?? []) as EligibleGameEventMatchTotalBetRow[];
+  if (bets.length === 0) return summary;
+
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const { data: matchesData } = await supabase.from("matches").select("id, status").in("id", matchIds);
+  const finishedMatchIds = new Set(
+    (matchesData ?? []).filter((m) => m.status === "FINISHED").map((m) => m.id as string)
+  );
+
+  const { data: pendingCorrections } = await supabase
+    .from("correction_requests")
+    .select("target_bet_id")
+    .eq("status", "PENDING")
+    .in(
+      "target_bet_id",
+      bets.map((b) => b.id)
+    );
+  const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
+
+  for (const bet of bets) {
+    if (!bet.match_id || !finishedMatchIds.has(bet.match_id)) {
+      summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
+      continue;
+    }
+    if (contestedBetIds.has(bet.id)) {
+      summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
+      continue;
+    }
+    // had_backcourt_turnover n'a ni seuil ni comparaison (probabilité
+    // directe) -- garde restreinte à total_timeouts, même principe que la
+    // garde symétrique côté structuration (NO_THRESHOLD_MATCH_STATS).
+    if (bet.structured_stat === "total_timeouts" && (bet.structured_threshold === null || !bet.structured_comparison)) {
+      summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
+      continue;
+    }
+
+    const gameId = await resolveNbaGameId(supabase, bet.match_id);
+    if (!gameId) {
+      summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
+      continue;
+    }
+
+    let outcome: "WON" | "LOST";
+    let resolutionReason: string;
+
+    if (bet.structured_stat === "total_timeouts") {
+      const { data: match } = await supabase
+        .from("stats_matchs")
+        .select("home_timeouts, away_timeouts")
+        .eq("game_id", gameId)
+        .maybeSingle<{ home_timeouts: number | null; away_timeouts: number | null }>();
+      if (!match || match.home_timeouts === null || match.away_timeouts === null) {
+        summary.skipped.push({ betId: bet.id, reason: "temps morts pas encore synchronisés pour ce match" });
+        continue;
+      }
+      const total = match.home_timeouts + match.away_timeouts;
+      const won =
+        bet.structured_comparison === "UNDER" ? total < (bet.structured_threshold as number) : total > (bet.structured_threshold as number);
+      outcome = won ? "WON" : "LOST";
+      resolutionReason = `Résolu automatiquement via les statistiques officielles du match (${total} temps morts combinés).`;
+    } else {
+      // had_backcourt_turnover : au moins 1 sur TOUT le match (les 2
+      // équipes) -- pas d'attribution match-wide stockée directement,
+      // sommée depuis stats_box_scores.backcourt_turnovers (même geste que
+      // resolveCalculableSuperlativeBets(), qui lit aussi TOUS les joueurs
+      // du match sans filtre team_id).
+      const { data: rows } = await supabase.from("stats_box_scores").select("backcourt_turnovers").eq("game_id", gameId);
+      if (!rows || rows.length === 0) {
+        summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
+        continue;
+      }
+      const total = rows.reduce((sum, r) => sum + ((r.backcourt_turnovers as number | null) ?? 0), 0);
+      outcome = total > 0 ? "WON" : "LOST";
+      resolutionReason =
+        total > 0
+          ? "Résolu automatiquement -- au moins un retour en zone a eu lieu durant le match."
+          : "Résolu automatiquement -- aucun retour en zone n'a eu lieu durant le match.";
+    }
+
+    const { data: updated } = await supabase
+      .from("bets")
+      .update({
+        status: outcome,
+        resolution_reason: resolutionReason,
+        resolved_at: new Date().toISOString(),
+        resolved_by_admin_id: null,
+      })
+      .eq("id", bet.id)
+      .eq("status", "VALIDATED")
+      .select("id")
+      .maybeSingle();
+    if (!updated) {
+      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
+      continue;
+    }
+
+    await recomputeBet(bet.id);
+    summary.resolved.push({ betId: bet.id, outcome });
+  }
+
+  return summary;
+}
+
+// ============================================================================
+// Chantier "fautes techniques équipe/match, comptage exact" (étape 5,
+// GAPS_OUVERTS.md).
+// ============================================================================
+
+type StructuredTechnicalFoulsCount = {
+  scope: "MATCH" | "team1" | "team2";
+  count_relation: "AT_LEAST" | "MORE_THAN" | "FEWER_THAN" | "EXACTLY";
+};
+
+type EligibleTechnicalFoulsCountBetRow = {
+  id: string;
+  match_id: string | null;
+  structured_team_id: string | null;
+  structured_threshold: number | null;
+  structured_technical_fouls_count: StructuredTechnicalFoulsCount | null;
+};
+
+/** Résolution des paris TECHNICAL_FOULS_COUNT -- somme
+ *  stats_box_scores.technical_fouls (scope=MATCH : les 2 équipes, sans
+ *  filtre team_id, même geste que resolveCalculableSuperlativeBets()/
+ *  resolveCalculableGameEventBets() [had_backcourt_turnover] ; scope=team1/
+ *  team2 : filtré par team_id via resolveNbaTeamId(), même pont que
+ *  resolveCalculableTeamStatBets()). MATCH uniquement, même limite que les
+ *  autres resolvers. */
+export async function resolveCalculableTechnicalFoulsCountBets(): Promise<ResolveBetsSummary> {
+  const supabase = getServiceClient();
+  const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, match_id, structured_team_id, structured_threshold, structured_technical_fouls_count")
+    .eq("scope", "MATCH")
+    .eq("is_calculable", true)
+    .eq("status", "VALIDATED")
+    .not("structured_technical_fouls_count", "is", null);
+  const bets = (betsData ?? []) as EligibleTechnicalFoulsCountBetRow[];
+  if (bets.length === 0) return summary;
+
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const { data: matchesData } = await supabase.from("matches").select("id, status").in("id", matchIds);
+  const finishedMatchIds = new Set(
+    (matchesData ?? []).filter((m) => m.status === "FINISHED").map((m) => m.id as string)
+  );
+
+  const { data: pendingCorrections } = await supabase
+    .from("correction_requests")
+    .select("target_bet_id")
+    .eq("status", "PENDING")
+    .in(
+      "target_bet_id",
+      bets.map((b) => b.id)
+    );
+  const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
+
+  for (const bet of bets) {
+    if (!bet.match_id || !finishedMatchIds.has(bet.match_id)) {
+      summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
+      continue;
+    }
+    if (contestedBetIds.has(bet.id)) {
+      summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
+      continue;
+    }
+    const tfc = bet.structured_technical_fouls_count;
+    if (!tfc || bet.structured_threshold === null) {
+      summary.skipped.push({ betId: bet.id, reason: "comptage fautes techniques structuré manquant" });
+      continue;
+    }
+
+    const gameId = await resolveNbaGameId(supabase, bet.match_id);
+    if (!gameId) {
+      summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
+      continue;
+    }
+
+    let rows: { technical_fouls: number | null }[] | null;
+    if (tfc.scope === "MATCH") {
+      ({ data: rows } = await supabase.from("stats_box_scores").select("technical_fouls").eq("game_id", gameId));
+    } else {
+      const nbaTeamId = bet.structured_team_id ? await resolveNbaTeamId(supabase, bet.structured_team_id) : null;
+      if (nbaTeamId === null) {
+        summary.skipped.push({ betId: bet.id, reason: "équipe NBA correspondante introuvable" });
+        continue;
+      }
+      ({ data: rows } = await supabase.from("stats_box_scores").select("technical_fouls").eq("game_id", gameId).eq("team_id", nbaTeamId));
+    }
+    if (!rows || rows.length === 0) {
+      summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
+      continue;
+    }
+    const total = rows.reduce((sum, r) => sum + (r.technical_fouls ?? 0), 0);
+    const threshold = bet.structured_threshold;
+    const won =
+      tfc.count_relation === "EXACTLY" ? total === threshold
+      : tfc.count_relation === "AT_LEAST" ? total >= threshold
+      : tfc.count_relation === "MORE_THAN" ? total > threshold
+      : total < threshold;
+    const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+
+    const { data: updated } = await supabase
+      .from("bets")
+      .update({
+        status: outcome,
+        resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${total} fautes techniques).`,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

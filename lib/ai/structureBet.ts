@@ -79,8 +79,8 @@ const BetStructurationSchema = z.object({
       name: z.string().describe("Orthographe standard NBA (ex: \"Michael Porter Jr.\" pas \"Junior\")."),
       team: z.enum(["team1", "team2"]).nullable().describe("null si not_in_match=true."),
       stat: z.enum(STAT_CODES as [string, ...string[]]).describe("Code de la stat JOUEUR concernée."),
-      threshold: z.number().nullable().describe("null pour dd/td (probabilité directe, pas de seuil)."),
-      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour dd/td."),
+      threshold: z.number().nullable().describe("null pour dd/td/tech (probabilité directe, pas de seuil)."),
+      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour dd/td/tech."),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=PLAYER, sinon null."),
@@ -96,8 +96,8 @@ const BetStructurationSchema = z.object({
   match_total: z
     .object({
       stat: z.enum(MATCH_STAT_CODES as [string, ...string[]]),
-      threshold: z.number().nullable().describe("null pour went_to_ot (probabilité directe, pas de seuil)."),
-      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour went_to_ot."),
+      threshold: z.number().nullable().describe("null pour went_to_ot/had_backcourt_turnover (probabilité directe, pas de seuil)."),
+      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour went_to_ot/had_backcourt_turnover."),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=MATCH_TOTAL, sinon null."),

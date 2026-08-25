@@ -21,17 +21,28 @@
 // -- SEULE stat de cette liste sans seuil (probabilite directe que LE match
 // aille en prolongation, meme principe que dd/td cote joueur -- voir
 // NO_THRESHOLD_MATCH_STATS ci-dessous).
+
+// total_timeouts/had_backcourt_turnover ajoutees le 25/08/2026 (etape 5 du
+// plan de reprise post-audit, GAPS_OUVERTS.md, chantier "evenements de
+// match") -- "aucun temps mort pris par les 2 equipes"/"au moins un retour
+// en zone" se glissent TELS QUELS dans le mecanisme MATCH_TOTAL deja en
+// place (total_timeouts = regression comme total_points, seuil=1/UNDER
+// approxime "exactement 0" -- meme principe deja accepte pour le DNP
+// roster-wide, etape 3 ; had_backcourt_turnover = classifieur direct comme
+// went_to_ot, PAS de seuil).
 export type MatchStatCode =
   | "total_points" | "total_reb" | "total_ast" | "total_fg3m" | "total_stl" | "total_blk" | "total_oreb"
-  | "went_to_ot";
+  | "went_to_ot" | "total_timeouts" | "had_backcourt_turnover";
 
 export const MATCH_STAT_CODES: MatchStatCode[] = [
   "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk", "total_oreb", "went_to_ot",
+  "total_timeouts", "had_backcourt_turnover",
 ];
 
 // Meme principe que NO_THRESHOLD_STATS (statCodes.ts, dd/td cote joueur) --
-// went_to_ot n'a ni seuil ni OVER/UNDER, juste une probabilite directe.
-export const NO_THRESHOLD_MATCH_STATS = new Set<MatchStatCode>(["went_to_ot"]);
+// went_to_ot/had_backcourt_turnover n'ont ni seuil ni OVER/UNDER, juste une
+// probabilite directe.
+export const NO_THRESHOLD_MATCH_STATS = new Set<MatchStatCode>(["went_to_ot", "had_backcourt_turnover"]);
 
 export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
   total_points: "points combinés du match (les 2 équipes additionnées)",
@@ -42,4 +53,6 @@ export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
   total_blk: "contres combinés du match (les 2 équipes additionnées)",
   total_oreb: "rebonds offensifs combinés du match (les 2 équipes additionnées)",
   went_to_ot: "le match ira en prolongation",
+  total_timeouts: "temps morts combinés du match (les 2 équipes additionnées)",
+  had_backcourt_turnover: "au moins un retour en zone (violation de contre-attaque) durant le match",
 };

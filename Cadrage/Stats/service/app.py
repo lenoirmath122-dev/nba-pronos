@@ -206,6 +206,129 @@ def predict_overtime(req: PredictOvertimeRequest):
     }
 
 
+class PredictTotalTimeoutsRequest(BaseModel):
+    """Chantier "evenements de match" (etape 5 du plan de reprise post-audit,
+    25/08/2026, GAPS_OUVERTS.md) -- temps morts combines du match (les 2
+    equipes additionnees). MEME contrat EXACT que PredictTotalPointsRequest."""
+    equipe_domicile: str
+    equipe_exterieur: str
+    seuil: float
+    comparison: str  # "OVER" | "UNDER"
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-total-timeouts")
+def predict_total_timeouts(req: PredictTotalTimeoutsRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_total_timeouts_proba(
+            sb, home_id, away_id, req.seuil, req.comparison, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "seuil": req.seuil,
+        "comparison": req.comparison,
+        **result,
+    }
+
+
+class PredictBackcourtTurnoverRequest(BaseModel):
+    """Chantier "evenements de match" (etape 5, GAPS_OUVERTS.md) -- au moins
+    1 retour en zone (violation de backcourt) durant CE match, les 2 equipes
+    confondues. Stat MATCH binaire directe, sans seuil -- MEME contrat que
+    PredictOvertimeRequest."""
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-backcourt-turnover")
+def predict_backcourt_turnover(req: PredictBackcourtTurnoverRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_backcourt_turnover_proba(sb, home_id, away_id, req.as_of_date, season=req.season)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        **result,
+    }
+
+
+class PredictTechnicalFoulsCountRequest(BaseModel):
+    """Fautes techniques EQUIPE/MATCH, comptage EXACT (etape 5 du plan de
+    reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- "Orlando recoit
+    exactement 2 fautes techniques"/"il y aura exactement 2 fautes
+    techniques dans le match". scope="match" (les 2 equipes combinees) ou
+    "domicile"/"exterieur" (une seule). count_relation a 4 valeurs
+    (AT_LEAST/MORE_THAN/FEWER_THAN/EXACTLY) -- distribution EXACTE
+    (classifieur multi-classe), pas une approximation continue."""
+    scope: str  # "match" | "domicile" | "exterieur"
+    count_threshold: int
+    count_relation: str  # "AT_LEAST" | "MORE_THAN" | "FEWER_THAN" | "EXACTLY"
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+    @model_validator(mode="after")
+    def _champs_coherents(self):
+        if self.scope not in ("match", "domicile", "exterieur"):
+            raise ValueError(f"scope invalide : {self.scope}")
+        if self.count_relation not in ("AT_LEAST", "MORE_THAN", "FEWER_THAN", "EXACTLY"):
+            raise ValueError(f"count_relation invalide : {self.count_relation}")
+        return self
+
+
+@app.post("/predict-technical-fouls-count")
+def predict_technical_fouls_count(req: PredictTechnicalFoulsCountRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_technical_fouls_count_proba(
+            sb, req.scope, req.count_threshold, req.count_relation, home_id, away_id, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "scope": req.scope,
+        "count_threshold": req.count_threshold,
+        "count_relation": req.count_relation,
+        **result,
+    }
+
+
 class PredictTotalReboundsRequest(BaseModel):
     """Piece (a) suite (GAPS_OUVERTS.md, 23/08/2026) -- 2e forme du pari
     rebonds : rebonds COMBINES du match (a cote de /predict-team-rebounds,

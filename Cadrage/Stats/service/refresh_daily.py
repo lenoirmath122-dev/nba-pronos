@@ -31,7 +31,7 @@ from collections import Counter
 from pathlib import Path
 
 import pandas as pd
-from nba_api.stats.endpoints import boxscoreadvancedv3, boxscoretraditionalv3, leaguegamefinder
+from nba_api.stats.endpoints import boxscoreadvancedv3, boxscoretraditionalv3, leaguegamefinder, playbyplayv3
 from supabase import create_client
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
@@ -82,6 +82,15 @@ STATS_BOX_SCORE_TRAD_COLUMNS = [
 # STATS_BOX_SCORE_TRAD_COLUMNS (pas de team_id/plus_minus, pas necessaires a
 # la resolution/prediction par periode).
 STATS_BOX_SCORE_PERIOD_COLUMNS = ["game_id", "player_id", "pts", "reb", "ast", "fg3m", "stl", "blk", "ftm", "fta", "fgm", "fga", "fg3a", "oreb"]
+
+# Chantier "evenements de match" (etape 5 du plan de reprise post-audit,
+# 25/08/2026, GAPS_OUVERTS.md) -- toutes les variantes de faute technique
+# rencontrees dans le play-by-play (Foul.subType), MEME liste EXACTE que
+# backfill_game_events.py/build_targets.py (dupliquee ici, aucun module
+# partage entre les scripts locaux et le service deploye).
+TECHNICAL_SUBTYPES = (
+    "Technical", "Double Technical", "Delay Technical", "Hanging Technical", "Too Many Players Technical",
+)
 
 PAGE_SIZE = 1000  # limite par defaut de PostgREST -- toute lecture "table
 # entiere" doit paginer avec .range(), sinon une reponse tronquee a 1000
@@ -219,6 +228,61 @@ def fetch_period_box_scores(game_id: str) -> dict:
     return out
 
 
+def fetch_play_by_play(game_id: str) -> pd.DataFrame | None:
+    """Chantier "evenements de match" (etape 5 du plan de reprise post-audit,
+    25/08/2026, GAPS_OUVERTS.md) -- fautes techniques/temps morts/retours en
+    zone, jamais recuperes jusqu'ici. Verifie empiriquement le 25/08/2026 :
+    un vrai appel PlayByPlayV3 renvoie EXACTEMENT le meme schema
+    (actionType/subType/personId/teamId/description) que le play-by-play CSV
+    deja utilise pour le backfill historique (data/raw/*/playbyplay/*.csv,
+    backfill_game_events.py) -- meme logique d'agregation reutilisable des 2
+    cotes."""
+    def call():
+        return playbyplayv3.PlayByPlayV3(game_id=game_id, timeout=REQUEST_TIMEOUT).get_data_frames()[0]
+
+    df = fetch_with_retries(call, f"play-by-play {game_id}", MAX_RETRIES)
+    sleep_between_requests(DELAY_MIN, DELAY_MAX)
+    return df
+
+
+def technical_fouls_and_backcourt_by_player(pbp_df: pd.DataFrame) -> dict:
+    """{player_id: {"technical_fouls": n, "backcourt_turnovers": n}} -- teamId
+    != "0" exclut les fautes techniques D'ENTRAINEUR (personId n'est alors
+    pas un joueur, ex. Gregg Popovich -- decouvert en explorant les donnees
+    avant de coder ce chantier, meme filtre que backfill_game_events.py)."""
+    events: dict[int, dict[str, int]] = {}
+    fouls = pbp_df[
+        (pbp_df["actionType"] == "Foul") & pbp_df["subType"].isin(TECHNICAL_SUBTYPES) & (pbp_df["teamId"].astype(str) != "0")
+    ]
+    for pid in fouls["personId"].dropna().astype(int):
+        events.setdefault(pid, {"technical_fouls": 0, "backcourt_turnovers": 0})
+        events[pid]["technical_fouls"] += 1
+    backcourt = pbp_df[(pbp_df["actionType"] == "Turnover") & (pbp_df["subType"] == "Backcourt Turnover")]
+    for pid in backcourt["personId"].dropna().astype(int):
+        events.setdefault(pid, {"technical_fouls": 0, "backcourt_turnovers": 0})
+        events[pid]["backcourt_turnovers"] += 1
+    return events
+
+
+def timeouts_by_team(pbp_df: pd.DataFrame, home_name: str, away_name: str) -> tuple[int, int]:
+    """(home_timeouts, away_timeouts) -- un temps mort n'a PAS d'attribution
+    joueur/equipe structuree dans le play-by-play (teamId="0" aussi), seule
+    l'equipe qui l'a appele est identifiable via son NOM en texte libre dans
+    description (ex. "Nets Timeout: Regular") -- meme mecanisme EXACT que
+    backfill_game_events.py, verifie 0 texte non resolu sur un echantillon
+    de 200 matchs avant de coder ceci."""
+    home, away = 0, 0
+    home_name, away_name = home_name.upper(), away_name.upper()
+    regular = pbp_df[(pbp_df["actionType"] == "Timeout") & (pbp_df["subType"] == "Regular")]
+    for desc in regular["description"].fillna(""):
+        prefix = desc.split(" Timeout:")[0].strip().upper()
+        if prefix == home_name:
+            home += 1
+        elif prefix == away_name:
+            away += 1
+    return home, away
+
+
 def upsert_records(client, table: str, df: pd.DataFrame, on_conflict: str):
     """Par lots de PAGE_SIZE, même précaution que backfill_supabase.py -- un
     jour de rattrapage après une panne pourrait accumuler bien plus qu'un
@@ -269,11 +333,13 @@ def run(season: str, season_types: list):
         trad_df = trad_df.drop_duplicates(subset=["personId"])
         adv_df = adv_df.drop_duplicates(subset=["personId"])
 
+        team_name_by_id = {}
         for _, row in trad_df.drop_duplicates("teamId").iterrows():
             equipes_rows.append({
                 "team_id": int(row["teamId"]), "tricode": row["teamTricode"],
                 "city": row["teamCity"], "name": row["teamName"],
             })
+            team_name_by_id[int(row["teamId"])] = row["teamName"]
         for _, row in trad_df.drop_duplicates("personId").iterrows():
             if not row["personId"]:
                 continue
@@ -281,9 +347,25 @@ def run(season: str, season_types: list):
                 "player_id": int(row["personId"]), "first_name": row["firstName"], "family_name": row["familyName"],
             })
 
+        # Chantier "evenements de match" (etape 5, GAPS_OUVERTS.md) -- 1
+        # appel supplementaire par match (play-by-play complet). Panne
+        # tolerante : home_timeouts/away_timeouts/technical_fouls/
+        # backcourt_turnovers restent absents (NULL) pour ce match si
+        # l'appel echoue, jamais bloquant pour le reste de la synchro
+        # (meme philosophie que fetch_box_scores plus haut -- match
+        # reessaye au prochain lancement uniquement si LUI echoue, pas
+        # celui-ci).
+        pbp_df = fetch_play_by_play(game_id)
+        player_events = technical_fouls_and_backcourt_by_player(pbp_df) if pbp_df is not None else {}
+        if pbp_df is not None and home_id in team_name_by_id and away_id in team_name_by_id:
+            home_timeouts, away_timeouts = timeouts_by_team(pbp_df, team_name_by_id[home_id], team_name_by_id[away_id])
+        else:
+            home_timeouts, away_timeouts = None, None
+
         matchs_rows.append({
             "game_id": game_id, "game_date": meta["game_date"], "season": season,
             "season_type": meta["season_type"], "home_team_id": home_id, "away_team_id": away_id,
+            "home_timeouts": home_timeouts, "away_timeouts": away_timeouts,
         })
 
         # même filtre DNP/DND que load_to_sqlite.py -- une ligne sans minutes
@@ -297,11 +379,14 @@ def run(season: str, season_types: list):
 
         for _, row in trad_played.iterrows():
             pid = int(row["player_id"])
+            events = player_events.get(pid, {"technical_fouls": 0, "backcourt_turnovers": 0})
             box_rows.append({
                 **{col: row[col] for col in STATS_BOX_SCORE_TRAD_COLUMNS},
                 "opponent_team_id": opponent_of.get(int(row["team_id"])),
                 "game_date": meta["game_date"], "season": season,
                 "games_played_season_avant": player_game_count[pid],
+                "technical_fouls": events["technical_fouls"],
+                "backcourt_turnovers": events["backcourt_turnovers"],
             })
         for _, row in adv_played.iterrows():
             box_adv_rows.append({

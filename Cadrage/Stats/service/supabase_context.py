@@ -440,6 +440,112 @@ def _compute_overtime_proba_once(client, home_team_id: int, away_team_id: int, a
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "proba": proba}
 
 
+def _compute_total_timeouts_proba_once(
+    client, home_team_id: int, away_team_id: int, seuil: float, comparison: str, as_of_date, season: str | None = None,
+) -> dict:
+    """P(temps morts combines du match [home_timeouts+away_timeouts] > seuil)
+    -- etape 5 du plan de reprise post-audit (25/08/2026, GAPS_OUVERTS.md,
+    chantier "evenements de match"). Calque EXACT de
+    _compute_total_points_proba_once() (regression + residu normal, meme
+    BASE_FEATURE_COLS, meme repli MIN_SCALE) -- "aucun temps mort pris par
+    les 2 equipes" se traduit en seuil=1, comparison=UNDER cote appelant
+    (P(total<1) approxime P(total=0), meme principe deja accepte pour le DNP
+    roster-wide, etape 3)."""
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)
+    bundle = joblib.load(MODELS_DIR / "total_timeouts.joblib")
+    pred_mean = float(bundle["model"].predict(X)[0])
+    scale = max(bundle["resid_std"], 0.5)
+    proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+    proba = proba_over if comparison == "OVER" else 1 - proba_over
+
+    return {
+        "label": "Temps morts combinés du match",
+        "proba": float(proba),
+        "detail": f"prediction moyenne = {pred_mean:.1f} (+/- {scale:.1f}, normale)",
+        "home_team_id": home_team_id,
+        "away_team_id": away_team_id,
+    }
+
+
+def compute_total_timeouts_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_total_timeouts_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_total_timeouts_proba_once(*args, **kwargs))
+
+
+def _compute_backcourt_turnover_proba_once(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> dict:
+    """P(au moins 1 retour en zone [violation de backcourt] durant CE match,
+    les 2 equipes confondues) -- etape 5 du plan de reprise post-audit
+    (25/08/2026, GAPS_OUVERTS.md). Calque EXACT de compute_overtime_proba()
+    (classifieur binaire, meme BASE_FEATURE_COLS)."""
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
+    bundle = joblib.load(MODELS_DIR / "had_backcourt_turnover.joblib")
+    proba = float(bundle["model"].predict_proba(X)[:, 1][0])
+    return {"home_team_id": home_team_id, "away_team_id": away_team_id, "proba": proba}
+
+
+def compute_backcourt_turnover_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_backcourt_turnover_proba_once() d'une verification
+    de coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_backcourt_turnover_proba_once(*args, **kwargs))
+
+
+def _compute_technical_fouls_count_proba_once(
+    client, scope: str, count_threshold: int, count_relation: str,
+    home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> dict:
+    """Fautes techniques EQUIPE/MATCH, comptage EXACT (etape 5 du plan de
+    reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- "Orlando recoit
+    exactement 2 fautes techniques"/"il y aura exactement 2 fautes
+    techniques dans le match". Classifieur MULTI-CLASSE (0/1/2/3[+] equipe
+    via team_technical_fouls.joblib -- own/opp, meme features EXACTES que
+    QUARTERS_WON_COUNT ; 0/1/2/3/4[+] match via match_technical_fouls.joblib
+    -- home/away symetrique, memes features que total_points), MEME patron
+    EXACT que QUARTERS_WON_COUNT (_compute_period_proba_once) pour
+    l'interrogation de la distribution multi-classe -- interrogee via 4
+    relations (AT_LEAST/MORE_THAN/FEWER_THAN/EXACTLY) plutot que
+    exact_count+OVER/UNDER (meme raison que ROSTER_COUNT, etape 3 :
+    inclusif/exclusif compte vraiment sur une distribution discrete exacte,
+    pas une approximation continue a epargner)."""
+    if count_relation not in ("AT_LEAST", "MORE_THAN", "FEWER_THAN", "EXACTLY"):
+        raise ValueError(f"count_relation inconnue : {count_relation}")
+
+    if scope == "match":
+        bundle = joblib.load(MODELS_DIR / "match_technical_fouls.joblib")
+        X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)[bundle["feature_cols"]]
+    elif scope in ("domicile", "exterieur"):
+        team_id = home_team_id if scope == "domicile" else away_team_id
+        opponent_id = away_team_id if scope == "domicile" else home_team_id
+        bundle = joblib.load(MODELS_DIR / "team_technical_fouls.joblib")
+        row = _own_opp_row(client, team_id, opponent_id, as_of_date, season)
+        X = pd.DataFrame([row])[bundle["feature_cols"]]
+    else:
+        raise ValueError(f"scope inconnu : {scope}")
+
+    proba_by_class = dict(zip(bundle["model"].classes_, bundle["model"].predict_proba(X)[0]))
+
+    if count_relation == "EXACTLY":
+        proba = float(proba_by_class.get(float(count_threshold), 0.0))
+    elif count_relation == "AT_LEAST":
+        proba = float(sum(p for k, p in proba_by_class.items() if k >= count_threshold))
+    elif count_relation == "MORE_THAN":
+        proba = float(sum(p for k, p in proba_by_class.items() if k > count_threshold))
+    else:
+        proba = float(sum(p for k, p in proba_by_class.items() if k < count_threshold))
+
+    return {
+        "label": "Fautes techniques",
+        "proba": proba,
+        "detail": f"distribution multi-classe ({scope}) : {{{', '.join(f'{int(k)}: {v:.1%}' for k, v in sorted(proba_by_class.items()))}}}",
+    }
+
+
+def compute_technical_fouls_count_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_technical_fouls_count_proba_once() d'une
+    verification de coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_technical_fouls_count_proba_once(*args, **kwargs))
+
+
 def compute_overtime_proba(*args, **kwargs) -> dict:
     """Enveloppe _compute_overtime_proba_once() d'une verification de
     coherence (CONSISTENCY_CHECK_NOTE) -- l'hypothese initiale "l'instabilite

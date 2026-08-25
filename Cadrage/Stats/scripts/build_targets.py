@@ -68,9 +68,112 @@ CREATE TABLE labels_joueur (
     plus_minus REAL,
     double_double INTEGER,
     triple_double INTEGER,
+    technical_fouls INTEGER,
+    backcourt_turnovers INTEGER,
+    tech INTEGER,
     PRIMARY KEY (game_id, player_id)
 );
 """
+
+# Chantier "evenements de match" (etape 5 du plan de reprise post-audit,
+# GAPS_OUVERTS.md, 25/08/2026) -- toutes les variantes de faute technique
+# rencontrees dans le play-by-play (Foul.subType) qui comptent comme "une
+# faute technique" pour un joueur, MEME liste EXACTE que
+# backfill_game_events.py (service Supabase) -- dupliquee ici (script local,
+# aucun module partage entre les 2 cotes, meme situation que
+# minutes_to_float()).
+TECHNICAL_SUBTYPES = (
+    "Technical", "Double Technical", "Delay Technical", "Hanging Technical", "Too Many Players Technical",
+)
+
+
+def _player_game_events_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
+    """technical_fouls/backcourt_turnovers PAR JOUEUR depuis play_by_play --
+    chantier "evenements de match" (etape 5, GAPS_OUVERTS.md). team_id != 0
+    exclut les fautes techniques D'ENTRAINEUR (personId n'est alors pas un
+    joueur, ex. Gregg Popovich -- decouvert en explorant les donnees avant
+    de coder, meme filtre cote backfill_game_events.py)."""
+    placeholders = ", ".join("?" for _ in TECHNICAL_SUBTYPES)
+    fouls = pd.read_sql(
+        f"SELECT game_id, player_id, COUNT(*) AS technical_fouls FROM play_by_play "
+        f"WHERE action_type = 'Foul' AND sub_type IN ({placeholders}) AND team_id != 0 "
+        f"GROUP BY game_id, player_id",
+        conn, params=list(TECHNICAL_SUBTYPES), dtype={"game_id": str},
+    )
+    backcourt = pd.read_sql(
+        "SELECT game_id, player_id, COUNT(*) AS backcourt_turnovers FROM play_by_play "
+        "WHERE action_type = 'Turnover' AND sub_type = 'Backcourt Turnover' "
+        "GROUP BY game_id, player_id",
+        conn, dtype={"game_id": str},
+    )
+    return fouls.merge(backcourt, on=["game_id", "player_id"], how="outer")
+
+
+def _team_technical_fouls_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
+    """technical_fouls PAR EQUIPE (somme des fautes de ses joueurs, meme
+    filtre team_id != 0 que ci-dessus) -- 1 ligne par (game_id, team_id)."""
+    placeholders = ", ".join("?" for _ in TECHNICAL_SUBTYPES)
+    return pd.read_sql(
+        f"SELECT game_id, team_id, COUNT(*) AS technical_fouls FROM play_by_play "
+        f"WHERE action_type = 'Foul' AND sub_type IN ({placeholders}) AND team_id != 0 "
+        f"GROUP BY game_id, team_id",
+        conn, params=list(TECHNICAL_SUBTYPES), dtype={"game_id": str},
+    )
+
+
+def _match_events_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
+    """home_timeouts/away_timeouts/total_timeouts + had_backcourt_turnover
+    (bool, au moins 1 sur le match, les 2 equipes confondues) -- 1 ligne par
+    match. Les temps morts n'ont PAS d'attribution joueur/equipe structuree
+    dans le play-by-play (team_id=0 aussi) -- seule l'equipe qui a appele le
+    temps mort est identifiable via son NOM en texte libre dans description
+    (ex. "Nets Timeout: Regular"), resolue en comparant ce prefixe (normalise
+    en MAJUSCULES) aux 2 VRAIES equipes de ce match -- MEME mecanisme EXACT
+    que backfill_game_events.py (service Supabase), verifie 0 texte non
+    resolu sur un echantillon de 200 matchs avant de coder ceci."""
+    matchs = pd.read_sql(
+        "SELECT game_id, home_team_id, away_team_id FROM matchs WHERE home_team_id IS NOT NULL",
+        conn, dtype={"game_id": str},
+    )
+    equipes = pd.read_sql("SELECT team_id, name FROM equipes", conn)
+    name_by_id = dict(zip(equipes["team_id"], equipes["name"].fillna("").str.upper()))
+    home_name = matchs["home_team_id"].map(name_by_id).fillna("")
+    away_name = matchs["away_team_id"].map(name_by_id).fillna("")
+    matchs = matchs.assign(home_name=home_name, away_name=away_name)
+
+    timeouts = pd.read_sql(
+        "SELECT game_id, description FROM play_by_play WHERE action_type = 'Timeout' AND sub_type = 'Regular'",
+        conn, dtype={"game_id": str},
+    )
+    timeouts["prefix"] = timeouts["description"].fillna("").str.split(" Timeout:").str[0].str.strip().str.upper()
+    timeouts = timeouts.merge(matchs[["game_id", "home_name", "away_name"]], on="game_id", how="left")
+    timeouts["side"] = np.select(
+        [timeouts["prefix"] == timeouts["home_name"], timeouts["prefix"] == timeouts["away_name"]],
+        ["home", "away"],
+        default=None,
+    )
+    counts = (
+        timeouts.dropna(subset=["side"])
+        .groupby(["game_id", "side"])
+        .size()
+        .unstack(fill_value=0)
+        .reindex(columns=["home", "away"], fill_value=0)
+        .rename(columns={"home": "home_timeouts", "away": "away_timeouts"})
+        .reset_index()
+    )
+
+    backcourt = pd.read_sql(
+        "SELECT DISTINCT game_id FROM play_by_play WHERE action_type = 'Turnover' AND sub_type = 'Backcourt Turnover'",
+        conn, dtype={"game_id": str},
+    )
+    backcourt["had_backcourt_turnover"] = 1
+
+    out = matchs[["game_id"]].merge(counts, on="game_id", how="left").merge(backcourt, on="game_id", how="left")
+    out["home_timeouts"] = out["home_timeouts"].fillna(0)
+    out["away_timeouts"] = out["away_timeouts"].fillna(0)
+    out["had_backcourt_turnover"] = out["had_backcourt_turnover"].fillna(0).astype(int)
+    out["total_timeouts"] = out["home_timeouts"] + out["away_timeouts"]
+    return out
 
 
 def minutes_to_float(m):
@@ -195,6 +298,16 @@ def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
     nb_categories = seuils_10.sum(axis=1)
     box["double_double"] = (nb_categories >= 2).astype(int)
     box["triple_double"] = (nb_categories >= 3).astype(int)
+
+    # Chantier "evenements de match" (etape 5, GAPS_OUVERTS.md) -- 0 explicite
+    # (pas NaN) pour un joueur SANS ligne dans _player_game_events_from_pbp :
+    # ce joueur a bien joue (ligne box_scores) mais n'a commis aucun des 2
+    # events, un vrai zero d'entrainement, pas une donnee manquante.
+    events = _player_game_events_from_pbp(conn)
+    box = box.merge(events, on=["game_id", "player_id"], how="left")
+    box["technical_fouls"] = box["technical_fouls"].fillna(0).astype(int)
+    box["backcourt_turnovers"] = box["backcourt_turnovers"].fillna(0).astype(int)
+    box["tech"] = (box["technical_fouls"] >= 1).astype(int)
     return box
 
 
@@ -254,6 +367,25 @@ def build_matchs_training(conn: sqlite3.Connection) -> pd.DataFrame:
         df = df.merge(home_stat, on=["game_id", "home_team_id"], how="left")
         df = df.merge(away_stat, on=["game_id", "away_team_id"], how="left")
         df[f"total_{stat}"] = df[f"home_{stat}"] + df[f"away_{stat}"]
+
+    # Chantier "evenements de match" (etape 5, GAPS_OUVERTS.md) --
+    # home_timeouts/away_timeouts/total_timeouts (cible total_timeouts,
+    # MATCH_TOTAL) + had_backcourt_turnover (cible directe, MATCH_TOTAL sans
+    # seuil, meme principe que went_to_ot).
+    events = _match_events_from_pbp(conn)
+    df = df.merge(events, on="game_id", how="left")
+
+    # home_technical_fouls/away_technical_fouls/total_technical_fouls (meme
+    # patron EXACT que la boucle TEAM_TARGET_STATS ci-dessus, mais depuis le
+    # play-by-play -- technical_fouls n'existe pas dans box_scores).
+    team_tech = _team_technical_fouls_from_pbp(conn)
+    home_tech = team_tech.rename(columns={"team_id": "home_team_id", "technical_fouls": "home_technical_fouls"})
+    away_tech = team_tech.rename(columns={"team_id": "away_team_id", "technical_fouls": "away_technical_fouls"})
+    df = df.merge(home_tech, on=["game_id", "home_team_id"], how="left")
+    df = df.merge(away_tech, on=["game_id", "away_team_id"], how="left")
+    df["home_technical_fouls"] = df["home_technical_fouls"].fillna(0)
+    df["away_technical_fouls"] = df["away_technical_fouls"].fillna(0)
+    df["total_technical_fouls"] = df["home_technical_fouls"] + df["away_technical_fouls"]
 
     return df
 
@@ -328,6 +460,18 @@ def build_team_perspective_dataset(conn: sqlite3.Connection) -> pd.DataFrame:
         columns={stat: f"{stat}_reel" for stat in TEAM_TARGET_STATS}
     )
     df = df.merge(team_stats, on=["game_id", "team_id"], how="left")
+
+    # Chantier "evenements de match" (etape 5, GAPS_OUVERTS.md) --
+    # own_technical_fouls/opp_technical_fouls (cible multi-classe, meme
+    # patron que own_quarters_won_count juste en dessous) -- technical_fouls
+    # n'existe pas dans box_scores, vient de _team_technical_fouls_from_pbp().
+    team_tech = _team_technical_fouls_from_pbp(conn)
+    own_tech = team_tech.rename(columns={"technical_fouls": "own_technical_fouls"})
+    opp_tech = team_tech.rename(columns={"team_id": "opponent_team_id", "technical_fouls": "opp_technical_fouls"})
+    df = df.merge(own_tech, on=["game_id", "team_id"], how="left")
+    df = df.merge(opp_tech, on=["game_id", "opponent_team_id"], how="left")
+    df["own_technical_fouls"] = df["own_technical_fouls"].fillna(0)
+    df["opp_technical_fouls"] = df["opp_technical_fouls"].fillna(0)
 
     # Chantier "pari periode" equipe (24/08/2026, GAPS_OUVERTS.md) --
     # own_quarters_won_count (QUARTERS_WON_COUNT, multi-classe 0-4) et

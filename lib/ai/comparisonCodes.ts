@@ -5,11 +5,11 @@ import { TEAM_STAT_CODES, type TeamStatCode } from "./teamStatCodes";
 // GAPS_OUVERTS.md, chantier comparaison/duel) -- restreint aux stats
 // COMPTÉES avec une moyenne numérique (côté Python,
 // supabase_context.py::_player_stat_mean_scale n'accepte que
-// REGRESSION_STATS) : PAS dd/td (proba directe, pas de moyenne à
+// REGRESSION_STATS) : PAS dd/td/tech (proba directe, pas de moyenne à
 // comparer) ni ft/fg/fg3 (mécanisme Beta-Binomial différent, différence
 // de 2 taux non modélisée pour l'instant).
 export const COMPARISON_PLAYER_STAT_CODES: StatCode[] = STAT_CODES.filter(
-  (code) => code !== "dd" && code !== "td" && code !== "ft" && code !== "fg" && code !== "fg3",
+  (code) => code !== "dd" && code !== "td" && code !== "tech" && code !== "ft" && code !== "fg" && code !== "fg3",
 );
 
 // Côté équipe : TEAM_STAT_CODES au complet, toutes supportent déjà

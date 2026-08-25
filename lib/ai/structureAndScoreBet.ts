@@ -5,6 +5,7 @@ import { structurePeriodBet } from "./structurePeriodBet";
 import { structureRosterSplitBet } from "./structureRosterSplitBet";
 import { structureRosterCountBet } from "./structureRosterCountBet";
 import { structureSuperlativeBet } from "./structureSuperlativeBet";
+import { structureTechnicalFoulsCountBet } from "./structureTechnicalFoulsCountBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -14,11 +15,14 @@ import {
   predictComparison,
   predictCombo,
   predictOvertime,
+  predictTotalTimeouts,
+  predictBackcourtTurnover,
   predictPeriodTeamOutcome,
   predictPlayerPeriodStat,
   predictRosterSplit,
   predictRosterCount,
   predictSuperlative,
+  predictTechnicalFoulsCount,
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
@@ -122,6 +126,24 @@ const ROSTER_COUNT_KEYWORD_REGEX =
 const SUPERLATIVE_KEYWORD_REGEX =
   /tout autre joueur|n['’]importe quel autre joueur|meilleur (?:marqueur|passeur|rebondeur|contreur|intercepteur)/i;
 
+/** Détecte un texte "de forme" fautes techniques ÉQUIPE/MATCH avec un
+ *  comptage EXACT AVANT tout appel Claude (étape 5 du plan de reprise
+ *  post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même patron que les regex
+ *  ci-dessus. Signature lexicale ÉTROITE (délibérément) : "exactement" à
+ *  proximité de "faute(s) technique(s)" -- seule la phrasing vue dans le
+ *  corpus réel ("Orlando reçoit EXACTEMENT 2 fautes techniques", "il y
+ *  aura EXACTEMENT 2 fautes techniques dans le match"). NE MATCHE PAS "au
+ *  moins une faute technique" (cas JOUEUR, ex. "Jokic reçoit au moins une
+ *  faute technique") -- ce cas reste dans structureBet.ts/bet_subject=
+ *  PLAYER (stat="tech"), volontairement PAS routé ici : distinction
+ *  SÉMANTIQUE (joueur nommé vs comptage équipe/match) que ce mot-clé étroit
+ *  suffit à séparer sans ambiguïté sur les exemples réels connus -- un
+ *  texte qui compte des fautes techniques équipe/match SANS "exactement"
+ *  échappe à ce filtre et retombe sur structureBet.ts -> calculable=false
+ *  -> file de validation manuelle, même filet de sécurité que tout autre
+ *  cas non couvert. */
+const TECHNICAL_FOULS_COUNT_KEYWORD_REGEX = /(?:fautes? techniques?[^.!?]{0,30}exactement|exactement[^.!?]{0,30}fautes? techniques?)/i;
+
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
  *  la serie (game_number = 1, pas un "seed" explicite, cf. GAPS_OUVERTS.md
@@ -211,6 +233,7 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -292,6 +315,7 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
         p_stat: periodBet.player_stat,
         p_threshold: periodBet.threshold,
         p_comparison: periodBet.comparison,
@@ -372,6 +396,7 @@ export async function structureAndScoreBet(
       p_structured_roster_split: null,
       p_structured_roster_count: null,
       p_structured_superlative: null,
+      p_structured_technical_fouls_count: null,
       p_stat: null,
       p_threshold: periodBet.threshold,
       p_comparison: periodBet.comparison,
@@ -445,6 +470,7 @@ export async function structureAndScoreBet(
       },
       p_structured_roster_count: null,
       p_structured_superlative: null,
+      p_structured_technical_fouls_count: null,
       p_stat: rosterSplitBet.stat,
       p_threshold: rosterSplitBet.threshold,
       p_comparison: rosterSplitBet.comparison,
@@ -543,6 +569,7 @@ export async function structureAndScoreBet(
         player_ids: prediction.playerIds,
       },
       p_structured_superlative: null,
+      p_structured_technical_fouls_count: null,
       p_stat: rosterCountBet.stat,
       p_threshold: rosterCountBet.stat_threshold,
       p_comparison: rosterCountBet.stat_comparison,
@@ -599,6 +626,7 @@ export async function structureAndScoreBet(
       p_structured_roster_split: null,
       p_structured_roster_count: null,
       p_structured_superlative: { stat: superlativeBet.stat },
+      p_structured_technical_fouls_count: null,
       p_stat: superlativeBet.stat,
       // threshold/comparison volontairement null -- probabilité DIRECTE
       // (même principe que dd/td), et surtout ça empêche
@@ -612,6 +640,78 @@ export async function structureAndScoreBet(
       p_calculated_proba: prediction.proba,
       p_suggested_difficulty: probaToDifficulty(prediction.proba),
       p_category: "PLAYER_PROP" satisfies BetCategory,
+    });
+  }
+
+  /** Pari "fautes techniques équipe/match" (étape 5 du plan de reprise
+   *  post-audit, 25/08/2026, GAPS_OUVERTS.md) -- cf.
+   *  structureTechnicalFoulsCountBet.ts. MATCH uniquement, même limite que
+   *  les autres branches. Appelée UNIQUEMENT quand
+   *  TECHNICAL_FOULS_COUNT_KEYWORD_REGEX matche (cf. try ci-dessous). */
+  async function handleTechnicalFoulsCountBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structureTechnicalFoulsCountBet(description, teamNames);
+    if (!structuration || !structuration.calculable || structuration.bet_subject !== "TECHNICAL_FOULS_COUNT") {
+      await markNotCalculable();
+      return;
+    }
+    const countBet = structuration.technical_fouls_count_bet;
+    if (scope !== "MATCH" || !matchId || !countBet) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+    const asOfDate = matchTeams.scheduledAt.slice(0, 10);
+
+    let resolvedScope: "MATCH" | "domicile" | "exterieur";
+    let teamId: string | null = null;
+    if (countBet.scope === "MATCH") {
+      resolvedScope = "MATCH";
+    } else {
+      const teamName = countBet.scope === "team1" ? teamNames?.[0] : teamNames?.[1];
+      if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
+        await markNotCalculable();
+        return;
+      }
+      resolvedScope = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
+      teamId = teamName === matchTeams.homeTeamName ? matchTeams.homeTeamId : matchTeams.awayTeamId;
+    }
+
+    const prediction = await predictTechnicalFoulsCount(
+      resolvedScope,
+      countBet.count_threshold,
+      countBet.count_relation,
+      matchTeams.homeTeamName,
+      matchTeams.awayTeamName,
+      asOfDate,
+    );
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      p_structured_player_name: null,
+      p_structured_player_id: null,
+      p_structured_team_id: teamId,
+      p_structured_duel: null,
+      p_structured_combo: null,
+      p_structured_period: null,
+      p_structured_roster_split: null,
+      p_structured_roster_count: null,
+      p_structured_superlative: null,
+      p_structured_technical_fouls_count: { scope: countBet.scope, count_relation: countBet.count_relation },
+      p_stat: null,
+      p_threshold: countBet.count_threshold,
+      p_comparison: null,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: "GAME_EVENT" satisfies BetCategory,
     });
   }
 
@@ -666,6 +766,18 @@ export async function structureAndScoreBet(
       return;
     }
 
+    // Routage fautes techniques équipe/match par mot-clé (étape 5 du plan
+    // de reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même
+    // raisonnement que les autres regex ci-dessus. Volontairement étroit
+    // ("exactement" + "faute(s) technique(s)") : le cas JOUEUR ("Jokic
+    // reçoit au moins une faute technique") ne matche PAS, reste dans
+    // structureBet.ts/bet_subject=PLAYER (stat="tech") -- voir la
+    // docstring de TECHNICAL_FOULS_COUNT_KEYWORD_REGEX.
+    if (TECHNICAL_FOULS_COUNT_KEYWORD_REGEX.test(description)) {
+      await handleTechnicalFoulsCountBet(teamNames);
+      return;
+    }
+
     const structuration = await structureBet(description, teamNames);
     if (!structuration || !structuration.calculable || !structuration.bet_subject) {
       await markNotCalculable();
@@ -704,22 +816,32 @@ export async function structureAndScoreBet(
       const prediction =
         matchTotal.stat === "went_to_ot"
           ? await predictOvertime(matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate)
-          : matchTotal.stat === "total_points"
-            ? await predictTotalPoints(
-                matchTeams.homeTeamName,
-                matchTeams.awayTeamName,
-                matchTotal.threshold as number,
-                matchTotal.comparison as "OVER" | "UNDER",
-                asOfDate,
-              )
-            : await predictTotalTeamStat(
-                matchTotal.stat.slice("total_".length) as TeamStatCode,
-                matchTeams.homeTeamName,
-                matchTeams.awayTeamName,
-                matchTotal.threshold as number,
-                matchTotal.comparison as "OVER" | "UNDER",
-                asOfDate,
-              );
+          : matchTotal.stat === "had_backcourt_turnover"
+            ? await predictBackcourtTurnover(matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate)
+            : matchTotal.stat === "total_points"
+              ? await predictTotalPoints(
+                  matchTeams.homeTeamName,
+                  matchTeams.awayTeamName,
+                  matchTotal.threshold as number,
+                  matchTotal.comparison as "OVER" | "UNDER",
+                  asOfDate,
+                )
+              : matchTotal.stat === "total_timeouts"
+                ? await predictTotalTimeouts(
+                    matchTeams.homeTeamName,
+                    matchTeams.awayTeamName,
+                    matchTotal.threshold as number,
+                    matchTotal.comparison as "OVER" | "UNDER",
+                    asOfDate,
+                  )
+                : await predictTotalTeamStat(
+                    matchTotal.stat.slice("total_".length) as TeamStatCode,
+                    matchTeams.homeTeamName,
+                    matchTeams.awayTeamName,
+                    matchTotal.threshold as number,
+                    matchTotal.comparison as "OVER" | "UNDER",
+                    asOfDate,
+                  );
       if (!prediction) {
         await markNotCalculable();
         return;
@@ -735,13 +857,18 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
         p_stat: matchTotal.stat,
         p_threshold: matchTotal.threshold,
         p_comparison: matchTotal.comparison,
         p_is_calculable: true,
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
-        p_category: (matchTotal.stat === "went_to_ot" ? "GAME_EVENT" : "SCORE_TOTAL") satisfies BetCategory,
+        p_category: (
+          matchTotal.stat === "went_to_ot" || matchTotal.stat === "had_backcourt_turnover" || matchTotal.stat === "total_timeouts"
+            ? "GAME_EVENT"
+            : "SCORE_TOTAL"
+        ) satisfies BetCategory,
       });
       return;
     }
@@ -788,6 +915,7 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
         p_stat: teamStat.stat,
         p_threshold: teamStat.threshold,
         p_comparison: teamStat.comparison,
@@ -897,6 +1025,7 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
         p_stat: null,
         p_threshold: relationThreshold,
         p_comparison: null,
@@ -1007,6 +1136,7 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -1063,6 +1193,7 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
         p_stat: player.stat,
         p_threshold: player.threshold,
         p_comparison: player.comparison,
@@ -1120,6 +1251,7 @@ export async function structureAndScoreBet(
         p_structured_roster_split: null,
         p_structured_roster_count: null,
         p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
       p_stat: player.stat,
       p_threshold: player.threshold,
       p_comparison: player.comparison,

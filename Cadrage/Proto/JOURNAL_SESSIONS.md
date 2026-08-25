@@ -10767,3 +10767,94 @@ tsc/eslint/vitest(37/37)/next build propres. GAPS_OUVERTS.md mis à jour --
 utilisateur) -- migration 20260825140000 pas poussée. Pas testé de bout en
 bout via l'appli, même limite que chaque chantier précédent à ce stade.
 ```
+
+## Commit étape 4, puis étape 5 -- événements de match (25/08/2026, même jour)
+
+```text
+Utilisateur confirme le commit/push de l'étape 4 -- committé et poussé
+(332ac92). Puis "go étape 5".
+
+Avant de coder : recherche préalable (aucun code écrit avant d'avoir
+compris la donnée disponible, même discipline que les étapes précédentes).
+Découverte majeure : le play-by-play est déjà téléchargé localement pour
+les 6602 matchs connus (5 saisons, data/raw/*/playbyplay/*.csv) --
+confirmé qu'un vrai appel nba_api.PlayByPlayV3 en direct renvoie
+EXACTEMENT le même schéma (actionType/subType/personId/teamId/description)
+que les CSV locaux. Décision utilisateur avant de coder : ajouter l'appel
+PlayByPlayV3 à refresh_daily.py (1 appel de plus par match/jour) pour que
+ça marche aussi sur les matchs à venir, pas seulement l'historique déjà
+téléchargé -- confirmé explicitement (impact operationnel reel, pas
+seulement une decision de code).
+
+Design : 5 paris du corpus reclassés en 4 mécanismes. 3 d'entre eux
+(faute technique JOUEUR, temps morts, retour en zone) se sont révélés
+pouvoir se glisser dans l'infrastructure DÉJÀ existante avec zéro nouveau
+schéma IA -- "tech" comme nouveau CLASSIFIER_STAT (même patron que dd/td,
+literalement train_doubledouble_model.py::run() réutilisée sans
+modification), "total_timeouts"/"had_backcourt_turnover" comme nouveaux
+MATCH_STAT_CODES (mêmes patrons que total_points/went_to_ot). Seul le 4e
+mécanisme (fautes techniques ÉQUIPE/MATCH, "exactement N") a demandé un
+vrai nouveau schéma dédié -- réutilisant le patron multi-classe déjà
+construit pour QUARTERS_WON_COUNT (chantier période) plutôt que d'inventer
+une distribution de Poisson à part (considéré puis écarté : le patron
+multi-classe existant couvre déjà exactement ce besoin, pas de raison
+d'ajouter un mécanisme statistique de plus).
+
+Bug réel trouvé en vérifiant le schéma PARTAGÉ (structureBet.ts) après
+avoir ajouté tech/had_backcourt_turnover à NO_THRESHOLD_STATS/
+NO_THRESHOLD_MATCH_STATS : les descriptions Zod de threshold/comparison
+mentionnaient "dd/td"/"went_to_ot" EN DUR dans le texte du prompt (pas
+généré dynamiquement) -- l'IA n'aurait eu aucun moyen de savoir que les 2
+nouvelles stats sont AUSSI sans seuil. Corrigé avant le premier test réel,
+pas découvert en testant -- trouvé en relisant le code par prudence après
+l'expérience de l'étape 3 (bug de routage trouvé APRÈS coup).
+
+Piège réel trouvé en explorant les données AVANT de coder le backfill :
+une faute technique D'ENTRAÎNEUR (pas un joueur) a teamId="0" et un
+personId qui ne correspond à aucun joueur (ex. Gregg Popovich, Frank
+Vogel, Nick Nurse trouvés dans l'échantillon) -- confirmé sur ~10
+occurrences avant de coder le filtre d'exclusion (team_id != "0").
+Découverte connexe : les temps morts n'ont aucune attribution structurée
+(teamId="0" aussi côté timeout), seule l'équipe qui les a appelés est
+identifiable via son NOM en texte libre dans description ("Nets Timeout:
+Regular") -- résolu en comparant ce préfixe aux 2 VRAIES équipes du match
+(fermé à 2 candidats connus, pas un matching flou sur 30 équipes) --
+vérifié 0 texte non résolu sur un échantillon de 200 matchs/2163 temps
+morts avant de coder le backfill complet à l'échelle.
+
+Pipeline d'entraînement local : découverte que la table play_by_play est
+DÉJÀ chargée dans nba.db (load_to_sqlite.py, jamais interrogée pour
+actionType/subType jusqu'ici) -- aucune nouvelle ingestion locale
+nécessaire, juste de nouvelles requêtes d'agrégation dans build_targets.py.
+5 modèles entraînés (build_targets.py relancé, 140933/6602/13204 lignes
+inchangées -- aucune perte de données) en réutilisant TEL QUEL
+train_regressor/train_binary_classifier/train_multiclass_classifier
+(train_period_model.py) et run() (train_doubledouble_model.py) -- aucune
+nouvelle fonction d'entraînement écrite. Qualité honnêtement mitigée :
+tech/had_backcourt_turnover proches de la référence (Brier quasi égal,
+ces events sont intrinsèquement peu prévisibles depuis le contexte
+pré-match), total_timeouts très faible (R²=0.010 -- les temps morts
+dépendent surtout du DÉROULÉ du match en temps réel, pas du contexte
+pré-match), documenté honnêtement plutôt que caché, même précédent que
+plus_minus (étape 2, R²=0.039).
+
+Testé avec 7 vrais appels Claude Sonnet 5 (4 sur le schéma PARTAGÉ --
+tech/total_timeouts/had_backcourt_turnover + 1 non-régression PLAYER
+classique, 3 sur le nouveau schéma dédié TECHNICAL_FOULS_COUNT) : 7/7
+corrects. 7 appels HTTP réels au service local (modèles entraînés cette
+session, chargés avec succès -- /health confirme les 5 nouveaux fichiers
+.joblib) : tech 6.7% (Jaylen Brown), total_timeouts P(<1)≈0% (cohérent,
+moyenne prédite 11.4), had_backcourt_turnover 30.2%, comptage fautes
+techniques équipe/match (EXACTLY/AT_LEAST) cohérent avec les distributions
+d'entraînement, garde scope invalide -> 422. Routage par mot-clé vérifié
+sans collision sur 8 cas (leçon de l'étape 3 appliquée systématiquement
+maintenant, avant tout commit).
+
+tsc/eslint(projet entier)/vitest(37/37)/next build propres. GAPS_OUVERTS.md
+mis à jour -- étape 5 du plan de reprise terminée. PAS commité (attend
+confirmation utilisateur) -- migrations 20260825150000/20260825160000 pas
+poussées, backfill historique (backfill_game_events.py, prêt et testé en
+dry-run sur 200 matchs, aucun appel API) pas encore lancé. Pas testé de
+bout en bout via l'appli, même limite que chaque chantier précédent à ce
+stade.
+```

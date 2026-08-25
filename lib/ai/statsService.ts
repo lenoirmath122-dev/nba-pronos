@@ -237,6 +237,54 @@ export async function predictOvertime(
 }
 
 /**
+ * Pari "temps morts combinés" (étape 5 du plan de reprise post-audit,
+ * 25/08/2026, GAPS_OUVERTS.md) -- MATCH_TOTAL avec seuil, réutilise TEL
+ * QUEL callMatchTotalPredict() (même contrat exact que predictTotalPoints).
+ */
+export async function predictTotalTimeouts(
+  homeTeamName: string,
+  awayTeamName: string,
+  threshold: number,
+  comparison: "OVER" | "UNDER",
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  return callMatchTotalPredict("/predict-total-timeouts", homeTeamName, awayTeamName, threshold, comparison, asOfDate);
+}
+
+/**
+ * Pari "retour en zone" (étape 5, GAPS_OUVERTS.md) -- MATCH_TOTAL SANS
+ * seuil (au moins 1 sur le match, les 2 équipes confondues), même absence
+ * de threshold/comparison que predictOvertime.
+ */
+export async function predictBackcourtTurnover(
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-backcourt-turnover`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Pari MATCH_TOTAL pour une stat de TEAM_STAT_CODES (reb/ast/fg3m/stl/blk --
  * pièce (a) suite, GAPS_OUVERTS.md, 23/08/2026 : reb fait 1er via un endpoint
  * dédié /predict-total-rebounds, généralisé côté Python (app.py) le jour même
@@ -667,6 +715,49 @@ export async function predictSuperlative(
       detail: data.detail,
       playerId: typeof data.joueur_id === "number" ? data.joueur_id : null,
     };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Fautes techniques ÉQUIPE/MATCH, comptage EXACT (étape 5 du plan de
+ * reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- "Orlando reçoit
+ * exactement 2 fautes techniques"/"il y aura exactement 2 fautes
+ * techniques dans le match". Distribution EXACTE (classifieur
+ * multi-classe côté service), count_relation à 4 valeurs -- même raison
+ * que predictRosterCount (étape 3) : l'inclusif/exclusif compte
+ * réellement ici, pas une approximation continue.
+ */
+export async function predictTechnicalFoulsCount(
+  scope: "MATCH" | "domicile" | "exterieur",
+  countThreshold: number,
+  countRelation: "AT_LEAST" | "MORE_THAN" | "FEWER_THAN" | "EXACTLY",
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number; label: string } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-technical-fouls-count`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        scope: scope === "MATCH" ? "match" : scope,
+        count_threshold: countThreshold,
+        count_relation: countRelation,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba, label: data.label };
   } catch {
     return null;
   }
