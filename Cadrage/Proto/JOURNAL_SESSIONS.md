@@ -10691,3 +10691,79 @@ laissé à l'utilisateur, comme le reste du redéploiement). Pas testé de
 bout en bout via l'appli (vrai pari soumis), même limite que chaque
 chantier précédent à ce stade.
 ```
+
+## Commit étape 3, puis étape 4 -- meilleur marqueur (25/08/2026, même jour)
+
+```text
+Utilisateur confirme le commit/push de l'étape 3 (même geste que les
+étapes 1/2) -- committé et poussé (94db7a4). Puis "go étape 4".
+
+Étape 4 -- "meilleur marqueur" (superlatif implicite, cause racine (03) de
+l'audit) : "X marque plus de {stat} que TOUT AUTRE joueur du match",
+ensemble de comparaison NON BORNÉ, distinct de COMPARISON (toujours contre
+1 entité/somme NOMMÉE). 9 paris réels du corpus (2 sous-catégories
+"Meilleur marqueur" de l'audit).
+
+Design en amont : le plan indiquait "réutilise la mécanique de comparaison
+de l'étape 3" -- interprété comme reprendre les 2 briques déjà posées
+(_player_stat_mean_scale du chantier duel pour l'approximation normale par
+joueur, _team_rotation de l'étape 3 pour définir "tout le monde"), mais PAS
+comme une simple extension du comptage Poisson-binomiale (qui suppose un
+seuil FIXE partagé par tous les essais -- ici il n'y a pas de seuil,
+chaque comparaison se fait contre la valeur ALÉATOIRE du joueur visé, pas
+une constante). Décision de calcul : plutôt qu'un produit naïf des P(X>Yᵢ)
+pris indépendamment (approximation supplémentaire, qui ignorerait que
+toutes les comparaisons partagent la MÊME réalisation de X), calcul EXACT
+sous l'hypothèse d'indépendance mutuelle via intégration numérique
+(scipy.integrate.quad) : P(X > max(Y₁..Yₙ)) = ∫f_X(x)·∏F_Yᵢ(x)dx --
+cohérent avec la tendance du projet à préférer l'exact au approximé quand
+c'est peu coûteux (même esprit que la Poisson-binomiale exacte de l'étape
+3, plutôt qu'une approximation normale de plus).
+
+Nouvelle colonne structured_superlative jsonb = { stat } seulement --
+contrairement à ROSTER_COUNT, le joueur visé est déjà porté par
+structured_player_id/structured_player_name (pas besoin d'un bassin de
+player_ids : à la résolution, l'ensemble de comparaison est "tout le monde
+qui a une vraie ligne dans le box score du match", pas un bassin
+pré-résolu comme la prédiction). threshold/comparison laissés null
+délibérément (décision de conception documentée en détail dans
+GAPS_OUVERTS.md) -- empêche resolveCalculableBets() (résolveur PLAYER de
+base, sans garde d'exclusion des autres bet_subject) de trancher ce pari à
+tort avec la mauvaise formule.
+
+Bug réel trouvé en construisant la résolution (PAS dans le code de cette
+session -- dans du code déjà commité des étapes 1/2/3) : "plus_minus" est
+une stat pariable depuis l'étape 2 (24/08/2026) mais n'avait jamais été
+ajoutée à COUNTING_STAT_COLUMN/BoxScoreRow/ComboSumColumn
+(resolveCalculableBets.ts) -- toute résolution passant par computeOutcome()
+(PLAYER classique, COMBO, ROSTER_SPLIT, ROSTER_COUNT) retombait
+silencieusement sur actual=0 pour cette stat, résolvant TOUJOURS "LOST"
+quel que soit le vrai +/- du joueur -- en production depuis le 24/08/2026
+si un pari +/- a été soumis. Corrigé (colonne + type + 6 SELECT). Trouvé
+en creusant PARCE QUE SUPERLATIVE réutilise COMPARISON_PLAYER_STAT_CODES
+(qui inclut plus_minus) -- pas un audit délibéré, une conséquence directe
+de vérifier que la nouvelle fonctionnalité fonctionne pour TOUTE stat
+qu'elle prétend supporter. Gap connexe repéré mais PAS corrigé :
+stats_box_scores_by_period (joueur+période) n'a structurellement pas de
+colonne plus_minus (jamais backfillée) -- nécessiterait un nouveau
+backfill, noté dans GAPS_OUVERTS.md pour plus tard.
+
+Leçon retenue de l'étape 3 (bug de routage trouvé APRÈS avoir écrit le
+commit) : cette fois, le script de vérification de collision entre
+SUPERLATIVE_KEYWORD_REGEX et les 3 autres regex (PERIOD/ROSTER_COUNT/
+ROSTER_SPLIT) a été lancé AVANT de committer, sur 10 cas -- 10/10 corrects
+du premier coup, aucune collision.
+
+Testé avec 6 vrais appels Claude Sonnet 5 (4 calculable=true = les 4
+exemples réels du corpus, 2 calculable=false correctement redirigés vers
+COMPARISON) : 6/6 corrects. /predict-superlative testé en HTTP local réel
+(Boston Celtics/New York Knicks, as_of_date=2026-06-14) : Jaylen Brown
+27.7% meilleur marqueur du match (moyenne 25.3±6.3 vs 29 autres joueurs),
+Jayson Tatum 12.3%, garde joueur hors match -> 400, garde stat non comptée
+(dd) -> 400.
+
+tsc/eslint/vitest(37/37)/next build propres. GAPS_OUVERTS.md mis à jour --
+étape 4 du plan de reprise terminée. PAS commité (attend confirmation
+utilisateur) -- migration 20260825140000 pas poussée. Pas testé de bout en
+bout via l'appli, même limite que chaque chantier précédent à ce stade.
+```

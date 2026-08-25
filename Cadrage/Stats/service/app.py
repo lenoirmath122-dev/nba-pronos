@@ -680,6 +680,51 @@ def predict_roster_count(req: PredictRosterCountRequest):
     }
 
 
+class PredictSuperlativeRequest(BaseModel):
+    """Pari "meilleur marqueur" / superlatif implicite (etape 4 du plan de
+    reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- "X marque plus de
+    {stat} que TOUT AUTRE joueur du match", ensemble de comparaison NON
+    BORNE (distinct de PredictComparisonRequest, toujours contre 1 entite
+    nommee ou une somme de N joueurs nommes). equipe_domicile/
+    equipe_exterieur : les 2 VRAIES equipes du match vise (meme contrat que
+    PredictRosterCountRequest), necessaires pour construire le bassin
+    "tout autre joueur" des 2 equipes."""
+    joueur: str
+    stat: str
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-superlative")
+def predict_superlative(req: PredictSuperlativeRequest):
+    sb = _client()
+
+    try:
+        player_id, player_name = supabase_context.find_player(sb, req.joueur)
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_superlative_proba(
+            sb, player_id, req.stat, home_id, away_id, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "joueur": player_name,
+        "joueur_id": player_id,
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        "stat": req.stat,
+        **result,
+    }
+
+
 class ComparisonOperand(BaseModel):
     """Un cote d'un duel (24/08/2026, GAPS_OUVERTS.md, chantier
     comparaison/duel) -- kind=TEAM (equipe "domicile"/"exterieur" du match

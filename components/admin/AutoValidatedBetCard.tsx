@@ -15,7 +15,10 @@ function structuredLabel(bet: AutoValidatedBet): string {
   if (!bet.structuredStat) return "";
   const stat = bet.structuredStat as StatCode;
   const label = STAT_LABELS_FR[stat] ?? bet.structuredStat;
-  if (NO_THRESHOLD_STATS.has(stat)) return `${bet.structuredPlayerName ?? "?"} — ${label}`;
+  // threshold===null couvre aussi SUPERLATIVE (étape 4, GAPS_OUVERTS.md) --
+  // probabilité DIRECTE comme dd/td mais pour une stat COMPTÉE normale
+  // (ex. "pts"), pas seulement les stats de NO_THRESHOLD_STATS.
+  if (NO_THRESHOLD_STATS.has(stat) || bet.structuredThreshold === null) return `${bet.structuredPlayerName ?? "?"} — ${label}`;
   const comparisonLabel = bet.structuredComparison === "UNDER" ? "moins de" : "plus de";
   const thresholdLabel = PERCENTAGE_STATS.has(stat) ? `${Math.round((bet.structuredThreshold ?? 0) * 100)}%` : bet.structuredThreshold;
   return `${bet.structuredPlayerName ?? "?"} — ${label} ${comparisonLabel} ${thresholdLabel}`;

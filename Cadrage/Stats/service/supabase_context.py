@@ -22,6 +22,7 @@ SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import joblib  # noqa: E402
+from scipy.integrate import quad  # noqa: E402
 from scipy.stats import betabinom, binom, norm  # noqa: E402
 
 from tester_modele import (  # noqa: E402
@@ -1623,3 +1624,100 @@ def compute_roster_count_proba(*args, **kwargs) -> dict:
     coherence -- voir CONSISTENCY_CHECK_NOTE. proba_key par defaut ("proba")
     convient tel quel."""
     return _compute_with_consistency_check(lambda: _compute_roster_count_proba_once(*args, **kwargs))
+
+
+# ============================================================================
+# Chantier "meilleur marqueur" / superlatif implicite (etape 4 du plan de
+# reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- "X marque plus de
+# {stat} que TOUT AUTRE joueur du match" : ensemble de comparaison NON BORNE
+# (tous les autres joueurs du match), distinct de COMPARISON (toujours
+# contre 1 entite nommee ou une somme de N joueurs nommes) et de
+# ROSTER_COUNT (compte contre un SEUIL FIXE partage par tous).
+# ============================================================================
+
+def _resolve_superlative_other_players(
+    client, stat: str, excluded_player_id: int, home_team_id: int, away_team_id: int, as_of_date,
+) -> list[tuple[float, float]]:
+    """(mean, scale) de TOUS les autres joueurs du match -- bassin ELARGI
+    des 2 equipes via _team_rotation() (meme bassin que le chantier
+    comptage roster-wide, etape 3), le joueur vise exclu. _player_stat_mean_scale
+    (chantier duel) fournit l'approximation normale par joueur."""
+    others: list[tuple[float, float]] = []
+    for team_id, opponent_id, is_home in ((home_team_id, away_team_id, 1), (away_team_id, home_team_id, 0)):
+        for pid in _team_rotation(client, team_id, as_of_date):
+            if pid == excluded_player_id:
+                continue
+            mean, scale = _player_stat_mean_scale(client, pid, stat, opponent_id=opponent_id, is_home=is_home)
+            others.append((mean, scale))
+    return others
+
+
+def _compute_superlative_proba_once(
+    client, player_id: int, stat: str, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> dict:
+    """"X marque plus de {stat} que TOUT AUTRE joueur du match" (etape 4 du
+    plan de reprise post-audit, GAPS_OUVERTS.md -- cause racine "superlatif
+    implicite" de l'audit). Reutilise _player_stat_mean_scale() (chantier
+    duel, approximation normale par joueur) et le bassin _team_rotation()
+    des 2 equipes (chantier comptage roster-wide, etape 3) pour definir
+    "tout autre joueur".
+
+    Calcul EXACT sous l'hypothese d'INDEPENDANCE mutuelle entre TOUS les
+    joueurs (meme simplification deja acceptee partout ailleurs -- duel/
+    combo/roster-count) via integration numerique :
+        P(X > max(Y_1..Y_n)) = integrale( f_X(x) * produit_i F_{Y_i}(x) dx )
+    PAS une approximation supplementaire (ex. produit naif des P(X>Y_i)
+    pris independamment les unes des autres, qui ignore que TOUTES les
+    comparaisons partagent la MEME valeur realisee de X) -- cette formule
+    est la vraie probabilite jointe sous l'hypothese d'independance
+    ci-dessus, integree numeriquement (scipy.integrate.quad) plutot
+    qu'approximee davantage. Restreint a REGRESSION_STATS (meme limite que
+    le chantier duel -- _player_stat_mean_scale n'existe pas pour
+    dd/td/ft/fg/fg3)."""
+    if stat not in REGRESSION_STATS:
+        raise ValueError(
+            f"stat non supportee pour un superlatif : {stat} (seules les stats comptees le sont : "
+            f"{sorted(REGRESSION_STATS)})"
+        )
+    player_team_id = _player_current_team_id(client, player_id)
+    if player_team_id not in (home_team_id, away_team_id):
+        raise ValueError(f"le joueur (player_id={player_id}) ne joue pour aucune des 2 equipes de ce match.")
+    is_home = 1 if player_team_id == home_team_id else 0
+    opponent_id = away_team_id if is_home else home_team_id
+    mean_x, scale_x = _player_stat_mean_scale(client, player_id, stat, opponent_id=opponent_id, is_home=is_home)
+
+    others = _resolve_superlative_other_players(client, stat, player_id, home_team_id, away_team_id, as_of_date)
+    if not others:
+        raise ValueError("Aucun autre joueur trouve pour ce match -- impossible de calculer un superlatif.")
+
+    def integrand(x: float) -> float:
+        density = norm.pdf(x, loc=mean_x, scale=scale_x)
+        if density <= 0.0:
+            return 0.0
+        prod = 1.0
+        for mean_y, scale_y in others:
+            prod *= norm.cdf(x, loc=mean_y, scale=scale_y)
+            if prod == 0.0:
+                return 0.0
+        return density * prod
+
+    proba, _ = quad(integrand, -np.inf, np.inf, limit=200)
+    proba = float(min(max(proba, 0.0), 1.0))
+
+    _, _, label = REGRESSION_STATS[stat]
+    return {
+        "label": label,
+        "proba": proba,
+        "detail": (
+            f"moyenne {mean_x:.1f} (+/-{scale_x:.1f}) vs {len(others)} autres joueurs du match -- integrale "
+            "numerique exacte sous hypothese d'independance"
+        ),
+    }
+
+
+def compute_superlative_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_superlative_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE (les appels a
+    _player_stat_mean_scale passent par des modeles .joblib, meme
+    instabilite deja documentee)."""
+    return _compute_with_consistency_check(lambda: _compute_superlative_proba_once(*args, **kwargs))

@@ -628,6 +628,51 @@ export async function predictRosterCount(
 }
 
 /**
+ * Pari "meilleur marqueur" / superlatif implicite (étape 4 du plan de
+ * reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- "X marque plus de
+ * {stat} que TOUT AUTRE joueur du match", ensemble de comparaison NON
+ * BORNÉ (distinct de predictComparison(), toujours contre 1 entité/somme
+ * NOMMÉE). AUCUN seuil/comparaison -- probabilité DIRECTE, même principe
+ * que dd/td côté predictOverUnder().
+ */
+export async function predictSuperlative(
+  playerName: string,
+  stat: StatCode,
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<StatsPredictResult | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-superlative`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        joueur: playerName,
+        stat,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return {
+      proba: data.proba,
+      label: data.label,
+      detail: data.detail,
+      playerId: typeof data.joueur_id === "number" ? data.joueur_id : null,
+    };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Pari PERIOD, forme JOUEUR (24/08/2026, GAPS_OUVERTS.md, chantier "pari
  * période") -- une stat JOUEUR normale (mêmes codes que predictOverUnder)
  * mais limitée à UNE période (ex. "3 contres en 1ère mi-temps"). Contrat

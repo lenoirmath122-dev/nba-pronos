@@ -49,7 +49,7 @@ function minutesToFloat(raw: string | null): number {
  *  n'inclut PAS dd/td (calculées, voir isDoubleOrTripleDouble) ni les
  *  stats en pourcentage (voir PCT_MAKES_ATTEMPTS_COLUMNS), qui ont chacune
  *  leur propre logique ci-dessous. */
-const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb">> = {
+const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus">> = {
   pts: "pts",
   reb: "reb",
   ast: "ast",
@@ -62,6 +62,16 @@ const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg
   fga: "fga",
   fg3a: "fg3a",
   oreb: "oreb",
+  // Bug réel trouvé le 25/08/2026 (étape 4, en construisant la résolution du
+  // superlatif implicite) : "plus_minus" est une stat pariable depuis le
+  // 24/08/2026 (chantier "petits gains groupés", étape 2) mais n'avait
+  // JAMAIS été ajoutée ici -- toute résolution passant par computeOutcome()
+  // (PLAYER classique, COMBO condition simple, ROSTER_SPLIT, ROSTER_COUNT)
+  // retombait silencieusement sur `actual=0` pour cette stat (COUNTING_STAT_COLUMN[stat]
+  // undefined -> box[undefined] -> 0), résolvant TOUJOURS "LOST" quel que
+  // soit le vrai +/- du joueur. Corrigé ici + dans tous les SELECT qui
+  // alimentent ces chemins (voir plus bas).
+  plus_minus: "plus_minus",
 };
 
 const PCT_MAKES_ATTEMPTS_COLUMNS: Partial<Record<StatCode, ["ftm" | "fgm" | "fg3m", "fta" | "fga" | "fg3a"]>> = {
@@ -84,6 +94,7 @@ type BoxScoreRow = {
   fga: number | null;
   fg3a: number | null;
   oreb: number | null;
+  plus_minus: number | null;
 };
 
 /** Même définition EXACTE que build_targets.py (Cadrage/Stats/scripts,
@@ -264,7 +275,7 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
 
     const { data: box } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
       .eq("game_id", gameId)
       .eq("player_id", bet.structured_player_id)
       .maybeSingle<BoxScoreRow>();
@@ -398,7 +409,7 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
       }
       const { data: box } = await supabase
         .from("stats_box_scores")
-        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb")
+        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
         .eq("game_id", gameId)
         .eq("player_id", bet.structured_player_id)
         .maybeSingle<BoxScoreRow>();
@@ -1006,7 +1017,7 @@ type EligibleComboBetRow = {
 // service (supabase_context.py::_condition_proba, REGRESSION_STATS) : pas
 // de dd/td/pourcentage, qui n'ont pas de valeur numerique directe a
 // sommer.
-type ComboSumColumn = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb";
+type ComboSumColumn = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus";
 
 /** Valeur réelle (true/false/null) d'UNE condition combo pour le match
  *  résolu (24/08/2026, GAPS_OUVERTS.md, chantier combo). 2 chemins, MÊME
@@ -1030,7 +1041,7 @@ async function resolveComboConditionSatisfied(
     if (!playerId) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
       .eq("game_id", gameId)
       .eq("player_id", playerId);
     if (!rows || rows.length === 0) return null;
@@ -1043,7 +1054,7 @@ async function resolveComboConditionSatisfied(
     if (playerIds.length === 0) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus")
       .eq("game_id", gameId)
       .in("player_id", playerIds);
     if (!rows || rows.length === 0) return null;
@@ -1057,7 +1068,7 @@ async function resolveComboConditionSatisfied(
     if (nbaTeamId === null) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb")
+      .select("pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
     if (!rows || rows.length === 0) return null;
@@ -1413,6 +1424,15 @@ export async function resolveCalculablePeriodBets(): Promise<ResolveBetsSummary>
         fga: rows.reduce((sum, r) => sum + ((r.fga as number | null) ?? 0), 0),
         fg3a: rows.reduce((sum, r) => sum + ((r.fg3a as number | null) ?? 0), 0),
         oreb: rows.reduce((sum, r) => sum + ((r.oreb as number | null) ?? 0), 0),
+        // stats_box_scores_by_period n'a PAS de colonne plus_minus (cf.
+        // migration 20260824150000) -- un pari joueur+période sur cette
+        // stat resterait donc structurable (plus_minus est dans
+        // REGRESSION_STATS côté service) mais mal résolu ici (toujours 0).
+        // Gap réel découvert le 25/08/2026 (étape 4) en généralisant
+        // COUNTING_STAT_COLUMN, noté dans GAPS_OUVERTS.md -- pas corrigé
+        // maintenant (demande un nouveau backfill, hors périmètre de ce
+        // chantier).
+        plus_minus: null,
       };
       const won = computeOutcome(stat, bet.structured_threshold, bet.structured_comparison, box);
       if (won === null) {
@@ -1522,6 +1542,7 @@ function sumBoxRows(rows: RosterSplitBoxRow[]): BoxScoreRow {
     pts: sum("pts"), reb: sum("reb"), ast: sum("ast"), fg3m: sum("fg3m"),
     stl: sum("stl"), blk: sum("blk"), ftm: sum("ftm"), fta: sum("fta"),
     fgm: sum("fgm"), fga: sum("fga"), fg3a: sum("fg3a"), oreb: sum("oreb"),
+    plus_minus: sum("plus_minus"),
   };
 }
 
@@ -1591,7 +1612,7 @@ export async function resolveCalculableRosterSplitBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb")
+      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
     if (!rows || rows.length === 0) {
@@ -1693,7 +1714,7 @@ type EligibleRosterCountBetRow = {
  *  minute") dépend justement de ce comptage pour être résolu du tout. */
 const ZERO_BOX_ROW: BoxScoreRow = {
   minutes: null, pts: 0, reb: 0, ast: 0, fg3m: 0, stl: 0, blk: 0,
-  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0,
+  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0,
 };
 
 /** Résolution des paris ROSTER_COUNT -- lit stats_box_scores PAR
@@ -1771,7 +1792,7 @@ export async function resolveCalculableRosterCountBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
       .eq("game_id", gameId)
       .in("player_id", rc.player_ids);
     const boxByPlayer = new Map(
@@ -1806,6 +1827,136 @@ export async function resolveCalculableRosterCountBets(): Promise<ResolveBetsSum
       .update({
         status: outcome,
         resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${count}/${rc.player_ids.length} joueurs du bassin remplissent la condition).`,
+        resolved_at: new Date().toISOString(),
+        resolved_by_admin_id: null,
+      })
+      .eq("id", bet.id)
+      .eq("status", "VALIDATED")
+      .select("id")
+      .maybeSingle();
+    if (!updated) {
+      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
+      continue;
+    }
+
+    await recomputeBet(bet.id);
+    summary.resolved.push({ betId: bet.id, outcome });
+  }
+
+  return summary;
+}
+
+// ============================================================================
+// Chantier "meilleur marqueur" / superlatif implicite (étape 4 du plan de
+// reprise post-audit, 25/08/2026, GAPS_OUVERTS.md).
+// ============================================================================
+
+type StructuredSuperlative = { stat: string };
+
+type EligibleSuperlativeBetRow = {
+  id: string;
+  match_id: string | null;
+  structured_player_id: number | null;
+  structured_superlative: StructuredSuperlative | null;
+};
+
+/** Valeur brute réelle d'une stat comptée pour 1 ligne de box score --
+ *  même logique que la branche "comptée" de computeOutcome() (min à part,
+ *  reste via COUNTING_STAT_COLUMN), extraite ici car le superlatif compare
+ *  des VALEURS entre elles plutôt qu'une valeur à un seuil fixe. */
+function rawStatValue(stat: StatCode, box: BoxScoreRow): number {
+  return stat === "min" ? minutesToFloat(box.minutes) : (box[COUNTING_STAT_COLUMN[stat]!] ?? 0);
+}
+
+/** Résolution des paris SUPERLATIVE -- "X marque plus de {stat} que TOUT
+ *  AUTRE joueur du match" (cf. structureSuperlativeBet.ts). Contrairement
+ *  aux autres resolvers de ce fichier, lit TOUS les joueurs du match (les
+ *  2 équipes, sans filtre team_id/player_ids -- l'ensemble de comparaison
+ *  N'EST PAS un bassin pré-résolu comme ROSTER_COUNT, c'est litéralement
+ *  "tout le monde qui a une ligne réelle dans ce match"), donc PAS besoin
+ *  de persister un bassin de player_ids ici (structured_player_id suffit à
+ *  identifier le joueur visé, structured_superlative ne porte que `stat`).
+ *  Un joueur absent du box score (DNP) est traité comme une ligne à 0 --
+ *  même convention que ZERO_BOX_ROW (ROSTER_COUNT) -- que ce soit le joueur
+ *  visé (perd quasi certainement) ou un autre (ne compte simplement pas
+ *  comme un concurrent réel, ce qui est déjà le comportement naturel en ne
+ *  l'incluant pas dans boxRows). MATCH uniquement, même limite que les
+ *  autres resolvers. */
+export async function resolveCalculableSuperlativeBets(): Promise<ResolveBetsSummary> {
+  const supabase = getServiceClient();
+  const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, match_id, structured_player_id, structured_superlative")
+    .eq("scope", "MATCH")
+    .eq("is_calculable", true)
+    .eq("status", "VALIDATED")
+    .not("structured_superlative", "is", null);
+  const bets = (betsData ?? []) as EligibleSuperlativeBetRow[];
+  if (bets.length === 0) return summary;
+
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const { data: matchesData } = await supabase.from("matches").select("id, status").in("id", matchIds);
+  const matchById = new Map(((matchesData ?? []) as { id: string; status: string }[]).map((m) => [m.id, m]));
+
+  const { data: pendingCorrections } = await supabase
+    .from("correction_requests")
+    .select("target_bet_id")
+    .eq("status", "PENDING")
+    .in(
+      "target_bet_id",
+      bets.map((b) => b.id)
+    );
+  const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
+
+  for (const bet of bets) {
+    if (!bet.match_id || !bet.structured_superlative || bet.structured_player_id === null) {
+      summary.skipped.push({ betId: bet.id, reason: "superlatif structuré manquant" });
+      continue;
+    }
+    if (contestedBetIds.has(bet.id)) {
+      summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
+      continue;
+    }
+    const match = matchById.get(bet.match_id);
+    if (!match || match.status !== "FINISHED") {
+      summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
+      continue;
+    }
+
+    const gameId = await resolveNbaGameId(supabase, bet.match_id);
+    if (!gameId) {
+      summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
+      continue;
+    }
+
+    const { data: rows } = await supabase
+      .from("stats_box_scores")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
+      .eq("game_id", gameId);
+    if (!rows || rows.length === 0) {
+      summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
+      continue;
+    }
+
+    const stat = bet.structured_superlative.stat as StatCode;
+    const boxRows = rows as (BoxScoreRow & { player_id: number })[];
+    const playerBox = boxRows.find((r) => r.player_id === bet.structured_player_id);
+    const playerValue = rawStatValue(stat, playerBox ?? ZERO_BOX_ROW);
+
+    // Gagné si CHAQUE autre joueur du match a une valeur STRICTEMENT
+    // inférieure (égalité = perdu, même convention que computeOutcome()).
+    const won = boxRows
+      .filter((r) => r.player_id !== bet.structured_player_id)
+      .every((r) => rawStatValue(stat, r) < playerValue);
+    const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+
+    const { data: updated } = await supabase
+      .from("bets")
+      .update({
+        status: outcome,
+        resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${playerValue} vs le reste du match).`,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

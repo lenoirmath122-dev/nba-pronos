@@ -5,21 +5,90 @@
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
 > **Où en est le plan de reprise post-audit (25/08/2026, fin de session)** --
-> étapes 1 ("5 majeur/banc"), 2 ("petits gains groupés") et 3 ("comptage
-> roster-wide") codées, testées en conditions réelles (Claude + HTTP
-> local). Étapes 1/2 commitées ET poussées (`4ff0a44`, `1a6f36a`,
-> `714e45f`, jusqu'à `ef0f862`) ; étape 3 codée cette session, PAS ENCORE
-> commitée (attend confirmation utilisateur, cf. JOURNAL_SESSIONS.md).
-> **Pas encore redéployé sur Cloud Run ni Vercel** -- à faire avant de
-> tester via l'appli réelle (l'utilisateur s'en charge, comme d'habitude).
-> Prochaine étape à reprendre : **étape 4, meilleur marqueur** (réutilise
-> la mécanique de comparaison de l'étape 3 -- superlatif implicite contre
-> TOUS les autres joueurs du match). Sinon, entraîner un vrai modèle
-> joueur+période (`train_player_period_model.py`, pas encore écrit) --
-> le backfill `stats_box_scores_by_period` est fini depuis la session du
-> 24/08/2026. Le plan complet (8 étapes) et les points explicitement
-> différés sont documentés dans les entrées ci-dessous et dans
+> étapes 1 ("5 majeur/banc"), 2 ("petits gains groupés"), 3 ("comptage
+> roster-wide") et 4 ("meilleur marqueur") codées, testées en conditions
+> réelles (Claude + HTTP local). Étapes 1/2/3 commitées ET poussées
+> (`4ff0a44`, `1a6f36a`, `714e45f`, `94db7a4`) ; étape 4 codée cette
+> session, PAS ENCORE commitée (attend confirmation utilisateur, cf.
+> JOURNAL_SESSIONS.md). **Pas encore redéployé sur Cloud Run ni Vercel** --
+> à faire avant de tester via l'appli réelle (l'utilisateur s'en charge,
+> comme d'habitude). Prochaine étape à reprendre : **étape 5, événements
+> de match** (fautes techniques, temps morts, retour en zone -- nouveau
+> pipeline stat + modèles, comparable en taille au chantier période).
+> Sinon, entraîner un vrai modèle joueur+période
+> (`train_player_period_model.py`, pas encore écrit) -- le backfill
+> `stats_box_scores_by_period` est fini depuis la session du 24/08/2026. Le
+> plan complet (8 étapes) et les points explicitement différés sont
+> documentés dans les entrées ci-dessous et dans
 > `AUDIT_TYPES_PARIS_24_08_2026.md`.
+
+> **Étape 4 du plan de reprise, CODÉE le 25/08/2026** -- "meilleur
+> marqueur" (`SUPERLATIVE`), "X marque plus de {stat} que TOUT AUTRE
+> joueur du match" -- cause racine "superlatif implicite" de l'audit
+> (ensemble de comparaison NON BORNÉ, distinct de COMPARISON qui compare
+> toujours contre 1 entité/somme NOMMÉE). 9 paris du corpus réel
+> ("Meilleur marqueur", 2 sous-catégories de l'audit).
+>
+> **Mécanisme** : réutilise `_player_stat_mean_scale()` (chantier duel,
+> approximation normale par joueur) et le bassin `_team_rotation()` des 2
+> équipes (chantier comptage roster-wide, étape 3) pour définir "tout
+> autre joueur". Calcul **EXACT** sous hypothèse d'indépendance mutuelle
+> entre TOUS les joueurs (même simplification déjà acceptée partout
+> ailleurs) via **intégration numérique** (`scipy.integrate.quad`) :
+> `P(X > max(Y_1..Y_n)) = ∫ f_X(x) · ∏ᵢ F_{Yᵢ}(x) dx` -- PAS un produit
+> naïf des P(X>Yᵢ) pris indépendamment (qui ignorerait que toutes les
+> comparaisons partagent la MÊME valeur réalisée de X), la vraie formule
+> jointe sous l'hypothèse d'indépendance. Restreint à
+> `COMPARISON_PLAYER_STAT_CODES` (stats comptées avec une moyenne
+> numérique, même restriction que le chantier duel -- réutilisé tel quel,
+> pas dupliqué).
+>
+> **Aucun seuil/comparaison** -- probabilité DIRECTE (même principe que
+> dd/td). Nouvelle colonne `structured_superlative jsonb = { stat }`
+> (migration `20260825140000`) -- le joueur visé est déjà porté par
+> `structured_player_id`/`structured_player_name` (champs existants, pas
+> besoin d'un bassin de player_ids comme ROSTER_COUNT : à la résolution,
+> l'ensemble de comparaison est litéralement "tout le monde qui a une
+> vraie ligne dans le box score du match", pas un bassin pré-résolu).
+> `p_threshold`/`p_comparison` laissés `null` délibérément -- empêche
+> `resolveCalculableBets()` (le résolveur PLAYER de base, qui filtre
+> SEULEMENT sur `structured_player_id` non-null, sans exclure les autres
+> bet_subject) de trancher ce pari à tort avec la mauvaise formule :
+> `computeOutcome()` renvoie `null` dès que threshold/comparison sont
+> absents pour une stat comptée, donc ce résolveur skip proprement.
+>
+> **Bug réel trouvé en construisant la résolution** (pas dans le code de
+> cette session -- dans du code des étapes 1/2/3 déjà commité) :
+> `plus_minus` est une stat pariable depuis l'étape 2 (24/08/2026) mais
+> n'avait JAMAIS été ajoutée à `COUNTING_STAT_COLUMN`/`BoxScoreRow`/
+> `ComboSumColumn` (lib/ai/resolveCalculableBets.ts) -- toute résolution
+> passant par `computeOutcome()` (PLAYER classique, COMBO condition
+> simple/somme, ROSTER_SPLIT, ROSTER_COUNT) retombait silencieusement sur
+> `actual=0` pour cette stat, résolvant TOUJOURS "LOST" quel que soit le
+> vrai +/- du joueur -- **en production depuis le 24/08/2026 si un pari
+> +/- a été soumis**. Corrigé (colonne + type + tous les `SELECT`
+> concernés, 6 endroits). **PAS corrigé** : `stats_box_scores_by_period`
+> (paris joueur+période) n'a structurellement PAS de colonne `plus_minus`
+> (jamais backfillée, migration `20260824150000`) -- un pari "X +/- en
+> 1ère mi-temps" resterait structurable côté IA/service (plus_minus est
+> dans REGRESSION_STATS) mais mal résolu (toujours 0) ; nécessiterait un
+> nouveau backfill, laissé de côté pour l'instant, noté ici pour ne pas
+> l'oublier.
+>
+> Testé avec 6 vrais appels Claude Sonnet 5 (4 calculable=true dont les 4
+> exemples réels du corpus, 2 calculable=false correctement redirigés vers
+> COMPARISON -- adversaire nommé / somme nommée) : 6/6 corrects.
+> `/predict-superlative` testé en HTTP local réel (Boston Celtics/New York
+> Knicks, as_of_date=2026-06-14) : Jaylen Brown 27.7% meilleur marqueur du
+> match (moyenne 25.3±6.3 vs 29 autres joueurs), Jayson Tatum 12.3%,
+> garde joueur hors match -> 400, garde stat non comptée (dd) -> 400.
+> Routage par mot-clé (`SUPERLATIVE_KEYWORD_REGEX`) vérifié sans collision
+> avec PERIOD/ROSTER_COUNT/ROSTER_SPLIT sur 10 cas (leçon tirée du bug de
+> routage de l'étape 3 -- vérifié AVANT de committer cette fois).
+>
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. Pas encore testé de
+> bout en bout via l'appli (vrai pari soumis) -- migration `20260825140000`
+> pas poussée (`npx supabase db push` laissé à l'utilisateur).
 
 > **Étape 3 du plan de reprise, CODÉE le 25/08/2026** -- "comptage
 > roster-wide" (`ROSTER_COUNT`), "au moins N joueurs remplissent une

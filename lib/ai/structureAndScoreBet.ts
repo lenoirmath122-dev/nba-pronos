@@ -4,6 +4,7 @@ import { structureBet } from "./structureBet";
 import { structurePeriodBet } from "./structurePeriodBet";
 import { structureRosterSplitBet } from "./structureRosterSplitBet";
 import { structureRosterCountBet } from "./structureRosterCountBet";
+import { structureSuperlativeBet } from "./structureSuperlativeBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -17,6 +18,7 @@ import {
   predictPlayerPeriodStat,
   predictRosterSplit,
   predictRosterCount,
+  predictSuperlative,
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
@@ -107,6 +109,19 @@ const ROSTER_SPLIT_KEYWORD_REGEX = /cinq\s*majeur|5\s*majeur|titulaires?|\bbancs
 const ROSTER_COUNT_KEYWORD_REGEX =
   /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b/i;
 
+/** Détecte un texte "de forme" superlatif implicite ("meilleur marqueur")
+ *  AVANT tout appel Claude (étape 4 du plan de reprise post-audit,
+ *  25/08/2026, GAPS_OUVERTS.md) -- même patron que les regex ci-dessus.
+ *  Signature lexicale : "tout autre joueur"/"n'importe quel autre joueur"
+ *  (ensemble non borné, cause racine "superlatif implicite" de l'audit),
+ *  ou "meilleur marqueur/passeur/rebondeur/contreur/intercepteur" en toutes
+ *  lettres. Vérifié ne PAS collisionner avec ROSTER_COUNT_KEYWORD_REGEX
+ *  ("plus de points que tout autre joueur" ne matche PAS son alternative
+ *  quantificateur+nombre+joueurs, qui exige un SEUL mot entre les deux) ni
+ *  avec ROSTER_SPLIT/PERIOD (aucun vocabulaire commun). */
+const SUPERLATIVE_KEYWORD_REGEX =
+  /tout autre joueur|n['’]importe quel autre joueur|meilleur (?:marqueur|passeur|rebondeur|contreur|intercepteur)/i;
+
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
  *  la serie (game_number = 1, pas un "seed" explicite, cf. GAPS_OUVERTS.md
@@ -195,6 +210,7 @@ export async function structureAndScoreBet(
         p_structured_period: null,
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -275,6 +291,7 @@ export async function structureAndScoreBet(
         },
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
         p_stat: periodBet.player_stat,
         p_threshold: periodBet.threshold,
         p_comparison: periodBet.comparison,
@@ -354,6 +371,7 @@ export async function structureAndScoreBet(
       },
       p_structured_roster_split: null,
       p_structured_roster_count: null,
+      p_structured_superlative: null,
       p_stat: null,
       p_threshold: periodBet.threshold,
       p_comparison: periodBet.comparison,
@@ -426,6 +444,7 @@ export async function structureAndScoreBet(
         stat: rosterSplitBet.stat,
       },
       p_structured_roster_count: null,
+      p_structured_superlative: null,
       p_stat: rosterSplitBet.stat,
       p_threshold: rosterSplitBet.threshold,
       p_comparison: rosterSplitBet.comparison,
@@ -523,6 +542,7 @@ export async function structureAndScoreBet(
         min_players: rosterCountBet.min_players,
         player_ids: prediction.playerIds,
       },
+      p_structured_superlative: null,
       p_stat: rosterCountBet.stat,
       p_threshold: rosterCountBet.stat_threshold,
       p_comparison: rosterCountBet.stat_comparison,
@@ -530,6 +550,68 @@ export async function structureAndScoreBet(
       p_calculated_proba: prediction.proba,
       p_suggested_difficulty: probaToDifficulty(prediction.proba),
       p_category: category,
+    });
+  }
+
+  /** Pari "meilleur marqueur" / superlatif implicite (étape 4 du plan de
+   *  reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- cf.
+   *  structureSuperlativeBet.ts. MATCH uniquement, même limite que les
+   *  autres branches. Appelée UNIQUEMENT quand SUPERLATIVE_KEYWORD_REGEX
+   *  matche (cf. try ci-dessous). */
+  async function handleSuperlativeBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structureSuperlativeBet(description, teamNames);
+    if (!structuration || !structuration.calculable || structuration.bet_subject !== "SUPERLATIVE") {
+      await markNotCalculable();
+      return;
+    }
+    const superlativeBet = structuration.superlative_bet;
+    if (scope !== "MATCH" || !matchId || !superlativeBet) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+    const asOfDate = matchTeams.scheduledAt.slice(0, 10);
+
+    const prediction = await predictSuperlative(
+      superlativeBet.player,
+      superlativeBet.stat as StatCode,
+      matchTeams.homeTeamName,
+      matchTeams.awayTeamName,
+      asOfDate,
+    );
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      p_structured_player_name: superlativeBet.player,
+      p_structured_player_id: prediction.playerId,
+      p_structured_team_id: null,
+      p_structured_duel: null,
+      p_structured_combo: null,
+      p_structured_period: null,
+      p_structured_roster_split: null,
+      p_structured_roster_count: null,
+      p_structured_superlative: { stat: superlativeBet.stat },
+      p_stat: superlativeBet.stat,
+      // threshold/comparison volontairement null -- probabilité DIRECTE
+      // (même principe que dd/td), et surtout ça empêche
+      // resolveCalculableBets() (le résolveur PLAYER de base, qui ne
+      // filtre QUE sur structured_player_id non-null) de trancher ce pari
+      // à tort avec la mauvaise formule -- voir la migration
+      // 20260825140000 pour le détail de ce choix.
+      p_threshold: null,
+      p_comparison: null,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: "PLAYER_PROP" satisfies BetCategory,
     });
   }
 
@@ -571,6 +653,16 @@ export async function structureAndScoreBet(
     // chantier "5 majeur/banc") -- même raisonnement que PERIOD ci-dessus.
     if (ROSTER_SPLIT_KEYWORD_REGEX.test(description)) {
       await handleRosterSplitBet(teamNames);
+      return;
+    }
+
+    // Routage superlatif implicite par mot-clé (étape 4 du plan de reprise
+    // post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même raisonnement que
+    // PERIOD ci-dessus. structureBet.ts (COMPARISON) reste seul compétent
+    // pour un adversaire/groupe NOMMÉ -- cette regex ne cible que l'ensemble
+    // non borné ("tout autre joueur"), pas de collision sémantique.
+    if (SUPERLATIVE_KEYWORD_REGEX.test(description)) {
+      await handleSuperlativeBet(teamNames);
       return;
     }
 
@@ -642,6 +734,7 @@ export async function structureAndScoreBet(
         p_structured_period: null,
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
         p_stat: matchTotal.stat,
         p_threshold: matchTotal.threshold,
         p_comparison: matchTotal.comparison,
@@ -694,6 +787,7 @@ export async function structureAndScoreBet(
         p_structured_period: null,
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
         p_stat: teamStat.stat,
         p_threshold: teamStat.threshold,
         p_comparison: teamStat.comparison,
@@ -802,6 +896,7 @@ export async function structureAndScoreBet(
         p_structured_period: null,
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
         p_stat: null,
         p_threshold: relationThreshold,
         p_comparison: null,
@@ -911,6 +1006,7 @@ export async function structureAndScoreBet(
         p_structured_period: null,
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -966,6 +1062,7 @@ export async function structureAndScoreBet(
         p_structured_period: null,
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
         p_stat: player.stat,
         p_threshold: player.threshold,
         p_comparison: player.comparison,
@@ -1022,6 +1119,7 @@ export async function structureAndScoreBet(
       p_structured_period: null,
         p_structured_roster_split: null,
         p_structured_roster_count: null,
+        p_structured_superlative: null,
       p_stat: player.stat,
       p_threshold: player.threshold,
       p_comparison: player.comparison,

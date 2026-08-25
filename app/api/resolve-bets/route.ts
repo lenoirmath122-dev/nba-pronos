@@ -10,6 +10,7 @@ import {
   resolveCalculablePeriodBets,
   resolveCalculableRosterSplitBets,
   resolveCalculableRosterCountBets,
+  resolveCalculableSuperlativeBets,
   type ResolveBetsSummary,
 } from "@/lib/ai/resolveCalculableBets";
 
@@ -42,6 +43,7 @@ async function handle(request: Request): Promise<Response> {
       periodSummary,
       rosterSplitSummary,
       rosterCountSummary,
+      superlativeSummary,
     ] = await Promise.all([
       resolveCalculableBets(),
       resolveCalculableSeriesBets(),
@@ -52,6 +54,7 @@ async function handle(request: Request): Promise<Response> {
       resolveCalculablePeriodBets(),
       resolveCalculableRosterSplitBets(),
       resolveCalculableRosterCountBets(),
+      resolveCalculableSuperlativeBets(),
     ]);
     const summary: ResolveBetsSummary = {
       resolved: [
@@ -64,6 +67,7 @@ async function handle(request: Request): Promise<Response> {
         ...periodSummary.resolved,
         ...rosterSplitSummary.resolved,
         ...rosterCountSummary.resolved,
+        ...superlativeSummary.resolved,
       ],
       skipped: [
         ...matchSummary.skipped,
@@ -75,6 +79,7 @@ async function handle(request: Request): Promise<Response> {
         ...periodSummary.skipped,
         ...rosterSplitSummary.skipped,
         ...rosterCountSummary.skipped,
+        ...superlativeSummary.skipped,
       ],
     };
     return NextResponse.json(summary);
