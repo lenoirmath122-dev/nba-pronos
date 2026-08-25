@@ -85,7 +85,56 @@
 >
 > `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. **Aucune migration
 > nécessaire** (`structured_combo` reste `jsonb`, seule la FORME imbriquée
-> change). Pas encore redéployé sur Cloud Run ni commité/poussé -- prochaine
+> change).
+>
+> **Bug réel trouvé par l'utilisateur en testant en conditions réelles**
+> (25/08/2026, même jour) : dd/td est DÉFINI comme >=2/>=3 des 5 catégories
+> pts/reb/ast/stl/blk >=10 -- un combo qui associe dd/td à un seuil
+> explicite sur UNE de CES MÊMES catégories pour LE MÊME joueur (l'exemple
+> réel qui a motivé l'étape 7 elle-même : "triple-double avec 40+points et
+> 20+rebonds ou passes" ; 2e exemple trouvé en cherchant d'autres cas
+> similaires dans le corpus : "double-double et marque au moins 12
+> points") n'est PAS indépendant -- les multiplier comme des événements
+> indépendants effondre la proba de façon injustifiée (reproduit : Jamal
+> Murray "triple-double + 25pts + 8reb-ou-8pas" donnait 0.04%, alors que
+> 8reb/8pas est quasiment GARANTI dès qu'un triple-double survient).
+>
+> **1ère tentative de correctif ABANDONNÉE** (notée pour ne pas la
+> retenter) : modéliser les 5 catégories comme des variables normales
+> INDÉPENDANTES ENTRE ELLES et énumérer leurs combinaisons pour recalculer
+> dd/td "depuis zéro" -- testé, PIRE que le bug d'origine (0.0015% au lieu
+> de 0.577% pour P(td) seul de Murray) : la vraie P(td) EST corrélée entre
+> catégories dans la réalité (un gros match élève plusieurs catégories à la
+> fois), donc supposer l'indépendance ENTRE catégories sous-estime
+> massivement dd/td elle-même -- un classifieur entraîné sur de vrais
+> matchs capture déjà cette corrélation, une décomposition naïve la jette.
+>
+> **Correctif retenu** : ne JAMAIS retoucher P(dd/td) elle-même
+> (classifieur déjà entraîné, déjà bien calibré) -- corrige uniquement le
+> FACTEUR de la condition supplémentaire, via une probabilité
+> CONDITIONNELLE À L'INTÉRIEUR DE SA PROPRE CATÉGORIE (aucune hypothèse
+> d'indépendance entre catégories nécessaire, juste une queue de
+> distribution conditionnelle sur UNE seule variable) : seuil <= 10 =
+> quasi implique par dd/td, facteur = 1.0 (aucune pénalité) ; seuil > 10 =
+> facteur = P(catégorie >= seuil) / P(catégorie >= 10). Restreint aux
+> clusters "propres" (groupe dd/td isolé, groupes "extra" sans condition
+> inattendue type OR entre 2 joueurs différents, jamais comparison=UNDER
+> -- pas de formule fiable) -- un cluster qui ne s'y prête pas retombe sur
+> l'indépendance simple, jamais pire qu'avant ce correctif.
+>
+> Revérifié avec les 2 exemples réels du corpus : Murray "triple-double +
+> 25pts + 8reb-ou-8pas" -> 0.30% (contre 0.58% pour le triple-double seul,
+> cohérent : la condition de points est une vraie contrainte
+> supplémentaire, la condition rebonds/passes ne pénalise plus du tout,
+> comme attendu) ; Jalen Duren "double-double + 12pts" -> 12.9% (contre
+> 22.2% pour le double-double seul). Non-régression vérifiée sur un combo
+> sans dd/td (toujours "indépendance assumée", aucun cluster détecté) et
+> sur dd/td seul en groupe unique (valeur du classifieur inchangée,
+> bit-identique). Aucun changement TypeScript nécessaire -- correction
+> entièrement côté service Python (`_compute_combo_proba_once`), la
+> résolution (relit les vraies stats du match) n'en a jamais eu besoin.
+>
+> Pas encore redéployé sur Cloud Run ni commité/poussé -- prochaine
 > action de la session.
 
 > **Étape 6 du plan de reprise, CODÉE et DÉPLOYÉE le 25/08/2026** --

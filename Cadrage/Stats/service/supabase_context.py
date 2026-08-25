@@ -1405,31 +1405,184 @@ def _condition_group_proba(
     return 1 - proba_union, metas
 
 
+# Chantier combo, correction de correlation dd/td (etape 7 bis, 25/08/2026,
+# GAPS_OUVERTS.md) -- trouve par l'utilisateur en testant l'etape 7 : dd/td
+# est DEFINI comme >=2/>=3 des 5 categories ci-dessous >=10 -- un pari qui
+# combine dd/td ET un seuil explicite sur UNE de CES MEMES categories pour
+# LE MEME joueur (ex. "triple-double AVEC 40+points ET 20+rebonds ou
+# passes", ex. reel du corpus qui a motive l'etape 7 elle-meme ; "double-
+# double ET marque au moins 12 points", 2e exemple reel trouve en
+# recherchant d'autres cas similaires) n'est PAS independant -- le seuil
+# supplementaire est souvent QUASI IMPLIQUE par le dd/td (surtout si son
+# seuil est <= 10), les multiplier comme des evenements independants
+# effondre artificiellement la proba (verifie : Jamal Murray "triple-double
+# + 25pts + 8reb-ou-8pas" donnait 0.04% avant ce correctif).
+#
+# 1ere tentative ABANDONNEE (gardee en memoire pour ne pas la retenter) :
+# modeliser les 5 categories comme des variables NORMALES INDEPENDANTES
+# ENTRE ELLES et enumerer leurs combinaisons pour recalculer dd/td "depuis
+# zero". Teste, PIRE que le bug d'origine : la vraie P(td) EST correlee
+# entre categories dans la realite (un gros match eleve plusieurs
+# categories a la fois -- minutes/rythme/forme du soir), donc l'independance
+# ENTRE categories sous-estime massivement P(td) elle-meme (verifie :
+# 0.0015% au lieu des 0.577% du classifieur reellement entraine sur des
+# vrais matchs -- pire que le probleme a corriger).
+#
+# Approche retenue : NE JAMAIS retoucher P(dd/td) elle-meme (classifieur
+# deja entraine sur des vrais matchs, deja bien calibre) -- corrige
+# uniquement le FACTEUR des conditions supplementaires, via une probabilite
+# CONDITIONNELLE a l'interieur de LEUR PROPRE categorie (P(categorie>=seuil)
+# / P(categorie>=10), aucune hypothese d'independance ENTRE categories
+# necessaire ici, juste une queue de distribution conditionnelle sur UNE
+# seule variable) :
+# - seuil <= 10 : quasi implique par dd/td des que cette categorie compte
+#   parmi celles qui l'ont declenche -- facteur = 1.0 (pas de penalite).
+# - seuil > 10  : facteur = P(categorie >= seuil) / P(categorie >= 10).
+_DOUBLE_CATEGORIES = ("pts", "reb", "ast", "stl", "blk")
+
+
+def _find_correlated_player_clusters(conditions: list[list[dict]]) -> dict[str, list[int]]:
+    """{nom_joueur: [indices de groupe impliques]} pour chaque joueur ayant
+    2+ conditions PLAYER simples (1 joueur, 1 stat -- exclut les conditions
+    "somme" a plusieurs joueurs/stats, qui n'ont pas ce probleme de
+    tautologie) portant sur dd/td ou une des 5 categories ci-dessus, ET AU
+    MOINS UNE d'entre elles etant dd/td (sinon pas de correlation
+    particuliere a corriger -- 2 seuils simples sur pts/reb pour le meme
+    joueur restent traites independamment, meme simplification acceptee
+    partout ailleurs dans ce chantier)."""
+    by_player: dict[str, list[int]] = {}
+    has_dd_td: dict[str, bool] = {}
+    for i, group in enumerate(conditions):
+        for c in group:
+            if c["kind"] != "PLAYER":
+                continue
+            players = c.get("joueurs") or []
+            stats = c["stats"]
+            if len(players) != 1 or len(stats) != 1:
+                continue
+            stat = stats[0]
+            if stat not in _DOUBLE_CATEGORIES and stat not in ("dd", "td"):
+                continue
+            name = players[0]
+            indices = by_player.setdefault(name, [])
+            if i not in indices:
+                indices.append(i)
+            if stat in ("dd", "td"):
+                has_dd_td[name] = True
+    return {name: idxs for name, idxs in by_player.items() if len(idxs) >= 2 and has_dd_td.get(name)}
+
+
+def _dd_td_conditional_factor(mean: float, scale: float, threshold: float, comparison: str) -> float | None:
+    """Facteur multiplicatif pour UNE condition sur une categorie dd/td
+    (etape 7 bis) -- None si non applicable (retombe sur l'independance
+    simple pour CETTE condition precise) : comparison="UNDER" n'a pas
+    d'exemple reel et sa relation logique avec "categorie>=10" est bien
+    moins nette (categorie<seuil<=10 n'est ni implique ni contredit par
+    dd/td) -- pas de formule fiable, prudence plutot que deviner."""
+    if comparison == "UNDER":
+        return None
+    if threshold <= 10:
+        return 1.0
+    p_threshold = 1 - norm.cdf(threshold, loc=mean, scale=scale)
+    p_ten = 1 - norm.cdf(10, loc=mean, scale=scale)
+    if p_ten <= 0:
+        return 0.0
+    return float(min(max(p_threshold / p_ten, 0.0), 1.0))
+
+
 def _compute_combo_proba_once(
     client, conditions: list[list[dict]], home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> dict:
     """Pari COMBO (24/08/2026, GAPS_OUVERTS.md ; etendu etape 7, 25/08/2026,
-    "OU imbrique dans un ET") -- ET de N GROUPES INDEPENDANTS (P(combo) =
-    produit des P(groupe_i)), chaque groupe resolu via
-    _condition_group_proba() (1 condition = comportement inchange depuis
-    le chantier combo d'origine, 2+ = OU entre elles). INDEPENDANCE entre
-    groupes ET entre conditions d'un meme groupe assumee (aucune
-    correlation modelisee -- ex. une mauvaise soiree au tir correle
-    naturellement plusieurs stats du meme joueur) -- meme simplification
-    que le reste du chantier duel/combo, documentee explicitement plutot
-    que cachee. Portee volontairement limitee (pas de comptage sur tout
-    le roster, cf. ROSTER_COUNT etape 3 -- mecanisme different) -- cf.
-    GAPS_OUVERTS.md pour l'exclusion restante et sa raison."""
-    proba = 1.0
+    "OU imbrique dans un ET") -- ET de N GROUPES (P(combo) = produit des
+    P(groupe_i)), chaque groupe resolu via _condition_group_proba() (1
+    condition = comportement inchange depuis le chantier combo d'origine,
+    2+ = OU entre elles). INDEPENDANCE entre groupes ET entre conditions
+    d'un meme groupe assumee (aucune correlation modelisee -- ex. une
+    mauvaise soiree au tir correle naturellement plusieurs stats du meme
+    joueur) -- meme simplification que le reste du chantier duel/combo,
+    documentee explicitement plutot que cachee. EXCEPTION (etape 7 bis,
+    GAPS_OUVERTS.md) : un groupe "dd/td" combine a un/des groupe(s) portant
+    un seuil sur une des 5 categories sous-jacentes POUR LE MEME JOUEUR
+    n'est PAS independant (dd/td EST DEFINI a partir de ces memes
+    categories) -- ces groupes-la sont recalcules via
+    _dd_td_conditional_factor() (probabilite CONDITIONNELLE a l'interieur
+    de chaque categorie, P(dd/td) elle-meme jamais retouchee -- cf. sa
+    docstring pour la 1ere tentative, moins bonne, abandonnee). Restreint
+    aux clusters "propres" (le groupe dd/td ne contient QUE cette seule
+    condition, aucune condition non reconnue dans les groupes "extra") --
+    un cluster qui ne s'y prete pas retombe sur l'independance simple
+    (jamais pire qu'avant cette etape). conditions_meta reste calcule
+    normalement par groupe (sert au stockage/a la resolution, jamais a la
+    proba elle-meme -- la resolution relit les vraies stats du match, elle
+    n'a pas besoin de cette correction). Portee volontairement limitee (pas
+    de comptage sur tout le roster, cf. ROSTER_COUNT etape 3 -- mecanisme
+    different) -- cf. GAPS_OUVERTS.md pour l'exclusion restante et sa
+    raison."""
+    group_probas = []
     conditions_meta = []
     for group in conditions:
         p, group_meta = _condition_group_proba(client, group, home_team_id, away_team_id, as_of_date, season=season)
-        proba *= p
+        group_probas.append(p)
         conditions_meta.append(group_meta)
+
+    clusters = _find_correlated_player_clusters(conditions)
+    consumed_groups: set[int] = set()
+    corrected_probas = []
+    for name, group_indices in clusters.items():
+        dd_td_group_idx = next((i for i in group_indices if conditions[i][0]["stats"][0] in ("dd", "td") and len(conditions[i]) == 1), None)
+        if dd_td_group_idx is None:
+            continue  # cluster pas "propre" (dd/td mele a autre chose dans son groupe) -- pas corrige, independance simple conservee
+
+        player_id, _ = find_player(client, name)
+        player_team_id = _player_current_team_id(client, player_id)
+        if player_team_id not in (home_team_id, away_team_id):
+            raise ValueError(f"\"{name}\" ne joue pour aucune des 2 equipes de ce match.")
+        is_home = 1 if player_team_id == home_team_id else 0
+        opponent_id = away_team_id if is_home else home_team_id
+
+        extra_indices = [i for i in group_indices if i != dd_td_group_idx]
+        ok = True
+        group_factors = []
+        for i in extra_indices:
+            factors = []
+            for c in conditions[i]:
+                if c["kind"] != "PLAYER" or len(c.get("joueurs") or []) != 1 or len(c["stats"]) != 1 or c["stats"][0] not in _DOUBLE_CATEGORIES:
+                    ok = False  # condition inattendue dans ce groupe (ex. OR entre 2 joueurs differents) -- prudence
+                    break
+                mean, scale = _player_stat_mean_scale(client, player_id, c["stats"][0], opponent_id=opponent_id, is_home=is_home)
+                factor = _dd_td_conditional_factor(mean, scale, c["seuil"], c["comparison"])
+                if factor is None:
+                    ok = False  # comparison="UNDER", pas de formule fiable (cf. docstring)
+                    break
+                factors.append(factor)
+            if not ok:
+                break
+            group_or = 1.0
+            for f in factors:
+                group_or *= (1 - f)
+            group_factors.append(1 - group_or)
+
+        if not ok:
+            continue  # cluster pas "propre" -- pas corrige, independance simple conservee (jamais pire qu'avant)
+
+        corrected = group_probas[dd_td_group_idx]
+        for f in group_factors:
+            corrected *= f
+        corrected_probas.append(corrected)
+        consumed_groups.update(group_indices)
+
+    proba = 1.0
+    for i, p in enumerate(group_probas):
+        if i not in consumed_groups:
+            proba *= p
+    for cp in corrected_probas:
+        proba *= cp
 
     return {
         "proba": float(proba),
-        "detail": f"{len(conditions)} groupes combines (independance assumee)",
+        "detail": f"{len(conditions)} groupes combines ({len(corrected_probas)} cluster(s) corrige(s) pour correlation dd/td)"
+        if corrected_probas else f"{len(conditions)} groupes combines (independance assumee)",
         "conditions_meta": conditions_meta,
     }
 
