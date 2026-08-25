@@ -35,7 +35,15 @@ export function PredictionSummary({ prediction, betPoints }: PredictionSummaryPr
   // bloquer l'affichage du total prono en attendant, mais jamais mentionné
   // dans le détail entre parenthèses tant qu'il reste null (pas encore
   // acquis, à ne pas confondre avec un pari qui aurait rapporté 0).
-  const totalPoints = prediction.points === null ? null : prediction.points + (betPoints ?? 0);
+  //
+  // Bug réel trouvé le 25/08/2026 (test étape 5, résolution auto) :
+  // `prediction.points === null ? null : ...` masquait aussi le cas
+  // INVERSE -- pas de prono du tout (state=MISSING, points toujours null)
+  // mais un pari résolu (betPoints non-null) affichait quand même "—",
+  // les points du pari disparaissant purement et simplement. Le total ne
+  // doit être null QUE si prono ET pari sont TOUS LES DEUX absents.
+  const hasPredictionPoints = prediction.points !== null;
+  const totalPoints = hasPredictionPoints || betPoints !== null ? (prediction.points ?? 0) + (betPoints ?? 0) : null;
   return (
     <div className={styles.summary}>
       <span className={`${styles.state} ${STATE_CLASS[prediction.state]}`}>
@@ -70,11 +78,18 @@ export function PredictionSummary({ prediction, betPoints }: PredictionSummaryPr
                 y compris à 0 — ce n'est pas "non scoré", juste une composante
                 nulle d'un total qui, lui, est bien acquis. "pari" ajouté
                 (22/08/2026) UNIQUEMENT une fois résolu -- betPoints à 0 se
-                distingue ainsi d'un pari pas encore joué (absent du détail). */}
+                distingue ainsi d'un pari pas encore joué (absent du détail).
+                hasPredictionPoints ajouté (25/08/2026, même bug que ci-dessus)
+                -- sans prono du tout, winnerPoints/marginPoints sont null,
+                les afficher littéralement aurait affiché "null pronostic,
+                null écart" au lieu d'omettre proprement cette partie. */}
             <span className={styles.pointsDetail}>
               {" "}
-              ({prediction.winnerPoints} pronostic, {prediction.marginPoints} écart
-              {betPoints !== null && `, ${betPoints} pari`})
+              (
+              {hasPredictionPoints && `${prediction.winnerPoints} pronostic, ${prediction.marginPoints} écart`}
+              {hasPredictionPoints && betPoints !== null && ", "}
+              {betPoints !== null && `${betPoints} pari`}
+              )
             </span>
           </>
         )}
