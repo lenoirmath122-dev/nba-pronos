@@ -1066,10 +1066,18 @@ class ComboCondition(BaseModel):
 
 
 class PredictComboRequest(BaseModel):
-    """Pari COMBO (24/08/2026, GAPS_OUVERTS.md) -- ET de N conditions
-    INDEPENDANTES (P(combo) = produit des P(condition_i)). Meme contrat
-    equipe_domicile/equipe_exterieur que PredictComparisonRequest."""
-    conditions: list[ComboCondition]
+    """Pari COMBO (24/08/2026, GAPS_OUVERTS.md) -- ET de N GROUPES de
+    conditions INDEPENDANTS (P(combo) = produit des P(groupe_i)). Meme
+    contrat equipe_domicile/equipe_exterieur que PredictComparisonRequest.
+
+    `conditions` est une liste de GROUPES (etape 7 du plan de reprise
+    post-audit, 25/08/2026, GAPS_OUVERTS.md -- "OU imbrique dans un ET") :
+    chaque groupe est lui-meme une liste de 1+ conditions -- 1 seule =
+    condition normale (comportement inchange depuis le chantier combo
+    d'origine), 2+ = OU entre elles (AU MOINS UNE doit etre vraie), ex.
+    "triple-double AVEC 40+points ET (20+rebonds OU 20+passes)" ->
+    [[triple_double], [pts>=40], [reb>=20, ast>=20]]."""
+    conditions: list[list[ComboCondition]]
     equipe_domicile: str
     equipe_exterieur: str
     as_of_date: str
@@ -1077,8 +1085,8 @@ class PredictComboRequest(BaseModel):
 
     @model_validator(mode="after")
     def _au_moins_une_condition(self):
-        if not self.conditions:
-            raise ValueError("conditions (1+) requis")
+        if not self.conditions or any(not group for group in self.conditions):
+            raise ValueError("conditions (1+ groupes, chacun avec 1+ condition) requis")
         return self
 
 
@@ -1094,7 +1102,8 @@ def predict_combo(req: PredictComboRequest):
 
     try:
         result = supabase_context.compute_combo_proba(
-            sb, [c.model_dump() for c in req.conditions], home_id, away_id, req.as_of_date, season=req.season,
+            sb, [[c.model_dump() for c in group] for group in req.conditions],
+            home_id, away_id, req.as_of_date, season=req.season,
         )
     except ValueError as e:
         raise HTTPException(400, str(e)) from e

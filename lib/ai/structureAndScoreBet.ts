@@ -8,6 +8,7 @@ import { structureSuperlativeBet } from "./structureSuperlativeBet";
 import { structureTechnicalFoulsCountBet } from "./structureTechnicalFoulsCountBet";
 import { structureLastBasketBet } from "./structureLastBasketBet";
 import { structureBlockOnPlayerBet } from "./structureBlockOnPlayerBet";
+import { structureComboNestedBet } from "./structureComboBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -166,6 +167,26 @@ const LAST_BASKET_KEYWORD_REGEX = /dernier\s+panier/i;
  *  ROSTER_COUNT_KEYWORD_REGEX ci-dessus (exige littéralement "joueurs",
  *  jamais présent dans "au moins 1 contre sur Chet Holmgren"). */
 const BLOCK_ON_PLAYER_KEYWORD_REGEX = /\bcontres?\s+sur\b/i;
+
+/** Détecte un texte "de forme" combo AVEC un OU imbriqué AVANT tout appel
+ *  Claude (étape 7 du plan de reprise post-audit, 25/08/2026,
+ *  GAPS_OUVERTS.md, "OU imbriqué dans un ET") -- même patron que les regex
+ *  ci-dessus, MÊME raison que PERIOD (schéma combo_bet partagé déjà au
+ *  plafond -- vérifié à nouveau en essayant d'ajouter `or` directement
+ *  dedans, "compiled grammar too large" reproduit sur TOUS les paris).
+ *  Signature lexicale : "et" ET "ou" présents tous les deux dans la même
+ *  phrase (peu importe l'ordre) -- signature du SEUL exemple réel du
+ *  corpus ("triple-double avec au moins 40 points et au moins 20 rebonds
+ *  ou passes"), vérifié sans collision sur le reste du corpus
+ *  (types_de_paris_playoffs_2026.md, aucune autre phrase ne combine les
+ *  2) : le combo simple ("Cunningham marque plus de 25 points et réalise
+ *  plus de 5 passes") n'a jamais de "ou", et le cas OR de COMPARISON
+ *  ("Hauser ou Pritchard...") n'a jamais de "et". Un combo avec OU
+ *  imbriqué formulé assez différemment pour échapper à ce filtre retombe
+ *  sur le schéma combo simple -> rejet propre (OU pas capturé) ->
+ *  validation manuelle, même filet de sécurité que tout autre cas non
+ *  couvert. */
+const COMBO_NESTED_OR_KEYWORD_REGEX = /\bet\b[^.!?]*\bou\b|\bou\b[^.!?]*\bet\b/i;
 
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
@@ -885,6 +906,144 @@ export async function structureAndScoreBet(
     });
   }
 
+  /** Valide UNE condition combo brute (kind/players/stats/threshold/
+   *  comparison, forme partagée par le schéma combo simple ET le schéma
+   *  dédié OU imbriqué -- étape 7, GAPS_OUVERTS.md) en ComboCondition
+   *  (kind/team résolus en "domicile"/"exterieur"), avec les MÊMES règles
+   *  de validité que côté service (une condition "somme" -- 2+ joueurs
+   *  et/ou 2+ stats -- est restreinte aux stats comptées ; une condition
+   *  "simple" accepte toute STAT_CODES, y compris dd/td) -- vérifié ici
+   *  aussi pour éviter un aller-retour HTTP voué à l'échec. null si
+   *  invalide (appelant doit alors markNotCalculable()). Factorisée le
+   *  25/08/2026 (étape 7) -- AVANT cette étape, dupliquée telle quelle
+   *  dans la seule branche combo simple ; désormais partagée avec
+   *  handleComboNestedBet() ci-dessous. */
+  function validateComboCondition(
+    c: { kind: "PLAYER" | "team1" | "team2"; players: string[]; stats: string[]; threshold: number | null; comparison: "OVER" | "UNDER" },
+    teamNames: [string, string] | null,
+    matchTeams: NonNullable<Awaited<ReturnType<typeof resolveMatchTeams>>>,
+  ): ComboCondition | null {
+    if (c.stats.length === 0) return null;
+    if (c.kind === "PLAYER") {
+      if (c.players.length === 0) return null;
+      const isSimple = c.players.length === 1 && c.stats.length === 1;
+      if (!isSimple && c.stats.some((s) => !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(s))) return null;
+      const noThreshold = isSimple && NO_THRESHOLD_STATS.has(c.stats[0] as StatCode);
+      if (!noThreshold && c.threshold === null) return null;
+      return { kind: "PLAYER", players: c.players, stats: c.stats, threshold: c.threshold, comparison: c.comparison };
+    }
+    const name = c.kind === "team1" ? teamNames?.[0] : teamNames?.[1];
+    const side = !name ? null : name === matchTeams.homeTeamName ? "domicile" : name === matchTeams.awayTeamName ? "exterieur" : null;
+    if (!side || c.threshold === null || c.stats.some((s) => !(COMPARISON_TEAM_STAT_CODES as string[]).includes(s))) return null;
+    return { kind: "TEAM", team: side, stats: c.stats, threshold: c.threshold, comparison: c.comparison };
+  }
+
+  /** Appelle predictCombo() sur des GROUPES déjà validés (ComboCondition[][],
+   *  1 item = condition normale, 2+ = OU imbriqué -- étape 7,
+   *  GAPS_OUVERTS.md) et écrit le résultat -- partagée par la branche
+   *  combo simple (schéma partagé, groupes à 1 item chacun) ET
+   *  handleComboNestedBet() (schéma dédié, groupes à 1+ items) : MÊME
+   *  stockage/résolution pour les deux (structured_combo.conditions =
+   *  { or: [...] }[] uniformément, cf. resolveCalculableComboBets(),
+   *  resolveCalculableBets.ts). */
+  async function writeComboResult(
+    groups: ComboCondition[][],
+    rawThresholds: { threshold: number | null; comparison: "OVER" | "UNDER" }[][],
+    matchTeams: NonNullable<Awaited<ReturnType<typeof resolveMatchTeams>>>,
+  ): Promise<void> {
+    const prediction = await predictCombo(groups, matchTeams.homeTeamName, matchTeams.awayTeamName, matchTeams.scheduledAt.slice(0, 10));
+    if (!prediction || prediction.groupsMeta.length !== groups.length) {
+      await markNotCalculable();
+      return;
+    }
+
+    const structuredCombo = {
+      conditions: prediction.groupsMeta.map((groupMeta, i) => ({
+        or: groupMeta.map((meta, j) => ({
+          kind: meta.kind,
+          player_ids: meta.playerIds,
+          team_id: groups[i][j].kind === "TEAM"
+            ? (groups[i][j].team === "domicile" ? matchTeams.homeTeamId : matchTeams.awayTeamId)
+            : null,
+          stats: meta.stats,
+          threshold: rawThresholds[i][j].threshold,
+          comparison: rawThresholds[i][j].comparison,
+        })),
+      })),
+    };
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      p_structured_player_name: null,
+      p_structured_player_id: null,
+      p_structured_team_id: null,
+      p_structured_duel: null,
+      p_structured_combo: structuredCombo,
+      p_structured_period: null,
+      p_structured_roster_split: null,
+      p_structured_roster_count: null,
+      p_structured_superlative: null,
+      p_structured_technical_fouls_count: null,
+      p_structured_last_basket: null,
+      p_structured_block_on_player: null,
+      p_structured_negation: false,
+      p_stat: null,
+      p_threshold: null,
+      p_comparison: null,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: "MULTI_PLAYER_COMBO" satisfies BetCategory,
+    });
+  }
+
+  /** Pari COMBO avec OU imbriqué (étape 7 du plan de reprise post-audit,
+   *  25/08/2026, GAPS_OUVERTS.md) -- cf. structureComboBet.ts. MATCH
+   *  uniquement, même limite que les autres branches. Appelée UNIQUEMENT
+   *  quand COMBO_NESTED_OR_KEYWORD_REGEX matche (cf. try ci-dessous) --
+   *  structuration vient de structureComboNestedBet(), un schéma séparé de
+   *  structureBet.ts (voir sa docstring pour le pourquoi). */
+  async function handleComboNestedBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structureComboNestedBet(description, teamNames);
+    if (!structuration || !structuration.calculable || structuration.bet_subject !== "COMBO" || structuration.conditions.length === 0) {
+      await markNotCalculable();
+      return;
+    }
+    if (scope !== "MATCH" || !matchId) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+
+    const groups: ComboCondition[][] = [];
+    const rawThresholds: { threshold: number | null; comparison: "OVER" | "UNDER" }[][] = [];
+    for (const group of structuration.conditions) {
+      if (group.or.length === 0) {
+        await markNotCalculable();
+        return;
+      }
+      const groupConditions: ComboCondition[] = [];
+      const groupRaw: { threshold: number | null; comparison: "OVER" | "UNDER" }[] = [];
+      for (const c of group.or) {
+        const validated = validateComboCondition(c, teamNames, matchTeams);
+        if (!validated) {
+          await markNotCalculable();
+          return;
+        }
+        groupConditions.push(validated);
+        groupRaw.push({ threshold: c.threshold, comparison: c.comparison });
+      }
+      groups.push(groupConditions);
+      rawThresholds.push(groupRaw);
+    }
+
+    await writeComboResult(groups, rawThresholds, matchTeams);
+  }
+
   try {
     const teamNames = await resolveMatchTeamNames(supabase, seriesId);
 
@@ -963,6 +1122,15 @@ export async function structureAndScoreBet(
     // cible que "contre(s) sur", pas de collision sémantique.
     if (BLOCK_ON_PLAYER_KEYWORD_REGEX.test(description)) {
       await handleBlockOnPlayerBet(teamNames);
+      return;
+    }
+
+    // Routage combo avec OU imbriqué par mot-clé (étape 7 du plan de
+    // reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même raisonnement
+    // que les regex ci-dessus. Un combo simple (sans "ou") reste géré par
+    // structureBet()/bet_subject=COMBO, inchangé.
+    if (COMBO_NESTED_OR_KEYWORD_REGEX.test(description)) {
+      await handleComboNestedBet(teamNames);
       return;
     }
 
@@ -1251,9 +1419,14 @@ export async function structureAndScoreBet(
     // conditions (TOUTES doivent être vraies), chacune joueur/somme de
     // joueurs/équipe + 1+ stats sommées + seuil + comparaison. MATCH
     // uniquement, même limite que les branches ci-dessus. Portée
-    // volontairement limitée à un ET simple -- pas de OU imbriqué, pas de
-    // comptage sur tout le roster (cf. GAPS_OUVERTS.md pour ces exclusions
-    // et où elles seront reprises).
+    // volontairement limitée à un ET simple -- pas de comptage sur tout le
+    // roster (cf. GAPS_OUVERTS.md pour cette exclusion et où elle sera
+    // reprise). Le OU imbriqué (étape 7, 25/08/2026) est routé EN AMONT
+    // vers handleComboNestedBet() par mot-clé (COMBO_NESTED_OR_KEYWORD_REGEX,
+    // cf. try ci-dessous) -- cette branche ne voit donc QUE des conditions
+    // simples (jamais de OU), chacune enveloppée dans un groupe à 1 item
+    // avant d'être écrite via writeComboResult() (même stockage/résolution
+    // que le cas OU imbriqué, cf. sa docstring).
     if (structuration.bet_subject === "COMBO") {
       const comboBet = structuration.combo_bet;
       if (scope !== "MATCH" || !matchId || !comboBet || comboBet.conditions.length === 0) {
@@ -1267,97 +1440,19 @@ export async function structureAndScoreBet(
         return;
       }
 
-      const resolveSide = (kind: "team1" | "team2"): "domicile" | "exterieur" | null => {
-        const name = kind === "team1" ? teamNames?.[0] : teamNames?.[1];
-        if (!name) return null;
-        if (name === matchTeams.homeTeamName) return "domicile";
-        if (name === matchTeams.awayTeamName) return "exterieur";
-        return null;
-      };
-
-      // Reconstruit chaque condition en ComboCondition (kind/team résolus
-      // en "domicile"/"exterieur"), avec les MÊMES règles de validité que
-      // côté service (une condition "somme" -- 2+ joueurs et/ou 2+ stats --
-      // est restreinte aux stats comptées ; une condition "simple" accepte
-      // toute STAT_CODES, y compris dd/td) -- vérifié ici aussi pour éviter
-      // un aller-retour HTTP voué à l'échec.
-      const conditions: ComboCondition[] = [];
+      const groups: ComboCondition[][] = [];
+      const rawThresholds: { threshold: number | null; comparison: "OVER" | "UNDER" }[][] = [];
       for (const c of comboBet.conditions) {
-        if (c.stats.length === 0) {
+        const validated = validateComboCondition(c, teamNames, matchTeams);
+        if (!validated) {
           await markNotCalculable();
           return;
         }
-        if (c.kind === "PLAYER") {
-          if (c.players.length === 0) {
-            await markNotCalculable();
-            return;
-          }
-          const isSimple = c.players.length === 1 && c.stats.length === 1;
-          if (!isSimple && c.stats.some((s) => !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(s))) {
-            await markNotCalculable();
-            return;
-          }
-          const noThreshold = isSimple && NO_THRESHOLD_STATS.has(c.stats[0] as StatCode);
-          if (!noThreshold && c.threshold === null) {
-            await markNotCalculable();
-            return;
-          }
-          conditions.push({ kind: "PLAYER", players: c.players, stats: c.stats, threshold: c.threshold, comparison: c.comparison });
-        } else {
-          const side = resolveSide(c.kind);
-          if (!side || c.threshold === null || c.stats.some((s) => !(COMPARISON_TEAM_STAT_CODES as string[]).includes(s))) {
-            await markNotCalculable();
-            return;
-          }
-          conditions.push({ kind: "TEAM", team: side, stats: c.stats, threshold: c.threshold, comparison: c.comparison });
-        }
+        groups.push([validated]);
+        rawThresholds.push([{ threshold: c.threshold, comparison: c.comparison }]);
       }
 
-      const prediction = await predictCombo(conditions, matchTeams.homeTeamName, matchTeams.awayTeamName, matchTeams.scheduledAt.slice(0, 10));
-      if (!prediction || prediction.conditionsMeta.length !== conditions.length) {
-        await markNotCalculable();
-        return;
-      }
-
-      // Persiste les ids/équipes REELS (memes lecon que COMPARISON
-      // ci-dessus) -- team_id derive de `conditions` (deja les VRAIES
-      // equipes cote appelant), pas de la reponse du service.
-      const structuredCombo = {
-        conditions: prediction.conditionsMeta.map((meta, i) => ({
-          kind: meta.kind,
-          player_ids: meta.playerIds,
-          team_id: conditions[i].kind === "TEAM"
-            ? (conditions[i].team === "domicile" ? matchTeams.homeTeamId : matchTeams.awayTeamId)
-            : null,
-          stats: meta.stats,
-          threshold: comboBet.conditions[i].threshold,
-          comparison: comboBet.conditions[i].comparison,
-        })),
-      };
-
-      await supabase.rpc("update_bet_structuration", {
-        p_bet_id: betId,
-        p_structured_player_name: null,
-        p_structured_player_id: null,
-        p_structured_team_id: null,
-        p_structured_duel: null,
-        p_structured_combo: structuredCombo,
-        p_structured_period: null,
-        p_structured_roster_split: null,
-        p_structured_roster_count: null,
-        p_structured_superlative: null,
-        p_structured_technical_fouls_count: null,
-        p_structured_last_basket: null,
-        p_structured_block_on_player: null,
-        p_structured_negation: false,
-        p_stat: null,
-        p_threshold: null,
-        p_comparison: null,
-        p_is_calculable: true,
-        p_calculated_proba: prediction.proba,
-        p_suggested_difficulty: probaToDifficulty(prediction.proba),
-        p_category: "MULTI_PLAYER_COMBO" satisfies BetCategory,
-      });
+      await writeComboResult(groups, rawThresholds, matchTeams);
       return;
     }
 

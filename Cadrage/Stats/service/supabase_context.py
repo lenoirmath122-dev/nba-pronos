@@ -1380,29 +1380,56 @@ def _condition_proba(
     return proba, meta
 
 
+def _condition_group_proba(
+    client, group: list[dict], home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> tuple[float, list[dict]]:
+    """P(AU MOINS UNE condition du groupe est vraie) -- etape 7 du plan de
+    reprise post-audit (25/08/2026, GAPS_OUVERTS.md, "OU imbrique dans un
+    ET"). 1 seule condition dans le groupe : comportement INCHANGE (P =
+    P(condition), meme chemin que _condition_proba() seul avant cette
+    etape). 2+ conditions : P(union) = 1 - produit(1 - P(condition_i))
+    sous INDEPENDANCE -- MEME formule EXACTE que relation="OR" deja
+    utilisee pour COMPARISON (P(A∪B) = P(A)+P(B)-P(A)*P(B), generalisee a
+    N termes), pas une nouvelle approximation."""
+    probas = []
+    metas = []
+    for condition in group:
+        p, meta = _condition_proba(client, condition, home_team_id, away_team_id, as_of_date, season=season)
+        probas.append(p)
+        metas.append(meta)
+    if len(group) == 1:
+        return probas[0], metas
+    proba_union = 1.0
+    for p in probas:
+        proba_union *= (1 - p)
+    return 1 - proba_union, metas
+
+
 def _compute_combo_proba_once(
-    client, conditions: list[dict], home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+    client, conditions: list[list[dict]], home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> dict:
-    """Pari COMBO (24/08/2026, GAPS_OUVERTS.md) -- ET de N conditions
-    INDEPENDANTES (P(combo) = produit des P(condition_i)), chaque condition
-    resolue via _condition_proba() (simple ou somme selon son nombre
-    d'entites/stats). INDEPENDANCE entre conditions assumee (aucune
+    """Pari COMBO (24/08/2026, GAPS_OUVERTS.md ; etendu etape 7, 25/08/2026,
+    "OU imbrique dans un ET") -- ET de N GROUPES INDEPENDANTS (P(combo) =
+    produit des P(groupe_i)), chaque groupe resolu via
+    _condition_group_proba() (1 condition = comportement inchange depuis
+    le chantier combo d'origine, 2+ = OU entre elles). INDEPENDANCE entre
+    groupes ET entre conditions d'un meme groupe assumee (aucune
     correlation modelisee -- ex. une mauvaise soiree au tir correle
     naturellement plusieurs stats du meme joueur) -- meme simplification
     que le reste du chantier duel/combo, documentee explicitement plutot
-    que cachee. Portee volontairement limitee a un ET simple (pas de OU
-    imbrique, pas de comptage sur tout le roster) -- cf. GAPS_OUVERTS.md
-    pour les exclusions et leur raison."""
+    que cachee. Portee volontairement limitee (pas de comptage sur tout
+    le roster, cf. ROSTER_COUNT etape 3 -- mecanisme different) -- cf.
+    GAPS_OUVERTS.md pour l'exclusion restante et sa raison."""
     proba = 1.0
     conditions_meta = []
-    for condition in conditions:
-        p, meta = _condition_proba(client, condition, home_team_id, away_team_id, as_of_date, season=season)
+    for group in conditions:
+        p, group_meta = _condition_group_proba(client, group, home_team_id, away_team_id, as_of_date, season=season)
         proba *= p
-        conditions_meta.append(meta)
+        conditions_meta.append(group_meta)
 
     return {
         "proba": float(proba),
-        "detail": f"{len(conditions)} conditions combinees (independance assumee)",
+        "detail": f"{len(conditions)} groupes combines (independance assumee)",
         "conditions_meta": conditions_meta,
     }
 

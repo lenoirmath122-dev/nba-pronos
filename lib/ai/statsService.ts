@@ -579,21 +579,26 @@ export type ComboConditionMeta = {
 
 export type ComboPredictResult = {
   proba: number;
-  /** Ids/équipes REELS résolus côté service pour CHAQUE condition, dans le
-   *  même ordre que `conditions` -- capturés pour être stockés dans
-   *  bets.structured_combo, jamais re-matchés par nom plus tard (même
-   *  leçon que structured_player_id/structured_duel). */
-  conditionsMeta: ComboConditionMeta[];
+  /** Ids/équipes REELS résolus côté service pour CHAQUE condition de
+   *  CHAQUE groupe, même structure imbriquée que `groups` (étape 7 du plan
+   *  de reprise post-audit, 25/08/2026, GAPS_OUVERTS.md, "OU imbriqué dans
+   *  un ET") -- capturés pour être stockés dans bets.structured_combo,
+   *  jamais re-matchés par nom plus tard (même leçon que
+   *  structured_player_id/structured_duel). */
+  groupsMeta: ComboConditionMeta[][];
 };
 
 /**
- * Pari COMBO (24/08/2026, GAPS_OUVERTS.md) -- ET de N conditions
- * INDEPENDANTES (P(combo) = produit des P(condition_i)). Comme
+ * Pari COMBO (24/08/2026, GAPS_OUVERTS.md ; étendu étape 7, 25/08/2026,
+ * "OU imbriqué dans un ET") -- ET de N GROUPES INDEPENDANTS (P(combo) =
+ * produit des P(groupe_i)) -- chaque groupe est normalement 1 SEULE
+ * condition (comportement inchangé depuis le chantier combo d'origine),
+ * ou 2+ conditions reliées par un OU (au moins une doit être vraie). Comme
  * predictComparison(), aucune notion OVER/UNDER au niveau du pari entier --
  * chaque condition porte la sienne.
  */
 export async function predictCombo(
-  conditions: ComboCondition[],
+  groups: ComboCondition[][],
   homeTeamName: string,
   awayTeamName: string,
   asOfDate: string,
@@ -606,14 +611,16 @@ export async function predictCombo(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        conditions: conditions.map((c) => ({
-          kind: c.kind,
-          joueurs: c.players,
-          equipe: c.team,
-          stats: c.stats,
-          seuil: c.threshold,
-          comparison: c.comparison,
-        })),
+        conditions: groups.map((group) =>
+          group.map((c) => ({
+            kind: c.kind,
+            joueurs: c.players,
+            equipe: c.team,
+            stats: c.stats,
+            seuil: c.threshold,
+            comparison: c.comparison,
+          })),
+        ),
         equipe_domicile: homeTeamName,
         equipe_exterieur: awayTeamName,
         as_of_date: asOfDate,
@@ -623,15 +630,16 @@ export async function predictCombo(
     if (!res.ok) return null;
     const data = await res.json();
     if (typeof data.proba !== "number" || !Array.isArray(data.conditions_meta)) return null;
-    const conditionsMeta: ComboConditionMeta[] = data.conditions_meta.map(
-      (m: { kind: "PLAYER" | "TEAM"; player_ids?: number[]; team_id?: number; stats: string[] }) => ({
-        kind: m.kind,
-        playerIds: Array.isArray(m.player_ids) ? m.player_ids : null,
-        teamId: typeof m.team_id === "number" ? m.team_id : null,
-        stats: m.stats,
-      }),
+    const toMeta = (m: { kind: "PLAYER" | "TEAM"; player_ids?: number[]; team_id?: number; stats: string[] }): ComboConditionMeta => ({
+      kind: m.kind,
+      playerIds: Array.isArray(m.player_ids) ? m.player_ids : null,
+      teamId: typeof m.team_id === "number" ? m.team_id : null,
+      stats: m.stats,
+    });
+    const groupsMeta: ComboConditionMeta[][] = data.conditions_meta.map(
+      (group: { kind: "PLAYER" | "TEAM"; player_ids?: number[]; team_id?: number; stats: string[] }[]) => group.map(toMeta),
     );
-    return { proba: data.proba, conditionsMeta };
+    return { proba: data.proba, groupsMeta };
   } catch {
     return null;
   }

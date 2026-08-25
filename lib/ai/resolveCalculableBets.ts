@@ -1025,7 +1025,9 @@ type ComboConditionRow = {
   comparison: "OVER" | "UNDER";
 };
 
-type StructuredCombo = { conditions: ComboConditionRow[] };
+type ComboConditionGroup = { or: ComboConditionRow[] };
+
+type StructuredCombo = { conditions: ComboConditionGroup[] };
 
 type EligibleComboBetRow = {
   id: string;
@@ -1103,13 +1105,39 @@ async function resolveComboConditionSatisfied(
   return condition.comparison === "UNDER" ? total < condition.threshold : total > condition.threshold;
 }
 
-/** Chantier combo (24/08/2026, GAPS_OUVERTS.md) -- résolution des paris
- *  COMBO (ET de N conditions, structured_combo JSONB -- cf. migration
- *  20260824100000). Même limite MATCH uniquement que les autres resolvers.
- *  Court-circuite dès la 1ère condition FAUSSE (le combo est perdu, peu
- *  importe que les conditions suivantes aient des stats synchronisées ou
- *  non) -- résout les paris perdus plus vite sans attendre des données qui
- *  ne changeront pas l'issue. */
+/** Valeur réelle (true/false/null) d'UN GROUPE combo -- étape 7 du plan de
+ *  reprise post-audit (25/08/2026, GAPS_OUVERTS.md, "OU imbriqué dans un
+ *  ET"). 1 seule condition dans le groupe : comportement INCHANGÉ (délègue
+ *  directement à resolveComboConditionSatisfied()). 2+ conditions : le
+ *  groupe est VRAI dès qu'UNE SEULE condition l'est (court-circuite sur le
+ *  premier true trouvé, même esprit que le court-circuit du ET global sur
+ *  le premier false) -- NULL (données pas encore synchronisées) seulement
+ *  si AUCUNE condition n'est trouvée vraie ET qu'au moins une reste
+ *  incomplète (une donnée manquante ne peut jamais, à elle seule, faire
+ *  perdre un groupe OU si une autre condition du même groupe est déjà
+ *  confirmée vraie). */
+async function resolveComboGroupSatisfied(
+  supabase: SupabaseServiceClient, group: ComboConditionGroup, gameId: string
+): Promise<boolean | null> {
+  let sawIncomplete = false;
+  for (const condition of group.or) {
+    const satisfied = await resolveComboConditionSatisfied(supabase, condition, gameId);
+    if (satisfied === true) return true;
+    if (satisfied === null) sawIncomplete = true;
+  }
+  return sawIncomplete ? null : false;
+}
+
+/** Chantier combo (24/08/2026, GAPS_OUVERTS.md ; étendu étape 7,
+ *  25/08/2026, "OU imbriqué dans un ET") -- résolution des paris COMBO (ET
+ *  de N GROUPES, structured_combo JSONB -- même colonne que le chantier
+ *  d'origine, migration 20260824100000, juste une forme imbriquée en plus
+ *  à l'intérieur -- aucune nouvelle migration nécessaire). Même limite
+ *  MATCH uniquement que les autres resolvers. Court-circuite dès le 1er
+ *  GROUPE FAUX (le combo est perdu, peu importe
+ *  que les groupes suivants aient des stats synchronisées ou non) --
+ *  résout les paris perdus plus vite sans attendre des données qui ne
+ *  changeront pas l'issue. */
 export async function resolveCalculableComboBets(): Promise<ResolveBetsSummary> {
   const supabase = getServiceClient();
   const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
@@ -1162,8 +1190,8 @@ export async function resolveCalculableComboBets(): Promise<ResolveBetsSummary> 
 
     let allSatisfied = true;
     let incomplete = false;
-    for (const condition of bet.structured_combo.conditions) {
-      const satisfied = await resolveComboConditionSatisfied(supabase, condition, gameId);
+    for (const group of bet.structured_combo.conditions) {
+      const satisfied = await resolveComboGroupSatisfied(supabase, group, gameId);
       if (satisfied === null) {
         incomplete = true;
         break;
@@ -1184,7 +1212,7 @@ export async function resolveCalculableComboBets(): Promise<ResolveBetsSummary> 
       .from("bets")
       .update({
         status: outcome,
-        resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${bet.structured_combo.conditions.length} conditions).`,
+        resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${bet.structured_combo.conditions.length} groupes).`,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

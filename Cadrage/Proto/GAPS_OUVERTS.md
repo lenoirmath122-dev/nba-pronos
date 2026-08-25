@@ -5,33 +5,88 @@
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
 > **Où en est le plan de reprise post-audit (25/08/2026, fin de session)** --
-> étapes 1 ("5 majeur/banc"), 2 ("petits gains groupés"), 3 ("comptage
-> roster-wide"), 4 ("meilleur marqueur"), 5 ("événements de match") et 6
-> ("événements granulaires") codées, testées en conditions réelles (Claude +
-> HTTP local + HTTP Cloud Run réel). Étapes 1/2/3 commitées ET poussées
-> (`4ff0a44`, `1a6f36a`, `714e45f`, `94db7a4`) ; étape 4 commitée ET poussée
-> (`332ac92`) ; étapes 5 et 6 commitées ET poussées ensemble (`4efa285` --
-> étape 5 avait été codée puis validée avant l'étape 6 dans la même session,
-> jamais commitée seule). Backfill historique étape 5 (joueur+match)
-> **LANCÉ ET TERMINÉ** (`backfill_game_events.py`, 5262 lignes joueur/6602
-> matchs mis à jour, aucun appel API) -- redéployé sur Cloud Run
-> (`nba-pronos-stats-00021-fqg` puis `00022-z4w` pour l'étape 6) et testé en
-> HTTP réel. **Étape 6 également redéployée et backfillée** (voir
-> l'entrée ci-dessous pour le détail) -- migrations poussées, backfill
-> terminé (63965 lignes `stats_block_events`, 6602 matchs
-> `had_buzzer_beater`/`last_basket_player_id`), Cloud Run + Vercel
-> redéployés. **Pas encore testé de bout en bout via l'appli réelle** (vrai
-> pari soumis par l'utilisateur) pour les étapes 5 ET 6 -- seuls les appels
-> directs (structuration IA + service HTTP) sont vérifiés pour l'instant,
-> même limite que chaque chantier précédent à ce stade. Prochaine étape à
-> reprendre : **étape 7, OU imbriqué dans un ET** (refonte du schéma combo),
-> puis **étape 8, guide de rédaction des paris** (contenu, pas du code).
-> Sinon, entraîner un vrai modèle joueur+période
-> (`train_player_period_model.py`, pas encore écrit) -- le backfill
-> `stats_box_scores_by_period` est fini depuis la session du 24/08/2026. Le
-> plan complet (8 étapes) et les points explicitement différés sont
-> documentés dans les entrées ci-dessous et dans
+> étapes 1 à 7 codées. 1/2/3 commitées ET poussées (`4ff0a44`, `1a6f36a`,
+> `714e45f`, `94db7a4`) ; étape 4 commitée ET poussée (`332ac92`) ; étapes 5
+> et 6 commitées ET poussées ensemble (`4efa285`), plus un correctif réel
+> trouvé en testant (négation des stats MATCH_TOTAL sans seuil, `13f095a`) ;
+> étapes 5/6 **testées de bout en bout via l'appli réelle** (4 vrais paris
+> soumis par l'utilisateur, résolution automatique forcée sur des matchs
+> réels NBA -- 3/4 corrects du premier coup, le 4e a révélé le bug de
+> négation ci-dessus, corrigé et revérifié WON). Étape 7 codée et testée
+> (Claude + HTTP local) cette session, **pas encore commitée/déployée** --
+> voir son entrée ci-dessous. Prochaine étape à reprendre après ça :
+> **étape 8, guide de rédaction des paris** (contenu, pas du code). Sinon,
+> entraîner un vrai modèle joueur+période (`train_player_period_model.py`,
+> pas encore écrit) -- le backfill `stats_box_scores_by_period` est fini
+> depuis la session du 24/08/2026. Le plan complet (8 étapes) et les points
+> explicitement différés sont documentés dans les entrées ci-dessous et dans
 > `AUDIT_TYPES_PARIS_24_08_2026.md`.
+
+> **Étape 7 du plan de reprise, CODÉE le 25/08/2026** -- "OU imbriqué dans
+> un ET" (extension du chantier combo, 24/08/2026) -- "Nikola Jokic réalise
+> un triple-double avec au moins 40 points et au moins 20 rebonds ou
+> passes." (SEUL exemple réel du corpus nécessitant ce mécanisme,
+> `types_de_paris_playoffs_2026.md`, vérifié : aucune autre phrase du
+> corpus ne combine "et" et "ou").
+>
+> **Détour réel avant la version finale** : la 1ère tentative ajoutait
+> directement un champ `or` imbriqué dans `combo_bet.conditions` du schéma
+> PARTAGÉ (`structureBet.ts`) -- reproduit en HTTP réel : `400 The compiled
+> grammar is too large`, sur TOUS les paris (pas seulement combo), MÊME
+> échec exact que la leçon PERIOD du 24/08/2026 (le schéma partagé est
+> confirmé être resté au plafond malgré les ajouts d'étapes 5/6, qui
+> n'avaient touché que des enums, jamais une structure imbriquée
+> supplémentaire).
+>
+> **Solution retenue** : `bet_subject=COMBO` du schéma partagé reste
+> INCHANGÉ (conditions plates, ET simple -- cas de loin le plus fréquent,
+> zéro régression). Nouveau schéma dédié `structureComboBet.ts`
+> (`structureComboNestedBet()`), routé EN AMONT par mot-clé
+> (`COMBO_NESTED_OR_KEYWORD_REGEX` -- texte contenant À LA FOIS "et" et "ou"
+> dans la même phrase, peu importe l'ordre), même patron que PERIOD/
+> SUPERLATIVE/etc. Un texte combo SANS "ou" continue de passer par le
+> schéma partagé -- seul le cas OU imbriqué prend le chemin dédié.
+>
+> **Modèle de données unifié** : `conditions` devient une liste de GROUPES
+> (`{ or: Condition[] }[]`) -- 1 seule condition dans un groupe = ET simple
+> (comportement inchangé), 2+ = OU entre elles (au moins une doit être
+> vraie). Le schéma partagé (COMBO simple) enveloppe chaque condition dans
+> un groupe à 1 item avant stockage -- MÊME structure `structured_combo`
+> pour les 2 chemins de structuration, donc UN SEUL résolveur/UNE SEULE
+> fonction de prédiction pour les 2 (`writeComboResult()` côté TS,
+> `_condition_group_proba()` côté Python), pas de branchement dupliqué.
+>
+> **Calcul** : P(groupe) = 1 - produit(1 - P(condition_i)) sous
+> INDÉPENDANCE -- MÊME formule EXACTE que `relation="OR"` déjà utilisée
+> pour COMPARISON (24/08/2026, généralisée à N termes ici), pas une
+> nouvelle approximation. P(combo) = produit des P(groupe_i), comme avant
+> (indépendance entre groupes ET entre conditions d'un même groupe,
+> documentée explicitement comme le reste du chantier duel/combo).
+>
+> **Résolution** (`resolveComboGroupSatisfied()`, resolveCalculableBets.ts)
+> : un groupe est vrai dès qu'UNE condition l'est (court-circuite sur le
+> 1er `true` trouvé, même esprit que le court-circuit du ET global sur le
+> 1er `false`) -- `null` (données pas encore synchronisées) seulement si
+> AUCUNE condition n'est trouvée vraie ET qu'au moins une reste incomplète
+> (une donnée manquante ne fait jamais perdre un groupe OU si une autre
+> condition du même groupe est déjà confirmée vraie).
+>
+> Testé avec 2 vrais appels Claude Sonnet 5 sur le schéma dédié (l'exemple
+> réel du corpus -- 3 groupes extraits correctement, dont le dernier avec 2
+> conditions OU ; rejet propre d'un combo simple sans "ou", redirigé vers
+> le schéma partagé) + 4 non-régressions sur le schéma partagé (COMBO
+> simple, COMBO fourchette, PLAYER simple, COMPARISON OR -- tous
+> bit-identiques au comportement d'avant cette étape) + HTTP local réel
+> (`/predict-combo`, nouveau format `conditions: list[list[...]]` --
+> combo à 3 groupes dont un OU, proba cohérente ~1e-9 pour une combinaison
+> extrême triple-double+40pts+20reb-ou-20pas sur un ailier ; groupe à 1 item
+> vérifié structurellement identique à l'ancien chemin, aucune régression
+> possible par construction du code).
+>
+> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres. **Aucune migration
+> nécessaire** (`structured_combo` reste `jsonb`, seule la FORME imbriquée
+> change). Pas encore redéployé sur Cloud Run ni commité/poussé -- prochaine
+> action de la session.
 
 > **Étape 6 du plan de reprise, CODÉE et DÉPLOYÉE le 25/08/2026** --
 > "événements granulaires" -- buzzer beater ("aucun panier marqué au
