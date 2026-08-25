@@ -6,10 +6,10 @@ depuis le play-by-play local (jamais synchronisées vers Supabase, même
 principe que went_to_ot/quarters_won_count : signal de PRODUCTION vient du
 backfill/refresh_daily.py Supabase, ce script ne sert qu'à l'entraînement).
 
-5 modèles, réutilisant TEL QUEL les fonctions génériques déjà écrites pour
-le chantier période (train_period_model.py) et le chantier dd/td
-(train_doubledouble_model.py) -- aucune nouvelle fonction d'entraînement,
-juste de nouveaux appels :
+5 modèles (étape 5), réutilisant TEL QUEL les fonctions génériques déjà
+écrites pour le chantier période (train_period_model.py) et le chantier
+dd/td (train_doubledouble_model.py) -- aucune nouvelle fonction
+d'entraînement, juste de nouveaux appels :
 
   - tech.joblib                    : classification binaire JOUEUR (au moins
                                       1 faute technique sur le match) --
@@ -27,6 +27,16 @@ juste de nouveaux appels :
                                       (own/opp, pas domicile/extérieur).
   - match_technical_fouls.joblib   : classification MULTI-CLASSE (0/1/2/3/4+),
                                       fautes techniques combinées du match.
+
++ 1 modèle (étape 6 du plan de reprise post-audit, 25/08/2026,
+GAPS_OUVERTS.md, chantier "événements granulaires") :
+
+  - had_buzzer_beater.joblib       : classification binaire MATCH (au moins
+                                      1 panier marqué à <=0.3s du buzzer,
+                                      n'importe quelle période) -- MÊME
+                                      patron EXACT que had_backcourt_turnover
+                                      ci-dessus, cible construite dans
+                                      build_targets.py::_match_buzzer_beater_from_pbp().
 
 Buckets (3+ / 4+) : la queue de distribution est rare (cf. GAPS_OUVERTS.md,
 own_technical_fouls a very few exemples au-delà de 3) -- lumped plutôt que
@@ -69,13 +79,16 @@ def main():
     # total_timeouts (regression MATCH) + match_technical_fouls (multi-classe
     # MATCH) -- meme feature set home_/away_ que overtime/total_points. ----
     matchs = pd.read_sql(
-        f"SELECT game_id, had_backcourt_turnover, total_timeouts, total_technical_fouls, {', '.join(FEATURE_COLS)} "
-        "FROM entrainement_matchs",
+        f"SELECT game_id, had_backcourt_turnover, had_buzzer_beater, total_timeouts, total_technical_fouls, "
+        f"{', '.join(FEATURE_COLS)} FROM entrainement_matchs",
         conn, dtype={"game_id": str},
     )
     matchs = matchs.merge(game_dates, on="game_id", how="left")
 
     train_binary_classifier("had_backcourt_turnover", matchs, FEATURE_COLS, "had_backcourt_turnover")
+    # had_buzzer_beater (etape 6, GAPS_OUVERTS.md) -- meme patron EXACT que
+    # had_backcourt_turnover ci-dessus (classification binaire MATCH).
+    train_binary_classifier("had_buzzer_beater", matchs, FEATURE_COLS, "had_buzzer_beater")
     train_regressor("total_timeouts", matchs, FEATURE_COLS, "total_timeouts", [3, 5, 7, 9, 11])
 
     matchs["match_technical_fouls_bucket"] = _bucket(matchs["total_technical_fouls"], cap=MATCH_TECH_CLASSES[-1])

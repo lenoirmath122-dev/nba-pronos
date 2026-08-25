@@ -277,6 +277,121 @@ def predict_backcourt_turnover(req: PredictBackcourtTurnoverRequest):
     }
 
 
+class PredictBuzzerBeaterRequest(BaseModel):
+    """Chantier "evenements granulaires" (etape 6 du plan de reprise
+    post-audit, 25/08/2026, GAPS_OUVERTS.md) -- au moins 1 panier marque au
+    buzzer (n'importe quelle periode) durant CE match. Stat MATCH binaire
+    directe, sans seuil -- MEME contrat que PredictBackcourtTurnoverRequest."""
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-buzzer-beater")
+def predict_buzzer_beater(req: PredictBuzzerBeaterRequest):
+    sb = _client()
+
+    try:
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_buzzer_beater_proba(sb, home_id, away_id, req.as_of_date, season=req.season)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        **result,
+    }
+
+
+class PredictLastBasketRequest(BaseModel):
+    """Chantier "evenements granulaires" (etape 6, GAPS_OUVERTS.md) -- "X
+    inscrit le dernier panier du match". MEME contrat que
+    PredictSuperlativeRequest (joueur + les 2 VRAIES equipes du match, pour
+    construire le bassin "tous les joueurs du match"), sans `stat` (toujours
+    fgm, implicite)."""
+    joueur: str
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-last-basket")
+def predict_last_basket(req: PredictLastBasketRequest):
+    sb = _client()
+
+    try:
+        player_id, player_name = supabase_context.find_player(sb, req.joueur)
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_last_basket_proba(sb, player_id, home_id, away_id, req.as_of_date, season=req.season)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "joueur": player_name,
+        "joueur_id": player_id,
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        **result,
+    }
+
+
+class PredictBlockOnPlayerRequest(BaseModel):
+    """Chantier "evenements granulaires" (etape 6, GAPS_OUVERTS.md) -- "X
+    realise au moins 1 contre SUR Y" (contre attribue a un joueur PRECIS,
+    pas juste un total de contres). bloqueur/victime : 2 joueurs distincts,
+    obligatoirement dans des equipes OPPOSEES du match vise (verifie cote
+    service, cf. compute_block_on_player_proba)."""
+    bloqueur: str
+    victime: str
+    equipe_domicile: str
+    equipe_exterieur: str
+    as_of_date: str
+    season: str | None = None
+
+
+@app.post("/predict-block-on-player")
+def predict_block_on_player(req: PredictBlockOnPlayerRequest):
+    sb = _client()
+
+    try:
+        blocker_id, blocker_name = supabase_context.find_player(sb, req.bloqueur)
+        victim_id, victim_name = supabase_context.find_player(sb, req.victime)
+        home_id, home_name = supabase_context.find_team(sb, req.equipe_domicile)
+        away_id, away_name = supabase_context.find_team(sb, req.equipe_exterieur)
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    try:
+        result = supabase_context.compute_block_on_player_proba(
+            sb, blocker_id, victim_id, home_id, away_id, req.as_of_date, season=req.season,
+        )
+    except ValueError as e:
+        raise HTTPException(400, str(e)) from e
+
+    return {
+        "bloqueur": blocker_name,
+        "bloqueur_id": blocker_id,
+        "victime": victim_name,
+        "victime_id": victim_id,
+        "equipe_domicile": home_name,
+        "equipe_exterieur": away_name,
+        **result,
+    }
+
+
 class PredictTechnicalFoulsCountRequest(BaseModel):
     """Fautes techniques EQUIPE/MATCH, comptage EXACT (etape 5 du plan de
     reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- "Orlando recoit

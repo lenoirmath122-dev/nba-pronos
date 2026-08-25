@@ -48,6 +48,7 @@ Usage:
     python build_targets.py
 """
 
+import re
 import sqlite3
 from pathlib import Path
 
@@ -174,6 +175,46 @@ def _match_events_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
     out["had_backcourt_turnover"] = out["had_backcourt_turnover"].fillna(0).astype(int)
     out["total_timeouts"] = out["home_timeouts"] + out["away_timeouts"]
     return out
+
+
+# Chantier "evenements granulaires" (etape 6 du plan de reprise post-audit,
+# GAPS_OUVERTS.md, 25/08/2026) -- "aucun panier marque au buzzer durant le
+# match". Seuil calibre EMPIRIQUEMENT sur les CSV locaux avant de coder (pas
+# devine) : <=0.3s donne un taux de "au moins 1 par match" d'environ 26%
+# (echantillon de 300 matchs, 2022-23) -- ni trop rare ni trop frequent pour
+# un classifieur utile, et coherent avec la vraie notion de "AU buzzer"
+# (teste a des seuils plus larges type <=2s, ~52% des matchs -- ca capture
+# surtout des paniers normaux en fin de possession, pas vraiment "au
+# buzzer"). N'IMPORTE QUELLE periode (Q1-Q4/OT), pas seulement la fin du
+# match -- le pari reel dit "durant le match", jamais restreint au dernier
+# quart-temps.
+_BUZZER_BEATER_THRESHOLD_SECONDS = 0.3
+_CLOCK_RE = re.compile(r"PT(\d+)M([\d.]+)S")
+
+
+def _clock_to_seconds(clock) -> float | None:
+    m = _CLOCK_RE.match(str(clock))
+    if not m:
+        return None
+    return int(m.group(1)) * 60 + float(m.group(2))
+
+
+def _match_buzzer_beater_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
+    """DISTINCT game_id des matchs avec au moins 1 panier marque a <=0.3s du
+    buzzer (n'importe quelle periode, les 2 equipes confondues) -- fusionne
+    ensuite (how="left" + fillna(0)) dans build_matchs_training(), meme
+    geste que backcourt/had_backcourt_turnover ci-dessus (0 explicite pour
+    un match SANS l'evenement, pas une donnee manquante). Le clock est
+    stocke en TEXTE (format "PTxxMxx.xxS", pas convertible en SQL direct)
+    -- parse en pandas, meme geste que minutes_to_float() ci-dessous pour un
+    autre champ texte."""
+    pbp = pd.read_sql(
+        "SELECT game_id, clock FROM play_by_play WHERE action_type = 'Made Shot'",
+        conn, dtype={"game_id": str},
+    )
+    pbp["secs"] = pbp["clock"].apply(_clock_to_seconds)
+    game_ids = pbp.loc[pbp["secs"] <= _BUZZER_BEATER_THRESHOLD_SECONDS, "game_id"].unique()
+    return pd.DataFrame({"game_id": game_ids, "had_buzzer_beater": 1})
 
 
 def minutes_to_float(m):
@@ -386,6 +427,13 @@ def build_matchs_training(conn: sqlite3.Connection) -> pd.DataFrame:
     df["home_technical_fouls"] = df["home_technical_fouls"].fillna(0)
     df["away_technical_fouls"] = df["away_technical_fouls"].fillna(0)
     df["total_technical_fouls"] = df["home_technical_fouls"] + df["away_technical_fouls"]
+
+    # Chantier "evenements granulaires" (etape 6, GAPS_OUVERTS.md) --
+    # had_buzzer_beater (cible directe MATCH_TOTAL sans seuil, meme principe
+    # que had_backcourt_turnover/went_to_ot).
+    buzzer = _match_buzzer_beater_from_pbp(conn)
+    df = df.merge(buzzer, on="game_id", how="left")
+    df["had_buzzer_beater"] = df["had_buzzer_beater"].fillna(0).astype(int)
 
     return df
 

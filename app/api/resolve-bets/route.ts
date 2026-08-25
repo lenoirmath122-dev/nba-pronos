@@ -13,6 +13,8 @@ import {
   resolveCalculableSuperlativeBets,
   resolveCalculableGameEventBets,
   resolveCalculableTechnicalFoulsCountBets,
+  resolveCalculableLastBasketBets,
+  resolveCalculableBlockOnPlayerBets,
   type ResolveBetsSummary,
 } from "@/lib/ai/resolveCalculableBets";
 
@@ -48,6 +50,8 @@ async function handle(request: Request): Promise<Response> {
       superlativeSummary,
       gameEventSummary,
       technicalFoulsCountSummary,
+      lastBasketSummary,
+      blockOnPlayerSummary,
     ] = await Promise.all([
       resolveCalculableBets(),
       resolveCalculableSeriesBets(),
@@ -61,6 +65,8 @@ async function handle(request: Request): Promise<Response> {
       resolveCalculableSuperlativeBets(),
       resolveCalculableGameEventBets(),
       resolveCalculableTechnicalFoulsCountBets(),
+      resolveCalculableLastBasketBets(),
+      resolveCalculableBlockOnPlayerBets(),
     ]);
     const summary: ResolveBetsSummary = {
       resolved: [
@@ -76,6 +82,8 @@ async function handle(request: Request): Promise<Response> {
         ...superlativeSummary.resolved,
         ...gameEventSummary.resolved,
         ...technicalFoulsCountSummary.resolved,
+        ...lastBasketSummary.resolved,
+        ...blockOnPlayerSummary.resolved,
       ],
       skipped: [
         ...matchSummary.skipped,
@@ -90,6 +98,8 @@ async function handle(request: Request): Promise<Response> {
         ...superlativeSummary.skipped,
         ...gameEventSummary.skipped,
         ...technicalFoulsCountSummary.skipped,
+        ...lastBasketSummary.skipped,
+        ...blockOnPlayerSummary.skipped,
       ],
     };
     return NextResponse.json(summary);

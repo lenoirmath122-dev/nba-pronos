@@ -6,6 +6,8 @@ import { structureRosterSplitBet } from "./structureRosterSplitBet";
 import { structureRosterCountBet } from "./structureRosterCountBet";
 import { structureSuperlativeBet } from "./structureSuperlativeBet";
 import { structureTechnicalFoulsCountBet } from "./structureTechnicalFoulsCountBet";
+import { structureLastBasketBet } from "./structureLastBasketBet";
+import { structureBlockOnPlayerBet } from "./structureBlockOnPlayerBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -17,12 +19,15 @@ import {
   predictOvertime,
   predictTotalTimeouts,
   predictBackcourtTurnover,
+  predictBuzzerBeater,
   predictPeriodTeamOutcome,
   predictPlayerPeriodStat,
   predictRosterSplit,
   predictRosterCount,
   predictSuperlative,
   predictTechnicalFoulsCount,
+  predictLastBasket,
+  predictBlockOnPlayer,
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
@@ -144,6 +149,24 @@ const SUPERLATIVE_KEYWORD_REGEX =
  *  cas non couvert. */
 const TECHNICAL_FOULS_COUNT_KEYWORD_REGEX = /(?:fautes? techniques?[^.!?]{0,30}exactement|exactement[^.!?]{0,30}fautes? techniques?)/i;
 
+/** Détecte un texte "de forme" "dernier panier du match" AVANT tout appel
+ *  Claude (étape 6 du plan de reprise post-audit, 25/08/2026,
+ *  GAPS_OUVERTS.md, chantier "événements granulaires") -- même patron que
+ *  les regex ci-dessus. Signature lexicale étroite ("dernier panier"),
+ *  aucun chevauchement connu avec les autres regex de ce fichier (aucune ne
+ *  contient "panier"). */
+const LAST_BASKET_KEYWORD_REGEX = /dernier\s+panier/i;
+
+/** Détecte un texte "de forme" "contre sur un joueur précis" AVANT tout
+ *  appel Claude (étape 6, GAPS_OUVERTS.md) -- même patron que les regex
+ *  ci-dessus. Signature lexicale étroite ("contre(s) sur") : ne matche PAS
+ *  "Wembanyama réalise plus de 3 contres" (bet_subject=PLAYER, stat=blk) ni
+ *  "Aaron Gordon réalise plus de contres que Rudy Gobert" (COMPARISON,
+ *  aucun "sur" adjacent à "contre(s)") -- vérifié sans collision avec
+ *  ROSTER_COUNT_KEYWORD_REGEX ci-dessus (exige littéralement "joueurs",
+ *  jamais présent dans "au moins 1 contre sur Chet Holmgren"). */
+const BLOCK_ON_PLAYER_KEYWORD_REGEX = /\bcontres?\s+sur\b/i;
+
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
  *  la serie (game_number = 1, pas un "seed" explicite, cf. GAPS_OUVERTS.md
@@ -234,6 +257,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -316,6 +341,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
         p_stat: periodBet.player_stat,
         p_threshold: periodBet.threshold,
         p_comparison: periodBet.comparison,
@@ -397,6 +424,8 @@ export async function structureAndScoreBet(
       p_structured_roster_count: null,
       p_structured_superlative: null,
       p_structured_technical_fouls_count: null,
+      p_structured_last_basket: null,
+      p_structured_block_on_player: null,
       p_stat: null,
       p_threshold: periodBet.threshold,
       p_comparison: periodBet.comparison,
@@ -471,6 +500,8 @@ export async function structureAndScoreBet(
       p_structured_roster_count: null,
       p_structured_superlative: null,
       p_structured_technical_fouls_count: null,
+      p_structured_last_basket: null,
+      p_structured_block_on_player: null,
       p_stat: rosterSplitBet.stat,
       p_threshold: rosterSplitBet.threshold,
       p_comparison: rosterSplitBet.comparison,
@@ -570,6 +601,8 @@ export async function structureAndScoreBet(
       },
       p_structured_superlative: null,
       p_structured_technical_fouls_count: null,
+      p_structured_last_basket: null,
+      p_structured_block_on_player: null,
       p_stat: rosterCountBet.stat,
       p_threshold: rosterCountBet.stat_threshold,
       p_comparison: rosterCountBet.stat_comparison,
@@ -627,6 +660,8 @@ export async function structureAndScoreBet(
       p_structured_roster_count: null,
       p_structured_superlative: { stat: superlativeBet.stat },
       p_structured_technical_fouls_count: null,
+      p_structured_last_basket: null,
+      p_structured_block_on_player: null,
       p_stat: superlativeBet.stat,
       // threshold/comparison volontairement null -- probabilité DIRECTE
       // (même principe que dd/td), et surtout ça empêche
@@ -705,8 +740,134 @@ export async function structureAndScoreBet(
       p_structured_roster_count: null,
       p_structured_superlative: null,
       p_structured_technical_fouls_count: { scope: countBet.scope, count_relation: countBet.count_relation },
+      p_structured_last_basket: null,
+      p_structured_block_on_player: null,
       p_stat: null,
       p_threshold: countBet.count_threshold,
+      p_comparison: null,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: "GAME_EVENT" satisfies BetCategory,
+    });
+  }
+
+  /** Pari "dernier panier du match" (étape 6 du plan de reprise post-audit,
+   *  25/08/2026, GAPS_OUVERTS.md) -- cf. structureLastBasketBet.ts. MATCH
+   *  uniquement, même limite que les autres branches. Appelée UNIQUEMENT
+   *  quand LAST_BASKET_KEYWORD_REGEX matche (cf. try ci-dessous). */
+  async function handleLastBasketBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structureLastBasketBet(description, teamNames);
+    if (!structuration || !structuration.calculable || structuration.bet_subject !== "LAST_BASKET" || !structuration.player) {
+      await markNotCalculable();
+      return;
+    }
+    if (scope !== "MATCH" || !matchId) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+    const asOfDate = matchTeams.scheduledAt.slice(0, 10);
+
+    const prediction = await predictLastBasket(structuration.player, matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate);
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      p_structured_player_name: structuration.player,
+      p_structured_player_id: prediction.playerId,
+      p_structured_team_id: null,
+      p_structured_duel: null,
+      p_structured_combo: null,
+      p_structured_period: null,
+      p_structured_roster_split: null,
+      p_structured_roster_count: null,
+      p_structured_superlative: null,
+      p_structured_technical_fouls_count: null,
+      p_structured_last_basket: true,
+      p_structured_block_on_player: null,
+      p_stat: null,
+      // threshold/comparison volontairement null -- probabilité DIRECTE,
+      // même garde que SUPERLATIVE (empêche resolveCalculableBets(), le
+      // résolveur PLAYER de base, de trancher ce pari à tort).
+      p_threshold: null,
+      p_comparison: null,
+      p_is_calculable: true,
+      p_calculated_proba: prediction.proba,
+      p_suggested_difficulty: probaToDifficulty(prediction.proba),
+      p_category: "GAME_EVENT" satisfies BetCategory,
+    });
+  }
+
+  /** Pari "contre sur un joueur précis" (étape 6, GAPS_OUVERTS.md) -- cf.
+   *  structureBlockOnPlayerBet.ts. MATCH uniquement, même limite que les
+   *  autres branches. Appelée UNIQUEMENT quand BLOCK_ON_PLAYER_KEYWORD_REGEX
+   *  matche (cf. try ci-dessous). */
+  async function handleBlockOnPlayerBet(teamNames: [string, string] | null): Promise<void> {
+    const structuration = await structureBlockOnPlayerBet(description, teamNames);
+    if (
+      !structuration ||
+      !structuration.calculable ||
+      structuration.bet_subject !== "BLOCK_ON_PLAYER" ||
+      !structuration.blocker ||
+      !structuration.victim
+    ) {
+      await markNotCalculable();
+      return;
+    }
+    if (scope !== "MATCH" || !matchId) {
+      await markNotCalculable();
+      return;
+    }
+    const matchTeams = await resolveMatchTeams(supabase, matchId);
+    if (!matchTeams) {
+      await markNotCalculable();
+      return;
+    }
+    const asOfDate = matchTeams.scheduledAt.slice(0, 10);
+
+    const prediction = await predictBlockOnPlayer(
+      structuration.blocker,
+      structuration.victim,
+      matchTeams.homeTeamName,
+      matchTeams.awayTeamName,
+      asOfDate,
+    );
+    if (!prediction) {
+      await markNotCalculable();
+      return;
+    }
+
+    await supabase.rpc("update_bet_structuration", {
+      p_bet_id: betId,
+      // Pas de joueur "principal" unique pour ce bet_subject (2 joueurs
+      // distincts, ni l'un ni l'autre "LE" sujet du pari comme pour PLAYER/
+      // SUPERLATIVE/LAST_BASKET) -- les 2 ids réels vivent dans
+      // structured_block_on_player, structured_player_id/name restent null
+      // (évite aussi tout risque que resolveCalculableBets(), le résolveur
+      // PLAYER de base, ne croise ce pari -- il filtre sur
+      // structured_player_id non-null).
+      p_structured_player_name: null,
+      p_structured_player_id: null,
+      p_structured_team_id: null,
+      p_structured_duel: null,
+      p_structured_combo: null,
+      p_structured_period: null,
+      p_structured_roster_split: null,
+      p_structured_roster_count: null,
+      p_structured_superlative: null,
+      p_structured_technical_fouls_count: null,
+      p_structured_last_basket: null,
+      p_structured_block_on_player: { blocker_player_id: prediction.blockerId, victim_player_id: prediction.victimId },
+      p_stat: null,
+      p_threshold: null,
       p_comparison: null,
       p_is_calculable: true,
       p_calculated_proba: prediction.proba,
@@ -778,6 +939,24 @@ export async function structureAndScoreBet(
       return;
     }
 
+    // Routage "dernier panier du match" par mot-clé (étape 6 du plan de
+    // reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même raisonnement
+    // que les regex ci-dessus.
+    if (LAST_BASKET_KEYWORD_REGEX.test(description)) {
+      await handleLastBasketBet(teamNames);
+      return;
+    }
+
+    // Routage "contre sur un joueur précis" par mot-clé (étape 6,
+    // GAPS_OUVERTS.md) -- même raisonnement que les regex ci-dessus.
+    // structureBet.ts (bet_subject=PLAYER, stat=blk) reste seul compétent
+    // pour un total de contres sans adversaire précis -- cette regex ne
+    // cible que "contre(s) sur", pas de collision sémantique.
+    if (BLOCK_ON_PLAYER_KEYWORD_REGEX.test(description)) {
+      await handleBlockOnPlayerBet(teamNames);
+      return;
+    }
+
     const structuration = await structureBet(description, teamNames);
     if (!structuration || !structuration.calculable || !structuration.bet_subject) {
       await markNotCalculable();
@@ -818,30 +997,32 @@ export async function structureAndScoreBet(
           ? await predictOvertime(matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate)
           : matchTotal.stat === "had_backcourt_turnover"
             ? await predictBackcourtTurnover(matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate)
-            : matchTotal.stat === "total_points"
-              ? await predictTotalPoints(
-                  matchTeams.homeTeamName,
-                  matchTeams.awayTeamName,
-                  matchTotal.threshold as number,
-                  matchTotal.comparison as "OVER" | "UNDER",
-                  asOfDate,
-                )
-              : matchTotal.stat === "total_timeouts"
-                ? await predictTotalTimeouts(
+            : matchTotal.stat === "had_buzzer_beater"
+              ? await predictBuzzerBeater(matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate)
+              : matchTotal.stat === "total_points"
+                ? await predictTotalPoints(
                     matchTeams.homeTeamName,
                     matchTeams.awayTeamName,
                     matchTotal.threshold as number,
                     matchTotal.comparison as "OVER" | "UNDER",
                     asOfDate,
                   )
-                : await predictTotalTeamStat(
-                    matchTotal.stat.slice("total_".length) as TeamStatCode,
-                    matchTeams.homeTeamName,
-                    matchTeams.awayTeamName,
-                    matchTotal.threshold as number,
-                    matchTotal.comparison as "OVER" | "UNDER",
-                    asOfDate,
-                  );
+                : matchTotal.stat === "total_timeouts"
+                  ? await predictTotalTimeouts(
+                      matchTeams.homeTeamName,
+                      matchTeams.awayTeamName,
+                      matchTotal.threshold as number,
+                      matchTotal.comparison as "OVER" | "UNDER",
+                      asOfDate,
+                    )
+                  : await predictTotalTeamStat(
+                      matchTotal.stat.slice("total_".length) as TeamStatCode,
+                      matchTeams.homeTeamName,
+                      matchTeams.awayTeamName,
+                      matchTotal.threshold as number,
+                      matchTotal.comparison as "OVER" | "UNDER",
+                      asOfDate,
+                    );
       if (!prediction) {
         await markNotCalculable();
         return;
@@ -858,6 +1039,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
         p_stat: matchTotal.stat,
         p_threshold: matchTotal.threshold,
         p_comparison: matchTotal.comparison,
@@ -865,7 +1048,8 @@ export async function structureAndScoreBet(
         p_calculated_proba: prediction.proba,
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
         p_category: (
-          matchTotal.stat === "went_to_ot" || matchTotal.stat === "had_backcourt_turnover" || matchTotal.stat === "total_timeouts"
+          matchTotal.stat === "went_to_ot" || matchTotal.stat === "had_backcourt_turnover" ||
+          matchTotal.stat === "had_buzzer_beater" || matchTotal.stat === "total_timeouts"
             ? "GAME_EVENT"
             : "SCORE_TOTAL"
         ) satisfies BetCategory,
@@ -916,6 +1100,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
         p_stat: teamStat.stat,
         p_threshold: teamStat.threshold,
         p_comparison: teamStat.comparison,
@@ -1026,6 +1212,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
         p_stat: null,
         p_threshold: relationThreshold,
         p_comparison: null,
@@ -1137,6 +1325,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
         p_stat: null,
         p_threshold: null,
         p_comparison: null,
@@ -1194,6 +1384,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
         p_stat: player.stat,
         p_threshold: player.threshold,
         p_comparison: player.comparison,
@@ -1252,6 +1444,8 @@ export async function structureAndScoreBet(
         p_structured_roster_count: null,
         p_structured_superlative: null,
         p_structured_technical_fouls_count: null,
+      p_structured_last_basket: null,
+      p_structured_block_on_player: null,
       p_stat: player.stat,
       p_threshold: player.threshold,
       p_comparison: player.comparison,

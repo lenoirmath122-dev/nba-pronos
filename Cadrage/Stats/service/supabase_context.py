@@ -490,6 +490,26 @@ def compute_backcourt_turnover_proba(*args, **kwargs) -> dict:
     return _compute_with_consistency_check(lambda: _compute_backcourt_turnover_proba_once(*args, **kwargs))
 
 
+def _compute_buzzer_beater_proba_once(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> dict:
+    """P(au moins 1 panier marque a <=0.3s du buzzer, n'importe quelle
+    periode, les 2 equipes confondues) -- etape 6 du plan de reprise
+    post-audit (25/08/2026, GAPS_OUVERTS.md, chantier "evenements
+    granulaires"). Calque EXACT de _compute_backcourt_turnover_proba_once()
+    (classifieur binaire, meme BASE_FEATURE_COLS) -- cible construite dans
+    build_targets.py::_match_buzzer_beater_from_pbp() (seuil 0.3s calibre
+    empiriquement sur les CSV locaux avant d'entrainer)."""
+    X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
+    bundle = joblib.load(MODELS_DIR / "had_buzzer_beater.joblib")
+    proba = float(bundle["model"].predict_proba(X)[:, 1][0])
+    return {"home_team_id": home_team_id, "away_team_id": away_team_id, "proba": proba}
+
+
+def compute_buzzer_beater_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_buzzer_beater_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_buzzer_beater_proba_once(*args, **kwargs))
+
+
 def _compute_technical_fouls_count_proba_once(
     client, scope: str, count_threshold: int, count_relation: str,
     home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
@@ -1827,3 +1847,143 @@ def compute_superlative_proba(*args, **kwargs) -> dict:
     _player_stat_mean_scale passent par des modeles .joblib, meme
     instabilite deja documentee)."""
     return _compute_with_consistency_check(lambda: _compute_superlative_proba_once(*args, **kwargs))
+
+
+# ============================================================================
+# Chantier "evenements granulaires" (etape 6 du plan de reprise post-audit,
+# 25/08/2026, GAPS_OUVERTS.md) -- "dernier panier du match" (LAST_BASKET) et
+# "contre SUR un joueur precis" (BLOCK_ON_PLAYER). Contrairement a l'etape 5,
+# AUCUN nouveau modele entraine pour ces 2 mecanismes -- reutilisent
+# TELS QUELS les modeles deja en place (blk/fga -- REGRESSION_STATS, fg --
+# PCT_STATS) via des combinaisons nouvelles (part attendue de paniers /
+# amincissement de Poisson), meme esprit que SUPERLATIVE/ROSTER_COUNT
+# (aucun nouveau .joblib, juste une nouvelle facon de combiner l'existant).
+# ============================================================================
+
+def _player_expected_fgm(client, player_id: int, opponent_id: int, is_home: int, rest_days: int = 2) -> float:
+    """Nombre de paniers (tirs au panier reussis, 2 ou 3 points -- PAS les
+    lancers francs) ATTENDU pour CE joueur sur CE match -- n_hat (tentatives
+    attendues) * p_hat (taux estime), MEME formule EXACTE que run_pct()
+    (tester_modele.py, cote joueur) mais sans l'etape finale de comparaison
+    a un seuil : le chantier "dernier panier du match" a besoin de la VALEUR
+    attendue de fgm, pas d'une proba contre un seuil fixe -- meme raison que
+    _player_stat_mean_scale() (chantier duel) extrait compute_proba() pour
+    les stats comptees. Duplique plutot que reutilise run_pct() (contexte
+    joueur = un seul dict plat, differe du contexte equipe combine own_/opp_
+    de _compute_team_pct_proba_once() -- meme situation deja documentee
+    la-bas)."""
+    bundle = joblib.load(MODELS_DIR / "fg_pct.joblib")
+    context, _, _ = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
+    X = pd.DataFrame([context])[bundle["attempts_feature_cols"]]
+    n_hat = max(round(float(bundle["attempts_model"].predict(X)[0])), 1)
+    k = bundle["shrinkage_k"]
+    league_avg = bundle["league_avg"]
+    makes_sum, attempts_sum = context["fgm_sum10"], context["fga_sum10"]
+    if bundle.get("distribution") == "beta_binomial":
+        alpha_post = k * league_avg + makes_sum
+        beta_post = k * (1 - league_avg) + (attempts_sum - makes_sum)
+        p_hat = alpha_post / (alpha_post + beta_post)
+    else:
+        p_hat = (makes_sum + k * league_avg) / (attempts_sum + k)
+    return n_hat * p_hat
+
+
+def _compute_last_basket_proba_once(
+    client, player_id: int, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> dict:
+    """"X inscrit le dernier panier du match" (etape 6, GAPS_OUVERTS.md,
+    "buzzer beater"). Approximation par PART attendue de paniers (fgm) parmi
+    TOUS les joueurs du match, sous hypothese d'echangeabilite (le dernier
+    panier est un tirage parmi tous les paniers du match, la part de chaque
+    joueur reflete sa part ATTENDUE de fgm) -- le mecanisme le plus faible de
+    cette etape, choisi avec l'utilisateur (25/08/2026) dans le meme esprit
+    que plus_minus/total_timeouts deja acceptes : proba honnetement faible
+    plutot que non calculable, ne capture PAS la vraie dynamique du
+    money-time (qui prend les derniers tirs, pas juste "qui tire le plus en
+    moyenne"). Bassin ELARGI des 2 equipes via _team_rotation() -- meme
+    bassin que ROSTER_COUNT/SUPERLATIVE."""
+    player_team_id = _player_current_team_id(client, player_id)
+    if player_team_id not in (home_team_id, away_team_id):
+        raise ValueError(f"le joueur (player_id={player_id}) ne joue pour aucune des 2 equipes de ce match.")
+
+    expected_fgm: dict[int, float] = {}
+    for team_id, opponent_id, is_home in ((home_team_id, away_team_id, 1), (away_team_id, home_team_id, 0)):
+        for pid in _team_rotation(client, team_id, as_of_date):
+            expected_fgm[pid] = _player_expected_fgm(client, pid, opponent_id, is_home)
+
+    # Le joueur vise peut etre absent du bassin ELARGI (top 15 par equipe,
+    # _team_rotation) sans etre absent du match -- calcule sa part a part
+    # dans ce cas plutot que de le rejeter (meme geste que
+    # _resolve_superlative_other_players, qui exclut seulement le joueur
+    # vise du bassin des AUTRES, jamais lui-meme).
+    if player_id not in expected_fgm:
+        is_home = 1 if player_team_id == home_team_id else 0
+        opponent_id = away_team_id if is_home else home_team_id
+        expected_fgm[player_id] = _player_expected_fgm(client, player_id, opponent_id, is_home)
+
+    total = sum(expected_fgm.values())
+    if total <= 0:
+        raise ValueError("Impossible d'estimer un total de paniers attendu pour ce match.")
+    proba = float(min(max(expected_fgm[player_id] / total, 0.0), 1.0))
+
+    return {
+        "label": "Dernier panier du match",
+        "proba": proba,
+        "detail": (
+            f"paniers attendus = {expected_fgm[player_id]:.1f} sur un total match estime a {total:.1f} "
+            f"({len(expected_fgm)} joueurs du bassin) -- approximation par part attendue, pas le vrai money-time"
+        ),
+    }
+
+
+def compute_last_basket_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_last_basket_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_last_basket_proba_once(*args, **kwargs))
+
+
+def _compute_block_on_player_proba_once(
+    client, blocker_id: int, victim_id: int, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> dict:
+    """"X realise au moins 1 contre SUR Y" (etape 6, GAPS_OUVERTS.md) --
+    amincissement de Poisson (thinning) : lambda_bloqueur (moyenne de
+    contres deja modelisee, _player_stat_mean_scale, distribution Poisson)
+    * part attendue des tirs de l'equipe adverse pris par le joueur vise
+    (fga du joueur / fga attendu de SON equipe, team_fga.joblib deja
+    entraine -- chantier "petits gains groupes", 24/08/2026) -- un contre ne
+    peut se produire QUE sur un tir de l'equipe adverse, jamais un
+    coequipier, d'ou la garde explicite ci-dessous."""
+    blocker_team_id = _player_current_team_id(client, blocker_id)
+    victim_team_id = _player_current_team_id(client, victim_id)
+    if blocker_team_id not in (home_team_id, away_team_id) or victim_team_id not in (home_team_id, away_team_id):
+        raise ValueError("le bloqueur et/ou le joueur vise ne jouent pour aucune des 2 equipes de ce match.")
+    if blocker_team_id == victim_team_id:
+        raise ValueError("le bloqueur et le joueur vise jouent dans la MEME equipe -- un contre ne peut viser qu'un adversaire.")
+
+    blocker_is_home = 1 if blocker_team_id == home_team_id else 0
+    blocker_opponent_id = away_team_id if blocker_is_home else home_team_id
+    lambda_blocker, _ = _player_stat_mean_scale(client, blocker_id, "blk", opponent_id=blocker_opponent_id, is_home=blocker_is_home)
+
+    victim_is_home = 1 if victim_team_id == home_team_id else 0
+    victim_opponent_id = away_team_id if victim_is_home else home_team_id
+    victim_fga, _ = _player_stat_mean_scale(client, victim_id, "fga", opponent_id=victim_opponent_id, is_home=victim_is_home)
+    team_fga, _ = _team_stat_mean_scale(client, "fga", victim_team_id, victim_opponent_id, victim_is_home, as_of_date, season=season)
+    if team_fga <= 0:
+        raise ValueError("Impossible d'estimer le volume de tirs de l'equipe visee.")
+    share = min(max(victim_fga / team_fga, 0.0), 1.0)
+
+    proba = float(1 - math.exp(-lambda_blocker * share))
+    return {
+        "label": "Contre sur un joueur précis",
+        "proba": proba,
+        "detail": (
+            f"contres attendus (bloqueur) = {lambda_blocker:.2f} | part des tirs de l'equipe adverse prise par le "
+            f"joueur vise = {share:.1%} ({victim_fga:.1f}/{team_fga:.1f} tirs) -- amincissement de Poisson"
+        ),
+    }
+
+
+def compute_block_on_player_proba(*args, **kwargs) -> dict:
+    """Enveloppe _compute_block_on_player_proba_once() d'une verification de
+    coherence -- voir CONSISTENCY_CHECK_NOTE."""
+    return _compute_with_consistency_check(lambda: _compute_block_on_player_proba_once(*args, **kwargs))

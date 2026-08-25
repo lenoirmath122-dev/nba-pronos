@@ -2022,7 +2022,7 @@ export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSumma
     .eq("scope", "MATCH")
     .eq("is_calculable", true)
     .eq("status", "VALIDATED")
-    .in("structured_stat", ["total_timeouts", "had_backcourt_turnover"])
+    .in("structured_stat", ["total_timeouts", "had_backcourt_turnover", "had_buzzer_beater"])
     .is("structured_player_id", null); // discrimine des paris JOUEUR, même garde que resolveCalculableMatchTotalBets()
   const bets = (betsData ?? []) as EligibleGameEventMatchTotalBetRow[];
   if (bets.length === 0) return summary;
@@ -2084,7 +2084,7 @@ export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSumma
         bet.structured_comparison === "UNDER" ? total < (bet.structured_threshold as number) : total > (bet.structured_threshold as number);
       outcome = won ? "WON" : "LOST";
       resolutionReason = `Résolu automatiquement via les statistiques officielles du match (${total} temps morts combinés).`;
-    } else {
+    } else if (bet.structured_stat === "had_backcourt_turnover") {
       // had_backcourt_turnover : au moins 1 sur TOUT le match (les 2
       // équipes) -- pas d'attribution match-wide stockée directement,
       // sommée depuis stats_box_scores.backcourt_turnovers (même geste que
@@ -2101,6 +2101,24 @@ export async function resolveCalculableGameEventBets(): Promise<ResolveBetsSumma
         total > 0
           ? "Résolu automatiquement -- au moins un retour en zone a eu lieu durant le match."
           : "Résolu automatiquement -- aucun retour en zone n'a eu lieu durant le match.";
+    } else {
+      // had_buzzer_beater (étape 6, GAPS_OUVERTS.md) -- flag MATCH direct
+      // (stats_matchs.had_buzzer_beater), contrairement à
+      // had_backcourt_turnover -- rien à sommer ici, la valeur est déjà
+      // agrégée à la synchro (refresh_daily.py/backfill_game_events.py).
+      const { data: match } = await supabase
+        .from("stats_matchs")
+        .select("had_buzzer_beater")
+        .eq("game_id", gameId)
+        .maybeSingle<{ had_buzzer_beater: boolean | null }>();
+      if (!match || match.had_buzzer_beater === null) {
+        summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
+        continue;
+      }
+      outcome = match.had_buzzer_beater ? "WON" : "LOST";
+      resolutionReason = match.had_buzzer_beater
+        ? "Résolu automatiquement -- au moins un panier a été marqué au buzzer durant le match."
+        : "Résolu automatiquement -- aucun panier n'a été marqué au buzzer durant le match.";
     }
 
     const { data: updated } = await supabase
@@ -2232,6 +2250,216 @@ export async function resolveCalculableTechnicalFoulsCountBets(): Promise<Resolv
       .update({
         status: outcome,
         resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${total} fautes techniques).`,
+        resolved_at: new Date().toISOString(),
+        resolved_by_admin_id: null,
+      })
+      .eq("id", bet.id)
+      .eq("status", "VALIDATED")
+      .select("id")
+      .maybeSingle();
+    if (!updated) {
+      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
+      continue;
+    }
+
+    await recomputeBet(bet.id);
+    summary.resolved.push({ betId: bet.id, outcome });
+  }
+
+  return summary;
+}
+
+// ============================================================================
+// Chantier "événements granulaires" (étape 6 du plan de reprise post-audit,
+// 25/08/2026, GAPS_OUVERTS.md) -- LAST_BASKET ("X inscrit le dernier panier
+// du match") et BLOCK_ON_PLAYER ("X réalise au moins 1 contre SUR Y").
+// ============================================================================
+
+type EligibleLastBasketBetRow = {
+  id: string;
+  match_id: string | null;
+  structured_player_id: number | null;
+  structured_last_basket: boolean | null;
+};
+
+/** Résolution des paris LAST_BASKET -- lit stats_matchs.last_basket_player_id
+ *  (personId du dernier "Made Shot" du match, agrégé à la synchro, cf.
+ *  refresh_daily.py/backfill_game_events.py) et compare au joueur visé
+ *  (structured_player_id, comme SUPERLATIVE/PLAYER classique). MATCH
+ *  uniquement, même limite que les autres resolvers. */
+export async function resolveCalculableLastBasketBets(): Promise<ResolveBetsSummary> {
+  const supabase = getServiceClient();
+  const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, match_id, structured_player_id, structured_last_basket")
+    .eq("scope", "MATCH")
+    .eq("is_calculable", true)
+    .eq("status", "VALIDATED")
+    .eq("structured_last_basket", true);
+  const bets = (betsData ?? []) as EligibleLastBasketBetRow[];
+  if (bets.length === 0) return summary;
+
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const { data: matchesData } = await supabase.from("matches").select("id, status").in("id", matchIds);
+  const finishedMatchIds = new Set(
+    (matchesData ?? []).filter((m) => m.status === "FINISHED").map((m) => m.id as string)
+  );
+
+  const { data: pendingCorrections } = await supabase
+    .from("correction_requests")
+    .select("target_bet_id")
+    .eq("status", "PENDING")
+    .in(
+      "target_bet_id",
+      bets.map((b) => b.id)
+    );
+  const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
+
+  for (const bet of bets) {
+    if (!bet.match_id || bet.structured_player_id === null || !finishedMatchIds.has(bet.match_id)) {
+      summary.skipped.push({ betId: bet.id, reason: bet.match_id && finishedMatchIds.has(bet.match_id) ? "dernier panier structuré manquant" : "match pas encore terminé" });
+      continue;
+    }
+    if (contestedBetIds.has(bet.id)) {
+      summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
+      continue;
+    }
+
+    const gameId = await resolveNbaGameId(supabase, bet.match_id);
+    if (!gameId) {
+      summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
+      continue;
+    }
+
+    const { data: match } = await supabase
+      .from("stats_matchs")
+      .select("last_basket_player_id")
+      .eq("game_id", gameId)
+      .maybeSingle<{ last_basket_player_id: number | null }>();
+    if (!match || match.last_basket_player_id === null) {
+      summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
+      continue;
+    }
+
+    const outcome: "WON" | "LOST" = match.last_basket_player_id === bet.structured_player_id ? "WON" : "LOST";
+
+    const { data: updated } = await supabase
+      .from("bets")
+      .update({
+        status: outcome,
+        resolution_reason: "Résolu automatiquement via les statistiques officielles du match (dernier panier du match).",
+        resolved_at: new Date().toISOString(),
+        resolved_by_admin_id: null,
+      })
+      .eq("id", bet.id)
+      .eq("status", "VALIDATED")
+      .select("id")
+      .maybeSingle();
+    if (!updated) {
+      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
+      continue;
+    }
+
+    await recomputeBet(bet.id);
+    summary.resolved.push({ betId: bet.id, outcome });
+  }
+
+  return summary;
+}
+
+type StructuredBlockOnPlayer = { blocker_player_id: number; victim_player_id: number };
+
+type EligibleBlockOnPlayerBetRow = {
+  id: string;
+  match_id: string | null;
+  structured_block_on_player: StructuredBlockOnPlayer | null;
+};
+
+/** Résolution des paris BLOCK_ON_PLAYER -- lit stats_block_events (table
+ *  d'événements, 1 ligne par contre, agrégée à la synchro depuis le
+ *  play-by-play -- cf. refresh_daily.py/backfill_game_events.py), gagné dès
+ *  qu'AU MOINS UNE ligne (game_id, blocker_player_id, victim_player_id)
+ *  correspond. MATCH uniquement, même limite que les autres resolvers. */
+export async function resolveCalculableBlockOnPlayerBets(): Promise<ResolveBetsSummary> {
+  const supabase = getServiceClient();
+  const summary: ResolveBetsSummary = { resolved: [], skipped: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, match_id, structured_block_on_player")
+    .eq("scope", "MATCH")
+    .eq("is_calculable", true)
+    .eq("status", "VALIDATED")
+    .not("structured_block_on_player", "is", null);
+  const bets = (betsData ?? []) as EligibleBlockOnPlayerBetRow[];
+  if (bets.length === 0) return summary;
+
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const { data: matchesData } = await supabase.from("matches").select("id, status").in("id", matchIds);
+  const finishedMatchIds = new Set(
+    (matchesData ?? []).filter((m) => m.status === "FINISHED").map((m) => m.id as string)
+  );
+
+  const { data: pendingCorrections } = await supabase
+    .from("correction_requests")
+    .select("target_bet_id")
+    .eq("status", "PENDING")
+    .in(
+      "target_bet_id",
+      bets.map((b) => b.id)
+    );
+  const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
+
+  for (const bet of bets) {
+    if (!bet.match_id || !bet.structured_block_on_player || !finishedMatchIds.has(bet.match_id)) {
+      summary.skipped.push({ betId: bet.id, reason: bet.match_id && finishedMatchIds.has(bet.match_id) ? "contre structuré manquant" : "match pas encore terminé" });
+      continue;
+    }
+    if (contestedBetIds.has(bet.id)) {
+      summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
+      continue;
+    }
+
+    const gameId = await resolveNbaGameId(supabase, bet.match_id);
+    if (!gameId) {
+      summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
+      continue;
+    }
+
+    // Distingue "aucun événement synchronisé pour ce match" (jamais
+    // tranché -- réessayé au prochain lancement) de "synchronisé mais 0
+    // contre correspondant" (LOST, une vraie absence d'événement) : vérifie
+    // d'abord qu'AU MOINS 1 ligne existe pour ce match, quel que soit le
+    // bloqueur/victime (même geste que les autres resolvers -- jamais
+    // trancher sur une absence totale de données synchronisées).
+    const { count: matchEventCount } = await supabase
+      .from("stats_block_events")
+      .select("id", { count: "exact", head: true })
+      .eq("game_id", gameId);
+    if (matchEventCount === null) {
+      summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
+      continue;
+    }
+
+    const { blocker_player_id, victim_player_id } = bet.structured_block_on_player;
+    const { count: matchCount } = await supabase
+      .from("stats_block_events")
+      .select("id", { count: "exact", head: true })
+      .eq("game_id", gameId)
+      .eq("blocker_player_id", blocker_player_id)
+      .eq("victim_player_id", victim_player_id);
+    const won = (matchCount ?? 0) > 0;
+    const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+
+    const { data: updated } = await supabase
+      .from("bets")
+      .update({
+        status: outcome,
+        resolution_reason: won
+          ? "Résolu automatiquement -- ce contre a bien eu lieu durant le match."
+          : "Résolu automatiquement -- ce contre n'a pas eu lieu durant le match.",
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

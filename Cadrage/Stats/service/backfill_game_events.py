@@ -1,14 +1,16 @@
 """
-Backfill de stats_box_scores.technical_fouls/backcourt_turnovers et
-stats_matchs.home_timeouts/away_timeouts (chantier "événements de match",
-étape 5 du plan de reprise post-audit, GAPS_OUVERTS.md, 25/08/2026) --
-AUCUN appel API : la donnée existe déjà en LOCAL
-(Cadrage/Stats/data/raw/<saison>/playbyplay/*.csv, un fichier par match,
-actionType/subType structurés), jamais agrégée jusqu'ici. Même précédent
-que backfill_starter_position.py (position, 24/08/2026) : correspondance
-déjà vérifiée entre les CSV locaux et les 6602 matchs stats_matchs.
+Backfill de stats_box_scores.technical_fouls/backcourt_turnovers,
+stats_matchs.home_timeouts/away_timeouts/had_buzzer_beater/
+last_basket_player_id, et stats_block_events (chantiers "événements de
+match" étape 5 + "événements granulaires" étape 6 du plan de reprise
+post-audit, GAPS_OUVERTS.md, 25/08/2026) -- AUCUN appel API : la donnée
+existe déjà en LOCAL (Cadrage/Stats/data/raw/<saison>/playbyplay/*.csv, un
+fichier par match, actionType/subType structurés), jamais agrégée jusqu'ici.
+Même précédent que backfill_starter_position.py (position, 24/08/2026) :
+correspondance déjà vérifiée entre les CSV locaux et les 6602 matchs
+stats_matchs.
 
-3 familles d'events, 2 granularités :
+5 familles d'events, 3 granularités :
 - technical_fouls (actionType=Foul, "Technical" dans subType) et
   backcourt_turnovers (actionType=Turnover, subType="Backcourt Turnover") :
   PAR JOUEUR (personId attribué directement) -- écrites sur stats_box_scores.
@@ -25,11 +27,22 @@ déjà vérifiée entre les CSV locaux et les 6602 matchs stats_matchs.
   déjà en MAJUSCULES ou Title Case selon les matchs -- vérifié sur un
   échantillon, jamais autre chose) -- fermé à 2 candidats par match, pas un
   matching flou sur les 30 équipes de la ligue. Écrites sur stats_matchs.
+- had_buzzer_beater/last_basket_player_id (étape 6, "événements
+  granulaires") : PAR MATCH -- au moins 1 panier marqué à <=0.3s du buzzer
+  (n'importe quelle période) / personId du dernier "Made Shot" du match
+  (plus grand actionNumber). Écrites sur stats_matchs.
+- block_events (étape 6) : une ligne Block porte le MÊME actionNumber que
+  la ligne "Missed Shot" juste avant elle (personId du Block = bloqueur,
+  personId du Missed Shot = tireur bloqué) -- un Block n'a PAS d'actionType
+  structuré (NaN dans le play-by-play brut), identifié via le texte de
+  `description` ("X BLOCK (N BLK)"). Table dédiée stats_block_events (1
+  ligne par événement, pas 1 ligne par match/joueur comme le reste).
 
 Usage:
     python backfill_game_events.py
 """
 
+import re
 import sys
 from pathlib import Path
 
@@ -44,6 +57,19 @@ CHUNK = 2000
 TECHNICAL_SUBTYPES = {
     "Technical", "Double Technical", "Delay Technical", "Hanging Technical", "Too Many Players Technical",
 }
+
+# Etape 6 (GAPS_OUVERTS.md) -- meme seuil EXACT que build_targets.py/
+# refresh_daily.py (calibre empiriquement une seule fois, duplique ici comme
+# le reste du fichier).
+_BUZZER_BEATER_THRESHOLD_SECONDS = 0.3
+_CLOCK_RE = re.compile(r"PT(\d+)M([\d.]+)S")
+
+
+def _clock_to_seconds(clock) -> float | None:
+    m = _CLOCK_RE.match(str(clock))
+    if not m:
+        return None
+    return int(m.group(1)) * 60 + float(m.group(2))
 
 
 def fetch_all(client, table: str, columns: str) -> list[dict]:
@@ -75,6 +101,10 @@ def main():
     # game_id -> {"home": int, "away": int}
     timeouts_by_game: dict[str, dict[str, int]] = {}
     unresolved_timeouts = 0
+    # game_id -> {"had_buzzer_beater": bool, "last_basket_player_id": int|None}
+    # (etape 6, GAPS_OUVERTS.md)
+    match_events: dict[str, dict] = {}
+    block_rows: list[dict] = []
 
     seasons = sorted(d for d in RAW_DIR.iterdir() if d.is_dir())
     for season_dir in seasons:
@@ -99,6 +129,36 @@ def main():
                 player_events.setdefault(key, {"technical_fouls": 0, "backcourt_turnovers": 0})
                 player_events[key]["backcourt_turnovers"] += 1
 
+            # Etape 6 (GAPS_OUVERTS.md) -- had_buzzer_beater/
+            # last_basket_player_id, aucune resolution d'equipe necessaire
+            # (contrairement aux temps morts ci-dessous).
+            made = df[df["actionType"] == "Made Shot"]
+            if not made.empty:
+                secs = made["clock"].apply(_clock_to_seconds)
+                last_row = made.sort_values("actionNumber").iloc[-1]
+                match_events[game_id] = {
+                    "had_buzzer_beater": bool((secs <= _BUZZER_BEATER_THRESHOLD_SECONDS).any()),
+                    "last_basket_player_id": int(last_row["personId"]) if pd.notna(last_row["personId"]) else None,
+                }
+
+            # Etape 6 -- block_events (Block MEME actionNumber que le
+            # "Missed Shot" juste avant, cf. docstring du module).
+            blocks = df[df["description"].fillna("").str.contains(r"BLOCK \(\d+ BLK\)", regex=True)]
+            if not blocks.empty:
+                missed = df[df["actionType"] == "Missed Shot"][["actionNumber", "personId"]].rename(
+                    columns={"personId": "victim_player_id"}
+                )
+                merged = blocks[["actionNumber", "personId"]].rename(columns={"personId": "blocker_player_id"}).merge(
+                    missed, on="actionNumber", how="inner"
+                )
+                merged = merged.dropna(subset=["blocker_player_id", "victim_player_id"])
+                for _, r in merged.iterrows():
+                    block_rows.append({
+                        "game_id": game_id,
+                        "blocker_player_id": int(r["blocker_player_id"]),
+                        "victim_player_id": int(r["victim_player_id"]),
+                    })
+
             teams = home_away_by_game.get(game_id)
             if teams is None:
                 continue
@@ -119,6 +179,8 @@ def main():
     print(f"{len(timeouts_by_game)} matchs (home_timeouts/away_timeouts) a mettre a jour.")
     if unresolved_timeouts:
         print(f"ATTENTION : {unresolved_timeouts} temps morts non rattaches a une equipe (nom non reconnu) -- ignores.")
+    print(f"{len(match_events)} matchs (had_buzzer_beater/last_basket_player_id) a mettre a jour.")
+    print(f"{len(block_rows)} lignes block_events a inserer.")
 
     player_rows = [
         {"game_id": gid, "player_id": pid, "technical_fouls": v["technical_fouls"], "backcourt_turnovers": v["backcourt_turnovers"]}
@@ -131,7 +193,17 @@ def main():
     match_rows = [{"game_id": gid, "home_timeouts": v["home"], "away_timeouts": v["away"]} for gid, v in timeouts_by_game.items()]
     for i in range(0, len(match_rows), CHUNK):
         client.rpc("bulk_update_match_timeouts", {"rows": match_rows[i:i + CHUNK]}).execute()
-        print(f"  matchs [{min(i + CHUNK, len(match_rows))}/{len(match_rows)}]")
+        print(f"  matchs (temps morts) [{min(i + CHUNK, len(match_rows))}/{len(match_rows)}]")
+
+    # Etape 6 (GAPS_OUVERTS.md).
+    buzzer_rows = [{"game_id": gid, **v} for gid, v in match_events.items()]
+    for i in range(0, len(buzzer_rows), CHUNK):
+        client.rpc("bulk_update_match_buzzer_beater", {"rows": buzzer_rows[i:i + CHUNK]}).execute()
+        print(f"  matchs (buzzer beater/dernier panier) [{min(i + CHUNK, len(buzzer_rows))}/{len(buzzer_rows)}]")
+
+    for i in range(0, len(block_rows), CHUNK):
+        client.table("stats_block_events").insert(block_rows[i:i + CHUNK]).execute()
+        print(f"  block_events [{min(i + CHUNK, len(block_rows))}/{len(block_rows)}]")
 
     print("\nTermine.")
 

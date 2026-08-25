@@ -26,6 +26,7 @@ définies, comme pour le service lui-même) :
 import argparse
 import datetime as dt
 import os
+import re
 import sys
 from collections import Counter
 from pathlib import Path
@@ -283,6 +284,62 @@ def timeouts_by_team(pbp_df: pd.DataFrame, home_name: str, away_name: str) -> tu
     return home, away
 
 
+# Chantier "evenements granulaires" (etape 6 du plan de reprise post-audit,
+# 25/08/2026, GAPS_OUVERTS.md) -- meme play-by-play deja recupere ci-dessus
+# (fetch_play_by_play, 1 seul appel PlayByPlayV3 par match, aucun appel
+# supplementaire), juste une agregation de plus. Seuil buzzer beater (0.3s)
+# calibre empiriquement sur les CSV locaux, MEME valeur EXACTE que
+# build_targets.py::_BUZZER_BEATER_THRESHOLD_SECONDS (entrainement).
+_BUZZER_BEATER_THRESHOLD_SECONDS = 0.3
+_CLOCK_RE = re.compile(r"PT(\d+)M([\d.]+)S")
+
+
+def _clock_to_seconds(clock) -> float | None:
+    m = _CLOCK_RE.match(str(clock))
+    if not m:
+        return None
+    return int(m.group(1)) * 60 + float(m.group(2))
+
+
+def buzzer_beater_and_last_basket(pbp_df: pd.DataFrame) -> tuple[bool, int | None]:
+    """(had_buzzer_beater, last_basket_player_id) -- meme mecanisme EXACT que
+    backfill_game_events.py/build_targets.py (etape 6). had_buzzer_beater :
+    au moins 1 panier a <=0.3s du buzzer, n'importe quelle periode.
+    last_basket_player_id : personId du DERNIER "Made Shot" du match (le
+    plus grand actionNumber) -- None si aucun panier trouve (jamais vu en
+    pratique mais garde de prudence, meme esprit que le reste du fichier)."""
+    made = pbp_df[pbp_df["actionType"] == "Made Shot"]
+    if made.empty:
+        return False, None
+    secs = made["clock"].apply(_clock_to_seconds)
+    had_buzzer_beater = bool((secs <= _BUZZER_BEATER_THRESHOLD_SECONDS).any())
+    last_row = made.sort_values("actionNumber").iloc[-1]
+    last_basket_player_id = int(last_row["personId"]) if pd.notna(last_row["personId"]) else None
+    return had_buzzer_beater, last_basket_player_id
+
+
+def block_events(pbp_df: pd.DataFrame) -> list[dict]:
+    """[{"blocker_player_id": ..., "victim_player_id": ...}] -- une ligne de
+    Block porte le MEME actionNumber que la ligne "Missed Shot" juste avant
+    elle (personId du Block = bloqueur, personId du Missed Shot = tireur
+    bloque) -- decouvert en explorant les CSV locaux avant de coder (etape
+    6, GAPS_OUVERTS.md). Un Block n'a PAS d'actionType structure (NaN dans
+    le play-by-play brut) -- identifie via le texte de description ("X
+    BLOCK (N BLK)"), meme piege deja documente pour ce champ."""
+    blocks = pbp_df[pbp_df["description"].fillna("").str.contains(r"BLOCK \(\d+ BLK\)", regex=True)]
+    missed = pbp_df[pbp_df["actionType"] == "Missed Shot"][["actionNumber", "personId"]].rename(
+        columns={"personId": "victim_player_id"}
+    )
+    merged = blocks[["actionNumber", "personId"]].rename(columns={"personId": "blocker_player_id"}).merge(
+        missed, on="actionNumber", how="inner"
+    )
+    merged = merged.dropna(subset=["blocker_player_id", "victim_player_id"])
+    return [
+        {"blocker_player_id": int(r["blocker_player_id"]), "victim_player_id": int(r["victim_player_id"])}
+        for _, r in merged.iterrows()
+    ]
+
+
 def upsert_records(client, table: str, df: pd.DataFrame, on_conflict: str):
     """Par lots de PAGE_SIZE, même précaution que backfill_supabase.py -- un
     jour de rattrapage après une panne pourrait accumuler bien plus qu'un
@@ -316,6 +373,7 @@ def run(season: str, season_types: list):
 
     equipes_rows, joueurs_rows, matchs_rows = [], [], []
     box_rows, box_adv_rows, box_period_rows = [], [], []
+    block_rows = []  # chantier "evenements granulaires", etape 6 (GAPS_OUVERTS.md)
 
     for i, game_id in enumerate(new_game_ids, start=1):
         meta = season_games[game_id]
@@ -361,11 +419,20 @@ def run(season: str, season_types: list):
             home_timeouts, away_timeouts = timeouts_by_team(pbp_df, team_name_by_id[home_id], team_name_by_id[away_id])
         else:
             home_timeouts, away_timeouts = None, None
+        # Chantier "evenements granulaires" (etape 6, GAPS_OUVERTS.md) --
+        # meme pbp_df deja recupere ci-dessus, aucun appel supplementaire.
+        if pbp_df is not None:
+            had_buzzer_beater, last_basket_player_id = buzzer_beater_and_last_basket(pbp_df)
+            for event in block_events(pbp_df):
+                block_rows.append({"game_id": game_id, **event})
+        else:
+            had_buzzer_beater, last_basket_player_id = None, None
 
         matchs_rows.append({
             "game_id": game_id, "game_date": meta["game_date"], "season": season,
             "season_type": meta["season_type"], "home_team_id": home_id, "away_team_id": away_id,
             "home_timeouts": home_timeouts, "away_timeouts": away_timeouts,
+            "had_buzzer_beater": had_buzzer_beater, "last_basket_player_id": last_basket_player_id,
         })
 
         # même filtre DNP/DND que load_to_sqlite.py -- une ligne sans minutes
@@ -442,7 +509,19 @@ def run(season: str, season_types: list):
     if matchs_rows:
         upsert_records(client, "stats_matchs", pd.DataFrame(matchs_rows), "game_id")
 
-    print(f"\nTerminé : {len(matchs_rows)} matchs, {nb_box_rows} lignes box_scores, {len(box_period_rows)} lignes box_scores_by_period ajoutés.")
+    # stats_block_events : table d'evenements (pas "1 ligne courante par
+    # cle" comme les autres) -- insert simple, jamais d'upsert (un match
+    # neuf ne peut jamais entrer en conflit avec une ligne existante).
+    if block_rows:
+        block_df = pd.DataFrame(block_rows)
+        records = [{col: to_json_safe(val) for col, val in row.items()} for row in block_df.to_dict(orient="records")]
+        for i in range(0, len(records), PAGE_SIZE):
+            client.table("stats_block_events").insert(records[i:i + PAGE_SIZE]).execute()
+
+    print(
+        f"\nTerminé : {len(matchs_rows)} matchs, {nb_box_rows} lignes box_scores, {len(box_period_rows)} lignes "
+        f"box_scores_by_period, {len(block_rows)} lignes block_events ajoutés."
+    )
 
 
 def main():

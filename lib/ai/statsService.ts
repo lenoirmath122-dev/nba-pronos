@@ -285,6 +285,113 @@ export async function predictBackcourtTurnover(
 }
 
 /**
+ * Pari "buzzer beater" (étape 6 du plan de reprise post-audit, 25/08/2026,
+ * GAPS_OUVERTS.md, chantier "événements granulaires") -- MATCH_TOTAL SANS
+ * seuil (au moins 1 panier marqué au buzzer durant le match, n'importe
+ * quelle période), même contrat EXACT que predictBackcourtTurnover.
+ */
+export async function predictBuzzerBeater(
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-buzzer-beater`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number") return null;
+    return { proba: data.proba };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pari "dernier panier du match" (étape 6, GAPS_OUVERTS.md, chantier
+ * "événements granulaires") -- UN joueur nommé, probabilité DIRECTE (part
+ * attendue de paniers parmi tous les joueurs du match), même contrat que
+ * predictSuperlative (joueur + les 2 VRAIES équipes du match).
+ */
+export async function predictLastBasket(
+  playerName: string,
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number; playerId: number } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-last-basket`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        joueur: playerName,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number" || typeof data.joueur_id !== "number") return null;
+    return { proba: data.proba, playerId: data.joueur_id };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Pari "contre sur un joueur précis" (étape 6, GAPS_OUVERTS.md, chantier
+ * "événements granulaires") -- bloqueur + victime (2 joueurs distincts,
+ * obligatoirement dans des équipes opposées, vérifié côté service).
+ */
+export async function predictBlockOnPlayer(
+  blockerName: string,
+  victimName: string,
+  homeTeamName: string,
+  awayTeamName: string,
+  asOfDate: string,
+): Promise<{ proba: number; blockerId: number; victimId: number } | null> {
+  const url = process.env.STATS_SERVICE_URL;
+  if (!url) return null;
+
+  try {
+    const res = await fetch(`${url.replace(/\/$/, "")}/predict-block-on-player`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        bloqueur: blockerName,
+        victime: victimName,
+        equipe_domicile: homeTeamName,
+        equipe_exterieur: awayTeamName,
+        as_of_date: asOfDate,
+      }),
+      signal: AbortSignal.timeout(40_000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    if (typeof data.proba !== "number" || typeof data.bloqueur_id !== "number" || typeof data.victime_id !== "number") return null;
+    return { proba: data.proba, blockerId: data.bloqueur_id, victimId: data.victime_id };
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Pari MATCH_TOTAL pour une stat de TEAM_STAT_CODES (reb/ast/fg3m/stl/blk --
  * pièce (a) suite, GAPS_OUVERTS.md, 23/08/2026 : reb fait 1er via un endpoint
  * dédié /predict-total-rebounds, généralisé côté Python (app.py) le jour même

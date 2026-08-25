@@ -96,8 +96,8 @@ const BetStructurationSchema = z.object({
   match_total: z
     .object({
       stat: z.enum(MATCH_STAT_CODES as [string, ...string[]]),
-      threshold: z.number().nullable().describe("null pour went_to_ot/had_backcourt_turnover (probabilité directe, pas de seuil)."),
-      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour went_to_ot/had_backcourt_turnover."),
+      threshold: z.number().nullable().describe("null pour went_to_ot/had_backcourt_turnover/had_buzzer_beater (probabilité directe, pas de seuil)."),
+      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour went_to_ot/had_backcourt_turnover/had_buzzer_beater."),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=MATCH_TOTAL, sinon null."),
