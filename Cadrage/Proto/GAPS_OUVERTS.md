@@ -17,12 +17,78 @@
 > dd/td dans les combos, `849b5c7`), Cloud Run redéployé (révision
 > `nba-pronos-stats-00024-l2h`) ; étape 8 (guide de rédaction des paris,
 > contenu -- voir son entrée ci-dessous) codée le 26/08/2026, intégrée à
-> `/regles`. Reste hors de ce plan : entraîner un vrai modèle joueur+période
-> (`train_player_period_model.py`, pas encore écrit) -- le backfill
-> `stats_box_scores_by_period` est fini depuis la session du 24/08/2026. Le
-> plan complet (8 étapes) et les points explicitement différés restent
-> documentés dans les entrées ci-dessous et dans
+> `/regles`. Le plan complet (8 étapes) et les points explicitement différés
+> restent documentés dans les entrées ci-dessous et dans
 > `AUDIT_TYPES_PARIS_24_08_2026.md`.
+>
+> **3 points hors de ce plan, repris ensuite avec l'utilisateur (26/08/2026,
+> dans l'ordre demandé)** : (1) modèle joueur+période entraîné -- voir son
+> entrée ci-dessous, remplace l'approximation v1 ; (2) gap `not_in_match`
+> absent de COMPARISON/COMBO (voir chantier combo, 24/08/2026) ; (3) 4 cas
+> explicitement laissés de côté (performance propre par période, égalités
+> strictes -- voir ci-dessous). (2) et (3) pas encore traités.
+
+> **Modèle joueur+période ENTRAÎNÉ le 26/08/2026** -- remplace l'approximation
+> v1 de `_compute_player_period_proba_once()` (supabase_context.py, part fixe
+> 25%/50% de la moyenne pleine partie) par un vrai modèle, une fois le
+> backfill `stats_box_scores_by_period` confirmé terminé (24/08/2026,
+> 6602/6602 matchs). Notée dans le plan comme "hors du plan de reprise" --
+> reprise en 1er des 3 points hors plan, à la demande de l'utilisateur.
+>
+> **Nouveau script `train_player_period_model.py`** (`Cadrage/Stats/scripts/`)
+> -- SEUL script d'entraînement de ce dossier à interroger Supabase
+> directement plutôt que `nba.db` local : la cible (stats par période) ne
+> vit QUE dans `stats_box_scores_by_period` (alimentée par un vrai appel API
+> par quart-temps, jamais recalculable depuis le play-by-play local, cf.
+> chantier du 24/08/2026). Les FEATURES (contexte pré-match du joueur)
+> restent EXACTEMENT celles de `train_stat_model.py` (`features_joueur`,
+> LOCAL, déjà calculées) -- jointes sur (game_id, player_id). MÊME pooling
+> que `train_period_model.py` (équipe) : UN SEUL modèle par stat, généralisé
+> sur les 6 "périodes" (Q1-Q4 + H1/H2 = somme de 2 quarts-temps, jamais
+> interrogées séparément côté API) via un one-hot `period_Q1`..`period_H2`
+> ajouté aux features, plutôt que 6 modèles dédiés.
+>
+> **10 modèles entraînés** (`period_pts/reb/ast/fg3m/stl/blk/fga/fg3a/oreb/
+> min.joblib`) -- REGRESSION_STATS moins `plus_minus` (jamais récupéré par
+> période par `backfill_period_box_scores.py`/`refresh_daily.py`, exclu
+> explicitement, même raisonnement que dd/td/ft/fg/fg3 déjà hors périmètre
+> du chantier duel). Même choix de distribution Poisson que
+> `train_stat_model.py` pour fg3m/stl/blk/oreb (stats à faible valeur,
+> souvent nulles), normale pour le reste -- réutilise `POISSON_STATS`
+> directement, aucune divergence introduite.
+>
+> **Dataset** : 477 276 lignes brutes Q1-Q4 (Supabase) -> 739 173 après ajout
+> H1/H2 -> 730 381 après jointure avec `features_joueur` (par stat, après
+> `dropna`). Entraînement complet (fetch + 10 `RandomForestRegressor`) :
+> environ 1h50 en pratique (bien plus long que les modèles pleine partie
+> équivalents sur des volumes comparables -- pas creusé plus, pas
+> bloquant). **Incident pendant l'exécution** : un 1er lancement en tâche de
+> fond sans sortie visible (même piège de bufferisation stdout que
+> `backfill_game_events.py` le 25/08/2026) a été interrompu par erreur
+> (`kill`) avant la fin, pensant le processus bloqué alors qu'il progressait
+> réellement (2/10 modèles déjà sauvegardés à ce moment) -- relancé aussitôt
+> en mode non-bufferisé (`python -u`) avec un suivi en direct (`Monitor`),
+> les 10 modèles ont été entraînés sans erreur au 2e essai.
+>
+> **`supabase_context.py`** : `_compute_player_period_proba_once()` réécrite
+> -- charge `period_{stat}.joblib`, construit le contexte via `build_context()`
+> (déjà utilisé pour la pleine partie, mêmes features EXACTES) + le one-hot
+> de période, prédit la moyenne, calcule la proba (Poisson ou normale selon
+> `bundle["distribution"]`, même patron que `_player_stat_mean_scale`).
+> `_PLAYER_PERIOD_SHARE` (approximation v1) supprimée. Contrat HTTP
+> (`/predict-player-period`, `PredictPlayerPeriodRequest`) inchangé -- aucune
+> modification côté `app.py`/TypeScript, changement 100% interne au service.
+>
+> Testé en conditions réelles : appel direct (`compute_player_period_proba`,
+> Nikola Jokic -- Q1/H1/H2 × pts/reb/ast, moyennes cohérentes avec ses vraies
+> statistiques par match : ~6.5pts/3.6reb/2.5pas en Q1, ~13pts/6.6reb/4.8pas
+> en H1) + garde-fous (`plus_minus` rejeté, période invalide "Q5" rejetée) +
+> **HTTP local réel** (`/predict-player-period`, Jokic reb H1 86.9%,
+> Wembanyama blk Q4 15.9% avec moyenne 0.7 contre/quart-temps -- cohérent
+> avec sa moyenne réelle ~2.8 contres/match, `plus_minus` rejeté proprement
+> en 400 au lieu de 500). **Aucune modification du `Dockerfile`** nécessaire
+> (`COPY models/ ./models/` copie déjà tout le dossier) -- **pas encore
+> redéployé sur Cloud Run**, action suivante.
 
 > **Étape 8 du plan de reprise, CODÉE le 26/08/2026** -- guide de rédaction
 > des paris, intégré dans `/regles` (`app/regles/page.tsx`), demande

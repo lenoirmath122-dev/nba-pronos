@@ -23,7 +23,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 
 import joblib  # noqa: E402
 from scipy.integrate import quad  # noqa: E402
-from scipy.stats import betabinom, binom, norm  # noqa: E402
+from scipy.stats import betabinom, binom, norm, poisson  # noqa: E402
 
 from tester_modele import (  # noqa: E402
     CLASSIFIER_STATS,
@@ -950,7 +950,14 @@ def compute_period_proba(*args, **kwargs) -> dict:
 # un vrai modele entraine (train_player_period_model.py) une fois le backfill
 # termine -- cette fonction restera l'implementation tant que ce modele
 # n'existe pas.
-_PLAYER_PERIOD_SHARE = {"Q1": 0.25, "Q2": 0.25, "Q3": 0.25, "Q4": 0.25, "H1": 0.5, "H2": 0.5}
+_PLAYER_PERIOD_CODES = ("Q1", "Q2", "Q3", "Q4", "H1", "H2")
+
+# plus_minus jamais recupere par periode (backfill_period_box_scores.py/
+# refresh_daily.py::STATS_BOX_SCORE_PERIOD_COLUMNS ne le contiennent pas --
+# donnee non fiable/absente cote API pour un decoupage par quart-temps) --
+# seule exclusion par rapport a REGRESSION_STATS, meme raisonnement que
+# dd/td/ft/fg/fg3 deja hors perimetre du chantier duel.
+_PLAYER_PERIOD_STATS = tuple(s for s in REGRESSION_STATS if s != "plus_minus")
 
 
 def _compute_player_period_proba_once(
@@ -958,29 +965,28 @@ def _compute_player_period_proba_once(
     seuil, comparison: str | None, rest_days: int = 2,
 ) -> dict:
     """Pari joueur+periode (24/08/2026, GAPS_OUVERTS.md) -- ex. "3 contres
-    en 1ere mi-temps pour Wembanyama". v1 APPROXIMATION (pas encore de
-    modele entraine sur des donnees par periode -- le backfill tourne en
-    tache de fond) : reutilise _player_stat_mean_scale() (moyenne/dispersion
-    pleine partie, meme fonction que le chantier duel) puis applique une
-    part fixe de periode (_PLAYER_PERIOD_SHARE) a la moyenne ET a la
-    dispersion (loi de Poisson -- variance = moyenne, donc pour une fraction
-    p du volume total, scale_periode = scale_pleine_partie * sqrt(p), meme
-    principe que le decoupage temps/volume deja accepte ailleurs dans ce
-    projet). Restreint a REGRESSION_STATS (meme limite que
-    _player_stat_mean_scale, dd/td/ft/fg/fg3 hors perimetre -- rejette avec
-    ValueError, capte cote TS par markNotCalculable(), jamais une reponse
-    fausse).
+    en 1ere mi-temps pour Wembanyama". v2 (26/08/2026) : vrai modele entraine
+    sur stats_box_scores_by_period (train_player_period_model.py, backfill
+    termine le 24/08/2026, 6602/6602 matchs) -- remplace l'approximation v1
+    (part fixe 25%/50% de la moyenne pleine partie). MEME pooling que le
+    pari periode EQUIPE (train_period_model.py) : un seul modele par stat,
+    generalise sur les 6 periodes via un one-hot period_Q1..period_H2 ajoute
+    au contexte pre-match deja calcule par build_context() (memes features
+    EXACTES que le modele pleine partie -- seul le one-hot change). Restreint
+    a _PLAYER_PERIOD_STATS (REGRESSION_STATS moins plus_minus, jamais
+    recupere par periode) -- rejette avec ValueError, capte cote TS par
+    markNotCalculable(), jamais une reponse fausse.
 
     home_team_id/away_team_id : les 2 VRAIES equipes du match vise -- l'appelant
     TS ne resout pas is_home/adversaire lui-meme pour ce type de pari
     (contrairement a bet_subject=PLAYER classique), donc c'est fait ici,
     meme geste que _resolve_weighted_operand() (chantier duel/combo)."""
-    if period not in _PLAYER_PERIOD_SHARE:
+    if period not in _PLAYER_PERIOD_CODES:
         raise ValueError(f"period inconnue pour un pari joueur+periode : {period}")
-    if stat not in REGRESSION_STATS:
+    if stat not in _PLAYER_PERIOD_STATS:
         raise ValueError(
-            f"stat non supportee pour un pari joueur+periode : {stat} (seules les stats comptees le sont : "
-            f"{sorted(REGRESSION_STATS)})"
+            f"stat non supportee pour un pari joueur+periode : {stat} (seules les stats comptees le sont, "
+            f"hors plus_minus (jamais dispo par periode) : {sorted(_PLAYER_PERIOD_STATS)})"
         )
     if seuil is None or comparison is None:
         raise ValueError("seuil/comparison obligatoires pour un pari joueur+periode.")
@@ -992,23 +998,27 @@ def _compute_player_period_proba_once(
     opponent_id = away_team_id if is_home else home_team_id
 
     _, _, label = REGRESSION_STATS[stat]
-    pred_mean, scale = _player_stat_mean_scale(
-        client, player_id, stat, opponent_id=opponent_id, is_home=is_home, rest_days=rest_days,
-    )
-    share = _PLAYER_PERIOD_SHARE[period]
-    period_mean = pred_mean * share
-    period_scale = max(scale * math.sqrt(share), MIN_SCALE)
+    context, _, _ = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
+    for p in _PLAYER_PERIOD_CODES:
+        context[f"period_{p}"] = int(p == period)
 
-    proba_over = 1 - norm.cdf(seuil, loc=period_mean, scale=period_scale)
+    bundle = joblib.load(MODELS_DIR / f"period_{stat}.joblib")
+    X = pd.DataFrame([context])[bundle["feature_cols"]]
+    pred_mean = float(bundle["model"].predict(X)[0])
+
+    if bundle["distribution"] == "poisson":
+        proba_over = 1 - poisson.cdf(seuil, mu=max(pred_mean, 0.01))
+        scale_detail = "Poisson"
+    else:
+        scale = max(bundle["resid_std"], MIN_SCALE)
+        proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+        scale_detail = f"+/- {scale:.1f}, normale"
+
     proba = proba_over if comparison == "OVER" else 1 - proba_over
     return {
         "label": label,
         "proba": float(proba),
-        "detail": (
-            f"prediction moyenne (periode) = {period_mean:.1f} (+/- {period_scale:.1f}, normale) -- "
-            f"approximation v1 : part fixe de {share:.0%} de la moyenne pleine partie {pred_mean:.1f}, "
-            "pas encore de modele entraine sur donnees par periode"
-        ),
+        "detail": f"prediction moyenne (periode {period}) = {pred_mean:.1f} ({scale_detail})",
     }
 
 

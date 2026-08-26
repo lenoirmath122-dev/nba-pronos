@@ -10913,3 +10913,64 @@ en dev (hot-reload).
 Les 8 étapes du plan de reprise post-audit du 24/08/2026 sont désormais
 toutes codées, testées et déployées.
 ```
+
+## Modèle joueur+période entraîné + 2 gaps restants identifiés (26/08/2026)
+
+```text
+Utilisateur : "donc la on a finit le travail sur les datas, les paris et les
+résolutions ?" -- bilan honnête plutôt qu'un "oui" : les 8 étapes du plan
+sont closes, mais 3 points restent ouverts par choix explicite (modèle
+joueur+période jamais entraîné, gap not_in_match sur COMPARISON/COMBO, 4 cas
+mis de côté). "Ok, on règle ces 3 cas dans l'ordre ? En commencant par le
+modèle joueur+période à entrainer".
+
+Recherche préalable (même discipline que d'habitude) : le backfill
+stats_box_scores_by_period ne vit QUE dans Supabase (aucun équivalent local
+nba.db, jamais copié -- vérifié en listant les tables locales). Nouveau
+script train_player_period_model.py, SEUL script d'entraînement à
+interroger Supabase directement -- fetch paginé (477276 lignes Q1-Q4),
+H1/H2 recalculées en sommant 2 quarts-temps, jointes aux features pré-match
+LOCALES (features_joueur, déjà calculées) sur (game_id, player_id). Même
+pooling que le modèle période équipe (1 modèle par stat, one-hot période).
+
+Bug bête trouvé en lançant : REPO_ROOT mal calculé (parents[3] au lieu de
+parents[2] depuis un SCRIPT_DIR déjà résolu au niveau scripts/) -- .env.local
+introuvable, corrigé avant le vrai lancement.
+
+1er lancement en tâche de fond SANS sortie visible pendant 22 minutes (même
+piège de bufferisation stdout que backfill_game_events.py le 25/08/2026) --
+interrompu par erreur (kill) en pensant le processus bloqué, alors qu'il
+progressait réellement (period_pts.joblib et period_reb.joblib déjà
+sauvegardés au moment du kill, vérifié après coup via les timestamps des
+fichiers). Relancé aussitôt en mode non-bufferisé (python -u) avec un suivi
+en direct (outil Monitor, filtre sur les lignes "joblib"/erreurs) -- les 10
+modèles entraînés sans erreur au 2e essai, ~1h50 au total (fetch Supabase +
+10 RandomForestRegressor sur 730381 lignes par stat).
+
+supabase_context.py::_compute_player_period_proba_once() réécrite -- charge
+period_{stat}.joblib, réutilise build_context() (mêmes features EXACTES que
+la pleine partie) + un one-hot de période, calcule la proba (Poisson/normale
+selon le bundle). Approximation v1 (_PLAYER_PERIOD_SHARE, part fixe
+25%/50%) supprimée. plus_minus exclu (jamais récupéré par période) --
+seule stat de REGRESSION_STATS hors périmètre, même logique que dd/td/ft/
+fg/fg3 déjà hors périmètre du chantier duel. Contrat HTTP inchangé, aucune
+modification app.py/TypeScript.
+
+Testé en conditions réelles : appel direct (Jokic, moyennes Q1/H1/H2
+cohérentes avec ses vraies stats par match) + garde-fous (plus_minus,
+période invalide) + HTTP local réel (nouveau piège rencontré en testant :
+un serveur uvicorn démarré en arrière-plan avec `&` ne récupère PAS les
+variables d'environnement exportées dans le même appel bash -- même avec
+export/source explicite -- alors qu'un process foreground les reçoit bien ;
+contourné en utilisant le mécanisme de background propre de l'outil au lieu
+de `&` brut ; 2e piège : un ancien process resté accroché au port 8010
+malgré un `pkill` qui semblait avoir réussi, forçant un `taskkill //F` par
+PID réel via `netstat -ano` pour le libérer). Résultat final : Jokic reb H1
+86.9%, Wembanyama blk Q4 15.9% (moyenne 0.7 contre/quart-temps, cohérent
+avec ~2.8 contres/match en moyenne réelle), plus_minus rejeté proprement en
+400. Aucune modification du Dockerfile nécessaire (copie déjà tout models/).
+
+GAPS_OUVERTS.md mis à jour. PAS commité (attend confirmation utilisateur) --
+PAS encore redéployé sur Cloud Run. Reste 2 des 3 points de la liste :
+gap not_in_match (COMPARISON/COMBO) et les 4 cas explicitement différés.
+```
