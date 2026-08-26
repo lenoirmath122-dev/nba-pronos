@@ -29,15 +29,20 @@
 > IA. Testé en HTTP local réel (Lakers/Celtics, Jokic hors match) sur
 > COMPARISON (2 sens) et COMBO (OVER/UNDER/dd/somme multi-joueurs/stat %) —
 > tous corrects, non-régression confirmée sur des cas normaux. Commité et
-> poussé (`ab236e5`). **Pas encore redéployé sur Cloud Run** (commande
-> donnée à l'utilisateur, en attente). Détail complet dans
+> poussé (`ab236e5`). **§2.123 — Redéployé sur Cloud Run et vérifié en prod
+> le même jour** (`gcloud run deploy nba-pronos-stats --source . --region
+> europe-west1`, lancé par l'utilisateur) : `/predict-comparison` rejoué en
+> conditions réelles avec les mêmes paramètres exacts que le test local
+> (LeBron/Lakers vs Jokic hors match) — résultat BIT-IDENTIQUE
+> (`proba=0.9999877254348636`, Jokic résolu à mean=0.0). Détail complet dans
 > `GAPS_OUVERTS.md`/`JOURNAL_SESSIONS.md` (26/08/2026).
 >
-> Restent hors de ce rattrapage, notés dans `GAPS_OUVERTS.md` : le
-> redéploiement Cloud Run ci-dessus, et les « 4 cas explicitement différés »
-> (3e des « 3 points hors plan » du 26/08) — détail définitivement perdu
-> (recherche exhaustive + l'utilisateur ne l'a plus), mis de côté
-> explicitement plutôt que deviné.
+> Restent hors de ce rattrapage, notés dans `GAPS_OUVERTS.md` : tester un
+> vrai pari COMPARISON/COMBO sur un joueur hors match depuis l'appli
+> elle-même (seul l'appel HTTP direct au service est confirmé pour
+> l'instant), et les « 4 cas explicitement différés » (3e des « 3 points
+> hors plan » du 26/08) — détail définitivement perdu (recherche exhaustive
+> + l'utilisateur ne l'a plus), mis de côté explicitement plutôt que deviné.
 >
 > Plus tôt (session du 26/08/2026) — **§2.121 : modèle joueur+période
 > entraîné, remplace l'approximation v1.** 2e des « 3 points hors plan »

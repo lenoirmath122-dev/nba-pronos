@@ -11062,3 +11062,27 @@ plus". Laissé de côté explicitement, noté dans GAPS_OUVERTS.md pour ne pas
 relancer inutilement la même recherche dans une future session -- à
 reprendre uniquement si l'utilisateur peut les re-décrire un jour.
 ```
+
+## Gap not_in_match COMPARISON/COMBO : redéployé et vérifié en prod (26/08/2026)
+
+```text
+Suite directe de l'entrée précédente. L'utilisateur lance
+`gcloud run deploy nba-pronos-stats --source . --region europe-west1`
+(commande donnée, adaptée à PowerShell en cours de route -- `curl`/`curl.exe`
+mal échappés par PowerShell, résolu avec `Invoke-RestMethod` et un `-Body`
+en guillemets simples, même piège d'échappement que d'habitude sous
+PowerShell).
+
+Revérifié en conditions réelles contre le VRAI service déployé,
+paramètres EXACTEMENT identiques au test local de l'entrée précédente
+(LeBron/Lakers vs Nikola Jokic hors match, relation GT) : résultat
+BIT-IDENTIQUE (`proba=0.9999877254348636`, `droite : moyenne=0.0
+(+/-0.0)`) -- confirme que le correctif Python tourne bien en prod, pas
+seulement en local.
+
+GAPS_OUVERTS.md mis à jour (entrée dédiée + résumé en tête de fichier) --
+seul le point (3) des « 3 points hors plan » (4 cas différés, détail
+perdu) reste en attente. Pas encore testé en soumettant un vrai pari
+COMPARISON/COMBO sur un joueur hors match depuis l'appli elle-même (seul
+l'appel HTTP direct au service est confirmé).
+```

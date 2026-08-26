@@ -24,10 +24,10 @@
 > **3 points hors de ce plan, repris ensuite avec l'utilisateur (26/08/2026,
 > dans l'ordre demandé)** : (1) modèle joueur+période entraîné -- voir son
 > entrée ci-dessous, remplace l'approximation v1 ; (2) gap `not_in_match`
-> absent de COMPARISON/COMBO (voir chantier combo, 24/08/2026) -- CORRIGÉ le
-> 26/08/2026, voir son entrée ci-dessous ; (3) 4 cas explicitement laissés de
-> côté (performance propre par période, égalités strictes). **Pas encore
-> redéployé sur Cloud Run** depuis le correctif (2).
+> absent de COMPARISON/COMBO (voir chantier combo, 24/08/2026) -- CORRIGÉ ET
+> REDÉPLOYÉ EN PROD le 26/08/2026, voir son entrée ci-dessous ; (3) 4 cas
+> explicitement laissés de côté (performance propre par période, égalités
+> strictes). Seul (3) reste en attente, détail perdu (voir ci-dessous).
 >
 > **(3) DÉTAIL PERDU (26/08/2026)** -- recherche exhaustive faite (grep sur
 > tous les fichiers de suivi + `git show d5c2738`, le commit qui a introduit
@@ -153,9 +153,15 @@
 > propre (pas de suite de tests dédiée à ce service, même convention que le
 > reste de `Cadrage/Stats/service/` -- validation par appels HTTP réels).
 >
-> **Pas encore redéployé sur Cloud Run, pas testé en conditions réelles
-> depuis l'appli** (contrairement au modèle joueur+période ci-dessus, pas
-> encore repoussé en prod à ce stade).
+> **Redéployé sur Cloud Run et vérifié en prod le 26/08/2026** (`gcloud run
+> deploy nba-pronos-stats --source . --region europe-west1`, lancé par
+> l'utilisateur) : `/predict-comparison` rejoué avec les mêmes paramètres
+> exacts que le test local (LeBron/Lakers vs Jokic hors match) -- résultat
+> BIT-IDENTIQUE (`proba=0.9999877254348636`, `droite : moyenne=0.0
+> (+/-0.0)`, Jokic bien résolu à contribution nulle). Pas encore testé en
+> soumettant un vrai pari depuis l'appli (seul l'appel HTTP direct au
+> service est confirmé pour l'instant) -- 3e et dernier point hors plan (4
+> cas différés) reste seul en attente, détail perdu (voir plus haut).
 
 > **Étape 8 du plan de reprise, CODÉE le 26/08/2026** -- guide de rédaction
 > des paris, intégré dans `/regles` (`app/regles/page.tsx`), demande
