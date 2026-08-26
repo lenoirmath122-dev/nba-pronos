@@ -5,15 +5,422 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 21/08/2026 — **Retrait du tutoriel
-> "Comment jouer ?" — §2.97 ci-dessous** (suite directe de la nouvelle page
-> `/regles` — §2.96 — qui couvre désormais ce besoin, demande explicite de
-> l'utilisateur). Tout supprimé : 6 fichiers composant, la server action
-> dédiée, 5 captures d'écran, la colonne `users.tutorial_seen_at` (migration
-> #30 écrite, PAS encore poussée sur la base réelle — bloqué par le
-> classifieur de permissions, comme #29). `BACKLOG_V1.md`/
-> `SPEC_TUTORIEL_JOUEUR_V0_1.md` mis à jour en cohérence. `tsc`/`eslint`/
-> `vitest` (37/37)/`next build` (37 routes) propres.
+> Dernière mise à jour : session du 26/08/2026 — **rattrapage complet de ce
+> fichier — §2.122 ci-dessous**, plus le gap `not_in_match` COMPARISON/COMBO
+> corrigé le même jour. Ce fichier n'avait pas bougé depuis le 21/08/2026
+> (§2.97 ci-dessous, tutoriel retiré) alors que 82 commits avaient été
+> poussés depuis — repéré en répondant à la question de l'utilisateur « on
+> en est où ? », même pattern que les rattrapages du 16/08 et du 18/08.
+> **§2.100 à §2.121 ci-dessous reconstruits à partir de `git log` et
+> `JOURNAL_SESSIONS.md`** (déjà fiable et à jour en continu tout du long) --
+> ils condensent au format « instantané » de ce fichier, sans répéter le
+> détail intégral déjà disponible dans le journal.
+>
+> **Gap `not_in_match` COMPARISON/COMBO, CORRIGÉ le 26/08/2026** — un pari
+> COMPARISON/COMBO nommant un joueur absent des 2 équipes du match retombait
+> en repli manuel (`calculable=false`) au lieu de résoudre trivialement à
+> 0%/100%, contrairement au mécanisme déjà existant côté `bet_subject=PLAYER`
+> (§2.100 ci-dessous). Corrigé 100% côté Python
+> (`Cadrage/Stats/service/supabase_context.py`) : le service vérifiait déjà
+> le vrai roster pour chaque joueur nommé, seulement pour lever une erreur —
+> change désormais la valeur en 0/100% déterministe (0 pour les stats
+> comptées et dd/td/tech ; les stats à pourcentage ft/fg/fg3 gardent le
+> repli manuel, taux indéterminé sans tentative). Aucun changement de schéma
+> IA. Testé en HTTP local réel (Lakers/Celtics, Jokic hors match) sur
+> COMPARISON (2 sens) et COMBO (OVER/UNDER/dd/somme multi-joueurs/stat %) —
+> tous corrects, non-régression confirmée sur des cas normaux. Commité et
+> poussé (`ab236e5`). **Pas encore redéployé sur Cloud Run** (commande
+> donnée à l'utilisateur, en attente). Détail complet dans
+> `GAPS_OUVERTS.md`/`JOURNAL_SESSIONS.md` (26/08/2026).
+>
+> Restent hors de ce rattrapage, notés dans `GAPS_OUVERTS.md` : le
+> redéploiement Cloud Run ci-dessus, et les « 4 cas explicitement différés »
+> (3e des « 3 points hors plan » du 26/08) — détail définitivement perdu
+> (recherche exhaustive + l'utilisateur ne l'a plus), mis de côté
+> explicitement plutôt que deviné.
+>
+> Plus tôt (session du 26/08/2026) — **§2.121 : modèle joueur+période
+> entraîné, remplace l'approximation v1.** 2e des « 3 points hors plan »
+> repris après la clôture du plan de reprise post-audit (§2.120) : le
+> backfill `stats_box_scores_by_period` (Supabase, confirmé terminé le
+> 24/08, 6602/6602 matchs) permettait enfin d'entraîner un vrai modèle
+> plutôt que l'approximation "part fixe 25%/50% de la moyenne pleine partie"
+> posée le 24/08. Nouveau `train_player_period_model.py` (`Cadrage/Stats/
+> scripts/`), seul script du dossier à interroger Supabase directement (la
+> cible par période n'existe que là) — features pré-match restent 100%
+> locales (`features_joueur`), jointes sur `(game_id, player_id)`. 10
+> modèles entraînés (`period_{pts,reb,ast,fg3m,stl,blk,fga,fg3a,oreb,min}
+> .joblib`, `plus_minus` exclu — jamais backfillé par période), même
+> pooling par one-hot période que le modèle équipe déjà en prod. Dataset :
+> 477 276 lignes Q1-Q4 → 730 381 après jointure, ~1h50 d'entraînement.
+> Incident réel : 1er lancement en tâche de fond tué par erreur (bufferisation
+> stdout, même piège que `backfill_game_events.py` le 25/08) alors qu'il
+> progressait — relancé en `python -u` avec suivi `Monitor`, succès au 2e
+> essai. `supabase_context.py::_compute_player_period_proba_once()`
+> réécrite pour charger les vrais modèles (contrat HTTP inchangé, rien côté
+> TypeScript). Testé en conditions réelles (Jokic Q1/H1/H2, Wembanyama
+> blocks Q4, garde `plus_minus`/période invalide) + HTTP local + **redéployé
+> sur Cloud Run et revérifié en prod** (révision `nba-pronos-stats-00027-b2m`
+> — 1er essai `gcloud` échoué sans conséquence réelle, infra validée en
+> `dryRun`, refait avec succès au 2e essai). Commité (`d5c2738`, doc
+> `f421b26`).
+>
+> Plus tôt (session du 25-26/08/2026) — **§2.120 : plan de reprise post-audit,
+> étapes 6/7/8 — LES 8 ÉTAPES SONT CLOSES.** Étape 6 (événements granulaires :
+> buzzer beater, dernier panier, contre sur un joueur précis) codée et
+> **testée de bout en bout via l'appli réelle** (4 vrais paris soumis par
+> l'utilisateur sur des matchs NBA réels, résolution forcée) — 3/4 corrects
+> du premier coup, le 4e a révélé un vrai bug (les stats `MATCH_TOTAL` sans
+> seuil comme `had_buzzer_beater` ne savaient pas exprimer la NÉGATION d'un
+> événement, "aucun panier au buzzer" résolvait comme si l'événement avait
+> eu lieu) — corrigé (`negation`/`structured_negation`, `13f095a`),
+> commitée/poussée avec l'étape 5 (`4efa285`). Étape 7 (OU imbriqué dans un
+> ET, seul exemple réel : "triple-double + 40pts + (20reb OU 20pas)") : 1re
+> tentative dans le schéma partagé a reproduit le mur `400 compiled grammar
+> too large` déjà vu sur PERIOD le 24/08 — reverti, nouveau schéma dédié
+> `structureComboBet.ts` routé par mot-clé, modèle de données en groupes
+> (`{or: Condition[]}[]`) (`a579173`). Bug réel trouvé par l'utilisateur en
+> testant (Jamal Murray "triple-double + 25pts + 8reb-ou-8pas" → 0.04%,
+> incohérent) : traiter dd/td comme indépendant des catégories qui le
+> composent effondre la proba — 1re tentative de correctif (recalculer dd/td
+> depuis les catégories) ABANDONNÉE (pire que le bug) ; correctif retenu :
+> ne jamais retoucher P(dd/td), appliquer un facteur conditionnel par
+> catégorie (`849b5c7`, Cloud Run redéployé, cohérence revérifiée sur Jokic).
+> Étape 8 (guide de rédaction des paris) : intégrée dans `/regles` plutôt
+> qu'un doc séparé (demande explicite), 8 familles illustrées par de VRAIES
+> formulations du corpus + un paragraphe sur le non-calculable (`dde8f13`).
+>
+> Plus tôt (session du 25/08/2026) — **§2.119 : plan de reprise, étape 5 —
+> événements de match.** Fautes techniques joueur (`tech`, nouveau
+> `CLASSIFIER_STAT` calqué sur dd/td), temps morts et retour en zone
+> (`total_timeouts`/`had_backcourt_turnover`, nouveaux `MATCH_STAT_CODES`)
+> se glissent dans l'infrastructure existante SANS nouveau schéma IA ; seul
+> le comptage de fautes techniques ÉQUIPE ("exactement N") a demandé un
+> schéma dédié, réutilisant le patron multi-classe déjà construit pour
+> `QUARTERS_WON_COUNT`. Play-by-play déjà téléchargé localement pour les
+> 6602 matchs — `refresh_daily.py` étendu (`PlayByPlayV3`) pour que ça
+> marche aussi sur les matchs à venir, pas seulement l'historique (décision
+> explicite de l'utilisateur, impact opérationnel réel). Pièges réels
+> trouvés en explorant les données AVANT de coder : une faute technique
+> d'ENTRAÎNEUR a `teamId="0"` (exclue) ; les temps morts n'ont aucune
+> attribution structurée, résolus via le nom d'équipe en texte libre dans
+> `description`. 5 modèles entraînés en réutilisant tel quel l'existant
+> (aucune nouvelle fonction d'entraînement) — qualité honnêtement mitigée
+> pour `total_timeouts` (R²=0.010, dépend du déroulé temps réel, pas du
+> contexte pré-match), documenté plutôt que caché. Testé (7 vrais appels
+> Claude + 7 appels HTTP réels, routage par mot-clé vérifié sans collision
+> AVANT tout commit — leçon retenue de l'étape 3 ci-dessous). Commitée avec
+> l'étape 6 (`4efa285`).
+>
+> Plus tôt (session du 25/08/2026) — **§2.118 : plan de reprise, étapes 3
+> et 4 — comptage roster-wide + meilleur marqueur.** Étape 3
+> (`bet_subject=ROSTER_COUNT`, "au moins N joueurs remplissent une
+> condition") : Poisson-binomiale calculée EXACTEMENT (DP, pas une
+> approximation normale comme le reste du projet), `count_relation` à 3
+> valeurs (AT_LEAST/MORE_THAN/FEWER_THAN) plutôt que l'OVER/UNDER habituel.
+> Découverte de conception : `stats_box_scores` ne contient QUE des lignes
+> "a joué" (DNP filtrés à l'ingestion) — le bassin de joueurs se résout par
+> fréquence d'apparition récente (`_team_rotation()`, top 15/équipe), un DNP
+> traité comme 0 (pas une donnée manquante), divergence assumée et
+> documentée par rapport au reste du projet. Bug réel de routage (regex
+> "joueurs"..."chacun" trop courte de 1 caractère pour une phrase réelle du
+> corpus) trouvé EN VÉRIFIANT avant commit, corrigé. Testé (8 vrais appels
+> Claude + 8 appels HTTP réels). Committée et poussée (`94db7a4`). Étape 4
+> (superlatif "meilleur marqueur", ensemble de comparaison NON borné) :
+> calcul EXACT par intégration numérique (`scipy.integrate.quad`,
+> P(X>max(Y₁..Yₙ))) plutôt qu'un produit naïf d'indépendances. Bug réel
+> trouvé EN CONSTRUISANT (pas dans le code de cette session) : `plus_minus`
+> (pariable depuis l'étape 2) n'avait jamais été ajoutée aux colonnes de
+> résolution (`resolveCalculableBets.ts`) — tout pari `+/-` retombait
+> silencieusement sur `actual=0`, donc toujours LOST, en prod depuis le
+> 24/08/2026. Corrigé. Testé (6 vrais appels Claude + HTTP réel). Committée
+> et poussée (`332ac92`).
+>
+> Plus tôt (session du 24/08/2026) — **§2.117 : plan de reprise post-audit,
+> étapes 1 et 2.** Utilisateur dépose l'audit annoté des 429 paris
+> (`Paris gérés_non gérés - Feuille 1.csv`) — plan en 8 étapes validé, 4
+> points différés notés, 5 vraiment impossibles écartés (blessures, score
+> exact, panier à 4 points...). Étape 1 ("5 majeur/banc",
+> `bet_subject=ROSTER_SPLIT`) : colonne `position` (déjà dans les CSV NBA
+> bruts, jamais capturée) ajoutée à la synchro + backfillée pour les 6602
+> matchs (`backfill_starter_position.py`) ; titulaires approximés par
+> fréquence d'apparition (pas de confirmation officielle de composition
+> dans ce projet). Nouveau schéma IA séparé routé par mot-clé (même patron
+> que PERIOD). Committée (`4ff0a44`). Étape 2 ("petits gains groupés") :
+> OU logique sur COMPARISON (`relation="OR"`) + pari "fourchette" (juste un
+> exemple de prompt ajouté à COMBO, pas un nouveau mécanisme) d'abord
+> (`1a6f36a`), puis `+/-` (joueur) et `fga` (équipe) entraînés comme
+> stats pariables après requalification (aucun modèle n'existait encore
+> pour ces 2, contrairement à l'hypothèse initiale du plan) — 2 bugs réels
+> trouvés en câblant (`plus_minus_moy10` jamais calculé ; `fga` manquant des
+> colonnes `own_`/`opp_` attendues) tous deux corrigés (`714e45f`). Impact
+> sur la taille du schéma IA partagé mesuré à chaque étape (jamais supposé)
+> — resté loin sous le plafond qui avait cassé PERIOD.
+>
+> Plus tôt (session du 24/08/2026) — **§2.116 : pari période (équipe +
+> joueur), dernier chantier de la liste des 429 paris.** Score par
+> quart-temps déjà dans le payload live Highlightly, juste jamais persisté
+> (`matches.quarter_scores`) — 6 modèles équipe par famille de résultat.
+> Joueur+période : `play_by_play` LOCAL insuffisant (contres/passes/
+> interceptions en texte libre) — nouvelle table `stats_box_scores_by_period`
+> alimentée par l'API officielle (`BoxScoreTraditionalV3` par période),
+> backfill historique lancé en tâche de fond (~6600 matchs, ~8-11h estimées),
+> approximation v1 assumée en attendant (remplacée le 26/08, §2.121
+> ci-dessus). **Incident réel** : ajouter `period_bet` au schéma Zod
+> PARTAGÉ a cassé TOUS les paris (`400 compiled grammar too large`, même mur
+> que déjà pressenti) — schéma séparé et minimal créé
+> (`structurePeriodBet.ts`), routé par mot-clé, schéma principal restauré
+> à l'identique (non-régression reconfirmée). Testé sur les 47 exemples
+> réels du corpus (17/20 matchent, 5 "faux positifs" vérifiés un par un,
+> aucune mauvaise proba). Committée (`2efaf9e`, fix regex QT/MT `dcb4927`).
+> **2 bugs réels trouvés en testant via l'appli** après redéploiement :
+> `LEADS_HALF_RESULT` rejeté à tort (garde-fou ne gérait que 2 des 3
+> catégories réelles) et paris joueur+période systématiquement rejetés
+> (`comparison` jamais envoyé au service côté `predictPlayerPeriodStat`) —
+> les deux corrigés et revérifiés directement contre le service déployé.
+>
+> Plus tôt (session du 24/08/2026) — **§2.115 : % tir équipe (ft/fg/fg3) +
+> gap noté (pertes de balle).** 5e chantier de la liste des 429 : nouveau
+> `TEAM_PERCENTAGE_STATS`, résolution par agrégation makes/attempts sur
+> tous les joueurs de l'équipe (aucune colonne pré-calculée). Modèle Python
+> même principe que côté joueur (rétrécissement bayésien + Binomiale/
+> Beta-Binomiale). Bug réel trouvé EN CODANT : `build_team_context()`
+> agrégeait sur une liste de stats codée EN DUR à 7 — plafonnait
+> silencieusement dès une 8e stat, cassant même des endpoints déjà en prod
+> sans erreur visible ; rendu dynamique. Committée (`e95cc68`), redéployée
+> et vérifiée en prod le même jour (`4fc110a`). Gap noté séparément (pas
+> codé) : pertes de balle (`tov`) demandées par l'utilisateur en testant —
+> donnée déjà en base localement, jamais exposée comme stat pariable, même
+> patron que `oreb` avant son chantier — à reprendre plus tard (`b581fce`).
+>
+> Plus tôt (session du 24/08/2026) — **§2.114 : prolongation (overtime) +
+> fix catégorie auto-validée.** Nouveau `bet_subject=MATCH_TOTAL`,
+> `match_stat="went_to_ot"` (probabilité directe, sans seuil). Reformulation
+> trouvée en scopant : le payload live Highlightly a déjà 5 valeurs de score
+> en prolongation (`wentToOvertime()`), aucune synchro `play_by_play`
+> nécessaire côté prod. Instabilité numérique déjà connue (chantiers SÉRIE/
+> total_points) reproduite ICI AUSSI sur un CLASSIFIEUR PUR — l'hypothèse
+> initiale ("jamais observée sauf régression+norm.cdf") était fausse.
+> Committée (`001b18a`). **Bug réel trouvé par l'utilisateur le même jour**,
+> présent depuis la toute 1re auto-validation (21/08) : `validated_category`
+> recopiait le défaut du formulaire (`PLAYER_PROP`) au lieu du vrai
+> `bet_subject` déterminé par l'IA — un pari "prolongation" s'affichait
+> "Pari joueur". Corrigé (nouveau `p_category` sur `update_bet_structuration`,
+> pas rétroactif) (`d081727`).
+>
+> Plus tôt (session du 24/08/2026) — **§2.113 : combo multi-conditions +
+> refactor schéma imbriqué/cache de prompt.** 3e chantier de la liste des
+> 429 : ET de N conditions, simples ou sommées (réutilise le mécanisme du
+> duel). Fait DANS LA FOULÉE d'une discussion coût (mesuré : +50% d'input
+> tokens depuis COMPARISON, dominé par le schéma Zod lui-même, pas
+> compressible par cache) : schéma IA passé en objets imbriqués (contourne
+> la limite "16 champs racine union/nullable" de l'API, sans réduire les
+> tokens en soi) + cache de prompt Anthropic (bloc statique séparé du
+> dynamique, ~80% de réduction du coût d'entrée dès le 2e appel, TTL 5min
+> choisi explicitement par l'utilisateur). Regroupement des paris en envois
+> différés ÉTUDIÉ ET DÉCLINÉ (casserait l'auto-validation instantanée,
+> rentable seulement à 10+ paris/lot). Testé (12 vrais appels Claude + HTTP
+> réel). Vrai gap trouvé en testant (pas prévu) : un joueur hors match dans
+> COMPARISON/COMBO retombe en repli manuel plutôt qu'en 0%/100% trivial
+> (même gap que côté COMPARISON du chantier précédent, jamais remarqué avant)
+> — noté, **corrigé le 26/08/2026 (§2.122 ci-dessus)**. Committée
+> (`a734fc2`).
+>
+> Plus tôt (session du 24/08/2026) — **§2.112 : comparaison/duel
+> (COMPARISON).** 2e chantier de la liste des 429 : scope réduit au "duel
+> simple" (joueur vs joueur/somme/équipe, avec multiplicateur) — "meilleur
+> marqueur" (ensemble non borné) et 2 cas explicitement exclus (contre sur
+> un joueur précis, égalité exacte) confirmés avec l'utilisateur avant de
+> coder. Nouvelle colonne `structured_duel` jsonb, approximation normale de
+> la différence (indépendance assumée, même pour les stats Poisson).
+> Découverte utile en lisant le code : `supabase_context.py` avait déjà tout
+> pour calculer une moyenne/dispersion SANS seuil — extraites en
+> `_player_stat_mean_scale()`/`_team_stat_mean_scale()`, réutilisées par
+> l'existant ET le nouveau calcul (refactor, pas de duplication). **Vrai
+> problème trouvé en testant le schéma** : le 1er jet à champs plats (19
+> champs) a été REJETÉ par l'API Claude ("too many parameters with union
+> types... limit 16"), jamais rencontré avant — compressé à 13 champs.
+> Testé (8 vrais appels Claude + HTTP réel). Committée (`ad8172e`).
+>
+> Plus tôt (session du 23/08/2026) — **§2.111 : audit complet des 429 paris
+> + extensions faciles.** L'utilisateur dépose la liste réelle des 429
+> paris personnalisés joués la saison passée (12 catégories) — vérification
+> FACTUELLE (pas supposée) de ce que le pipeline supporte déjà sur 6 points
+> précis. Résultat présenté en 4 paliers (déjà couvert / extension
+> mécanique / nouveau mécanisme réutilisable / gros chantier d'infra) + 36
+> paris non-automatisables par design. Ordre de traitement confirmé
+> (faciles → comparaison/duel → combos → quart-temps, "on fera tout au
+> final"). Extensions faciles enchaînées le jour même : `team_pts` (dédup
+> générique des colonnes déjà présentes depuis `home_win`), `fga`/`fg3a`
+> (donnée déjà là pour les modèles de %, juste pas exposée comme stat à
+> seuil — un seul endroit à étendre suffit, `supabase_context.py` importe
+> directement du script CLI local), `oreb` (les 3 formes, seul à toucher le
+> schéma Supabase, migration additive + backfill complet relancé). Testé (9
+> vrais appels Claude + HTTP local). Committée (`988af8c`).
+>
+> Plus tôt (session du 23/08/2026) — **§2.110 : paris équipe — total_points,
+> rebonds, généralisation à 4 stats.** `bet_subject=TEAM_STAT` (nouveau,
+> distinct de `MATCH_TOTAL` combiné) : total_points d'abord (`c37cb02`,
+> réutilise `entrainement_matchs` déjà prêt), puis rebonds sous 2 formes —
+> équipe précise ET combiné (`a30a1e3`, nouvelle table
+> `entrainement_equipe`, perspective "own"/"opp" plutôt que domicile/
+> extérieur pour rester valide qu'une équipe reçoive ou se déplace). Vrai
+> manque de conception trouvé EN CONCEVANT : rien ne mémorisait quelle
+> équipe un pari `TEAM_STAT` vise — `structured_team_id` ajoutée
+> (migration `20260823140000`). Généralisée le même jour à ast/fg3m/stl/blk
+> (`e22a461`) : 2 scripts d'entraînement en boucle sur la liste de stats
+> plutôt que dupliqués, les fonctions dédiées rebonds remplacées par des
+> versions paramétrées (revérifié bit-identique). Testé à chaque étape (10
+> prédictions directes + HTTP local + 10 vrais appels Claude, tous
+> corrects).
+>
+> Plus tôt (session du 23/08/2026) — **§2.109 : paris SÉRIE, chantier
+> complet pour les paris JOUEUR (pièces a0 à e).** Cadrage en 2 temps :
+> longueur de série via une vraie loi binomiale négative (pas du ML),
+> décision de construire d'abord un modèle de victoire PAR MATCH
+> (`train_home_win_model.py`, jamais utilisé jusqu'ici) plutôt que partir de
+> p=0.5. Pièce a0 (modèle + calcul récursif de série, `simulate_series()`,
+> vérifié EXACT contre la formule classique p=0.5) : `3b73efa`. Bloquant
+> Supabase trouvé (pas de `team_id`/stats avancées) puis levé (`339083c`) :
+> migration + backfill + `build_team_context()`. Pièce (c) (agrégation
+> générique "au moins une fois sur la série", DP, indépendance stat/issue
+> assumée, vérifiée par cross-check exact) : `a315173`. Pièce (d)
+> (extraction IA + endpoint `/predict-series`) : bug de Dockerfile trouvé
+> AVANT de tester (fichiers manquants dans l'image), correctif de
+> conception réel (inverser la proba PAR MATCH avant la simulation, pas
+> après), et **1re apparition documentée de l'instabilité numérique**
+> (~1/10-15 appels, cause exacte jamais trouvée, mitigée par
+> `_compute_with_consistency_check()` — généralisée aux chantiers suivants)
+> : `29667b6`. Pièce (e) (résolution automatique SÉRIE) : `40775a6`. **3
+> essais réels via l'appli, 3 bugs réels trouvés et corrigés** : deadline
+> série basée sur tous les matchs connus (pas juste le match 1) ; vrai trou
+> de conception ("sur la série" a 2 lectures, resté sur "au moins une
+> fois") ; déduction de saison fausse en intersaison (`_latest_known_season()`
+> remplace une règle calendaire) + tolérance de cohérence recalibrée 1e-6→1e-2
+> (`b842722`). Bug préexistant sans rapport trouvé au passage : un pari
+> série VALIDATED devenait invisible partout depuis la refonte du 18/08 —
+> corrigé en réutilisant `BetBlock` (`045d126`). Pièce (a) (modèle équipe
+> pour paris équipe/total sur SÉRIE) reste hors périmètre, non construite.
+>
+> Plus tôt (session du 22-23/08/2026) — **§2.108 : Phase 6, résolution
+> automatique des paris IA calculables — COMPLÈTE ET VÉRIFIÉE.** Scope
+> MATCH uniquement (SÉRIE trop ambigu pour ce 1er jet). Pont entre les
+> matchs de l'appli (Highlightly) et les vraies stats NBA (`nba_api`) via
+> `entity_mappings`, nouveau `source_type=NBA_API`, rapprochement
+> déterministe date+équipes. 4 blocs : capture du vrai `player_id` à la
+> structuration (`332cbc9`) ; `resolveNbaGameId()`/`computeOutcome()`/
+> `resolveCalculableBets()`, nouvelle route `/api/resolve-bets` chaînée au
+> cron quotidien (`2336329`) ; vérification complète (`611faaa`). **Testé
+> en conditions réelles avec un vrai match/pari temporaires** (Atlanta
+> Hawks @ New York Knicks, 23/04/2026, Jalen Johnson, accord explicite de
+> l'utilisateur, données supprimées après coup) : résolu WON, points
+> corrects, un pari en attente correctement ignoré. Limite documentée :
+> LA compétition de test active (dates fictives d'août, hors saison NBA)
+> ne pourra jamais servir à tester ce mécanisme de bout en bout — seule une
+> vraie compétition alignée sur le calendrier NBA le pourra.
+>
+> Plus tôt (session du 22/08/2026) — **§2.107 : fixes UI (bracket NBA Cup,
+> affichage écart, cartes Mes pronos) + chaîne de bugs Risacher.** Repli
+> automatique des cartes prono/pari après soumission (`69bebbe`).
+> Superposition des demi-finales NBA Cup dans l'arbre du bracket : règle
+> "même ligne" du 17/08 (correcte en Playoffs, 2 colonnes différentes)
+> empilait littéralement les 2 demies en NBA Cup (colonne unique) —
+> corrigée par `columnKeyById` (`3e26d89`). Affichage "✓ CHI −4" trompeur
+> (lu comme un déficit) → "+4" partout, 6 endroits corrigés par grep
+> exhaustif (`4ee6421`). **Chaîne de 3 bugs réels liés à "Zaccharie
+> Risacher non reconnu"** : `find_player()`/`find_team()` non paginés
+> (>1000 lignes dans `stats_joueurs`, mêmes ~52 derniers joueurs invisibles
+> quelle que soit l'orthographe, `106e6e8`) → un pari CANCELLED restait
+> affiché au lieu de libérer la place (`89de328`) → resoumission bloquée
+> par une contrainte unique jamais mise à jour pour le statut CANCELLED
+> (migration corrective appliquée via le dashboard Supabase, `dae9ee4`).
+> Chaîne entièrement résolue et confirmée en conditions réelles.
+>
+> Plus tôt (session du 22/08/2026) — **§2.106 : Phase 5 clôturée + coût des
+> appels IA optimisé.** Point 5 (barème du fallback) explicitement PARQUÉ
+> par décision de l'utilisateur, pas tranché. Cache de prompt écarté après
+> mesure réelle (schéma sous le seuil minimum) — optimisation trouvée à la
+> place : Claude Opus 5 → Sonnet 5 (~2.6x moins cher, résultats identiques
+> sur 7 cas dont les 2 bugs de session) + descriptions du schéma condensées
+> (`309cdf9`).
+>
+> Plus tôt (session du 21-22/08/2026) — **§2.105 : Phase 5, structuration
+> IA des paris persos — raccordement réel dans l'appli.** Chaîne complète :
+> migration (7 colonnes `bets` + RPC `update_bet_structuration`), 5
+> fichiers `lib/ai/*` (Claude Opus 5 via `client.messages.parse()` +
+> `zodOutputFormat`, appel synchrone à la soumission, best-effort de bout
+> en bout — aucune panne de cette chaîne ne peut faire échouer un pari)
+> (`6ae813a`). **Design révisé en cours de route** : l'utilisateur révèle
+> un malentendu (proba visible au joueur APRÈS validation, auto-validation
+> pour les calculables, admin corrige après coup) différent de ce qui avait
+> été codé (admin garde la main) — réajusté (`59b459f`). **6 bugs réels
+> trouvés et corrigés en testant** : dd/td rejetés à tort (`comparison`
+> exigé partout) ; "Junior" vs "Jr." jamais matché par `find_player()`
+> (`8a0738f`) ; aucune vérification que le joueur nommé joue dans le match
+> visé, corrigée en donnant à Claude le contexte des 2 équipes (`b0d5f1f`) ;
+> `is_calculable=false` jamais écrit explicitement (indistinguable d'une
+> panne) (`f63df21`) ; joueur hors match calculait une vraie proba au lieu
+> de forcer 0% (`63805d0`) ; seuils proba→difficulté provisoires calibrés
+> sur 868 joueurs réels/62280 probas simulées (`5c3de08`). `ANTHROPIC_API_KEY`/
+> `STATS_SERVICE_URL` configurées par l'utilisateur.
+>
+> Plus tôt (session du 21/08/2026) — **§2.104 : Data NBA Phase 4 ENTIÈREMENT
+> CLOSE.** 1er run réel du cron GitHub Actions : succeeded mais ~10min
+> presque entièrement des timeouts hors-saison — timeout/tentatives réduits
+> uniquement pour la détection de saison (10min→8s hors-saison, aucune
+> perte de fiabilité en saison pleine) (`74daf64`).
+>
+> Plus tôt (session du 21/08/2026) — **§2.103 : Data NBA, déploiement Cloud
+> Run réel + rafraîchissement quotidien.** Service déployé et VÉRIFIÉ EN
+> LIGNE par l'utilisateur (`https://nba-pronos-stats-*.run.app`), guidé pas
+> à pas — 2 bugs réels de déploiement corrigés (commande multi-lignes mal
+> découpée en PowerShell, permission Secret Manager manquante par défaut)
+> (`7b342ca`). Incident mineur : clé Supabase apparue en clair dans la
+> conversation (rotation proposée, déclinée). Rafraîchissement quotidien
+> (`refresh_daily.py`, nouveau `service/refresh_daily.py`) : 3 bugs réels
+> trouvés en testant contre 2 vrais matchs supprimés/réinsérés (pagination
+> PostgREST tronquée à 1000, mauvaise liste de colonnes, filtre DNP
+> insuffisant en direct) — reproduction EXACTE confirmée après correctifs,
+> workflow GitHub Actions ajouté (`ec7bac5`).
+>
+> Plus tôt (session du 21/08/2026) — **§2.102 : Data NBA Phase 4, architecture
+> sans état + Cloud Run + Supabase (migration #31).** Reconsidération avant
+> de s'engager : `nba.db` (575 Mo) ne pèse autant que par le play-by-play
+> jamais lu par l'inférence (110 Mo sans cette table) — design "disque
+> persistant" abandonné pour une architecture SANS ÉTAT (données dans
+> Supabase déjà en place, modèles embarqués dans l'image au build),
+> hébergée gratuitement sur Google Cloud Run (comparé explicitement à
+> Render et une fonction Vercel, écartés). Migration #31 (3 tables
+> `stats_*`) pousse enfin sans blocage classifieur — débloque au passage 2
+> migrations en attente depuis plusieurs jours. Bug réel de backfill (pandas
+> 3.0 renvoie des floats natifs, rejetés par une colonne Postgres integer)
+> corrigé. Service réécrit contre la vraie base Supabase, résultats
+> rigoureusement identiques à la version SQLite (`a487ba1`).
+>
+> Plus tôt (session du 21/08/2026) — **§2.101 : Data NBA, réentraînement 5
+> saisons + micro-service FastAPI local.** Réentraînement sur 5 saisons
+> (56938→140933 lignes) : amélioration nette sans régression. Biais
+> résiduel FT% (~4%) diagnostiqué comme un artefact de granularité (1-6
+> tentatives réelles/match), pas un bug à corriger. Décisions d'architecture
+> Phase 4 posées : micro-service Python (FastAPI) plutôt que réimplémenter
+> l'inférence en TypeScript, cron quotidien pour la fraîcheur de `nba.db`.
+> `compute_proba()` extraite pour être partagée CLI/service (résultats
+> identiques confirmés). Nouveau `service/app.py` (`GET /health`,
+> `POST /predict`), vérifié en HTTP local — réponses identiques au CLI déjà
+> validé (`43b8c28`).
+>
+> Plus tôt (session du 21/08/2026) — **§2.100 : Data NBA Phase 3, overdispersion
+> FT%/FG%/3P% — Beta-Binomial adopté sur FT%.** Résiduel de calibration
+> ±4-9% laissé ouvert le 20/08 : cause identifiée AVANT de tester (la proba
+> finale écrasait le postérieur Beta sur le taux à sa seule moyenne avant
+> injection dans la Binomiale, jetant l'incertitude sur le taux lui-même).
+> Testé Beta-Binomial prédictif vs Binomial plug-in sur les 3 stats de
+> taux : gain net sur FT% (5.4%→4.1%, la moins tentée), négligeable sur
+> 3P%, légèrement pire sur FG% (déjà quasi parfait) — adopté UNIQUEMENT sur
+> FT% (`BETABINOM_STATS={"ft"}`), même patron ciblé que `POISSON_STATS`.
+> ~24% de réduction du résiduel, ~4% de biais résiduel non conditionnel
+> resté ouvert (signe inversé selon le seuil, jamais creusé, pas bloquant)
+> (`0babb8a`).
 >
 > Plus tôt (session du 20/08/2026, soir, suite) — **Login/
 > Signup/Reset : photo forcée même sans session — §2.95 ci-dessous.**
