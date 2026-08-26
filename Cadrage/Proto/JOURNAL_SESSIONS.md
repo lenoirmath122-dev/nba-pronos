@@ -10970,7 +10970,22 @@ PID réel via `netstat -ano` pour le libérer). Résultat final : Jokic reb H1
 avec ~2.8 contres/match en moyenne réelle), plus_minus rejeté proprement en
 400. Aucune modification du Dockerfile nécessaire (copie déjà tout models/).
 
-GAPS_OUVERTS.md mis à jour. PAS commité (attend confirmation utilisateur) --
-PAS encore redéployé sur Cloud Run. Reste 2 des 3 points de la liste :
-gap not_in_match (COMPARISON/COMBO) et les 4 cas explicitement différés.
+GAPS_OUVERTS.md mis à jour, commité et poussé (d5c2738).
+
+Redéploiement Cloud Run confié à l'utilisateur ("tu me donnes la commande
+complète, pour cette fois je m'en charge") -- 1er essai échoué juste après
+le build/push (réussis tous les deux) avec une erreur NOT_FOUND générique
+au moment de créer la révision. Diagnostic (logs d'audit Cloud Run,
+`gcloud logging read`) : la validation `dryRun` de la nouvelle révision
+avait réussi sans erreur (service/secret/IAM tous corrects), et aucune 2e
+requête (le vrai déploiement) n'apparaissait dans les logs -- accroc
+`gcloud` cote client, pas un vrai problème d'infra. Confirmé par un simple
+nouvel essai, cette fois lancé par moi directement ("fais ! tout validé !")
+: succès, révision `nba-pronos-stats-00027-b2m`. Revérifié en prod
+(`/health` liste les 10 `period_*`, `/predict-player-period` Jokic reb H1
+-> 86.9%, bit-identique au test local).
+
+Modèle joueur+période : chantier COMPLET (entraîné, intégré, testé, commité,
+déployé, vérifié en prod). Reste 2 des 3 points de la liste initiale : gap
+not_in_match (COMPARISON/COMBO) et les 4 cas explicitement différés.
 ```

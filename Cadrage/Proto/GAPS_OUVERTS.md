@@ -87,8 +87,13 @@
 > Wembanyama blk Q4 15.9% avec moyenne 0.7 contre/quart-temps -- cohérent
 > avec sa moyenne réelle ~2.8 contres/match, `plus_minus` rejeté proprement
 > en 400 au lieu de 500). **Aucune modification du `Dockerfile`** nécessaire
-> (`COPY models/ ./models/` copie déjà tout le dossier) -- **pas encore
-> redéployé sur Cloud Run**, action suivante.
+> (`COPY models/ ./models/` copie déjà tout le dossier). **Redéployé sur
+> Cloud Run le 26/08/2026** (révision `nba-pronos-stats-00027-b2m`, après un
+> 1er essai en `dryRun` resté sans suite côté `gcloud` -- accroc CLI
+> transitoire, confirmé via les logs d'audit Cloud Run : validation
+> réussie, aucune 2e requête envoyée -- corrigé par un simple nouvel essai).
+> Revérifié en prod (`/health` liste les 10 `period_*`, `/predict-player-period`
+> Jokic reb H1 -> 86.9%, bit-identique au test local).
 
 > **Étape 8 du plan de reprise, CODÉE le 26/08/2026** -- guide de rédaction
 > des paris, intégré dans `/regles` (`app/regles/page.tsx`), demande
