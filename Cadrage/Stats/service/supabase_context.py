@@ -1228,15 +1228,27 @@ def _resolve_weighted_operand(
     for name in players:
         player_id, _ = find_player(client, name)
         player_team_id = _player_current_team_id(client, player_id)
+        player_ids.append(player_id)
         if player_team_id not in (home_team_id, away_team_id):
-            raise ValueError(f"\"{name}\" ne joue pour aucune des 2 equipes de ce match.")
+            # Joueur absent des 2 equipes de ce match (26/08/2026,
+            # GAPS_OUVERTS.md, gap not_in_match COMPARISON/COMBO) -- sa
+            # contribution reelle est 0 pour TOUTE stat COMPTEE (il ne joue
+            # pas ce soir-la), pas une erreur : mean=0/scale=0 s'additionne
+            # simplement au reste de l'operande (utile pour une somme
+            # multi-joueurs ou un seul est hors match) plutot que de faire
+            # echouer tout le pari. Meme principe que not_in_match cote
+            # PLAYER simple (structureAndScoreBet.ts, 21/08/2026), mais
+            # applique ici via le VRAI roster (find_team/
+            # _player_current_team_id) plutot qu'un flag auto-declare par
+            # l'IA -- plus fiable, et ne necessite aucun champ de schema
+            # supplementaire.
+            continue
         is_home = 1 if player_team_id == home_team_id else 0
         opponent_id = away_team_id if is_home else home_team_id
         for stat in stats:
             mean, scale = _player_stat_mean_scale(client, player_id, stat, opponent_id=opponent_id, is_home=is_home)
             means.append(mean)
             variances.append(scale ** 2)
-        player_ids.append(player_id)
     return sum(means), math.sqrt(sum(variances)), {"player_ids": player_ids}
 
 
@@ -1357,7 +1369,23 @@ def _condition_proba(
         player_id, _ = find_player(client, name)
         player_team_id = _player_current_team_id(client, player_id)
         if player_team_id not in (home_team_id, away_team_id):
-            raise ValueError(f"\"{name}\" ne joue pour aucune des 2 equipes de ce match.")
+            # Joueur absent des 2 equipes de ce match (26/08/2026, meme gap
+            # que _resolve_weighted_operand() ci-dessus) -- valeur reelle
+            # DETERMINISTE (il ne joue pas) : 0 pour toute stat COMPTEE
+            # (REGRESSION_STATS, seuil>0 suppose -- meme approximation que
+            # le cas PLAYER simple) et pour les CLASSIFIER_STATS (dd/td/
+            # tech, jamais atteints sans jouer). Les stats a POURCENTAGE
+            # (ft/fg/fg3, PCT_STATS) restent hors de ce court-circuit -- 0
+            # tentative rend le taux indetermine, pas de valeur triviale
+            # correcte a renvoyer -- retombe sur le repli manuel existant
+            # (ValueError -> calculable=false cote TypeScript).
+            if stat in REGRESSION_STATS:
+                proba = 0.0 if comparison == "OVER" else 1.0
+            elif stat in CLASSIFIER_STATS:
+                proba = 0.0
+            else:
+                raise ValueError(f"\"{name}\" ne joue pour aucune des 2 equipes de ce match.")
+            return proba, {"kind": "PLAYER", "player_ids": [player_id], "stats": stats}
         is_home = 1 if player_team_id == home_team_id else 0
         opponent_id = away_team_id if is_home else home_team_id
         result = compute_proba(client, player_id, stat, seuil, opponent_id=opponent_id, is_home=is_home)

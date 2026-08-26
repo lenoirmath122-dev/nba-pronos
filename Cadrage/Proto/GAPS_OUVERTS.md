@@ -24,9 +24,11 @@
 > **3 points hors de ce plan, repris ensuite avec l'utilisateur (26/08/2026,
 > dans l'ordre demandé)** : (1) modèle joueur+période entraîné -- voir son
 > entrée ci-dessous, remplace l'approximation v1 ; (2) gap `not_in_match`
-> absent de COMPARISON/COMBO (voir chantier combo, 24/08/2026) ; (3) 4 cas
-> explicitement laissés de côté (performance propre par période, égalités
-> strictes -- voir ci-dessous). (2) et (3) pas encore traités.
+> absent de COMPARISON/COMBO (voir chantier combo, 24/08/2026) -- CORRIGÉ le
+> 26/08/2026, voir son entrée ci-dessous ; (3) 4 cas explicitement laissés de
+> côté (performance propre par période, égalités strictes -- voir
+> ci-dessous). (3) pas encore traité. **Pas encore redéployé sur Cloud Run**
+> depuis le correctif (2).
 
 > **Modèle joueur+période ENTRAÎNÉ le 26/08/2026** -- remplace l'approximation
 > v1 de `_compute_player_period_proba_once()` (supabase_context.py, part fixe
@@ -94,6 +96,59 @@
 > réussie, aucune 2e requête envoyée -- corrigé par un simple nouvel essai).
 > Revérifié en prod (`/health` liste les 10 `period_*`, `/predict-player-period`
 > Jokic reb H1 -> 86.9%, bit-identique au test local).
+
+> **Gap `not_in_match` COMPARISON/COMBO, CORRIGÉ le 26/08/2026** -- 2e des 3
+> points hors plan repris avec l'utilisateur (voir résumé en tête de
+> fichier), à la suite du modèle joueur+période ci-dessus. Aucune des 2
+> options envisagées à l'origine (champ `not_in_match_players` côté schéma
+> LLM, ou vérification côté `structureAndScoreBet.ts`) -- solution plus
+> simple trouvée en creusant : `supabase_context.py` fait DÉJÀ, pour CHAQUE
+> joueur nommé dans une condition COMPARISON/COMBO, un vrai lookup roster
+> (`find_player()` + `_player_current_team_id()`) avant tout calcul --
+> jusqu'ici pour lever une `ValueError` (-> HTTP 400 -> `calculable=false`,
+> repli manuel) des qu'un joueur ne correspond a aucune des 2 equipes du
+> match. Corrige DIRECTEMENT là, côté Python, sans toucher au schéma
+> `structureBet.ts` ni à `structureAndScoreBet.ts` : plus fiable qu'un
+> `not_in_match` auto-déclaré par le LLM (repose sur le VRAI roster en
+> base), et n'ajoute aucun champ juste après la compression du schéma
+> (24/08/2026).
+>
+> **2 points de code touchés** (`Cadrage/Stats/service/supabase_context.py`) :
+> - `_resolve_weighted_operand()` (utilisée par COMPARISON et par le cas
+>   SOMME de COMBO, tous deux restreints à `REGRESSION_STATS`) : un joueur
+>   hors match contribue désormais `mean=0/scale=0` à la somme (il ne joue
+>   pas ce soir-là -- valeur réelle triviale) au lieu de faire échouer TOUT
+>   l'opérande, y compris quand il n'est qu'UN des joueurs sommés (l'autre
+>   reste calculé normalement).
+> - `_condition_proba()` (branche SIMPLE de COMBO, 1 joueur + 1 stat, TOUT
+>   type de stat) : résolution déterministe explicite -- `REGRESSION_STATS`
+>   (seuil supposé > 0, même approximation que le cas PLAYER simple) :
+>   `OVER` -> 0%, `UNDER` -> 100% ; `CLASSIFIER_STATS` (dd/td/tech, jamais
+>   atteints sans jouer) -> 0% dans tous les cas. Les stats à POURCENTAGE
+>   (`ft`/`fg`/`fg3`, `PCT_STATS`) restent VOLONTAIREMENT hors de ce
+>   court-circuit -- 0 tentative rend le taux indéterminé, pas de valeur
+>   triviale correcte à renvoyer -- conservent le repli manuel existant
+>   (comportement inchangé pour ce seul sous-cas, toujours sûr).
+>
+> Testé en conditions réelles (service lancé en local, port 8011, Lakers vs
+> Celtics, joueur hors match = Nikola Jokic/Denver) : COMPARISON avec le
+> joueur hors match à droite (LeBron > Jokic pts, GT) -> 99.999% ; à gauche
+> (Jokic > Tatum reb, GT) -> 0.4% (Tatum peut ponctuellement passer sous 0
+> selon l'approximation normale, écart négligeable) ; COMBO simple OVER
+> hors match -> 0% exact ; COMBO simple UNDER hors match -> 100% exact ;
+> COMBO simple `dd` hors match -> 0% exact ; COMBO SOMME multi-joueurs
+> (LeBron+Jokic pts>20, un seul hors match) -> proba identique à LeBron
+> seul (0.7875), confirmant que Jokic contribue bien 0 sans casser le
+> calcul ; COMBO sur une stat à pourcentage (`fg`) avec joueur hors match ->
+> repli manuel confirmé (comportement inchangé, volontaire). Non-régression
+> vérifiée sur un COMPARISON et un COMBO simples 100% sur-match (probas
+> inchangées par rapport à avant ce correctif). `python -c "import ast..."`
+> propre (pas de suite de tests dédiée à ce service, même convention que le
+> reste de `Cadrage/Stats/service/` -- validation par appels HTTP réels).
+>
+> **Pas encore redéployé sur Cloud Run, pas testé en conditions réelles
+> depuis l'appli** (contrairement au modèle joueur+période ci-dessus, pas
+> encore repoussé en prod à ce stade).
 
 > **Étape 8 du plan de reprise, CODÉE le 26/08/2026** -- guide de rédaction
 > des paris, intégré dans `/regles` (`app/regles/page.tsx`), demande
@@ -1219,6 +1274,11 @@
 > vérification côté `structureAndScoreBet.ts` (lister tous les joueurs
 > nommés, vérifier leur équipe via le même mécanisme que PLAYER, avant même
 > d'appeler le service).
+>
+> **CORRIGÉ le 26/08/2026** -- ni l'un ni l'autre des 2 options ci-dessus :
+> voir l'entrée dédiée plus loin dans ce fichier (recherche "not_in_match
+> COMPARISON/COMBO, CORRIGÉ") pour la solution retenue (vérification
+> serveur via le VRAI roster, aucun champ de schéma ajouté).
 >
 > Testé en conditions réelles à chaque étape (Lakers vs Celtics) : appels
 > HTTP locaux réels sur `/predict-combo` (simple, PRA, cumul multi-joueurs,

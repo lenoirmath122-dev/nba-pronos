@@ -10989,3 +10989,69 @@ Modèle joueur+période : chantier COMPLET (entraîné, intégré, testé, commi
 déployé, vérifié en prod). Reste 2 des 3 points de la liste initiale : gap
 not_in_match (COMPARISON/COMBO) et les 4 cas explicitement différés.
 ```
+
+## Gap not_in_match COMPARISON/COMBO corrigé (26/08/2026)
+
+```text
+Utilisateur : "Ok, on règle ces 3 cas dans l'ordre ?" -- 2e des 3 points hors
+plan, à la suite du modèle joueur+période (session précédente le même jour).
+"Yes" pour enchaîner directement.
+
+Recherche préalable avant de coder (même discipline qu'à chaque chantier) :
+relecture du gap tel que documenté le 24/08/2026 (GAPS_OUVERTS.md) -- 2
+options envisagées à l'époque, un champ `not_in_match_players` côté schéma
+LLM (structureBet.ts) ou une vérification côté structureAndScoreBet.ts avant
+d'appeler le service. En creusant le code Python (supabase_context.py)
+plutôt que de choisir aveuglément entre les 2 : découvert que
+_resolve_weighted_operand() et _condition_proba() font DÉJÀ, pour chaque
+joueur nommé dans une condition COMPARISON/COMBO, un vrai lookup roster
+(find_player() + _player_current_team_id()) -- jusqu'ici seulement pour
+LEVER une ValueError (-> HTTP 400 -> calculable=false côté TypeScript) dès
+qu'un joueur ne joue pour aucune des 2 équipes du match. Aucune des 2
+options d'origine n'était donc nécessaire : ni nouveau champ de schéma
+(éviterait d'alourdir le schéma juste après l'avoir compressé le
+24/08/2026), ni nouvelle vérification côté TypeScript (dupliquerait une
+vérification déjà faite côté Python, moins fiable en plus car reposerait
+sur la connaissance du LLM plutôt que sur le vrai roster en base).
+
+Correctif 100% côté Python, 2 points de code :
+- _resolve_weighted_operand() (COMPARISON + cas SOMME de COMBO, tous deux
+  restreints à REGRESSION_STATS) : un joueur hors match contribue
+  mean=0/scale=0 à la somme au lieu de faire échouer tout l'opérande --
+  marche aussi bien pour un seul joueur hors match que pour UN SEUL joueur
+  hors match parmi plusieurs sommés (les autres restent calculés
+  normalement, math inchangée : sum([]) = 0 s'additionne simplement au
+  reste).
+- _condition_proba() (branche SIMPLE de COMBO, 1 joueur + 1 stat, tout type
+  de stat contrairement à COMPARISON qui exclut déjà dd/td/tech/ft/fg/fg3) :
+  résolution déterministe explicite selon le type de stat -- REGRESSION_STATS
+  (OVER -> 0%, UNDER -> 100%, seuil > 0 supposé, même approximation que le
+  cas PLAYER simple du 21/08/2026) ; CLASSIFIER_STATS dd/td/tech -> 0% dans
+  tous les cas (jamais atteints sans jouer). Les stats à POURCENTAGE
+  (ft/fg/fg3, PCT_STATS) gardent VOLONTAIREMENT l'ancien comportement
+  (ValueError -> repli manuel) : 0 tentative rend le taux indéterminé, pas
+  de valeur triviale correcte à renvoyer dans ce seul sous-cas.
+
+Testé en conditions réelles (service lancé en local sur le port 8011,
+Lakers vs Celtics, joueur hors match = Nikola Jokic/Denver, même patron que
+les sessions précédentes) : COMPARISON avec le joueur hors match à droite
+(LeBron > Jokic pts) -> 99.999% ; à gauche (Jokic > Tatum reb) -> 0.4% (la
+composante hors match vaut exactement 0, l'écart résiduel vient de
+l'approximation normale du côté réel) ; COMBO simple OVER hors match -> 0%
+exact ; COMBO simple UNDER hors match -> 100% exact ; COMBO simple dd hors
+match -> 0% exact ; COMBO SOMME multi-joueurs (LeBron+Jokic pts>20, un seul
+hors match) -> proba identique à LeBron seul (0.7875), confirmant que Jokic
+contribue bien 0 sans rien casser ; COMBO sur une stat à pourcentage (fg)
+avec joueur hors match -> repli manuel confirmé, comportement inchangé et
+volontaire pour ce cas précis. Non-régression vérifiée sur un COMPARISON et
+un COMBO simples 100% sur-match (probas identiques à avant ce correctif).
+Pas de suite de tests dédiée à ce service (même convention que le reste de
+Cadrage/Stats/service/ -- validation par vrais appels HTTP), juste une
+vérification de syntaxe (`python -c "import ast; ast.parse(...)"`).
+
+GAPS_OUVERTS.md mis à jour (entrée dédiée + résumé en tête de fichier).
+
+Pas encore commité, pas encore redéployé sur Cloud Run, pas encore testé
+depuis l'appli réelle -- reste 1 des 3 points hors plan (les 4 cas
+explicitement différés).
+```
