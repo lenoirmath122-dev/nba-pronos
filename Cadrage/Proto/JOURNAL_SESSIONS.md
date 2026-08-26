@@ -11050,8 +11050,15 @@ Cadrage/Stats/service/ -- validation par vrais appels HTTP), juste une
 vérification de syntaxe (`python -c "import ast; ast.parse(...)"`).
 
 GAPS_OUVERTS.md mis à jour (entrée dédiée + résumé en tête de fichier).
+Commité et poussé (`ab236e5`). Pas encore redéployé sur Cloud Run, pas
+encore testé depuis l'appli réelle.
 
-Pas encore commité, pas encore redéployé sur Cloud Run, pas encore testé
-depuis l'appli réelle -- reste 1 des 3 points hors plan (les 4 cas
-explicitement différés).
+3e et dernier point hors plan ("4 cas explicitement laissés de côté") :
+tentative de reprise -- recherche exhaustive (grep sur tous les fichiers de
+suivi + `git show d5c2738`, le commit qui a introduit cette phrase le même
+jour) ne retrouve aucune énumération écrite de ces 4 cas, seule la phrase
+résumée existe. Demandé à l'utilisateur de les repréciser : "je ne les ai
+plus". Laissé de côté explicitement, noté dans GAPS_OUVERTS.md pour ne pas
+relancer inutilement la même recherche dans une future session -- à
+reprendre uniquement si l'utilisateur peut les re-décrire un jour.
 ```

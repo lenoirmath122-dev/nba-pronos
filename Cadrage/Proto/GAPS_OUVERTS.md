@@ -26,9 +26,16 @@
 > entrée ci-dessous, remplace l'approximation v1 ; (2) gap `not_in_match`
 > absent de COMPARISON/COMBO (voir chantier combo, 24/08/2026) -- CORRIGÉ le
 > 26/08/2026, voir son entrée ci-dessous ; (3) 4 cas explicitement laissés de
-> côté (performance propre par période, égalités strictes -- voir
-> ci-dessous). (3) pas encore traité. **Pas encore redéployé sur Cloud Run**
-> depuis le correctif (2).
+> côté (performance propre par période, égalités strictes). **Pas encore
+> redéployé sur Cloud Run** depuis le correctif (2).
+>
+> **(3) DÉTAIL PERDU (26/08/2026)** -- recherche exhaustive faite (grep sur
+> tous les fichiers de suivi + `git show d5c2738`, le commit qui a introduit
+> cette phrase) : les "4 cas" n'ont jamais été détaillés par écrit nulle
+> part, seule cette phrase résumée existe. L'utilisateur ne les a plus non
+> plus ("je ne les ai plus"). Laissé de côté explicitement -- à reprendre
+> uniquement si/quand l'utilisateur peut re-préciser lesquels, pas la peine
+> de re-chercher dans les docs entre-temps.
 
 > **Modèle joueur+période ENTRAÎNÉ le 26/08/2026** -- remplace l'approximation
 > v1 de `_compute_player_period_proba_once()` (supabase_context.py, part fixe
