@@ -143,6 +143,75 @@ export default async function ReglesPage() {
           </p>
         </section>
 
+        <section className={`${styles.section} glass-card`} aria-label="Bien rédiger un pari">
+          <h2 className={styles.sectionTitle}>Bien rédiger un pari</h2>
+          <p className={styles.body}>
+            Ton pari est analysé automatiquement par une IA qui le transforme en probabilité, avant validation par un
+            admin. Plus il vise un joueur, une équipe et un seuil chiffré précis, mieux il est reconnu.
+          </p>
+          <p className={styles.baremeLabel}>Ce qui fonctionne bien</p>
+          <ul className={styles.list}>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Un joueur, une stat</strong> — « Nikola Jokic réalise un triple-double. », « Jaylen Brown
+                marque plus de 30 points. »
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Une équipe, une stat</strong> — « Les Boston Celtics inscrivent plus de 45 rebonds. »
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Le match dans son ensemble</strong> — « Le match ira en prolongation. », « Aucun panier n&apos;est
+                marqué au buzzer durant le match. »
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Un duel entre 2 joueurs ou équipes</strong> — « Jaylen Brown marque plus de points que tout
+                autre joueur du match. », « Le banc des Spurs marque au moins deux fois plus de points que le banc
+                des Knicks. »
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Plusieurs conditions à la fois</strong> — « Cade Cunningham marque plus de 25 points et
+                réalise plus de 5 passes décisives. » Un « ou » peut même se glisser dans l&apos;une des conditions :
+                « Nikola Jokic réalise un triple-double avec au moins 40 points et au moins 20 rebonds ou passes. »
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Un groupe de joueurs</strong> — « Les 10 joueurs titulaires marquent chacun plus de 8 points.
+                », « Au moins un joueur réalise un triple-double durant le match. »
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Un événement précis</strong> — « Devin Vassell inscrit le dernier panier du match. »,
+                « Victor Wembanyama réalise au moins 1 contre sur Chet Holmgren. », « Orlando Magic reçoit exactement
+                2 fautes techniques dans le match. »
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Une période précise</strong> — « Les New York Knicks gagnent au moins 2 quarts-temps dans le
+                match. »
+              </span>
+            </li>
+          </ul>
+          <p className={styles.baremeLabel}>Ce qui n&apos;est pas calculable automatiquement</p>
+          <p className={styles.body}>
+            Certains paris ne peuvent pas être résolus, faute de donnée de jeu officielle ou parce qu&apos;ils ne
+            renvoient à aucun événement réel : une blessure, le score exact du match, un panier à 4 points
+            (n&apos;existe pas), une égalité stricte entre deux joueurs, ou une formulation qui ne vise ni stat ni
+            événement précis (décision arbitrale, private joke...). Un admin peut toujours refuser ou ajuster un pari
+            qui n&apos;entre dans aucune de ces cases.
+          </p>
+        </section>
+
         <section className={`${styles.section} glass-card`} aria-label="Ligues entre amis">
           <h2 className={styles.sectionTitle}>Ligues entre amis</h2>
           <p className={styles.body}>

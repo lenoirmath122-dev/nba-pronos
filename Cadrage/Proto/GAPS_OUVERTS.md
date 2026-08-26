@@ -4,23 +4,42 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **Où en est le plan de reprise post-audit (25/08/2026, fin de session)** --
-> étapes 1 à 7 codées. 1/2/3 commitées ET poussées (`4ff0a44`, `1a6f36a`,
-> `714e45f`, `94db7a4`) ; étape 4 commitée ET poussée (`332ac92`) ; étapes 5
-> et 6 commitées ET poussées ensemble (`4efa285`), plus un correctif réel
-> trouvé en testant (négation des stats MATCH_TOTAL sans seuil, `13f095a`) ;
+> **Plan de reprise post-audit : les 8 étapes sont TERMINÉES (26/08/2026)**
+> -- 1/2/3 commitées ET poussées (`4ff0a44`, `1a6f36a`, `714e45f`,
+> `94db7a4`) ; étape 4 commitée ET poussée (`332ac92`) ; étapes 5 et 6
+> commitées ET poussées ensemble (`4efa285`), plus un correctif réel trouvé
+> en testant (négation des stats MATCH_TOTAL sans seuil, `13f095a`) ;
 > étapes 5/6 **testées de bout en bout via l'appli réelle** (4 vrais paris
 > soumis par l'utilisateur, résolution automatique forcée sur des matchs
 > réels NBA -- 3/4 corrects du premier coup, le 4e a révélé le bug de
-> négation ci-dessus, corrigé et revérifié WON). Étape 7 codée et testée
-> (Claude + HTTP local) cette session, **pas encore commitée/déployée** --
-> voir son entrée ci-dessous. Prochaine étape à reprendre après ça :
-> **étape 8, guide de rédaction des paris** (contenu, pas du code). Sinon,
-> entraîner un vrai modèle joueur+période (`train_player_period_model.py`,
-> pas encore écrit) -- le backfill `stats_box_scores_by_period` est fini
-> depuis la session du 24/08/2026. Le plan complet (8 étapes) et les points
-> explicitement différés sont documentés dans les entrées ci-dessous et dans
+> négation ci-dessus, corrigé et revérifié WON) ; étape 7 commitée ET
+> poussée (`a579173`), plus un correctif réel trouvé en testant (corrélation
+> dd/td dans les combos, `849b5c7`), Cloud Run redéployé (révision
+> `nba-pronos-stats-00024-l2h`) ; étape 8 (guide de rédaction des paris,
+> contenu -- voir son entrée ci-dessous) codée le 26/08/2026, intégrée à
+> `/regles`. Reste hors de ce plan : entraîner un vrai modèle joueur+période
+> (`train_player_period_model.py`, pas encore écrit) -- le backfill
+> `stats_box_scores_by_period` est fini depuis la session du 24/08/2026. Le
+> plan complet (8 étapes) et les points explicitement différés restent
+> documentés dans les entrées ci-dessous et dans
 > `AUDIT_TYPES_PARIS_24_08_2026.md`.
+
+> **Étape 8 du plan de reprise, CODÉE le 26/08/2026** -- guide de rédaction
+> des paris, intégré dans `/regles` (`app/regles/page.tsx`), demande
+> explicite de l'utilisateur ("on va l'intégrer dans les règles") plutôt
+> qu'un document de cadrage séparé. Nouvelle section "Bien rédiger un
+> pari" : 8 familles de paris calculables illustrées par des formulations
+> RÉELLES du corpus (`types_de_paris_playoffs_2026.md`, jamais des exemples
+> inventés) -- joueur seul, équipe seule, match entier (MATCH_TOTAL, dont
+> négation), duel (COMPARISON), combo ET/OU imbriqué (étape 7), groupe de
+> joueurs (ROSTER_SPLIT/ROSTER_COUNT), événement précis (LAST_BASKET/
+> BLOCK_ON_PLAYER/TECHNICAL_FOULS_COUNT, étape 6), période (PERIOD) -- plus
+> un paragraphe sur ce qui n'est PAS calculable (blessures, score exact,
+> panier à 4 points, égalité stricte entre 2 joueurs, formulation sans stat
+> ni événement identifiable), sourcé sur la liste "vraiment impossible" de
+> `AUDIT_TYPES_PARIS_24_08_2026.md`/l'entrée "plan validé" ci-dessous,
+> jamais une invention. `tsc` propre, vérifié rendu en dev (hot-reload,
+> port 3000).
 
 > **Étape 7 du plan de reprise, CODÉE le 25/08/2026** -- "OU imbriqué dans
 > un ET" (extension du chantier combo, 24/08/2026) -- "Nikola Jokic réalise
@@ -134,8 +153,16 @@
 > entièrement côté service Python (`_compute_combo_proba_once`), la
 > résolution (relit les vraies stats du match) n'en a jamais eu besoin.
 >
-> Pas encore redéployé sur Cloud Run ni commité/poussé -- prochaine
-> action de la session.
+> Commité et poussé (`849b5c7`), Cloud Run redéployé (révision
+> `nba-pronos-stats-00024-l2h`). Revérifié en prod via `/predict-combo` :
+> Jamal Murray "triple-double + 25pts + 8reb-ou-8pas" -> 0.30% (contre
+> 0.577% pour le triple-double seul) ; même seuils appliqués à Nikola Jokic
+> -> 10.8% (contre 18.3% pour le triple-double seul) -- ratio de réduction
+> quasi identique entre les 2 joueurs (~0.52 vs ~0.59), confirmant que
+> l'écart final (0.30% vs 10.8%) reflète la vraie différence de profil des
+> 2 joueurs (P(triple-double) 30x plus élevée pour Jokic), pas une
+> incohérence du correctif -- vieux pari de test Murray (proba pré-correctif)
+> supprimé après vérification.
 
 > **Étape 6 du plan de reprise, CODÉE et DÉPLOYÉE le 25/08/2026** --
 > "événements granulaires" -- buzzer beater ("aucun panier marqué au

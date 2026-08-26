@@ -10858,3 +10858,58 @@ dry-run sur 200 matchs, aucun appel API) pas encore lancé. Pas testé de
 bout en bout via l'appli, même limite que chaque chantier précédent à ce
 stade.
 ```
+
+## Étape 6 (événements granulaires) + étape 7 (OU imbriqué) + étape 8 (guide de rédaction) -- fin du plan de reprise post-audit (25-26/08/2026)
+
+```text
+Étape 5 confirmée et poussée. Étape 6 codée (buzzer beater, dernier panier,
+contre sur un joueur précis -- voir GAPS_OUVERTS.md pour le détail
+technique), commitée/poussée avec l'étape 5 (4efa285), backfill lancé
+(6602 matchs, 63965 lignes stats_block_events). Testée de bout en bout via
+l'appli réelle : 4 vrais paris soumis par l'utilisateur, résolution forcée
+sur des matchs NBA réels -- 3/4 corrects du premier coup, le 4e a révélé un
+bug réel (les stats MATCH_TOTAL sans seuil comme had_buzzer_beater
+n'avaient aucun moyen d'exprimer la NÉGATION d'un événement -- "aucun
+panier marqué au buzzer" était toujours résolu comme si l'événement avait
+eu lieu). Corrigé (nouveau champ `negation` + colonne `structured_negation`,
+13f095a), revérifié WON.
+
+Étape 7 ("OU imbriqué dans un ET", seul exemple réel du corpus : triple-double
+Jokic 40pts+20reb-ou-20pas) : 1ère tentative (ajouter `or` direct dans le
+schéma partagé) a reproduit le mur de complexité déjà rencontré avec PERIOD
+le 24/08 (`400 compiled grammar is too large` sur TOUS les paris) --
+reverti, nouveau schéma dédié `structureComboBet.ts` routé par mot-clé
+(texte contenant "et" ET "ou"). Modèle de données unifié en groupes
+(`{or: Condition[]}[]`), même résolveur pour le chemin partagé (COMBO
+simple, groupes à 1 item) et le chemin dédié. Commitée/poussée (a579173).
+
+Bug réel trouvé par l'utilisateur en testant (Jamal Murray "triple-double +
+25pts + 8reb-ou-8pas" -> 0.04%, jugé incohérent à raison : dd/td est déjà
+défini sur ces mêmes catégories, les traiter comme indépendantes effondre
+la proba). 1ère tentative de correctif (recalculer dd/td depuis 5 catégories
+indépendantes) testée et ABANDONNÉE -- pire que le bug (0.0015% au lieu de
+0.577% pour P(td) seul), car la vraie corrélation ENTRE catégories que le
+classifieur a apprise est détruite par l'hypothèse d'indépendance. Correctif
+retenu : ne jamais retoucher P(dd/td), appliquer un facteur CONDITIONNEL par
+catégorie propre (seuil<=10 -> 1.0, seuil>10 -> P(cat>=seuil)/P(cat>=10)).
+Revérifié : Murray 0.30% (contre 0.58% du triple-double seul), Duren 12.9%
+(contre 22.2%). Commitée/poussée (849b5c7), Cloud Run redéployé
+(nba-pronos-stats-00024-l2h). Coherence re-vérifiée à la demande de
+l'utilisateur avec les mêmes seuils appliqués à Nikola Jokic (beaucoup plus
+prolifique en triple-double) : 10.8% contre 0.30% pour Murray -- ratio de
+réduction quasi identique entre les 2 joueurs, l'écart final reflète bien
+la différence réelle de profil, pas une faille du correctif. "Ok ça me va".
+Vieux pari de test Murray (proba pré-correctif) supprimé.
+
+Étape 8 ("guide de rédaction des paris", contenu) : demande explicite de
+l'utilisateur de l'intégrer dans /regles plutôt qu'un document séparé.
+Nouvelle section "Bien rédiger un pari" dans app/regles/page.tsx : 8
+familles de paris calculables illustrées par des formulations RÉELLES du
+corpus (jamais inventées), plus un paragraphe sur ce qui n'est pas
+calculable (blessures, score exact, panier à 4 points, égalité stricte
+entre 2 joueurs, formulation sans stat identifiable). tsc propre, vérifié
+en dev (hot-reload).
+
+Les 8 étapes du plan de reprise post-audit du 24/08/2026 sont désormais
+toutes codées, testées et déployées.
+```
