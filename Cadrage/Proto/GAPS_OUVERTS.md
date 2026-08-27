@@ -23,10 +23,20 @@
 > (master, optimisé SVGO). Sert de source à `app/favicon.ico` (ICO
 > multi-taille), `app/apple-icon.png`, `public/icons/icon-{192,512}.png` --
 > remplacent le monogramme "NP" placeholder. Vérifié par fetch direct des
-> routes servies (tailles identiques aux fichiers générés). Piste
-> "nav visiteur + écrans de connexion" (2e étape proposée dans l'artifact
-> de proposition) pas encore faite -- à reprendre si le rendu convainc à
-> l'usage, cf. `JOURNAL_SESSIONS.md`.
+> routes servies (tailles identiques aux fichiers générés).
+>
+> **Renommage provisoire + logo étendu à la nav/connexion (27/08/2026)** --
+> "NBA Pronos" -> "Panier Ballon" partout où c'est visible par
+> l'utilisateur (title meta, manifest, nav visiteur, Login/Signup/Reset),
+> SEULEMENT le nom de marque public -- identifiants techniques internes
+> (repo, tables, commentaires) et usages descriptifs de "NBA" (taglines,
+> "NBA Cup" du bracket) inchangés, cf. le cadrage business. Logo ajouté
+> dans `PublicNav.tsx` et le bloc marque Login/Signup/Reset. Bug réel de
+> débordement nav (texte plus long + logo) trouvé et corrigé en vérifiant
+> au clic (`flex-wrap` + `white-space: nowrap`). Détail complet dans
+> `JOURNAL_SESSIONS.md`. Rien ne reste ouvert sur ce lot -- seul le statut
+> "pas validé à 100 %" du nom/logo eux-mêmes (ci-dessus) reste à trancher
+> plus tard.
 >
 > **Compétition fictive "NBA Cup — Alpha Potes" — CODE PRÊT, PAS ENCORE
 > LANCÉ (27/08/2026)** -- alpha avec le groupe d'amis de l'utilisateur,

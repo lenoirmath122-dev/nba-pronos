@@ -18,7 +18,7 @@ const oswald = Oswald({
 });
 
 export const metadata: Metadata = {
-  title: "NBA Pronos",
+  title: "Panier Ballon",
   description: "Pronostics et paris entre amis sur les playoffs NBA.",
 };
 

@@ -11533,3 +11533,47 @@ conservée dans le document comme option de repli, pas supprimée.
 tsc/next build propres. Scripts de vectorisation jetables (potrace,
 png-to-ico, svgo installés dans le scratchpad de session, PAS dans le
 dépôt) -- rien ajouté à package.json.
+
+## Renommage provisoire "Panier Ballon" + logo étendu à la nav/écrans de connexion (27/08/2026)
+
+```text
+Suite du flag sur le cadrage business : l'utilisateur confirme "on utilise
+le logo pour le moment" et demande explicitement de commencer le
+renommage + l'intégration du logo (même provisoires).
+
+Périmètre du renommage précisé avant de coder (pas demandé explicitement,
+tranché par cohérence avec le cadrage business lui-même) : seulement le
+nom de marque PUBLIC ("NBA Pronos" -> "Panier Ballon"), pas les
+identifiants techniques internes (repo, package.json, tables, commentaires
+de code, domaine de déploiement) -- le cadrage business dit explicitement
+que c'est l'usage en communication publique qui pose problème ("NBA" dans
+le nom de marque), pas l'usage descriptif ("compétition sur les playoffs
+NBA") ni l'infrastructure technique. Grep exhaustif fait pour trouver
+TOUTES les occurrences utilisateur-visibles : 7 occurrences dans 6
+fichiers (title meta, manifest name/short_name, PublicNav, 3x brandName
+Login/Signup/Reset). Vérifié aussi : pas de titre de notification push, de
+contenu d'email, ni de nom de marque dans l'écran /players ou /profile qui
+mentionnait "NBA Pronos". Les taglines ("Pronostics et paris entre amis
+sur les playoffs NBA.") gardées telles quelles -- usage descriptif de
+"NBA", explicitement OK selon le cadrage. Le libellé "NBA Cup" du bracket
+(type de compétition) gardé aussi -- ce n'est pas notre marque, c'est le
+nom réel du format de tournoi NBA in-season qu'il désigne.
+
+Logo (public/brand/logo.svg) intégré en plus du favicon/icônes d'app déjà
+faits : PublicNav.tsx (nav visiteur, à côté du texte) et le bloc marque
+partagé Login/Signup/Reset (AuthScreen.module.css, au-dessus du nom, plus
+grand -- 1er écran vu par un nouveau venu). Même patron que TeamLogo.tsx
+(next/image + unoptimized, l'optimiseur Next n'accepte pas les SVG sans
+config CSP dédiée).
+
+Bug réel trouvé en vérifiant au clic (Playwright, viewport 420px) : le nom
+plus long ("Panier Ballon" vs "NBA Pronos") + le nouveau logo ont fait
+déborder "Se connecter" hors de l'écran dans PublicNav -- invisible sans
+scroll. Corrigé en 2 temps : `white-space: nowrap` sur `.brand` (empêche le
+nom de se couper au milieu), puis `flex-wrap: wrap` sur `.bar` (le groupe
+de liens passe proprement à la ligne plutôt que de déborder). Revérifié à
+420px (2 lignes propres) ET 900px (1 ligne, inchangé).
+
+tsc/eslint/vitest (37/37)/next build propres à chaque étape. Titres de
+page vérifiés au clic sur les 3 écrans (Login/Signup/Reset -> "Panier
+Ballon"). Scripts de vérification supprimés après usage.

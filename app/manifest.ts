@@ -8,8 +8,8 @@ import type { MetadataRoute } from "next";
 // "NP" placeholder d'origine -- voir public/brand/README.md.
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "NBA Pronos",
-    short_name: "NBA Pronos",
+    name: "Panier Ballon",
+    short_name: "Panier Ballon",
     description: "Pronostics et paris entre amis sur les playoffs NBA.",
     start_url: "/home",
     display: "standalone",
