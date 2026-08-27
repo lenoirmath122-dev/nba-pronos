@@ -1,0 +1,23 @@
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.iconWrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon {
+  width: 1.1rem;
+  height: 1.1rem;
+  color: var(--color-text-secondary);
+}
+
+.iconWrap[data-tier="BRONZE"] .icon  { color: var(--color-tier-bronze); }
+.iconWrap[data-tier="ARGENT"] .icon  { color: var(--color-tier-argent); }
+.iconWrap[data-tier="OR"] .icon      { color: var(--color-tier-or); }
+.iconWrap[data-tier="PLATINE"] .icon { color: var(--color-tier-platine); }
+.iconWrap[data-tier="DIAMANT"] .icon { color: var(--color-tier-diamant); }

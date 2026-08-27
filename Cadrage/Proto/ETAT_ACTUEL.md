@@ -5,16 +5,46 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 26/08/2026 — **rattrapage complet de ce
-> fichier — §2.122 ci-dessous**, plus le gap `not_in_match` COMPARISON/COMBO
-> corrigé le même jour. Ce fichier n'avait pas bougé depuis le 21/08/2026
-> (§2.97 ci-dessous, tutoriel retiré) alors que 82 commits avaient été
-> poussés depuis — repéré en répondant à la question de l'utilisateur « on
-> en est où ? », même pattern que les rattrapages du 16/08 et du 18/08.
-> **§2.100 à §2.121 ci-dessous reconstruits à partir de `git log` et
-> `JOURNAL_SESSIONS.md`** (déjà fiable et à jour en continu tout du long) --
-> ils condensent au format « instantané » de ce fichier, sans répéter le
-> détail intégral déjà disponible dans le journal.
+> Dernière mise à jour : session du 27/08/2026 — **§2.124 : badges épinglés
+> dans le bandeau du profil, CODÉ ET VÉRIFIÉ AU CLIC**. Reprend le point
+> ajouté au backlog la veille (`BACKLOG_V1.md`, "Afficher ses badges à côté
+> de son nom sur la page perso") : cadré avec l'utilisateur avant de coder
+> (choix manuel du joueur, max 3, en ligne avec le pseudo -- AskUserQuestion
+> 3 questions), puis implémenté. Nouvelle colonne `users.pinned_badge_ids`
+> (`text[]`, migration `20260827090000_pinned_badges.sql`, CHECK taille ≤3 --
+> aucune migration RLS nécessaire, même note que `background_theme`) ;
+> `getProfileBadges()` (`lib/queries/badges.ts`) résout et ordonne les
+> badges épinglés (`pinnedBadges`), chargée sur TOUS les onglets du profil
+> désormais (pas seulement Stats -- coût négligeable, une seule vue) ;
+> nouveau bouton "épingler" sur `BadgeCard.tsx` (formulaire natif séparé du
+> bouton de flip -- deux `<button>` ne s'imbriquent pas, la carte devient un
+> wrapper avec 2 boutons frères), actif seulement sur les badges débloqués ;
+> nouveau composant `PinnedBadges.tsx` (icône seule, colorée par palier,
+> `title`/`aria-label` pour le nom) affiché en ligne avec le pseudo dans
+> `app/(app)/profile/page.tsx` (bandeau `.pseudo` passé en flex row).
+> Server action `togglePinnedBadgeFormAction` (`lib/actions/profile.ts`),
+> même patron formulaire+redirection que le reste du fichier. `tsc`/
+> `eslint`/`vitest` (37/37)/`next build` propres, migration poussée en prod
+> (`npx supabase db push`, sans blocage du classifieur cette fois -- règle
+> `autoMode.allow` du 26/08 efficace). **Vérifié au clic en conditions
+> réelles** (Playwright temporaire, compte TestJoueur1, mot de passe
+> temporaire posé puis restauré en jetable après coup) : épingler/désépingler
+> fonctionne, l'icône apparaît/disparaît bien dans le bandeau -- 1 piège de
+> script rencontré et compris (`page.waitForURL` sur une URL DÉJÀ courante
+> résout instantanément sans attendre la vraie navigation, laissant croire à
+> un bug produit ; un `page.reload()` explicite après le clic a confirmé
+> qu'il n'y en avait pas). Script de test supprimé après usage.
+>
+> Dernière mise à jour précédente : session du 26/08/2026 — **rattrapage
+> complet de ce fichier — §2.122 ci-dessous**, plus le gap `not_in_match`
+> COMPARISON/COMBO corrigé le même jour. Ce fichier n'avait pas bougé depuis
+> le 21/08/2026 (§2.97 ci-dessous, tutoriel retiré) alors que 82 commits
+> avaient été poussés depuis — repéré en répondant à la question de
+> l'utilisateur « on en est où ? », même pattern que les rattrapages du
+> 16/08 et du 18/08. **§2.100 à §2.121 ci-dessous reconstruits à partir de
+> `git log` et `JOURNAL_SESSIONS.md`** (déjà fiable et à jour en continu
+> tout du long) -- ils condensent au format « instantané » de ce fichier,
+> sans répéter le détail intégral déjà disponible dans le journal.
 >
 > **Gap `not_in_match` COMPARISON/COMBO, CORRIGÉ le 26/08/2026** — un pari
 > COMPARISON/COMBO nommant un joueur absent des 2 équipes du match retombait

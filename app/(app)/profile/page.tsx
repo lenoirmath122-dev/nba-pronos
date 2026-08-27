@@ -17,6 +17,7 @@ import { ProfileTabs, type ProfileTab } from "@/components/profile/ProfileTabs";
 import { LeagueScopeChips } from "@/components/profile/LeagueScopeChips";
 import { RankEvolutionChart } from "@/components/profile/RankEvolutionChart";
 import { BadgesSection } from "@/components/profile/BadgesSection";
+import { PinnedBadges } from "@/components/profile/PinnedBadges";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./page.module.css";
@@ -88,9 +89,10 @@ export default async function ProfilePage({
   const statsLeagues = activeTab === "stats" ? await getMyLeagues() : [];
   // Badges permanents (09/08/2026, phase 1) — à VIE, indépendants d'une
   // compétition active, cf. SPEC_BADGES_PERMANENTS_V0_1.md. Fetch séparé de
-  // getProfileStats (scopée à la compétition ACTIVE), même déclencheur
-  // d'onglet.
-  const badges = activeTab === "stats" ? await getProfileBadges() : null;
+  // getProfileStats (scopée à la compétition ACTIVE). Chargé sur TOUS les
+  // onglets depuis le 27/08/2026 (pinnedBadges affichés dans le bandeau,
+  // toujours visible) — requête légère (une seule vue), coût négligeable.
+  const badges = await getProfileBadges();
 
   // Personnalisation par équipe favorite (04/08/2026, spec validée par
   // maquettes — cf. lib/labels/teamColors.ts) : réduite au blason depuis le
@@ -137,6 +139,7 @@ export default async function ProfilePage({
         <div className={styles.headerText}>
           <h1 className={`${styles.pseudo}${teamColors ? ` ${styles.pseudoTeam}` : ""} hero-banner-title`}>
             {profile.pseudo}
+            <PinnedBadges badges={badges.pinnedBadges} />
           </h1>
           {profile.isAdmin && <span className={styles.adminBadge}>Admin</span>}
         </div>
@@ -363,21 +366,19 @@ export default async function ProfilePage({
             </>
           )}
 
-          {badges && (
-            <section className={`${styles.section} glass-card`} aria-label="Badges">
-              <CollapsibleCard
-                id="stats-badges"
-                title="Badges"
-                count={
-                  badges.categories
-                    .flatMap((c) => c.badges)
-                    .filter((b) => (b.kind === "tiered" ? b.tier !== null : b.unlocked)).length
-                }
-              >
-                <BadgesSection data={badges} />
-              </CollapsibleCard>
-            </section>
-          )}
+          <section className={`${styles.section} glass-card`} aria-label="Badges">
+            <CollapsibleCard
+              id="stats-badges"
+              title="Badges"
+              count={
+                badges.categories
+                  .flatMap((c) => c.badges)
+                  .filter((b) => (b.kind === "tiered" ? b.tier !== null : b.unlocked)).length
+              }
+            >
+              <BadgesSection data={badges} />
+            </CollapsibleCard>
+          </section>
         </>
       )}
 

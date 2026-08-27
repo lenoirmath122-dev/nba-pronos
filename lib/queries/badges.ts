@@ -24,12 +24,17 @@ import type { BetCategory } from "@/lib/labels/bets";
 // Fidèle, cf. lib/badges/thresholds.ts).
 
 export type BadgeDisplay =
-  | { kind: "tiered"; id: TieredBadgeId; label: string; description: string; value: number; tier: BadgeTier | null; nextThreshold: number | null }
-  | { kind: "binary"; id: "COMPLETISTE" | "SOCIABLE"; label: string; description: string; unlocked: boolean }
-  | { kind: "ladderStep"; id: LadderBadgeId; label: string; description: string; level: 1 | 2 | 3 | 4 | 5; value: number; unlocked: boolean; threshold: number };
+  | { kind: "tiered"; id: TieredBadgeId; label: string; description: string; value: number; tier: BadgeTier | null; nextThreshold: number | null; pinned: boolean }
+  | { kind: "binary"; id: "COMPLETISTE" | "SOCIABLE"; label: string; description: string; unlocked: boolean; pinned: boolean }
+  | { kind: "ladderStep"; id: LadderBadgeId; label: string; description: string; level: 1 | 2 | 3 | 4 | 5; value: number; unlocked: boolean; threshold: number; pinned: boolean };
 
 export type ProfileBadgesData = {
   categories: { id: BadgeCategoryId; title: string; badges: BadgeDisplay[] }[];
+  // Badges épinglés par le joueur (max 3, users.pinned_badge_ids, migration
+  // 20260827090000) -- déjà résolus et dans l'ordre choisi, pour l'affichage
+  // dans le bandeau du profil sans dupliquer la logique de recherche côté
+  // page.tsx.
+  pinnedBadges: BadgeDisplay[];
 };
 
 type UserBadgesLifetimeRow = {
@@ -75,11 +80,15 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { categories: [] };
+  if (!user) return { categories: [], pinnedBadges: [] };
 
   const [{ data: badgeRow }, { data: profileRow }, { data: streakRows }] = await Promise.all([
     supabase.from("user_badges_lifetime").select("*").eq("user_id", user.id).maybeSingle<UserBadgesLifetimeRow>(),
-    supabase.from("users").select("created_at").eq("id", user.id).single<{ created_at: string }>(),
+    supabase
+      .from("users")
+      .select("created_at, pinned_badge_ids")
+      .eq("id", user.id)
+      .single<{ created_at: string; pinned_badge_ids: string[] }>(),
     supabase
       .from("user_competition_streaks")
       .select("user_id, competition_id, metronome_streak, fidele_streak")
@@ -121,6 +130,9 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
 
   const metronomeRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.metronome_streak), 0);
   const fideleRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.fidele_streak), 0);
+
+  const pinnedIds = profileRow?.pinned_badge_ids ?? [];
+  const isPinned = (id: BadgeId) => pinnedIds.includes(id);
 
   const tieredValues: Record<TieredBadgeId, number> = {
     CHIRURGIEN: row.match_correct_winners,
@@ -170,6 +182,7 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
       value,
       tier: resolveTier(value, thresholds),
       nextThreshold: nextThreshold(value, thresholds),
+      pinned: isPinned(id),
     });
   }
 
@@ -179,6 +192,7 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
     label: BADGE_LABELS.COMPLETISTE,
     description: BADGE_DESCRIPTIONS.COMPLETISTE,
     unlocked: row.has_validated_bracket,
+    pinned: isPinned("COMPLETISTE"),
   });
   badgeById.set("SOCIABLE", {
     kind: "binary",
@@ -186,6 +200,7 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
     label: BADGE_LABELS.SOCIABLE,
     description: BADGE_DESCRIPTIONS.SOCIABLE,
     unlocked: row.has_league_membership,
+    pinned: isPinned("SOCIABLE"),
   });
 
   for (const id of Object.keys(LADDER_BADGE_THRESHOLD) as LadderBadgeId[]) {
@@ -200,6 +215,7 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
       value,
       unlocked: value >= threshold,
       threshold,
+      pinned: isPinned(id),
     });
   }
 
@@ -209,5 +225,8 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
       title: category.title,
       badges: category.badges.map((id) => badgeById.get(id) as BadgeDisplay),
     })),
+    // Filtre défensif (id stocké devenu inconnu) plutôt qu'un cast -- ne
+    // devrait jamais arriver, les tiers ne régressent jamais.
+    pinnedBadges: pinnedIds.map((id) => badgeById.get(id as BadgeId)).filter((b): b is BadgeDisplay => b !== undefined),
   };
 }

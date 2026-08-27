@@ -165,11 +165,9 @@
   logo+nom, menu flottant ouvert au clic, toujours de vrais radios (logos
   conservés). 1 bug réel corrigé en testant (sélection perdue à
   l'enregistrement, radios sortis du DOM à la fermeture).
-- **Afficher ses badges à côté de son nom sur la page perso** (ajouté au
-  backlog le 27/08/2026) : reprend la "piste future notée, PAS cadrée" de
-  `GAPS_OUVERTS.md` (chantier icônes de badges, 10/08/2026) — bandeau de
-  `app/(app)/profile/page.tsx`, déjà personnalisé par équipe favorite depuis
-  le 04/08/2026. Reste à trancher en spec technique : combien de badges
-  affichés, critère de sélection parmi les 36 (paliers les plus hauts ? les
-  plus récents débloqués ? choix manuel du joueur ?), emplacement exact
-  à côté du pseudo.
+- ~~Afficher ses badges à côté de son nom sur la page perso~~ **FAIT —
+  27/08/2026** (`JOURNAL_SESSIONS.md`) : cadré avec l'utilisateur (choix
+  manuel du joueur, max 3, en ligne avec le pseudo) puis codé — nouvelle
+  colonne `users.pinned_badge_ids`, bouton "épingler" sur `BadgeCard.tsx`,
+  nouveau composant `PinnedBadges.tsx` dans le bandeau de
+  `app/(app)/profile/page.tsx`. Vérifié au clic en conditions réelles.

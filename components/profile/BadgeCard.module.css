@@ -2,6 +2,10 @@
    (palier/progression ou verrouillé-débloqué), face arrière = description.
    .flipContainer réinitialise les styles par défaut du <button> qui porte
    l'interaction (accessible au clavier, contrairement à un <div onClick>). */
+.cardWrapper {
+  position: relative;
+}
+
 .flipContainer {
   display: block;
   width: 100%;
@@ -14,6 +18,44 @@
   text-align: left;
   cursor: pointer;
   perspective: 1000px;
+}
+
+/* Bouton "épingler" (27/08/2026) — coin haut-droit, au-dessus de la carte
+   retournable (frère, pas enfant : deux <button> ne s'imbriquent pas). */
+.pinForm {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  z-index: 1;
+}
+
+.pinButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  background: var(--color-surface-inset);
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.pinButton[data-pinned] {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.pinIcon {
+  width: 0.9rem;
+  height: 0.9rem;
+}
+
+.pinButton[data-pinned] .pinIcon {
+  fill: currentColor;
 }
 
 .flipInner {

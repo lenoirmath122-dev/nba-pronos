@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
+import { getProfileBadges } from "@/lib/queries/badges";
 
 // Server actions de l'écran Profil (SPEC_ECRAN_PROFIL_V0_1 §7). Écriture
 // directe sur `users` (RLS self-update + trigger anti-escalade déjà en
@@ -90,4 +91,54 @@ export async function updateProfile(formData: FormData): Promise<void> {
 
   revalidatePath("/profile");
   redirect("/profile");
+}
+
+const MAX_PINNED_BADGES = 3;
+
+/** Badges épinglés dans le bandeau (BACKLOG_V1.md, cadré le 27/08/2026) :
+ *  choix manuel du joueur, jusqu'à 3, uniquement parmi les débloqués --
+ *  bouton "épingler" sur chaque BadgeCard (components/profile/BadgeCard.tsx),
+ *  même patron formulaire natif + redirection que le reste de ce fichier. */
+export async function togglePinnedBadgeFormAction(formData: FormData): Promise<void> {
+  const badgeId = String(formData.get("badgeId") ?? "");
+  if (!badgeId) redirect("/profile?tab=stats");
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const { data: row } = await supabase
+    .from("users")
+    .select("pinned_badge_ids")
+    .eq("id", user!.id)
+    .single<{ pinned_badge_ids: string[] }>();
+  const current = row?.pinned_badge_ids ?? [];
+
+  let next: string[];
+  if (current.includes(badgeId)) {
+    next = current.filter((id) => id !== badgeId);
+  } else {
+    if (current.length >= MAX_PINNED_BADGES) {
+      redirect(`/profile?tab=stats&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
+    }
+    // Défense en profondeur -- BadgeCard ne propose déjà le bouton "épingler"
+    // que sur un badge débloqué, cf. commentaire ci-dessus.
+    const badges = await getProfileBadges();
+    const target = badges.categories.flatMap((c) => c.badges).find((b) => b.id === badgeId);
+    const unlocked = target ? (target.kind === "tiered" ? target.tier !== null : target.unlocked) : false;
+    if (!unlocked) {
+      redirect(`/profile?tab=stats&profileError=${encodeURIComponent("Ce badge n'est pas encore débloqué.")}`);
+    }
+    next = [...current, badgeId];
+  }
+
+  const { error } = await supabase.from("users").update({ pinned_badge_ids: next }).eq("id", user!.id);
+  if (error) {
+    redirect(`/profile?tab=stats&profileError=${encodeURIComponent(error.message)}`);
+  }
+
+  revalidatePath("/profile");
+  redirect("/profile?tab=stats");
 }

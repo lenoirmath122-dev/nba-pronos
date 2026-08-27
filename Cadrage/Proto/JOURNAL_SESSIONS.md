@@ -11310,3 +11310,82 @@ coder pour l'instant.
    le bandeau `app/(app)/profile/page.tsx`).
 
 Aucun code touché -- uniquement BACKLOG_V1.md mis à jour (2 entrées).
+
+## Badges épinglés dans le bandeau du profil, cadré puis codé (27/08/2026)
+
+```text
+Suite des 2 ajouts au backlog de la veille : on attaque par les badges
+(plus petit périmètre, chantier badges déjà entièrement clos, donc surtout
+un problème de placement). Cadrage fait avant de coder, comme demandé par
+l'utilisateur ("comme d'hab").
+
+Recherche de contexte : lecture du bandeau du profil (app/(app)/profile/
+page.tsx) et de lib/queries/badges.ts avant de poser des questions
+concrètes plutôt que théoriques -- a permis de trouver un point technique
+réel : user_badges_lifetime ne stocke que le NIVEAU atteint, aucune date de
+déblocage, donc "afficher les plus récents" (une des pistes évoquées dans
+GAPS_OUVERTS.md) n'était pas faisable sans ajouter un suivi qui n'existe
+pas. Éliminé avant même de poser la question.
+
+AskUserQuestion, 3 questions tranchées avec l'utilisateur :
+- Sélection : choix MANUEL par le joueur (pas automatique par palier).
+- Quantité : 3 badges.
+- Emplacement : en ligne avec le pseudo (pas une nouvelle ligne).
+
+Conception technique proposée puis confirmée ("oui") avant de coder :
+nouvelle colonne users.pinned_badge_ids (text[], pas de table à part --
+les tiers de badges sont des compteurs cumulatifs à vie, jamais de
+régression, donc un badge épinglé ne peut jamais redevenir invalide après
+coup) ; bouton "épingler" sur BadgeCard (déjà "use client" pour le flip) ;
+getProfileBadges() chargée sur tous les onglets du profil désormais (coût
+négligeable, une seule vue).
+
+Implémentation :
+- Migration 20260827090000_pinned_badges.sql -- users.pinned_badge_ids
+  text[] default '{}', CHECK array_length <= 3. Aucune migration RLS
+  nécessaire (users_update_self + enforce_users_invariants, migration #3,
+  couvrent déjà toute nouvelle colonne sur users -- même note que
+  20260806090000_background_theme.sql).
+- lib/queries/badges.ts : ajout du champ `pinned: boolean` sur chaque
+  BadgeDisplay + `pinnedBadges: BadgeDisplay[]` (déjà résolus et ordonnés)
+  sur ProfileBadgesData.
+- lib/actions/profile.ts : nouvelle togglePinnedBadgeFormAction, même
+  patron formulaire natif + redirection que le reste du fichier
+  (updateThemePreference etc.) -- lit l'état courant depuis la DB, valide
+  le badge débloqué (défense en profondeur, BadgeCard ne propose déjà le
+  bouton que sur un badge débloqué) et le plafond de 3 avant d'écrire.
+- components/profile/BadgeCard.tsx : restructuré -- la carte n'est plus
+  elle-même le bouton racine (deux <button> ne s'imbriquent pas en HTML
+  valide), devient un wrapper avec le bouton "épingler" (coin haut-droit,
+  visible seulement si débloqué) et le bouton de flip existant, en frères.
+- components/profile/PinnedBadges.tsx (nouveau) : rendu compact icône-seule
+  dans le bandeau, colorée par palier -- anticipé par un commentaire du
+  10/08/2026 dans BadgeCard.module.css ("cohérent avec un futur affichage
+  compact dans le bandeau de profil").
+- app/(app)/profile/page.tsx : .pseudo passé en flex row (gap), badges
+  épinglés affichés juste après le pseudo dans le <h1>.
+
+Vérifications : tsc/eslint/vitest (37/37)/next build propres. Migration
+poussée avec `npx supabase db push` -- PAS bloquée par le classifieur de
+permissions cette fois (la règle autoMode.allow ajoutée le 26/08/2026
+fonctionne).
+
+Vérifié AU CLIC en conditions réelles (demandé par les instructions projet
+pour tout changement UI) : script Playwright temporaire contre le compte
+TestJoueur1 (déjà gardé exprès "pour un futur test", cf. mémoire) --
+mot de passe temporaire posé via l'API admin Supabase le temps du test,
+restauré en mot de passe jetable aléatoire juste après (même convention que
+les comptes seed-*, "jamais utilisé"). 1er essai a semblé montrer un bug
+(le badge épinglé n'apparaissait pas dans le bandeau juste après le clic) --
+diagnostiqué comme un artefact du script de test, pas un bug produit :
+`page.waitForURL(...)` résout immédiatement quand l'URL cible est DÉJÀ
+l'URL courante (cas fréquent ici, la redirection du server action ramène
+sur la même URL /profile?tab=stats), sans attendre la vraie fin de la
+navigation. Un `page.reload()` explicite après le clic a confirmé que
+l'épinglage/désépinglage fonctionnaient bien du premier coup. Script de
+test supprimé après usage (scripts/_check_pinned_badges.mjs,
+scripts/_check_unpin.mjs), aucune trace laissée dans scripts/.
+
+BACKLOG_V1.md : point marqué FAIT. GAPS_OUVERTS.md : rien à garder ouvert,
+chantier clos. Reste à cadrer : le chat in-app (2e point ajouté au backlog
+la veille).
