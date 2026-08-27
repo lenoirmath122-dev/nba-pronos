@@ -11577,3 +11577,48 @@ de liens passe proprement à la ligne plutôt que de déborder). Revérifié à
 tsc/eslint/vitest (37/37)/next build propres à chaque étape. Titres de
 page vérifiés au clic sur les 3 écrans (Login/Signup/Reset -> "Panier
 Ballon"). Scripts de vérification supprimés après usage.
+
+## Bug réel : nav visiteur invisible sur Login/Signup/Reset (27/08/2026)
+
+```text
+Signalé par l'utilisateur juste après le renommage : "le parcours visiteur
+s'arrêtait à la page de connexion (plus de lien vers le classement etc.)".
+
+Diagnostic (Playwright, pas deviné) : le <nav> existe bien dans le DOM sur
+les 3 écrans, avec ses 4 liens, et un clic direct dessus (via sélecteur)
+navigue correctement -- pas un lien manquant, un problème purement visuel.
+Capture d'écran réelle : le fond photo recouvre ENTIÈREMENT le nav, aucune
+trace visible à l'écran.
+
+Cause : `.photo-page.force-photo::before`/`::after` (app/globals.css,
+ajouté le 20/08/2026 pour forcer la photo même sans session) sont en
+`position: fixed` (choix documenté et assumé : évite le flou
+background-attachment:fixed sur iOS Safari, garde la largeur cadrée comme
+le corps de page) -- `position:fixed` sort du flux normal et se positionne
+par rapport au VIEWPORT, pas au flux du DOM. `.photo-page` pose
+`isolation: isolate` (déjà là pour une autre raison : éviter que ces
+pseudo-éléments à z-index négatif remontent jusqu'au fond opaque de
+.shell -- un bug de CLIC similaire avait déjà été corrigé le 06/08/2026
+en leur ajoutant pointer-events:none). Cette isolation regroupe tout le
+contenu de .photo-page (photo comprise) en UNE seule unité d'empilement,
+peinte selon l'ordre DOM au niveau du PARENT -- comme <nav> précède <main>
+dans (public)/layout.tsx mais n'a lui-même aucun z-index explicite, les
+deux frères s'empilent à "niveau 0" et <main> (venant après) peint
+par-dessus <nav>, dont la position/couverture plein écran du fond photo
+finit par le recouvrir entièrement malgré le pointer-events:none (qui
+empêche de BLOQUER les clics, mais pas de recouvrir VISUELLEMENT).
+
+Pas une régression du jour : ce mécanisme existait déjà avant, mais ne se
+déclenchait que pour un visiteur avec la préférence de thème "Photo"
+(rare, un visiteur anonyme n'a par défaut jamais ce thème). Le
+force-photo du 20/08/2026 a rendu la photo TOUJOURS active sur ces 3
+écrans -- transformant un cas limite rare en bug systématique dès le
+1er écran vu par tout nouveau visiteur.
+
+Corrigé de façon ciblée côté PublicNav.module.css (`.bar { position:
+relative; z-index: 1; }`) plutôt que de toucher au mécanisme .photo-page
+(déjà fragile/documenté comme tel) -- force ce nav dans un niveau
+d'empilement explicite, au-dessus du niveau implicite (auto) de .photo-page,
+sans rien changer à son fonctionnement existant. Revérifié : nav visible
+ET cliquable (clic réel sur "Classement" -> navigation confirmée vers
+/leaderboard) sur les 3 écrans. tsc/vitest (37/37)/next build propres.

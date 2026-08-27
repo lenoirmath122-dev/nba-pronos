@@ -4,6 +4,22 @@
    est choisie par la route, pas dupliquée). */
 
 .bar {
+  /* position+z-index (27/08/2026, bug réel signalé par l'utilisateur --
+     "plus de lien vers le classement" sur Login/Signup/Reset) : ces 3
+     écrans posent .photo-page.force-photo sur leur <main> juste après ce
+     nav (globals.css) -- ses pseudo-éléments de fond sont en
+     position:fixed (viewport entier, PAS relatif au flux normal), et
+     l'isolation posée sur .photo-page fait qu'ils peignent l'intégralité
+     de ce bloc AU-DESSUS de ses frères dans l'ordre du DOM, malgré leurs
+     z-index négatifs qui ne valent que localement. Le nav restait présent
+     et cliquable (pointer-events déjà neutralisé côté .photo-page) mais
+     entièrement invisible, recouvert par la photo. z-index explicite ici
+     force ce nav dans un niveau d'empilement supérieur à celui
+     (implicite, auto) de .photo-page -- ne touche pas au mécanisme
+     .photo-page lui-même (déjà documenté comme fragile, cf. son propre
+     commentaire sur le bug de clic du 06/08/2026). */
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
   flex-wrap: wrap;
