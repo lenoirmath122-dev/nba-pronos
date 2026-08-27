@@ -20,14 +20,14 @@ type ChatChannelListProps = {
 export function ChatChannelList({ myLeagues, muted }: ChatChannelListProps) {
   return (
     <div className={styles.list}>
-      <div className={styles.row}>
+      <div className={`${styles.row} glass-card`}>
         <Link href="/chat?canal=general" className={styles.rowLink}>
           Général
         </Link>
         <ChatNotificationToggle scope={{ type: "GLOBAL" }} initialEnabled={!muted.generalMuted} />
       </div>
       {myLeagues.map((league) => (
-        <div key={league.id} className={styles.row}>
+        <div key={league.id} className={`${styles.row} glass-card`}>
           <Link href={`/chat?canal=${league.id}`} className={styles.rowLink}>
             {league.name}
           </Link>

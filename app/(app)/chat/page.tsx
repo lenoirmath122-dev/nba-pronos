@@ -32,8 +32,8 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
 
   if (!canal) {
     return (
-      <div className={styles.page}>
-        <div className={styles.header}>
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
           <h1 className={styles.title}>Chat</h1>
         </div>
         <ChatChannelList myLeagues={myLeagues} muted={muted} />
@@ -58,8 +58,8 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   const isCurrentUserAdmin = currentUserRole?.isAdmin ?? false;
 
   return (
-    <div className={styles.page}>
-      <div className={styles.header}>
+    <div className={`${styles.page} photo-page`}>
+      <div className={`${styles.header} glass-card`}>
         <Link href="/chat" className={styles.back} aria-label="Retour aux canaux">
           ←
         </Link>

@@ -7605,3 +7605,23 @@ signalé explicitement à l'utilisateur plutôt que présenté comme testé.
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (39 routes) propres.
 ```
+
+### 2.100 Bug réel : thème Photo absent sur /chat (session du 27/08/2026)
+
+```text
+Signalé par l'utilisateur juste après confirmation des notifs push
+(reçues sur son téléphone) : Chat restait sombre en préférence "Photo".
+Cause : app/(app)/chat/page.tsx (écrit avant que Photo soit reconsidéré
+pour cet écran) ne posait pas la classe `.photo-page`, contrairement aux
+9 autres écrans authentifiés. Corrigée sur les 2 vues (liste ET
+conversation ouverte -- un 1er remplacement global n'avait en fait pas
+pris sur la 2e vue, repéré en relisant le fichier plutôt qu'en faisant
+confiance à l'outil). `glass-card` ajoutée à l'en-tête et à chaque ligne
+de `ChatChannelList` (même patron que `LockedRow.tsx`), text-shadow sur
+le titre/la flèche retour pour la lisibilité sur la photo.
+
+Vérifié par capture d'écran réelle (compte jetable, `theme_preference`
+forcé à PHOTO, Playwright) sur les 2 vues, comparées à `/home`. Détail
+dans `JOURNAL_SESSIONS.md`. `tsc`/`eslint`/`vitest` (37/37)/`next build`
+propres.
+```

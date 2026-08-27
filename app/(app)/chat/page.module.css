@@ -21,6 +21,7 @@
   color: var(--color-text-secondary);
   font-size: var(--font-size-lg);
   text-decoration: none;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .back:hover,
@@ -40,4 +41,5 @@
   font-size: var(--font-size-xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }

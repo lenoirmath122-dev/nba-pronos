@@ -11705,3 +11705,36 @@ externe joignable) -- signalé clairement plutôt que supposé.
 
 tsc/eslint/vitest (37/37)/next build (39 routes) propres. Script de
 vérification supprimé après usage.
+
+## Bug réel : thème Photo absent sur /chat (27/08/2026)
+
+```text
+Signalé par l'utilisateur juste après confirmation que les notifs push
+fonctionnent réellement (reçues sur son téléphone) : l'onglet Chat
+apparaissait toujours sombre alors que sa préférence est "Photo".
+
+Cause simple, pas devinée -- vérifiée directement dans le code : les 9
+autres écrans authentifiés (Accueil, Jouer, Bracket, Résultats, Classement,
+Profil, /players/[userId], /regles) posent tous la classe .photo-page sur
+leur conteneur racine (globals.css) ; app/(app)/chat/page.tsx, écrit avant
+que le thème Photo soit reconsidéré pour ce nouvel écran, ne la posait pas
+du tout -- fond figé sur le solide sombre par défaut, quelle que soit la
+préférence.
+
+Corrigé : .photo-page ajoutée aux 2 branches de page.tsx (liste ET canal
+ouvert), glass-card ajoutée à l'en-tête (comme les autres écrans, légère
+translucidité + contraste du titre), text-shadow sur le titre/flèche retour
+(cohérence avec Classement/Auth), et chaque ligne de ChatChannelList passée
+en glass-card (même patron que LockedRow.tsx) plutôt que de laisser le
+texte flotter nu sur la photo.
+
+1er passage incomplet : le remplacement de la classe sur la branche "canal
+ouvert" n'avait en réalité pas pris malgré un outil de remplacement global
+-- repéré en RELISANT le fichier après coup plutôt qu'en faisant confiance
+à la sortie de l'outil, corrigé, revérifié.
+
+Vérifié par capture d'écran réelle (compte jetable, theme_preference =
+PHOTO forcé en base, Playwright) sur les 2 vues (liste ET conversation
+ouverte) -- comparées visuellement à /home (déjà correct) : même mural
+visible, mêmes cartes translucides. tsc/eslint/vitest (37/37)/next build
+propres. Scripts de vérification supprimés après usage.
