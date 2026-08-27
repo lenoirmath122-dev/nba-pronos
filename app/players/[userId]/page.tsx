@@ -4,6 +4,7 @@ import { getPlayerProfile } from "@/lib/queries/player-profile";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import { EmptyState } from "@/components/home/EmptyState";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { PinnedBadges } from "@/components/profile/PinnedBadges";
 import styles from "./page.module.css";
 
 // Page "profil joueur" (BACKLOG discuté le 30/07/2026 — voir
@@ -37,7 +38,10 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     <ScreenShell authenticated={user !== null}>
       <div className={`${styles.page} photo-page`}>
         <header className={`${styles.header} hero-banner glass-card`}>
-          <p className={`${styles.pseudo} hero-banner-title`}>{profile.pseudo}</p>
+          <p className={`${styles.pseudo} hero-banner-title`}>
+            {profile.pseudo}
+            <PinnedBadges badges={profile.pinnedBadges} />
+          </p>
           <div className={styles.badges}>
             {profile.isAdmin && <span className={styles.badge}>Admin</span>}
             {profile.isInactive && <span className={styles.badge}>Compte désactivé</span>}

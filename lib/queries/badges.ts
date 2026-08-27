@@ -74,25 +74,36 @@ type UserCompetitionStreakRow = {
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
-export async function getProfileBadges(): Promise<ProfileBadgesData> {
+/** targetUserId optionnel (27/08/2026, réutilisé par la page publique
+ *  `/players/[userId]` pour ses badges épinglés) -- par défaut le joueur de
+ *  la session courante. `user_badges_lifetime`/`user_competition_streaks`
+ *  sont des vues `security_invoker = false` (migrations #25/#26, safe car
+ *  agrégats seuls) et `users` a `users_select using (true)` -- déjà lisibles
+ *  pour n'importe quel user_id, même contrainte que `getPlayerProfile()`
+ *  (lib/queries/player-profile.ts). */
+export async function getProfileBadges(targetUserId?: string): Promise<ProfileBadgesData> {
   const supabase = await getServerClient();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { categories: [], pinnedBadges: [] };
+  let userId = targetUserId;
+  if (!userId) {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return { categories: [], pinnedBadges: [] };
+    userId = user.id;
+  }
 
   const [{ data: badgeRow }, { data: profileRow }, { data: streakRows }] = await Promise.all([
-    supabase.from("user_badges_lifetime").select("*").eq("user_id", user.id).maybeSingle<UserBadgesLifetimeRow>(),
+    supabase.from("user_badges_lifetime").select("*").eq("user_id", userId).maybeSingle<UserBadgesLifetimeRow>(),
     supabase
       .from("users")
       .select("created_at, pinned_badge_ids")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single<{ created_at: string; pinned_badge_ids: string[] }>(),
     supabase
       .from("user_competition_streaks")
       .select("user_id, competition_id, metronome_streak, fidele_streak")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .returns<UserCompetitionStreakRow[]>(),
   ]);
 
@@ -101,7 +112,7 @@ export async function getProfileBadges(): Promise<ProfileBadgesData> {
   // erreur (même repli que les vues user_scores/user_recent_form ailleurs).
   const row: UserBadgesLifetimeRow =
     badgeRow ?? {
-      user_id: user.id,
+      user_id: userId,
       competitions_played: 0,
       match_correct_winners: 0,
       match_exact_margins: 0,

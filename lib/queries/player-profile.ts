@@ -3,6 +3,7 @@ import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { BET_CATEGORY_OPTIONS, BET_DIFFICULTY_LABELS, type BetCategory, type BetDifficulty } from "@/lib/labels/bets";
 import { assignRanks, type RankableScore } from "@/lib/scoring/ranking";
 import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
+import { getProfileBadges, type BadgeDisplay } from "@/lib/queries/badges";
 import type { TeamRef } from "@/lib/queries/matches";
 
 // Lecture de la page "profil joueur" (`/players/[userId]`, BACKLOG discuté
@@ -67,6 +68,7 @@ export type PlayerProfileData = {
   isInactive: boolean;
   favoriteTeam: TeamRef | null;
   bio: string;
+  pinnedBadges: BadgeDisplay[];
   competitionId: string | null;
   competitionName: string | null;
   rank: number | null;
@@ -97,9 +99,10 @@ export async function getPlayerProfile(userId: string): Promise<PlayerProfileDat
     }>();
   if (!profile) return null;
 
-  const favoriteTeam = profile.favorite_team_id
-    ? await fetchTeam(supabase, profile.favorite_team_id)
-    : null;
+  const [favoriteTeam, badges] = await Promise.all([
+    profile.favorite_team_id ? fetchTeam(supabase, profile.favorite_team_id) : Promise.resolve(null),
+    getProfileBadges(userId),
+  ]);
 
   const base = {
     userId: profile.id,
@@ -108,6 +111,7 @@ export async function getPlayerProfile(userId: string): Promise<PlayerProfileDat
     isInactive: profile.status === "DISABLED",
     favoriteTeam,
     bio: profile.bio ?? "",
+    pinnedBadges: badges.pinnedBadges,
   };
 
   const { data: competition } = await supabase

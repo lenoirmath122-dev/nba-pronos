@@ -11445,3 +11445,34 @@ tsc/eslint/vitest (37/37)/next build propres. Vérifié visuellement par
 captures d'écran Playwright à chaque étape (avant/après chaque correctif),
 compte TestJoueur1 remis à zéro (pinned_badge_ids, favorite_team_id, mot
 de passe) après usage. Tous les scripts/captures de debug supprimés.
+
+## Badges épinglés : aussi sur la page perso publique /players/[userId] (27/08/2026)
+
+```text
+Retour utilisateur avec une capture d'écran de /players/[userId] (la page
+publique consultée en cliquant le pseudo de quelqu'un ailleurs dans
+l'appli) : les badges épinglés n'y apparaissaient pas. Jusqu'ici je ne les
+avais posés que sur /profile (réglages de son PROPRE compte) -- deux pages
+distinctes, `/players/[userId]` est la vraie "page perso" telle que la
+voient les autres joueurs.
+
+getProfileBadges() (lib/queries/badges.ts) acceptait seulement le joueur de
+la session courante (supabase.auth.getUser()). Rendu générique : nouveau
+paramètre optionnel `targetUserId`, sans dupliquer la logique -- les vues
+sous-jacentes (user_badges_lifetime, user_competition_streaks) sont
+`security_invoker = false` (migrations #25/#26, agrégats seuls, safe) et
+`users` a `users_select using (true)`, déjà lisibles pour n'importe quel
+user_id (même contrainte que getPlayerProfile() lui-même, qui lit déjà
+pseudo/bio/équipe favorite d'un autre joueur sans problème).
+
+getPlayerProfile() (lib/queries/player-profile.ts) appelle désormais
+getProfileBadges(userId) et expose pinnedBadges sur PlayerProfileData.
+app/players/[userId]/page.tsx affiche <PinnedBadges> à côté du pseudo,
+même composant que /profile (aucune duplication).
+
+Vérifié au clic en conditions réelles (Playwright, TestJoueur1 avec 2
+badges épinglés, page consultée en étant connecté sous ce même compte --
+suffisant pour vérifier le rendu, la RLS n'entre pas en jeu différemment
+pour un autre visiteur puisque users_select/les vues sont déjà ouvertes à
+tous). tsc/eslint/vitest (37/37)/next build propres. Compte remis à zéro
+après usage, scripts de test supprimés.
