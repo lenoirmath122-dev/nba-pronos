@@ -11622,3 +11622,56 @@ d'empilement explicite, au-dessus du niveau implicite (auto) de .photo-page,
 sans rien changer à son fonctionnement existant. Revérifié : nav visible
 ET cliquable (clic réel sur "Classement" -> navigation confirmée vers
 /leaderboard) sur les 3 écrans. tsc/vitest (37/37)/next build propres.
+
+## Chat — Général + par ligue (27/08/2026)
+
+```text
+Suite du backlog ajouté plus tôt le même jour (chat + badges épinglés) --
+"gros morceau" selon l'utilisateur, vrai cadrage écrit avant code :
+Cadrage/Proto/SPEC_CHAT_V0_1.md. 2 rounds d'AskUserQuestion : (1) portée
+(Général ET par ligue -- pas l'un ou l'autre), emplacement (page dédiée,
+chips de canal), modération (admin uniquement, pas de self-delete) et
+temps réel (oui, Supabase Realtime) ; (2) round dédié après avoir repéré
+que "page avec onglet dédié" impliquait un 5e onglet dans la TabBar (jusque
+là fixe à 4, choix explicitement confirmé en sens inverse le 20/08/2026
+pour /regles) -- confronté à l'utilisateur plutôt que tranché seul,
+confirmé 5e onglet.
+
+Migration #31 (chat_messages) : lecture Général ouverte à tous, ligue
+réservée aux membres via `league_id in (select public.my_league_ids())`
+(pas un EXISTS direct sur league_memberships, qui avait déjà mordu sur une
+récursion RLS le 30/07/2026, migration #17) ; écriture même garde ;
+suppression admin uniquement (is_admin()). Publiée sur supabase_realtime.
+
+UI : ChatScopeChips (adaptation de LeagueScopeChips, même patron chip déjà
+utilisé sur Classement/Résultats/Bracket/Profil), ChatSubscriber (patron
+LiveSubscriber -- INSERT seulement, PAS de DELETE en Realtime : premier
+constat que la suppression aurait exigé REPLICA IDENTITY FULL, jamais
+utilisé dans ce projet, écarté au profit d'un retrait purement local côté
+admin), ChatComposer/ChatMessageRow en useActionState (comme LoginForm,
+pas le patron "formulaire + redirect" habituel -- une redirection par
+message aurait cassé le scroll/le focus).
+
+Bug réel trouvé en testant (3 comptes jetables + Playwright, script
+_check_chat.mjs, supprimé après usage) : l'auteur d'un message ne recevait
+PAS toujours son propre message en direct (les autres joueurs si).
+Diagnostic : chaque Server Action déclenche un refresh de page côté
+Next.js -> nouvelle référence `roster` (même contenu, juste une nouvelle
+identité d'objet) -> l'effet d'abonnement Realtime (qui l'avait en
+dépendance) se relançait -> fermeture puis réouverture du canal pile au
+moment où l'événement du message qu'on venait de poster arrivait, donc
+raté (Realtime ne rejoue pas les événements manqués à la resouscription).
+Corrigé : `roster` lu via une ref stable plutôt que dans les dépendances de
+l'effet -- seul un vrai changement de canal le relance désormais.
+
+Vérification la plus significative du chantier : 1er test réel d'une
+policy RLS restrictive sur un canal Realtime dans ce projet (les 2 tables
+déjà branchées, matches/series, sont `using (true)` -- rien n'avait encore
+été mis à l'épreuve). Écoute Realtime BRUTE (script Node indépendant, hors
+UI) par un compte non-membre d'une ligue : aucun événement reçu, confirmé.
+13/13 vérifications passées au total (5e onglet, chips membre/non-membre,
+réception en direct Général + ligue, repli silencieux sur Général pour une
+URL de ligue forgée, visibilité du bouton Supprimer selon le rôle,
+suppression effective). Comptes/ligue/messages de test nettoyés après coup.
+
+tsc/eslint/vitest (37/37)/next build (39 routes) propres à chaque étape.

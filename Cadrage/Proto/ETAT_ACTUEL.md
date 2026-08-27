@@ -7461,3 +7461,83 @@ comme trace historique).
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (37 routes) propres.
 ```
+
+### 2.98 Chat — Général + par ligue (session du 27/08/2026)
+
+```text
+Demande de l'utilisateur : 2e item du backlog ajouté le 27/08/2026 (chat +
+badges épinglés sur la page perso). Badges épinglés + intégration du
+logo/rebrand "Panier Ballon" + correctif nav visiteur invisible déjà codés
+et poussés juste avant celle-ci (détail dans `JOURNAL_SESSIONS.md`, pas
+encore repris ici en entrée ETAT_ACTUEL dédiée -- à faire séparément).
+"Gros morceau" selon l'utilisateur lui-même -- vrai cadrage écrit avant
+code : `Cadrage/Proto/SPEC_CHAT_V0_1.md`.
+
+Décisions actées avec l'utilisateur (AskUserQuestion, 2 rounds) : portée =
+Général (permanent, tout joueur) ET un canal par ligue existante (système
+de ligues, migration #16) -- PAS l'un ou l'autre ; emplacement = page
+dédiée `/chat`, sélection de canal par chips (réutilise le patron
+`LeagueScopeChips` déjà en place sur Classement/Résultats/Bracket/Profil,
+même repli silencieux `resolveLeagueScope`) ; modération = ADMIN
+uniquement (`is_admin()`, pas de self-delete/self-edit) ; temps réel = oui
+(Supabase Realtime, déjà utilisé ailleurs -- `LiveSubscriber`/
+`LiveSeriesSubscriber`). 2e round dédié à l'emplacement dans la nav :
+confirmé 5e onglet dans la `TabBar` -- **reprend explicitement la décision
+inverse prise en §2.96** ("pas de 5e onglet... par choix déjà établi"),
+l'utilisateur ayant cette fois préféré la visibilité maximale à la densité
+de la barre.
+
+**Migration #31** (`20260827100000_chat.sql`) : 1 seule table neuve,
+`chat_messages` (scope_type GLOBAL/LEAGUE, league_id nullable + contrainte
+de cohérence, user_id, body 1-2000 caractères, created_at). RLS : lecture
+Général ouverte à tous + ligue réservée aux membres (`league_id in (select
+public.my_league_ids())` -- PAS un EXISTS direct sur `league_memberships`,
+qui a déjà mordu sur une récursion RLS, migration #17) ; écriture même
+garde ; suppression admin uniquement. Publiée sur `supabase_realtime`.
+Poussée sans blocage (`npx supabase db push`).
+
+Lecture (`lib/queries/chat.ts`) : `getChatMessages()` (200 derniers d'un
+canal, pas de pagination -- simplification assumée) + `getChatRoster()`
+(trombinoscope complet pseudo/avatar/rôle, sert à résoudre l'auteur d'un
+message reçu en direct par Realtime qui ne porte que `user_id`). Écriture
+(`lib/actions/chat.ts`) : `postChatMessageFormAction`/
+`deleteChatMessageFormAction`, PAS le patron "formulaire natif + redirect"
+du reste de `lib/actions/*` -- `useActionState` comme LoginForm/SignupForm,
+une redirection à chaque message casserait le scroll/le focus sur un écran
+pensé pour poster en rafale.
+
+UI : `ChatScopeChips` (adaptation de `LeagueScopeChips`), `ChatSubscriber`
+(Provider + liste, patron `LiveSubscriber` -- INSERT seulement, PAS DELETE
+en Realtime : un DELETE ne porte par défaut que la clé primaire, insuffisant
+pour que Postgres réévalue la RLS dessus sans `REPLICA IDENTITY FULL`,
+mécanisme jamais éprouvé ici -- suppression admin donc retirée localement
+seulement, pas diffusée aux autres joueurs connectés), `ChatComposer`,
+`ChatMessageRow`. Icône `ChatIcon` ajoutée à `nav-icons.tsx` (même style
+"nette" que les 4 existantes).
+
+**Bug réel trouvé en testant** (script jetable `scripts/_check_chat.mjs`,
+3 comptes réels + Playwright, supprimé après usage) : l'AUTEUR d'un message
+ne recevait PAS toujours son propre message en direct (les autres joueurs
+si). Cause : chaque Server Action déclenche un refresh de la page côté
+Next.js -> nouvelle référence `roster` (même contenu) -> l'effet
+d'abonnement Realtime (qui dépendait de `roster`) se relançait -> le canal
+se fermait puis se rouvrait juste au moment où l'événement du message qu'on
+venait de poster arrivait, donc raté (pas de rejeu des événements manqués).
+Corrigé : `roster` lu via une ref stable, plus dans les dépendances de
+l'effet -- seul un changement de canal (`scopeKey`) le relance désormais.
+
+Vérification réelle (3 comptes jetables + Playwright, 13 assertions) :
+5e onglet Chat présent ; chip Général active par défaut ; membre/non-membre
+d'une ligue voit/ne voit pas sa chip ; message Général reçu en direct par
+un AUTRE joueur ET par l'auteur lui-même (après le fix ci-dessus) ; message
+de ligue reçu en direct par l'autre membre ; un non-membre forçant l'URL du
+canal ligue retombe silencieusement sur Général, sans voir le message ; **et
+surtout** -- 1er test réel d'une policy RLS restrictive sur le canal
+Realtime dans ce projet (les 2 tables déjà branchées, `matches`/`series`,
+sont `using (true)`) -- écoute Realtime BRUTE (hors UI, script Node
+indépendant) par le non-membre : AUCUN événement reçu, confirmé ; bouton
+Supprimer visible pour l'admin seulement, fonctionnel (retrait local).
+13/13 passées. Comptes/ligue/messages de test nettoyés après coup.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (39 routes) propres.
+```

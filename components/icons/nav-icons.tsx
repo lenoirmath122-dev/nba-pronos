@@ -92,3 +92,15 @@ export function ProfileIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+/** Chat — bulle rectangulaire (coins droits, même esprit que RankingIcon)
+ *  avec une queue et 2 lignes de texte, ajoutée le 27/08/2026. */
+export function ChatIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3.6" y="4.6" width="16.8" height="12" />
+      <path d="M8 16.6V20.2L11.8 16.6" />
+      <path d="M7 9H17M7 12.4H13.5" />
+    </IconBase>
+  );
+}

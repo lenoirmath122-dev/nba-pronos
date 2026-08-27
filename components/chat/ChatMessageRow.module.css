@@ -1,0 +1,90 @@
+.row,
+.rowOwn {
+  display: flex;
+  flex-direction: column;
+}
+
+.rowOwn {
+  align-items: flex-end;
+}
+
+.bubble {
+  max-width: 80%;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-inset);
+}
+
+.rowOwn .bubble {
+  background: var(--color-accent-soft);
+}
+
+.meta {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+
+.pseudo {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+.adminTag {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-badge);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.time {
+  font-size: 0.6875rem;
+  color: var(--color-text-muted);
+}
+
+.body {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+}
+
+.deleteForm {
+  margin-top: var(--space-1);
+}
+
+.deleteButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-loss);
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.deleteButton:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.deleteButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.error {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-loss);
+}

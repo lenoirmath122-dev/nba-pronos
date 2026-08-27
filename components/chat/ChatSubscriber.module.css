@@ -1,0 +1,23 @@
+/* Page-scroll classique (pas de panneau à hauteur fixe) : même modèle que
+   le reste de l'app (Classement, Résultats...) -- .content n'a ni hauteur
+   ni overflow contraints (app/(app)/layout.module.css). Le composeur se
+   fixe en bas via position:sticky plutôt qu'un flex intérieur à hauteur
+   pilotée, pour rester cohérent avec ce modèle. */
+.wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: 0 var(--space-4) var(--space-3);
+}
+
+.empty {
+  margin: var(--space-6) 0;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-muted);
+}
