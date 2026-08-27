@@ -11389,3 +11389,59 @@ scripts/_check_unpin.mjs), aucune trace laissée dans scripts/.
 BACKLOG_V1.md : point marqué FAIT. GAPS_OUVERTS.md : rien à garder ouvert,
 chantier clos. Reste à cadrer : le chat in-app (2e point ajouté au backlog
 la veille).
+
+## Badges épinglés : 2 corrections signalées par l'utilisateur (27/08/2026)
+
+```text
+Retour utilisateur avec 2 captures d'écran, juste après la mise en prod des
+badges épinglés :
+1. Les icônes doivent apparaître du côté INTÉRIEUR du pseudo (à gauche
+   quand le bandeau est aligné à droite -- mode équipe favorite -- à droite
+   sinon), pas systématiquement après le texte.
+2. Un vrai bug d'affichage : carte "Machine à pronos" visuellement écrasée,
+   un bouton "épingler" flottant qui semble chevaucher la catégorie
+   suivante ("BRACKET PERSONNEL").
+
+Point 1 : `.pseudoTeam` (app/(app)/profile/page.module.css) passé en
+`flex-direction: row-reverse` -- inverse seulement l'ordre VISUEL, le DOM
+(donc l'ordre de lecture pour un lecteur d'écran, pseudo avant badges) ne
+change pas.
+
+Point 2 : diagnostiqué par capture d'écran + inspection DOM réelle
+(Playwright temporaire, compte TestJoueur1) plutôt que deviné -- mesure des
+getBoundingClientRect() de toute la chaîne d'ancêtres a montré
+`.flipInner` à hauteur 0 pour la carte seule sur sa ligne ("Machine à
+pronos", nombre impair de badges dans la catégorie). Cause : AVANT le
+chantier badges épinglés, `.flipContainer` (le bouton flip) était
+LUI-MÊME l'item direct de la grille CSS, et bénéficiait du stretch par
+défaut de CSS Grid (align-items:stretch) qui lui donnait une hauteur
+DÉFINIE -- suffisant pour que `.flipInner{height:100%}` se résolve
+correctement. En insérant `.cardWrapper` comme nouvel item de grille (pour
+loger le bouton "épingler" en frère du bouton de flip), `.flipContainer`
+est devenu un enfant NORMAL (plus lui-même item de grille) et a perdu ce
+stretch -- `min-height` seul ne compte pas comme hauteur définie pour la
+résolution de pourcentage d'un descendant, contrairement au stretch de
+grille. `.flipInner`, dont TOUS les enfants sont en position:absolute
+(donc sans contribution de hauteur en flux normal), se retrouvait à 0.
+
+Corrigé : `min-height: 8.5rem` déplacé sur `.cardWrapper` (le vrai item de
+grille désormais, restaure un plancher défini même sans second badge sur
+la même ligne) + `.flipContainer` passé en `height: 100%` (se résout
+maintenant correctement contre la hauteur définie de `.cardWrapper`).
+Vérifié par la même inspection DOM : .face/.flipInner/.flipContainer/
+.cardWrapper tous à 136px après correctif (avant : .flipInner à 0px,
+.face à 26px).
+
+Effet de bord trouvé EN VÉRIFIANT (pas deviné) : le bouton "épingler"
+(coin haut-droit) chevauchait la fin des libellés longs ("Machine à
+pronos" coupé en "Machine à prono"). Corrigé par une marge réservée à
+droite sur `.card` (`padding-right: calc(var(--space-3) + 1.75rem)`) --
+qui a fait passer plusieurs libellés longs sur 2 lignes, débordant de
+8.5rem de 11px (mesuré). `min-height` remonté à 9.75rem, revérifié SANS
+débordement sur les 4 libellés les plus longs du catalogue (Machine à
+pronos, Paris Persos Master, Buzzer-beater (série), Victorieux (série)).
+
+tsc/eslint/vitest (37/37)/next build propres. Vérifié visuellement par
+captures d'écran Playwright à chaque étape (avant/après chaque correctif),
+compte TestJoueur1 remis à zéro (pinned_badge_ids, favorite_team_id, mot
+de passe) après usage. Tous les scripts/captures de debug supprimés.

@@ -61,6 +61,13 @@
 }
 
 .pseudoTeam {
+  /* row-reverse (27/08/2026, demandé par l'utilisateur) : ce bloc est
+     aligné à DROITE du bandeau (.headerText, align-items:flex-end) -- les
+     badges épinglés doivent donc apparaître du côté INTÉRIEUR (à gauche du
+     pseudo) plutôt que de continuer vers le bord de l'écran. Inverse
+     seulement l'ordre VISUEL (DOM inchangé, pseudo toujours lu avant les
+     badges). */
+  flex-direction: row-reverse;
   font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   text-align: right;

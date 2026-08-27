@@ -4,11 +4,29 @@
    l'interaction (accessible au clavier, contrairement à un <div onClick>). */
 .cardWrapper {
   position: relative;
+  /* 9.75rem (27/08/2026, était 8.5rem) : la marge réservée au bouton
+     "épingler" (padding-right sur .card ci-dessous) fait passer certains
+     libellés longs ("Machine à pronos", "Paris Persos Master"...) sur 2
+     lignes -- relevé en vérifiant, le contenu débordait de 8.5rem. */
+  min-height: 9.75rem;
 }
 
+/* height:100% (27/08/2026, corrige un bug réel trouvé en testant le bouton
+   "épingler" au clic) : .flipInner ci-dessous a besoin d'une hauteur
+   DÉFINIE sur son parent pour que son propre height:100% se résolve (sinon
+   .face, en position:absolute/inset:0 à l'intérieur, se retrouve à hauteur
+   quasi nulle -- carte visuellement écrasée). Avant l'ajout de
+   .cardWrapper, .flipContainer était LUI-MÊME l'item de la grille CSS, et
+   héritait d'une hauteur définie via le stretch par défaut de la grille
+   (align-items:stretch) -- un <div> intermédiaire ne bénéficie plus de ce
+   stretch pour ses propres enfants. min-height sur .cardWrapper (le
+   véritable item de grille désormais) restaure ce plancher pour toute
+   carte seule sur sa ligne (nombre impair de badges dans la catégorie).
+*/
 .flipContainer {
   display: block;
   width: 100%;
+  height: 100%;
   min-height: 8.5rem;
   padding: 0;
   border: none;
@@ -85,6 +103,12 @@
   flex-direction: column;
   gap: var(--space-1);
   padding: var(--space-3);
+  /* Marge réservée à droite (27/08/2026) : le bouton "épingler" (coin
+     haut-droit, position absolute) couvrait la fin des libellés longs
+     ("Machine à pronos") -- trouvé en vérifiant le correctif de hauteur
+     ci-dessus. Appliquée aussi aux cartes verrouillées (sans bouton) par
+     simplicité, sans effet visible. */
+  padding-right: calc(var(--space-3) + 1.75rem);
   border-radius: var(--radius-md);
   background: var(--color-surface-inset);
   border: 1px solid var(--color-border-subtle);
