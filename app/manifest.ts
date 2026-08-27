@@ -4,8 +4,8 @@ import type { MetadataRoute } from "next";
 // (backlog "Rappels ciblés", canal Push, §2.46 ETAT_ACTUEL.md) : sur iOS, les
 // notifications web ne fonctionnent QUE depuis une app installée à l'écran
 // d'accueil (restriction Apple, jamais dans un onglet Safari/Chrome classique).
-// Icônes placeholder (monogramme "NP", public/icons/README-style) — à
-// remplacer par un vrai logo si besoin, aucun impact sur le fonctionnement.
+// Icônes (27/08/2026) : vrai logo (public/brand/logo.svg), plus le monogramme
+// "NP" placeholder d'origine -- voir public/brand/README.md.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "NBA Pronos",

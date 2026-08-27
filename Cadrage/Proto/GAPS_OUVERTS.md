@@ -4,6 +4,30 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Nom de marque et logo NON validés à 100 % (27/08/2026)** -- un cadrage
+> business/marque/communication produit en session Cowork séparée
+> (`Cadrage/panier_ballon_cadrage_business_communication.md`) propose le
+> nom public "Panier Ballon" (PAS "NBA Pronos" -- le mot "NBA" à éviter
+> dans le nom de marque public, cf. risque marque déposée en communication
+> publique/monétisation) et une direction d'icône "monogramme PB", NON
+> suivie -- un logo illustré (panier + ballon) a été intégré à la place
+> comme icône d'app/favicon le même jour (voir entrée ci-dessous et
+> `public/brand/logo.svg`). Les deux (nom ET logo) restent des directions
+> de travail réévaluables, pas des choix figés -- voir le caveat daté dans
+> le document business, section "Identité de marque".
+>
+> **Logo panier+ballon intégré comme icône d'app (27/08/2026)** -- source
+> `Cadrage/DA/Logo.jpg` (déposé par l'utilisateur), fond 4 couleurs
+> d'origine retiré, vectorisé en SVG par séparation de couleurs (potrace,
+> 5 couches) plutôt que posterize automatique -- `public/brand/logo.svg`
+> (master, optimisé SVGO). Sert de source à `app/favicon.ico` (ICO
+> multi-taille), `app/apple-icon.png`, `public/icons/icon-{192,512}.png` --
+> remplacent le monogramme "NP" placeholder. Vérifié par fetch direct des
+> routes servies (tailles identiques aux fichiers générés). Piste
+> "nav visiteur + écrans de connexion" (2e étape proposée dans l'artifact
+> de proposition) pas encore faite -- à reprendre si le rendu convainc à
+> l'usage, cf. `JOURNAL_SESSIONS.md`.
+>
 > **Compétition fictive "NBA Cup — Alpha Potes" — CODE PRÊT, PAS ENCORE
 > LANCÉ (27/08/2026)** -- alpha avec le groupe d'amis de l'utilisateur,
 > à démarrer autour du 20/09/2026 (le vrai calendrier NBA ne reprend qu'en

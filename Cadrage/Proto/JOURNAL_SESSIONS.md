@@ -11476,3 +11476,60 @@ suffisant pour vérifier le rendu, la RLS n'entre pas en jeu différemment
 pour un autre visiteur puisque users_select/les vues sont déjà ouvertes à
 tous). tsc/eslint/vitest (37/37)/next build propres. Compte remis à zéro
 après usage, scripts de test supprimés.
+
+## Intégration du logo (icônes d'app) + conflit avec le cadrage business découvert (27/08/2026)
+
+```text
+Suite de la proposition de logo validée (artifact "Logo NBA Pronos") :
+l'utilisateur demande "en SVG du coup ?".
+
+Réponse technique : pour favicon.ico/apple-icon.png/manifest icon-192/512,
+le format natif attendu reste PNG/ICO (support SVG absent ou partiel sur
+iOS/PWA maskable icons) -- mais un MASTER SVG reste utile comme source
+(cohérent avec le patron déjà en place, public/logos/teams/*.svg) : toutes
+les résolutions raster s'en dérivent proprement, plus besoin de repartir
+du JPEG à chaque fois.
+
+Vectorisation faite par SÉPARATION DE COULEURS plutôt que posterize
+automatique (potrace) : 5 classes de couleur échantillonnées sur l'image
+réelle (navy #252740, orange base #E7563B, orange ballon #EF793B, blanc,
+noir), 1 bitmap binaire par classe (pixel opaque -> classe la plus proche
+par distance euclidienne RGB), chaque bitmap tracé séparément par potrace,
+recombiné en un seul SVG. Piège rencontré et corrigé : `getPathTag()` de
+potrace inclut `fill-rule="evenodd"` -- en extrayant seulement `d="..."`
+et en le recombinant sans ce fill-rule, le rendu était un aplat noir
+plein (les "trous" du tracé, càd les zones vides entre les traits, ne se
+découpaient plus). Une fois corrigé, rendu bit-conforme à l'original.
+Optimisé ensuite via SVGO (114 Ko -> 70 Ko, -38%), revérifié visuellement
+identique après optimisation.
+
+Déposé : public/brand/logo.svg (master), app/favicon.ico (ICO multi-taille
+16/32/48 via png-to-ico), app/apple-icon.png (180x180), public/icons/
+icon-{192,512}.png -- tous générés depuis le SVG avec la même marge que
+l'ancien placeholder "NP", même fond #0E1118. Vérifié par fetch direct des
+routes servies par le serveur de dev (tailles de fichiers exactement
+identiques aux fichiers générés) + inspection visuelle de l'apple-icon
+servi.
+
+AVANT de committer : découverte d'un fichier non trackè, non créé par moi,
+`Cadrage/panier_ballon_cadrage_business_communication.md` -- cadrage
+business/marque/communication produit en session Cowork séparée le
+26-27/08/2026. Ce document acte un nom de marque public différent
+("Panier Ballon", PAS "NBA Pronos" -- le mot "NBA" explicitement à éviter
+dans le nom de marque public) ET une direction d'icône différente
+(monogramme "PB" en badge, "pas de logo illustré complexe nécessaire") --
+en contradiction directe avec le logo panier+ballon illustré qu'on venait
+d'intégrer.
+
+Flag fait explicitement à l'utilisateur (AskUserQuestion, 3 options)
+plutôt que de committer en silence ou d'annuler sans demander. Décision :
+"On utilise le logo pour le moment" -- le document business est mis à
+jour en conséquence (note datée dans la section Logo/wordmark expliquant
+l'écart pris, + caveat en tête de la section "Identité de marque" :
+NI le nom NI le logo ne sont validés à 100% à ce stade, direction de
+travail réévaluable après la bêta). La piste wordmark+monogramme PB est
+conservée dans le document comme option de repli, pas supprimée.
+
+tsc/next build propres. Scripts de vectorisation jetables (potrace,
+png-to-ico, svgo installés dans le scratchpad de session, PAS dans le
+dépôt) -- rien ajouté à package.json.
