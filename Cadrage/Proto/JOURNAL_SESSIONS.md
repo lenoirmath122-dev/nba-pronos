@@ -11086,3 +11086,33 @@ perdu) reste en attente. Pas encore testé en soumettant un vrai pari
 COMPARISON/COMBO sur un joueur hors match depuis l'appli elle-même (seul
 l'appel HTTP direct au service est confirmé).
 ```
+
+## 6 matchs fantômes nettoyés dans "Mes pronos" (27/08/2026)
+
+```text
+Signalé par l'utilisateur (capture d'écran) : dans "Mes pronos", 4 matchs
+dont l'heure est clairement passée ("mer. 26/08 22:00" etc., alors qu'on
+est le 27/08) restent affichés "Pas de prono", verrouillés mais jamais
+résolus.
+
+Vérifié en base directement (script jetable, service_role, supprimé après
+usage) avant de conclure quoi que ce soit -- PAS un bug de synchro. Les 6
+matchs concernés (dont les 4 de la capture) appartiennent tous à
+« Playoffs NBA (simulation) » (`1fa15491-...`), qui se trouve être
+l'UNIQUE compétition `ACTIVE` de toute la base en ce moment (toutes les
+autres, une dizaine, sont `ARCHIVED`) -- réutilisée comme terrain de test
+pour les chantiers récents (paris IA, paris série...). Les 6 matchs ont
+`status=SCHEDULED` et AUCUNE ligne dans `entity_mappings` -- jamais reliés
+à un vrai match Highlightly, donc structurellement jamais résolvables par
+`syncResults` (qui ne fonctionne que via ce pont). Confirmé aussi : 1 seule
+prédiction DRAFT vide (jamais soumise) sur l'un des 6, aucun pari -- rien
+de réel à perdre.
+
+Décidé avec l'utilisateur (3 options proposées) : garder la compétition
+simulation active (encore utile pour tester), juste nettoyer ces 6 matchs
+précis. Passés en `status=CANCELLED` (même patron que le nettoyage
+Risacher/NBA Cup du 22/08 -- `UPDATE` direct Supabase via service_role,
+jamais un DELETE) -- s'affichent désormais "Annulé" (`LiveSubscriber.tsx`,
+déjà géré nativement). Aucun changement de code, aucun commit applicatif --
+uniquement une correction de données.
+```
