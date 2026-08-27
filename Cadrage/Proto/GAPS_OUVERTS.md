@@ -4,6 +4,84 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Compétition fictive "NBA Cup — Alpha Potes" — CODE PRÊT, PAS ENCORE
+> LANCÉ (27/08/2026)** -- alpha avec le groupe d'amis de l'utilisateur,
+> à démarrer autour du 20/09/2026 (le vrai calendrier NBA ne reprend qu'en
+> octobre). Format `NBA_CUP` (8 équipes, élimination directe, **1 seul
+> match par tour** -- `lib/scoring/engine.ts::deriveSeriesOutcome`, pas de
+> best-of-7 -- donc 7 matchs au total : 4 quarts → 2 demies → 1 finale),
+> choisi pour tenir sur une fenêtre courte. Paris personnalisés IA
+> **actifs** pendant l'alpha (décision utilisateur). Détail complet du
+> raisonnement (recherche sur la structure DB, le pont équipes app<->stats
+> NBA, le risque de "spoiler", etc.) dans `JOURNAL_SESSIONS.md`
+> (27/08/2026, entrée "Compétition fictive NBA Cup — alpha potes").
+>
+> **Principe retenu** : matchs/dates 100% fictifs, mais chaque match
+> emprunte le VRAI score + les VRAIES stats joueur d'un match NBA
+> historique déjà en base (`stats_matchs`/`stats_box_scores`) -- pour que
+> les paris persos IA se résolvent avec de vraies données, pas des scores
+> inventés. Mécanisme : une ligne `entity_mappings`
+> (`entity_type="MATCH"`, `source_type="NBA_API"`, `source_ref=<vrai
+> game_id>`) posée manuellement sur le match fictif -- `resolveNbaGameId()`
+> (`lib/ai/resolveCalculableBets.ts`) la trouve en cache-first et ne
+> cherche jamais plus loin. Déjà éprouvé une fois en test réel (Hawks@Knicks
+> 23/04, session du 22-23/08).
+>
+> **Risque "spoiler" identifié et à respecter absolument** :
+> `fetchLockedRows(finished: true)` (`lib/queries/play.ts`, alimente
+> Résultats) n'a AUCUNE borne sur `scheduled_at` -- un match `FINISHED`
+> aujourd'hui avec une date future s'afficherait immédiatement pour tout
+> le monde. Donc : créer le match à l'avance est sûr (`SCHEDULED`,
+> invisible), mais ne JAMAIS le basculer en `FINISHED` avant le vrai jour
+> du match fictif.
+>
+> **3 scripts jetables déjà écrits et vérifiés (`tsc`/`eslint` propres)**,
+> même convention que `scripts/seed-playoffs-simulation.mjs` :
+> - `scripts/nba-cup-find-real-game.mjs --home=XXX --away=YYY
+>   [--season=2024-25]` -- lecture seule, liste les vrais matchs
+>   historiques entre 2 équipes avec score dérivé + top 3 marqueurs.
+> - `scripts/nba-cup-create-match.mjs --series=<id> --game=<game_id réel>
+>   --at="2026-09-20T20:00"` -- crée le match `SCHEDULED` + la ligne
+>   `entity_mappings`, recalcule `bracket_deadline`.
+> - `scripts/nba-cup-reveal-match.mjs --match=<id>` -- LE JOUR J
+>   uniquement : bascule `FINISHED` avec le vrai score dérivé, rejoue le
+>   scoring (`deriveSeriesOutcome`/`scoreMatchPrediction`/
+>   `scoreBracketPick` importés directement de `lib/scoring/engine.ts`,
+>   fichier pur ; l'orchestration de `recomputeMatch`/
+>   `advanceWinnerIfDecided` est réimplémentée dedans -- même contrainte
+>   `server-only` déjà rencontrée par le script précédent) et avance le
+>   vainqueur au tour suivant. Affiche ensuite la commande curl pour
+>   résoudre les paris persos tout de suite (`/api/resolve-bets`) plutôt
+>   que d'attendre le cron quotidien.
+>
+> **Rien codé côté compétition elle-même** -- entièrement réutilisé tel
+> quel : création (`/admin/competitions/new`, choix des 4 duels de quarts
+> via menus déroulants) et archivage (`closeCompetition`, `/admin/
+> competitions`) existent déjà.
+>
+> **Étapes de reprise, dans l'ordre, le moment venu (~19-22/09/2026)** :
+> 1. Archiver "Playoffs NBA (simulation)" (bouton `/admin/competitions`).
+> 2. Créer la compétition `NBA_CUP` via `/admin/competitions/new` avec 4
+>    duels de quarts. Suggestion validée avec l'utilisateur (ajustable) :
+>    Boston Celtics-New York Knicks, Los Angeles Lakers-Golden State
+>    Warriors, Denver Nuggets-Oklahoma City Thunder, Milwaukee Bucks-
+>    Philadelphia 76ers.
+> 3. Calendrier retenu : J1 (20/09) les 4 quarts, J2 (21/09) les 2 demies,
+>    J3 (22/09) la finale -- 2 matchs/jour, ajustable via `--at` à chaque
+>    appel.
+> 4. Pour chaque match, dans l'ordre : `find-real-game` (choisir à l'œil
+>    un match réel propre) → `create-match` (le prépare, invisible) → LE
+>    JOUR J : `reveal-match` (révèle le résultat, avance le bracket). Les
+>    demies/la finale ne sont créables qu'une fois le tour précédent
+>    révélé (équipes suivantes remplies automatiquement par la cascade
+>    d'avancement).
+>
+> Plan de conception complet (avec tout le détail des alternatives
+> écartées) sauvegardé localement chez l'utilisateur au moment de la
+> conception -- non fiable pour une reprise à froid dans une future
+> session (fichier hors dépôt, machine-spécifique) : cette entrée + le
+> journal ci-dessus font foi.
+
 > **Plan de reprise post-audit : les 8 étapes sont TERMINÉES (26/08/2026)**
 > -- 1/2/3 commitées ET poussées (`4ff0a44`, `1a6f36a`, `714e45f`,
 > `94db7a4`) ; étape 4 commitée ET poussée (`332ac92`) ; étapes 5 et 6

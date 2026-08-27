@@ -11193,3 +11193,97 @@ Retesté immédiatement après : le script de nettoyage des 2 matchs du
 Aucun changement de code applicatif -- uniquement une correction de
 données + une règle de configuration locale de l'outil.
 ```
+
+## Compétition fictive NBA Cup — alpha potes, conception + 3 scripts (27/08/2026)
+
+```text
+L'utilisateur demande de construire une compétition fictive opérationnelle
+fin septembre (autour du 20), pour une alpha avec son groupe d'amis. Le vrai
+calendrier NBA ne reprend qu'en octobre -- tout devra être fabriqué.
+
+Recherche préalable en 2 passes (agents Explore) avant de proposer quoi que
+ce soit : modèle de données des compétitions (une seule ACTIVE à la fois,
+contrainte DB), flux de création admin (déjà complet pour NBA_CUP/PLAYOFFS,
+rien à coder), scripts de simulation existants (seed-playoffs-simulation.mjs,
+non réutilisable tel quel -- comptes bots, pas le vrai groupe), résolution
+manuelle des résultats (admin-results.ts, 100% autonome de Highlightly --
+exactement le mécanisme qu'il faut).
+
+3 questions posées à l'utilisateur (AskUserQuestion) avant de creuser plus :
+format NBA_CUP (8 équipes, plus léger qu'un vrai bracket Playoffs 16 équipes)
+retenu plutôt que PLAYOFFS ; paris personnalisés IA gardés ACTIFS pendant
+l'alpha (même si la proba d'un joueur réel dans un contexte de match fictif
+n'est pas parfaitement cohérente) ; résultats préparés à l'avance par script
+plutôt que saisis à la main -- ET en réutilisant de VRAIES stats box-score
+historiques, pour tester la résolution des paris persos en conditions
+réelles plutôt qu'avec des scores inventés.
+
+2e passe de recherche (agent Explore) pour valider la faisabilité technique
+de cette idée : confirmé que NBA_CUP n'a QU'UN SEUL match par tour (pas de
+best-of-7, lib/scoring/engine.ts::deriveSeriesOutcome) -- donc 7 matchs au
+total pour toute la compétition (4 quarts, 2 demies, 1 finale), largement
+gérable en quelques jours. Confirmé aussi le pont exact déjà utilisé par la
+vraie résolution de paris pour passer d'une équipe app (uuid) à son id
+NBA-stats (entier) : simple jointure texte teams.abbreviation =
+stats_equipes.tricode (resolveNbaTeamId(), lib/ai/resolveCalculableBets.ts)
+-- pas de table de correspondance à créer. Et le mécanisme entity_mappings
+(source_type="NBA_API") : resolveNbaGameId() fait un lookup cache-first sur
+cette table et s'arrête là dès qu'il trouve une ligne -- poser la ligne à la
+main pour un match fictif suffit donc entièrement à faire croire au système
+de résolution des paris que ce match correspond à un vrai match NBA, déjà
+éprouvé une fois en test réel (Hawks@Knicks 23/04, session du 22-23/08).
+
+Point critique trouvé en vérifiant (pas supposé) : fetchLockedRows(finished:
+true) (lib/queries/play.ts, alimente Résultats) n'a AUCUNE borne supérieure
+sur scheduled_at -- un match passé FINISHED aujourd'hui avec une date future
+s'afficherait immédiatement pour tout le monde, spoilant le résultat avant
+le jour du match fictif. Conclusion : les matchs doivent être créés à
+l'avance en SCHEDULED (sûr, invisible) mais ne basculer en FINISHED que le
+jour réel -- d'où la séparation en 2 scripts distincts (create puis reveal)
+plutôt qu'un seul.
+
+Décision technique sur l'orchestration du scoring (server-only) : lib/
+scoring/recompute.ts/advancement.ts importent getServiceClient (server-only,
+bloqué hors runtime Next) -- même contrainte déjà rencontrée par seed-
+playoffs-simulation.mjs (14/08). Décidé de suivre le même précédent :
+importer directement les fonctions PURES de lib/scoring/engine.ts (aucun
+server-only) et réimplémenter l'orchestration (lecture/écriture) dans le
+script -- version nettement plus courte que le précédent, NBA_CUP n'ayant
+pas la branche best-of-7.
+
+Passage en mode Plan (EnterPlanMode) vu l'ampleur -- 2 agents Explore +
+1 agent Plan lancés en amont pour ne pas deviner la conception. 3 questions
+de calage supplémentaires (AskUserQuestion) une fois le plan de conception
+prêt : suggestions de duels demandées à l'assistant plutôt que choisies par
+l'utilisateur ; rythme 2 matchs/jour sur 3 jours (calendrier retenu : J1 les
+4 quarts, J2 les 2 demies, J3 la finale) ; archivage de "Playoffs NBA
+(simulation)" repoussé juste avant le lancement plutôt que fait maintenant.
+Plan final écrit et approuvé (ExitPlanMode).
+
+Implémenté -- 3 scripts jetables (même convention que seed-playoffs-
+simulation.mjs, service_role, node --env-file=.env.local) :
+- scripts/nba-cup-find-real-game.mjs : lecture seule, cherche les vrais
+  matchs historiques entre 2 équipes (stats_matchs), score dérivé (somme
+  pts par team_id dans stats_box_scores) + top 3 marqueurs par match, pour
+  choisir à l'œil.
+- scripts/nba-cup-create-match.mjs : crée le match SCHEDULED + la ligne
+  entity_mappings (NBA_API -> vrai game_id), recalcule bracket_deadline --
+  garde anti-doublon (NBA_CUP = 1 seul match/série) et garde "équipes de la
+  série pas encore connues" (demies/finale avant que le tour précédent soit
+  révélé).
+- scripts/nba-cup-reveal-match.mjs : LE JOUR J -- dérive le score réel
+  depuis stats_box_scores, bascule FINISHED, rejoue recomputeMatch/
+  recomputeSeries/advanceWinnerIfDecided (réimplémentés à l'identique du
+  précédent seed script, calcul pur importé de engine.ts), affiche la
+  commande curl /api/resolve-bets pour un retour immédiat sur les paris
+  persos plutôt que d'attendre le cron quotidien.
+
+tsc/eslint propres sur les 3 scripts. Pas encore exécutés (rien à exécuter
+avant que la compétition simulation actuelle soit prête à être archivée,
+~19-20/09/2026) -- ni testés en conditions réelles contre la vraie base à
+ce stade, uniquement vérifiés statiquement. GAPS_OUVERTS.md mis à jour avec
+une entrée de reprise complète et autonome (commandes exactes, duels
+suggérés, calendrier) pour ne rien avoir à redériver dans une future
+session -- le fichier de plan de conception lui-même vit hors dépôt
+(machine de l'utilisateur), pas fiable pour une reprise à froid.
+```
