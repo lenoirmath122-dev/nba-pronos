@@ -309,10 +309,13 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   const nowIso = new Date(nowMs).toISOString();
   const windowEndIso = new Date(nowMs + FORWARD_WINDOW_DAYS * DAY_MS).toISOString();
 
-  // "Verrouillé mais pas encore FINISHED" — plus de fenêtre de 3 jours ici
-  // (18/08/2026, revenu sur la décision 4 de la spec à la demande explicite
-  // de l'utilisateur : « tout ce qui est finished doit être dans Résultats
-  // et pas dans Mes pronos », quel que soit son âge). §3.1 corrigée.
+  // "Verrouillé mais pas encore réglé (FINISHED/CANCELLED)" — plus de
+  // fenêtre de 3 jours ici (18/08/2026, revenu sur la décision 4 de la
+  // spec à la demande explicite de l'utilisateur : « tout ce qui est
+  // finished doit être dans Résultats et pas dans Mes pronos », quel que
+  // soit son âge). §3.1 corrigée. CANCELLED traité comme FINISHED depuis
+  // le 27/08/2026 (matchs annulés jamais reliés à un vrai match externe,
+  // restaient bloqués indéfiniment dans Mes pronos sinon).
   const [{ days, readyCount }, recentLocked, quotas] = await Promise.all([
     fetchUpcomingWindow(supabase, user.id, competition, nowIso, windowEndIso, nowMs),
     fetchLockedRows(supabase, user.id, competition.id, { finished: false }, null),
@@ -682,11 +685,15 @@ type LeagueScope = { id: string; name: string; memberUserIds: Set<string> };
 /** Récupère des lignes verrouillées, réparties par STATUT (18/08/2026,
  *  décision 4 de la spec inversée à la demande de l'utilisateur — plus par
  *  fenêtre de temps) : `finished: false` = "Mes pronos" (verrouillé, pas
- *  encore FINISHED — inclut IN_PROGRESS et le cas STARTED où le
+ *  encore réglé — inclut IN_PROGRESS et le cas STARTED où le
  *  planificateur, 30-60 min, n'est pas encore passé dessus) ; `finished:
- *  true` = "Résultats" (FINISHED, quel que soit son âge), avec `dateRange`
- *  optionnel pour le filtre `?date=`. Partagé par les deux onglets ; scope
- *  de ligue résolu par l'appelant (null sur Mes pronos, cf. spec). */
+ *  true` = "Résultats" (FINISHED ou CANCELLED, quel que soit son âge), avec
+ *  `dateRange` optionnel pour le filtre `?date=`. Partagé par les deux
+ *  onglets ; scope de ligue résolu par l'appelant (null sur Mes pronos, cf.
+ *  spec). CANCELLED regroupé avec FINISHED depuis le 27/08/2026 — un match
+ *  annulé (ex. donnée de test jamais reliée à un vrai match) est tout aussi
+ *  définitivement réglé qu'un match terminé, ne doit pas rester coincé dans
+ *  Mes pronos indéfiniment. */
 async function fetchLockedRows(
   supabase: SupabaseServerClient,
   userId: string,
@@ -703,8 +710,8 @@ async function fetchLockedRows(
     .order("scheduled_at", { ascending: false });
 
   query = criteria.finished
-    ? query.eq("status", "FINISHED")
-    : query.lte("scheduled_at", new Date().toISOString()).neq("status", "FINISHED");
+    ? query.in("status", ["FINISHED", "CANCELLED"])
+    : query.lte("scheduled_at", new Date().toISOString()).neq("status", "FINISHED").neq("status", "CANCELLED");
   if (criteria.dateRange) {
     query = query.gte("scheduled_at", criteria.dateRange.gte);
     if (criteria.dateRange.lt) query = query.lt("scheduled_at", criteria.dateRange.lt);
@@ -942,9 +949,10 @@ async function fetchLockedRowsFiltered(
 }
 
 /** Valeurs proposables par les filtres date/série (§4.2 SPEC_ECRAN_MES_PRONOS)
- *  — dérivées des matchs FINISHED (18/08/2026 : plus d'un cutoff temporel,
- *  cf. fetchLockedRows) : le filtre ne doit proposer que des dates/séries
- *  qui peuvent réellement renvoyer un résultat ici. */
+ *  — dérivées des matchs FINISHED/CANCELLED (18/08/2026 : plus d'un cutoff
+ *  temporel, cf. fetchLockedRows ; CANCELLED ajouté le 27/08/2026, même
+ *  raison) : le filtre ne doit proposer que des dates/séries qui peuvent
+ *  réellement renvoyer un résultat ici. */
 async function getAvailableFilters(
   supabase: SupabaseServerClient,
   competitionId: string
@@ -954,7 +962,7 @@ async function getAvailableFilters(
     .select("series_id, scheduled_at")
     .eq("competition_id", competitionId)
     .not("scheduled_at", "is", null)
-    .eq("status", "FINISHED");
+    .in("status", ["FINISHED", "CANCELLED"]);
 
   const locked = (lockedData ?? []) as { series_id: string; scheduled_at: string }[];
   if (locked.length === 0) return { availableDates: [], availableSeries: [] };

@@ -11116,3 +11116,38 @@ jamais un DELETE) -- s'affichent désormais "Annulé" (`LiveSubscriber.tsx`,
 déjà géré nativement). Aucun changement de code, aucun commit applicatif --
 uniquement une correction de données.
 ```
+
+## CANCELLED regroupé avec FINISHED : Mes pronos → Résultats (27/08/2026)
+
+```text
+Suite directe : l'utilisateur remarque que passer ces matchs en CANCELLED
+ne suffit pas à les faire quitter "Mes pronos" -- ils y restent (juste
+avec le badge "Annulé" au lieu de "Pas de prono"), au lieu de rejoindre
+"Résultats" comme un match FINISHED. Demande : peut-on les faire
+apparaître dans Résultats une fois annulés ?
+
+Cause : `fetchLockedRows()` (lib/queries/play.ts, partagée par les 2
+onglets) répartit les lignes verrouillées PAR STATUT depuis le 18/08/2026
+("tout ce qui est finished doit être dans Résultats, quel que soit son
+âge") -- mais seul `status=FINISHED` déclenchait ce basculement,
+`CANCELLED` restait implicitement du côté "Mes pronos" (`neq("status",
+"FINISHED")` incluait tout le reste : IN_PROGRESS, POSTPONED, CANCELLED).
+
+Corrigé : `CANCELLED` traité comme `FINISHED` -- un match réglé (qu'il
+soit terminé ou annulé) n'a plus sa place dans Mes pronos. 3 points
+touchés : la branche `finished: true`/`false` de `fetchLockedRows()`
+(`.in("status", ["FINISHED","CANCELLED"])` / exclusion des 2) et
+`getAvailableFilters()` (dates/séries filtrables sur Résultats, même
+extension -- sinon une date ne contenant QUE des matchs annulés resterait
+invisible dans le filtre). `POSTPONED` volontairement INCHANGÉ (reste dans
+Mes pronos, "Reporté") -- un report n'est pas un règlement, contrairement
+à une annulation. `LiveBadgeAndScore` gère déjà nativement l'affichage
+"Annulé" sans score, aucun changement nécessaire côté rendu -- un match
+annulé sans prono dans Résultats affiche "Annulé" + "Pas de prono", même
+comportement qu'un match FINISHED jamais pronostiqué.
+
+`tsc`/`eslint`/`vitest`(37/37)/`next build` (38 routes) propres. Pas testé
+au clic (pas d'accès navigateur dans cet environnement) -- à confirmer par
+l'utilisateur que les 6 matchs nettoyés plus haut apparaissent bien dans
+Résultats après déploiement.
+```
