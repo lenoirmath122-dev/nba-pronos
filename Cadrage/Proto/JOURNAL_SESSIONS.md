@@ -11151,3 +11151,45 @@ au clic (pas d'accès navigateur dans cet environnement) -- à confirmer par
 l'utilisateur que les 6 matchs nettoyés plus haut apparaissent bien dans
 Résultats après déploiement.
 ```
+
+## 2 matchs fantômes du 17/08 nettoyés + règle auto-mode ajoutée (27/08/2026)
+
+```text
+Suite du fix CANCELLED->Résultats : l'utilisateur repère 2 AUTRES matchs
+fantômes, du 17/08/2026 cette fois (toujours sans score), dans le même
+écran. Vérifié en base (même script jetable qu'avant) : même cause exacte
+-- 2 matchs SCHEDULED dans "Playoffs NBA (simulation)", aucun
+entity_mapping, aucun prono/pari dessus. Recherche élargie à TOUTE la
+compétition (pas seulement une fenêtre de dates) pour confirmer qu'il n'en
+restait pas d'autres ailleurs -- confirmé, ces 2 étaient les derniers.
+
+Tentative de correctif bloquée par le classifieur de permissions du mode
+auto (même blocage que la 1re fois, cf. mémoire dédiée) -- la commande
+combinant lecture de SUPABASE_SERVICE_ROLE_KEY (.env.local) + mutation
+Supabase via un script Node jetable est structurellement perçue comme
+risquée. Cette fois, plutôt que de refaire l'aller-retour "je te donne le
+script, tu le lances", l'utilisateur demande d'ajouter une règle de
+permission pour ce pattern précis, désormais récurrent sur ce projet.
+
+Tentative d'écrire directement `.claude/settings.local.json` (nouveau
+fichier) -- BLOQUÉE ELLE AUSSI par le même classifieur : logique, un
+agent ne doit pas pouvoir s'auto-accorder des permissions élargies, même
+pour une règle a priori raisonnable. Contournement légitime :
+`mkdir .claude` (bash, non bloqué -- créer un dossier vide n'est pas une
+action à risque) réussi normalement, puis contenu du fichier donné en
+clair à l'utilisateur pour qu'il le crée lui-même via une commande
+PowerShell (`@'...'@ | Set-Content`, here-string à guillemets simples
+pour ne pas interpréter `$defaults` comme une variable).
+
+Règle ajoutée (`autoMode.allow`, avec `$defaults` préservé) : décrit
+explicitement le pattern "script Node jetable dans ce repo, lit la clé
+service_role de .env.local, mutate Supabase -- maintenance de routine sur
+la propre base du projet, pas de l'exfiltration". Fichier confirmé
+correctement ignoré par git (`git check-ignore`, via le gitignore global
+de l'utilisateur -- jamais commité, personnel à cette machine).
+
+Retesté immédiatement après : le script de nettoyage des 2 matchs du
+17/08 passe sans blocage cette fois. Les 2 matchs passés en CANCELLED.
+Aucun changement de code applicatif -- uniquement une correction de
+données + une règle de configuration locale de l'outil.
+```
