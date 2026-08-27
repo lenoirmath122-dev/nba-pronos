@@ -39,6 +39,23 @@ export async function getChatRoster(): Promise<ChatRosterEntry[]> {
   }));
 }
 
+export type MutedChannels = { generalMuted: boolean; mutedLeagueIds: Set<string> };
+
+/** Sourdines du joueur courant (addendum SPEC_CHAT_V0_1.md, 27/08/2026) --
+ *  RLS `chat_muted_channels_all` restreint déjà à `user_id = auth.uid()`,
+ *  aucun filtre à ajouter ici. Absence de ligne = notifications actives
+ *  (décision : activées par défaut, cette table ne stocke que les
+ *  exceptions). */
+export async function getMutedChannels(): Promise<MutedChannels> {
+  const supabase = await getServerClient();
+  const { data } = await supabase.from("chat_muted_channels").select("scope_type, league_id");
+  const rows = (data ?? []) as { scope_type: string; league_id: string | null }[];
+  return {
+    generalMuted: rows.some((r) => r.scope_type === "GLOBAL"),
+    mutedLeagueIds: new Set(rows.filter((r) => r.scope_type === "LEAGUE").map((r) => r.league_id as string)),
+  };
+}
+
 export async function getChatMessages(scope: ChatScope): Promise<ChatMessage[]> {
   const supabase = await getServerClient();
 

@@ -201,3 +201,75 @@ ne vois rien dans l'UI").
    uniquement pour un compte admin ; `tsc`/`vitest`/`next build` propres.
 8. Journalisation (`JOURNAL_SESSIONS.md`, `ETAT_ACTUEL.md`) + retrait de
    l'entrée `GAPS_OUVERTS.md`.
+
+## 9. Addendum — Liste de canaux + notifications par canal (27/08/2026, même jour)
+
+Suite directe demandée par l'utilisateur juste après la livraison de la V0.1
+ci-dessus : "notification pour le chat, avec un bouton en haut de chaque
+chat pour les activer/désactiver", précisé ensuite en "liste de chat de
+haut en bas, clic pour ouvrir, 3 petits points en bout de ligne pour les
+notifs".
+
+**Découverte utile avant de cadrer** : une infra Web Push COMPLÈTE existait
+déjà dans le projet (backlog "Rappels ciblés", 29/07/2026) — service worker
+(`public/sw.js`), permission + abonnement navigateur
+(`components/profile/NotificationSettings.tsx`), envoi
+(`lib/push/send.ts`, `web-push`), table `push_subscriptions`, colonne
+`users.notification_preference`. Le chantier n'a donc PAS eu besoin de
+construire une infra push — seulement de la BRANCHER sur un événement
+temps réel (nouveau message) plutôt que sur les crons `/api/reminders/*`
+existants.
+
+**Décisions actées (AskUserQuestion)** : contenu de la notif = aperçu
+(pseudo + début du message, pas un texte générique) ; par défaut = canal
+ACTIVÉ (donc `chat_muted_channels`, migration #32, ne stocke QUE les
+sourdines/exceptions, l'absence de ligne = notifications actives).
+
+**Remaniement de navigation** : `/chat` devient une LISTE de canaux
+(`ChatChannelList`, Général en 1er + une ligne par ligue), remplace les
+chips `ChatScopeChips` (supprimé). `?ligue=` devient `?canal=general` ou
+`?canal=<leagueId>` — différence assumée avec l'ancien schéma : un id de
+ligue invalide renvoie maintenant à LA LISTE (`redirect("/chat")`), pas un
+repli silencieux sur Général (qui avait du sens pour un simple filtre de
+classement, pas pour un écran de navigation entre canaux distincts).
+
+**Menu "..." (`ChatNotificationToggle`)** : `<details>/<summary>` natif,
+rendu comme FRÈRE du `<Link>` de la ligne (jamais imbriqué — invalide en
+HTML). Activer peut exiger la permission navigateur + un abonnement Push
+(inatteignable sans JS) → extraction de `lib/push/client.ts`
+(`ensurePushSubscribed()`) depuis `NotificationSettings.tsx` pour ne pas
+dupliquer une logique déjà déboguée (retry AbortError, conversion VAPID) ;
+`NotificationSettings.tsx` refactoré pour l'appeler aussi, revérifié pour
+non-régression après coup.
+
+**Extension délibérée du périmètre de `service_role`** (`lib/supabase/service.ts`,
+commentaire mis à jour) : calculer les DESTINATAIRES d'une notif exige de
+lire `push_subscriptions`/`notification_preference` d'AUTRES joueurs —
+verrouillé par RLS à `auth.uid()`, par nature un besoin privilégié.
+Jusqu'ici `service_role` était réservé aux routes `/api/sync/*`+`/api/heartbeat`
+et aux crons `/api/reminders/*` (jamais déclenché en direct par une action
+joueur) — `lib/push/notifyChatMessage.ts` est le 1er appelant synchrone,
+déclenché depuis `postChatMessageFormAction`. Même frontière de confiance,
+juste un déclencheur différent (synchrone plutôt que planifié) — pas une
+brèche, mais un écart au commentaire existant, donc documenté explicitement
+plutôt que laissé implicite.
+
+**`notifyNewChatMessage`** ne lève jamais (try/catch interne) : un échec
+d'envoi ne doit jamais faire échouer la publication du message lui-même.
+Résout destinataires (ACTIVE + préférence PUSH + membre si ligue, hors
+l'auteur) moins les sourdines, envoie via `sendPushToSubscriptions`
+(inchangé), nettoie les abonnements morts (404/410) — même patron que
+`lib/reminders/matchesReminder.ts`.
+
+**Vérifié en réel** (2 comptes jetables + Playwright, `context.grantPermissions(["notifications"])`,
+13/13) : liste affiche Général + la ligne de ligue ; clic ouvre la
+conversation (titre, lien retour, composeur) ; l'envoi de message
+fonctionne toujours après le remaniement de `page.tsx` ; canal actif par
+défaut (bouton Désactiver cliquable, Activer grisé) ; désactivation
+persistée en base ET reflétée dans le menu ; non-régression de l'écran
+Profil après le refactor `lib/push/client.ts`. **Non confirmé** : la
+réception RÉELLE d'une notification OS (le service de push, FCM, n'est pas
+garanti joignable depuis cet environnement de vérification) — signalé
+explicitement à l'utilisateur plutôt que présenté comme testé.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (39 routes) propres.

@@ -127,9 +127,11 @@
 - **Chat / couche sociale in-app** (ajouté au backlog le 27/08/2026) — **FAIT
   le 27/08/2026.** Cadré (`Cadrage/Proto/SPEC_CHAT_V0_1.md`) puis codé et
   vérifié le jour même : canal Général (tout joueur) + un canal par ligue
-  existante, sélection par chips (5ᵉ onglet `TabBar`), temps réel (Supabase
-  Realtime), modération admin uniquement. Détail dans `JOURNAL_SESSIONS.md`
-  et `ETAT_ACTUEL.md` §2.98.
+  existante, sélection par une liste de canaux (5ᵉ onglet `TabBar`), temps
+  réel (Supabase Realtime), modération admin uniquement, notifications push
+  activables/désactivables par canal (réutilise l'infra Web Push existante
+  des rappels ciblés). Détail dans `JOURNAL_SESSIONS.md` et
+  `ETAT_ACTUEL.md` §2.98/§2.99.
 
 ## Partage
 

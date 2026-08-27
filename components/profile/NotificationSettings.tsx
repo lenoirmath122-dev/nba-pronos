@@ -1,11 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  updateNotificationPreference,
-  savePushSubscription,
-  deletePushSubscription,
-} from "@/lib/actions/notifications";
+import { updateNotificationPreference, deletePushSubscription } from "@/lib/actions/notifications";
+import { ensurePushSubscribed, pushSupported } from "@/lib/push/client";
 import styles from "./NotificationSettings.module.css";
 
 // Réglage "Rappels" (Profil, backlog "Rappels ciblés") — SEUL composant
@@ -15,46 +12,17 @@ import styles from "./NotificationSettings.module.css";
 // natifs). Canal EMAIL sélectionnable mais désactivé (bloqué sur un SMTP
 // personnalisé — GAPS_OUVERTS.md "Confirm email") — choisi AVEC l'utilisateur,
 // 29/07/2026 : Push d'abord, Email plus tard.
+//
+// Permission + abonnement + préférence compte : lib/push/client.ts
+// (ensurePushSubscribed), extrait le 27/08/2026 pour être réutilisé par
+// ChatNotificationToggle.tsx (addendum SPEC_CHAT_V0_1.md) sans dupliquer
+// cette logique déjà débogée (retry AbortError, conversion VAPID).
 
 type Preference = "NONE" | "PUSH" | "EMAIL";
 
 type NotificationSettingsProps = {
   initialPreference: Preference;
 };
-
-// PushManager.subscribe() exige un Uint8Array adossé à un vrai ArrayBuffer
-// (BufferSource), la clé VAPID publique est distribuée en base64 URL-safe —
-// conversion standard, aucune lib dédiée.
-function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
-  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
-  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
-  const rawData = atob(base64);
-  const buffer = new ArrayBuffer(rawData.length);
-  const view = new Uint8Array(buffer);
-  for (let i = 0; i < rawData.length; i++) view[i] = rawData.charCodeAt(i);
-  return view;
-}
-
-function pushSupported(): boolean {
-  return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
-}
-
-// Constaté en test (juste après un premier enregistrement de service
-// worker) : le service push peut mettre un instant à être prêt et
-// `subscribe()` échoue une première fois (AbortError). Un seul nouvel essai
-// après une courte pause suffit — pas la peine d'une file de retry plus
-// élaborée pour un cas aussi ponctuel.
-async function subscribeWithRetry(
-  registration: ServiceWorkerRegistration,
-  applicationServerKey: Uint8Array<ArrayBuffer>
-): Promise<PushSubscription> {
-  try {
-    return await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
-  } catch {
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    return await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey });
-  }
-}
 
 export function NotificationSettings({ initialPreference }: NotificationSettingsProps) {
   const [preference, setPreference] = useState<Preference>(initialPreference);
@@ -107,48 +75,9 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
     setPending(true);
     setError(null);
     try {
-      if (!pushSupported()) {
-        setError("Les notifications push ne sont pas prises en charge par ce navigateur.");
-        return;
-      }
-      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
-      if (!publicKey) {
-        setError("Configuration push manquante.");
-        return;
-      }
-
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setError("Permission refusée par le navigateur.");
-        return;
-      }
-
-      const registration = await navigator.serviceWorker.register("/sw.js");
-      await navigator.serviceWorker.ready;
-
-      let subscription = await registration.pushManager.getSubscription();
-      if (!subscription) {
-        subscription = await subscribeWithRetry(registration, urlBase64ToUint8Array(publicKey));
-      }
-
-      const json = subscription.toJSON();
-      if (!json.endpoint || !json.keys?.p256dh || !json.keys?.auth) {
-        setError("Abonnement incomplet, réessaie.");
-        return;
-      }
-
-      const saveResult = await savePushSubscription({
-        endpoint: json.endpoint,
-        keys: { p256dh: json.keys.p256dh, auth: json.keys.auth },
-      });
-      if (!saveResult.success) {
-        setError(saveResult.error);
-        return;
-      }
-
-      const prefResult = await updateNotificationPreference("PUSH");
-      if (!prefResult.success) {
-        setError(prefResult.error);
+      const result = await ensurePushSubscribed();
+      if (!result.ok) {
+        setError(result.error);
         return;
       }
       setPreference("PUSH");

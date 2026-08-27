@@ -7541,3 +7541,67 @@ Supprimer visible pour l'admin seulement, fonctionnel (retrait local).
 
 `tsc`/`eslint`/`vitest` (37/37)/`next build` (39 routes) propres.
 ```
+
+### 2.99 Chat — liste de canaux + notifications par canal (session du 27/08/2026)
+
+```text
+Suite directe demandée par l'utilisateur juste après §2.98 : "notification
+pour le chat, bouton en haut de chaque chat pour activer/désactiver",
+précisé ensuite en "liste de chat de haut en bas, clic pour ouvrir, 3
+petits points en bout de ligne". Addendum écrit dans
+`Cadrage/Proto/SPEC_CHAT_V0_1.md` §9 plutôt qu'un nouveau document séparé.
+
+Découverte utile avant de coder : une infra Web Push COMPLÈTE existait déjà
+(backlog "Rappels ciblés", 29/07/2026) -- service worker, permission +
+abonnement navigateur (`NotificationSettings.tsx`), envoi
+(`lib/push/send.ts`), table `push_subscriptions`,
+`users.notification_preference`. Rien à construire côté infra, seulement à
+la BRANCHER sur un événement temps réel (nouveau message) plutôt que sur
+les crons `/api/reminders/*` existants.
+
+Décisions actées (AskUserQuestion) : aperçu du message dans la notif
+(pseudo + début, pas générique) ; canal ACTIVÉ par défaut.
+
+**Migration #32** (`chat_muted_channels`) : ne stocke QUE les sourdines
+(exceptions) -- absence de ligne = notifications actives, cohérent avec
+"activé par défaut". RLS entièrement self-service (`for all using
+(user_id = auth.uid())`, même patron que `competition_secrets_all`).
+
+Remaniement `/chat` : liste de canaux (`ChatChannelList`, Général + une
+ligne par ligue) remplace les chips (`ChatScopeChips` supprimé). `?ligue=`
+devient `?canal=general`/`?canal=<leagueId>` -- un id de ligue invalide
+renvoie maintenant à LA LISTE, pas un repli silencieux sur Général (qui
+avait du sens pour un filtre de classement, plus pour une navigation entre
+canaux distincts).
+
+Menu "..." (`ChatNotificationToggle`) : `<details>/<summary>` natif, FRÈRE
+du `<Link>` de la ligne (jamais imbriqué -- invalide en HTML). Activer peut
+exiger permission navigateur + abonnement Push (inatteignable sans JS) ->
+`lib/push/client.ts` (`ensurePushSubscribed()`) extrait de
+`NotificationSettings.tsx` pour ne pas dupliquer une logique déjà déboguée
+(retry AbortError, conversion VAPID) -- ce composant refactoré pour
+l'utiliser aussi, revérifié non régressé.
+
+Extension délibérée du périmètre `service_role` (`lib/supabase/service.ts`,
+commentaire mis à jour) : calculer les destinataires d'une notif exige de
+lire `push_subscriptions`/`notification_preference` d'AUTRES joueurs,
+verrouillé par RLS -- jusqu'ici `service_role` réservé aux routes
+sync/heartbeat/reminders (jamais déclenché en direct par une action
+joueur). `lib/push/notifyChatMessage.ts` en est le 1er appelant synchrone
+(depuis `postChatMessageFormAction`) -- même frontière de confiance, juste
+un déclencheur différent, documenté explicitement plutôt que laissé
+implicite. Ne lève jamais (un échec d'envoi ne doit jamais faire échouer la
+publication du message) ; nettoie les abonnements morts (404/410), même
+patron que `lib/reminders/matchesReminder.ts`.
+
+Vérification réelle (2 comptes jetables + Playwright,
+`context.grantPermissions(["notifications"])`, 13/13) : liste correcte,
+clic ouvre la conversation, envoi de message toujours fonctionnel après le
+remaniement de `page.tsx`, canal actif par défaut, désactivation persistée
+en base ET reflétée dans le menu, non-régression de l'écran Profil après
+le refactor `lib/push/client.ts`. **Non confirmé** : réception RÉELLE d'une
+notification OS (FCM pas garanti joignable dans cet environnement) --
+signalé explicitement à l'utilisateur plutôt que présenté comme testé.
+
+`tsc`/`eslint`/`vitest` (37/37)/`next build` (39 routes) propres.
+```

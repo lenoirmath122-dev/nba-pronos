@@ -11675,3 +11675,33 @@ URL de ligue forgée, visibilité du bouton Supprimer selon le rôle,
 suppression effective). Comptes/ligue/messages de test nettoyés après coup.
 
 tsc/eslint/vitest (37/37)/next build (39 routes) propres à chaque étape.
+
+## Chat — liste de canaux + notifications par canal (27/08/2026, suite)
+
+```text
+Suite immédiate du chat de base : demande d'un système de notification par
+canal, précisée en cours de route vers une liste de canaux (au lieu des
+chips) + menu "..." par ligne. Détail complet dans SPEC_CHAT_V0_1.md §9 et
+ETAT_ACTUEL.md §2.99 -- ici, l'essentiel.
+
+Bonne surprise en explorant avant de cadrer : l'infra Web Push complète
+existait déjà (rappels ciblés, 29/07/2026) -- rien à construire, juste à la
+brancher sur l'événement "nouveau message" en plus des crons existants.
+Migration #32 (chat_muted_channels, stocke seulement les sourdines -- actif
+par défaut). service_role étendu délibérément à un nouvel appelant
+synchrone (notifyChatMessage.ts, déclenché depuis l'action de post) --
+écart documenté explicitement par rapport au commentaire existant qui le
+réservait aux crons/sync.
+
+Logique de permission/abonnement Push extraite de NotificationSettings.tsx
+vers lib/push/client.ts pour être réutilisée par le nouveau menu de canal
+sans dupliquer une logique déjà débogée -- composant Profil refactoré,
+revérifié pour non-régression.
+
+13/13 vérifications passées (2 comptes jetables + Playwright, permission
+notifications accordée). Seul point non confirmable dans cet environnement :
+la réception réelle d'une notification OS (dépend d'un service de push
+externe joignable) -- signalé clairement plutôt que supposé.
+
+tsc/eslint/vitest (37/37)/next build (39 routes) propres. Script de
+vérification supprimé après usage.
