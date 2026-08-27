@@ -11287,3 +11287,26 @@ suggérés, calendrier) pour ne rien avoir à redériver dans une future
 session -- le fichier de plan de conception lui-même vit hors dépôt
 (machine de l'utilisateur), pas fiable pour une reprise à froid.
 ```
+
+## 2 ajouts au backlog : chat et badges sur la page perso (27/08/2026)
+
+```text
+Demande utilisateur : ajouter 2 idées au backlog, sans les cadrer ni les
+coder pour l'instant.
+
+1. Système de chat / couche sociale in-app -- reprend une mention déjà
+   existante dans GAPS_OUVERTS.md (bloc du 16-18/08/2026, "jugé utile, pas
+   cadré ni codé") mais jamais formalisée dans BACKLOG_V1.md, le document
+   qui liste le QUOI. Ajoutée comme nouvelle section "Communication entre
+   joueurs".
+
+2. Afficher les badges à côté du nom sur la page perso -- reprend la
+   "piste future notée, PAS cadrée" de GAPS_OUVERTS.md (chantier icônes de
+   badges, 10/08/2026) : l'utilisateur avait déjà évoqué ce besoin comme
+   motivation pour agrandir les icônes de badges à l'époque, mais rien
+   n'avait été ajouté formellement au backlog. Ajoutée sous "Personnalisation
+   du profil", avec les questions ouvertes déjà identifiées (combien de
+   badges, quel critère de sélection parmi les 36, emplacement exact dans
+   le bandeau `app/(app)/profile/page.tsx`).
+
+Aucun code touché -- uniquement BACKLOG_V1.md mis à jour (2 entrées).

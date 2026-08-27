@@ -122,6 +122,13 @@
   vs résultat réel — à construire SI PAS TROP LOURD (condition posée par
   l'utilisateur, à évaluer en spec technique).
 
+## Communication entre joueurs
+
+- **Chat / couche sociale in-app** (ajouté au backlog le 27/08/2026) : déjà
+  mentionné comme "jugé utile, pas cadré ni codé" dans `GAPS_OUVERTS.md`
+  (bloc du 16-18/08/2026). Portée, temps réel ou non, par ligue ou global,
+  modération — tout reste à trancher en spec technique.
+
 ## Partage
 
 - Image exportable du classement ou du bracket rempli, à partager en
@@ -158,3 +165,11 @@
   logo+nom, menu flottant ouvert au clic, toujours de vrais radios (logos
   conservés). 1 bug réel corrigé en testant (sélection perdue à
   l'enregistrement, radios sortis du DOM à la fermeture).
+- **Afficher ses badges à côté de son nom sur la page perso** (ajouté au
+  backlog le 27/08/2026) : reprend la "piste future notée, PAS cadrée" de
+  `GAPS_OUVERTS.md` (chantier icônes de badges, 10/08/2026) — bandeau de
+  `app/(app)/profile/page.tsx`, déjà personnalisé par équipe favorite depuis
+  le 04/08/2026. Reste à trancher en spec technique : combien de badges
+  affichés, critère de sélection parmi les 36 (paliers les plus hauts ? les
+  plus récents débloqués ? choix manuel du joueur ?), emplacement exact
+  à côté du pseudo.
