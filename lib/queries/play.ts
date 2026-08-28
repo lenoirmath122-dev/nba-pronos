@@ -587,8 +587,14 @@ function dayLabel(key: string, todayKey: string, tomorrowKey: string, ms: number
   if (key === todayKey) return "Ce soir";
   if (key === tomorrowKey) return "Demain";
   const weekday = new Intl.DateTimeFormat("fr-FR", { timeZone: DAY_TIMEZONE, weekday: "long" }).format(new Date(ms));
+  // Mois + année (28/08/2026, demandé par l'utilisateur) : "Dimanche 20" seul
+  // devient ambigu dès qu'un match est créé loin à l'avance (NBA Cup alpha,
+  // daysBeyondWindow) -- sans ça, rien ne distingue un dimanche 20 de ce
+  // mois-ci de celui d'un autre mois/année.
   const dayNum = new Intl.DateTimeFormat("fr-FR", { timeZone: DAY_TIMEZONE, day: "numeric" }).format(new Date(ms));
-  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${dayNum}`;
+  const month = new Intl.DateTimeFormat("fr-FR", { timeZone: DAY_TIMEZONE, month: "short" }).format(new Date(ms));
+  const year = new Intl.DateTimeFormat("fr-FR", { timeZone: DAY_TIMEZONE, year: "numeric" }).format(new Date(ms));
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)} ${dayNum} ${month} ${year}`;
 }
 
 // ============================================================================
