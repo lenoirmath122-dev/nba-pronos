@@ -60,6 +60,10 @@ export function BracketBaremeContent({ competitionType }: BracketBaremeContentPr
           </p>
         </>
       )}
+      <p className={styles.note}>
+        Tes points de bracket sont calculés automatiquement dès que le vainqueur du match décisif de
+        la série est connu — généralement dans les 30 minutes qui suivent la fin du match.
+      </p>
     </>
   );
 }

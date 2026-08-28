@@ -32,6 +32,10 @@ export function BetDifficulteGrid() {
       <p className={styles.note}>
         Un pari perdu ou annulé ne rapporte ni ne coûte rien (0 point, jamais de pénalité).
       </p>
+      <p className={styles.note}>
+        Un pari calculable est résolu automatiquement le lendemain du match, généralement en fin de
+        matinée — le temps que les vraies statistiques de la veille soient disponibles.
+      </p>
     </>
   );
 }

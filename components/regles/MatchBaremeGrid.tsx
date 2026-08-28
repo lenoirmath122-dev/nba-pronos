@@ -37,6 +37,11 @@ export function MatchBaremeGrid() {
         Le bonus d&apos;écart ne s&apos;applique que si le vainqueur est correct — un mauvais vainqueur
         rapporte 0 point, même avec un écart proche. Un prono rapporte donc entre 10 et 15 points.
       </p>
+      <p className={styles.note}>
+        Une fois le match terminé, tes points (et ceux du bracket si la série est décidée) sont
+        calculés automatiquement, généralement dans les 30 minutes qui suivent — pas besoin
+        d&apos;attendre un admin.
+      </p>
     </>
   );
 }
