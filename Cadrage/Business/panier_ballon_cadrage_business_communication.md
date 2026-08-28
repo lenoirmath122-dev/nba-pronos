@@ -223,6 +223,14 @@ explicatifs en feed, Stories pour le compte à rebours. Cadence : 1-2 Reels/sema
 bêta, 3+/semaine en mars-avril. Aucun besoin d'apparaître à l'écran — l'interface
 elle-même (fond sombre, flash orange en direct) est un sujet visuel suffisant.
 
+**Hashtags** : stratégie complète dans `Cadrage/DA/instagram/
+strategie-hashtags-instagram-panier-ballon.md` (28/08/2026) — 3 à 5 par post,
+mix propriétaire/niche/moyen/large (`#PanierBallon` systématique, 1 seul
+hashtag large max). `#NBAPlayoffs` volontairement écarté des posts liés à
+l'alpha de septembre (format NBA Cup fictif, pas les vrais playoffs — voir
+Post 3 ci-dessous) ; `#NBACup` utilisé à la place pour ces posts-là.
+Combos déjà intégrés aux légendes des Posts 1/2/3.
+
 **Posts — phase Fondations, avant l'ouverture de la bêta (contenu à ajuster au fil de l'eau) :**
 
 ```
@@ -242,6 +250,8 @@ NB : l'alpha sera une compétition fictive pour tester les fonctionnalités
 de l'application.
 
 On vous en dit plus très bientôt 🏀
+
+#PanierBallon #NBAFrance #BasketFrancais #NBAPronos #NBA
 ```
 
 ```
@@ -252,6 +262,8 @@ match par match, classement en direct.
 
 La suite s'ouvre un peu plus large en octobre. Si ta bande n'a pas
 encore de ligue de pronos pour les playoffs cette année, DM-moi.
+
+#PanierBallon #NBAFrance #BasketFrance #BasketballCommunity #Basketball
 ```
 
 ```
@@ -270,6 +282,8 @@ tournoi officiel de la ligue, qui se joue chaque année en novembre —
 cette fois avec de vrais matchs en direct, pas d'emprunt.
 
 Coup d'envoi du 1er quart de finale de l'alpha : 20 septembre 🏀
+
+#PanierBallon #NBACup #NBAFrance #FantasyBasketball #NBA
 ```
 
 **S4 · semaine du 15-21 sept. — rythme de croisière (1-2 posts, contenu libre selon l'avancement réel) :**
