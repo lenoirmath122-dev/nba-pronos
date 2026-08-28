@@ -6,11 +6,11 @@ import styles from "./ChatChannelList.module.css";
 
 // Liste de canaux (addendum SPEC_CHAT_V0_1.md, 27/08/2026 -- demande
 // explicite de l'utilisateur : liste de haut en bas plutôt que des chips,
-// clic pour ouvrir, menu "..." en bout de ligne pour les notifs). Général
-// toujours en 1er, puis une ligne par ligue dont le joueur est membre
-// (getMyLeagues(), déjà utilisé ailleurs -- lib/queries/leagues.ts).
-// Le lien (navigation) et le menu de notif (ChatNotificationToggle) sont
-// FRÈRES, jamais imbriqués -- <details>/<button> dans un <a> est invalide.
+// clic pour ouvrir, bouton de notif en bout de ligne). Général toujours en
+// 1er, puis une ligne par ligue dont le joueur est membre (getMyLeagues(),
+// déjà utilisé ailleurs -- lib/queries/leagues.ts). Le lien (navigation) et
+// le bouton de notif (ChatNotificationToggle) sont FRÈRES, jamais imbriqués
+// -- un <button> dans un <a> est invalide en HTML.
 
 type ChatChannelListProps = {
   myLeagues: MyLeague[];
