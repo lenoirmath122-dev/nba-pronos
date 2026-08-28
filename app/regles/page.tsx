@@ -52,9 +52,23 @@ export default async function ReglesPage() {
           <p className={styles.note}>
             « Bonne affiche » = deviner à l&apos;avance les 2 équipes qui s&apos;affrontent à ce tour —
             indépendant du vainqueur (une bonne affiche avec le mauvais vainqueur compte quand même, et
-            inversement). Aucune affiche à deviner au 1ᵉʳ tour, les oppositions sont déjà connues. Bracket
-            parfait : 340 points. La NBA Cup (quand elle a lieu) suit le même principe avec un barème et un
-            nombre de tours différents, pas de score exact à prédire.
+            inversement). Aucune affiche à deviner au 1ᵉʳ tour, les oppositions sont déjà connues. 250 + 50 +
+            40 = 340 points, c&apos;est le score maximum d&apos;une seule série gagnée à la Finale NBA — pas
+            du bracket entier.
+          </p>
+          <p className={styles.baremeLabel}>NBA Cup — même principe, barème différent</p>
+          <BaremeTable
+            caption="Barème du bracket NBA Cup"
+            columns={["Vainqueur", "Bonne affiche"]}
+            rows={[
+              { label: "Quarts de finale", values: ["20", "+0"] },
+              { label: "Demi-finales", values: ["50", "+15"] },
+              { label: "Finale", values: ["150", "+25"] },
+            ]}
+          />
+          <p className={styles.note}>
+            Pas de score exact à prédire pour la NBA Cup — seulement le vainqueur et, à partir des
+            demi-finales, l&apos;affiche. 3 tours au lieu de 4 pour les playoffs classiques.
           </p>
         </section>
 
@@ -69,6 +83,10 @@ export default async function ReglesPage() {
             les autres joueurs — valider le tien débloque leur vue, pour éviter de s&apos;inspirer des choix
             des autres avant de s&apos;engager. Une fois le match verrouillé, tous les pronostics deviennent
             publics.
+          </p>
+          <p className={styles.body}>
+            Une fois le match verrouillé, tu peux demander à un admin de corriger ton pronostic
+            (score erroné, mauvaise saisie...) directement depuis « Mes pronos » ou « Résultats ».
           </p>
           <p className={styles.baremeLabel}>Barème par match</p>
           <div className={styles.statGrid}>
@@ -111,9 +129,12 @@ export default async function ReglesPage() {
             Tatum marque plus de 30 points »).
           </p>
           <p className={styles.body}>
-            Chaque pari a un niveau de difficulté de 1 à 5 que tu proposes toi-même ; un admin le valide ou
-            l&apos;ajuste avant résolution. Le pari « série » se verrouille au 1ᵉʳ match de la série, chaque
-            pari « match » au coup d&apos;envoi du match visé.
+            Chaque pari a un niveau de difficulté de 1 à 5 que tu proposes toi-même. Un pari que
+            l&apos;IA sait calculer automatiquement est validé directement, sans attendre un admin ;
+            un pari qu&apos;elle ne sait pas calculer (blessure, formulation trop vague...) attend
+            la validation d&apos;un admin. Dans tous les cas, un admin garde la main pour corriger un
+            pari après coup. Le pari « série » se verrouille au 1ᵉʳ match de la série, chaque pari
+            « match » au coup d&apos;envoi du match visé.
           </p>
           <p className={styles.baremeLabel}>Barème par difficulté</p>
           <div className={styles.statGridWide}>
@@ -146,8 +167,9 @@ export default async function ReglesPage() {
         <section className={`${styles.section} glass-card`} aria-label="Bien rédiger un pari">
           <h2 className={styles.sectionTitle}>Bien rédiger un pari</h2>
           <p className={styles.body}>
-            Ton pari est analysé automatiquement par une IA qui le transforme en probabilité, avant validation par un
-            admin. Plus il vise un joueur, une équipe et un seuil chiffré précis, mieux il est reconnu.
+            Ton pari est analysé automatiquement par une IA qui le transforme en probabilité. Plus il vise un
+            joueur, une équipe et un seuil chiffré précis, mieux il est reconnu — et plus vite il est validé,
+            sans attendre un admin.
           </p>
           <p className={styles.baremeLabel}>Ce qui fonctionne bien</p>
           <ul className={styles.list}>
@@ -245,9 +267,48 @@ export default async function ReglesPage() {
           <p className={styles.body}>
             En plus du classement, des badges permanents récompensent la régularité et les exploits (une
             série de bons pronos, un triple-double deviné...). Valables à vie, toutes compétitions
-            confondues, sans comparaison entre joueurs — un accomplissement personnel, consultable dans
-            Profil &gt; Stats.
+            confondues, la plupart sans comparaison entre joueurs — un accomplissement personnel,
+            consultable dans Profil &gt; Stats. Seul « Podiumista » fait exception : il compte tes jours
+            passés dans le top 3 du classement, donc par rapport aux autres.
           </p>
+        </section>
+
+        <section className={`${styles.section} glass-card`} aria-label="Superlatifs de fin de compétition">
+          <h2 className={styles.sectionTitle}>Superlatifs de fin de compétition</h2>
+          <p className={styles.body}>
+            À la clôture d&apos;une compétition, 5 titres sont décernés d&apos;après les stats de la
+            saison — un pur bonus fun, sans impact sur le classement ni sur les points. En cas d&apos;ex
+            æquo, tous les joueurs à égalité reçoivent le titre ; un titre n&apos;est jamais décerné à
+            0/valeur nulle.
+          </p>
+          <ul className={styles.list}>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Nostradamus</strong> — le plus de bons vainqueurs devinés.
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Sniper</strong> — le plus d&apos;écarts exacts devinés.
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Meilleur bracket</strong> — le plus de points marqués sur le bracket.
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Meilleur 1ᵉʳ tour</strong> — le plus de points marqués sur les pronos du 1ᵉʳ tour.
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Plus grosse remontée</strong> — le plus grand gain de rang entre le début et la fin
+                de la compétition.
+              </span>
+            </li>
+          </ul>
         </section>
       </div>
     </ScreenShell>
