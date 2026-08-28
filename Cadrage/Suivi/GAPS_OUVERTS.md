@@ -125,6 +125,26 @@
 > NBA, le risque de "spoiler", etc.) dans `JOURNAL_SESSIONS.md`
 > (27/08/2026, entrée "Compétition fictive NBA Cup — alpha potes").
 >
+> **Important, à ne pas confondre (précisé par l'utilisateur le 28/08,
+> pendant la prépa des visuels Instagram)** : le format `NBA_CUP` de
+> l'appli sert aux DEUX phases (alpha ET bêta), mais avec un contenu
+> radicalement différent derrière :
+> - **Alpha (septembre)** : compétition **FICTIVE**, mécanisme
+>   `entity_mappings` ci-dessous -- aucun vrai match ne se joue en
+>   septembre, chaque match fictif emprunte le score et les stats d'un
+>   match NBA déjà joué la saison passée.
+> - **Bêta (octobre-novembre)** : compétition sur la **VRAIE** NBA Cup --
+>   le tournoi officiel de la ligue (In-Season Tournament), qui se joue
+>   chaque année en novembre. Vrais matchs, en direct, synchronisés
+>   normalement via `/api/sync/schedule`/`/api/sync/results` comme
+>   n'importe quelle compétition réelle -- AUCUN `entity_mappings`, aucun
+>   script `nba-cup-*` de cette entrée : ce mécanisme d'emprunt est
+>   propre à l'alpha, ne pas le réutiliser pour la bêta par réflexe.
+>   Cadrage technique de la bêta pas encore fait (reste à vérifier que
+>   `createCupBracket()`/l'écran admin gèrent bien un vrai calendrier NBA
+>   Cup une fois son tirage au sort officiel connu, probablement fin
+>   octobre).
+>
 > **Principe retenu** : matchs/dates 100% fictifs, mais chaque match
 > emprunte le VRAI score + les VRAIES stats joueur d'un match NBA
 > historique déjà en base (`stats_matchs`/`stats_box_scores`) -- pour que

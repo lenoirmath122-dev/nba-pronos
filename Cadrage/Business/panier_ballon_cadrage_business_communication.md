@@ -22,8 +22,8 @@ pas une brique du plan actuel.
 
 | Phase | Fenêtre | Focus |
 |---|---|---|
-| 0 — Fondations & alpha | 26 août – fin sept. 2026 | V1 de l'app finie ; alpha privée avec 3-5 groupes de potes proches en septembre ; corrections à partir de leurs retours |
-| 1 — Bêta | Oct. – nov. 2026 | Élargissement au-delà du premier cercle (contacts de contacts, premiers abonnés Instagram), montée du rythme de contenu |
+| 0 — Fondations & alpha | 26 août – fin sept. 2026 | V1 de l'app finie ; alpha privée avec 3-5 groupes de potes proches en septembre ; corrections à partir de leurs retours. Compétition en format NBA Cup **fictif** (aucun vrai match ne se joue en septembre — chaque match emprunte le score et les vraies stats d'un match NBA de la saison passée, `entity_mappings`) |
+| 1 — Bêta | Oct. – nov. 2026 | Élargissement au-delà du premier cercle (contacts de contacts, premiers abonnés Instagram), montée du rythme de contenu. Compétition en format NBA Cup **réel** cette fois — le vrai tournoi officiel de la ligue, qui se joue chaque année en novembre : vrais matchs, en direct, aucun emprunt |
 | 2 — Itération | Déc. 2026 – mars 2027 | Corriger, trancher le modèle de monétisation, préparer le lancement |
 | 3 — Lancement | Avril 2027 → | Lancement iOS/Android (calé sur les vrais playoffs NBA), bascule en mode entretien (< 5h/semaine) |
 
@@ -237,6 +237,11 @@ match.
 
 L'alpha tourne dès cette semaine avec un premier petit groupe — je
 documente la suite ici jusqu'à l'ouverture plus large en octobre. 🏀
+
+NB : l'alpha sera une compétition fictive pour tester les fonctionnalités
+de l'application.
+
+On vous en dit plus très bientôt 🏀
 ```
 
 ```
@@ -247,6 +252,24 @@ match par match, classement en direct.
 
 La suite s'ouvre un peu plus large en octobre. Si ta bande n'a pas
 encore de ligue de pronos pour les playoffs cette année, DM-moi.
+```
+
+```
+[Post 3 · S4, semaine du 15-21 sept., juste avant le coup d'envoi du
+20/09 — pourquoi le format NBA Cup, tient la promesse du NB du Post 1]
+Petite explication avant le coup d'envoi 👇
+
+Les vrais playoffs NBA, c'est en avril — trop loin pour tester l'appli
+maintenant. On lance donc l'alpha sur un format NBA Cup : même
+mécanique de bracket/pronos/paris qu'en playoffs, mais jouable dès
+maintenant, en empruntant le score et les vraies stats de matchs déjà
+joués la saison dernière.
+
+La bêta d'octobre/novembre prendra le relais sur la vraie NBA Cup — le
+tournoi officiel de la ligue, qui se joue chaque année en novembre —
+cette fois avec de vrais matchs en direct, pas d'emprunt.
+
+Coup d'envoi du 1er quart de finale de l'alpha : 20 septembre 🏀
 ```
 
 **S4 · semaine du 15-21 sept. — rythme de croisière (1-2 posts, contenu libre selon l'avancement réel) :**
