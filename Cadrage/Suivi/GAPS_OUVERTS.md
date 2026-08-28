@@ -43,16 +43,41 @@
 > normalement (point soulevé par l'utilisateur le 28/08, pas anticipé dans
 > le plan du 27/08).
 >
-> **Reste à faire le jour J (à partir du 20/09)** : pour chaque match, à
-> l'heure prévue, `node --env-file=.env.local scripts/nba-cup-reveal-match.mjs
-> --match=<id>` (commandes exactes listées dans le tableau ci-dessus/à la
-> sortie de chaque création), puis résoudre les paris perso tout de suite
-> via `/api/resolve-bets` (curl affiché par le script) plutôt que d'attendre
-> le cron quotidien. Les demies ne sont créables qu'une fois les 2 quarts
-> correspondants révélés (équipes remplies automatiquement par la cascade
-> d'avancement) -- refaire `nba-cup-find-real-game.mjs` +
-> `nba-cup-create-match.mjs` + `nba-cup-real-rosters.mjs` pour chacune à ce
-> moment-là, même logique que les quarts.
+> **Demies et finale : vrais matchs déjà CHOISIS le 28/08/2026 (avec
+> l'utilisateur), mais PAS ENCORE CRÉÉS en base.** Possible par anticipation
+> car chaque quart emprunte un vrai match déjà joué -- le vainqueur de
+> chaque quart est donc déjà déterministe (Celtics, Lakers, Nuggets, Bucks),
+> ce qui fixe déjà les 2 demies. Vérifié en base (`series.slot_index`/
+> `next_series_id`) : Demi 1 = vainqueur Celtics-Knicks vs vainqueur
+> Lakers-Warriors ; Demi 2 = vainqueur Nuggets-Thunder vs vainqueur
+> Bucks-76ers. `nba-cup-create-match.mjs` refuse toutefois de créer le match
+> tant que `series.team1_id`/`team2_id` ne sont pas remplis -- ça n'arrive
+> qu'à la révélation du tour précédent (cascade automatique côté
+> `advanceWinnerIfDecided`). Effectifs déjà générés et ajoutés à
+> `NBA_CUP_ALPHA_EFFECTIFS.md`.
+>
+> | Série | ID série | Vrai match choisi | Résultat |
+> |---|---|---|---|
+> | Demi 1 (Celtics/Lakers) | `ec46a1e1-97a2-4b2a-8417-6e29ab45955e` | `0022400918` (8/03/2025) | BOS 111-101 LAL |
+> | Demi 2 (Nuggets/Bucks) | `221f571f-7c57-414a-8659-43cf4c3017f6` | `0022401057` (26/03/2025) | DEN 127-117 MIL |
+> | Finale (Celtics/Nuggets, à confirmer) | `aecc3c23-dcb3-49fb-b35f-d69f15f88277` | `0022400866` (2/03/2025) | BOS 110-103 DEN |
+>
+> **Reste à faire le jour J (à partir du 20/09)**, pour chaque match dans
+> l'ordre (quart → demi → finale) :
+> 1. `node --env-file=.env.local scripts/nba-cup-reveal-match.mjs --match=<id>`
+>    du match du tour précédent (révèle le résultat, score les pronos/picks,
+>    avance le vainqueur -- automatique et immédiat).
+> 2. `curl -X POST -H "Authorization: Bearer $SYNC_SECRET"
+>    https://nba-pronos.vercel.app/api/resolve-bets` (affiché par le script
+>    ci-dessus) -- pour résoudre les paris persos IA tout de suite plutôt que
+>    d'attendre le cron quotidien (`refresh-stats-supabase.yml`, 10h UTC).
+> 3. Une fois les 2 quarts (ou les 2 demies) d'un tour révélés : `node
+>    --env-file=.env.local scripts/nba-cup-create-match.mjs --series=<id
+>    ci-dessus> --game=<game_id ci-dessus> --at="2026-09-22T20:00"` (heure
+>    Paris) -- crée le match du tour suivant avec le vrai match déjà choisi,
+>    plus besoin de rechercher quoi que ce soit ce jour-là.
+> 4. Transmettre l'extrait correspondant de `NBA_CUP_ALPHA_EFFECTIFS.md` aux
+>    testeurs avant l'ouverture des paris/pronos sur ce tour.
 
 > **Nom de marque et logo NON validés à 100 % (27/08/2026)** -- un cadrage
 > business/marque/communication produit en session Cowork séparée
