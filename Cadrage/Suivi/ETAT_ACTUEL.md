@@ -5,7 +5,78 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/08/2026 — **§2.125 : notif de chat en
+> Dernière mise à jour : session du 28/08/2026 (suite) — **§2.126 : audit et
+> correction de `/regles` contre le code réel, bug de puces corrigé,
+> boutons d'aide contextuels "?" (RuleHelpButton) posés sur 5 écrans.**
+>
+> **Audit de `/regles` contre le code réel** (agent Explore, pas les docs de
+> `Cadrage/` — trop susceptibles d'être obsolètes) : la page affichait déjà
+> l'essentiel correctement, mais 3 erreurs et 3 manques réels trouvés.
+> **Corrigé** : « Bracket parfait : 340 points » clarifié comme le score
+> maximum d'une SEULE série (Finale NBA, 250+50+40), pas du bracket entier
+> (qui vaudrait ~1210 pts) ; la validation des paris personnalisés reformulée
+> (un pari jugé calculable par l'IA est validé directement, SANS geste admin
+> — migration `20260821160000_bets_ai_auto_validation.sql`, déjà en place
+> mais jamais reflétée dans `/regles` ; l'admin ne garde qu'un droit de
+> correction après coup, et ne valide vraiment que les paris non
+> calculables) ; le « sans comparaison entre joueurs » des badges nuancé
+> (exception réelle : Podiumista compte les jours passés dans le top 3,
+> donc PAR RAPPORT aux autres). **Ajouté** : barème chiffré de la NBA Cup
+> (20/50/150 vainqueur, 0/15/25 affiche, 3 tours — jusque-là seule la phrase
+> générique « barème différent » sans les chiffres, contrairement à tous les
+> autres barèmes) ; mention de la demande de correction d'un prono après
+> verrouillage (fonctionnalité déjà shippée, jamais documentée côté joueur) ;
+> nouvelle section « Superlatifs de fin de compétition » (Nostradamus/
+> Sniper/Meilleur bracket/Meilleur 1ᵉʳ tour/Plus grosse remontée —
+> `lib/scoring/superlatives.ts`, calculés une fois à la clôture d'une
+> compétition, jamais mentionnés nulle part avant). Commit `d6d95a7`.
+>
+> **Bug réel corrigé au passage : puces des listes à puces** — `.listItem::
+> before` n'avait pas de `height`. En élément flex sans `align-items`
+> explicite (repli `stretch`), la puce s'étirait sur toute la hauteur de la
+> ligne (barre verticale) au lieu d'être un petit point. Corrigée en carré
+> net 5×5px (`--radius-sm`, cohérent avec `--radius-chip` déjà utilisé pour
+> les « puces de tri » du classement — le vocabulaire de tokens en garde
+> trace), aligné en haut de la 1ʳᵉ ligne de texte via `align-items: flex-
+> start` + `margin-top`. Même commit `d6d95a7`.
+>
+> **Boutons d'aide contextuels « ? » (`RuleHelpButton`)** — accompagnement
+> d'un nouveau joueur EN COMPLÉMENT de `/regles`, PAS un nouveau tutoriel
+> (celui-ci avait été entièrement retiré le 21/08/2026, §2.97 — décision non
+> remise en cause, juste un rappel local à l'endroit où la règle s'applique,
+> pas de flag « vu » ni de wizard). Cadré avec l'utilisateur via
+> `AskUserQuestion` : 4 écrans retenus, contenu « factorisé quand c'est la
+> même donnée partout, dédié quand le contexte le justifie ». Réalisé :
+> - `components/regles/RuleHelpButton.tsx` : pastille ouvrant le
+>   `ModalDialog` déjà existant (même coquille que `BetFormModal`/
+>   `InlineBetForm` en mode modal) avec le contenu de règle concerné.
+> - 4 barèmes/listes EXTRAITS de `/regles` en composants partagés, SOURCE
+>   UNIQUE (`MatchBaremeGrid`, `BetDifficulteGrid`, `BracketBaremeContent` —
+>   filtre automatiquement Playoffs/NBA Cup selon l'écran appelant,
+>   `RankingTiebreakList`) : `/regles` importe désormais ces mêmes
+>   composants au lieu d'avoir le texte en dur à 2 endroits.
+> - `BetWritingTips` : volontairement PAS partagé avec `/regles` (décision
+>   explicite de l'utilisateur) — version courte dédiée (4 exemples ciblés
+>   au lieu des 8 catégories exhaustives), plus actionnable au moment de
+>   rédiger un pari qu'une liste complète à parcourir.
+> - Posé à 5 endroits : les 2 formulaires de pari qui existent en parallèle
+>   (`InlineBetForm.tsx`, utilisé par Matchs/Bracket, ET `BetForm.tsx`,
+>   l'écran dédié « Nouveau pari » — les deux avaient un champ Énoncé
+>   séparé) ; l'en-tête de l'écran Jouer ; l'en-tête Bracket dans SES 2
+>   modes de rendu (`FillPosterView.tsx`, mode par défaut depuis le
+>   17/08/2026, ET `BracketFillView.tsx`, flux normal par onglets toujours
+>   accessible via « Quitter ») ; l'en-tête Classement.
+> - Style ajusté par itérations à la demande de l'utilisateur : 1er essai
+>   44px contour discret jugé pas assez voyant → pastille pleine couleur
+>   accent 22px (zone tactile étendue à 44px via un `::after` invisible en
+>   inset négatif, §11.3 respecté sans grossir la puce visuellement) →
+>   opacité 70% au repos, 100% au survol/focus (retour d'interaction).
+>
+> `tsc --noEmit` et `eslint .` propres sur tout le dépôt à chaque étape
+> (`vitest`/`next build` pas relancés cette fois — aucun changement de
+> logique de scoring, uniquement de l'UI/contenu). Commit `316b23d`.
+>
+> Dernière mise à jour précédente : session du 28/08/2026 — **§2.125 : notif de chat en
 > icône, réorg de `Cadrage/`, préparation complète de l'alpha NBA Cup, 2 bugs
 > réels trouvés en la préparant, barres de scroll masquées.** Session longue,
 > plusieurs chantiers indépendants demandés au fil de l'eau.
@@ -100,37 +171,14 @@
 > disparaît. Confirmé fonctionnel par l'utilisateur en conditions réelles.
 > Commit `e9ed76a`.
 >
-> Dernière mise à jour précédente : session du 27/08/2026 — **§2.124 : badges épinglés
-> dans le bandeau du profil, CODÉ ET VÉRIFIÉ AU CLIC**. Reprend le point
-> ajouté au backlog la veille (`BACKLOG_V1.md`, "Afficher ses badges à côté
-> de son nom sur la page perso") : cadré avec l'utilisateur avant de coder
-> (choix manuel du joueur, max 3, en ligne avec le pseudo -- AskUserQuestion
-> 3 questions), puis implémenté. Nouvelle colonne `users.pinned_badge_ids`
-> (`text[]`, migration `20260827090000_pinned_badges.sql`, CHECK taille ≤3 --
-> aucune migration RLS nécessaire, même note que `background_theme`) ;
-> `getProfileBadges()` (`lib/queries/badges.ts`) résout et ordonne les
-> badges épinglés (`pinnedBadges`), chargée sur TOUS les onglets du profil
-> désormais (pas seulement Stats -- coût négligeable, une seule vue) ;
-> nouveau bouton "épingler" sur `BadgeCard.tsx` (formulaire natif séparé du
-> bouton de flip -- deux `<button>` ne s'imbriquent pas, la carte devient un
-> wrapper avec 2 boutons frères), actif seulement sur les badges débloqués ;
-> nouveau composant `PinnedBadges.tsx` (icône seule, colorée par palier,
-> `title`/`aria-label` pour le nom) affiché en ligne avec le pseudo dans
-> `app/(app)/profile/page.tsx` (bandeau `.pseudo` passé en flex row).
-> Server action `togglePinnedBadgeFormAction` (`lib/actions/profile.ts`),
-> même patron formulaire+redirection que le reste du fichier. `tsc`/
-> `eslint`/`vitest` (37/37)/`next build` propres, migration poussée en prod
-> (`npx supabase db push`, sans blocage du classifieur cette fois -- règle
-> `autoMode.allow` du 26/08 efficace). **Vérifié au clic en conditions
-> réelles** (Playwright temporaire, compte TestJoueur1, mot de passe
-> temporaire posé puis restauré en jetable après coup) : épingler/désépingler
-> fonctionne, l'icône apparaît/disparaît bien dans le bandeau -- 1 piège de
-> script rencontré et compris (`page.waitForURL` sur une URL DÉJÀ courante
-> résout instantanément sans attendre la vraie navigation, laissant croire à
-> un bug produit ; un `page.reload()` explicite après le clic a confirmé
-> qu'il n'y en avait pas). Script de test supprimé après usage.
+> Plus tôt (session du 27/08/2026) — **§2.124 : badges épinglés dans le
+> bandeau du profil, codé et vérifié au clic** (`users.pinned_badge_ids`,
+> `PinnedBadges.tsx`, bouton « épingler » sur `BadgeCard.tsx`, max 3 en ligne
+> avec le pseudo — cadré avec l'utilisateur avant de coder). `tsc`/`eslint`/
+> `vitest`/`next build` propres, migration poussée en prod, vérifié au clic
+> en conditions réelles (Playwright temporaire, compte TestJoueur1).
 >
-> Plus tôt (session du 26/08/2026) — **rattrapage
+> Encore avant (session du 26/08/2026) — **rattrapage
 > complet de ce fichier — §2.122 ci-dessous**, plus le gap `not_in_match`
 > COMPARISON/COMBO corrigé le même jour. Ce fichier n'avait pas bougé depuis
 > le 21/08/2026 (§2.97 ci-dessous, tutoriel retiré) alors que 82 commits

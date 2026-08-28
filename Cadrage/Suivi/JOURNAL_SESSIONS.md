@@ -11941,3 +11941,127 @@ l'indication visuelle disparaît.
 next build propre. Confirmé fonctionnel par l'utilisateur en conditions
 réelles ("ça fonctionne"). Commit e9ed76a.
 ```
+
+## Audit de /regles contre le code réel + bug de puces corrigé (28/08/2026)
+
+```text
+Demande de l'utilisateur : revoir les règles et l'accompagnement d'un
+nouveau joueur dans l'app. Clarifié via AskUserQuestion avant de coder --
+deux pistes possibles (contenu de /regles à jour, ou accompagnement 1ère
+connexion) : l'utilisateur a choisi de d'abord vérifier /regles, et
+d'ajouter ensuite des pop-ups d'aide un peu partout dans l'appli.
+
+Audit délégué à un agent Explore, avec consigne explicite de vérifier
+contre le CODE réel (lib/scoring/engine.ts, lib/scoring/ranking.ts,
+supabase/migrations/*_rls.sql, lib/badges/thresholds.ts,
+lib/scoring/superlatives.ts...), pas contre les docs de Cadrage/ --
+trop susceptibles d'être obsolètes sur ce point précis.
+
+3 erreurs trouvées et corrigées :
+- "Bracket parfait : 340 points" laissait croire qu'il s'agissait du
+  bracket entier -- en réalité le score max d'UNE SEULE série (Finale
+  NBA, 250+50+40). Un vrai bracket parfait vaudrait ~1210 points.
+  Reformulé pour clarifier "d'une seule série gagnée à la Finale NBA".
+- La page disait "un admin valide ou ajuste" chaque pari personnalisé --
+  faux dans la majorité des cas depuis la migration
+  20260821160000_bets_ai_auto_validation.sql (déjà en prod depuis le
+  21/08, jamais reflétée ici) : un pari jugé calculable par l'IA passe
+  direct en VALIDATED sans geste admin, qui ne garde qu'un droit de
+  correction après coup. L'admin ne valide vraiment que les paris jugés
+  NON calculables. Reformulé dans les 2 sections concernées (paris
+  personnalisés + bien rédiger un pari).
+- Badges "sans comparaison entre joueurs" -- faux pour Podiumista, qui
+  compte les jours passés dans le top 3 du classement (donc bien une
+  comparaison). Nuancé.
+
+3 manques ajoutés (confirmés avec l'utilisateur via AskUserQuestion) :
+- Barème chiffré de la NBA Cup (20/50/150 vainqueur, 0/15/25 affiche,
+  3 tours) -- jusque-là seule une phrase générique "barème différent"
+  sans les chiffres, alors que chaque autre barème a son tableau.
+- Mention de la demande de correction d'un prono après verrouillage
+  (fonctionnalité réelle, correction_requests + CorrectionRequestForm.tsx,
+  jamais documentée côté joueur avant).
+- Nouvelle section "Superlatifs de fin de compétition" (Nostradamus,
+  Sniper, Meilleur bracket, Meilleur 1er tour, Plus grosse remontée --
+  lib/scoring/superlatives.ts, calculés une seule fois à la clôture d'une
+  compétition, jamais mentionnés nulle part côté joueur).
+
+Bug réel trouvé au passage, hors sujet initial mais signalé par
+l'utilisateur ("revois la forme des puces") : .listItem::before n'avait
+pas de height. Sans align-items explicite sur le parent flex (repli
+stretch par défaut), la puce s'étirait sur toute la hauteur de la ligne
+-- une barre verticale au lieu d'un petit point, invisible comme "puce"
+au sens habituel. Corrigée en carré net 5x5px (--radius-sm, cohérent
+avec --radius-chip déjà utilisé pour les "puces de tri" du classement),
+aligné en haut de la 1ère ligne de texte (align-items: flex-start +
+margin-top plutôt que centré sur toute la hauteur du bloc de texte).
+
+tsc --noEmit et eslint propres. Commit d6d95a7.
+```
+
+## Boutons d'aide contextuels "?" vers les règles (RuleHelpButton) (28/08/2026)
+
+```text
+Suite du chantier /regles ci-dessus : l'utilisateur voulait ensuite des
+petits boutons "(?)" à certains endroits de l'app, faisant apparaître en
+pop-up la partie de règle concernée ou des exemples. Explicitement PAS
+un nouveau tutoriel -- celui-ci avait été entièrement retiré le
+21/08/2026 (voir plus haut dans ce journal, "Tutoriel joueur retiré") à
+la demande de l'utilisateur, /regles couvrant déjà ce besoin. Ce chantier
+est un COMPLÉMENT local à /regles (rappel à l'endroit où la règle
+s'applique), pas une réintroduction d'onboarding avec flag "vu" ou
+wizard -- distinction vérifiée explicitement avant de coder.
+
+Cadrage via AskUserQuestion (2 questions) avant de coder :
+- Emplacements : les 4 proposés ont tous été retenus (création d'un pari
+  personnalisé, pronostic de match, remplissage du bracket, classement).
+- Politique de contenu : "les deux, à adapter en fonction" -- factoriser
+  le contenu identique entre /regles et les pop-up quand c'est la même
+  donnée (barèmes chiffrés), écrire un texte dédié plus court quand le
+  contexte le justifie (conseils de rédaction d'un pari).
+
+Réalisé :
+- components/regles/RuleHelpButton.tsx : bouton générique, ouvre le
+  ModalDialog déjà existant dans le dépôt (même coquille que
+  BetFormModal.tsx / InlineBetForm.tsx en mode "modal") avec un titre et
+  le contenu de règle passé en children.
+- 4 blocs de contenu EXTRAITS de /regles en composants partagés (source
+  unique, components/regles/RuleContent.module.css importé par tous) :
+  MatchBaremeGrid, BetDifficulteGrid, BracketBaremeContent (accepte un
+  competitionType optionnel -- filtre automatiquement Playoffs/NBA Cup
+  selon l'écran appelant, affiche les 2 si omis comme sur /regles),
+  RankingTiebreakList. La page /regles importe maintenant ces mêmes
+  composants au lieu du texte en dur -- plus aucune divergence possible
+  entre les deux affichages.
+- BetWritingTips : SEUL contenu volontairement PAS partagé avec /regles
+  (décision explicite de l'utilisateur) -- version courte et dédiée (4
+  exemples ciblés au lieu des 8 catégories exhaustives de /regles), plus
+  actionnable au moment de rédiger un pari qu'une liste complète.
+
+Posé à 5 endroits, pas 4 -- découvert en marchant que le formulaire de
+pari existe en DEUX implémentations parallèles jamais fusionnées
+(InlineBetForm.tsx pour Matchs/Bracket, BetForm.tsx pour l'écran dédié
+"Nouveau pari"/"Modifier un pari") : les deux ont reçu le bouton pour ne
+pas créer d'incohérence entre les deux points d'entrée. Le Bracket a
+aussi 2 rendus distincts (FillPosterView.tsx, mode par défaut depuis le
+17/08 ; BracketFillView.tsx, flux normal par onglets) -- le bouton posé
+dans les deux, avec le même competitionType transmis pour n'afficher que
+le barème pertinent.
+
+Style ajusté en 3 itérations, chacune demandée par l'utilisateur après
+avoir vu le résultat :
+1. 1er jet : cercle 44px (--tap-target-min), contour discret, gris au
+   repos -- jugé "trop grand".
+2. Réduit à une pastille pleine couleur accent, 22px visibles -- la zone
+   tactile est gardée à 44px via un ::after positionné en absolute avec
+   un inset négatif calculé (invisible, ne grossit pas la puce), pour ne
+   pas sacrifier la cible tactile minimale (§11.3 du design system) tout
+   en la rendant visuellement petite.
+3. Jugé pas assez "voyant" malgré la couleur pleine à cette taille --
+   opacité 70% au repos, 100% au survol/focus (garde un vrai retour
+   d'interaction plutôt qu'un état figé).
+
+tsc --noEmit et eslint propres sur tout le dépôt à chaque étape. vitest/
+next build pas relancés cette fois (aucun changement de logique de
+scoring, uniquement de l'UI/du contenu affiché). Commit 316b23d.
+```
