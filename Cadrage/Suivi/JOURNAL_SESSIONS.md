@@ -11738,3 +11738,206 @@ PHOTO forcé en base, Playwright) sur les 2 vues (liste ET conversation
 ouverte) -- comparées visuellement à /home (déjà correct) : même mural
 visible, mêmes cartes translucides. tsc/eslint/vitest (37/37)/next build
 propres. Scripts de vérification supprimés après usage.
+
+## Notification de canal de chat -- simplifiée, puis en icône (28/08/2026)
+
+```text
+Suite de directe de la session précédente : le panneau "activer/désactiver"
+ne passait pas toujours au-dessus des lignes de ligue suivantes, et
+l'utilisateur en a profité pour demander une simplification.
+
+Cause du bug de superposition, trouvée en lisant le CSS plutôt qu'en
+devinant : .row.glass-card applique un backdrop-filter en thème photo, ce
+qui crée un contexte d'empilement PAR LIGNE -- le z-index du panneau ne se
+battait donc que dans le contexte de sa propre ligne, jamais contre les
+lignes suivantes plus bas dans le DOM. Corrigé par un z-index qui monte sur
+la ligne active via :has(:focus-within).
+
+Simplification demandée en 2 temps : d'abord le menu "..." (details/
+summary, 2 boutons) réduit à un bouton unique dont le libellé bascule
+("Activer"/"Désactiver les notifications"), puis ce texte remplacé par une
+icône de cloche seule (barrée d'une diagonale si désactivées) -- nouveau
+components/icons/chat-icons.tsx (NotificationBellIcon), même patron que
+nav-icons.tsx (trait net, currentColor, viewBox 24x24). Le sens passe
+désormais par aria-label/title sur le <button>, la <svg> reste décorative.
+
+tsc/eslint/next build propres à chaque étape. Pas de test au clic (pas
+d'identifiants) -- signalé explicitement plutôt que supposé. Commits
+3332159 (superposition), 4705508 (icône).
+```
+
+## Bug réel : policy UPDATE manquante sur push_subscriptions (28/08/2026)
+
+```text
+Signalé par l'utilisateur : erreur "new row violates row-level security
+policy (using expression) for table push_subscriptions" en réactivant les
+notifications d'un canal.
+
+Cause trouvée en lisant le code, pas en devinant : savePushSubscription()
+(lib/actions/notifications.ts) fait un upsert avec onConflict sur
+(user_id, endpoint). La migration d'origine (20260729100000_push_
+notifications.sql, migration #15) n'a créé que les policies SELECT/INSERT/
+DELETE -- aucune UPDATE. Un 1er abonnement passe (simple INSERT, pas de
+conflit) mais toute réactivation ultérieure réutilise le même endpoint
+navigateur (ensurePushSubscribed() le récupère via getSubscription()) --
+bascule en ON CONFLICT DO UPDATE, refusé faute de policy.
+
+Corrigé par une migration additive (20260828100000_push_subscriptions_
+update_policy.sql, même formule user_id = auth.uid() que les policies
+existantes) plutôt qu'une modification de la migration #15 déjà appliquée.
+Poussée par l'utilisateur (npx supabase db push bloqué pour Claude par le
+classifieur auto-mode, comme d'habitude sur les commandes touchant des
+credentials). Commit e7b438b.
+```
+
+## Réorganisation de Cadrage/ (28/08/2026)
+
+```text
+Demandé par l'utilisateur ("revoir un peu l'organisation du dossier
+Cadrage"). Diagnostic présenté avant d'agir (le nom Proto/ ne correspondait
+plus à son contenu réel, mélange de suivi vivant et de cadrage historique ;
+8 fichiers .txt isolés dans Proto/ sans classification ; le doc business
+seul à la racine de Cadrage/ ; Cadrage/Stats/ identifié comme un service
+actif référencé par un workflow GitHub Actions quotidien -- risque réel si
+déplacé, laissé de côté à la demande de l'utilisateur).
+
+Classification faite en lisant le CONTENU de chaque fichier ambigu plutôt
+qu'en devinant depuis le nom seul -- plusieurs fichiers dont le nom
+suggérait "prototype" (nba_pronos_decisions_0_2_10_prototype_jetable.md)
+faisaient en réalité partie de la séquence decisions_0_2_x toujours citée
+comme référence fonctionnelle (confirmé par une mémoire de session
+antérieure : "remains the functional reference for V1 despite the folder
+name"). SPEC_TECHNIQUE_V0.1_1.md identifié comme l'index maître des specs
+T1-T7 de V1/ (toujours cité par ETAT_ACTUEL.md/JOURNAL_SESSIONS.md), mal
+rangé dans Proto/ depuis le début -- déplacé vers V1/ plutôt qu'archivé.
+Les 8 .txt confirmés comme du SQL du prototype jetable en lisant leur
+en-tête ("-- ... PROTOTYPE") avant de les déplacer vers OLD/.
+
+git mv partout (historique préservé). Toutes les références vivantes à
+Cadrage/Proto/ corrigées (grep repo entier) : doc business, SPEC_CHAT_V0_1.md
+(auto-référence de son propre chemin en tête de fichier), BACKLOG_V1.md,
+une migration Supabase (commentaire), un script NBA Cup (commentaire),
+PublicNav.tsx (commentaire), generate_readme.py (texte généré). Volontai-
+rement PAS touché : JOURNAL_SESSIONS.md (ce fichier, append-only par
+convention), GAPS_OUVERTS.md, ETAT_ACTUEL.md -- respectent leurs propres
+conventions de non-édition rétroactive, se corrigeront naturellement.
+
+Memory de session (nba-pronos-tracking-files) mise à jour avec le nouveau
+mapping Proto -> Suivi/Fonctionnel/V1/OLD/Business, pour qu'une future
+session ne parte pas d'un chemin obsolète.
+
+Accroc réel en committant : les corrections de chemin (et les décisions
+prises plus tôt dans la session sur le doc business) n'avaient pas été
+committées avant le git mv du dossier -- rattrapées dans un 2e commit
+immédiatement après, rien perdu (vérifié par grep sur le contenu réel du
+fichier avant de conclure). Commits 291215f (réorg), 14f46e4 (rattrapage).
+```
+
+## Compétition fictive NBA Cup -- alpha potes, préparation complète (28/08/2026)
+
+```text
+Reprise du plan posé le 27/08 (voir GAPS_OUVERTS.md pour le détail complet
+avec identifiants). Avant d'agir : vérifié dans le code
+(uniq_one_active_competition, lib/actions/admin-competitions.ts) que
+l'archivage de "Playoffs NBA (simulation)" est une contrainte TECHNIQUE
+(1 seule compétition ACTIVE à la fois), pas juste une recommandation de
+rangement -- confirmé avec l'utilisateur avant d'archiver une compétition
+en cours d'usage récent (paris réels soumis le 26/08).
+
+Compétition + 4 séries de quarts créées par l'utilisateur via l'admin (nom
+inchangé depuis la suggestion du 27/08 : Celtics-Knicks, Lakers-Warriors,
+Nuggets-Thunder, Bucks-76ers). Nouveau script nba-cup-list-series.mjs
+(lecture seule) pour retrouver les seriesId sans que l'utilisateur ait à
+les copier depuis l'admin -- petit piège trouvé en l'écrivant : la colonne
+s'appelle `type` sur `competitions`, pas `format` comme deviné au 1er jet,
+corrigé avant de lancer (vérifié dans la migration plutôt que de laisser
+échouer en prod).
+
+4 vrais matchs historiques choisis par quart (nba-cup-find-real-game.mjs,
+déjà existant) -- décision prise EN COURS DE ROUTE, pas anticipée le
+27/08 : écarter les matchs de PLAYOFFS malgré des candidats spectaculaires
+(Jokic 44pts) au profit de matchs de saison régulière, moins mémorables
+pour des potes qui suivent vraiment la NBA -- risque de reconnaître le
+match et deviner le résultat à l'avance, jamais identifié comme un risque
+dans le plan initial.
+
+Point soulevé par l'utilisateur après la création des matchs, pas anticipé
+non plus : les testeurs doivent connaître les VRAIS effectifs des matchs
+historiques (un joueur parti/arrivé depuis pourrait être absent du vrai
+match sous-jacent, son pari perso ne se résoudrait pas). Nouveau script
+nba-cup-real-rosters.mjs (lecture seule) -- a révélé au passage que
+stats_box_scores ne porte QUE opponent_team_id (pas l'équipe du joueur
+directement), déduite en le croisant avec home/away_team_id de
+stats_matchs. Fiche NBA_CUP_ALPHA_EFFECTIFS.md générée et sauvegardée pour
+transmission aux testeurs.
+
+Calendrier initial du 27/08 ("J1 les 4 quarts" ET "2 matchs/jour") repéré
+comme contradictoire en le relisant -- clarifié avec l'utilisateur plutôt
+que deviné : 2 quarts le 20/09 (19h/21h Paris), 2 le 21/09, demies le
+22/09, finale le 23/09. Les 4 matchs de quarts créés en SCHEDULED (invi-
+sibles, nba-cup-create-match.mjs) avec ces horaires. Tout documenté dans
+GAPS_OUVERTS.md (IDs compétition/séries/matchs, commandes exactes de
+révélation) pour que la reprise du 20/09 n'ait rien à re-deviner. Commit
+974856d.
+```
+
+## Bug réel : matchs créés loin à l'avance invisibles dans "Mes pronos" (28/08/2026)
+
+```text
+Signalé par l'utilisateur en testant l'alpha fraîchement préparée : les 4
+quarts NBA Cup (créés 3 semaines à l'avance, volontairement) n'apparais-
+saient nulle part dans "Jouer > Mes pronos".
+
+Cause trouvée en lisant le code, pas devinée : getPlayUpcoming()/lib/
+queries/play.ts borne la requête sur une fenêtre glissante de 3 jours
+(FORWARD_WINDOW_DAYS, décision fonctionnelle 0.2.3) -- couplée à
+SYNC_HORIZON_DAYS=4 (lib/sync/schedule.ts, §12.5 : "fenêtre 3j de pronos +
+1j de marge"). En saison réelle le vrai calendrier n'est jamais synchro-
+nisé plus loin que 4 jours à l'avance, donc cette fenêtre ne pose jamais
+problème -- la NBA Cup alpha est le 1er cas où des matchs sont créés très
+en avance, cassant une hypothèse implicite jamais mise à l'épreuve avant.
+
+Vérifié avant de proposer un correctif que les paris perso (lib/queries/
+bets.ts::buildBootstrap, aucun filtre sur scheduled_at) et le bracket
+(aucune requête bornée trouvée) n'étaient PAS concernés -- seul l'écran de
+pronostic vainqueur+écart l'était, ce qui a changé la gravité perçue du
+problème avant de choisir un correctif.
+
+2 options discutées avec l'utilisateur : fenêtre plus large spécifique à
+NBA_CUP (proposition initiale de Claude) vs afficher tous les matchs avec
+un repli dépliable pour ceux au-delà de 3 jours (contre-proposition de
+l'utilisateur, retenue -- plus générale, ne demande pas de traiter NBA_CUP
+différemment). Implémenté : la requête ne borne plus scheduled_at en haut,
+les cartes construites sont scindées en near/far APRÈS coup (days vs
+daysBeyondWindow), rendu dans un <details> natif (composant
+BeyondWindowSection.tsx, même patron que ValidationBetCard.tsx) replié par
+défaut. readyCount/bandeau "Tout valider" volontairement scopés aux seuls
+matchs déjà visibles sans dépli.
+
+Demande de suivi immédiate : ajouter mois+année au libellé de jour
+("Dimanche 20" -> "Dimanche 20 sept. 2026"), devenu ambigu dès qu'un match
+peut être loin dans le futur. tsc/eslint/vitest (37/37)/next build propres
+aux 2 étapes, pas de test au clic (pas d'identifiants). Commits 609af66
+(repli), 0f7c617 (libellé).
+```
+
+## Barres de scroll masquées partout (28/08/2026)
+
+```text
+Demandé par l'utilisateur pour un rendu "comme une application" plutôt que
+web : la barre de scroll toujours réservée (visible en permanence sur
+Chrome/Windows) décale l'écran entre une page qui scrolle et une qui n'en
+a pas besoin.
+
+Solution retenue parmi les 2 proposées par l'utilisateur (masquer
+entièrement, ou la garder en transparence sans réserver d'espace) :
+masquage complet -- scrollbar-width: none (Firefox) + ::-webkit-scrollbar
+{ display: none } (Chrome/Safari/Edge), appliqué globalement (`*` dans
+globals.css) plutôt que ciblé sur html/body seul, pour rester cohérent
+avec les conteneurs internes qui scrollent (listes, tableaux admin,
+bracket horizontal). Le scroll reste entièrement fonctionnel, seule
+l'indication visuelle disparaît.
+
+next build propre. Confirmé fonctionnel par l'utilisateur en conditions
+réelles ("ça fonctionne"). Commit e9ed76a.
+```
