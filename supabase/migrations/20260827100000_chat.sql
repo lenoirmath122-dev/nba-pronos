@@ -3,7 +3,7 @@
 -- ============================================================================
 -- Fichier   : supabase/migrations/20260827100000_chat.sql
 -- Motif     : BACKLOG_V1.md « Communication entre joueurs » — cadré en séance
---             le 27/08/2026, voir Cadrage/Proto/SPEC_CHAT_V0_1.md pour le
+--             le 27/08/2026, voir Cadrage/Suivi/SPEC_CHAT_V0_1.md pour le
 --             détail des décisions et du plan.
 --
 -- Décisions actées AVEC l'utilisateur (27/08/2026) :

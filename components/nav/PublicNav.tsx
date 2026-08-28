@@ -9,7 +9,7 @@ import styles from "./PublicNav.module.css";
 // fines /leaderboard, /bracket, /regles (T6a §3.2/§8.1).
 //
 // Nom "Panier Ballon" + logo (27/08/2026, provisoire -- ni l'un ni l'autre
-// validés à 100%, voir Cadrage/panier_ballon_cadrage_business_communication.md
+// validés à 100%, voir Cadrage/Business/panier_ballon_cadrage_business_communication.md
 // et GAPS_OUVERTS.md). `unoptimized` sur le logo SVG : même contrainte que
 // TeamLogo.tsx (l'optimiseur Next n'accepte pas les SVG sans config CSP
 // dédiée, non posée).

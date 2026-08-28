@@ -6,7 +6,7 @@
 // Usage    : node --env-file=.env.local scripts/nba-cup-find-real-game.mjs --home=BOS --away=NYK [--season=2024-25]
 //
 // Contexte : compétition NBA_CUP fictive pour l'alpha potes (~20-22/09/2026,
-// voir Cadrage/Proto/GAPS_OUVERTS.md). Chaque match fictif emprunte le score
+// voir Cadrage/Suivi/GAPS_OUVERTS.md). Chaque match fictif emprunte le score
 // ET les stats joueur d'un VRAI match NBA historique déjà en base (stats_*),
 // pour que les paris personnalisés IA se résolvent avec de vraies données
 // plutôt qu'un score inventé de toutes pièces.

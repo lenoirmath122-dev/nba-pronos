@@ -22,8 +22,8 @@ pas une brique du plan actuel.
 
 | Phase | Fenêtre | Focus |
 |---|---|---|
-| 0 — Fondations | 26 août – fin sept. 2026 | Finir l'app, poser les bases du contenu (Instagram, réseau perso) |
-| 1 — Bêta | Oct. – nov. 2026 | Ouvrir la bêta web, monter le rythme de contenu |
+| 0 — Fondations & alpha | 26 août – fin sept. 2026 | V1 de l'app finie ; alpha privée avec 3-5 groupes de potes proches en septembre ; corrections à partir de leurs retours |
+| 1 — Bêta | Oct. – nov. 2026 | Élargissement au-delà du premier cercle (contacts de contacts, premiers abonnés Instagram), montée du rythme de contenu |
 | 2 — Itération | Déc. 2026 – mars 2027 | Corriger, trancher le modèle de monétisation, préparer le lancement |
 | 3 — Lancement | Avril 2027 → | Lancement iOS/Android (calé sur les vrais playoffs NBA), bascule en mode entretien (< 5h/semaine) |
 
@@ -56,15 +56,9 @@ avoir une raison précise.
 
 ## 2. Identité de marque
 
-> **À garder en tête (27/08/2026)** : ni le nom « Panier Ballon » ni le logo ne sont validés
-> à 100 % à ce stade. Ce sont des directions de travail issues de cette session Cowork, pas
-> des choix définitifs — les deux restent ouverts à révision, notamment après les retours de
-> la bêta. Voir la note datée dans « Logo / wordmark » ci-dessous pour le détail de l'écart
-> déjà pris entre cette direction et ce qui a été codé.
-
 ### Point de vigilance (à ne pas trancher à la légère)
 
-Le cadrage technique existant (`B4`, `Cadrage/Proto/nba_pronos_PREP_SPEC_TECHNIQUE_V1.md`)
+Le cadrage technique existant (`B4`, `Cadrage/Fonctionnel/nba_pronos_PREP_SPEC_TECHNIQUE_V1.md`)
 note déjà que les vrais logos NBA sont des marques déposées, jugé « faible risque pour une
 app privée/non commerciale ». Ce calcul change avec une communication publique et une
 monétisation prévue :
@@ -109,21 +103,20 @@ mais à garder en tête.
 
 ### Logo / wordmark
 
-**Écart assumé le 27/08/2026** : direction "wordmark + monogramme PB" ci-dessous PAS suivie
-pour le moment — un logo illustré (panier + ballon, badge navy/orange, vectorisé en SVG) a
-été intégré à la place comme icône d'app/favicon (`app/favicon.ico`, `app/apple-icon.png`,
-`public/icons/icon-{192,512}.png`, source `public/brand/logo.svg`), décision prise dans la
-session de code (pas dans cette session Cowork). **Ni le nom « Panier Ballon » ni ce choix de
-logo ne sont validés à 100 % à ce stade** — les deux restent ouverts à révision, ce document
-décrit une direction envisagée, pas un choix figé.
+**Décision actée le 28/08/2026** : le logo illustré (panier + ballon, vectorisé en SVG à
+partir de `Cadrage/DA/Logo.jpg`, déjà intégré comme icône d'app/favicon —
+`public/brand/logo.svg`, `app/favicon.ico`, `app/apple-icon.png`,
+`public/icons/icon-{192,512}.png`) est retenu comme logo actuel de Panier Ballon.
+**Provisoire, assumé comme tel** : pas la version définitive, une meilleure itération reste
+à concevoir plus tard — la direction wordmark ci-dessous reste une piste possible pour cette
+itération, entre autres.
 
-Direction initialement envisagée (ci-dessous, non retenue pour l'icône actuelle) : pas de logo
-illustré complexe nécessaire — le design system est déjà token-first. Un **wordmark
-typographique** en Oswald (police déjà réservée aux scores/moments forts de l'app), sur fond
-navy (`#0B0E14`) avec l'accent orange broadcast (`#FF6A2B`), et un mark simple représentant un
-ballon déjà posé dans le panier (littéralise le nom). Une déclinaison **monogramme « PB »** en
-badge pour l'icône d'app et le favicon — toujours une piste valable si le logo illustré actuel
-ne tient pas la distance.
+Direction alternative envisagée à l'origine, gardée en réserve : pas de logo illustré
+complexe nécessaire — le design system est déjà token-first. Un **wordmark typographique**
+en Oswald (police déjà réservée aux scores/moments forts de l'app), sur fond navy
+(`#0B0E14`) avec l'accent orange broadcast (`#FF6A2B`), et un mark simple représentant un
+ballon déjà posé dans le panier (littéralise le nom). Une déclinaison **monogramme « PB »**
+en badge pour l'icône d'app et le favicon.
 
 ### Ton de voix
 
@@ -156,7 +149,8 @@ lancement.
 Le produit ne se positionne pas comme la réparation d'un problème que tout le monde vivrait
 déjà (peu de groupes ont aujourd'hui un vrai pool NBA organisé) mais comme **une activité
 communautaire nouvelle à proposer à son groupe**, dans l'esprit d'une soirée jeux ou d'un
-fantasy league. *Hypothèse à confronter au terrain pendant la bêta, pas une certitude.*
+fantasy league. *Hypothèse à confronter au terrain pendant l'alpha et la bêta, pas une
+certitude.*
 
 **Taglines** :
 1. Vivez les playoffs en mode ligue entre potes.
@@ -190,8 +184,8 @@ réel) : Scorecast, Pronos entre amis, Matchguess.
 ### Canaux actifs — Instagram + réseau perso
 
 - **Ton réseau perso** *(actif)* — le plus fort taux de conversion, souvent sous-estimé.
-  Ce sont tes premiers testeurs bêta et tes premières ligues actives : pas besoin
-  d'audience pour les recruter, juste d'un message direct.
+  Ce sont tes testeurs alpha et tes premières ligues actives : pas besoin d'audience pour
+  les recruter, juste d'un message direct.
 - **Instagram** *(actif)* — captures et vidéos de l'interface (pas besoin d'apparaître) ;
   c'est le canal qui porte la démo visuelle et la crédibilité publique du projet.
 
@@ -201,18 +195,25 @@ Facebook NBA, micro-créateurs basket) restent entièrement documentés en fin d
 
 ### Réseau perso — séquence de messages
 
+L'app (V1) est finie — ces messages s'adressent à deux publics à deux moments différents :
+le premier cercle (3-5 groupes de potes proches) pour l'**alpha de septembre**, puis un
+cercle plus large (contacts de contacts, abonnés Instagram intéressés) pour
+l'**élargissement d'octobre**.
+
 ```
-[Message 1, S2 sept.]
-Je construis un truc pour qu'on se fasse une ligue de pronos entre nous
-pendant les playoffs, ça vous dit d'être les premiers dessus ?
+[Message 1 — invitation à l'alpha, S2 sept., pour le premier cercle]
+L'app est prête : une ligue de pronos NBA à faire tourner entre nous
+pendant les playoffs. Ça vous dit qu'on lance ça cette semaine, en tout
+petit comité pour commencer ?
 
 [Relance, si pas de réponse ~1 semaine après]
-Toujours partant pour être parmi les premiers sur le truc dont je te
-parlais ? Je lance les tests en octobre.
+Toujours chaud pour tester la ligue de pronos dont je te parlais ? On
+est déjà quelques-uns dessus, ce serait cool de t'avoir aussi.
 
-[Ouverture bêta, oct.]
-C'est ouvert ! Voici le lien pour créer ta ligue avec la bande : [lien].
-Dis-moi si tu bloques sur un truc, je suis dispo.
+[Élargissement, oct. — pour les contacts hors du premier cercle]
+On teste depuis quelques semaines un truc entre potes : une ligue de
+pronos NBA pour les playoffs, gratuite, aucun argent réel — que des
+points. Ça te dit d'essayer avec ta bande ? [lien]
 ```
 
 ### Instagram — contenu
@@ -221,6 +222,44 @@ Démo léchée : Reels de capture d'écran (bracket, flash live, classement), ca
 explicatifs en feed, Stories pour le compte à rebours. Cadence : 1-2 Reels/semaine en
 bêta, 3+/semaine en mars-avril. Aucun besoin d'apparaître à l'écran — l'interface
 elle-même (fond sombre, flash orange en direct) est un sujet visuel suffisant.
+
+**Posts — phase Fondations, avant l'ouverture de la bêta (contenu à ajuster au fil de l'eau) :**
+
+```
+[Post 1 · S2, semaine du 1-7 sept. — pourquoi tu construis ça]
+Je construis une appli pour vivre les playoffs autrement : une ligue de
+pronostics NBA à faire tourner avec sa bande de potes, plutôt que chacun
+dans son coin.
+
+Bracket, pronostics match par match, et des paris perso ("Jokic fait un
+triple-double") validés automatiquement à partir des vraies stats du
+match.
+
+L'alpha tourne dès cette semaine avec un premier petit groupe — je
+documente la suite ici jusqu'à l'ouverture plus large en octobre. 🏀
+```
+
+```
+[Post 2 · S3, semaine du 8-14 sept. — avancement, carrousel de captures]
+Ça avance 👀
+L'alpha tourne déjà avec un premier groupe de potes — bracket, pronos
+match par match, classement en direct.
+
+La suite s'ouvre un peu plus large en octobre. Si ta bande n'a pas
+encore de ligue de pronos pour les playoffs cette année, DM-moi.
+```
+
+**S4 · semaine du 15-21 sept. — rythme de croisière (1-2 posts, contenu libre selon l'avancement réel) :**
+- Post "update" : une capture d'une fonctionnalité corrigée ou améliorée grâce aux retours de l'alpha + une phrase courte.
+- Story avec sticker sondage ("Vous êtes plutôt bracket ou paris perso ?") pour faire réagir les premiers abonnés.
+
+```
+[Story · S5, semaine du 22-30 sept. — compte à rebours vers l'élargissement
+d'octobre, pour les abonnés qui ne sont pas encore dans l'alpha]
+L'alpha tourne bien depuis quelques semaines — le cercle s'élargit
+bientôt 👀
+Si tu veux être parmi les prochains, dis-le-moi vite.
+```
 
 **Vidéo 1 · S3-4 oct. — démo bracket (Reels, ~12s)**
 - 0-2s : écran d'accueil, fond sombre, logo Panier Ballon.
@@ -241,26 +280,28 @@ elle-même (fond sombre, flash orange en direct) est un sujet visuel suffisant.
 
 ### Calendrier — semaine par semaine
 
-**Phase 0 · Fondations discrètes (26 août – 30 sept. 2026)**
-- S1 (26-31 août) : Compte Instagram créé (pseudo réservé). Domaine réservé si pas déjà fait.
-- S2 (1-7 sept.) : Message direct à 3-5 groupes de potes pour proposer d'être les tout
-  premiers testeurs. Premier post Instagram (pourquoi tu construis ça).
-- S3 (8-14 sept.) : Landing page + capture d'email en ligne. Deuxième post Instagram
-  (avancement / coulisses).
-- S4 (15-21 sept.) : Rythme de croisière (1-2 posts/sem. sur Instagram). Recherche INPI
-  finalisée.
-- S5 (22-30 sept.) : Derniers réglages avant la bêta. Compte à rebours aux contacts du
-  réseau perso.
+**Phase 0 · Fondations & alpha (26 août – 30 sept. 2026)**
+- S1 (26-31 août) : Compte Instagram créé (pseudo réservé), logo provisoire fait.
+  Recherche INPI faite — RAS (marques + sociétés).
+- S2 (1-7 sept.) : Message direct à 3-5 groupes de potes — invitation à rejoindre
+  l'**alpha dès maintenant** (l'app V1 est prête). Premier post Instagram (pourquoi tu
+  construis ça).
+- S3 (8-14 sept.) : Alpha lancée avec les groupes qui répondent présent — onboarding
+  individuel de chacun. Landing page avec capture d'email en ligne (utile pour
+  l'élargissement d'octobre). Deuxième post Instagram (avancement).
+- S4 (15-21 sept.) : Alpha active — retours et corrections en continu. Rythme de
+  croisière sur Instagram (1-2 posts/sem.).
+- S5 (22-30 sept.) : Corrections finales à partir des retours de l'alpha. Story de
+  compte à rebours vers l'élargissement d'octobre.
 
-**Phase 1 · Recrutement de la bêta (oct. – nov. 2026)**
-- S1-2 (1-14 oct.) : Bêta ouverte à ton réseau perso. Onboarding individuel de chaque
-  testeur.
-- S3-4 (15-31 oct.) : Boucle de retours documentée en Story Instagram. Première vidéo
-  démo (bracket) en Reel.
-- S5-6 (1-14 nov.) : Élargissement léger de la bêta (contacts de contacts) via le réseau
-  perso.
-- S7-9 (15-30 nov.) : Stabilisation. Bilan de bêta partagé en Story/carrousel Instagram
-  et au réseau perso.
+**Phase 1 · Élargissement bêta (oct. – nov. 2026)**
+- S1-2 (1-14 oct.) : Ouverture élargie au-delà du premier cercle — contacts de contacts,
+  premiers abonnés Instagram intéressés. Onboarding individuel de chaque nouveau testeur.
+- S3-4 (15-31 oct.) : Boucle de retours documentée en Story Instagram (bugs trouvés,
+  corrigés). Première vidéo démo (bracket) en Reel, appuyée sur l'usage réel de l'alpha.
+- S5-6 (1-14 nov.) : Poursuite de l'élargissement léger.
+- S7-9 (15-30 nov.) : Stabilisation. Bilan partagé en Story/carrousel Instagram et au
+  réseau perso — alpha de septembre et bêta élargie d'octobre confondues.
 
 **Phase 2 · Creux volontaire (déc. 2026 – fév. 2027)**
 - Décembre : bilan et pause méritée. Janvier : préparation des supports de lancement
@@ -294,13 +335,14 @@ elle-même (fond sombre, flash orange en direct) est un sujet visuel suffisant.
 
 | Phase | Indicateur | Cible indicative |
 |---|---|---|
-| Fondations (sept.) | Abonnés Instagram | 20–40 |
-| Bêta (oct.–nov.) | Testeurs actifs | 15–30 |
+| Alpha (sept.) | Testeurs actifs (3-5 groupes proches) | 10–20 |
+| Fondations & alpha (sept.) | Abonnés Instagram | 20–40 |
+| Bêta élargie (oct.–nov.) | Testeurs actifs cumulés | 15–30 |
 | Montée (mars) | Abonnés Instagram | 150–300 |
 | Lancement (avril) | Ligues actives créées | 10–20 |
 
-Repères de départ, pas des promesses — la bêta d'octobre/novembre donnera de vraies données
-pour les recalibrer.
+Repères de départ, pas des promesses — l'alpha de septembre et la bêta élargie
+d'octobre/novembre donneront de vraies données pour les recalibrer.
 
 ### En réserve — canaux mis de côté pour le moment
 
@@ -477,16 +519,30 @@ Relancé en semaine 3 de mars pour confirmer une mention au lancement.
 
 ## Prochaines actions
 
-- [ ] Vérifier panierballon.fr / .com + compte Instagram (première recherche faite,
-      achat/réservation effective encore à faire)
+- [x] Compte Instagram créé — fait le 28/08/2026, `@panierballon.app`
+- [x] Réserver panierballon.fr / .com — achetés le 28/08/2026 (les deux). `.fr` retenu
+      comme domaine principal (public francophone), `.com` en redirection dessus une fois
+      les deux pointés vers Vercel
+- [x] Pointer panierballon.fr / .com vers Vercel (projet `nba-pronos`) + redirection
+      307→`.fr` — fait et vérifié en ligne le 28/08/2026
+- [ ] Référencement (SEO) — constaté le 28/08/2026 : le site ne remonte pas sur Google.
+      Normal à ce stade (domaine tout juste pointé, app derrière connexion donc rien
+      d'indexable, aucun lien externe pointant dessus) — pas urgent pendant l'alpha
+      fermée, à reprendre avant l'élargissement d'octobre ou le lancement public
+      (mots-clés, page d'accueil publique indexable, backlinks Instagram/réseau perso)
 - [x] Recherche INPI formelle sur « Panier Ballon » — faite le 27/08/2026, RAS (marques + sociétés)
-- [ ] Affiner la maquette du wordmark (proportions, export SVG propre)
+- [x] Logo provisoire généré (IA)
+- [ ] Envoyer le message d'invitation à l'alpha aux 3-5 groupes de potes (l'app V1 est prête)
+- [ ] Concevoir une itération non-provisoire du logo, une fois le rythme le permet (le
+      logo illustré actuel reste temporaire, cf. « Logo / wordmark » — la piste wordmark
+      y est gardée en réserve, pas actée comme la suite)
 - [ ] Lancer les visuels de marque pour Instagram (photo de profil, gabarits de
       post/Reel) — piste : skill « design » pour produire des mockups dans l'identité
       définie ici
 
 ---
 
-*Document produit en session Cowork, à réviser après les retours de la bêta
-d'octobre/novembre 2026 — notamment le positionnement (hypothèse « activité communautaire »
-à confronter au terrain) et le modèle de monétisation de l'app.*
+*Document produit en session Cowork, mis à jour au fil de l'eau — à réviser après les
+retours de l'alpha de septembre et de la bêta élargie d'octobre/novembre 2026,
+notamment le positionnement (hypothèse « activité communautaire » à confronter au
+terrain) et le modèle de monétisation de l'app.*

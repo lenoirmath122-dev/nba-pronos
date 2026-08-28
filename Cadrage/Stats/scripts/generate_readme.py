@@ -552,7 +552,7 @@ def build() -> Readme:
         "Demander directement dans la conversation : je verifie et je reponds.",
         "Lire le bandeau REPRISE en tete de projet-data-nba.md -- toujours a jour "
         "en fin de session, resume l'etat et la prochaine etape a trancher.",
-        "Journal complet des sessions et decisions : Cadrage/Proto/"
+        "Journal complet des sessions et decisions : Cadrage/Suivi/"
         "JOURNAL_SESSIONS.md (section \"Projet Data NBA\").",
     ])
 

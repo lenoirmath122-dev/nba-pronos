@@ -1,6 +1,6 @@
 # SPEC — Chat / couche sociale in-app — V0.1
 
-Fichier : `Cadrage/Proto/SPEC_CHAT_V0_1.md`
+Fichier : `Cadrage/Suivi/SPEC_CHAT_V0_1.md`
 Motif : `BACKLOG_V1.md` § « Communication entre joueurs » — chat ajouté au
 backlog le 27/08/2026, jusqu'ici "jugé utile, pas cadré ni codé"
 (`GAPS_OUVERTS.md`, bloc du 16-18/08/2026). Gros morceau (nouvelle table,

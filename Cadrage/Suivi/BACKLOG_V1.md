@@ -125,7 +125,7 @@
 ## Communication entre joueurs
 
 - **Chat / couche sociale in-app** (ajouté au backlog le 27/08/2026) — **FAIT
-  le 27/08/2026.** Cadré (`Cadrage/Proto/SPEC_CHAT_V0_1.md`) puis codé et
+  le 27/08/2026.** Cadré (`Cadrage/Suivi/SPEC_CHAT_V0_1.md`) puis codé et
   vérifié le jour même : canal Général (tout joueur) + un canal par ligue
   existante, sélection par une liste de canaux (5ᵉ onglet `TabBar`), temps
   réel (Supabase Realtime), modération admin uniquement, notifications push
