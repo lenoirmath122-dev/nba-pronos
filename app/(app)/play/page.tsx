@@ -5,6 +5,7 @@ import { BracketEntry } from "@/components/play/BracketEntry";
 import { QuotaBanner } from "@/components/my-bets/QuotaBanner";
 import { ValidateAllBanner } from "@/components/play/ValidateAllBanner";
 import { MatchDayGroup } from "@/components/play/MatchDayGroup";
+import { BeyondWindowSection } from "@/components/play/BeyondWindowSection";
 import { LockedRow } from "@/components/play/LockedRow";
 import { LiveSubscriber } from "@/components/play/LiveSubscriber";
 import { LiveTicker } from "@/components/play/LiveTicker";
@@ -41,7 +42,8 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
 
   const hasUpcoming = data.days.length > 0;
   const hasRecentLocked = data.recentLocked.length > 0;
-  const isEmpty = !hasUpcoming && !hasRecentLocked;
+  const hasBeyondWindow = data.daysBeyondWindow.length > 0;
+  const isEmpty = !hasUpcoming && !hasRecentLocked && !hasBeyondWindow;
 
   const readyMatches = data.days
     .flatMap((day) => day.matches)
@@ -97,6 +99,8 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
               </div>
             </LiveSubscriber>
           )}
+
+          {hasBeyondWindow && <BeyondWindowSection days={data.daysBeyondWindow} />}
         </>
       )}
 

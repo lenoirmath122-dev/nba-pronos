@@ -165,6 +165,13 @@ export type PlayUpcomingData = {
   competitionType: "PLAYOFFS" | "NBA_CUP";
   /** Pas encore verrouillés, groupés par jour — ex-écran Matchs. */
   days: MatchDay[];
+  /** Au-delà de la fenêtre de 3 jours (repli replié, jamais compté dans
+   *  readyCount/le bandeau "Tout valider") — jamais peuplé en saison réelle
+   *  (l'horizon de synchro s'arrête à 4 jours), mais un match peut être créé
+   *  bien plus loin à l'avance pour une compétition NBA_CUP préparée en
+   *  amont (bug réel signalé par l'utilisateur le 28/08/2026 : ces matchs
+   *  restaient invisibles jusqu'à J-3, aucune trace qu'ils existent). */
+  daysBeyondWindow: MatchDay[];
   /** Verrouillés il y a moins de 3 jours, EN DIRECT en tête puis
    *  anti-chronologique — ex-segment "Récent" de Mes pronos. */
   recentLocked: LockedMatchRow[];
@@ -307,7 +314,7 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
 
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
-  const windowEndIso = new Date(nowMs + FORWARD_WINDOW_DAYS * DAY_MS).toISOString();
+  const windowEndMs = nowMs + FORWARD_WINDOW_DAYS * DAY_MS;
 
   // "Verrouillé mais pas encore réglé (FINISHED/CANCELLED)" — plus de
   // fenêtre de 3 jours ici (18/08/2026, revenu sur la décision 4 de la
@@ -316,8 +323,8 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   // soit son âge). §3.1 corrigée. CANCELLED traité comme FINISHED depuis
   // le 27/08/2026 (matchs annulés jamais reliés à un vrai match externe,
   // restaient bloqués indéfiniment dans Mes pronos sinon).
-  const [{ days, readyCount }, recentLocked, quotas] = await Promise.all([
-    fetchUpcomingWindow(supabase, user.id, competition, nowIso, windowEndIso, nowMs),
+  const [{ days, daysBeyondWindow, readyCount }, recentLocked, quotas] = await Promise.all([
+    fetchUpcomingWindow(supabase, user.id, competition, nowIso, windowEndMs, nowMs),
     fetchLockedRows(supabase, user.id, competition.id, { finished: false }, null),
     getQuotas(supabase, user.id, competition),
   ]);
@@ -326,6 +333,7 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
     competitionId: competition.id,
     competitionType: competition.type,
     days,
+    daysBeyondWindow,
     recentLocked: recentLocked.rows,
     readyCount,
     quotas,
@@ -337,24 +345,31 @@ async function fetchUpcomingWindow(
   userId: string,
   competition: CompetitionRow,
   nowIso: string,
-  windowEndIso: string,
+  windowEndMs: number,
   nowMs: number
-): Promise<{ days: MatchDay[]; readyCount: number }> {
+): Promise<{ days: MatchDay[]; daysBeyondWindow: MatchDay[]; readyCount: number }> {
   // Fenêtre sur scheduled_at UNIQUEMENT, jamais sur matches.status (T4/A8) —
   // le planificateur (30-60 min) laisse un match commencé en SCHEDULED en
   // base près d'une heure ; filtrer sur le statut ferait déborder ou
   // disparaître des matchs au mauvais moment.
+  //
+  // Plus de borne haute ici (28/08/2026, retiré à la demande de
+  // l'utilisateur) : la fenêtre de 3 jours (FORWARD_WINDOW_DAYS) reste le
+  // découpage days/daysBeyondWindow ci-dessous, mais TOUS les matchs à venir
+  // sont désormais chargés — sans ça, un match créé loin à l'avance (NBA
+  // Cup alpha) n'apparaissait NULLE PART avant J-3, pas même dans un repli.
+  // Sans effet en saison réelle (l'horizon de synchro s'arrête à 4 jours,
+  // ce select ne ramenait déjà quasiment jamais rien au-delà de la fenêtre).
   const { data: matchesData } = await supabase
     .from("matches")
     .select("id, series_id, scheduled_at, home_team_id, away_team_id")
     .eq("competition_id", competition.id)
     .not("scheduled_at", "is", null)
     .gt("scheduled_at", nowIso)
-    .lte("scheduled_at", windowEndIso)
     .order("scheduled_at", { ascending: true });
 
   const matches = (matchesData ?? []) as UpcomingMatchDbRow[];
-  if (matches.length === 0) return { days: [], readyCount: 0 };
+  if (matches.length === 0) return { days: [], daysBeyondWindow: [], readyCount: 0 };
 
   const matchIds = matches.map((m) => m.id);
 
@@ -474,9 +489,14 @@ async function fetchUpcomingWindow(
     });
   }
 
-  const days = groupByDay(cards, nowMs);
-  const readyCount = cards.filter((c) => c.viewStatus === "READY").length;
-  return { days, readyCount };
+  const nearCards = cards.filter((c) => Date.parse(c.scheduledAt) <= windowEndMs);
+  const farCards = cards.filter((c) => Date.parse(c.scheduledAt) > windowEndMs);
+  const days = groupByDay(nearCards, nowMs);
+  // daysBeyondWindow volontairement exclu du décompte "prêt" : le bandeau
+  // "Tout valider" ne doit agir que sur ce qui est déjà visible sans dépli.
+  const daysBeyondWindow = groupByDay(farCards, nowMs);
+  const readyCount = nearCards.filter((c) => c.viewStatus === "READY").length;
+  return { days, daysBeyondWindow, readyCount };
 }
 
 function deriveViewStatus(own: OwnPredictionRow | undefined): PredictionViewStatus {
