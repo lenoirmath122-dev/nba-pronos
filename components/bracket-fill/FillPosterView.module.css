@@ -23,6 +23,13 @@
   text-align: right;
 }
 
+.titleLine {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-1);
+}
+
 .title {
   margin: 0;
   font-size: var(--font-size-sm);

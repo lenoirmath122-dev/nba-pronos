@@ -1,6 +1,9 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ScreenShell } from "@/components/nav/ScreenShell";
-import { BaremeTable } from "@/components/regles/BaremeTable";
+import { BracketBaremeContent } from "@/components/regles/BracketBaremeContent";
+import { MatchBaremeGrid } from "@/components/regles/MatchBaremeGrid";
+import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
+import { RankingTiebreakList } from "@/components/regles/RankingTiebreakList";
 import styles from "./page.module.css";
 
 // Règles — route physique UNIQUE, hors des route groups (public)/(app),
@@ -38,38 +41,7 @@ export default async function ReglesPage() {
             validation. Les points du bracket sont totalement indépendants des pronostics de matchs : un
             mauvais bracket ne pénalise jamais tes pronos, et inversement.
           </p>
-          <p className={styles.baremeLabel}>Barème par série</p>
-          <BaremeTable
-            caption="Barème du bracket"
-            columns={["Vainqueur", "Score exact", "Bonne affiche"]}
-            rows={[
-              { label: "1ᵉʳ tour", values: ["25", "+10", "+0"] },
-              { label: "Demi-finales de conf.", values: ["45", "+20", "+15"] },
-              { label: "Finales de conférence", values: ["80", "+30", "+25"] },
-              { label: "Finale NBA", values: ["250", "+50", "+40"] },
-            ]}
-          />
-          <p className={styles.note}>
-            « Bonne affiche » = deviner à l&apos;avance les 2 équipes qui s&apos;affrontent à ce tour —
-            indépendant du vainqueur (une bonne affiche avec le mauvais vainqueur compte quand même, et
-            inversement). Aucune affiche à deviner au 1ᵉʳ tour, les oppositions sont déjà connues. 250 + 50 +
-            40 = 340 points, c&apos;est le score maximum d&apos;une seule série gagnée à la Finale NBA — pas
-            du bracket entier.
-          </p>
-          <p className={styles.baremeLabel}>NBA Cup — même principe, barème différent</p>
-          <BaremeTable
-            caption="Barème du bracket NBA Cup"
-            columns={["Vainqueur", "Bonne affiche"]}
-            rows={[
-              { label: "Quarts de finale", values: ["20", "+0"] },
-              { label: "Demi-finales", values: ["50", "+15"] },
-              { label: "Finale", values: ["150", "+25"] },
-            ]}
-          />
-          <p className={styles.note}>
-            Pas de score exact à prédire pour la NBA Cup — seulement le vainqueur et, à partir des
-            demi-finales, l&apos;affiche. 3 tours au lieu de 4 pour les playoffs classiques.
-          </p>
+          <BracketBaremeContent />
         </section>
 
         <section className={`${styles.section} glass-card`} aria-label="Pronostics de matchs">
@@ -89,36 +61,7 @@ export default async function ReglesPage() {
             (score erroné, mauvaise saisie...) directement depuis « Mes pronos » ou « Résultats ».
           </p>
           <p className={styles.baremeLabel}>Barème par match</p>
-          <div className={styles.statGrid}>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Bon vainqueur</span>
-              <span className={styles.statCardValue}>10</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Écart exact</span>
-              <span className={styles.statCardValue}>+5</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Écart à 1-2 pts</span>
-              <span className={styles.statCardValue}>+3</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Écart à 3-5 pts</span>
-              <span className={styles.statCardValue}>+2</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Écart à 6-9 pts</span>
-              <span className={styles.statCardValue}>+1</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Écart ≥ 10 pts</span>
-              <span className={styles.statCardValue}>+0</span>
-            </div>
-          </div>
-          <p className={styles.note}>
-            Le bonus d&apos;écart ne s&apos;applique que si le vainqueur est correct — un mauvais vainqueur
-            rapporte 0 point, même avec un écart proche. Un prono rapporte donc entre 10 et 15 points.
-          </p>
+          <MatchBaremeGrid />
         </section>
 
         <section className={`${styles.section} glass-card`} aria-label="Paris personnalisés">
@@ -137,31 +80,7 @@ export default async function ReglesPage() {
             « match » au coup d&apos;envoi du match visé.
           </p>
           <p className={styles.baremeLabel}>Barème par difficulté</p>
-          <div className={styles.statGridWide}>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Niveau 1</span>
-              <span className={styles.statCardValue}>5</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Niveau 2</span>
-              <span className={styles.statCardValue}>10</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Niveau 3</span>
-              <span className={styles.statCardValue}>15</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Niveau 4</span>
-              <span className={styles.statCardValue}>20</span>
-            </div>
-            <div className={styles.statCard}>
-              <span className={styles.statCardLabel}>Niveau 5</span>
-              <span className={styles.statCardValue}>25</span>
-            </div>
-          </div>
-          <p className={styles.note}>
-            Un pari perdu ou annulé ne rapporte ni ne coûte rien (0 point, jamais de pénalité).
-          </p>
+          <BetDifficulteGrid />
         </section>
 
         <section className={`${styles.section} glass-card`} aria-label="Bien rédiger un pari">
@@ -250,16 +169,7 @@ export default async function ReglesPage() {
             Un seul classement additionne les points de matchs, de bracket et de paris personnalisés. En cas
             d&apos;égalité, l&apos;ordre de départage est :
           </p>
-          <ul className={styles.list}>
-            <li className={styles.listItem}>Total de points</li>
-            <li className={styles.listItem}>Nombre de bons vainqueurs de match</li>
-            <li className={styles.listItem}>Nombre d&apos;écarts exacts</li>
-            <li className={styles.listItem}>Points de bracket</li>
-          </ul>
-          <p className={styles.note}>
-            Si tout est encore égal après ces 4 critères, l&apos;égalité est assumée — les joueurs partagent
-            le même rang.
-          </p>
+          <RankingTiebreakList />
         </section>
 
         <section className={`${styles.section} glass-card`} aria-label="Badges">

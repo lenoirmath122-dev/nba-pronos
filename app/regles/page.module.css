@@ -83,39 +83,6 @@
   letter-spacing: 0.02em;
 }
 
-.statGrid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: var(--space-2);
-}
-
-.statGridWide {
-  composes: statGrid;
-  grid-template-columns: repeat(5, 1fr);
-}
-
-.statCard {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  padding: var(--space-2) var(--space-3);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-inset);
-}
-
-.statCardLabel {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-muted);
-}
-
-.statCardValue {
-  font-family: var(--font-numeric);
-  font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-}
-
 .note {
   margin: 0;
   padding: var(--space-2) var(--space-3);

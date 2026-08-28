@@ -1,8 +1,11 @@
 "use client";
 
-import { useMemo, useState, useTransition } from "react";
+import { useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
+import { BetWritingTips } from "@/components/regles/BetWritingTips";
+import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
 import {
   BET_CATEGORY_OPTIONS,
   BET_DIFFICULTY_LABELS,
@@ -73,6 +76,7 @@ export function BetForm(props: BetFormProps) {
   // le refermer d'abord). Toujours déplié en édition (pas de sélecteur à
   // dégager, rien à cacher).
   const [isExpanded, setIsExpanded] = useState(isEdit);
+  const descriptionId = useId();
 
   const seriesById = useMemo(
     () => new Map(props.bootstrap.seriesOptions.map((s) => [s.seriesId, s])),
@@ -270,16 +274,26 @@ export function BetForm(props: BetFormProps) {
             </div>
           )}
 
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Énoncé</span>
+          <div className={styles.field}>
+            <div className={styles.fieldLabelRow}>
+              <label htmlFor={descriptionId} className={styles.fieldLabel}>
+                Énoncé
+              </label>
+              <RuleHelpButton title="Bien rédiger un pari" label="Aide pour rédiger un pari">
+                <BetWritingTips />
+                <p className={styles.helpSubLabel}>Barème par difficulté</p>
+                <BetDifficulteGrid />
+              </RuleHelpButton>
+            </div>
             <textarea
+              id={descriptionId}
               className={styles.textarea}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ex. Match 2 : Jaylen Brown marque 50+"
               rows={3}
             />
-          </label>
+          </div>
 
           <label className={styles.field}>
             <span className={styles.fieldLabel}>Catégorie</span>

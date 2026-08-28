@@ -3,6 +3,8 @@
 import { usePosterToggle } from "@/lib/hooks/usePosterToggle";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import type { BracketFillData } from "@/lib/queries/bracket-fill";
+import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
+import { BracketBaremeContent } from "@/components/regles/BracketBaremeContent";
 import { RoundTabs } from "./RoundTabs";
 import { BracketFillBoard } from "./BracketFillBoard";
 import { FillPosterView } from "./FillPosterView";
@@ -33,7 +35,12 @@ export function BracketFillView({ data, activeRoundKey }: BracketFillViewProps) 
   return (
     <div className={`${styles.page} photo-page`}>
       <div className={`${styles.header} glass-card`}>
-        <h1 className={styles.title}>Mon bracket</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>Mon bracket</h1>
+          <RuleHelpButton title="Barème du bracket" label="Comment est noté le bracket">
+            <BracketBaremeContent competitionType={data.competitionType} />
+          </RuleHelpButton>
+        </div>
         <button type="button" className={styles.trigger} onClick={enter}>
           Voir en poster ↗
         </button>

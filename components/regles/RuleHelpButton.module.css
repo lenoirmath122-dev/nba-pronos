@@ -1,0 +1,49 @@
+/* Petit et voyant (demandé par l'utilisateur, 28/08/2026 — le 1er essai
+   44px/contour discret ne l'était pas assez) : pastille pleine couleur
+   accent plutôt qu'un contour au repos, 22px visibles. Zone tactile
+   étendue à --tap-target-min via ::after (inset négatif, invisible) plutôt
+   que d'agrandir le bouton lui-même — garde le §11.3 (cible tactile mini)
+   sans grossir la puce visuellement. */
+.button {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  opacity: 0.7;
+  cursor: pointer;
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  inset: calc((var(--tap-target-min) - 22px) / -2);
+}
+
+.button:hover,
+.button:focus-visible {
+  background: var(--color-accent-hover);
+  opacity: 1;
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}

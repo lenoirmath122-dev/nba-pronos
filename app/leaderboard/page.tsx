@@ -6,6 +6,8 @@ import { LeagueScopeChips } from "@/components/leaderboard/LeagueScopeChips";
 import { LeaderboardTable } from "@/components/leaderboard/LeaderboardTable";
 import { StickyMeBar } from "@/components/leaderboard/StickyMeBar";
 import { EmptyState } from "@/components/home/EmptyState";
+import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
+import { RankingTiebreakList } from "@/components/regles/RankingTiebreakList";
 import styles from "./page.module.css";
 
 // Classement — route physique UNIQUE, hors des route groups (public)/(app)
@@ -75,7 +77,12 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
         ) : (
           <>
             <div className={`${styles.header} glass-card`}>
-              <p className={styles.title}>Classement</p>
+              <div className={styles.titleRow}>
+                <p className={styles.title}>Classement</p>
+                <RuleHelpButton title="Ordre de départage" label="Comment sont départagées les égalités">
+                  <RankingTiebreakList />
+                </RuleHelpButton>
+              </div>
               <p className={styles.competitionName}>
                 {data.competitionName}
                 {data.scopeLeagueName ? ` — ${data.scopeLeagueName}` : ""}

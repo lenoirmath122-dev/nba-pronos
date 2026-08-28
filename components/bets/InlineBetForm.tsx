@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
 import {
@@ -11,6 +11,9 @@ import {
 } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { ModalDialog } from "@/components/ui/ModalDialog";
+import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
+import { BetWritingTips } from "@/components/regles/BetWritingTips";
+import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
 import { DeleteBetButton } from "./DeleteBetButton";
 import styles from "./InlineBetForm.module.css";
 
@@ -84,6 +87,7 @@ export function InlineBetForm({
   // DISTINCTE de celle du prono du même match (`bet:` en préfixe) : les deux
   // formulaires ne doivent jamais partager le même verrou.
   const { markDirty, clearDirty } = useUnsavedGuard(`bet:${matchId ?? seriesId}`);
+  const descriptionId = useId();
 
   useEffect(() => {
     if (!onFieldsChange) return;
@@ -175,16 +179,26 @@ export function InlineBetForm({
 
   const fields = (
     <>
-      <label className={styles.field}>
-        <span className={styles.fieldLabel}>Énoncé</span>
+      <div className={styles.field}>
+        <div className={styles.fieldLabelRow}>
+          <label htmlFor={descriptionId} className={styles.fieldLabel}>
+            Énoncé
+          </label>
+          <RuleHelpButton title="Bien rédiger un pari" label="Aide pour rédiger un pari">
+            <BetWritingTips />
+            <p className={styles.helpSubLabel}>Barème par difficulté</p>
+            <BetDifficulteGrid />
+          </RuleHelpButton>
+        </div>
         <textarea
+          id={descriptionId}
           className={styles.textarea}
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Ex. Un joueur des Knicks marque 30+"
           rows={2}
         />
-      </label>
+      </div>
 
       <div className={styles.selectRow}>
         <select

@@ -6,6 +6,8 @@ import { validateBracket } from "@/lib/actions/bracket-fill";
 import type { BracketFillData, BracketFillSeries } from "@/lib/queries/bracket-fill";
 import { buildMirroredPosterColumns, type PosterColumn } from "@/components/bracket/posterColumns";
 import { TreeConnectors } from "@/components/bracket/TreeConnectors";
+import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
+import { BracketBaremeContent } from "@/components/regles/BracketBaremeContent";
 import { FillSeriesCard } from "./FillSeriesCard";
 import { ResetBracketButton } from "./ResetBracketButton";
 import styles from "./FillPosterView.module.css";
@@ -105,7 +107,12 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
           × Quitter
         </button>
         <div className={styles.headerTexts}>
-          <p className={styles.title}>Mon bracket</p>
+          <div className={styles.titleLine}>
+            <p className={styles.title}>Mon bracket</p>
+            <RuleHelpButton title="Barème du bracket" label="Comment est noté le bracket">
+              <BracketBaremeContent competitionType={data.competitionType} />
+            </RuleHelpButton>
+          </div>
           <p className={styles.progress}>
             {data.filledCount}/{data.totalCount} séries
           </p>

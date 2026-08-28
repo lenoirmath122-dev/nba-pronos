@@ -1,0 +1,92 @@
+/* Styles partagés par les blocs de contenu réutilisables (regles/*Grid.tsx,
+   *List.tsx, *Tips.tsx) — même fichier CSS Module importé par plusieurs
+   composants, pour ne tenir la charte visuelle (puces, notes, grilles de
+   barème) qu'à un seul endroit malgré des composants distincts. Copié depuis
+   app/regles/page.module.css (28/08/2026, extraction pour réutilisation dans
+   les pop-up d'aide RuleHelpButton) — page.module.css garde ses propres
+   déclarations pour les parties de /regles non extraites (Ligues, Badges,
+   Superlatifs, listes de "Bien rédiger un pari"...). */
+
+.body {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.baremeLabel {
+  margin: var(--space-1) 0 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.listItem {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.listItem::before {
+  content: "";
+  flex-shrink: 0;
+  width: 5px;
+  height: 5px;
+  margin-top: 0.5em;
+  border-radius: var(--radius-sm);
+  background: var(--color-accent);
+}
+
+.statGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-2);
+}
+
+.statGridWide {
+  composes: statGrid;
+  grid-template-columns: repeat(5, 1fr);
+}
+
+.statCard {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-inset);
+}
+
+.statCardLabel {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.statCardValue {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.note {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-inset);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}

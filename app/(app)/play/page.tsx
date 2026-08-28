@@ -2,6 +2,8 @@ import { getPlayUpcoming } from "@/lib/queries/play";
 import { EmptyState } from "@/components/home/EmptyState";
 import { PlayTabs } from "@/components/play/PlayTabs";
 import { BracketEntry } from "@/components/play/BracketEntry";
+import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
+import { MatchBaremeGrid } from "@/components/regles/MatchBaremeGrid";
 import { QuotaBanner } from "@/components/my-bets/QuotaBanner";
 import { ValidateAllBanner } from "@/components/play/ValidateAllBanner";
 import { MatchDayGroup } from "@/components/play/MatchDayGroup";
@@ -56,7 +58,12 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
   return (
     <div className={`${styles.page} photo-page`}>
       <div className={`${styles.header} glass-card`}>
-        <h1 className={styles.title}>Jouer</h1>
+        <div className={styles.titleRow}>
+          <h1 className={styles.title}>Jouer</h1>
+          <RuleHelpButton title="Barème par match" label="Comment sont notés les pronos">
+            <MatchBaremeGrid />
+          </RuleHelpButton>
+        </div>
         <BracketEntry />
       </div>
       <PlayTabs active="UPCOMING" />
