@@ -88,6 +88,14 @@ export default async function AdminDashboardPage() {
             </span>
           </Link>
         </li>
+        <li>
+          <Link href="/admin/bug-reports" className={styles.linkEntryActive}>
+            Signalements
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
       </ul>
 
       <RecalculateButton disabled={!data.competitionId} />

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { TabBar } from "@/components/nav/TabBar";
+import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
 import styles from "./layout.module.css";
 
@@ -24,6 +25,7 @@ export default async function AppLayout({
     <div className={styles.shell}>
       <UnsavedGuardProvider>
         <main className={styles.content}>{children}</main>
+        <BugReportButton />
         <TabBar />
       </UnsavedGuardProvider>
     </div>
