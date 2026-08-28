@@ -4,6 +4,56 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **NBA Cup — Alpha Potes : compétition créée et les 4 quarts préparés
+> (28/08/2026)** -- reprise du plan du 27/08 (voir entrée plus bas pour le
+> détail complet du mécanisme). "Playoffs NBA (simulation)" archivée,
+> compétition `Alpha NBA Cup` créée (`12917cdd-d48b-455b-99d4-480cea751426`,
+> type `NBA_CUP`, statut `ACTIVE`) avec les 4 duels de quarts validés le
+> 27/08 (Celtics-Knicks, Lakers-Warriors, Nuggets-Thunder, Bucks-76ers).
+>
+> **Calendrier retenu (ajusté avec l'utilisateur le 28/08, remplace "2
+> matchs/jour" ambigu de la 1ère version)** : 2 quarts le 20/09 (19h/21h
+> Paris), 2 quarts le 21/09 (19h/21h), les 2 demies le 22/09 (19h/21h), la
+> finale le 23/09 (20h).
+>
+> **Les 4 matchs de quarts sont créés** (`SCHEDULED`, invisibles --
+> `nba-cup-create-match.mjs`), chacun lié à un vrai match NBA de SAISON
+> RÉGULIÈRE 2024-25 (playoffs volontairement écartés cette fois : trop
+> mémorables pour des potes qui suivent la NBA, risque de reconnaître le
+> match et deviner le résultat à l'avance -- pas un risque identifié le
+> 27/08, ajouté le 28/08) :
+>
+> | Série | Match réel (game_id) | Score | Date/heure fictive (Paris) |
+> |---|---|---|---|
+> | Celtics vs Knicks (`6d02bcae-21fb-468a-a9dd-199451f4c697`) | `0022500320` | BOS 123-117 NYK | 20/09 19h -- match `48ce2a41-9722-4869-befc-958d5b8db9ff` |
+> | Lakers vs Warriors (`209e1db0-d4bf-4f09-9143-202b4f0909ab`) | `0022400731` | LAL 120-112 GSW | 20/09 21h -- match `2004529d-220e-4b3c-a2e6-deacb5d0ffdf` |
+> | Nuggets vs Thunder (`58223e8b-b6e1-4b7a-aa0a-e245e130ec78`) | `0022400936` | OKC 127-140 DEN | 21/09 19h -- match `b07a7494-9478-4ea9-a99c-f4d5bb9ac8c7` |
+> | Bucks vs 76ers (`8744ee03-ea14-4455-85bc-b2c58c9d74d1`) | `0022400594` | MIL 117-109 PHI | 21/09 21h -- match `4f1abecf-f851-41aa-a5d8-73d463a783a4` |
+>
+> **Nouveau script `nba-cup-list-series.mjs`** (lecture seule, même famille)
+> -- retrouve la compétition NBA_CUP active et ses séries (avec noms
+> d'équipe) sans avoir à copier des identifiants depuis l'admin. **Nouveau
+> script `nba-cup-real-rosters.mjs`** (lecture seule) -- pour un ou
+> plusieurs `game_id` réels, liste les joueurs ayant RÉELLEMENT joué (donc
+> les seuls valables pour un pari perso/pronostic sur ce match fictif, même
+> si un joueur a changé d'équipe depuis). Effectifs des 4 quarts déjà générés
+> et sauvegardés dans `NBA_CUP_ALPHA_EFFECTIFS.md` (même dossier) -- **à
+> transmettre aux testeurs avant/au lancement de chaque quart**, sans quoi
+> un pari sur un joueur absent du vrai match ne pourra pas se résoudre
+> normalement (point soulevé par l'utilisateur le 28/08, pas anticipé dans
+> le plan du 27/08).
+>
+> **Reste à faire le jour J (à partir du 20/09)** : pour chaque match, à
+> l'heure prévue, `node --env-file=.env.local scripts/nba-cup-reveal-match.mjs
+> --match=<id>` (commandes exactes listées dans le tableau ci-dessus/à la
+> sortie de chaque création), puis résoudre les paris perso tout de suite
+> via `/api/resolve-bets` (curl affiché par le script) plutôt que d'attendre
+> le cron quotidien. Les demies ne sont créables qu'une fois les 2 quarts
+> correspondants révélés (équipes remplies automatiquement par la cascade
+> d'avancement) -- refaire `nba-cup-find-real-game.mjs` +
+> `nba-cup-create-match.mjs` + `nba-cup-real-rosters.mjs` pour chacune à ce
+> moment-là, même logique que les quarts.
+
 > **Nom de marque et logo NON validés à 100 % (27/08/2026)** -- un cadrage
 > business/marque/communication produit en session Cowork séparée
 > (`Cadrage/panier_ballon_cadrage_business_communication.md`) propose le
