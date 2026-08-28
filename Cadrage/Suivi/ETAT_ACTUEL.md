@@ -5,7 +5,86 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/08/2026 (suite) — **§2.126 : audit et
+> Dernière mise à jour : session du 28/08/2026 (suite, fin de journée) —
+> **§2.127 : demies/finale NBA Cup alpha pré-sélectionnées, visuels
+> Instagram convertis en 4:5, stratégie hashtags intégrée, nouvelle
+> fonctionnalité "Signaler" (bug report) + 2 bugs mobiles trouvés et
+> corrigés, confirmation du mot de passe à l'inscription.**
+>
+> **NBA Cup alpha — demies/finale pré-sélectionnées** (commit `dafc9a5`) —
+> possible par anticipation : les 4 quarts empruntent des vrais matchs déjà
+> joués, donc leurs vainqueurs sont déjà déterministes (Celtics, Lakers,
+> Nuggets, Bucks). Appariement du bracket vérifié en base (`series.
+> slot_index`/`next_series_id`) avant de proposer les candidats à
+> l'utilisateur : Demi 1 Celtics-Lakers, Demi 2 Nuggets-Bucks, Finale
+> pressentie Celtics-Nuggets. Vrais matchs choisis et documentés
+> (`GAPS_OUVERTS.md` : game_id + ID de série + marche à suivre exacte pour
+> le jour J) mais PAS ENCORE créés en base — `nba-cup-create-match.mjs`
+> exige que les équipes de la série soient déjà remplies par la cascade
+> d'avancement, qui n'a lieu qu'à la révélation du tour précédent.
+> `NBA_CUP_ALPHA_EFFECTIFS.md` complété pour les 2 demies + la finale.
+>
+> **Visuels Instagram — polices installées, format converti en 4:5** :
+> Oswald/Sora installées pour l'utilisateur (zip Google Fonts déposé dans
+> `Cadrage/DA/`, script PowerShell, install par utilisateur Windows sans
+> droits admin) — 1er essai raté (bug de variable réutilisée dans une
+> boucle, associait le mauvais nom à 4 polices sur 5 dans le registre ; un
+> appel `SendMessage` de notification système a aussi timeout) corrigé par
+> un mapping statique fichier→nom. `post-1.svg` audité contre un RENDU RÉEL
+> (Chromium headless via Playwright, jamais une estimation de largeur) :
+> le titre débordait de 18px à droite (84px trop large pour ce texte précis),
+> corrigé à 81px. Puis converti, à la demande de l'utilisateur, de 1080×1080
+> (carré) à 1080×1350 (portrait 4:5) — bloc bas décalé de +270px en bloc,
+> même règle des 88px du bas ; l'espace vide qui en résulte (~700px) est un
+> choix de composition assumé (ancrage bas, pas un centrage vertical comme
+> le ferait le format Story) confirmé avec l'utilisateur. `post-2.svg` et
+> `post-gabarit.svg` alignés au même format 1080×1350 pour rester des
+> gabarits cohérents. `SPEC_VISUELS_INSTAGRAM.md` réécrite en conséquence,
+> avec une note explicite : 84px n'est PAS une garantie universelle pour un
+> titre 2 lignes, à revérifier au cas par cas avec un rendu réel. (Tous ces
+> fichiers vivent dans `Cadrage/DA/`, gitignored — aucun commit.)
+>
+> **Stratégie hashtags Instagram** — recherche déléguée à un outil externe
+> avec accès web (prompt rédigé par moi, fourni par l'utilisateur à un
+> outil tiers, résultat sauvegardé dans `Cadrage/DA/instagram/strategie-
+> hashtags-instagram-panier-ballon.md`, gitignored) plutôt qu'inventée sans
+> vraies données. Intégrée dans les légendes des Posts 1/2/3 du doc business
+> (commit `4ae5f24`) : `#NBAPlayoffs` volontairement écarté des posts liés
+> à l'alpha (format NBA Cup fictif, pas les vrais playoffs) au profit de
+> `#NBACup`, pour ne pas contredire le message du Post 3 qui explique
+> justement cette distinction.
+>
+> **Nouvelle fonctionnalité : bouton "Signaler" (bug report)** — demandé
+> par l'utilisateur pour l'alpha/bêta (crainte réelle qu'un petit souci ne
+> remonte jamais par DM — un bouton toujours visible capture ce qui se
+> perdrait sinon). Migration #33 (`bug_reports`) : table + RLS, distincte
+> de `correction_requests` (qui conteste un score déjà calculé, aucune
+> logique de scoring en jeu ici). Bouton flottant sur tout l'espace joueur,
+> texte libre uniquement (pas de pièce jointe, décision utilisateur),
+> contexte capturé automatiquement (joueur/écran/heure). File admin
+> `/admin/bug-reports` (onglets Ouverts/Résolus, "Marquer résolu" + note
+> optionnelle). Commit `d2d914d`.
+>
+> **2 bugs réels trouvés en testant sur mobile, corrigés dans la foulée**
+> (commit `dfe7267`) : le bouton était invisible sur Classement/Bracket/
+> Règles/le profil joueur public — ces 4 écrans vivent hors du groupe
+> `(app)` (routes physiques partagées visiteur/connecté, `ScreenShell.tsx`
+> choisit leur nav), `app/(app)/layout.tsx` ne les couvre pas — corrigé en
+> posant le bouton dans `ScreenShell.tsx` à la place, uniquement côté
+> connecté. Le clic zoomait l'écran sur mobile : le textarea de la pop-up
+> était à 14px, sous le seuil de 16px qui déclenche le zoom automatique
+> iOS Safari au focus d'un champ (`autoFocus` posé dessus) — corrigé en
+> 16px (`--font-size-base`).
+>
+> **Signup : champ de confirmation du mot de passe** (même commit
+> `dfe7267`, demandé par l'utilisateur) — vérification purement client
+> (`onSubmit`), aucun changement de `lib/auth/actions.ts` : le champ
+> `confirmPassword` n'est jamais lu côté serveur.
+>
+> `tsc --noEmit`/`eslint .`/`vitest` (37/37)/`next build` propres à chaque
+> étape de code de cette session.
+>
+> Dernière mise à jour précédente : session du 28/08/2026 (suite) — **§2.126 : audit et
 > correction de `/regles` contre le code réel, bug de puces corrigé,
 > boutons d'aide contextuels "?" (RuleHelpButton) posés sur 5 écrans.**
 >
@@ -76,100 +155,16 @@
 > (`vitest`/`next build` pas relancés cette fois — aucun changement de
 > logique de scoring, uniquement de l'UI/contenu). Commit `316b23d`.
 >
-> Dernière mise à jour précédente : session du 28/08/2026 — **§2.125 : notif de chat en
-> icône, réorg de `Cadrage/`, préparation complète de l'alpha NBA Cup, 2 bugs
-> réels trouvés en la préparant, barres de scroll masquées.** Session longue,
-> plusieurs chantiers indépendants demandés au fil de l'eau.
->
-> **Notification de canal de chat** (`ChatNotificationToggle.tsx`) :
-> simplifiée en 2 temps à la demande de l'utilisateur — menu "..." à 2
-> boutons → bouton unique dont le libellé bascule → icône seule (nouveau
-> `NotificationBellIcon`, `components/icons/chat-icons.tsx`, cloche barrée
-> si désactivées, libellé en `aria-label`/`title`). Au passage, **bug réel
-> corrigé** : `.row.glass-card` (thème photo, `backdrop-filter`) crée un
-> contexte d'empilement par ligne, le panneau de notif d'une ligue pouvait
-> passer sous la ligne suivante — `z-index` qui monte via
-> `:has(:focus-within)`. Commits `3332159`/`4705508`.
->
-> **Bug réel : policy UPDATE manquante sur `push_subscriptions`** — l'upsert
-> de `savePushSubscription()` bascule en `ON CONFLICT DO UPDATE` dès qu'un
-> abonnement existe déjà pour l'appareil (réactivation), échouait faute de
-> policy UPDATE (seules SELECT/INSERT/DELETE existaient depuis la migration
-> #15). Migration `20260828100000_push_subscriptions_update_policy.sql`,
-> commit `e7b438b`.
->
-> **Réorganisation de `Cadrage/`** (demandée par l'utilisateur) : `Proto/`
-> mélangeait le suivi vivant avec le cadrage fonctionnel figé et des
-> scripts SQL du prototype jetable, sous un nom qui ne reflétait plus son
-> contenu. Scindé en `Suivi/` (ce fichier + GAPS_OUVERTS/JOURNAL_SESSIONS/
-> BACKLOG_V1 + les specs/audits récents), `Fonctionnel/` (nouveau —
-> spec fonctionnelle, `decisions_0_2_*`, `PREP_SPEC_TECHNIQUE_V1`... toujours
-> cités comme référence), `OLD/` (+ 8 scripts SQL du prototype, confirmés
-> par leur en-tête avant déplacement), `Business/` (nouveau — le doc
-> business, seul à la racine de `Cadrage/` jusqu'ici). `SPEC_TECHNIQUE_V0.1_1.md`
-> déplacé vers `V1/` (index maître des specs T1-T7, mal rangé depuis le
-> début). Toutes les références vivantes à l'ancien chemin corrigées (doc
-> business, `SPEC_CHAT_V0_1.md`, `BACKLOG_V1.md`, une migration Supabase,
-> un script, `PublicNav.tsx`, `generate_readme.py`) — `JOURNAL_SESSIONS.md`/
-> `GAPS_OUVERTS.md`/ce fichier volontairement PAS corrigés rétroactivement
-> (conventions propres de non-édition). `Stats/`/`DA/` non touchés
-> (`Stats/` est un service actif référencé par un workflow GitHub Actions
-> quotidien — risque réel de casse). Commits `291215f`/`14f46e4`.
->
-> **Domaine + Vercel** : `panierballon.fr`/`.com` achetés et pointés vers le
-> projet Vercel `nba-pronos` (`.fr` principal, `.com` en redirection 308) —
-> fait par l'utilisateur, guidé pas à pas (DNS Gandi, enregistrement `A`
-> `216.198.79.1`, conflit avec l'enregistrement de parking par défaut de
-> Gandi résolu). Doc business (`Cadrage/Business/...md`) rattrapé au passage
-> (n'avait jamais été committé) : logo illustré acté comme LE logo actuel
-> mais explicitement provisoire (piste wordmark+monogramme gardée en
-> réserve), pseudo Instagram `@panierballon.app` noté, checklist domaine
-> cochée, point SEO ajouté pour plus tard (pas urgent en alpha fermée).
->
-> **Compétition fictive NBA Cup — alpha potes, ENTIÈREMENT PRÉPARÉE**
-> (reprise du plan du 27/08, voir `GAPS_OUVERTS.md` pour le détail complet
-> avec tous les identifiants) : "Playoffs NBA (simulation)" archivée,
-> compétition `Alpha NBA Cup` créée avec les 4 duels de quarts validés
-> (Celtics-Knicks, Lakers-Warriors, Nuggets-Thunder, Bucks-76ers). Les 4
-> matchs de quarts sont créés (`SCHEDULED`, invisibles), chacun lié à un
-> vrai match NBA de SAISON RÉGULIÈRE 2024-25 — playoffs volontairement
-> écartés cette fois (trop mémorables pour des potes qui suivent la NBA,
-> risque de reconnaître le match et deviner le résultat, pas anticipé le
-> 27/08). Calendrier ajusté avec l'utilisateur : 2 quarts le 20/09 (19h/21h
-> Paris), 2 le 21/09, demies le 22/09, finale le 23/09. 2 nouveaux scripts
-> jetables (lecture seule) : `nba-cup-list-series.mjs` (retrouve compétition/
-> séries sans copier d'identifiants depuis l'admin), `nba-cup-real-rosters.mjs`
-> (liste les joueurs ayant RÉELLEMENT joué un vrai match donné — seuls
-> valables pour un pari perso/pronostic sur le match fictif correspondant,
-> point soulevé par l'utilisateur). Fiche effectifs des 4 quarts générée
-> (`NBA_CUP_ALPHA_EFFECTIFS.md`), à transmettre aux testeurs avant chaque
-> quart. Commit `974856d`.
->
-> **Bug réel trouvé en testant l'alpha : matchs créés loin à l'avance
-> invisibles dans "Mes pronos"** — l'écran de pronostic vainqueur+écart ne
-> montre qu'une fenêtre glissante de 3 jours (décision fonctionnelle 0.2.3,
-> couplée à l'horizon de synchro du vrai calendrier à 4 jours — jamais un
-> problème en saison réelle). Les 4 quarts NBA Cup, créés 3 semaines à
-> l'avance, restaient invisibles jusqu'à J-3 sans aucune trace qu'ils
-> existent. Vérifié que paris perso et bracket n'étaient PAS concernés
-> (aucun filtre sur la fenêtre). Corrigé sans créer de fenêtre spécifique à
-> NBA_CUP (option écartée par l'utilisateur au profit d'un repli général) :
-> la requête ne borne plus `scheduled_at` en haut, les matchs au-delà de
-> J+3 sont regroupés dans `daysBeyondWindow` et affichés dans un `<details>`
-> replié ("Dans plus de 3 jours (N)"), exclus du compteur "prêt"/bandeau
-> "Tout valider". Libellé de jour étendu avec mois+année ("Dimanche 20" →
-> "Dimanche 20 sept. 2026", ambigu sans ça au-delà de la fenêtre proche).
-> `tsc`/`eslint`/`vitest` (37/37)/`next build` propres, pas vérifié au clic
-> (pas d'identifiants de test). Commits `609af66`/`0f7c617`.
->
-> **Barres de scroll masquées partout** (demandé par l'utilisateur — rendu
-> "app native" plutôt que web, une barre toujours réservée décale l'écran
-> entre une page qui scrolle et une qui n'en a pas besoin) :
-> `scrollbar-width: none` (Firefox) + `::-webkit-scrollbar { display: none }`
-> (Chrome/Safari/Edge), appliqué globalement (`*`) dans `globals.css` — le
-> scroll reste entièrement fonctionnel, seule l'indication visuelle
-> disparaît. Confirmé fonctionnel par l'utilisateur en conditions réelles.
-> Commit `e9ed76a`.
+> Plus tôt (session du 28/08/2026, tôt) — **§2.125 : notif de chat en icône
+> (bug de stacking corrigé au passage), policy UPDATE manquante sur
+> `push_subscriptions` corrigée, réorganisation de `Cadrage/` (`Proto/` →
+> `Suivi/`/`Fonctionnel/`/`OLD/`/`Business/`), domaine `panierballon.fr`
+> acheté et pointé vers Vercel, compétition NBA Cup alpha entièrement
+> préparée (4 quarts créés, effectifs générés), bug réel corrigé (matchs
+> créés loin à l'avance invisibles dans "Mes pronos" — fenêtre glissante de
+> 3 jours remplacée par un repli `daysBeyondWindow`), barres de scroll
+> masquées partout. Commits `3332159`/`4705508`/`e7b438b`/`291215f`/
+> `14f46e4`/`974856d`/`609af66`/`0f7c617`/`e9ed76a`.
 >
 > Plus tôt (session du 27/08/2026) — **§2.124 : badges épinglés dans le
 > bandeau du profil, codé et vérifié au clic** (`users.pinned_badge_ids`,

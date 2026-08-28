@@ -12065,3 +12065,228 @@ tsc --noEmit et eslint propres sur tout le dépôt à chaque étape. vitest/
 next build pas relancés cette fois (aucun changement de logique de
 scoring, uniquement de l'UI/du contenu affiché). Commit 316b23d.
 ```
+
+## NBA Cup alpha : demies et finale pré-sélectionnées par anticipation (28/08/2026)
+
+```text
+Suite de la préparation de l'alpha NBA Cup : l'utilisateur a demandé si les
+feuilles de matchs des demies/finale avaient déjà été récupérées. Réponse
+honnête : non, le plan du 27/08 prévoyait de le faire le jour J pour
+chaque tour (après révélation du tour précédent), pas à l'avance.
+
+En creusant pour répondre, réalisation utile : les 4 quarts empruntent des
+VRAIS matchs déjà joués (saison régulière 2024-25), donc leurs vainqueurs
+sont déjà connus aujourd'hui -- rien n'empêche de pré-sélectionner les
+matchs des tours suivants dès maintenant, plutôt que de chercher dans
+l'urgence le 22/09. Vérifié l'appariement exact du bracket en base
+(script jetable, lecture de series.slot_index/next_series_id) avant de
+proposer quoi que ce soit : Demi 1 = vainqueur Celtics-Knicks vs vainqueur
+Lakers-Warriors, Demi 2 = vainqueur Nuggets-Thunder vs vainqueur
+Bucks-76ers. Avec les résultats déjà fixés des quarts (Celtics, Lakers,
+Nuggets, Bucks vainqueurs), ça donne Demi 1 = Celtics vs Lakers, Demi 2 =
+Nuggets vs Bucks, Finale pressentie = Celtics vs Nuggets.
+
+nba-cup-find-real-game.mjs relancé pour ces 3 matchs (2 candidats
+proposés à chaque fois, l'utilisateur a choisi) : Demi 1 = BOS 111-101 LAL
+(8/03/2025), Demi 2 = DEN 127-117 MIL (26/03/2025), Finale = BOS 110-103
+DEN (2/03/2025). Effectifs générés (nba-cup-real-rosters.mjs) et ajoutés
+à NBA_CUP_ALPHA_EFFECTIFS.md.
+
+Vérifié que nba-cup-create-match.mjs ne peut PAS encore créer ces matchs
+en base : le script exige que series.team1_id/team2_id soient déjà
+remplis, ce qui n'arrive qu'à la révélation du tour précédent (cascade
+d'avancement automatique). Donc uniquement les VRAIS MATCHS sont
+pré-choisis et documentés (game_id + ID de série + commandes exactes dans
+GAPS_OUVERTS.md) -- la création effective des matchs fictifs reste pour
+le jour J, mais sans plus rien à chercher à ce moment-là.
+
+Au passage, confirmation demandée par l'utilisateur sur la résolution des
+paris : pronos/bracket se résolvent automatiquement et immédiatement dans
+nba-cup-reveal-match.mjs (rejoue le scoring sur place) ; les paris
+personnalisés IA, eux, ne sont PAS résolus par ce script -- ils attendent
+le cron quotidien (refresh-stats-supabase.yml, 10h UTC) sauf si on lance
+à la main la commande curl vers /api/resolve-bets que le script affiche
+en sortie. Noté pour ne pas l'oublier le jour J.
+
+Commit dafc9a5.
+```
+
+## Visuels Instagram : polices installées, post-1 corrigé puis converti en 4:5 (28/08/2026)
+
+```text
+Suite du chantier visuels. L'utilisateur voulait éditer les SVG dans
+Illustrator et a demandé la liste des polices à télécharger : Oswald
+(600/700) et Sora (400/500/600), déjà documentées dans
+SPEC_VISUELS_INSTAGRAM.md -- rien de nouveau à chercher.
+
+Puis demande d'installer les polices directement (zip Google Fonts déposé
+par l'utilisateur dans Cadrage/DA/). Fait via un script PowerShell (copie
+dans %LOCALAPPDATA%\Microsoft\Windows\Fonts + clé de registre HKCU, sans
+droits admin). 1er essai raté : une variable réutilisée dans une boucle
+gardait le nom de la 1ère police après l'échec d'un appel
+New-Object Windows.Media.GlyphTypeface sur les suivantes, donc les 5
+polices se sont retrouvées enregistrées sous le même mauvais nom dans le
+registre ; en plus, un SendMessage vers HWND_BROADCAST (notifier Windows
+du changement de polices) a bloqué 2 minutes avant de timeout -- ce
+n'est PAS nécessaire pour que Illustrator détecte les polices au
+prochain lancement. Corrigé : nettoyage de la mauvaise entrée de
+registre, puis un mapping STATIQUE fichier -> nom d'affichage (les 5
+noms étaient déjà connus, pas besoin de relire les métadonnées police
+par police), sans le SendMessage bloquant. Vérifié : les 5 fichiers
+présents avec les bonnes tailles, les 5 entrées de registre correctes.
+
+L'utilisateur a ensuite modifié post-1.svg dans Illustrator et partagé un
+export PNG en demandant un avis. Deux points soulevés : le "playoffs"
+dans le sous-titre (résolu plus tôt dans la session, voir plus bas) et
+surtout une demande explicite de vérifier les marges de sécurité (70px)
+pour l'aperçu recadré de la grille Instagram. Mesuré au pixel près avec
+Chromium headless (Playwright, polices installées chargées via
+document.fonts.ready) plutôt qu'à l'œil ou par calcul de largeur
+moyenne de caractère -- la 1ère ligne du titre ("La nouvelle ligue de
+pronos", Oswald Bold 84px) débordait à 51,9px de marge droite au lieu
+des 70-85px visés, alors qu'une estimation rapide aurait laissé croire
+que ça tenait. Corrigé en réduisant le titre à 81px (imperceptible,
+marge remontée à 85,2px) -- rien d'autre touché (positions, décor, fond).
+Résultat montré via un artifact de comparaison avant/après avec les
+repères de marge superposés sur les captures.
+
+Rebondissement : l'utilisateur a ensuite demandé de convertir carrément
+le canvas en 1080x1350 (portrait 4:5, le format qui s'affiche en entier
+dans le feed Instagram une fois cliqué), avec une marge de sécurité de
+35px cette fois (déjà largement couverte par les positions existantes,
+aucun ajustement horizontal supplémentaire nécessaire). Fait : viewBox et
+rect de fond passés à 1080x1350, tout le bloc bas (kicker/titre/
+sous-titre/trait) décalé de +270px EN BLOC pour rester à 88px du bas du
+nouveau cadre -- même règle que le format carré, juste recalculée sur la
+nouvelle hauteur. Le bandeau logo/wordmark et le décor (anneau,
+dégradé) sont restés inchangés, déjà ancrés au coin haut, valides sur un
+cadre plus haut sans y toucher. Vérifié au pixel + rendu visuel : tout
+tient, aucun débordement, mais un gros espace vide au milieu (~700px,
+plus de la moitié du cadre) -- signalé explicitement à l'utilisateur
+comme un vrai choix de composition (ancrage bas fidèle à la convention
+déjà documentée) plutôt qu'un oubli, avant de le laisser tel quel.
+Confirmé par l'utilisateur : "ça fonctionne mieux comme ça, on garde".
+
+Puis demande de propager ce changement aux autres gabarits pour rester
+cohérent : post-2.svg (structure différente de post-1.svg -- pas un
+export Illustrator avec classes .st*, du SVG écrit à la main avec des
+classes nommées kicker/headline/subhead/wordmark et des positions par
+dy relatifs) et post-gabarit.svg convertis avec la même règle de
+décalage +270px, vérifiés au pixel (aucun des deux n'avait de problème
+de marge, textes plus courts que celui de post-1). SPEC_VISUELS_
+INSTAGRAM.md réécrite en conséquence : Format 2 passé de 1080x1080 à
+1080x1350, note explicite ajoutée que "titre à 84px" n'est PAS une
+garantie universelle -- à revérifier au cas par cas avec un vrai rendu,
+pas une estimation (leçon tirée directement du bug ci-dessus).
+
+Tous ces fichiers vivent dans Cadrage/DA/ (gitignored) -- rien commité
+pour cette partie.
+```
+
+## Stratégie hashtags Instagram (28/08/2026)
+
+```text
+Demande : un prompt pour chercher des hashtags Instagram pertinents.
+Rédigé un prompt contextualisé (public francophone, format app, alpha de
+septembre, comptes basket FR déjà identifiés dans la veille communautaire
+du projet) plutôt qu'un prompt générique -- sauvegardé dans
+Cadrage/DA/instagram/prompt-recherche-hashtags.md, à utiliser dans un
+outil avec accès web (je n'ai pas cet accès moi-même pour des données
+Instagram en temps réel fiables).
+
+L'utilisateur a lancé ce prompt ailleurs et déposé le résultat
+(strategie-hashtags-instagram-panier-ballon.md) dans le même dossier.
+Relu : bien aligné avec le projet (mise en garde sur les hashtags liés
+aux paris/bookmakers cohérente avec le positionnement "aucun argent
+réel" déjà acté). Un point signalé avant d'intégrer quoi que ce soit :
+le combo "Contenu playoffs" utilisait #NBAPlayoffs, ce qui contredirait
+directement le travail fait plus tôt dans la session pour bien préciser
+que l'alpha de septembre tourne en NBA Cup fictive, pas les vrais
+playoffs -- proposé de le réserver pour plus tard (vrais playoffs
+avril 2027, ou #NBACup pour la bêta une fois sur le vrai tournoi).
+
+Confirmé par l'utilisateur, qui a aussi demandé d'ajouter #NBACup.
+Combos intégrés dans les légendes des Posts 1/2/3 du doc business (déjà
+rédigées plus tôt dans la session) : Post 1 (recrutement) get le combo
+"recrutement alpha", Post 2 (avancement) le combo "communautaire entre
+potes", Post 3 (explication NBA Cup) un combo sur mesure avec #NBACup
+au lieu de #NBAPlayoffs. Pointeur ajouté dans la section "Instagram --
+contenu" du doc business vers le fichier de stratégie complet, avec la
+raison du remplacement notée explicitement pour une future session.
+Commit 4ae5f24 (seul le doc business est versionné, Cadrage/DA/ reste
+gitignored).
+```
+
+## Nouvelle fonctionnalité : bouton "Signaler" (bug report) pour l'alpha/bêta (28/08/2026)
+
+```text
+Question exploratoire de l'utilisateur : "on ajouterait pas une fonction
+bug report ?". Vérifié d'abord qu'il n'existait rien de tel (seul le chat
+par ligue, pas de canal dédié). Réponse courte façon 2-3 phrases avec
+recommandation + compromis (formulaire minimal façon correction_requests
+vs coût de dev pour une fenêtre de test courte), sans se lancer dans
+l'implémentation -- l'utilisateur a alors précisé sa vraie inquiétude :
+"j'ai peur que les gens ne le disent pas en DM si ce sont des petites
+modifications". Ce point change tout : ça justifie un canal à friction
+quasi nulle plutôt qu'un simple "DM-moi". Cadré ensuite via
+AskUserQuestion (2 questions) avant de coder : bouton flottant sur tous
+les écrans (pas dans un menu -- la friction qu'on veut justement éviter),
+texte seul sans capture d'écran (contexte déjà capturé automatiquement,
+capture rarement indispensable pour un petit souci).
+
+Réalisé : migration #33 (bug_reports -- table + RLS, même patron que
+correction_requests mais bien plus simple : pas de fonction SQL
+SECURITY DEFINER, un simple INSERT avec RLS suffit, aucune logique
+métier complexe comme pour une contestation de score). Bouton flottant
+(BugReportButton.tsx, pastille "!" accent, ouvre le ModalDialog déjà
+existant) monté dans app/(app)/layout.tsx -- couvre Accueil/Jouer/
+Profil/Chat. File admin /admin/bug-reports (onglets Ouverts/Résolus,
+formulaire natif "Marquer résolu" + note optionnelle, même patron
+FormData+redirection que RequestCard.tsx/corrections.ts), lien ajouté au
+tableau de bord admin. tsc/eslint/vitest (37/37)/next build propres.
+Commit d2d914d.
+
+Migration Supabase poussée par l'utilisateur en parallèle du push git
+(action bloquée pour moi par le classifieur auto-mode, comme d'habitude
+pour les commandes touchant des identifiants).
+```
+
+## 2 bugs réels trouvés en testant sur mobile + confirmation du mot de passe (28/08/2026)
+
+```text
+L'utilisateur a testé le bouton "Signaler" sur son téléphone juste après
+le déploiement et remonté 2 bugs concrets :
+
+1. Le bouton n'apparaît pas sur l'onglet Classement. Cause : /leaderboard
+   (comme /bracket, /regles et /players/[userId]) vit délibérément HORS
+   du groupe de routes (app) -- ce sont des routes physiques uniques
+   partagées entre visiteur et joueur connecté (T6a §3.2), leur nav est
+   choisie par ScreenShell.tsx, pas par app/(app)/layout.tsx. Le bouton
+   n'avait donc jamais pu s'afficher sur ces 4 écrans. Corrigé en le
+   posant dans ScreenShell.tsx à la place (branche connectée uniquement,
+   même garde que TabBar) -- vérifié qu'il n'y avait pas de double
+   montage possible (aucun écran n'est à la fois dans (app) et sous
+   ScreenShell).
+
+2. Cliquer sur le bouton zoome l'écran sur mobile. Cause classique iOS
+   Safari : tout champ de formulaire avec un font-size sous 16px déclenche
+   un zoom automatique de la page au moment où il prend le focus -- le
+   textarea de la pop-up était à 14px (--font-size-sm) ET avait autoFocus,
+   donc le zoom se déclenchait dès l'ouverture, pas seulement en tapant.
+   Corrigé en passant à --font-size-base (16px), le seuil exact qui
+   désactive ce comportement. Pas touché au meta viewport (aurait
+   désactivé le pinch-to-zoom pour tout le monde, mauvaise pratique
+   d'accessibilité) -- la vraie cause était le font-size, pas la
+   configuration de la page.
+
+Dans la foulée, l'utilisateur a demandé si ajouter un champ de
+confirmation du mot de passe à l'inscription serait embêtant. Vérifié le
+formulaire existant (SignupForm.tsx, un simple input password) avant de
+répondre : non, ajout trivial, vérification purement côté client
+(onSubmit compare les 2 champs avant de laisser passer la soumission),
+aucun changement du server action signup() nécessaire (il ne lit que les
+champs qu'il connaît par leur name, un champ en plus est ignoré sans
+risque). Confirmé par l'utilisateur, fait dans la foulée.
+
+tsc/eslint/vitest (37/37) propres. Commit dfe7267.
+```
