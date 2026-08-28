@@ -26,6 +26,22 @@ body {
   margin-inline: auto;
 }
 
+/* Barres de scroll masquées partout (28/08/2026, demandé par l'utilisateur --
+   rendu "app native" plutôt que web : une barre de scroll toujours réservée
+   décale visuellement l'écran entre une page qui scrolle et une qui ne
+   scrolle pas). Le scroll reste entièrement fonctionnel, seule l'indication
+   visuelle disparaît -- global (`*`) plutôt que ciblé sur html/body : les
+   conteneurs internes qui scrollent (listes, tableaux admin, bracket
+   horizontal) suivent la même règle pour rester cohérents. */
+* {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* Edge historique */
+}
+
+*::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge Chromium */
+}
+
 /* ============================================================================
    Bandeau de section (SPEC_DESIGN_SYSTEM_V0_1.md §15.7) — classe GLOBALE (pas
    un CSS Module) exprès : posée sur le titre de page de plusieurs écrans
