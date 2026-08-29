@@ -20,17 +20,22 @@ Usage local (nécessite Supabase déjà peuplé, cf. backfill_supabase.py) :
     pip install -r requirements.txt
     export SUPABASE_URL=...          # ou NEXT_PUBLIC_SUPABASE_URL
     export SUPABASE_SERVICE_ROLE_KEY=...
+    export STATS_SERVICE_SECRET=...  # même secret partagé que côté appli (STATS_SERVICE_SECRET)
     uvicorn app:app --reload --port 8000
     curl -X POST localhost:8000/predict -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $STATS_SERVICE_SECRET" \
         -d '{"joueur": "Tatum", "stat": "ft", "seuil": 0.85}'
 """
 
+import hmac
 import os
 import sys
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, model_validator
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from supabase import create_client
 
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
@@ -58,6 +63,32 @@ app = FastAPI(
     title="NBA Pronos — service de proba",
     description="Enveloppe HTTP des modèles Cadrage/Stats (voir projet-data-nba.md)",
 )
+
+
+# Le service est déployé --allow-unauthenticated (Cloud Run) : n'importe qui
+# connaissant l'URL peut sinon l'appeler directement, sans passer par
+# l'appli/le SYNC_SECRET Next.js, alors qu'il détient SUPABASE_SERVICE_ROLE_KEY
+# (audit sécurité 29/08/2026, finding "Cloud Run public"). Même principe que
+# isAuthorizedSyncRequest côté appli (lib/sync/auth.ts) : secret partagé,
+# comparaison à temps constant, FAIL CLOSED si le secret n'est pas configuré
+# (contrairement à un simple `if secret: check`, qui laisserait le service
+# grand ouvert si la variable d'env est oubliée au déploiement).
+STATS_SERVICE_SECRET = os.environ.get("STATS_SERVICE_SECRET")
+
+
+class RequireSharedSecretMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        if request.url.path == "/health":
+            return await call_next(request)
+        expected = f"Bearer {STATS_SERVICE_SECRET or ''}"
+        provided = request.headers.get("authorization", "")
+        if not STATS_SERVICE_SECRET or not hmac.compare_digest(provided, expected):
+            return JSONResponse({"detail": "Non autorisé."}, status_code=401)
+        return await call_next(request)
+
+
+app.add_middleware(RequireSharedSecretMiddleware)
+
 client = None  # créé paresseusement (1er appel), pas au chargement du module -- healthcheck simple sans Supabase joignable
 
 

@@ -8,6 +8,7 @@ import { logAdminAction } from "@/lib/actions/audit";
 import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
 import { parisLocalToUtcIso } from "@/lib/dates/paris";
+import { toClientError } from "@/lib/actions/errors";
 
 // Écriture de l'écran Saisie des résultats (SPEC_ECRAN_ADMIN_RESULTATS_V0_1
 // §3). AUCUNE policy RLS d'INSERT n'existe sur `matches` (même trouvaille
@@ -87,7 +88,7 @@ export async function createMatch(input: {
     })
     .select("id")
     .single<{ id: string }>();
-  if (error || !match) return { success: false, error: error?.message ?? "Échec de la création du match." };
+  if (error || !match) return { success: false, error: error ? toClientError("createMatch", error) : "Échec de la création du match." };
 
   await recomputeBracketDeadline(service, series.competition_id);
 
@@ -165,7 +166,7 @@ export async function saveMatchResult(input: {
     .from("matches")
     .update({ status: input.status, home_score: input.homeScore, away_score: input.awayScore })
     .eq("id", input.matchId);
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("saveMatchResult", error) };
 
   await recomputeMatch(input.matchId);
   await advanceWinnerIfDecided(before.series_id);
@@ -224,7 +225,7 @@ export async function deleteMatch(matchId: string): Promise<ActionResult> {
     if (error.code === "23503") {
       return { success: false, error: "Impossible : des pronostics ou paris existent déjà sur ce match." };
     }
-    return { success: false, error: error.message };
+    return { success: false, error: toClientError("deleteMatch", error) };
   }
 
   await recomputeBracketDeadline(service, before.competition_id);

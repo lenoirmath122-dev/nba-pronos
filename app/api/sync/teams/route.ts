@@ -4,6 +4,7 @@ import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
 import { writeSyncLog } from "@/lib/sync/logging";
 import { syncTeams } from "@/lib/sync/teams";
 import { HighlightlyApiError } from "@/lib/nba/client";
+import { toClientError } from "@/lib/actions/errors";
 
 // SPEC_TECHNIQUE_SYNCHRO_V0.1 §6 : runtime Node, service_role (contourne la
 // RLS), authentifiée par Bearer SYNC_SECRET. Déclenchée à la demande (rare —
@@ -40,7 +41,9 @@ async function handle(request: Request): Promise<Response> {
       summary: message,
       requestsRemaining: null,
     });
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Détail complet déjà conservé dans sync_logs (admin-only) ci-dessus —
+    // la réponse HTTP, elle, reste générique (audit sécurité, finding 13).
+    return NextResponse.json({ error: toClientError("sync/teams", { message }) }, { status: 502 });
   }
 }
 

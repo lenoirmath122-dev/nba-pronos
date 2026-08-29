@@ -17,6 +17,8 @@ import { structureAndScoreBet } from "@/lib/ai/structureAndScoreBet";
 export type ActionResult = { success: true; betId: string } | { success: false; error: string };
 export type SimpleActionResult = { success: true } | { success: false; error: string };
 
+const MAX_DESCRIPTION_LENGTH = 2000;
+
 type SaveBetInput = {
   betId?: string; // absent = nouveau pari
   scope: "SERIES" | "MATCH";
@@ -34,6 +36,10 @@ async function callSaveBet(input: SaveBetInput, submit: boolean): Promise<Action
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  if (input.description.length > MAX_DESCRIPTION_LENGTH) {
+    return { success: false, error: `${MAX_DESCRIPTION_LENGTH} caractères maximum.` };
+  }
 
   const { data, error } = await supabase.rpc("save_bet", {
     p_bet_id: input.betId ?? null,

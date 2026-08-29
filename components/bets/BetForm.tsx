@@ -292,6 +292,7 @@ export function BetForm(props: BetFormProps) {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Ex. Match 2 : Jaylen Brown marque 50+"
               rows={3}
+              maxLength={2000}
             />
           </div>
 

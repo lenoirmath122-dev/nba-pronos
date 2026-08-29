@@ -120,7 +120,7 @@ function BetCorrectionForm({ betId, returnTo, hasPendingRequest, forceOpen, erro
         <input type="hidden" name="returnTo" value={returnTo} />
         <label className={styles.field}>
           Motif
-          <textarea name="justification" required rows={2} className={styles.textarea} />
+          <textarea name="justification" required rows={2} maxLength={2000} className={styles.textarea} />
         </label>
         <button type="submit" className={styles.submit}>
           Envoyer

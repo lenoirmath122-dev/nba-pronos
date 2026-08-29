@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/actions/audit";
 import { recomputeBet } from "@/lib/scoring/recompute";
+import { toClientError } from "@/lib/actions/errors";
 
 // Écriture de la file de résolution (SPEC_ECRAN_ADMIN_RESOLUTION_V0_1 §4).
 // Catégorie B AVEC recompute (T6a §5.3) : transition bets en session admin
@@ -49,7 +50,7 @@ export async function resolveBet(input: {
     .select("id")
     .maybeSingle();
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("resolveBet", error) };
   if (!updated) return { success: false, error: "Ce pari a déjà été résolu." };
 
   await recomputeBet(input.betId);

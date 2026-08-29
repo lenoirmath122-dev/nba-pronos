@@ -73,6 +73,7 @@ export function BugReportButton() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Ex. Le bouton Valider ne réagit pas sur cet écran"
                   rows={4}
+                  maxLength={5000}
                   autoFocus
                 />
                 {error && (

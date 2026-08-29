@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
 import { notifyNewChatMessage } from "@/lib/push/notifyChatMessage";
+import { toClientError } from "@/lib/actions/errors";
 
 // Server actions du chat (SPEC_CHAT_V0_1.md, 27/08/2026). PAS le patron
 // "formulaire natif + redirect" du reste de lib/actions/* (profile.ts,
@@ -53,7 +54,7 @@ export async function postChatMessageFormAction(
     body,
   });
 
-  if (error) return { error: error.message };
+  if (error) return { error: toClientError("postChatMessageFormAction", error) };
 
   // Notif push (addendum SPEC_CHAT_V0_1.md, 27/08/2026) -- résolue ici, PAS
   // fournie par le client (le libellé du canal comme le pseudo doivent venir
@@ -89,9 +90,9 @@ async function resolveChannelLabel(supabase: SupabaseServerClient, scopeType: "G
 export type DeleteChatMessageState = { error: string | null } | undefined;
 
 /** Suppression admin (décision actée : pas de self-delete). L'UI ne montre
- *  ce bouton qu'à un compte admin (ChatMessageRow), mais chat_messages_delete_admin
- *  (RLS) reste la SEULE autorité réelle -- un appel forgé par un non-admin
- *  supprime 0 ligne, silencieusement. */
+ *  ce bouton qu'à un compte admin (ChatMessageRow) ; chat_messages_delete_admin
+ *  (RLS) reste l'autorité réelle, mais is_admin() est revérifié explicitement
+ *  ici pour ne jamais renvoyer un faux succès sur un appel forgé. */
 export async function deleteChatMessageFormAction(
   _prevState: DeleteChatMessageState,
   formData: FormData
@@ -100,8 +101,17 @@ export async function deleteChatMessageFormAction(
   if (!messageId) return { error: null };
 
   const supabase = await getServerClient();
-  const { error } = await supabase.from("chat_messages").delete().eq("id", messageId);
-  if (error) return { error: error.message };
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { error: "Session expirée." };
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { error: "Réservé aux admins." };
+
+  const { data: deleted, error } = await supabase.from("chat_messages").delete().eq("id", messageId).select("id").maybeSingle();
+  if (error) return { error: toClientError("deleteChatMessageFormAction", error) };
+  if (!deleted) return { error: "Aucune ligne supprimée." };
   return { error: null };
 }
 
@@ -130,7 +140,7 @@ export async function setChatChannelNotifications(
     let query = supabase.from("chat_muted_channels").delete().eq("user_id", user.id).eq("scope_type", scopeType);
     query = scopeType === "GLOBAL" ? query.is("league_id", null) : query.eq("league_id", leagueId!);
     const { error } = await query;
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: toClientError("setChatChannelNotifications/unmute", error) };
   } else {
     const { error } = await supabase.from("chat_muted_channels").insert({
       user_id: user.id,
@@ -138,7 +148,7 @@ export async function setChatChannelNotifications(
       league_id: scopeType === "LEAGUE" ? leagueId : null,
     });
     // 23505 = déjà en sourdine (index unique partiel) -- idempotent, pas une erreur.
-    if (error && error.code !== "23505") return { success: false, error: error.message };
+    if (error && error.code !== "23505") return { success: false, error: toClientError("setChatChannelNotifications/mute", error) };
   }
 
   revalidatePath("/chat");

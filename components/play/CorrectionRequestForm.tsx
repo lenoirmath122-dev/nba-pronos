@@ -48,7 +48,7 @@ export function CorrectionRequestForm({
 
         <label className={styles.field}>
           Motif
-          <textarea name="justification" required rows={2} className={styles.textarea} />
+          <textarea name="justification" required rows={2} maxLength={2000} className={styles.textarea} />
         </label>
 
         <label className={styles.field}>

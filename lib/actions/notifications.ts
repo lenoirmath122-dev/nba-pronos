@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
+import { toClientError } from "@/lib/actions/errors";
 
 // Server actions du réglage "Rappels" (Profil, backlog "Rappels ciblés").
 // Contrairement aux autres actions de lib/actions/profile.ts (formulaires
@@ -27,7 +28,7 @@ export async function updateNotificationPreference(
     .update({ notification_preference: preference })
     .eq("id", user.id);
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("updateNotificationPreference", error) };
 
   revalidatePath("/profile");
   return { success: true };
@@ -55,7 +56,7 @@ export async function savePushSubscription(subscription: PushSubscriptionInput):
     { onConflict: "user_id,endpoint" }
   );
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("savePushSubscription", error) };
   return { success: true };
 }
 
@@ -72,6 +73,6 @@ export async function deletePushSubscription(endpoint: string): Promise<ActionRe
     .eq("user_id", user.id)
     .eq("endpoint", endpoint);
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("deletePushSubscription", error) };
   return { success: true };
 }

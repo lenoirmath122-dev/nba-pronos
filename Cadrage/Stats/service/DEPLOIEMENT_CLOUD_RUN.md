@@ -63,6 +63,40 @@ gcloud secrets add-iam-policy-binding nba-pronos-supabase-key --member="serviceA
 (le numéro de projet, différent de l'ID texte du projet, apparaît dans les
 messages d'erreur `gcloud` ou via `gcloud projects describe TON_ID_DE_PROJET`.)
 
+## Sécuriser l'accès (secret partagé, audit sécurité 29/08/2026)
+
+Le service est déployé `--allow-unauthenticated` (appelé par l'appli/le cron,
+pas par un navigateur avec compte Google) MAIS détenait jusqu'ici
+`SUPABASE_SERVICE_ROLE_KEY` sans aucune vérification : n'importe qui
+connaissant l'URL Cloud Run pouvait l'appeler directement. `app.py` vérifie
+désormais un header `Authorization: Bearer <STATS_SERVICE_SECRET>` sur
+toutes les routes `/predict*` (`RequireSharedSecretMiddleware`), même
+principe que `SYNC_SECRET` côté appli Next.js — **fail closed** : tant que la
+variable n'est pas définie côté service, toute route `/predict*` refuse
+(401). Seule `/health` reste ouverte (healthcheck Cloud Run, aucune donnée
+sensible).
+
+Générer un secret et le stocker dans Secret Manager (même patron que la clé
+Supabase ci-dessus, jamais collé dans le chat) :
+
+```powershell
+$bytes = New-Object byte[] 32; (New-Object Security.Cryptography.RNGCryptoServiceProvider).GetBytes($bytes); [Convert]::ToBase64String($bytes) | gcloud secrets create nba-pronos-stats-secret --data-file=-
+gcloud secrets add-iam-policy-binding nba-pronos-stats-secret --member="serviceAccount:TON_NUMERO_PROJET-compute@developer.gserviceaccount.com" --role="roles/secretmanager.secretAccessor"
+```
+
+Puis l'ajouter au service (ne casse pas la révision existante, `--set-secrets`
+est cumulatif avec celui déjà posé pour Supabase) :
+
+```powershell
+gcloud run services update nba-pronos-stats --region europe-west1 --set-secrets SUPABASE_SERVICE_ROLE_KEY=nba-pronos-supabase-key:latest,STATS_SERVICE_SECRET=nba-pronos-stats-secret:latest
+```
+
+Et côté appli Next.js, ajouter la MÊME valeur (récupérable via
+`gcloud secrets versions access latest --secret=nba-pronos-stats-secret`) en
+variable d'environnement `STATS_SERVICE_SECRET` — `.env.local` en local,
+Vercel en production (`lib/ai/statsService.ts` l'ajoute automatiquement en
+header `Authorization` sur chaque appel dès qu'elle est définie).
+
 ## Déployer
 
 Depuis `Cadrage/Stats/` (le `Dockerfile` s'y trouve, c'est le contexte de

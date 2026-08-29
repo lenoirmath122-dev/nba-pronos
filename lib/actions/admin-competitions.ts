@@ -8,6 +8,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { logAdminAction } from "@/lib/actions/audit";
 import { assignRanks } from "@/lib/scoring/ranking";
 import { computeSuperlatives } from "@/lib/scoring/superlatives";
+import { toClientError } from "@/lib/actions/errors";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -107,19 +108,19 @@ export async function createCompetition(input: {
     .insert({ name, type: input.type, status: "ACTIVE", bracket_deadline: null })
     .select("id")
     .single<{ id: string }>();
-  if (compErr || !competition) return { success: false, error: compErr?.message ?? "Échec de la création." };
+  if (compErr || !competition) return { success: false, error: compErr ? toClientError("createCompetition", compErr) : "Échec de la création." };
 
   const joinCode = randomUUID().slice(0, 8).toUpperCase();
   const { error: secretErr } = await supabase
     .from("competition_secrets")
     .insert({ competition_id: competition.id, join_code: joinCode });
-  if (secretErr) return { success: false, error: secretErr.message };
+  if (secretErr) return { success: false, error: toClientError("createCompetition/secret", secretErr) };
 
   if (input.type === "PLAYOFFS" && input.round1Matchups) {
     try {
       await createPlayoffBracket(competition.id, input.round1Matchups);
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : "Échec de la création du bracket." };
+      return { success: false, error: toClientError("createCompetition/playoffBracket", error instanceof Error ? error : { message: String(error) }) };
     }
   }
 
@@ -127,7 +128,7 @@ export async function createCompetition(input: {
     try {
       await createCupBracket(competition.id, input.cupQuarterMatchups);
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : "Échec de la création du bracket." };
+      return { success: false, error: toClientError("createCompetition/cupBracket", error instanceof Error ? error : { message: String(error) }) };
     }
   }
 
@@ -321,7 +322,7 @@ export async function closeCompetition(competitionId: string): Promise<ActionRes
     }));
 
     const { error: archiveErr } = await supabase.from("competition_archives").insert(archiveRows);
-    if (archiveErr) return { success: false, error: archiveErr.message };
+    if (archiveErr) return { success: false, error: toClientError("closeCompetition/archive", archiveErr) };
 
     // Superlatifs (BACKLOG_V1.md « Fun / esprit ligue entre potes »), figés
     // dans la MÊME clôture que l'archive — jamais recalculés après coup.
@@ -330,7 +331,7 @@ export async function closeCompetition(competitionId: string): Promise<ActionRes
       const { error: superlativesErr } = await supabase
         .from("competition_superlatives")
         .insert(superlativeRows);
-      if (superlativesErr) return { success: false, error: superlativesErr.message };
+      if (superlativesErr) return { success: false, error: toClientError("closeCompetition/superlatives", superlativesErr) };
     }
   }
 
@@ -344,7 +345,7 @@ export async function closeCompetition(competitionId: string): Promise<ActionRes
     .eq("status", "ACTIVE")
     .select("id")
     .maybeSingle();
-  if (closeErr) return { success: false, error: closeErr.message };
+  if (closeErr) return { success: false, error: toClientError("closeCompetition", closeErr) };
   if (!closed) return { success: false, error: "Cette compétition est déjà clôturée." };
 
   await logAdminAction(supabase, {

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
+import { toClientError } from "@/lib/actions/errors";
 
 // Server actions "Mes ligues" (Profil, BACKLOG_V1.md « Système de ligue »,
 // migration #16). Écriture via .rpc() sur create_league/join_league
@@ -75,7 +76,7 @@ export async function leaveLeagueFormAction(formData: FormData): Promise<void> {
     .eq("user_id", user!.id);
 
   if (error) {
-    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(error.message)}`);
+    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(toClientError("leaveLeagueFormAction", error))}`);
   }
 
   revalidatePath("/profile");

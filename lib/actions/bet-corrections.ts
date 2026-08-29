@@ -13,6 +13,8 @@ import { getServerClient } from "@/lib/supabase/server";
 
 export type ActionResult = { success: true } | { success: false; error: string };
 
+const MAX_JUSTIFICATION_LENGTH = 2000;
+
 export async function requestBetCorrection(input: { betId: string; justification: string }): Promise<ActionResult> {
   const supabase = await getServerClient();
 
@@ -20,6 +22,10 @@ export async function requestBetCorrection(input: { betId: string; justification
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  if (input.justification.length > MAX_JUSTIFICATION_LENGTH) {
+    return { success: false, error: `${MAX_JUSTIFICATION_LENGTH} caractères maximum.` };
+  }
 
   const { error } = await supabase.rpc("request_bet_correction", {
     p_bet: input.betId,

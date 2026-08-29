@@ -5,6 +5,7 @@ import { writeSyncLog } from "@/lib/sync/logging";
 import { syncResults } from "@/lib/sync/results";
 import { resolveReferenceDate } from "@/lib/sync/devDateOverride";
 import { HighlightlyApiError } from "@/lib/nba/client";
+import { toClientError } from "@/lib/actions/errors";
 
 // SPEC_TECHNIQUE_SYNCHRO_V0.1 §6 : 30-60 min en fenêtre de match en
 // production (config du planificateur externe, pas du code), runtime Node,
@@ -51,7 +52,9 @@ async function handle(request: Request): Promise<Response> {
       summary: message,
       requestsRemaining: null,
     });
-    return NextResponse.json({ error: message }, { status: 502 });
+    // Détail complet déjà conservé dans sync_logs (admin-only) ci-dessus —
+    // la réponse HTTP, elle, reste générique (audit sécurité, finding 13).
+    return NextResponse.json({ error: toClientError("sync/results", { message }) }, { status: 502 });
   }
 }
 

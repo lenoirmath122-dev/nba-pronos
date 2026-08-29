@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
 import { recomputeCompetition } from "@/lib/scoring/recompute";
 import { logAdminAction } from "@/lib/actions/audit";
+import { toClientError } from "@/lib/actions/errors";
 
 // Bouton « Recalculer » du tableau de bord (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1
 // §4/§7, design cible enfin codable — lot 4/4 de T5). Catégorie B AVEC
@@ -36,7 +37,7 @@ export async function recalculateCompetition(): Promise<ActionResult> {
   try {
     await recomputeCompetition(competition.id);
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Échec du recalcul." };
+    return { success: false, error: toClientError("recalculateCompetition", error instanceof Error ? error : { message: String(error) }) };
   }
 
   await logAdminAction(supabase, {

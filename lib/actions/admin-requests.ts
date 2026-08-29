@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/actions/audit";
 import { recomputeMatch, recomputeBet } from "@/lib/scoring/recompute";
+import { toClientError } from "@/lib/actions/errors";
 
 // Écriture de la file des requêtes (SPEC_ECRAN_ADMIN_REQUESTS_V0_1 §4).
 // RLS cr_update_admin (is_admin() ET requester_user_id <> auth.uid()) —
@@ -76,7 +77,7 @@ export async function processCorrectionRequest(input: {
         correction_reason: reason.length > 0 ? reason : null,
       })
       .eq("id", request.target_match_prediction_id as string);
-    if (predictionErr) return { success: false, error: predictionErr.message };
+    if (predictionErr) return { success: false, error: toClientError("processCorrectionRequest/prediction", predictionErr) };
 
     await recomputeMatch(prediction.match_id);
   } else {
@@ -103,7 +104,7 @@ export async function processCorrectionRequest(input: {
     }
 
     const { error: betErr } = await supabase.from("bets").update(betUpdate).eq("id", request.target_bet_id as string);
-    if (betErr) return { success: false, error: betErr.message };
+    if (betErr) return { success: false, error: toClientError("processCorrectionRequest/bet", betErr) };
 
     if (input.newBetStatus) {
       await recomputeBet(request.target_bet_id as string);
@@ -117,7 +118,7 @@ export async function processCorrectionRequest(input: {
     .eq("status", "PENDING")
     .select("id")
     .maybeSingle();
-  if (closeErr) return { success: false, error: closeErr.message };
+  if (closeErr) return { success: false, error: toClientError("processCorrectionRequest/close", closeErr) };
   if (!updated) return { success: false, error: "Cette requête a déjà été traitée." };
 
   await logAdminAction(supabase, {
@@ -150,7 +151,7 @@ export async function rejectCorrectionRequest(input: { requestId: string; reason
     .eq("status", "PENDING")
     .select("id")
     .maybeSingle();
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("rejectCorrectionRequest", error) };
   if (!updated) return { success: false, error: "Cette requête a déjà été traitée." };
 
   await logAdminAction(supabase, {

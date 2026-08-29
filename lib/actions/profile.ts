@@ -4,6 +4,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { getProfileBadges } from "@/lib/queries/badges";
+import { toClientError } from "@/lib/actions/errors";
+
+const MAX_BIO_LENGTH = 2000;
 
 // Server actions de l'écran Profil (SPEC_ECRAN_PROFIL_V0_1 §7). Écriture
 // directe sur `users` (RLS self-update + trigger anti-escalade déjà en
@@ -33,7 +36,7 @@ export async function updateThemePreference(formData: FormData): Promise<void> {
     .eq("id", user!.id);
 
   if (error) {
-    redirect(`/profile?profileError=${encodeURIComponent(error.message)}`);
+    redirect(`/profile?profileError=${encodeURIComponent(toClientError("updateThemePreference", error))}`);
   }
 
   revalidatePath("/", "layout"); // app/layout.tsx (racine) relit theme_preference
@@ -60,7 +63,7 @@ export async function updateBackgroundTheme(formData: FormData): Promise<void> {
     .eq("id", user!.id);
 
   if (error) {
-    redirect(`/profile?profileError=${encodeURIComponent(error.message)}`);
+    redirect(`/profile?profileError=${encodeURIComponent(toClientError("updateBackgroundTheme", error))}`);
   }
 
   revalidatePath("/", "layout"); // app/layout.tsx (racine) relit background_theme
@@ -73,6 +76,9 @@ export async function updateProfile(formData: FormData): Promise<void> {
   const favoriteTeamId = favoriteTeamIdRaw === "" ? null : favoriteTeamIdRaw;
   const bioRaw = String(formData.get("bio") ?? "").trim();
   const bio = bioRaw === "" ? null : bioRaw;
+  if (bio && bio.length > MAX_BIO_LENGTH) {
+    redirect(`/profile?profileError=${encodeURIComponent(`${MAX_BIO_LENGTH} caractères maximum pour la bio.`)}`);
+  }
 
   const supabase = await getServerClient();
   const {
@@ -86,7 +92,7 @@ export async function updateProfile(formData: FormData): Promise<void> {
     .eq("id", user!.id);
 
   if (error) {
-    redirect(`/profile?profileError=${encodeURIComponent(error.message)}`);
+    redirect(`/profile?profileError=${encodeURIComponent(toClientError("updateProfile", error))}`);
   }
 
   revalidatePath("/profile");
@@ -136,7 +142,7 @@ export async function togglePinnedBadgeFormAction(formData: FormData): Promise<v
 
   const { error } = await supabase.from("users").update({ pinned_badge_ids: next }).eq("id", user!.id);
   if (error) {
-    redirect(`/profile?tab=stats&profileError=${encodeURIComponent(error.message)}`);
+    redirect(`/profile?tab=stats&profileError=${encodeURIComponent(toClientError("togglePinnedBadgeFormAction", error))}`);
   }
 
   revalidatePath("/profile");

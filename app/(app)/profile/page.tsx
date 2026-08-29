@@ -221,6 +221,7 @@ export default async function ProfilePage({
                   defaultValue={profile.bio}
                   placeholder="Quelques mots sur toi (facultatif)"
                   rows={3}
+                  maxLength={2000}
                   className={styles.textarea}
                 />
               </label>

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/actions/audit";
+import { toClientError } from "@/lib/actions/errors";
 
 // Écriture de Gestion des joueurs (SPEC_ECRAN_ADMIN_PLAYERS_V0_1 §3).
 // Catégorie B SANS recompute (T6a §5.3) : UPDATE direct sur `users`, session
@@ -21,10 +22,19 @@ export async function setPlayerRole(input: { userId: string; role: "PLAYER" | "A
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
 
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { success: false, error: "Réservé aux admins." };
+
   const { data: before } = await supabase.from("users").select("role").eq("id", input.userId).single();
 
-  const { error } = await supabase.from("users").update({ role: input.role }).eq("id", input.userId);
-  if (error) return { success: false, error: error.message };
+  const { data: updated, error } = await supabase
+    .from("users")
+    .update({ role: input.role })
+    .eq("id", input.userId)
+    .select("id")
+    .maybeSingle();
+  if (error) return { success: false, error: toClientError("setPlayerRole", error) };
+  if (!updated) return { success: false, error: "Aucune ligne modifiée (bloqué par une règle de sécurité)." };
 
   await logAdminAction(supabase, {
     actorUserId: user.id,
@@ -46,10 +56,19 @@ export async function setPlayerStatus(input: { userId: string; status: "ACTIVE" 
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
 
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { success: false, error: "Réservé aux admins." };
+
   const { data: before } = await supabase.from("users").select("status").eq("id", input.userId).single();
 
-  const { error } = await supabase.from("users").update({ status: input.status }).eq("id", input.userId);
-  if (error) return { success: false, error: error.message };
+  const { data: updated, error } = await supabase
+    .from("users")
+    .update({ status: input.status })
+    .eq("id", input.userId)
+    .select("id")
+    .maybeSingle();
+  if (error) return { success: false, error: toClientError("setPlayerStatus", error) };
+  if (!updated) return { success: false, error: "Aucune ligne modifiée (bloqué par une règle de sécurité)." };
 
   await logAdminAction(supabase, {
     actorUserId: user.id,

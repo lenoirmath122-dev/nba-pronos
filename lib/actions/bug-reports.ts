@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
+import { toClientError } from "@/lib/actions/errors";
 
 // Signalement rapide (28/08/2026, migration #33) — 2 actions distinctes :
 // submitBugReport (joueur, appelée en useTransition depuis BugReportButton,
@@ -13,6 +14,8 @@ import { getServerClient } from "@/lib/supabase/server";
 // SECURITY DEFINER comme request_prediction_correction.
 
 export type ActionResult = { success: true } | { success: false; error: string };
+
+const MAX_DESCRIPTION_LENGTH = 5000;
 
 export async function submitBugReport(input: {
   description: string;
@@ -26,13 +29,16 @@ export async function submitBugReport(input: {
 
   const description = input.description.trim();
   if (description.length === 0) return { success: false, error: "Décris le souci avant d'envoyer." };
+  if (description.length > MAX_DESCRIPTION_LENGTH) {
+    return { success: false, error: `${MAX_DESCRIPTION_LENGTH} caractères maximum.` };
+  }
 
   const { error } = await supabase.from("bug_reports").insert({
     user_id: user.id,
     description,
     screen_path: input.screenPath || null,
   });
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("submitBugReport", error) };
 
   revalidatePath("/admin/bug-reports");
   return { success: true };
@@ -53,7 +59,10 @@ export async function resolveBugReportFormAction(formData: FormData): Promise<vo
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { error } = await supabase
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) redirect(`/admin/bug-reports?reportId=${reportId}&bugReportError=${encodeURIComponent("Réservé aux admins.")}`);
+
+  const { data: updated, error } = await supabase
     .from("bug_reports")
     .update({
       status: "RESOLVED",
@@ -61,10 +70,15 @@ export async function resolveBugReportFormAction(formData: FormData): Promise<vo
       resolved_at: new Date().toISOString(),
       resolved_by_admin_id: user!.id,
     })
-    .eq("id", reportId);
+    .eq("id", reportId)
+    .select("id")
+    .maybeSingle();
 
   if (error) {
-    redirect(`/admin/bug-reports?reportId=${reportId}&bugReportError=${encodeURIComponent(error.message)}`);
+    redirect(`/admin/bug-reports?reportId=${reportId}&bugReportError=${encodeURIComponent(toClientError("resolveBugReportFormAction", error))}`);
+  }
+  if (!updated) {
+    redirect(`/admin/bug-reports?reportId=${reportId}&bugReportError=${encodeURIComponent("Aucune ligne modifiée.")}`);
   }
 
   revalidatePath("/admin/bug-reports");

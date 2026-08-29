@@ -6,6 +6,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { logAdminAction } from "@/lib/actions/audit";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import { toClientError } from "@/lib/actions/errors";
 
 // Écriture de la file de validation (SPEC_ECRAN_ADMIN_VALIDATION_V0_1 §4).
 // Catégorie B SANS recompute (T6a §5.3) : session admin (getServerClient),
@@ -64,7 +65,7 @@ export async function validateBet(input: {
     .select("id")
     .maybeSingle();
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("validateBet", error) };
   if (!updated) return { success: false, error: "Ce pari a déjà été traité." };
 
   await logAdminAction(supabase, {
@@ -101,7 +102,7 @@ export async function rejectBet(input: { betId: string; refusalReason: string })
     .select("id")
     .maybeSingle();
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("rejectBet", error) };
   if (!updated) return { success: false, error: "Ce pari a déjà été traité." };
 
   await logAdminAction(supabase, {
@@ -170,7 +171,7 @@ export async function overrideAutoValidatedDifficulty(input: {
     .select("id")
     .maybeSingle();
 
-  if (error) return { success: false, error: error.message };
+  if (error) return { success: false, error: toClientError("overrideAutoValidatedDifficulty", error) };
   if (!updated) return { success: false, error: "Ce pari n'est plus un pari auto-validé corrigeable." };
 
   await recomputeBet(input.betId);

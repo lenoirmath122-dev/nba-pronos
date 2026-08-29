@@ -197,6 +197,7 @@ export function InlineBetForm({
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Ex. Un joueur des Knicks marque 30+"
           rows={2}
+          maxLength={2000}
         />
       </div>
 

@@ -9,6 +9,17 @@ import type { PeriodCode, PeriodOutcomeKind } from "./periodStatCodes";
 // dépendance externe pour calculer une vraie probabilité, l'appli
 // TypeScript ne réimplémente aucune logique de modèle.
 
+// Secret partagé (audit sécurité 29/08/2026, finding "Cloud Run public") --
+// le service est déployé --allow-unauthenticated et détient
+// SUPABASE_SERVICE_ROLE_KEY ; même principe que SYNC_SECRET côté /api/sync/*,
+// vérifié en timing-safe côté service Python (app.py, RequireSharedSecretMiddleware).
+function statsServiceHeaders(): Record<string, string> {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  const secret = process.env.STATS_SERVICE_SECRET;
+  if (secret) headers.Authorization = `Bearer ${secret}`;
+  return headers;
+}
+
 export type StatsPredictResult = {
   proba: number; // toujours "P(stat > seuil)" côté service -- OVER/UNDER résolu par l'appelant (voir predictOverUnder)
   label: string;
@@ -29,7 +40,7 @@ async function callPredict(body: Record<string, unknown>): Promise<StatsPredictR
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify(body),
       // Cloud Run peut se réveiller depuis zéro (scale à zéro, §23) -- laisse
       // le temps d'un cold start plutôt que d'abandonner trop tôt.
@@ -118,7 +129,7 @@ export async function predictSeriesStat(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-series`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify(body),
       // 3 recalculs possibles côté service (verification de coherence,
       // supabase_context.py::compute_series_stat_proba) -- delai plus large
@@ -168,7 +179,7 @@ async function callMatchTotalPredict(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         equipe_domicile: homeTeamName,
         equipe_exterieur: awayTeamName,
@@ -217,7 +228,7 @@ export async function predictOvertime(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-overtime`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         equipe_domicile: homeTeamName,
         equipe_exterieur: awayTeamName,
@@ -267,7 +278,7 @@ export async function predictBackcourtTurnover(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-backcourt-turnover`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         equipe_domicile: homeTeamName,
         equipe_exterieur: awayTeamName,
@@ -301,7 +312,7 @@ export async function predictBuzzerBeater(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-buzzer-beater`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         equipe_domicile: homeTeamName,
         equipe_exterieur: awayTeamName,
@@ -336,7 +347,7 @@ export async function predictLastBasket(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-last-basket`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         joueur: playerName,
         equipe_domicile: homeTeamName,
@@ -372,7 +383,7 @@ export async function predictBlockOnPlayer(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-block-on-player`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         bloqueur: blockerName,
         victime: victimName,
@@ -414,7 +425,7 @@ export async function predictTotalTeamStat(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-total-team-stat`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         stat,
         equipe_domicile: homeTeamName,
@@ -464,7 +475,7 @@ export async function predictTeamStat(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}${endpoint}`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         stat,
         equipe: teamName,
@@ -531,7 +542,7 @@ export async function predictComparison(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-comparison`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         left: { kind: left.kind, joueurs: left.players, equipe: left.team, stat: left.stat },
         right: { kind: right.kind, joueurs: right.players, equipe: right.team, stat: right.stat },
@@ -609,7 +620,7 @@ export async function predictCombo(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-combo`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         conditions: groups.map((group) =>
           group.map((c) => ({
@@ -671,7 +682,7 @@ export async function predictPeriodTeamOutcome(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-period`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         outcome_kind: outcomeKind,
         period,
@@ -714,7 +725,7 @@ export async function predictRosterSplit(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-roster-split`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         kind,
         stat,
@@ -766,7 +777,7 @@ export async function predictRosterCount(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-roster-count`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         scope: scope === "MATCH" ? "match" : scope,
         pool,
@@ -811,7 +822,7 @@ export async function predictSuperlative(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-superlative`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         joueur: playerName,
         stat,
@@ -858,7 +869,7 @@ export async function predictTechnicalFoulsCount(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-technical-fouls-count`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify({
         scope: scope === "MATCH" ? "match" : scope,
         count_threshold: countThreshold,
@@ -915,7 +926,7 @@ export async function predictPlayerPeriodStat(
   try {
     const res = await fetch(`${url.replace(/\/$/, "")}/predict-player-period`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: statsServiceHeaders(),
       body: JSON.stringify(body),
       signal: AbortSignal.timeout(40_000),
     });
