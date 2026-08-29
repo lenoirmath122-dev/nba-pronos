@@ -10,11 +10,21 @@
    --c-white-050 pour la même raison : --color-text-primary s'inverserait en
    thème Clair et deviendrait illisible sur ce fond qui, lui, ne bascule
    jamais (même logique que les constantes hors thème de tokens.css §10.1).
-   Bleed edge-to-edge dans la colonne de la page, même technique que
-   .stickyContent (components/bets/BetForm.module.css). */
+
+   Fixe juste au-dessus de TabBar (demande utilisateur 29/08/2026) plutôt que
+   posé dans le flux de la page : --tabbar-height (tokens.css) donne la
+   hauteur réelle de TabBar pour caler le bas du ticker exactement dessus,
+   même colonne centrée (--layout-max-width) que TabBar pour rester aligné
+   sur desktop. app/(app)/play/page.module.css réserve l'espace correspondant
+   en bas de page pour que le dernier contenu ne passe pas dessous. */
 .ticker {
+  position: fixed;
+  inset-inline: 0;
+  bottom: var(--tabbar-height);
+  z-index: 9;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
   overflow: hidden;
-  margin-inline: calc(-1 * var(--space-4));
   background: var(--c-navy-950);
   border-top: 1px solid var(--color-accent);
   padding: var(--space-2) 0;

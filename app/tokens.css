@@ -234,6 +234,18 @@
   --tap-target-min: 44px; /* cible tactile minimale (§11.3) */
   --focus-ring: 0 0 0 2px var(--color-surface-base), 0 0 0 4px var(--color-accent);
 
+  /* Hauteur totale rendue de TabBar (components/nav/TabBar.module.css) --
+     tap-target + padding vertical des onglets + bordure haute + zone de
+     sécurité iOS -- pour caler d'autres éléments position:fixed juste
+     au-dessus (LiveTicker, components/play/LiveTicker.module.css). */
+  --tabbar-height: calc(var(--tap-target-min) + var(--space-2) * 2 + 1px + env(safe-area-inset-bottom, 0px));
+
+  /* Hauteur approximative de LiveTicker (components/play/LiveTicker.module.css)
+     -- une seule ligne de texte --font-size-sm sur padding-block --space-2 +
+     bordure haute -- pour que app/(app)/play/page.module.css réserve l'espace
+     correspondant en bas de page une fois le ticker passé en position:fixed. */
+  --ticker-height: var(--tap-target-min);
+
   /* Points de rupture — RÉFÉRENCE seulement : une media query ne lit pas var(),
      elle utilise les px littéraux. Ici pour documentation (§11.2). */
   --breakpoint-sm: 640px;  --breakpoint-md: 768px;  --breakpoint-lg: 1024px;
