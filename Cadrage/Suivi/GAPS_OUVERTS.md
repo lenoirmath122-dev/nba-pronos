@@ -4,6 +4,26 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Audit de sécurité (29-30/08/2026) — findings Moyen/Faible/Info non
+> traités** (détail complet des risques et recommandations dans
+> `security-audit-report.md` ; le Critique et l'Élevé sont traités, voir
+> `JOURNAL_SESSIONS.md`/`ETAT_ACTUEL.md` §2.128) :
+> - **Moyen** — pas de rate-limiting/CAPTCHA applicatif sur le login
+>   (`lib/auth/actions.ts`) ; seule la config Supabase par défaut protège,
+>   pas vérifiée en prod (ne pas se fier à `supabase/config.toml`, c'est la
+>   config locale). Activer hCaptcha/Turnstile + "Leaked Password
+>   Protection" côté dashboard Supabase.
+> - **Faible** — cookies de session Supabase non `HttpOnly` (défaut du SDK
+>   `@supabase/ssr`, compromis architectural documenté dans le rapport, pas
+>   une erreur de config) ; énumération de compte possible au signup
+>   (message explicite "compte existe déjà", contrairement au flux reset
+>   password qui est déjà anti-énumération).
+> - **Info** — aucune procédure documentée de rétention/effacement RGPD
+>   pour le texte libre (`bug_reports.description`, `chat_messages.body`)
+>   en cas de suppression de compte. Pas urgent tant que le cercle reste
+>   fermé (mentionné comme cadre actuel dans le code), à traiter si le
+>   projet grandit.
+
 > **NBA Cup — Alpha Potes : compétition créée et les 4 quarts préparés
 > (28/08/2026)** -- reprise du plan du 27/08 (voir entrée plus bas pour le
 > détail complet du mécanisme). "Playoffs NBA (simulation)" archivée,

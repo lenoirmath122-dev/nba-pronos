@@ -12290,3 +12290,147 @@ risque). Confirmé par l'utilisateur, fait dans la foulée.
 
 tsc/eslint/vitest (37/37) propres. Commit dfe7267.
 ```
+
+## Audit de sécurité complet + remédiation critique/élevé/moyen (29-30/08/2026)
+
+```text
+Reprise d'une session interrompue : l'utilisateur avait lancé `/security-
+audit` avant que la conversation se réinitialise, sans avoir eu le temps
+d'agir sur les résultats. Retrouvé `security-audit-report.md` (déjà
+complet, non commité) et `Cadrage/Audit sécurité/security-audit.md` (copie
+locale de la commande) — audit read-only, 15 findings (1 critique/1
+élevé/6 moyen/6 faible/1 info), résumé donné à l'utilisateur avant
+d'attaquer quoi que ce soit.
+
+**Choix de l'utilisateur** (AskUserQuestion) : tout le code actionnable
+d'abord, puis les 2 défauts critique/élevé ensemble.
+
+**6 correctifs code** (commit `36c86f7`) :
+- Headers de sécurité HTTP (`next.config.ts` : CSP, X-Frame-Options,
+  nosniff, Referrer-Policy).
+- Helper d'erreur générique (`lib/actions/errors.ts`, nouveau) appliqué à
+  TOUTES les écritures brutes (`.from(...).update()/.insert()/.delete()`)
+  qui renvoyaient `error.message` brut au client — **sauf** les appels
+  `.rpc()` vers les fonctions SQL SECURITY DEFINER (`save_bet`,
+  `request_bet_correction`, `request_prediction_correction`,
+  `create_league`, `join_league`, `withdraw_bet`, `delete_bet`) dont les
+  messages sont délibérément rédigés pour le joueur (déjà documenté en
+  commentaire dans le code) — distinction vérifiée fichier par fichier
+  avant de toucher quoi que ce soit, pas un remplacement aveugle.
+- Garde `is_admin()` explicite + vérification de ligne affectée
+  (`.select().maybeSingle()`) sur `setPlayerRole`/`setPlayerStatus`
+  (`admin-players.ts`) et par cohérence sur `resolveBugReportFormAction`/
+  `deleteChatMessageFormAction`.
+- Limites de taille (bio/description de pari/justification à 2000,
+  description de signalement à 5000) : nouvelle migration
+  `20260829090000_input_length_limits.sql` (CHECK côté base) + garde
+  Server Action + `maxLength` sur les `<textarea>` correspondants.
+- Dépendances de build (`brace-expansion`/`js-yaml`/`nanoid`, overrides
+  `package.json`) — `npm audit` passé de 3 vulnérabilités "high" à 0.
+- Comparaison timing-safe du `SYNC_SECRET` (`lib/sync/auth.ts`,
+  `crypto.timingSafeEqual`).
+
+En bonus vers le finding Élevé : secret partagé `STATS_SERVICE_SECRET`
+(fail-closed, timing-safe) ajouté au micro-service Cloud Run
+(`Cadrage/Stats/service/app.py`, `RequireSharedSecretMiddleware`) et à
+chaque appel `lib/ai/statsService.ts` (18 sites, `Authorization: Bearer`).
+`DEPLOIEMENT_CLOUD_RUN.md` mis à jour avec les commandes exactes.
+
+`tsc --noEmit`/`eslint .`/`vitest` (37/37) propres à chaque étape.
+
+**Critique — rotation de `SUPABASE_SERVICE_ROLE_KEY` (fuite documentée le
+21/08/2026, jamais rotée)** : accompagné pas à pas. Découverte en cours de
+route : le projet Supabase a migré vers le nouveau système de clés
+(`sb_publishable_`/`sb_secret_`) — la page "Legacy anon, service_role API
+keys" n'a plus de bouton "Regenerate" par clé, le vrai levier est le
+secret JWT signant ces clés legacy (page "JWT Keys"), lui-même déjà migré
+vers une clé de signature asymétrique ECC un mois plus tôt (l'ancien
+secret HS256 restait actif UNIQUEMENT pour vérifier les tokens déjà émis
+— dont la clé `service_role` fuitée, quasi non-expirante). Chemin suivi :
+migrer `.env.local`/Vercel (×3 environnements)/Google Secret Manager vers
+les nouvelles clés `sb_secret_`/`sb_publishable_`, vérifier que tout
+fonctionne, PUIS désactiver les clés API legacy (bouton dédié en bas de la
+page "Legacy anon, service_role API keys") — neutralise l'ancienne clé
+fuitée sans exposer d'interruption de service. Accroc réel en route :
+Vercel refuse qu'une variable `NEXT_PUBLIC_...` existante de type "Secret"
+passe en "Config" par simple édition (secrets write-only) — contournée en
+supprimant puis recréant la ligne en type Config.
+
+**Élevé — service Cloud Run `--allow-unauthenticated` détenteur de
+`service_role`** : déploiement du correctif préparé plus haut, 3 vrais
+bugs rencontrés en série, chacun diagnostiqué avant correction plutôt que
+supposé :
+1. `gcloud run services update --set-secrets` (ajout du secret) NE
+   redéploie PAS le code — `/predict` restait accessible sans header après
+   coup, jusqu'à relancer `gcloud run deploy --source .` (rebuild réel).
+2. `--set-secrets "A=a:latest,B=b:latest"` sans guillemets autour de TOUTE
+   la valeur casse sous PowerShell/`gcloud.cmd` (la virgule se perd) —
+   `ERROR: Invalid secret spec`.
+3. `$secret | gcloud secrets create ... --data-file=-` ajoute un `\n` de
+   fin invisible côté Secret Manager (pipe PowerShell vers un process
+   natif) — diagnostiqué en comparant les LONGUEURS des 2 valeurs (45 vs
+   44 caractères) sans jamais afficher ni l'une ni l'autre, plutôt qu'en
+   devinant. Recréé proprement via `[System.IO.File]::WriteAllText` (1er
+   essai raté aussi : `--data-file=$tmpFile.FullName` sans `$(...)` fait
+   lire `.FullName` comme texte littéral par PowerShell).
+   Au passage, l'utilisateur a collé une valeur de secret en clair dans le
+   chat en copiant la mauvaise ligne de sortie terminal — signalé
+   immédiatement, secret régénéré une 2e fois plutôt que réutilisé
+   (enjeu bien plus faible qu'un `service_role` : accès au seul service de
+   proba, pas à la base).
+Vérifié bout en bout : logs Cloud Run (401 sans header → 200 avec),
+PUIS un vrai pari IA soumis depuis l'appli (local ET prod) avec proba
+calculée.
+
+**Garde-fou constaté tout du long** : le classifieur auto-mode de Claude
+Code bloque systématiquement les écritures directes (infra `gcloud`,
+`DELETE` REST Supabase via `service_role`) même avec confirmation
+explicite de l'utilisateur — Claude fait le diagnostic en lecture seule
+(jamais d'affichage de valeur secrète), l'utilisateur exécute lui-même les
+commandes d'écriture (PowerShell / SQL Editor Supabase).
+
+**Nettoyage** : 2 lots de données de test (matchs BOS-NYK + paris/pronos
+associés, créés en testant la proba IA) supprimés via SQL Editor — portée
+vérifiée en lecture seule d'abord (un seul compte admin concerné à chaque
+fois, aucun autre joueur), SQL fourni avec des `id` exacts, jamais un
+critère large. Migration des limites de taille appliquée en prod via SQL
+Editor (pas de CLI Supabase disponible dans cet environnement).
+
+Commit `36c86f7` (34 fichiers) + `git push`. Points de l'audit non
+traités cette session (rate-limiting/CAPTCHA login, cookies non-HttpOnly,
+énumération de compte signup, RGPD) : reportés dans `GAPS_OUVERTS.md`,
+détail complet dans `security-audit-report.md`.
+```
+
+## Bandeau LiveTicker épinglé au-dessus de la TabBar (30/08/2026)
+
+```text
+Demande UX repérée par l'utilisateur pendant la session précédente : le
+bandeau "en direct"/"prochain à pronostiquer" de l'écran Jouer
+(`LiveTicker.tsx`, chantier à l'essai du 20/08, `AJUSTEMENTS_VISUELS_
+20_08_2026 §16`) défilait dans le flux de la page au lieu de rester
+visible en permanence — demandé collé juste au-dessus de la TabBar.
+
+Passé de "dans le flux" à `position: fixed`, ancré sur un nouveau token
+`--tabbar-height` (`app/tokens.css`, calculé depuis la vraie boîte de
+TabBar : tap-target + padding vertical des onglets + bordure + zone de
+sécurité iOS `env(safe-area-inset-bottom)`) plutôt qu'une valeur codée en
+dur, pour ne pas dériver si `TabBar.module.css` change un jour. Nouveau
+token `--ticker-height` pour réserver l'espace correspondant en bas de
+`app/(app)/play/page.module.css` (sinon le dernier match de la liste
+passerait sous le bandeau une fois scrollé en bas).
+
+Vérifié en conditions réelles plutôt qu'à l'œil sur le CSS seul :
+`npm run dev` lancé en arrière-plan, l'utilisateur a contrôlé lui-même
+dans son propre navigateur (déjà connecté) — aucun identifiant de test
+disponible côté Claude pour piloter une session authentifiée soi-même, pas
+de skill de lancement dédié au projet trouvé. Confirmé : bandeau fixe
+pendant le scroll, pas de chevauchement avec TabBar ni le bouton flottant
+"Signaler" (`BugReportButton`, lui aussi ancré au-dessus de TabBar via un
+offset codé en dur `60px` — pas touché, cohérent avec le nouveau token à
+quelques px près). Reste "à l'essai" (retrait possible après l'alpha,
+per le commentaire d'origine du fichier) — seul le positionnement a
+changé, pas la réversibilité.
+
+Commit `992718e` + `git push`.
+```

@@ -5,8 +5,71 @@
 > `JOURNAL_SESSIONS.md`. Pour les points en suspens, voir `GAPS_OUVERTS.md`.
 > Ne contient pas les règles fonctionnelles (synthèse + `decisions_0.2.x`).
 >
-> Dernière mise à jour : session du 28/08/2026 (suite, fin de journée) —
-> **§2.127 : demies/finale NBA Cup alpha pré-sélectionnées, visuels
+> Dernière mise à jour : session du 29-30/08/2026 — **§2.128 : audit de
+> sécurité complet + remédiation critique/élevé/moyen (rotation de la clé
+> `service_role` fuitée, verrouillage du service Cloud Run, 6 correctifs
+> code, migration de limites de taille), bandeau LiveTicker épinglé
+> au-dessus de la TabBar sur l'écran Jouer.**
+>
+> **Audit de sécurité** (`/security-audit`, `security-audit-report.md`,
+> commité) — 15 findings (1 critique/1 élevé/6 moyen/6 faible/1 info).
+> **6 correctifs code** (commit `36c86f7`) : headers de sécurité HTTP
+> (`next.config.ts`) ; helper d'erreur générique (`lib/actions/errors.ts`,
+> nouveau) sur toutes les écritures brutes qui renvoyaient `error.message`
+> au client — les `.rpc()` vers les fonctions SECURITY DEFINER
+> (`save_bet`, `request_bet_correction`, etc.) gardent volontairement leur
+> message tel quel, déjà rédigé pour le joueur ; garde `is_admin()`
+> explicite + vérification de ligne affectée sur `setPlayerRole`/
+> `setPlayerStatus`/`resolveBugReportFormAction`/`deleteChatMessageFormAction` ;
+> limites de taille (bio/pari/justification 2000, signalement 5000 —
+> migration `20260829090000_input_length_limits.sql`, appliquée en prod) ;
+> dépendances de build à jour (`npm audit` 3→0) ; comparaison timing-safe
+> du `SYNC_SECRET`. Bonus : secret partagé `STATS_SERVICE_SECRET`
+> (fail-closed) ajouté au service Cloud Run (`app.py`, `statsService.ts`).
+>
+> **Critique, traité** : `SUPABASE_SERVICE_ROLE_KEY` (fuite documentée le
+> 21/08, jamais rotée) — migré vers les nouvelles clés Supabase
+> `sb_publishable_`/`sb_secret_` (`.env.local`, Vercel ×3 environnements,
+> Google Secret Manager), PUIS les clés API legacy désactivées côté
+> Supabase pour neutraliser définitivement l'ancienne clé fuitée (le
+> secret JWT qui la signait restait valide pour la vérification malgré une
+> migration antérieure du projet vers des clés de signature asymétriques).
+>
+> **Élevé, traité** : service Cloud Run `nba-pronos-stats`
+> (`--allow-unauthenticated`, détenait `service_role`) — vérifie désormais
+> un header `Authorization: Bearer STATS_SERVICE_SECRET` sur toutes les
+> routes `/predict*` (`/health` reste ouvert). 3 accrocs réels en route
+> (détail complet dans `JOURNAL_SESSIONS.md`) : `gcloud run services
+> update` ne redéploie pas le code (il a fallu un vrai `gcloud run deploy`
+> pour que le nouveau `app.py` soit pris en compte) ; virgule perdue dans
+> `--set-secrets` sous PowerShell sans guillemets autour de toute la
+> valeur ; `\n` invisible ajouté par un pipe PowerShell vers
+> `gcloud secrets create --data-file=-`, diagnostiqué en comparant des
+> LONGUEURS de valeurs sans jamais les afficher. Vérifié bout en bout
+> (logs Cloud Run 401→200, vrai pari IA soumis avec proba calculée).
+>
+> **Garde-fou constaté** : le classifieur auto-mode bloque toute écriture
+> directe (infra `gcloud`, `DELETE` REST via `service_role`) même
+> confirmée par l'utilisateur — diagnostic en lecture seule côté Claude,
+> écritures faites par l'utilisateur (PowerShell / SQL Editor Supabase).
+> Points de l'audit non traités cette session (rate-limiting/CAPTCHA
+> login, cookies non-HttpOnly, énumération signup, RGPD) : dans
+> `GAPS_OUVERTS.md`.
+>
+> **LiveTicker épinglé au-dessus de la TabBar** (commit `992718e`, écran
+> Jouer) — demande utilisateur : le bandeau "en direct"/"prochain à
+> pronostiquer" reste maintenant visible en permanence (`position: fixed`)
+> au lieu de défiler dans le flux de la page. Nouveau token
+> `--tabbar-height` (`app/tokens.css`, calculé depuis la vraie boîte de
+> TabBar plutôt que codé en dur) pour ne pas dériver si `TabBar.module.css`
+> change. Toujours "à l'essai" (retrait possible après l'alpha) — seul le
+> positionnement a changé.
+>
+> `tsc --noEmit`/`eslint .`/`vitest` (37/37) propres à chaque étape de code
+> de cette session.
+>
+> Dernière mise à jour précédente : session du 28/08/2026 (suite, fin de
+> journée) — **§2.127 : demies/finale NBA Cup alpha pré-sélectionnées, visuels
 > Instagram convertis en 4:5, stratégie hashtags intégrée, nouvelle
 > fonctionnalité "Signaler" (bug report) + 2 bugs mobiles trouvés et
 > corrigés, confirmation du mot de passe à l'inscription.**
@@ -84,7 +147,7 @@
 > `tsc --noEmit`/`eslint .`/`vitest` (37/37)/`next build` propres à chaque
 > étape de code de cette session.
 >
-> Dernière mise à jour précédente : session du 28/08/2026 (suite) — **§2.126 : audit et
+> Plus tôt (session du 28/08/2026, suite) — **§2.126 : audit et
 > correction de `/regles` contre le code réel, bug de puces corrigé,
 > boutons d'aide contextuels "?" (RuleHelpButton) posés sur 5 écrans.**
 >
