@@ -1,13 +1,18 @@
-import Link from "next/link";
+"use client";
+
+import { useRouter } from "next/navigation";
 import type { SortDirection, SortKey } from "@/lib/queries/leaderboard";
 import type { MyLeague } from "@/lib/queries/leagues";
 import styles from "./LeagueScopeChips.module.css";
 
 // Sélecteur de portée (BACKLOG_V1.md « Système de ligue », migration #16) :
-// pas d'état client, paramètre d'URL `?ligue=`, combiné avec `?tri=`/`?ordre=`
-// (portés par les en-têtes cliquables de LeaderboardTable depuis le
-// 13-14/08/2026). N'apparaît que pour un joueur membre d'au moins une ligue
-// (un visiteur, ou un joueur sans ligue, n'a rien à filtrer).
+// liste déroulante plutôt qu'une rangée de puces (demandé par l'utilisateur,
+// 31/08/2026 — remplace l'ancien <nav> de <Link>) ; paramètre d'URL `?ligue=`,
+// combiné avec `?tri=`/`?ordre=` (portés par les en-têtes cliquables de
+// LeaderboardTable depuis le 13-14/08/2026). N'apparaît que pour un joueur
+// membre d'au moins une ligue (un visiteur, ou un joueur sans ligue, n'a rien
+// à filtrer).
+const GENERAL_VALUE = "__general__";
 
 type LeagueScopeChipsProps = {
   myLeagues: MyLeague[];
@@ -17,36 +22,34 @@ type LeagueScopeChipsProps = {
 };
 
 export function LeagueScopeChips({ myLeagues, activeLeagueId, sortKey, sortDirection = "desc" }: LeagueScopeChipsProps) {
+  const router = useRouter();
   if (myLeagues.length === 0) return null;
 
-  function href(leagueId: string | null): string {
+  function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
+    const leagueId = event.target.value === GENERAL_VALUE ? null : event.target.value;
     const params = new URLSearchParams();
     if (sortKey !== "total") params.set("tri", sortKey);
     if (sortDirection === "asc") params.set("ordre", "asc");
     if (leagueId) params.set("ligue", leagueId);
     const query = params.toString();
-    return query ? `/leaderboard?${query}` : "/leaderboard";
+    router.push(query ? `/leaderboard?${query}` : "/leaderboard");
   }
 
   return (
-    <nav className={styles.chips} aria-label="Filtrer par ligue">
-      <Link
-        href={href(null)}
-        className={activeLeagueId === null ? styles.chipActive : styles.chip}
-        aria-current={activeLeagueId === null ? "true" : undefined}
+    <div className={styles.chips}>
+      <select
+        className={styles.select}
+        value={activeLeagueId ?? GENERAL_VALUE}
+        onChange={handleChange}
+        aria-label="Filtrer par ligue"
       >
-        Général
-      </Link>
-      {myLeagues.map((league) => (
-        <Link
-          key={league.id}
-          href={href(league.id)}
-          className={league.id === activeLeagueId ? styles.chipActive : styles.chip}
-          aria-current={league.id === activeLeagueId ? "true" : undefined}
-        >
-          {league.name}
-        </Link>
-      ))}
-    </nav>
+        <option value={GENERAL_VALUE}>Général</option>
+        {myLeagues.map((league) => (
+          <option key={league.id} value={league.id}>
+            {league.name}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 }

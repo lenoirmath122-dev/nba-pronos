@@ -36,10 +36,20 @@ const STATUS_CLASS: Record<UpcomingMatchRowData["viewStatus"], string> = {
 function formatLockLabel(scheduledAt: string, nowMs: number): string {
   const remainingMs = Math.max(0, Date.parse(scheduledAt) - nowMs);
   const totalMinutes = Math.floor(remainingMs / 60000);
-  const hours = Math.floor(totalMinutes / 60);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
-  if (hours === 0) return `verrou dans ${minutes} min`;
-  return `verrou dans ${hours} h ${String(minutes).padStart(2, "0")}`;
+
+  // Unité la plus grande, puis la suivante seulement si elle n'est pas nulle
+  // (demandé par l'utilisateur, 31/08/2026) : jamais plus de 2 niveaux (donc
+  // jamais de minutes affichées une fois qu'on est passé en jours).
+  if (days > 0) {
+    return hours === 0 ? `verrou dans ${days} j` : `verrou dans ${days} j ${hours} h`;
+  }
+  if (hours > 0) {
+    return minutes === 0 ? `verrou dans ${hours} h` : `verrou dans ${hours} h ${String(minutes).padStart(2, "0")}`;
+  }
+  return `verrou dans ${minutes} min`;
 }
 
 function formatLiveLockLabel(scheduledAt: string, nowMs: number): string {
