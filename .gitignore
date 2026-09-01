@@ -52,3 +52,6 @@ public/brand/*.dev.*
 # modèles entraînés (volumineux, régénérables via les scripts train_*.py)
 /Cadrage/Stats/models/
 __pycache__/
+
+# config Claude Code locale à la machine (permissions auto-approuvées, etc.)
+.claude/settings.local.json

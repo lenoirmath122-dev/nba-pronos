@@ -286,6 +286,28 @@ Coup d'envoi du 1er quart de finale de l'alpha : 20 septembre 🏀
 #PanierBallon #NBACup #NBAFrance #FantasyBasketball #NBA
 ```
 
+**Structure visuelle du Post 3 (carrousel, plan validé le 31/08/2026, visuel pas encore construit)** —
+même gabarit que Posts 1/2 (`Cadrage/DA/instagram/SPEC_VISUELS_INSTAGRAM.md`) : cover photo +
+slides navy, bandeau orange en majuscules, titre court en gras, trait orange en bas. Cover sur
+`hero-hk.jpg` ou `hero-hoop.jpg` plutôt que `hero-mural.jpg` (déjà utilisé en cover sur les Posts 1
+et 2 — éviter 3 covers identiques d'affilée sur la grille du profil) :
+
+1. **Cover** (fond photo) — bandeau `OÙ ON EN EST`, titre *« L'Alpha, c'est pour très bientôt. »*,
+   sous-texte `Compétition ALPHA · dès le 20 septembre`.
+2. **navy, bandeau `L'ALPHA`** — titre *« Une compétition 100% entre potes, en conditions réelles. »*,
+   corps : format NBA Cup à 8 équipes, élimination directe (4 quarts → 2 demies → 1 finale),
+   démarrage le 20/09.
+3. **navy, bandeau `LES COULISSES`** (même registre que le slide « LES DONNÉES » du Post 1) —
+   titre *« Fictive, mais pas inventée. »*, corps : chaque match emprunte le vrai score et les
+   vraies stats d'un match NBA déjà joué — pronostics et paris perso se résolvent sur de la vraie
+   donnée, pas du hasard.
+4. **navy, bandeau `LA SUITE`** — titre *« Direction la bêta, en octobre-novembre. »*, corps
+   volontairement court : bascule sur la vraie NBA Cup, le tournoi officiel de la ligue, en vrais
+   matchs, en direct.
+5. **closing/CTA** (retour au fond photo, effet bookend avec la cover) — bandeau `REJOINS L'ALPHA`,
+   titre *« Installe l'appli avant le 20 septembre. »*, CTA `Lien dans la bio 🔗` (ou renvoi vers le
+   tuto d'installation du Post 2).
+
 **S4 · semaine du 15-21 sept. — rythme de croisière (1-2 posts, contenu libre selon l'avancement réel) :**
 - Post "update" : une capture d'une fonctionnalité corrigée ou améliorée grâce aux retours de l'alpha + une phrase courte.
 - Story avec sticker sondage ("Vous êtes plutôt bracket ou paris perso ?") pour faire réagir les premiers abonnés.
