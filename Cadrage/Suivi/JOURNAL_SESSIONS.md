@@ -12434,3 +12434,105 @@ changé, pas la réversibilité.
 
 Commit `992718e` + `git push`.
 ```
+
+## Bilan global + démarrage du chantier fiabilité & QA (01/09/2026)
+
+```text
+Session Claude Code séparée de la session Cowork habituelle. Demande de
+l'utilisateur : bilan global de l'application, positionnement bas/moyen/
+haut de gamme face à des applis commerciales de pronostics. Produit à
+partir d'une exploration directe du code (routes, migrations, sécurité,
+tests) plutôt que des docs de suivi existants — archivé dans
+`BILAN_GLOBAL_01_09_2026.md`, version illustrée en Artifact. Constat
+principal : architecture/sécurité et richesse fonctionnelle au-dessus de
+la moyenne, mais fiabilité/QA nettement en retrait (2 fichiers de test
+pour ~32 000 lignes, aucune CI). Axe choisi par l'utilisateur pour
+attaquer en premier : fiabilité & QA, avant le lancement alpha du 20/09.
+
+**Étape 1 — garde-fou CI.** Nouveau workflow `.github/workflows/ci.yml`
+(lint + `tsc --noEmit` + vitest + `next build`, sans secret nécessaire —
+vérifié en local que le build passe sans clés Supabase réelles, les
+clients étant créés paresseusement). 1 vraie erreur de lint corrigée
+avant activation (`WipDisclaimer.tsx`, apostrophe non échappée) pour
+démarrer au vert. Décision explicite de l'utilisateur : garde-fou
+BLOQUANT, pas un simple signal après coup — implique de passer par des
+Pull Requests plutôt que des push directs sur `main`.
+
+Mise en place de la protection de branche `main` (`Settings > Branches`,
+"classic branch protection rule" plutôt que le nouveau système de
+"Rulesets", inutilement complexe pour un dépôt solo) : "Require a pull
+request before merging" (SANS "Require approvals" — un compte perso
+solo ne peut pas s'auto-approuver, ça aurait bloqué indéfiniment) +
+"Require status checks to pass before merging" (check `checks`).
+**Accroc réel** : la règle apparaissait "Not enforced" — limite GitHub,
+la protection de branche sur dépôt PRIVÉ n'est appliquée qu'à partir de
+GitHub Pro (gratuit uniquement sur dépôt public ou compte Team/
+Enterprise). L'utilisateur a choisi de passer en GitHub Pro (~4$/mois)
+plutôt que de rendre le dépôt public ou de rester en signal seul, pour
+garder à la fois la confidentialité du code et un vrai blocage.
+
+`gh` (GitHub CLI) absent de la machine — installé via `winget`, authentifié
+par l'utilisateur (`gh auth login --web`, flux par code à usage unique,
+1er essai resté incomplet — fenêtre fermée trop tôt côté utilisateur,
+relancé par Claude qui a affiché le code/URL directement). Une fois
+authentifié, Claude peut ouvrir les PR et suivre l'état de la CI
+(`gh pr create`/`gh pr checks --watch`) sans lien à faire cliquer par
+l'utilisateur — SEUL le clic final "Merge" reste manuel, décision
+explicite de l'utilisateur (garder un vrai regard humain avant que du
+code parte en prod, Vercel redéployant automatiquement depuis `main`).
+
+**Étape 2 — couverture de test de `resolveCalculableBets.ts`** (2500+
+lignes, zéro test avant cette session — la logique qui décide si un pari
+entre potes est gagné ou perdu). D'abord les 9 fonctions PURES internes
+(`computeOutcome`, `categoriesAtTen`, `computePeriodTeamOutcome`, etc.) —
+exportées pour être testables (zéro changement de comportement), testées
+sans aucune base de données. Puis les 14 fonctions d'orchestration
+(`resolveCalculable{Bets,SeriesBets,MatchTotalBets,TeamStatBets,
+ComparisonBets,ComboBets,PeriodBets,RosterSplitBets,RosterCountBets,
+SuperlativeBets,GameEventBets,TechnicalFoulsCountBets,LastBasketBets,
+BlockOnPlayerBets}`), une par une, chacune avec son propre faux Supabase
+en mémoire (même technique que `lib/scoring/recompute.test.ts`, jamais de
+vraie base) — repris et étoffé au fil des fichiers (support de
+`.not()`/`.is()`/`.limit()`/comptage `{count:"exact",head:true}` ajoutés
+au besoin, dernier cas pour `resolveCalculableBlockOnPlayerBets`).
+
+Décision de rythme de l'utilisateur en cours de route : d'abord une PR
+par fonction (3 PR mergées : #1 CI, #2 fonctions pures, #3 combo), puis
+passage à UNE SEULE branche/PR pour tout le reste (12 fonctions
+restantes, commit par fonction, vérifié `tsc`/`lint`/`vitest` à chaque
+fois en local avant de committer) — l'utilisateur a explicitement demandé
+si on pouvait "tout préparer d'un coup et tout merger à la fin" plutôt
+qu'un clic de PR par fonction ; accepté, chaque fichier de test étant
+indépendant des autres (pas de risque accru à batcher). PR #4 (player/
+match) et #5 (les 12 restantes) mergées après vérification CI verte.
+
+**Résultat** : 211 tests, `tsc`/`eslint`/`next build` propres à chaque
+étape. Plusieurs tests de non-régression EXPLICITE sur des bugs déjà
+trouvés et documentés dans le code lui-même (pas inventés pour l'occasion) :
+`plus_minus` qui retombait silencieusement à 0 (25/08/2026), "tech"
+mal aiguillé vers la logique dd/td, confusion écart cumulé/segment de
+période (MARGIN vs TOTAL_POINTS), négation ignorée sur "aucun panier au
+buzzer" (25/08/2026, le seul des 4 trouvé en testant un vrai match plutôt
+qu'en codant/cadrant). **2 branches mortes découvertes en écrivant les
+tests** (pas des bugs, du code défensif jamais atteignable en pratique) :
+plusieurs gardes "player_id manquant" sont déjà filtrés en amont par la
+requête SQL elle-même (`.not(..., "is", null)`) avant même d'atteindre la
+boucle ; le compteur Supabase réel (`count: "exact"`) ne renvoie jamais
+`null` sauf erreur réseau, rendant la branche `matchEventCount === null`
+de `resolveCalculableBlockOnPlayerBets` inatteignable par un usage normal.
+Documenté en commentaire dans les tests concernés plutôt que "corrigé"
+(pas un bug, rien à corriger).
+
+**Point de clarification important posé par l'utilisateur après coup** :
+"donc il n'y a plus de bugs ?" — réponse explicite de Claude, à retenir
+pour la suite : NON, ces tests garantissent uniquement que ces 4 bugs
+PRÉCIS ne peuvent plus revenir silencieusement, pas l'absence de bugs
+inconnus. `structureAndScoreBet.ts` (structuration IA), le service Python
+de proba, et tout le reste de l'appli restent sans test automatisé à ce
+stade.
+
+**Suite explicitement prévue** : tests de routage/validation de
+`structureAndScoreBet.ts` (schémas dédiés PERIOD/ROSTER_COUNT/etc.,
+routage par mot-clé), sans appel réel à Claude (déterministe, gratuit,
+rapide) — décision déjà actée avec l'utilisateur avant cette session.
+```
