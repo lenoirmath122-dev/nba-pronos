@@ -188,6 +188,39 @@ const BLOCK_ON_PLAYER_KEYWORD_REGEX = /\bcontres?\s+sur\b/i;
  *  couvert. */
 const COMBO_NESTED_OR_KEYWORD_REGEX = /\bet\b[^.!?]*\bou\b|\bou\b[^.!?]*\bet\b/i;
 
+export type BetRoutingDecision =
+  | "PERIOD"
+  | "ROSTER_COUNT"
+  | "ROSTER_SPLIT"
+  | "SUPERLATIVE"
+  | "TECHNICAL_FOULS_COUNT"
+  | "LAST_BASKET"
+  | "BLOCK_ON_PLAYER"
+  | "COMBO_NESTED_OR"
+  | "GENERAL";
+
+/** Décision de routage par mot-clé, extraite de structureAndScoreBet() pour
+ *  être testable directement (Cadrage/Suivi/BILAN_GLOBAL_01_09_2026.md,
+ *  chantier fiabilité & QA, 01/09/2026) -- zéro changement de comportement,
+ *  structureAndScoreBet() appelle désormais CETTE fonction au lieu de
+ *  réévaluer les 8 `if` en ligne. L'ORDRE est significatif (documenté
+ *  regex par regex plus haut, ex. ROSTER_COUNT avant ROSTER_SPLIT pour la
+ *  collision "titulaires"+"chacun") -- premier match gagne, jamais deux
+ *  routes à la fois. "GENERAL" = aucun mot-clé reconnu, retombe sur
+ *  structureBet() (schéma partagé, PLAYER/TEAM_STAT/MATCH_TOTAL/
+ *  COMPARISON/COMBO simple). */
+export function routeBetDescription(description: string): BetRoutingDecision {
+  if (PERIOD_KEYWORD_REGEX.test(description)) return "PERIOD";
+  if (ROSTER_COUNT_KEYWORD_REGEX.test(description)) return "ROSTER_COUNT";
+  if (ROSTER_SPLIT_KEYWORD_REGEX.test(description)) return "ROSTER_SPLIT";
+  if (SUPERLATIVE_KEYWORD_REGEX.test(description)) return "SUPERLATIVE";
+  if (TECHNICAL_FOULS_COUNT_KEYWORD_REGEX.test(description)) return "TECHNICAL_FOULS_COUNT";
+  if (LAST_BASKET_KEYWORD_REGEX.test(description)) return "LAST_BASKET";
+  if (BLOCK_ON_PLAYER_KEYWORD_REGEX.test(description)) return "BLOCK_ON_PLAYER";
+  if (COMBO_NESTED_OR_KEYWORD_REGEX.test(description)) return "COMBO_NESTED_OR";
+  return "GENERAL";
+}
+
 /** Equipe avec l'avantage du terrain sur la serie (recoit aux matchs
  *  1/2/5/7, convention series_probability.py) -- deduite du match 1 REEL de
  *  la serie (game_number = 1, pas un "seed" explicite, cf. GAPS_OUVERTS.md
@@ -1062,74 +1095,43 @@ export async function structureAndScoreBet(
     // généralisé aux 5 autres bet_subject : leur distinction est
     // SÉMANTIQUE (comparaison vs seuil fixe vs somme de conditions), pas
     // lexicale -- un mot-clé ne peut pas les séparer de façon fiable.
-    if (PERIOD_KEYWORD_REGEX.test(description)) {
+    // Routage par mot-clé (24/08→25/08/2026, GAPS_OUVERTS.md) -- décision
+    // extraite dans routeBetDescription() ci-dessus (testable directement,
+    // même raisonnement par regex documenté à côté de chaque const). Un
+    // texte qui RESSEMBLE à l'une de ces formes appelle EXCLUSIVEMENT son
+    // handler dédié (schéma structureBet.ts déjà au plafond de complexité
+    // API, "compiled grammar is too large" sinon) -- jamais deux appels,
+    // jamais de repli automatique de l'un vers l'autre.
+    const routing = routeBetDescription(description);
+    if (routing === "PERIOD") {
       await handlePeriodBet(teamNames);
       return;
     }
-
-    // Routage comptage roster-wide par mot-clé (étape 3 du plan de reprise
-    // post-audit, 25/08/2026, GAPS_OUVERTS.md) -- TESTÉ AVANT ROSTER_SPLIT
-    // ci-dessous : "les 10 joueurs titulaires marquent CHACUN 8+" matche
-    // les 2 regex (contient "titulaires" ET "chacun"), mais seule la
-    // lecture comptage est correcte ici (condition individuelle, pas une
-    // somme) -- voir la docstring de ROSTER_COUNT_KEYWORD_REGEX.
-    if (ROSTER_COUNT_KEYWORD_REGEX.test(description)) {
+    if (routing === "ROSTER_COUNT") {
       await handleRosterCountBet(teamNames);
       return;
     }
-
-    // Routage 5 majeur/banc par mot-clé (24/08/2026, GAPS_OUVERTS.md,
-    // chantier "5 majeur/banc") -- même raisonnement que PERIOD ci-dessus.
-    if (ROSTER_SPLIT_KEYWORD_REGEX.test(description)) {
+    if (routing === "ROSTER_SPLIT") {
       await handleRosterSplitBet(teamNames);
       return;
     }
-
-    // Routage superlatif implicite par mot-clé (étape 4 du plan de reprise
-    // post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même raisonnement que
-    // PERIOD ci-dessus. structureBet.ts (COMPARISON) reste seul compétent
-    // pour un adversaire/groupe NOMMÉ -- cette regex ne cible que l'ensemble
-    // non borné ("tout autre joueur"), pas de collision sémantique.
-    if (SUPERLATIVE_KEYWORD_REGEX.test(description)) {
+    if (routing === "SUPERLATIVE") {
       await handleSuperlativeBet(teamNames);
       return;
     }
-
-    // Routage fautes techniques équipe/match par mot-clé (étape 5 du plan
-    // de reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même
-    // raisonnement que les autres regex ci-dessus. Volontairement étroit
-    // ("exactement" + "faute(s) technique(s)") : le cas JOUEUR ("Jokic
-    // reçoit au moins une faute technique") ne matche PAS, reste dans
-    // structureBet.ts/bet_subject=PLAYER (stat="tech") -- voir la
-    // docstring de TECHNICAL_FOULS_COUNT_KEYWORD_REGEX.
-    if (TECHNICAL_FOULS_COUNT_KEYWORD_REGEX.test(description)) {
+    if (routing === "TECHNICAL_FOULS_COUNT") {
       await handleTechnicalFoulsCountBet(teamNames);
       return;
     }
-
-    // Routage "dernier panier du match" par mot-clé (étape 6 du plan de
-    // reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même raisonnement
-    // que les regex ci-dessus.
-    if (LAST_BASKET_KEYWORD_REGEX.test(description)) {
+    if (routing === "LAST_BASKET") {
       await handleLastBasketBet(teamNames);
       return;
     }
-
-    // Routage "contre sur un joueur précis" par mot-clé (étape 6,
-    // GAPS_OUVERTS.md) -- même raisonnement que les regex ci-dessus.
-    // structureBet.ts (bet_subject=PLAYER, stat=blk) reste seul compétent
-    // pour un total de contres sans adversaire précis -- cette regex ne
-    // cible que "contre(s) sur", pas de collision sémantique.
-    if (BLOCK_ON_PLAYER_KEYWORD_REGEX.test(description)) {
+    if (routing === "BLOCK_ON_PLAYER") {
       await handleBlockOnPlayerBet(teamNames);
       return;
     }
-
-    // Routage combo avec OU imbriqué par mot-clé (étape 7 du plan de
-    // reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- même raisonnement
-    // que les regex ci-dessus. Un combo simple (sans "ou") reste géré par
-    // structureBet()/bet_subject=COMBO, inchangé.
-    if (COMBO_NESTED_OR_KEYWORD_REGEX.test(description)) {
+    if (routing === "COMBO_NESTED_OR") {
       await handleComboNestedBet(teamNames);
       return;
     }
