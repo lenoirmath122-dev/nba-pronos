@@ -4,6 +4,19 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Continuer à entraîner/perfectionner les modèles de probabilité
+> (point noté pour plus tard, pas commencé, 01/09/2026)** — demande
+> explicite de l'utilisateur, à la suite du chantier fiabilité & QA sur
+> `resolveCalculableBets.ts`/`structureAndScoreBet.ts` (voir
+> `BILAN_GLOBAL_01_09_2026.md`) : voir si les modèles de proba du service
+> Python (`Cadrage/Stats/service/`, 12 `RandomForestRegressor`/
+> classifieurs, `Cadrage/Stats/scripts/train_*.py`) peuvent encore être
+> perfectionnés, pas juste étendus à de nouveaux types de paris comme
+> jusqu'ici. Rien de cadré pour l'instant — ni le périmètre exact (quels
+> modèles, quelles stats) ni la méthode (plus de données, nouvelles
+> features, réglage d'hyperparamètres, backtesting contre des paris déjà
+> résolus en vrai...). À reprendre avec l'utilisateur au moment voulu.
+
 > **Audit de sécurité (29-30/08/2026) — findings Moyen/Faible/Info non
 > traités** (détail complet des risques et recommandations dans
 > `security-audit-report.md` ; le Critique et l'Élevé sont traités, voir
