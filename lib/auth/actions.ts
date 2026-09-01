@@ -39,7 +39,7 @@ export async function signup(
   const password = String(formData.get("password") ?? "");
   const code = String(formData.get("code") ?? "").trim();
 
-  if (!pseudo || !email || !password || !code) {
+  if (!pseudo || !email || !password) {
     return { error: "Tous les champs sont obligatoires." };
   }
   if (password.length < 8) {
@@ -50,13 +50,26 @@ export async function signup(
   const headerList = await headers();
   const origin = `${headerList.get("x-forwarded-proto") ?? "http"}://${headerList.get("host")}`;
 
-  // Temps 1a — code compétition, vérifié serveur (T2 §4/§5).
-  const { data: competitionId, error: codeError } = await supabase.rpc(
-    "verify_join_code",
-    { p_code: code }
-  );
-  if (codeError || !competitionId) {
-    return { error: "Code compétition invalide." };
+  // Temps 1a — code compétition, vérifié serveur (T2 §4/§5). Champ optionnel :
+  // laissé vide, on rattache simplement à la compétition ACTIVE courante (une
+  // seule possible à la fois, contrainte uniq_one_active_competition).
+  if (code) {
+    const { data: competitionId, error: codeError } = await supabase.rpc(
+      "verify_join_code",
+      { p_code: code }
+    );
+    if (codeError || !competitionId) {
+      return { error: "Code compétition invalide." };
+    }
+  } else {
+    const { data: activeCompetition, error: activeError } = await supabase
+      .from("competitions")
+      .select("id")
+      .eq("status", "ACTIVE")
+      .maybeSingle();
+    if (activeError || !activeCompetition) {
+      return { error: "Aucune compétition active pour le moment." };
+    }
   }
 
   // Temps 1b — pseudo libre (T2 §4).

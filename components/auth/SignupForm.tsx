@@ -85,9 +85,9 @@ export function SignupForm() {
         </div>
         <div className={styles.field}>
           <label htmlFor="code" className={styles.fieldLabel}>
-            Code compétition
+            Code compétition (optionnel)
           </label>
-          <input id="code" name="code" type="text" required className={styles.input} />
+          <input id="code" name="code" type="text" className={styles.input} />
         </div>
         {(mismatchError || state?.error) && (
           <p role="alert" className={styles.error}>
