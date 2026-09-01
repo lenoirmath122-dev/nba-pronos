@@ -6,7 +6,7 @@ import styles from "./WipDisclaimer.module.css";
 export function WipDisclaimer() {
   return (
     <p className={styles.disclaimer}>
-      Les visuels de l'application ne sont pas définitifs — le design est encore en cours de travail.
+      Les visuels de l&apos;application ne sont pas définitifs — le design est encore en cours de travail.
     </p>
   );
 }
