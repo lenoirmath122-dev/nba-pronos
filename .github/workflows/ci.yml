@@ -1,0 +1,37 @@
+name: CI
+
+# Garde-fou de code (lint + types + tests + build), pas un job planifié comme
+# les 8 autres workflows du dépôt. Se déclenche à chaque push et sur les PR
+# (aucune n'existe encore, mais ça couvre le jour où il y en aura). Aucun
+# secret nécessaire : `npm run build` a été vérifié en local sans clés
+# Supabase réelles (les clients Supabase sont créés paresseusement, jamais au
+# chargement d'un module) — voir BILAN_GLOBAL_01_09_2026.md.
+on:
+  push:
+  pull_request:
+  workflow_dispatch: {}
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Lint (ESLint)
+        run: npm run lint
+
+      - name: Types (tsc --noEmit)
+        run: npx tsc --noEmit
+
+      - name: Tests (vitest)
+        run: npm test
+
+      - name: Build (next build)
+        run: npm run build
