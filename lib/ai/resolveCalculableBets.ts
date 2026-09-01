@@ -35,7 +35,7 @@ export type ResolveBetsSummary = {
  *  minutes_to_float() dans tester_modele.py (Python), jamais dupliquée à
  *  l'identique jusqu'ici côté TypeScript (ce module est le 1er endroit
  *  côté appli à avoir besoin de parser une vraie valeur de minutes). */
-function minutesToFloat(raw: string | null): number {
+export function minutesToFloat(raw: string | null): number {
   if (!raw) return 0;
   if (raw.includes(":")) {
     const [mins, secs] = raw.split(":");
@@ -80,7 +80,7 @@ const PCT_MAKES_ATTEMPTS_COLUMNS: Partial<Record<StatCode, ["ftm" | "fgm" | "fg3
   fg3: ["fg3m", "fg3a"],
 };
 
-type BoxScoreRow = {
+export type BoxScoreRow = {
   minutes: string | null;
   pts: number | null;
   reb: number | null;
@@ -102,7 +102,7 @@ type BoxScoreRow = {
  *  Data NBA) -- >= 10 dans au moins 2 des 5 catégories = double-double,
  *  >= 3 = triple-double. Ne PAS diverger : c'est la même convention que
  *  celle utilisée pour entraîner les modèles dd/td. */
-function categoriesAtTen(box: BoxScoreRow): number {
+export function categoriesAtTen(box: BoxScoreRow): number {
   return [box.pts, box.reb, box.ast, box.stl, box.blk].filter((v) => (v ?? 0) >= 10).length;
 }
 
@@ -110,7 +110,7 @@ function categoriesAtTen(box: BoxScoreRow): number {
  *  trancher (jamais résolu dans ce cas -- pas de statut "annulé"/"push"
  *  dans ce projet, une égalité EXACTE au seuil est traitée comme perdue,
  *  cohérent avec "plus de X" qui exige STRICTEMENT plus que X). */
-function computeOutcome(
+export function computeOutcome(
   stat: StatCode,
   threshold: number | null,
   comparison: "OVER" | "UNDER" | null,
@@ -496,9 +496,9 @@ type MatchScoreRow = {
   went_to_ot: boolean | null;
 };
 
-type QuarterScores = { homeTeam: number[]; awayTeam: number[] };
+export type QuarterScores = { homeTeam: number[]; awayTeam: number[] };
 
-type MatchPeriodRow = {
+export type MatchPeriodRow = {
   id: string;
   status: string;
   home_team_id: string | null;
@@ -1257,7 +1257,7 @@ type EligiblePeriodBetRow = {
  *  par une période -- Q1-Q4 = 1 quart-temps, H1/H2 = 2 quarts-temps
  *  (mi-temps). Jamais appelée pour QUARTERS_WON_COUNT (period=null, lit les
  *  4 quarts-temps directement -- voir plus bas). */
-function periodQuarterIndices(period: PeriodCode): number[] {
+export function periodQuarterIndices(period: PeriodCode): number[] {
   switch (period) {
     case "Q1": return [0];
     case "Q2": return [1];
@@ -1268,7 +1268,7 @@ function periodQuarterIndices(period: PeriodCode): number[] {
   }
 }
 
-function sumQuarterRange(scores: number[], indices: number[]): number {
+export function sumQuarterRange(scores: number[], indices: number[]): number {
   return indices.reduce((sum, i) => sum + (scores[i] ?? 0), 0);
 }
 
@@ -1281,7 +1281,7 @@ function sumQuarterRange(scores: number[], indices: number[]): number {
  *  pour rester cohérent). TOTAL_POINTS reste un segment (periodQuarterIndices)
  *  -- "le total du 4e quart-temps" désigne bien les points marqués PENDANT
  *  cette période, pas le score cumulé. */
-function cumulativeQuarterIndices(period: PeriodCode): number[] {
+export function cumulativeQuarterIndices(period: PeriodCode): number[] {
   switch (period) {
     case "Q1": return [0];
     case "Q2": return [0, 1];
@@ -1297,7 +1297,7 @@ function cumulativeQuarterIndices(period: PeriodCode): number[] {
  *  ci-dessus, jamais résolu dans ce cas). `teamIsHome` : le côté visé par le
  *  pari (team_id résolu) est-il l'équipe DOMICILE de ce match -- null pour
  *  les outcome_kind symétriques (MARGIN/TOTAL_POINTS). */
-function computePeriodTeamOutcome(
+export function computePeriodTeamOutcome(
   outcomeKind: PeriodOutcomeKind,
   period: PeriodCode | null,
   teamIsHome: boolean | null,
@@ -1586,9 +1586,9 @@ type EligibleRosterSplitBetRow = {
   structured_comparison: "OVER" | "UNDER" | null;
 };
 
-type RosterSplitBoxRow = Omit<BoxScoreRow, "minutes"> & { position: string | null };
+export type RosterSplitBoxRow = Omit<BoxScoreRow, "minutes"> & { position: string | null };
 
-function sumBoxRows(rows: RosterSplitBoxRow[]): BoxScoreRow {
+export function sumBoxRows(rows: RosterSplitBoxRow[]): BoxScoreRow {
   const sum = (key: keyof Omit<BoxScoreRow, "minutes">) => rows.reduce((s, r) => s + (r[key] ?? 0), 0);
   return {
     minutes: null,
@@ -1918,7 +1918,7 @@ type EligibleSuperlativeBetRow = {
  *  même logique que la branche "comptée" de computeOutcome() (min à part,
  *  reste via COUNTING_STAT_COLUMN), extraite ici car le superlatif compare
  *  des VALEURS entre elles plutôt qu'une valeur à un seuil fixe. */
-function rawStatValue(stat: StatCode, box: BoxScoreRow): number {
+export function rawStatValue(stat: StatCode, box: BoxScoreRow): number {
   return stat === "min" ? minutesToFloat(box.minutes) : (box[COUNTING_STAT_COLUMN[stat]!] ?? 0);
 }
 
