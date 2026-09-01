@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { SignupForm } from "@/components/auth/SignupForm";
+import { WipDisclaimer } from "@/components/ui/WipDisclaimer";
 import styles from "@/components/auth/AuthScreen.module.css";
 
 export default function SignupPage() {
@@ -10,6 +11,7 @@ export default function SignupPage() {
         <p className={styles.brandName}>Panier Ballon</p>
         <p className={styles.brandTagline}>Pronostics et paris entre amis sur les playoffs NBA.</p>
       </div>
+      <WipDisclaimer />
       <SignupForm />
     </main>
   );

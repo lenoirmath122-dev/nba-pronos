@@ -5,6 +5,7 @@ import { BetsAccordionList } from "@/components/home/BetsAccordionList";
 import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
+import { WipDisclaimer } from "@/components/ui/WipDisclaimer";
 import styles from "./page.module.css";
 
 // Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « Reste à faire »
@@ -23,6 +24,7 @@ export default async function HomePage() {
         <div className={`${styles.header} glass-card`}>
           <p className={styles.title}>Accueil</p>
         </div>
+        <WipDisclaimer />
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
     );
@@ -31,6 +33,8 @@ export default async function HomePage() {
   return (
     <div className={`${styles.page} photo-page`}>
       <HomeHeader header={header} />
+
+      <WipDisclaimer />
 
       <section className={`${styles.section} glass-card`} aria-label="Reste à faire">
         <CollapsibleCard id="todo" title="Reste à faire" count={todo.length}>
