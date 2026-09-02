@@ -90,6 +90,16 @@ export async function signup(
     options: { data: { pseudo }, emailRedirectTo: `${origin}/email-confirmed` },
   });
 
+  // Énumération de compte assumée ici (audit de sécurité, finding 14,
+  // security-audit-report.md §1 -- décidé AVEC l'utilisateur le 02/09/2026,
+  // GAPS_OUVERTS.md) : ce message confirme explicitement sur l'écran qu'un
+  // email donné a déjà un compte, contrairement au flux reset-password qui
+  // reste générique. Compromis conscient plutôt qu'un oubli -- gain UX jugé
+  // supérieur au risque tant que l'app reste un cercle fermé d'amis (pas de
+  // rate-limiting/CAPTCHA sur le login non plus, finding 3, donc
+  // l'énumération seule n'ouvre aucun accès). À généraliser (même patron que
+  // ResetPasswordForm.tsx, toujours rediriger vers /verify-email avec un
+  // message conditionnel) si l'app s'ouvre un jour à un public plus large.
   if (signUpError) {
     if (signUpError.message.toLowerCase().includes("already registered")) {
       return { error: "Un compte existe déjà avec cet email." };

@@ -31,6 +31,19 @@
 > `select("id", {count})` plantait -- généralisé en `select("*", {count})`
 > partout). `eslint` propre.
 
+> **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
+> gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
+> détaillée du mécanisme (écran identique vs écran qui confirme -- même
+> principe que le message générique déjà en place sur reset-password) --
+> **le message explicite est conservé**. Documenté à la source
+> (`lib/auth/actions.ts`, commentaire) : gain UX jugé supérieur au risque
+> tant que l'app reste un cercle fermé d'amis, d'autant que le finding 3
+> (pas de rate-limiting/CAPTCHA login) n'est pas non plus traité -- sans
+> lui, l'énumération seule n'ouvre de toute façon aucun accès direct. À
+> généraliser (rediriger systématiquement vers `/verify-email` avec un
+> message conditionnel, même patron que `ResetPasswordForm.tsx`) si l'app
+> s'ouvre un jour à un public plus large.
+
 > **Audit de sécurité, finding 5 (schémas zod) — PARTIELLEMENT TRAITÉ
 > (02/09/2026)** : ce finding Moyen avait disparu du suivi lors de la
 > remédiation du 29-30/08 (`§2.128 ETAT_ACTUEL.md` ne le liste pas parmi les
