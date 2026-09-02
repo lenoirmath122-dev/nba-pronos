@@ -137,6 +137,26 @@
 > (non trouvable dans le dépôt, à vérifier dans le dashboard). Toujours
 > aucune implémentation ce soir sur ce chantier -- uniquement du cadrage.
 
+> **Chantier juridique — cookies §2.2, modèle économique §2.9 et
+> pronostics §2.11 cadrés (02/09/2026)** : passages rapides comme anticipé
+> (les deux derniers étaient déjà quasi répondus en §3). Cookies :
+> recensement technique (grep) -- cookie de session Supabase (auth),
+> widget Turnstile (anti-bot), `localStorage` pour l'état replié/déplié
+> d'une carte d'accueil (`CollapsibleCard.tsx`, préférence locale par
+> appareil, jamais envoyée au serveur) -- **les trois relèvent des
+> catégories exemptées de consentement (CNIL), aucun bandeau cookies
+> nécessaire aujourd'hui**, aucun outil d'analytics/pub/vidéo trouvé.
+> Modèle économique : aucun déclencheur présent (pas d'abonnement/achat/
+> pub/essai/renouvellement), aucune obligation du §2.9 applicable tant que
+> gratuit. Pronostics : vérification du vocabulaire de l'interface
+> (recherche "cote", "cagnotte", "jackpot", "argent réel", "€" dans
+> `app/`) -- **aucune occurrence**, communication cohérente avec un jeu à
+> points fictifs, pas de confusion avec une offre de pari réglementée.
+> Conclusion commune aux deux : rien à implémenter, juste à documenter
+> dans la politique de confidentialité/CGU à venir -- le point qui reste
+> réellement ouvert (modèle 2027 avec mises/gains réels) est déjà tracé en
+> §8.5 depuis le premier passage.
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même

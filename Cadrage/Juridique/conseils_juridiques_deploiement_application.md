@@ -64,6 +64,21 @@ Il faut recenser les cookies et traceurs utilisés par l’application, notammen
 
 Les traceurs strictement nécessaires peuvent relever d’un régime différent des traceurs publicitaires ou de certains outils d’analyse. Lorsque le consentement est requis, l’utilisateur doit pouvoir accepter ou refuser de manière suffisamment simple et conserver la possibilité de modifier son choix.
 
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+Recensement technique (grep sur le dépôt, 02/09/2026) :
+
+| Traceur | Nature | Finalité | Régime |
+|---|---|---|---|
+| Cookie de session Supabase Auth | Cookie `httpOnly`, géré par `@supabase/ssr` | Authentification | Strictement nécessaire — exempté de consentement (cookie d'authentification) |
+| Widget Cloudflare Turnstile | Iframe cross-origin au signup (`TurnstileWidget.tsx`) | Anti-bot / sécurité | Strictement nécessaire — exempté de consentement (cookie de sécurité anti-fraude) |
+| État replié/déplié d'une carte (accueil) | `window.localStorage`, par appareil (`components/home/CollapsibleCard.tsx`) | Préférence d'affichage explicitement demandée par l'utilisateur, jamais transmise au serveur | Strictement nécessaire — exempté (personnalisation d'interface demandée par l'utilisateur) |
+| — | Mesure d'audience, publicité, pixels marketing, lecteur vidéo tiers | — | **Aucun** trouvé dans le dépôt (confirmé en §3 point 6) |
+
+**Conclusion** : les seuls traceurs identifiés relèvent tous des catégories exemptées de consentement selon les critères usuels de la CNIL (authentification, sécurité, préférence d'interface demandée par l'utilisateur). **Aucun bandeau de consentement cookies n'est nécessaire aujourd'hui.** Une simple mention informative (liste ci-dessus) dans la politique de confidentialité suffit — pas de mécanisme d'accept/refuse à construire tant qu'aucun traceur non-exempté (analytics, publicité) n'est ajouté. Si un outil de mesure d'audience ou de publicité est introduit plus tard, ce point est à recadrer entièrement (bandeau de consentement requis).
+
+Point de vigilance mineur, pas bloquant : Turnstile est un widget tiers cross-origin (Cloudflare) — sa qualification en cookie strictement nécessaire repose sur la finalité anti-fraude déclarée par Cloudflare, à confirmer si une validation professionnelle est faite (§8.5).
+
 ### 2.3. Mentions légales
 
 L’application ou son site de présentation doit permettre d’identifier clairement son responsable.
@@ -204,6 +219,12 @@ Des obligations complémentaires peuvent s’appliquer si l’application propos
 
 Il peut alors être nécessaire de prévoir des conditions générales de vente, une information précontractuelle complète, des règles relatives au paiement, à la résiliation, au renouvellement et, selon le service concerné, au droit de rétractation.
 
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+Aucun des déclencheurs listés n'est présent aujourd'hui : pas d'abonnement, pas d'achat intégré, pas de service payant, pas de publicité, pas de place de marché, pas de période d'essai, pas de renouvellement automatique (confirmé technique en §3 point 5 — recherche de Stripe ou équivalent : aucune trace). **Aucune des obligations de ce paragraphe ne s'applique tant que le service reste gratuit** — pas de CGV nécessaire (déjà noté en §8.3).
+
+Point ouvert, déjà tracé en §8.5 : modèle économique 2027 non tranché. Si un modèle payant est introduit, ce paragraphe est intégralement à retraiter (CGV, information précontractuelle, droit de rétractation le cas échéant) — pas la peine d'anticiper le détail avant que le modèle soit choisi.
+
 ### 2.10. Utilisateurs mineurs
 
 Si des mineurs peuvent accéder à l’application, il faut prévoir une analyse spécifique portant notamment sur :
@@ -246,6 +267,14 @@ Une application de pronostics requiert une vigilance particulière lorsqu’elle
 - une communication pouvant laisser penser à une activité de pari.
 
 Un jeu gratuit entre amis sans mise financière présente un profil différent d’une activité commerciale avec paiement ou gains. Le règlement, la présentation du service et la nature des récompenses doivent être analysés avant le lancement.
+
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+- **Mise financière / droit d'entrée / gain à valeur financière / récompense sponsor** : aucun des quatre, confirmé technique (§3 point 10 — table `bets` sans colonne montant/devise, aucune trace de paiement dans le code).
+- **Mécanique reposant sur le hasard** : le jeu porte sur la prédiction de résultats sportifs réels (compétence/connaissance du sport), pas sur un tirage aléatoire — profil différent d'un jeu de hasard au sens strict.
+- **Communication pouvant évoquer une activité de pari réglementée** : vérifié dans le code de l'interface (recherche de vocabulaire type "cote", "cagnotte", "jackpot", "argent réel", "€" dans `app/`) — **aucune occurrence trouvée**. Le vocabulaire reste celui d'un jeu à points fictifs.
+
+**Conclusion : profil de jeu gratuit entre amis, pas d'activité de pari réglementée à ce jour.** Cohérent avec §3 point 10 et §2.9. Point ouvert déjà tracé en §8.5 : si le modèle 2027 introduit des mises ou des gains à valeur réelle, ce paragraphe entier est à retraiter — c'est le point que le document source lui-même identifie comme le plus structurant juridiquement pour ce type d'application.
 
 ## 3. Informations nécessaires pour réaliser l’analyse
 
