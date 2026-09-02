@@ -12,13 +12,15 @@ du classeur : "Minutes jouées" (28 mentions) et "Contres"/"Interceptions"
 (~11 mentions combinées) avaient été oubliés du 1er passage (seuls points/
 rebonds/passes/3-points avaient été identifiés comme prioritaires).
 
-Différence assumée avec les points : pas d'équivalent de
-`vs_adversaire_pts_moy` (jamais calculé pour les autres stats) — les
-prédicteurs sont la propre historique du joueur sur CETTE stat + le
-contexte partagé (minutes, repos, etc.), sans historique face à
-l'adversaire précis. Pour "minutes" elle-même, `min_moy5`/`min_moy10` sont
-à la fois le prédicteur principal ET absents de SHARED_COLS (pas de sens de
-prédire les minutes à partir d'elles-mêmes en doublon).
+`vs_adversaire_{stat}_moy` généralisé le 02/09/2026 (GAPS_OUVERTS.md,
+chantier "nouvelles features") à REGRESSION_STATS SAUF les minutes
+(`reb/ast/fg3m/stl/blk/fga/fg3a/oreb`, VS_ADVERSAIRE_STATS ci-dessous) —
+jusqu'ici SEULS les points avaient cette feature (train_points_model.py).
+"minutes" reste exclue : dépend du rôle/de la rotation de l'entraîneur,
+pas de l'adversaire en face. Pour "minutes" elle-même, `min_moy5`/
+`min_moy10` sont à la fois le prédicteur principal ET absents de
+SHARED_COLS (pas de sens de prédire les minutes à partir d'elles-mêmes en
+doublon).
 
 Distribution de proba PAR STAT (ajouté le 20/08/2026, vérifié empiriquement
 avant d'être généralisé) : 3-points/interceptions/contres sont des stats
@@ -59,6 +61,12 @@ MODELS_DIR = SCRIPT_DIR.parent / "models"
 # autres (calibration_check ci-dessous).
 POISSON_STATS = {"fg3m", "stl", "blk", "oreb"}
 
+# Stats bénéficiant de `vs_adversaire_{stat}_moy` (généralisé le 02/09/2026,
+# GAPS_OUVERTS.md) -- REGRESSION_STATS SAUF "min" (pas de lien avec
+# l'adversaire, cf. docstring du module) et "pts" (déjà géré à part par
+# train_points_model.py, jamais passé par feature_cols_for()).
+VS_ADVERSAIRE_STATS = {"reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb"}
+
 SHARED_COLS = [
     "min_moy5", "min_moy10",
     "is_home", "rest_days", "is_back_to_back", "games_played_season_avant",
@@ -73,6 +81,8 @@ MIN_SCALE = 0.5  # plancher, plus bas que pour les points (les autres stats ont 
 
 def feature_cols_for(stat: str) -> list:
     own = [f"{stat}_moy5", f"{stat}_moy10"]
+    if stat in VS_ADVERSAIRE_STATS:
+        own.append(f"vs_adversaire_{stat}_moy")
     shared = [c for c in SHARED_COLS if not c.startswith(f"{stat}_")]
     return own + shared
 

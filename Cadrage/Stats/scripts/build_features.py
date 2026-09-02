@@ -127,6 +127,9 @@ CREATE TABLE features_joueur (
     usg_pct_moy5 REAL, usg_pct_moy10 REAL,
     plus_minus_moy5 REAL, plus_minus_moy10 REAL, plus_minus_ecarttype10 REAL,
     vs_adversaire_pts_moy REAL,
+    vs_adversaire_reb_moy REAL, vs_adversaire_ast_moy REAL, vs_adversaire_fg3m_moy REAL,
+    vs_adversaire_stl_moy REAL, vs_adversaire_blk_moy REAL,
+    vs_adversaire_fga_moy REAL, vs_adversaire_fg3a_moy REAL, vs_adversaire_oreb_moy REAL,
     vs_adversaire_nb_matchs INTEGER,
     matchs_manques_depuis_dernier INTEGER,
     fta_moy5 REAL, fta_moy10 REAL,
@@ -441,8 +444,17 @@ def add_player_rolling_features(players: pd.DataFrame) -> pd.DataFrame:
         df[f"{makes_col}_sum10"] = g[makes_col].transform(lambda s: shifted_rolling_sum(s, 10))
         df[f"{attempts_col}_sum10"] = g[attempts_col].transform(lambda s: shifted_rolling_sum(s, 10))
 
+    # "vs_adversaire_{stat}_moy" generalise le 02/09/2026 (GAPS_OUVERTS.md,
+    # chantier "nouvelles features") -- "pts" deja present depuis le debut
+    # (train_points_model.py), etendu ici a REGRESSION_STATS SAUF les
+    # minutes (perimetre retenu avec l'utilisateur : les minutes dependent
+    # du role/de la rotation de l'entraineur, pas de l'adversaire en face).
+    # Meme calcul EXACT (shift(1).expanding().mean(), anti-fuite) pour
+    # chaque stat, juste generalise en boucle plutot que duplique 9 fois.
+    VS_ADVERSAIRE_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb"]
     vs_opp = df.groupby(["player_id", "opponent_team_id"], group_keys=False)
-    df["vs_adversaire_pts_moy"] = vs_opp["pts"].transform(lambda s: s.shift(1).expanding().mean())
+    for stat in VS_ADVERSAIRE_STATS:
+        df[f"vs_adversaire_{stat}_moy"] = vs_opp[stat].transform(lambda s: s.shift(1).expanding().mean())
     df["vs_adversaire_nb_matchs"] = vs_opp.cumcount()
 
     return df
@@ -485,7 +497,11 @@ PLAYER_TABLE_COLUMNS = [
     "oreb_moy5", "oreb_moy10", "oreb_ecarttype10",
     "ts_pct_moy5", "ts_pct_moy10", "usg_pct_moy5", "usg_pct_moy10",
     "plus_minus_moy5", "plus_minus_moy10", "plus_minus_ecarttype10",
-    "vs_adversaire_pts_moy", "vs_adversaire_nb_matchs",
+    "vs_adversaire_pts_moy",
+    "vs_adversaire_reb_moy", "vs_adversaire_ast_moy", "vs_adversaire_fg3m_moy",
+    "vs_adversaire_stl_moy", "vs_adversaire_blk_moy",
+    "vs_adversaire_fga_moy", "vs_adversaire_fg3a_moy", "vs_adversaire_oreb_moy",
+    "vs_adversaire_nb_matchs",
     "matchs_manques_depuis_dernier",
     "fta_moy5", "fta_moy10",
     "ftm_sum10", "fta_sum10",
