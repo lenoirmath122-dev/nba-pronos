@@ -28,6 +28,17 @@
 > à reprendre si une dérive concrète est constatée, ou en continu à mesure
 > que de nouvelles Server Actions texte libre sont ajoutées.
 
+> **Audit de sécurité, finding 10 (cookies non-HttpOnly) — CLOS, documenté
+> tel quel (02/09/2026)** : compromis architectural du SDK `@supabase/ssr`
+> (nécessaire pour Realtime, qui lit le JWT côté client), pas une erreur de
+> config -- rien à corriger. Documenté directement à la source
+> (`lib/supabase/server.ts`, commentaire) plutôt que dans ce fichier
+> uniquement : la CSP stricte de `next.config.ts` (finding 7, déjà traité)
+> sert de filet de sécurité, aucun vecteur XSS connu à ce jour (audit
+> confirmé, `dangerouslySetInnerHTML` absent de tout le dépôt). À revisiter
+> seulement si Realtime cesse un jour de nécessiter un JWT lisible côté
+> client.
+
 > **NBA Cup Alpha — révélation des matchs AUTOMATISÉE le 02/09/2026**
 > (demande explicite de l'utilisateur : "comme si les résultats étaient
 > récupérés par l'API payante (bêta) et que le match se finissait tout
