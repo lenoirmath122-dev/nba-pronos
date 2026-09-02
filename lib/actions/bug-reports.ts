@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { toClientError } from "@/lib/actions/errors";
+import { requiredBoundedText } from "@/lib/actions/validation";
 
 // Signalement rapide (28/08/2026, migration #33) — 2 actions distinctes :
 // submitBugReport (joueur, appelée en useTransition depuis BugReportButton,
@@ -16,6 +17,7 @@ import { toClientError } from "@/lib/actions/errors";
 export type ActionResult = { success: true } | { success: false; error: string };
 
 const MAX_DESCRIPTION_LENGTH = 5000;
+const DescriptionSchema = requiredBoundedText(MAX_DESCRIPTION_LENGTH);
 
 export async function submitBugReport(input: {
   description: string;
@@ -27,11 +29,12 @@ export async function submitBugReport(input: {
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
 
-  const description = input.description.trim();
-  if (description.length === 0) return { success: false, error: "Décris le souci avant d'envoyer." };
-  if (description.length > MAX_DESCRIPTION_LENGTH) {
-    return { success: false, error: `${MAX_DESCRIPTION_LENGTH} caractères maximum.` };
+  const parsed = DescriptionSchema.safeParse(input.description);
+  if (!parsed.success) {
+    const tooLong = input.description.trim().length > MAX_DESCRIPTION_LENGTH;
+    return { success: false, error: tooLong ? `${MAX_DESCRIPTION_LENGTH} caractères maximum.` : "Décris le souci avant d'envoyer." };
   }
+  const description = parsed.data;
 
   const { error } = await supabase.from("bug_reports").insert({
     user_id: user.id,

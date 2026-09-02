@@ -4,6 +4,10 @@ import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
 import { notifyNewChatMessage } from "@/lib/push/notifyChatMessage";
 import { toClientError } from "@/lib/actions/errors";
+import { z } from "zod";
+import { boundedText } from "@/lib/actions/validation";
+
+const ChatScopeSchema = z.enum(["GLOBAL", "LEAGUE"]);
 
 // Server actions du chat (SPEC_CHAT_V0_1.md, 27/08/2026). PAS le patron
 // "formulaire natif + redirect" du reste de lib/actions/* (profile.ts,
@@ -16,6 +20,7 @@ import { toClientError } from "@/lib/actions/errors";
 // par un rechargement SSR).
 
 const MAX_MESSAGE_LENGTH = 2000;
+const MessageBodySchema = boundedText(MAX_MESSAGE_LENGTH);
 
 export type PostChatMessageState = { error: string | null } | undefined;
 
@@ -23,21 +28,22 @@ export async function postChatMessageFormAction(
   _prevState: PostChatMessageState,
   formData: FormData
 ): Promise<PostChatMessageState> {
-  const scopeType = String(formData.get("scopeType") ?? "");
+  const scopeParsed = ChatScopeSchema.safeParse(String(formData.get("scopeType") ?? ""));
+  if (!scopeParsed.success) {
+    return { error: "Canal invalide." };
+  }
+  const scopeType = scopeParsed.data;
   const leagueIdRaw = String(formData.get("leagueId") ?? "");
   const leagueId = leagueIdRaw === "" ? null : leagueIdRaw;
   const body = String(formData.get("body") ?? "").trim();
 
-  if (scopeType !== "GLOBAL" && scopeType !== "LEAGUE") {
-    return { error: "Canal invalide." };
-  }
   if (scopeType === "LEAGUE" && !leagueId) {
     return { error: "Canal invalide." };
   }
   if (body.length === 0) {
     return { error: null }; // pas d'erreur affichée pour un envoi vide (espace/entrée seuls)
   }
-  if (body.length > MAX_MESSAGE_LENGTH) {
+  if (!MessageBodySchema.safeParse(body).success) {
     return { error: `${MAX_MESSAGE_LENGTH} caractères maximum.` };
   }
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { structureAndScoreBet } from "@/lib/ai/structureAndScoreBet";
+import { boundedText } from "@/lib/actions/validation";
 
 // Server actions de l'écran Nouveau pari (SPEC_ECRAN_NOUVEAU_PARI_V0_1 §11) et
 // de Mes paris (suppression, §18/08/2026). AUCUNE écriture directe sur
@@ -18,6 +19,7 @@ export type ActionResult = { success: true; betId: string } | { success: false; 
 export type SimpleActionResult = { success: true } | { success: false; error: string };
 
 const MAX_DESCRIPTION_LENGTH = 2000;
+const DescriptionSchema = boundedText(MAX_DESCRIPTION_LENGTH);
 
 type SaveBetInput = {
   betId?: string; // absent = nouveau pari
@@ -37,7 +39,7 @@ async function callSaveBet(input: SaveBetInput, submit: boolean): Promise<Action
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
 
-  if (input.description.length > MAX_DESCRIPTION_LENGTH) {
+  if (!DescriptionSchema.safeParse(input.description).success) {
     return { success: false, error: `${MAX_DESCRIPTION_LENGTH} caractères maximum.` };
   }
 
