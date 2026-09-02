@@ -21,10 +21,10 @@ import joblib
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 from train_home_win_model import BASE_FEATURE_COLS  # noqa: E402
+from tuning import tune_random_forest
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -85,8 +85,7 @@ def main():
     X_train, y_train = train[FEATURE_COLS], train["y_reel"]
     X_test, y_test = test[FEATURE_COLS], test["y_reel"]
 
-    model = RandomForestRegressor(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    model.fit(X_train, y_train)
+    model, best_params, _ = tune_random_forest(X_train, y_train, task="regressor")
 
     resid_std = float(np.std(y_train - model.predict(X_train)))
     test_pred = model.predict(X_test)
@@ -111,6 +110,7 @@ def main():
             "resid_std": resid_std,
             "target": "total_reb",
             "distribution": "normal",
+            "tuned_params": best_params,
         },
         model_path,
     )

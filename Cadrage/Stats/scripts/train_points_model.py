@@ -37,8 +37,9 @@ import joblib
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
+
+from tuning import tune_random_forest
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -120,8 +121,7 @@ def main():
     X_train, y_train = train[FEATURE_COLS], train["pts_reel"]
     X_test, y_test = test[FEATURE_COLS], test["pts_reel"]
 
-    model = RandomForestRegressor(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    model.fit(X_train, y_train)
+    model, best_params, _ = tune_random_forest(X_train, y_train, task="regressor")
 
     train_pred = model.predict(X_train)
     resid_std = float(np.std(y_train - train_pred))
@@ -144,12 +144,12 @@ def main():
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / "points.joblib"
     joblib.dump(
-        {"model": model, "feature_cols": FEATURE_COLS, "resid_std": resid_std, "target": "pts", "distribution": "normal"},
+        {"model": model, "feature_cols": FEATURE_COLS, "resid_std": resid_std, "target": "pts", "distribution": "normal", "tuned_params": best_params},
         model_path,
     )
     print(f"\nModèle sauvegardé : {model_path}")
 
-    # --- Démo sur un cas connu : Jokić ---
+    # --- Démo sur un cas connu : Jokic ---
     conn = sqlite3.connect(DB_PATH)
     jokic_id = conn.execute("SELECT player_id FROM joueurs WHERE family_name LIKE 'Jok%'").fetchone()
     conn.close()
@@ -159,14 +159,14 @@ def main():
         if not jokic_test.empty:
             preds = model.predict(jokic_test[FEATURE_COLS])
             scales = player_scale(jokic_test["pts_ecarttype10"], resid_std)
-            print(f"\n--- Démo Jokić (5 derniers matchs du test set) ---")
-            print(f"(écart-type global de repli : {resid_std:.2f} | écart-type propre à Jokić utilisé ci-dessous)")
+            print(f"\n--- Démo Jokic (5 derniers matchs du test set) ---")
+            print(f"(écart-type global de repli : {resid_std:.2f} | écart-type propre à Jokic utilisé ci-dessous)")
             for (_, row), pred, scale in zip(jokic_test.iterrows(), preds, scales):
                 p_over_25 = 1 - norm.cdf(25, loc=pred, scale=scale)
                 print(f"  {row['game_date'].date()} : prédit {pred:.1f} pts (+/- {scale:.1f})"
                       f" | réel {row['pts_reel']:.0f} pts | P(>25) = {p_over_25:.0%}")
         else:
-            print("\n(Aucun match de Jokić dans le test set actuel)")
+            print("\n(Aucun match de Jokic dans le test set actuel)")
 
 
 if __name__ == "__main__":

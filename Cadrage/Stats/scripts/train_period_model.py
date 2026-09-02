@@ -48,10 +48,10 @@ import joblib
 import numpy as np
 import pandas as pd
 from scipy.stats import norm
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.metrics import brier_score_loss, log_loss, mean_absolute_error, r2_score
 
 from train_home_win_model import BASE_FEATURE_COLS, FEATURE_COLS  # noqa: E402
+from tuning import tune_random_forest
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -86,8 +86,7 @@ def train_regressor(name: str, df: pd.DataFrame, feature_cols: list[str], target
     X_train, y_train = train[feature_cols], train[target_col]
     X_test, y_test = test[feature_cols], test[target_col]
 
-    model = RandomForestRegressor(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    model.fit(X_train, y_train)
+    model, best_params, _ = tune_random_forest(X_train, y_train, task="regressor")
 
     resid_std = float(np.std(y_train - model.predict(X_train)))
     test_pred = model.predict(X_test)
@@ -106,7 +105,7 @@ def train_regressor(name: str, df: pd.DataFrame, feature_cols: list[str], target
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / f"{name}.joblib"
     joblib.dump(
-        {"model": model, "feature_cols": feature_cols, "resid_std": resid_std, "target": target_col, "distribution": "normal"},
+        {"model": model, "feature_cols": feature_cols, "resid_std": resid_std, "target": target_col, "distribution": "normal", "tuned_params": best_params},
         model_path,
     )
     print(f"Modèle sauvegardé : {model_path}")
@@ -125,8 +124,7 @@ def train_binary_classifier(name: str, df: pd.DataFrame, feature_cols: list[str]
     X_train, y_train = train[feature_cols], train["_y"]
     X_test, y_test = test[feature_cols], test["_y"]
 
-    model = RandomForestClassifier(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    model.fit(X_train, y_train)
+    model, best_params, _ = tune_random_forest(X_train, y_train, task="classifier")
 
     proba_test = model.predict_proba(X_test)[:, 1]
     print(f"Log loss (test) : {log_loss(y_test, proba_test):.3f}  (référence taux constant : {log_loss(y_test, np.full(len(y_test), y_train.mean())):.3f})")
@@ -134,7 +132,7 @@ def train_binary_classifier(name: str, df: pd.DataFrame, feature_cols: list[str]
 
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / f"{name}.joblib"
-    joblib.dump({"model": model, "feature_cols": feature_cols, "target": target_col}, model_path)
+    joblib.dump({"model": model, "feature_cols": feature_cols, "target": target_col, "tuned_params": best_params}, model_path)
     print(f"Modèle sauvegardé : {model_path}")
 
 
@@ -149,8 +147,7 @@ def train_multiclass_classifier(name: str, df: pd.DataFrame, feature_cols: list[
     X_train, y_train = train[feature_cols], train[target_col]
     X_test, y_test = test[feature_cols], test[target_col]
 
-    model = RandomForestClassifier(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    model.fit(X_train, y_train)
+    model, best_params, _ = tune_random_forest(X_train, y_train, task="classifier")
 
     proba_test = model.predict_proba(X_test)
     print(f"Log loss multi-classe (test) : {log_loss(y_test, proba_test, labels=model.classes_):.3f}")
@@ -158,7 +155,7 @@ def train_multiclass_classifier(name: str, df: pd.DataFrame, feature_cols: list[
 
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / f"{name}.joblib"
-    joblib.dump({"model": model, "feature_cols": feature_cols, "target": target_col, "classes": classes}, model_path)
+    joblib.dump({"model": model, "feature_cols": feature_cols, "target": target_col, "classes": classes, "tuned_params": best_params}, model_path)
     print(f"Modèle sauvegardé : {model_path}")
 
 

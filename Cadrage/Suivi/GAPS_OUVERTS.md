@@ -4,18 +4,226 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
-> **Continuer à entraîner/perfectionner les modèles de probabilité
-> (point noté pour plus tard, pas commencé, 01/09/2026)** — demande
-> explicite de l'utilisateur, à la suite du chantier fiabilité & QA sur
-> `resolveCalculableBets.ts`/`structureAndScoreBet.ts` (voir
-> `BILAN_GLOBAL_01_09_2026.md`) : voir si les modèles de proba du service
-> Python (`Cadrage/Stats/service/`, 12 `RandomForestRegressor`/
-> classifieurs, `Cadrage/Stats/scripts/train_*.py`) peuvent encore être
-> perfectionnés, pas juste étendus à de nouveaux types de paris comme
-> jusqu'ici. Rien de cadré pour l'instant — ni le périmètre exact (quels
-> modèles, quelles stats) ni la méthode (plus de données, nouvelles
-> features, réglage d'hyperparamètres, backtesting contre des paris déjà
-> résolus en vrai...). À reprendre avec l'utilisateur au moment voulu.
+> **NBA Cup Alpha — révélation des matchs AUTOMATISÉE le 02/09/2026**
+> (demande explicite de l'utilisateur : "comme si les résultats étaient
+> récupérés par l'API payante (bêta) et que le match se finissait tout
+> seul") -- jusqu'ici `scripts/nba-cup-reveal-match.mjs` devait être lancé
+> à la main le jour J. Nouveau module `lib/nbaCupAlpha/autoReveal.ts`
+> (`autoRevealAlphaMatches()`) + route `/api/nba-cup-alpha/auto-reveal`
+> (même patron Bearer `SYNC_SECRET`/runtime Node que `/api/sync/results`)
+> + workflow `nba-cup-alpha-reveal.yml` (cron 30 min, même cadence que
+> `sync-results.yml`) : dès qu'un match fictif atteint son `scheduled_at`,
+> il se révèle tout seul.
+>
+> **Repérage** : uniquement les matchs ayant un `entity_mappings`
+> `source_type='NBA_API'` (posé par `nba-cup-create-match.mjs`) --
+> distinct de `source_type='HIGHLIGHTLY'` utilisé par les vraies synchros,
+> donc ce cron ne touchera JAMAIS un match synchronisé normalement. Logique
+> de dérivation du score reprise à l'identique du script manuel (équipe ->
+> tricode -> `stats_equipes` -> somme `stats_box_scores.pts` du vrai
+> `game_id` emprunté). Différence utile par rapport au script : tourne DANS
+> Next.js, donc appelle directement `recomputeMatch`/
+> `advanceWinnerIfDecided` (server-only) au lieu d'avoir à réimplémenter
+> leur orchestration comme le script Node autonome devait le faire.
+>
+> **Résolution des paris chaînée automatiquement** (pas seulement la
+> révélation) : nouvelle fonction `resolveAllCalculableBets()` extraite de
+> `/api/resolve-bets` (les 14 resolvers agrégés, zéro comportement changé --
+> `/api/resolve-bets` refactoré pour l'utiliser aussi, aucune duplication)
+> et appelée juste après une révélation réussie -- possible ici (contrairement
+> au scénario réel, qui attend le rafraîchissement Data NBA quotidien) car
+> les stats empruntées à l'alpha sont des matchs déjà entièrement en base,
+> aucune donnée "de la veille" à attendre.
+>
+> **syncType journalisé en `RESULTS`** (pas de nouvelle valeur ajoutée à
+> l'enum Postgres `sync_type` pour un mécanisme temporaire -- une migration
+> aurait été disproportionnée pour ~7 matchs sur un mois) -- distingué dans
+> le texte du résumé (`sync_logs.summary`) via l'`endpoint`
+> (`/nba-cup-alpha/auto-reveal`).
+>
+> **Étape 3 AUTOMATISÉE le 02/09/2026 aussi** (voir entrée séparée juste en
+> dessous) -- la limite ci-dessus n'est plus d'actualité, gardée pour trace.
+>
+> **Vérifié** : `tsc`/`eslint`/`vitest` (224/224)/`next build` (41 routes,
+> nouvelle route `/api/nba-cup-alpha/auto-reveal` bien listée) propres.
+> Testé en conditions réelles contre Supabase de prod en local (`next dev`,
+> vrai `SYNC_SECRET`) : `{"revealed":[],"skipped":[],"betsResolved":0}` --
+> comportement attendu et SANS RISQUE (aucun des 4 quarts n'atteint encore
+> son `scheduled_at`, le plus proche étant le 20/09) : confirme que la
+> route tourne et ne révèle rien prématurément, mais ne prouve pas encore
+> le chemin de révélation réel lui-même (aucun test qui ferait
+> artificiellement avancer `?date=` n'a été lancé, pour ne pas risquer de
+> basculer un vrai match fictif en `FINISHED` avant l'heure -- risque
+> spoiler déjà documenté plus bas). À vérifier pour de vrai au premier
+> match du 20/09 (les logs `sync_logs`/l'écran admin permettront de
+> confirmer la révélation automatique en direct).
+
+> **NBA Cup Alpha — création du match du tour suivant AUTOMATISÉE le
+> 02/09/2026** (étape 3 du runbook, suite directe de l'auto-révélation
+> ci-dessus, même session) -- nouveau `lib/nbaCupAlpha/autoCreateNextRound.ts`
+> (`autoCreateDueNextRoundMatches()`), chaîné à la fin de
+> `autoRevealAlphaMatches()` (uniquement si au moins un match a été révélé
+> -- c'est justement une révélation qui peut faire passer une série
+> suivante de "équipes inconnues" à "prête"). Automatise
+> `scripts/nba-cup-create-match.mjs` pour les 3 matchs de demies/finale
+> UNIQUEMENT (les 4 quarts restent créés manuellement, déjà fait le
+> 28/08/2026) -- possible car ces 3 matchs sont déjà choisis et
+> déterministes (empruntés à de vrais matchs déjà joués, table plus bas),
+> pas besoin de décision humaine le jour J : table `series_id -> {game_id,
+> heure}` codée en dur dans le module, reprise telle quelle de la table
+> ci-dessus. Idempotent (vérifie `team1_id`/`team2_id` remplis + absence de
+> match déjà créé pour la série avant d'insérer, comme le script manuel).
+>
+> **Horaires des 2 demies (19h/21h le 22/09) déduits, PAS explicitement
+> écrits ailleurs** -- ordre choisi par cohérence avec celui des quarts
+> (Celtics-Knicks/Lakers-Warriors à 19h/21h le 20/09 -> Demi 1 Celtics/
+> Lakers à 19h ; Nuggets-Thunder/Bucks-76ers à 19h/21h le 21/09 -> Demi 2
+> Nuggets/Bucks à 21h), documenté comme hypothèse dans le code -- **à
+> confirmer avec l'utilisateur** avant le 22/09 si un ordre différent était
+> prévu. Finale : 23/09 20h (seule heure déjà écrite explicitement dans le
+> calendrier retenu, sans ambiguïté).
+>
+> Vérifié : `tsc`/`eslint`/`vitest` (224/224)/`next build` propres. Testé
+> en LECTURE SEULE contre Supabase de prod (script jetable, supprimé après
+> usage, même convention que le reste du dépôt) : les 3 `series_id` et les
+> 3 `game_id` du tableau existent bien en base, `team1_id`/`team2_id`
+> encore `null` comme attendu (aucun quart révélé) -- confirme que les
+> identifiants codés en dur sont corrects sans risquer de créer un match
+> prématurément. Le chemin de création lui-même (insert réel) reste à
+> vérifier en conditions réelles au moment où le 1er tour de quarts sera
+> révélé (20-21/09).
+
+> **Validation des schémas dédiés de `structureAndScoreBet.ts` (point noté
+> pour la prochaine reprise, pas commencé, 01/09/2026)** — suite du chantier
+> fiabilité & QA : seul le ROUTAGE par mot-clé (`routeBetDescription`,
+> PERIOD/ROSTER_COUNT/ROSTER_SPLIT/SUPERLATIVE/TECHNICAL_FOULS_COUNT/
+> LAST_BASKET/BLOCK_ON_PLAYER/COMBO_NESTED_OR) a été testé jusqu'ici
+> (`lib/ai/structureAndScoreBet.test.ts`) -- pas la validation Zod DERRIÈRE
+> chaque schéma dédié une fois le routage fait. Déterministe, sans appel
+> Claude réel, même esprit que le test de routage. Le pipeline IA de
+> structuration lui-même (l'appel Claude), le service Python de proba, les
+> composants React et tout e2e restent hors périmètre de ce point (jamais
+> testés, pas dans ce qui a été annoncé comme suite).
+
+> **Réglage d'hyperparamètres des 58 modèles de probabilité Python — FAIT
+> le 01-02/09/2026** — 1er volet du chantier "perfectionnement des modèles"
+> (demande explicite de l'utilisateur, suite du chantier fiabilité & QA,
+> voir `BILAN_GLOBAL_01_09_2026.md`). Nouveau module partagé
+> `Cadrage/Stats/scripts/tuning.py` (`tune_random_forest()` :
+> RandomizedSearchCV + TimeSeriesSplit, MÊME espace de recherche pour tous
+> les modèles -- avant ce chantier, les 58 modèles utilisaient TOUS
+> exactement les mêmes hyperparamètres fixes n_estimators=300/max_depth=8/
+> min_samples_leaf=10, choisis une fois et jamais recherchés). Branché dans
+> les 15 scripts `train_*.py`, chacun réentraîné et vérifié un par un
+> (aucune erreur). `tuned_params` ajouté à chaque `.joblib` sauvegardé pour
+> traçabilité.
+>
+> **Cas particulier -- `train_player_period_model.py`** (730k lignes, 10
+> stats) : recherche complète hors de portée (mesuré : des dizaines
+> d'heures par stat) -- recherche sur un ÉCHANTILLON temporel (20% des
+> lignes les plus récentes de train) puis UN SEUL réentraînement sur 100%
+> des données avec la config gagnante (`tune_on_sample_then_refit()`,
+> `tuning.py`). Option choisie avec l'utilisateur après comparatif chiffré
+> de 4 options (échantillon+refit / recherche sur 1 stat réutilisée pour
+> les 9 autres / ne pas toucher cette famille / louer une VM cloud plus
+> puissante) -- le calcul sur RandomForest est 100% CPU (aucun gain GPU
+> sans changer de bibliothèque), donc une VM plus puissante n'aurait aidé
+> que par le nombre de coeurs, pour un coût/effort d'infra non justifié
+> face au gain quasi nul de l'échantillonnage.
+>
+> **Constat de calibration a posteriori (nouveau, pas cadré avant, découvert
+> en observant les 58 runs) -- MÉCANISME ET CHIFFRES DÉTAILLÉS, à reprendre
+> plus tard** : `train_player_period_model.py` réutilise `POISSON_STATS`
+> TEL QUEL depuis `train_stat_model.py` (échelle match entier) sans jamais
+> revérifier le choix normale/Poisson à l'échelle période -- or les
+> moyennes par période sont 4-6x plus basses qu'à l'échelle match (ex.
+> passes : ~0.92/période contre ~2.4+/match). Les stats en distribution
+> NORMALE (pts/reb/ast/fga/fg3a/min) sur-estiment alors systématiquement la
+> proba aux seuils bas (la normale, symétrique et continue, colle mal à un
+> comptage discret concentré près de 0) :
+> - Passes >1 : prédit 45.3% / réel 23.3% (écart +22.0%)
+> - Tirs à 3pts tentés >1 : prédit 56.6% / réel 34.6% (écart +22.0%)
+> - Points >3 : prédit 57.9% / réel 44.5% (écart +13.4%)
+> - Tirs tentés >3 : prédit 48.3% / réel 35.4% (écart +12.9%)
+>
+> À l'inverse, les stats en POISSON (fg3m/stl/blk/oreb) -- pourtant des
+> moyennes encore plus basses (0.17 à 0.46/période) -- restent quasi
+> parfaitement calibrées (écarts ≤ 0.9 point de %) : confirme que ce n'est
+> PAS "les petits comptages sont durs" en général, mais un choix de
+> distribution hérité sans revérification à ce nouveau grain d'échelle.
+> **Piste de correctif pour plus tard** : refaire le test empirique
+> Poisson-vs-normale (même méthode que `test_overdispersion_ft.py`/
+> `calibration_check`) spécifiquement à l'échelle période pour ces 6 stats
+> -- probable que plusieurs basculent en Poisson à ce grain-là même si la
+> normale reste correcte à l'échelle match entier.
+>
+> **Point faible isolé 1 : `team_blk.joblib` (contres d'équipe)** -- R²
+> déjà faible (0.050, attendu) mais calibration la PLUS dégradée de toute
+> la famille équipe (`train_team_stats_model.py`) : >3 78.3%/68.1%
+> (+10.2%), >4 64.0%/51.8% (+12.3%, pire point), >5 47.5%/36.7% (+10.8%),
+> >6 31.4%/24.2% (+7.3%), >7 18.3%/15.3% (+3.0%) -- toutes les autres stats
+> équipe de ce script restent sous 8% d'écart. Hyperparamètres retenus
+> (`n_estimators=500, max_depth=12, min_samples_leaf=30, max_features=
+> 'sqrt'`) ne corrigent pas le biais -- suggère un manque de FEATURES
+> utiles (profil défensif adverse, taille/mobilité des joueurs sur le
+> terrain -- pas capturé actuellement) plutôt qu'un mauvais réglage.
+>
+> **Point faible isolé 2 : `total_timeouts.joblib` (temps morts combinés)**
+> -- R²=0.006, quasi aucun signal prédictif (la recherche a d'elle-même
+> retenu un arbre très peu profond, `max_depth=4`, signe qu'aller plus loin
+> n'apporte rien) : >3 100.0%/100.0% (-0.0%), >7 98.4%/100.0% (-1.6%), >9
+> 85.1%/73.5% (+11.6%), >11 47.1%/30.5% (+16.6%, pire point). Cohérent avec
+> le fait que cette stat était déjà documentée comme peu prévisible avant
+> ce chantier (dépend surtout de la dynamique EN DIRECT du match -- money
+> time serré vs match à sens unique -- pas du contexte pré-match) : pas une
+> régression, le plafond vient du manque de signal dans les features, pas
+> du modèle.
+>
+> **Pas encore fait** : redéploiement Cloud Run des modèles retunés
+> (action utilisateur, comme d'habitude).
+>
+> **2e volet "nouvelles features" -- CADRÉ le 02/09/2026, PAS ENCORE
+> IMPLÉMENTÉ (à lancer plus tard, l'utilisateur veut le faire tourner de
+> nuit)** : généraliser `vs_adversaire_pts_moy` (moyenne du joueur contre
+> CET adversaire précis, calcul sans fuite `shift(1).expanding()`,
+> `build_features.py`) -- actuellement calculée UNIQUEMENT pour les points
+> (confirmé à 3 endroits : `build_features.py`, le docstring de
+> `feature_cols_for()` dans `train_stat_model.py`, et même côté CLI --
+> `tester_modele.py --adversaire` "n'affecte que --stat pts"). **Périmètre
+> retenu avec l'utilisateur : toutes les stats de `REGRESSION_STATS` SAUF
+> les minutes** (`reb/ast/fg3m/stl/blk/fga/fg3a/oreb`, 8 stats) -- les
+> minutes dépendent du rôle/de la rotation de l'entraîneur, pas de
+> l'adversaire en face, écartées pour cette raison.
+>
+> **3 endroits à toucher pour l'implémentation (pas juste 1)** :
+> 1. `build_features.py` -- généraliser la même ligne
+>    (`vs_opp[stat].transform(lambda s: s.shift(1).expanding().mean())`)
+>    aux 8 stats, puis RÉGÉNÉRER la table locale `features_joueur`
+>    (nba.db).
+> 2. `train_stat_model.py` (`feature_cols_for()`) -- brancher la nouvelle
+>    colonne par stat. `train_player_period_model.py` réutilise cette même
+>    fonction -- en bénéficie automatiquement, aucun code supplémentaire
+>    pour lui.
+> 3. `Cadrage/Stats/service/supabase_context.py` (`build_context()`,
+>    service Python EN PROD) -- **prérequis critique, pas une option** : la
+>    requête Supabase qui calcule cette moyenne en direct n'existe
+>    aujourd'hui QUE pour `pts` (lignes ~165-175). Sans ce changement côté
+>    service, un modèle entraîné avec cette feature recevrait `NaN` en
+>    production -- l'effort d'entraînement serait inutile.
+>
+> **Reste à faire une fois lancé** : réentraîner `train_stat_model.py` (8
+> stats concernées) + `train_player_period_model.py` (mêmes 8 stats, via
+> `feature_cols_for()` partagé) -- en repassant par `tune_random_forest()`/
+> `tune_on_sample_then_refit()` (`tuning.py`, déjà en place depuis le
+> chantier hyperparamètres du 01-02/09/2026), pas juste un fit brut --
+> pour repartir sur des hyperparamètres réévalués avec la nouvelle feature.
+>
+> **Backtesting sur vrais paris résolus -- REPORTÉ après le lancement de
+> l'alpha (décision utilisateur, 01/09/2026)** : seulement 5 paris résolus
+> avec `calculated_proba` en base au moment du chantier (9 paris avec proba
+> tout statut confondu, sur 33 paris au total) -- bien trop peu pour un
+> backtest statistiquement utile. À reprendre une fois l'alpha lancée
+> (~20/09/2026) et assez de paris réellement résolus accumulés.
 
 > **Audit de sécurité (29-30/08/2026) — findings Moyen/Faible/Info non
 > traités** (détail complet des risques et recommandations dans
@@ -95,20 +303,20 @@
 > | Demi 2 (Nuggets/Bucks) | `221f571f-7c57-414a-8659-43cf4c3017f6` | `0022401057` (26/03/2025) | DEN 127-117 MIL |
 > | Finale (Celtics/Nuggets, à confirmer) | `aecc3c23-dcb3-49fb-b35f-d69f15f88277` | `0022400866` (2/03/2025) | BOS 110-103 DEN |
 >
-> **Reste à faire le jour J (à partir du 20/09)**, pour chaque match dans
-> l'ordre (quart → demi → finale) :
-> 1. `node --env-file=.env.local scripts/nba-cup-reveal-match.mjs --match=<id>`
->    du match du tour précédent (révèle le résultat, score les pronos/picks,
->    avance le vainqueur -- automatique et immédiat).
-> 2. `curl -X POST -H "Authorization: Bearer $SYNC_SECRET"
->    https://nba-pronos.vercel.app/api/resolve-bets` (affiché par le script
->    ci-dessus) -- pour résoudre les paris persos IA tout de suite plutôt que
->    d'attendre le cron quotidien (`refresh-stats-supabase.yml`, 10h UTC).
-> 3. Une fois les 2 quarts (ou les 2 demies) d'un tour révélés : `node
->    --env-file=.env.local scripts/nba-cup-create-match.mjs --series=<id
->    ci-dessus> --game=<game_id ci-dessus> --at="2026-09-22T20:00"` (heure
->    Paris) -- crée le match du tour suivant avec le vrai match déjà choisi,
->    plus besoin de rechercher quoi que ce soit ce jour-là.
+> **Étapes 1, 2 et 3 AUTOMATISÉES le 02/09/2026** (voir les 2 entrées
+> dédiées en tête de fichier) -- révélation, résolution des paris ET
+> création du match du tour suivant ne demandent plus AUCUNE commande
+> manuelle, tout se déclenche tout seul en cron (`/api/nba-cup-alpha/
+> auto-reveal`, 30 min). **Reste à faire le jour J (à partir du 20/09)**,
+> pour chaque tour :
+> 1. ~~`nba-cup-reveal-match.mjs`~~ -- automatique.
+> 2. ~~`curl .../api/resolve-bets`~~ -- automatique (chaîné après révélation).
+> 3. ~~`nba-cup-create-match.mjs`~~ -- automatique pour les demies/finale
+>    (chaîné après révélation, table `series_id -> game_id` déjà codée en
+>    dur -- **vérifier que les horaires 19h/21h du 22/09 assignés à Demi 1/
+>    Demi 2 sont les bons**, déduits par cohérence avec l'ordre des quarts,
+>    pas explicitement validés). Les 4 quarts, eux, restent créés
+>    manuellement (déjà fait le 28/08/2026, rien à refaire).
 > 4. Transmettre l'extrait correspondant de `NBA_CUP_ALPHA_EFFECTIFS.md` aux
 >    testeurs avant l'ouverture des paris/pronos sur ce tour.
 

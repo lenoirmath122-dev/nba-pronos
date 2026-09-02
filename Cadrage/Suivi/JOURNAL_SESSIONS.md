@@ -12536,3 +12536,82 @@ stade.
 routage par mot-clé), sans appel réel à Claude (déterministe, gratuit,
 rapide) — décision déjà actée avec l'utilisateur avant cette session.
 ```
+
+## Reprise du projet : bilan de reprise, hyperparamètres commités, auto-révélation NBA Cup alpha, bug déploiement Cloud Run (02/09/2026)
+
+```text
+Session Claude Code (VS Code), reprise après une pause. Demande de
+l'utilisateur : où en est le projet, prêt pour l'alpha ? Bilan produit à
+partir des docs de suivi + vérifications directes (`tsc`, `vitest`, état
+git) plutôt qu'à partir de mémoire — confirmé : 18 fichiers de test/224
+tests verts, CI bloquante en place (garde-fou ajouté le 01/09), sécurité
+critique/élevée déjà corrigée, NBA Cup alpha codée mais pas encore
+lancée (calendrier 20-23/09).
+
+**Commit du travail en attente** : le réglage d'hyperparamètres des 58
+modèles (fait le 01-02/09, `tuning.py` + les 15 `train_*.py`) traînait
+non commité, de même qu'un vrai bug trouvé le jour même côté `next.config.ts`
+(Turbopack remontait sa racine jusqu'à un `package.json` parasite dans
+`C:\dev\`, cassant toutes les routes en 404 sauf la redirection racine —
+corrigé via `turbopack.root`). Les `.log` de tuning laissés non trackés
+(scratch, pas du code). Commité (`463b253`).
+
+**Automatisation de l'étape 1 du runbook NBA Cup alpha** (demande
+explicite : "comme si les résultats étaient récupérés par l'API payante
+(bêta) et que le match se finissait tout seul") : nouveau
+`lib/nbaCupAlpha/autoReveal.ts` + route `/api/nba-cup-alpha/auto-reveal`
++ workflow `nba-cup-alpha-reveal.yml` (cron 30 min, même patron que
+`/api/sync/results`) — remplace `scripts/nba-cup-reveal-match.mjs` lancé
+à la main. Repérage via `entity_mappings.source_type='NBA_API'`
+(distinct de `'HIGHLIGHTLY'`, donc ne touche jamais une vraie synchro).
+Tourne côté Next.js -- appelle directement `recomputeMatch`/
+`advanceWinnerIfDecided` plutôt que de réimplémenter leur orchestration
+comme le script Node autonome. Résolution des paris chaînée
+automatiquement après une révélation (`resolveAllCalculableBets()`,
+extraite de `/api/resolve-bets` sans changement de comportement, réutilisée
+aux 2 endroits). `tsc`/`eslint`/`vitest` (224/224)/`next build` (41
+routes) propres ; testé en direct contre Supabase de prod (`next dev` +
+vrai `SYNC_SECRET`) — réponse vide confirmée, sans rien révéler
+prématurément (aucun quart pas encore dû avant le 20/09). Commité
+(`3e592be`). **Reste ouvert** (accepté explicitement, portée volontaire) :
+étapes 3 (création du match du tour suivant) pas encore automatisée --
+prochaine étape actée avec l'utilisateur.
+
+**Bug réel trouvé par l'utilisateur en testant** : `gcloud run deploy`
+(redéploiement des modèles retunés) échoue avec "container failed to
+start and listen on the port... within the allocated timeout" -- message
+Cloud Run trompeur, ne pointe pas la vraie cause. Logs réels
+(`gcloud logging read`) : `ModuleNotFoundError: No module named 'tuning'`
+à l'import de `train_home_win_model.py` (lui-même importé par
+`supabase_context.py` pour ses constantes de features, importé par
+`app.py` au démarrage) -- le chantier hyperparamètres du 01-02/09 a
+ajouté `from tuning import tune_random_forest` à `train_home_win_model.py`,
+mais `Cadrage/Stats/Dockerfile` ne copiait que 4 fichiers précis dans
+l'image (`tester_modele.py`/`build_features.py`/`train_home_win_model.py`/
+`series_probability.py`), jamais `tuning.py` -- absent de l'image, le
+conteneur crashe à l'import avant même d'écouter sur le port.
+
+**Correctif** : `tuning.py` ajouté à la ligne `COPY` du Dockerfile,
+commentaire explicite ajouté (pour que le prochain accroc similaire se
+diagnostique plus vite que via les logs Cloud Run). Vérifié en simulant
+la même arborescence que l'image Docker en local (copie des mêmes
+fichiers exacts dans un dossier temporaire, import de `train_home_win_model`
+puis de `supabase_context` en entier) -- les 2 imports réussissent avec
+`tuning.py` présent, confirmant la cause ET le correctif sans avoir à
+attendre un nouveau build Cloud Run complet pour le savoir. Redéploiement
+à relancer par l'utilisateur (`gcloud run deploy nba-pronos-stats
+--source . --region europe-west1`, depuis `Cadrage/Stats/`).
+
+**Point de reprise noté par l'utilisateur** : finir l'automatisation des
+étapes 1 à 3 du runbook NBA Cup alpha (étape 3 = création automatique du
+match du tour suivant une fois les 2 feeders révélés -- les 3 vrais
+matchs de demies/finale sont déjà choisis et déterministes, cf.
+`GAPS_OUVERTS.md`, automatisable sur le même principe que l'étape 1).
+
+**Rappel important** (déjà noté à l'étape 1 ci-dessus, 01/09/2026) : la
+branche `main` est protégée -- toute automatisation nouvelle devra passer
+par une PR (CI verte requise) pour que le cron GitHub Actions associé
+tourne réellement (les workflows `schedule:` ne se déclenchent que
+depuis la branche par défaut). Commits de cette session faits sur
+`docs/gap-perfectionnement-modeles`, pas encore mergés dans `main`.
+```

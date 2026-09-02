@@ -1,0 +1,25 @@
+name: NBA Cup Alpha — auto-révélation des matchs fictifs
+
+# Automatise scripts/nba-cup-reveal-match.mjs (GAPS_OUVERTS.md, chantier
+# "NBA Cup — Alpha Potes") : appelle /api/nba-cup-alpha/auto-reveal, qui
+# révèle tout seul un match fictif dès que son scheduled_at est passé --
+# même cadence que sync-results.yml (30 min) pour se comporter "comme en
+# bêta", où /api/sync/results détecte tout seul qu'un vrai match est
+# terminé. Mécanisme temporaire, propre à l'alpha (entity_mappings
+# source_type='NBA_API') -- à supprimer une fois l'alpha terminée
+# (~23/09/2026), ne touche jamais les compétitions synchronisées normalement.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Appeler /api/nba-cup-alpha/auto-reveal
+        run: |
+          curl --fail --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/nba-cup-alpha/auto-reveal"
