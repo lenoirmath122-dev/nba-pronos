@@ -28,8 +28,9 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import brier_score_loss, log_loss
+
+from tuning import tune_random_forest
 
 from train_home_win_model import BASE_FEATURE_COLS
 
@@ -93,11 +94,7 @@ def main():
 
     # PAS de class_weight="balanced" (même raison que train_doubledouble_
     # model.py, événement rare -- voir docstring du module).
-    model = RandomForestClassifier(
-        n_estimators=300, max_depth=8, min_samples_leaf=10,
-        random_state=0, n_jobs=-1,
-    )
-    model.fit(X_train, y_train)
+    model, best_params, _ = tune_random_forest(X_train, y_train, task="classifier")
 
     proba_test = model.predict_proba(X_test)[:, 1]
     print(f"Log loss (test) : {log_loss(y_test, proba_test):.3f}  (référence taux constant : {log_loss(y_test, np.full(len(y_test), y_train.mean())):.3f})")
@@ -111,7 +108,7 @@ def main():
 
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / "overtime.joblib"
-    joblib.dump({"model": model, "feature_cols": FEATURE_COLS, "target": "went_to_ot"}, model_path)
+    joblib.dump({"model": model, "feature_cols": FEATURE_COLS, "target": "went_to_ot", "tuned_params": best_params}, model_path)
     print(f"\nModèle sauvegardé : {model_path}")
 
     return model

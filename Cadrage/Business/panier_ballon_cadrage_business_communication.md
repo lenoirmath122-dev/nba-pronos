@@ -308,6 +308,18 @@ et 2 — éviter 3 covers identiques d'affilée sur la grille du profil) :
    titre *« Installe l'appli avant le 20 septembre. »*, CTA `Lien dans la bio 🔗` (ou renvoi vers le
    tuto d'installation du Post 2).
 
+**Gabarits closing/CTA créés le 02/09/2026** : `Cadrage/DA/instagram/Posts/post-conclusion-gabarit.svg`
+(dark) et `-clair.svg` — contenu centré horizontalement et verticalement (pas ancré en bas comme les
+autres slides), classe `.cta` dédiée en orange à la place du sous-titre. Détail dans
+`Cadrage/DA/instagram/SPEC_VISUELS_INSTAGRAM.md`, section « Format 2bis ». Reste à dupliquer en
+Illustrator avec la photo hero du Post 3 pour obtenir l'effet bookend, et à caler le texte ci-dessus.
+
+**Point encore ouvert** : la cover du Post 3 (`post-3.png`) réutilise `hero-mural.jpg`, déjà utilisé
+sur les covers des Posts 1 et 2 — alors que ce plan prévoyait `hero-hk.jpg` ou `hero-hoop.jpg` pour
+éviter 3 covers identiques d'affilée sur la grille du profil (cf. note ci-dessous, non appliquée).
+À trancher avant publication : garder le mural (et donc bookender le slide 5 dessus) ou changer la
+photo de cover + conclusion.
+
 **S4 · semaine du 15-21 sept. — rythme de croisière (1-2 posts, contenu libre selon l'avancement réel) :**
 - Post "update" : une capture d'une fonctionnalité corrigée ou améliorée grâce aux retours de l'alpha + une phrase courte.
 - Story avec sticker sondage ("Vous êtes plutôt bracket ou paris perso ?") pour faire réagir les premiers abonnés.

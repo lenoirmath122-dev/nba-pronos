@@ -29,8 +29,9 @@ from pathlib import Path
 import joblib
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import brier_score_loss, log_loss
+
+from tuning import tune_random_forest
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -116,11 +117,7 @@ def main():
     # PAS de class_weight="balanced" (même raison que train_doubledouble_
     # model.py) : fausserait la calibration -- la base rate ~55-60% est le
     # vrai avantage du terrain NBA, pas un déséquilibre à corriger.
-    model = RandomForestClassifier(
-        n_estimators=300, max_depth=8, min_samples_leaf=10,
-        random_state=0, n_jobs=-1,
-    )
-    model.fit(X_train, y_train)
+    model, best_params, _ = tune_random_forest(X_train, y_train, task="classifier")
 
     proba_test = model.predict_proba(X_test)[:, 1]
     print(f"Log loss (test) : {log_loss(y_test, proba_test):.3f}  (référence taux constant : {log_loss(y_test, np.full(len(y_test), y_train.mean())):.3f})")
@@ -134,7 +131,7 @@ def main():
 
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / "home_win.joblib"
-    joblib.dump({"model": model, "feature_cols": FEATURE_COLS, "target": "home_win"}, model_path)
+    joblib.dump({"model": model, "feature_cols": FEATURE_COLS, "target": "home_win", "tuned_params": best_params}, model_path)
     print(f"\nModèle sauvegardé : {model_path}")
 
     return model

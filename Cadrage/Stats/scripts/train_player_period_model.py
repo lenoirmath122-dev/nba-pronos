@@ -38,11 +38,11 @@ import joblib
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, poisson
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 from supabase import create_client
 
 from train_stat_model import POISSON_STATS, feature_cols_for  # noqa: E402
+from tuning import tune_on_sample_then_refit
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -53,6 +53,15 @@ ENV_PATH = REPO_ROOT / ".env.local"
 TEST_FRACTION = 0.2
 MIN_SCALE = 0.5  # meme plancher que train_stat_model.py
 PAGE_SIZE = 1000  # limite PostgREST par defaut, meme constante que refresh_daily.py
+
+# Recherche d'hyperparametres sur un SOUS-ECHANTILLON temporel plutot que sur
+# la totalite (decision utilisateur, 01/09/2026, cf. GAPS_OUVERTS.md) : ce
+# dataset (730k lignes) rend une recherche complete hors de portee (dizaines
+# d'heures PAR STAT, mesure sur train_points_model.py avant de generaliser).
+# Les 20% de lignes les PLUS RECENTES DE TRAIN (jamais du test, qui reste
+# intact pour l'evaluation) servent a la recherche -- le REENTRAINEMENT final
+# voit toujours 100% de train (voir tune_on_sample_then_refit, tuning.py).
+SEARCH_SAMPLE_FRACTION = 0.2
 
 PERIOD_CODES = ["Q1", "Q2", "Q3", "Q4", "H1", "H2"]
 PERIOD_ONE_HOT_COLS = [f"period_{p}" for p in PERIOD_CODES]
@@ -166,8 +175,13 @@ def run(stat: str, thresholds: tuple, merged: pd.DataFrame):
     train, test, cutoff = temporal_split(df, TEST_FRACTION)
     print(f"Split temporel : {len(train)} train (< {cutoff.date()}) / {len(test)} test (>= {cutoff.date()})")
 
-    model = RandomForestRegressor(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    model.fit(train[cols], train[target_col])
+    sample_start = int(len(train) * (1 - SEARCH_SAMPLE_FRACTION))
+    train_sample = train.iloc[sample_start:]
+    print(f"Recherche d'hyperparametres sur un echantillon de {len(train_sample)} lignes "
+          f"({SEARCH_SAMPLE_FRACTION:.0%} des plus recentes de train, sur {len(train)}).")
+    model, best_params, _ = tune_on_sample_then_refit(
+        train_sample[cols], train_sample[target_col], train[cols], train[target_col], task="regressor"
+    )
 
     resid_std = float(np.std(train[target_col] - model.predict(train[cols])))
     test_pred = model.predict(test[cols])
@@ -187,7 +201,7 @@ def run(stat: str, thresholds: tuple, merged: pd.DataFrame):
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / f"period_{stat}.joblib"
     joblib.dump(
-        {"model": model, "feature_cols": cols, "resid_std": resid_std, "target": target_col, "distribution": distribution},
+        {"model": model, "feature_cols": cols, "resid_std": resid_std, "target": target_col, "distribution": distribution, "tuned_params": best_params},
         model_path,
     )
     print(f"Modèle sauvegardé : {model_path} (distribution: {distribution})")

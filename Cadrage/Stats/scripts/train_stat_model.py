@@ -42,8 +42,9 @@ import joblib
 import numpy as np
 import pandas as pd
 from scipy.stats import norm, poisson
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
+
+from tuning import tune_random_forest
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -130,8 +131,7 @@ def run(stat: str, label_fr: str, thresholds: tuple, label_col: str = None):
     train, test, cutoff = temporal_split(df, TEST_FRACTION)
     print(f"Split temporel : {len(train)} train (< {cutoff.date()}) / {len(test)} test (>= {cutoff.date()})")
 
-    model = RandomForestRegressor(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    model.fit(train[cols], train["y_reel"])
+    model, best_params, _ = tune_random_forest(train[cols], train["y_reel"], task="regressor")
 
     resid_std = float(np.std(train["y_reel"] - model.predict(train[cols])))
     test_pred = model.predict(test[cols])
@@ -151,7 +151,7 @@ def run(stat: str, label_fr: str, thresholds: tuple, label_col: str = None):
     MODELS_DIR.mkdir(exist_ok=True)
     model_path = MODELS_DIR / f"{stat}.joblib"
     joblib.dump(
-        {"model": model, "feature_cols": cols, "resid_std": resid_std, "target": stat, "distribution": distribution},
+        {"model": model, "feature_cols": cols, "resid_std": resid_std, "target": stat, "distribution": distribution, "tuned_params": best_params},
         model_path,
     )
     print(f"Modèle sauvegardé : {model_path} (distribution: {distribution})")

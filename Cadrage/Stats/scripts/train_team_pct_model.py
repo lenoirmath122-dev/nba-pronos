@@ -35,10 +35,10 @@ import joblib
 import numpy as np
 import pandas as pd
 from scipy.stats import betabinom, binom
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.metrics import mean_absolute_error, r2_score
 
 from train_home_win_model import BASE_FEATURE_COLS  # noqa: E402
+from tuning import tune_random_forest
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 DB_PATH = SCRIPT_DIR.parent / "data" / "nba.db"
@@ -140,8 +140,9 @@ def run(stat: str, label_fr: str, makes_col: str, attempts_col: str, thresholds:
     # rares matchs sans faute sifflée -- même garde que le joueur, jamais
     # supposée inutile).
     train_attempted = train[train["attempts_reel"] > 0]
-    attempts_model = RandomForestRegressor(n_estimators=300, max_depth=8, min_samples_leaf=10, random_state=0, n_jobs=-1)
-    attempts_model.fit(train_attempted[feature_cols], train_attempted["attempts_reel"])
+    attempts_model, attempts_best_params, _ = tune_random_forest(
+        train_attempted[feature_cols], train_attempted["attempts_reel"], task="regressor"
+    )
     test_n_hat = attempts_model.predict(test[feature_cols])
     test_attempted = test[test["attempts_reel"] > 0]
     mae = mean_absolute_error(test_attempted["attempts_reel"], attempts_model.predict(test_attempted[feature_cols]))
@@ -210,6 +211,7 @@ def run(stat: str, label_fr: str, makes_col: str, attempts_col: str, thresholds:
             "shrinkage_k": best_k,
             "target": f"team_{stat}_pct",
             "distribution": distribution,
+            "tuned_params": attempts_best_params,
         },
         model_path,
     )

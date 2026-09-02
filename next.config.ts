@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import path from "path";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -21,6 +22,14 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // Racine forcée : un package.json/package-lock.json parasites dans
+  // C:\dev\ (dossier parent partagé avec d'autres projets) faisaient
+  // remonter Turbopack jusque là pour détecter la racine du projet,
+  // cassant la résolution des routes de l'app (toutes les pages en 404
+  // sauf la redirection de "/", constaté le 02/09/2026).
+  turbopack: {
+    root: path.join(__dirname),
+  },
   async headers() {
     return [
       {
