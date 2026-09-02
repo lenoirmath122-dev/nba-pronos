@@ -50,6 +50,15 @@ PAGE_SIZE = 1000  # limite par defaut de PostgREST (meme constante que
 # cf. Dockerfile) -- toute lecture "table entiere" sans .range() se
 # tronque silencieusement a 1000 lignes.
 
+# Stats couvertes par "vs_adversaire_{stat}_moy" (build_context() ci-dessous,
+# generalise le 02/09/2026, GAPS_OUVERTS.md) -- "pts" (deja present) + les 8
+# stats de train_stat_model.py::VS_ADVERSAIRE_STATS. Dupliquee ici plutot
+# qu'importee de train_stat_model.py -- meme raison EXACTE que PAGE_SIZE
+# ci-dessus, ce script n'est pas copie dans l'image Cloud Run (cf. Dockerfile,
+# bug reel du 02/09/2026 avec tuning.py : un import manquant de l'image fait
+# planter le service au demarrage).
+VS_ADVERSAIRE_STATS = ("pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb")
+
 
 def fetch_all_rows(query_builder) -> list:
     """Recupere TOUTES les lignes en paginant avec .range() -- query_builder
@@ -158,20 +167,30 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     context["fgm_sum10"], context["fga_sum10"] = recent["fgm"].sum(), recent["fga"].sum()
     context["fg3m_sum10"], context["fg3a_sum10"] = recent["fg3m"].sum(), recent["fg3a"].sum()
 
+    # "vs_adversaire_{stat}_moy" generalise le 02/09/2026 (GAPS_OUVERTS.md,
+    # chantier "nouvelles features") -- avant, seule "pts" etait calculee ici
+    # (prerequis critique note dans GAPS_OUVERTS.md : sans ce changement, un
+    # modele entraine avec cette feature recevrait NaN en production, meme
+    # si build_features.py/train_stat_model.py sont a jour). UNE SEULE
+    # requete Supabase pour les 9 stats (pas 9 appels separes) -- meme
+    # historique complet vs cet adversaire precis, deja recupere par
+    # colonne unique avant ce changement.
     if opponent_id is not None:
         vs_adv = (
             client.table("stats_box_scores")
-            .select("pts")
+            .select(", ".join(VS_ADVERSAIRE_STATS))
             .eq("player_id", player_id)
             .eq("opponent_team_id", opponent_id)
             .execute()
             .data
         )
-        pts_list = [r["pts"] for r in vs_adv if r["pts"] is not None]
-        context["vs_adversaire_pts_moy"] = float(np.mean(pts_list)) if pts_list else np.nan
-        context["vs_adversaire_nb_matchs"] = len(pts_list)
+        for stat in VS_ADVERSAIRE_STATS:
+            values = [r[stat] for r in vs_adv if r[stat] is not None]
+            context[f"vs_adversaire_{stat}_moy"] = float(np.mean(values)) if values else np.nan
+        context["vs_adversaire_nb_matchs"] = len(vs_adv)
     else:
-        context["vs_adversaire_pts_moy"] = np.nan
+        for stat in VS_ADVERSAIRE_STATS:
+            context[f"vs_adversaire_{stat}_moy"] = np.nan
         context["vs_adversaire_nb_matchs"] = 0
 
     ecarttypes = {}

@@ -181,9 +181,11 @@
 > **Pas encore fait** : redéploiement Cloud Run des modèles retunés
 > (action utilisateur, comme d'habitude).
 >
-> **2e volet "nouvelles features" -- CADRÉ le 02/09/2026, PAS ENCORE
-> IMPLÉMENTÉ (à lancer plus tard, l'utilisateur veut le faire tourner de
-> nuit)** : généraliser `vs_adversaire_pts_moy` (moyenne du joueur contre
+> **2e volet "nouvelles features" -- LES 3 ENDROITS CODÉS ET VÉRIFIÉS le
+> 02/09/2026, ENTRAÎNEMENT VOLONTAIREMENT PAS ENCORE LANCÉ** (demande
+> explicite de l'utilisateur -- "fais tout, mais ne lance pas
+> l'entraînement de suite, on fera ça plus tard quand je te le dirai") :
+> généraliser `vs_adversaire_pts_moy` (moyenne du joueur contre
 > CET adversaire précis, calcul sans fuite `shift(1).expanding()`,
 > `build_features.py`) -- actuellement calculée UNIQUEMENT pour les points
 > (confirmé à 3 endroits : `build_features.py`, le docstring de
@@ -194,28 +196,65 @@
 > minutes dépendent du rôle/de la rotation de l'entraîneur, pas de
 > l'adversaire en face, écartées pour cette raison.
 >
-> **3 endroits à toucher pour l'implémentation (pas juste 1)** :
-> 1. `build_features.py` -- généraliser la même ligne
+> **3 endroits codés (pas juste 1)** :
+> 1. `build_features.py` -- généralisé la même ligne
 >    (`vs_opp[stat].transform(lambda s: s.shift(1).expanding().mean())`)
->    aux 8 stats, puis RÉGÉNÉRER la table locale `features_joueur`
->    (nba.db).
-> 2. `train_stat_model.py` (`feature_cols_for()`) -- brancher la nouvelle
->    colonne par stat. `train_player_period_model.py` réutilise cette même
->    fonction -- en bénéficie automatiquement, aucun code supplémentaire
->    pour lui.
+>    aux 8 stats (boucle `VS_ADVERSAIRE_STATS`, remplace les 2 lignes
+>    dédiées à `pts`), `PLAYER_SCHEMA`/`PLAYER_TABLE_COLUMNS` étendus (8
+>    nouvelles colonnes `vs_adversaire_{stat}_moy`). Table locale
+>    `features_joueur` (nba.db) RÉGÉNÉRÉE et vérifiée (140 933 lignes,
+>    valeurs cohérentes -- ex. Q1 vérifié à la main : pts=25.3/reb=9.7/
+>    ast=8.0 sur 3 confrontations -- ~83% de couverture non-NULL, même
+>    ordre de grandeur que `pts` déjà en place, le reste = 1res
+>    confrontations jamais vues).
+> 2. `train_stat_model.py` (`feature_cols_for()`) -- nouvelle constante
+>    `VS_ADVERSAIRE_STATS` (les 8 stats, PAS `pts` -- déjà géré par
+>    `train_points_model.py` via son propre `FEATURE_COLS` hardcodé),
+>    branchée dans `own` avant les `SHARED_COLS`. Vérifié colonne par
+>    colonne (`reb`/`ast`/`fg3m`/`stl`/`blk`/`fga`/`fg3a`/`oreb` ont bien
+>    la feature, `min`/`plus_minus` ne l'ont pas). `train_player_period_model.py`
+>    réutilise cette même fonction (import direct) -- en bénéficie
+>    automatiquement, aucun code supplémentaire pour lui, confirmé par le
+>    `SELECT * FROM features_joueur` de son chargement (toute nouvelle
+>    colonne y arrive sans changement de code).
 > 3. `Cadrage/Stats/service/supabase_context.py` (`build_context()`,
->    service Python EN PROD) -- **prérequis critique, pas une option** : la
->    requête Supabase qui calcule cette moyenne en direct n'existe
->    aujourd'hui QUE pour `pts` (lignes ~165-175). Sans ce changement côté
->    service, un modèle entraîné avec cette feature recevrait `NaN` en
->    production -- l'effort d'entraînement serait inutile.
+>    service Python EN PROD) -- **prérequis critique, fait** : la requête
+>    Supabase qui calculait cette moyenne en direct SEULEMENT pour `pts`
+>    généralisée à une UNIQUE requête pour les 9 stats (`pts` + les 8
+>    nouvelles, constante `VS_ADVERSAIRE_STATS` locale -- dupliquée plutôt
+>    qu'importée de `train_stat_model.py`, MÊME raison que `PAGE_SIZE`
+>    juste au-dessus dans le fichier : ce script n'est pas copié dans
+>    l'image Cloud Run, cf. le bug réel `tuning.py` corrigé plus tôt le
+>    même jour -- ne pas répéter la même erreur avec un nouvel import).
+>    Petit changement de comportement assumé en passant : `vs_adversaire_nb_matchs`
+>    compte désormais toutes les lignes retournées (`len(vs_adv)`) plutôt
+>    que seulement celles où `pts` n'était pas NULL (`len(pts_list)`) --
+>    plus cohérent maintenant que "nb_matchs" n'est plus spécifique à une
+>    seule stat, différence négligeable en pratique (`pts` est quasi
+>    toujours renseigné pour un match joué).
 >
-> **Reste à faire une fois lancé** : réentraîner `train_stat_model.py` (8
-> stats concernées) + `train_player_period_model.py` (mêmes 8 stats, via
-> `feature_cols_for()` partagé) -- en repassant par `tune_random_forest()`/
+> **Vérifié SANS lancer d'entraînement** (uniquement lecture/calcul de
+> features, aucun modèle touché) : `python -c "import ast..."` propre sur
+> les 3 fichiers ; `feature_cols_for()` inspecté pour les 10 stats
+> concernées (8 avec la feature, `min`/`plus_minus` sans) ; `load_dataset()`
+> rejouée pour `reb`/`ast`/`fg3a` -- 116 818 lignes après `dropna` (même
+> perte de ~17% que `pts` déjà en place, cohérent), colonne
+> `vs_adversaire_{stat}_moy` bien présente avec des moyennes plausibles.
+> Aucun modèle `.joblib` déployé n'est affecté par ce commit (leur
+> `feature_cols` sauvegardé à l'entraînement ne change pas rétroactivement) --
+> sûr à merger/déployer même avant le réentraînement.
+>
+> **Reste à faire, sur signal explicite de l'utilisateur (pas avant)** :
+> réentraîner `train_stat_model.py` (8 stats concernées) +
+> `train_player_period_model.py` (mêmes 8 stats, via `feature_cols_for()`
+> partagé) -- en repassant par `tune_random_forest()`/
 > `tune_on_sample_then_refit()` (`tuning.py`, déjà en place depuis le
 > chantier hyperparamètres du 01-02/09/2026), pas juste un fit brut --
 > pour repartir sur des hyperparamètres réévalués avec la nouvelle feature.
+> Prévu pour tourner de nuit (`train_player_period_model.py` seul avait
+> déjà pris ~1h50 sans tuning -- plus long ici). Puis redéploiement Cloud
+> Run (action utilisateur, comme d'habitude) une fois les nouveaux
+> `.joblib` vérifiés en local.
 >
 > **Backtesting sur vrais paris résolus -- REPORTÉ après le lancement de
 > l'alpha (décision utilisateur, 01/09/2026)** : seulement 5 paris résolus
