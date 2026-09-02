@@ -74,14 +74,13 @@
 > ci-dessus. Idempotent (vérifie `team1_id`/`team2_id` remplis + absence de
 > match déjà créé pour la série avant d'insérer, comme le script manuel).
 >
-> **Horaires des 2 demies (19h/21h le 22/09) déduits, PAS explicitement
-> écrits ailleurs** -- ordre choisi par cohérence avec celui des quarts
-> (Celtics-Knicks/Lakers-Warriors à 19h/21h le 20/09 -> Demi 1 Celtics/
-> Lakers à 19h ; Nuggets-Thunder/Bucks-76ers à 19h/21h le 21/09 -> Demi 2
-> Nuggets/Bucks à 21h), documenté comme hypothèse dans le code -- **à
-> confirmer avec l'utilisateur** avant le 22/09 si un ordre différent était
-> prévu. Finale : 23/09 20h (seule heure déjà écrite explicitement dans le
-> calendrier retenu, sans ambiguïté).
+> **Horaires CONFIRMÉS par l'utilisateur le 02/09/2026** : demies à 19h/21h
+> le 22/09 (comme initialement déduit -- ordre Demi 1 Celtics/Lakers à 19h,
+> Demi 2 Nuggets/Bucks à 21h, par cohérence avec l'ordre des quarts), finale
+> à **23h** le 23/09 (corrige la valeur "20h" notée par erreur dans la 1ère
+> version de cette entrée et dans le calendrier retenu ci-dessous --
+> `lib/nbaCupAlpha/autoCreateNextRound.ts` et `NBA_CUP_ALPHA_EFFECTIFS.csv`
+> mis à jour en conséquence).
 >
 > Vérifié : `tsc`/`eslint`/`vitest` (224/224)/`next build` propres. Testé
 > en LECTURE SEULE contre Supabase de prod (script jetable, supprimé après
@@ -255,7 +254,8 @@
 > **Calendrier retenu (ajusté avec l'utilisateur le 28/08, remplace "2
 > matchs/jour" ambigu de la 1ère version)** : 2 quarts le 20/09 (19h/21h
 > Paris), 2 quarts le 21/09 (19h/21h), les 2 demies le 22/09 (19h/21h), la
-> finale le 23/09 (20h).
+> finale le 23/09 (**23h**, corrigé le 02/09/2026 -- "20h" écrit par erreur
+> jusqu'ici, confirmé par l'utilisateur).
 >
 > **Les 4 matchs de quarts sont créés** (`SCHEDULED`, invisibles --
 > `nba-cup-create-match.mjs`), chacun lié à un vrai match NBA de SAISON

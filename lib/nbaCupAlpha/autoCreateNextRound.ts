@@ -13,12 +13,12 @@ import { parisLocalToUtcIso } from "@/lib/dates/paris";
 // que la révélation du tour précédent tourne (autoReveal.ts). Repris tel
 // quel, jamais recalculé ici.
 //
-// Horaires (19h/21h le 22/09 pour les 2 demies, 20h le 23/09 pour la
-// finale) déduits du calendrier retenu (GAPS_OUVERTS.md) en respectant
-// l'ordre déjà utilisé pour les quarts (Celtics-Knicks/Lakers-Warriors à
-// 19h/21h le 20/09, donc Demi 1 Celtics/Lakers à 19h ; Nuggets-Thunder/
-// Bucks-76ers à 19h/21h le 21/09, donc Demi 2 Nuggets/Bucks à 21h) -- pas
-// une heure explicitement assignée par écrit ailleurs, à confirmer.
+// Horaires CONFIRMÉS par l'utilisateur le 02/09/2026 : 19h/21h le 22/09
+// pour les 2 demies, 23h le 23/09 pour la finale. L'ordre Demi 1 (19h) /
+// Demi 2 (21h) reste déduit par cohérence avec l'ordre déjà utilisé pour
+// les quarts (Celtics-Knicks/Lakers-Warriors à 19h/21h le 20/09, donc
+// Demi 1 Celtics/Lakers à 19h ; Nuggets-Thunder/Bucks-76ers à 19h/21h le
+// 21/09, donc Demi 2 Nuggets/Bucks à 21h).
 //
 // NE PAS réutiliser pour la bêta -- mécanisme temporaire propre à l'emprunt
 // alpha (même mise en garde que autoReveal.ts / nba-cup-create-match.mjs).
@@ -44,7 +44,7 @@ const NEXT_ROUND_MATCHES: {
   {
     seriesId: "aecc3c23-dcb3-49fb-b35f-d69f15f88277",
     realGameId: "0022400866",
-    scheduledAtParisLocal: "2026-09-23T20:00",
+    scheduledAtParisLocal: "2026-09-23T23:00",
     label: "Finale (Celtics/Nuggets)",
   },
 ];
