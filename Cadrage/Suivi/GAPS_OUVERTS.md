@@ -157,6 +157,26 @@
 > réellement ouvert (modèle 2027 avec mises/gains réels) est déjà tracé en
 > §8.5 depuis le premier passage.
 
+> **Chantier juridique — propriété intellectuelle cadrée, §2.8 (02/09/2026)**
+> : recherche technique (logos/images, licences des dépendances, polices)
+> + vérification en ligne des CGU réelles de l'API Highlightly
+> (`highlightly.net/terms/`, consultées ce soir) et des conditions NBA.com
+> derrière `nba_api`. **Point le plus sensible trouvé : les 30 logos
+> d'équipes NBA affichés dans l'app (`public/logos/teams/*.svg`) ont été
+> récupérés en ligne (source publique type Wikipedia) sans licence
+> obtenue de la NBA/des franchises** -- confirmé avec l'utilisateur (le
+> `README.md` du dossier affirmait à tort des assets "licenciés ou
+> possédés"). Marques déposées, risque jugé limité tant que l'app reste
+> gratuite à cercle fermé, mais **ajouté en §8.5 comme point à valider
+> avant toute ouverture publique/commerciale (2027)**. Le logo de l'app
+> lui-même (`public/brand/logo.svg`) est en revanche une création
+> originale de l'utilisateur -- pas de risque. Autres points mineurs notés
+> : `fpdf2` (dépendance Python) sous licence LGPL plutôt que MIT/BSD ;
+> `nba_api`/données stats.nba.com dans une zone grise communément tolérée
+> mais pas formellement autorisée pour un usage commercial ; 30 fichiers
+> PNG de logos non référencés par le code, probablement des doublons
+> obsolètes à nettoyer.
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même

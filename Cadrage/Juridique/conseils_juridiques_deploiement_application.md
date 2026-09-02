@@ -205,6 +205,21 @@ Il faut vérifier les droits applicables à tous les éléments utilisés ou dif
 
 L’accès technique à une image, une donnée ou un contenu ne signifie pas nécessairement que sa réutilisation est autorisée. Les licences et conditions d’utilisation doivent être vérifiées.
 
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+1. **Code source** : propriété de l'exploitant (particulier). Dépôt privé, pas de contributeur tiers avec droits distincts. La mention "Co-Authored-By: Claude" dans certains commits (assistance IA) n'a pas d'incidence identifiée sur la propriété du code.
+2. **Bibliothèques et composants open source** : dépendances principales (`next`, `react`, `@supabase/*`, `@anthropic-ai/sdk`, `tailwindcss`...) sous licences permissives usuelles (MIT/Apache-2.0). Côté Python (`Cadrage/Stats/scripts/requirements.txt`), une seule dépendance sous licence copyleft faible : **`fpdf2` (LGPL)** — à vérifier si son usage (génération de PDF) reste dans le cadre permis par la LGPL (utilisation en bibliothèque, pas de modification distribuée) ; risque faible mais pas nul.
+3. **Photographies et illustrations** : les images `hero-*.jpg` proviennent de photos Unsplash fournies par l'utilisateur (licence Unsplash, recompressées avant dépôt — `public/brand/README.md`). Aucune photo de joueur NBA trouvée dans le dépôt.
+4. **Logos, marques et identités visuelles** — point le plus sensible de cette section :
+   - **30 logos d'équipes NBA** (`public/logos/teams/*.svg`, hébergés en interne) : **récupérés depuis une source publique en ligne (type Wikipedia), sans licence explicite obtenue de la NBA ou des équipes** (confirmé par l'utilisateur). Ce sont des marques déposées appartenant à la NBA/aux franchises — leur réutilisation dans une application tierce non affiliée, même gratuite, est un vrai point de vigilance marque (pas seulement droit d'auteur). Le `README.md` du dossier affirme des assets "licenciés ou possédés" — cette affirmation n'est pas corroborée par l'origine réelle des fichiers et mérite d'être corrigée ou nuancée. Il existe en plus 30 fichiers PNG dans le même dossier, non référencés par le code (probablement des doublons obsolètes) — à nettoyer.
+   - **Logo de l'app** (`public/brand/logo.svg`) : création originale de l'utilisateur (confirmé) — pas de risque tiers identifié.
+5. **Polices de caractères** : Sora et Oswald, chargées via `next/font/google` et auto-hébergées au build (pas de hotlink runtime) — polices Google Fonts, licence ouverte standard (Open Font License), pas de risque identifié.
+6. **Textes et contenus éditoriaux** : aucun contenu copié depuis une source externe identifié.
+7. **Données provenant d'une API** :
+   - **Highlightly** (conditions consultées le 02/09/2026, `highlightly.net/terms/`) : revente/sous-licence/redistribution de l'accès direct à l'API interdite (§6.1, non applicable ici — l'app consomme l'API pour son propre usage, ne l'expose pas à des tiers) ; Highlightly revendique un droit sur la compilation/base de données elle-même, l'extraction systématique pour un service concurrent est interdite (§6.2, non applicable — usage produit, pas service de données concurrent) ; pour les logos/images, Highlightly ne revendique pas la propriété mais rejette la responsabilité de vérifier la conformité sur l'utilisateur (§6.3) — cohérent avec le fait que l'app **n'utilise pas** le champ `logo` renvoyé par Highlightly (elle héberge ses propres SVG, point 4). Pas d'attribution obligatoire.
+   - **`nba_api`** (wrapper Python, licence MIT) : le code du wrapper est libre, mais délègue aux [conditions d'utilisation de NBA.com](https://www.nba.com/termsofuse) pour les données elles-mêmes — celles-ci encadrent (voire restreignent) l'usage automatisé/commercial des données stats.nba.com. Usage actuel = entraînement de modèles statistiques internes (pas de republication brute des données NBA.com) : risque jugé faible en pratique pour un usage privé/gratuit, mais c'est un point de vigilance largement partagé dans l'écosystème `nba_api` (bibliothèque très utilisée par la communauté malgré cette zone grise) — à revoir sérieusement si le service devient commercial ou public à grande échelle (2027).
+8. **Contenus publiés par les utilisateurs** : aucune clause de propriété/licence n'existe aujourd'hui (pas de CGU publiées). À couvrir dans les futures CGU (§8.3) : l'utilisateur reste propriétaire de son contenu (messages, formulations de paris), et accorde à l'exploitant une licence d'affichage au sein du service.
+
 ### 2.9. Modèle économique et droit de la consommation
 
 Des obligations complémentaires peuvent s’appliquer si l’application propose :
@@ -433,7 +448,7 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 ### 8.4. Contrats et licences à vérifier
 
 - Conditions d'utilisation et localisation des données de Supabase, Vercel, Cloudflare (Turnstile), Anthropic — en particulier les transferts hors UE éventuels, à documenter même si le public visé reste France pour l'instant.
-- Conditions d'utilisation de l'API Highlightly et de la bibliothèque `nba_api` pour la réutilisation des données NBA (propriété intellectuelle, section 2.8).
+- Conditions d'utilisation de l'API Highlightly (consultées 02/09/2026, `highlightly.net/terms/` — pas de revente/redistribution d'accès, pas d'usage des logos qu'elle fournit, non applicable ici, pas d'attribution requise) et des [conditions NBA.com](https://www.nba.com/termsofuse) pour les données récupérées via `nba_api` (propriété intellectuelle, section 2.8).
 - Pas de DPA de prestataire de paiement ou d'e-mail à vérifier tant qu'aucun n'est branché.
 
 ### 8.5. Points nécessitant une validation par un professionnel du droit
@@ -444,6 +459,8 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 - **Statut de l'exploitant** : particulier en nom propre pour l'instant — à revoir si l'activité se structure (auto-entreprise, société), notamment en cas de monétisation.
 - **Transfert de données vers Anthropic (hors UE)** : le texte libre des paris est envoyé à l'API Claude pour structuration (§2.1 point 9, §2.6). DPA et garanties de transfert (clauses contractuelles types ou équivalent) à vérifier avant l'ouverture au-delà du cercle d'amis actuel.
 - **Localisation du projet Supabase** : non trouvée dans le dépôt — à vérifier directement dans le dashboard Supabase (§2.6), en particulier si elle est hors UE.
+- **Logos d'équipes NBA sans licence obtenue** (§2.8 point 4) : les 30 logos affichés dans l'app ont été récupérés en ligne (source publique type Wikipedia), sans licence explicite de la NBA/des franchises — ce sont des marques déposées. Risque jugé limité tant que l'app reste un service gratuit à cercle fermé, mais **point à faire valider avant toute ouverture publique ou commerciale** (2027) : soit obtenir une licence, soit remplacer par des visuels non protégés (couleurs d'équipe, initiales, etc.).
+- **Usage de `nba_api`/données stats.nba.com** (§2.8 point 7) : zone grise largement tolérée dans l'écosystème open source, mais les conditions NBA.com encadrent l'usage automatisé/commercial de leurs données — à revoir si le service devient commercial ou public à grande échelle.
 
 ## 9. Registre des traitements initial (02/09/2026)
 
