@@ -41,11 +41,8 @@
 > le texte du résumé (`sync_logs.summary`) via l'`endpoint`
 > (`/nba-cup-alpha/auto-reveal`).
 >
-> **Limite volontairement laissée de côté** : la création du match du tour
-> suivant (étape 3 du runbook plus bas, `nba-cup-create-match.mjs`) reste
-> manuelle -- l'utilisateur n'a demandé à automatiser que la révélation
-> (étape 1). Les 3 vrais matchs de demies/finale sont déjà choisis (table
-> plus bas), automatisable plus tard sur le même principe si souhaité.
+> **Étape 3 AUTOMATISÉE le 02/09/2026 aussi** (voir entrée séparée juste en
+> dessous) -- la limite ci-dessus n'est plus d'actualité, gardée pour trace.
 >
 > **Vérifié** : `tsc`/`eslint`/`vitest` (224/224)/`next build` (41 routes,
 > nouvelle route `/api/nba-cup-alpha/auto-reveal` bien listée) propres.
@@ -60,6 +57,41 @@
 > spoiler déjà documenté plus bas). À vérifier pour de vrai au premier
 > match du 20/09 (les logs `sync_logs`/l'écran admin permettront de
 > confirmer la révélation automatique en direct).
+
+> **NBA Cup Alpha — création du match du tour suivant AUTOMATISÉE le
+> 02/09/2026** (étape 3 du runbook, suite directe de l'auto-révélation
+> ci-dessus, même session) -- nouveau `lib/nbaCupAlpha/autoCreateNextRound.ts`
+> (`autoCreateDueNextRoundMatches()`), chaîné à la fin de
+> `autoRevealAlphaMatches()` (uniquement si au moins un match a été révélé
+> -- c'est justement une révélation qui peut faire passer une série
+> suivante de "équipes inconnues" à "prête"). Automatise
+> `scripts/nba-cup-create-match.mjs` pour les 3 matchs de demies/finale
+> UNIQUEMENT (les 4 quarts restent créés manuellement, déjà fait le
+> 28/08/2026) -- possible car ces 3 matchs sont déjà choisis et
+> déterministes (empruntés à de vrais matchs déjà joués, table plus bas),
+> pas besoin de décision humaine le jour J : table `series_id -> {game_id,
+> heure}` codée en dur dans le module, reprise telle quelle de la table
+> ci-dessus. Idempotent (vérifie `team1_id`/`team2_id` remplis + absence de
+> match déjà créé pour la série avant d'insérer, comme le script manuel).
+>
+> **Horaires des 2 demies (19h/21h le 22/09) déduits, PAS explicitement
+> écrits ailleurs** -- ordre choisi par cohérence avec celui des quarts
+> (Celtics-Knicks/Lakers-Warriors à 19h/21h le 20/09 -> Demi 1 Celtics/
+> Lakers à 19h ; Nuggets-Thunder/Bucks-76ers à 19h/21h le 21/09 -> Demi 2
+> Nuggets/Bucks à 21h), documenté comme hypothèse dans le code -- **à
+> confirmer avec l'utilisateur** avant le 22/09 si un ordre différent était
+> prévu. Finale : 23/09 20h (seule heure déjà écrite explicitement dans le
+> calendrier retenu, sans ambiguïté).
+>
+> Vérifié : `tsc`/`eslint`/`vitest` (224/224)/`next build` propres. Testé
+> en LECTURE SEULE contre Supabase de prod (script jetable, supprimé après
+> usage, même convention que le reste du dépôt) : les 3 `series_id` et les
+> 3 `game_id` du tableau existent bien en base, `team1_id`/`team2_id`
+> encore `null` comme attendu (aucun quart révélé) -- confirme que les
+> identifiants codés en dur sont corrects sans risquer de créer un match
+> prématurément. Le chemin de création lui-même (insert réel) reste à
+> vérifier en conditions réelles au moment où le 1er tour de quarts sera
+> révélé (20-21/09).
 
 > **Validation des schémas dédiés de `structureAndScoreBet.ts` (point noté
 > pour la prochaine reprise, pas commencé, 01/09/2026)** — suite du chantier
@@ -271,21 +303,20 @@
 > | Demi 2 (Nuggets/Bucks) | `221f571f-7c57-414a-8659-43cf4c3017f6` | `0022401057` (26/03/2025) | DEN 127-117 MIL |
 > | Finale (Celtics/Nuggets, à confirmer) | `aecc3c23-dcb3-49fb-b35f-d69f15f88277` | `0022400866` (2/03/2025) | BOS 110-103 DEN |
 >
-> **Étapes 1 et 2 AUTOMATISÉES le 02/09/2026** (voir entrée dédiée en tête de
-> fichier) -- la révélation + résolution des paris ne demandent plus de
-> commande manuelle le jour J, elles se déclenchent toutes seules en cron.
-> **Reste à faire le jour J (à partir du 20/09)**, pour chaque tour :
-> 1. ~~`nba-cup-reveal-match.mjs`~~ -- automatique désormais (cron 30 min,
->    `/api/nba-cup-alpha/auto-reveal`), rien à lancer.
-> 2. ~~`curl .../api/resolve-bets`~~ -- chaîné automatiquement après une
->    révélation réussie (même route), rien à lancer.
-> 3. Une fois les 2 quarts (ou les 2 demies) d'un tour révélés : `node
->    --env-file=.env.local scripts/nba-cup-create-match.mjs --series=<id
->    ci-dessus> --game=<game_id ci-dessus> --at="2026-09-22T20:00"` (heure
->    Paris) -- crée le match du tour suivant avec le vrai match déjà choisi,
->    plus besoin de rechercher quoi que ce soit ce jour-là. **Pas automatisé**
->    (choix des équipes suivantes déjà connu mais pas encore branché en
->    cron -- voir limite notée dans l'entrée d'automatisation).
+> **Étapes 1, 2 et 3 AUTOMATISÉES le 02/09/2026** (voir les 2 entrées
+> dédiées en tête de fichier) -- révélation, résolution des paris ET
+> création du match du tour suivant ne demandent plus AUCUNE commande
+> manuelle, tout se déclenche tout seul en cron (`/api/nba-cup-alpha/
+> auto-reveal`, 30 min). **Reste à faire le jour J (à partir du 20/09)**,
+> pour chaque tour :
+> 1. ~~`nba-cup-reveal-match.mjs`~~ -- automatique.
+> 2. ~~`curl .../api/resolve-bets`~~ -- automatique (chaîné après révélation).
+> 3. ~~`nba-cup-create-match.mjs`~~ -- automatique pour les demies/finale
+>    (chaîné après révélation, table `series_id -> game_id` déjà codée en
+>    dur -- **vérifier que les horaires 19h/21h du 22/09 assignés à Demi 1/
+>    Demi 2 sont les bons**, déduits par cohérence avec l'ordre des quarts,
+>    pas explicitement validés). Les 4 quarts, eux, restent créés
+>    manuellement (déjà fait le 28/08/2026, rien à refaire).
 > 4. Transmettre l'extrait correspondant de `NBA_CUP_ALPHA_EFFECTIFS.md` aux
 >    testeurs avant l'ouverture des paris/pronos sur ce tour.
 

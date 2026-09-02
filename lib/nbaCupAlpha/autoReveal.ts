@@ -3,6 +3,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
 import { resolveAllCalculableBets } from "@/lib/ai/resolveCalculableBets";
+import { autoCreateDueNextRoundMatches, type CreatedNextRoundMatch } from "@/lib/nbaCupAlpha/autoCreateNextRound";
 
 // Automatise scripts/nba-cup-reveal-match.mjs (chantier "NBA Cup — Alpha
 // Potes", GAPS_OUVERTS.md, 27-28/08/2026) : au lieu de lancer le script à la
@@ -31,6 +32,12 @@ import { resolveAllCalculableBets } from "@/lib/ai/resolveCalculableBets";
 // matchs NBA historiques déjà entièrement en base, contrairement aux stats
 // "de la veille" du scénario réel qui n'arrivent qu'au rafraîchissement
 // Data NBA quotidien (refresh-stats-supabase.yml, 10h UTC).
+//
+// Étape 3 (créer le match du tour suivant, autoCreateNextRound.ts) chaînée
+// ici aussi -- une révélation de quart/demi est exactement ce qui peut faire
+// passer une série suivante de "équipes inconnues" à "prête à créer son
+// match" (via advanceWinnerIfDecided ci-dessus), donc naturel de vérifier
+// juste après plutôt que dans un cron séparé.
 
 type SupabaseServiceClient = ReturnType<typeof getServiceClient>;
 
@@ -56,13 +63,14 @@ export type AutoRevealAlphaResult = {
   revealed: RevealedAlphaMatch[];
   skipped: SkippedAlphaMatch[];
   betsResolved: number;
+  nextRoundCreated: CreatedNextRoundMatch[];
 };
 
 /** `referenceDate` : "maintenant" en production -- override dev/test,
  *  même convention que lib/sync/devDateOverride.ts. */
 export async function autoRevealAlphaMatches(referenceDate: Date = new Date()): Promise<AutoRevealAlphaResult> {
   const supabase = getServiceClient();
-  const result: AutoRevealAlphaResult = { revealed: [], skipped: [], betsResolved: 0 };
+  const result: AutoRevealAlphaResult = { revealed: [], skipped: [], betsResolved: 0, nextRoundCreated: [] };
 
   const { data: mappingsData } = await supabase
     .from("entity_mappings")
@@ -89,6 +97,9 @@ export async function autoRevealAlphaMatches(referenceDate: Date = new Date()): 
   if (result.revealed.length > 0) {
     const betsSummary = await resolveAllCalculableBets();
     result.betsResolved = betsSummary.resolved.length;
+
+    const nextRoundResult = await autoCreateDueNextRoundMatches();
+    result.nextRoundCreated = nextRoundResult.created;
   }
 
   return result;

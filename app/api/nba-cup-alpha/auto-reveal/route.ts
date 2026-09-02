@@ -39,7 +39,11 @@ async function handle(request: Request): Promise<Response> {
         ? "Aucun match fictif à révéler."
         : `NBA Cup alpha -- ${result.revealed.length} match(s) révélé(s) (${result.revealed
             .map((r) => `${r.homeAbbr} ${r.homeScore}-${r.awayScore} ${r.awayAbbr}`)
-            .join("; ")}), ${result.betsResolved} pari(s) résolu(s).` +
+            .join("; ")}), ${result.betsResolved} pari(s) résolu(s)` +
+          (result.nextRoundCreated.length > 0
+            ? `, ${result.nextRoundCreated.length} match(s) du tour suivant créé(s) (${result.nextRoundCreated.map((c) => c.label).join("; ")})`
+            : "") +
+          "." +
           (result.skipped.length > 0 ? ` Ignorés : ${result.skipped.map((s) => `${s.matchId} (${s.reason})`).join("; ")}.` : "");
     await writeSyncLog(supabase, {
       syncType: "RESULTS",
