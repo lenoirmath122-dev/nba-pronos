@@ -4,6 +4,37 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Audit de sécurité, finding 3 (CAPTCHA/rate-limiting login) — TRAITÉ,
+> reste 1 point bloqué par le plan Supabase (02/09/2026)** : Cloudflare
+> Turnstile (mode Managed) branché sur login ET signup, nouveau composant
+> `components/auth/TurnstileWidget.tsx` (rendu explicite `window.turnstile.
+> render`, reset après chaque échec de soumission -- un token Turnstile est
+> à usage unique) + `lib/auth/actions.ts` transmet `cf-turnstile-response`
+> en `captchaToken` aux 2 appels Supabase, message dédié si la vérification
+> échoue (pas confondu avec "mot de passe incorrect"). Secret key posée côté
+> dashboard Supabase (Attack Protection) par l'utilisateur, jamais dans le
+> dépôt -- seule la Site Key publique vit dans `.env.local`/Vercel
+> (`NEXT_PUBLIC_TURNSTILE_SITE_KEY`).
+> **Bug réel trouvé et corrigé en testant** : la CSP stricte posée par le
+> finding 7 (`script-src 'self'`) bloquait purement et simplement le script
+> Cloudflare -- `next.config.ts` étendu (`https://challenges.cloudflare.com`
+> en `script-src` ET nouvelle directive `frame-src`, absente jusqu'ici).
+> **Testé en conditions réelles partiellement** : widget confirmé rendu
+> (capture d'écran, "Verifying..." puis bascule propre sur la case à cocher
+> de secours) via un harnais Playwright temporaire (installé `--no-save`,
+> désinstallé après usage) contre un compte de test jetable créé/supprimé
+> via `service_role` -- mais la vérification complète (obtention d'un vrai
+> token) n'a pas pu être confirmée depuis l'environnement sandbox (DNS
+> bloqué vers un sous-domaine interne Cloudflare, `brunhild.challenges.
+> cloudflare.com`, probable restriction réseau de la sandbox, pas un bug de
+> code). **À vérifier par l'utilisateur dans un vrai navigateur** : que la
+> vérification Turnstile aboutit et qu'une connexion réelle réussit.
+> **Leaked Password Protection (2e volet du finding) -- REPORTÉ, bloqué par
+> le plan** : réservé aux plans Supabase Pro et supérieurs, le projet est
+> sur Free. Décidé avec l'utilisateur de ne pas upgrader pour l'instant
+> (contexte alpha entre amis) -- à reprendre si le plan change un jour.
+> `tsc`/`eslint`/`vitest` (224/224)/`next build` (41 routes) propres.
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même

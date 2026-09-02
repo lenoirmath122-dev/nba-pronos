@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useSyncExternalStore } from "react";
 import { login } from "@/lib/auth/actions";
+import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
 
 // Pas de souscription réelle : l'URL ne change pas après le montage sur cet
@@ -65,6 +66,7 @@ export function LoginForm() {
             className={styles.input}
           />
         </div>
+        <TurnstileWidget resetKey={state} />
         {state?.error && (
           <p role="alert" className={styles.error}>
             {state.error}
