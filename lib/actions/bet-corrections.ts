@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
+import { boundedText } from "@/lib/actions/validation";
 
 // SEULE écriture de l'écran Mes paris (SPEC_ECRAN_MES_PARIS_V0_1 §8). Appelle
 // la fonction SQL SECURITY DEFINER de la migration #11 via .rpc() — AUCUNE
@@ -14,6 +15,7 @@ import { getServerClient } from "@/lib/supabase/server";
 export type ActionResult = { success: true } | { success: false; error: string };
 
 const MAX_JUSTIFICATION_LENGTH = 2000;
+const JustificationSchema = boundedText(MAX_JUSTIFICATION_LENGTH);
 
 export async function requestBetCorrection(input: { betId: string; justification: string }): Promise<ActionResult> {
   const supabase = await getServerClient();
@@ -23,7 +25,7 @@ export async function requestBetCorrection(input: { betId: string; justification
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
 
-  if (input.justification.length > MAX_JUSTIFICATION_LENGTH) {
+  if (!JustificationSchema.safeParse(input.justification).success) {
     return { success: false, error: `${MAX_JUSTIFICATION_LENGTH} caractères maximum.` };
   }
 
