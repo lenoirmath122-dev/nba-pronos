@@ -156,3 +156,24 @@ réentraînement futur nécessite aussi un redéploiement pour que le service
 utilise les nouveaux fichiers — pas de synchronisation automatique. Les
 variables d'environnement/secrets déjà configurés sont conservés d'une
 révision à l'autre, pas besoin de les repasser à chaque redéploiement.)
+
+**⚠️ Vérifier `Cadrage/Stats/Dockerfile` avant de redéployer si un script a
+été modifié/ajouté** (bug réel, 02/09/2026 — voir `GAPS_OUVERTS.md`/
+`JOURNAL_SESSIONS.md`) : le Dockerfile ne copie dans l'image que les
+fichiers `.py` listés EXPLICITEMENT (`COPY scripts/xxx.py ...`), pas tout
+`scripts/`. Le chantier hyperparamètres a ajouté `from tuning import
+tune_random_forest` à `train_home_win_model.py` sans ajouter `tuning.py` à
+cette liste — le conteneur crashait à l'import avant même d'écouter sur le
+port, et **Cloud Run rapporte ça comme un timeout de démarrage** ("container
+failed to start and listen on the port"), pas comme une erreur d'import —
+le message d'erreur de `gcloud run deploy` ne pointe PAS la vraie cause,
+il faut aller lire les vrais logs :
+```
+gcloud logging read 'resource.type=cloud_run_revision AND resource.labels.service_name=nba-pronos-stats' --project=nba-pronos-stats-2026 --limit=50
+```
+**Règle à vérifier à chaque fois qu'un `import` est ajouté à un fichier
+copié dans l'image** (`train_home_win_model.py`, `supabase_context.py`,
+`app.py`, `tester_modele.py`, `build_features.py`, `series_probability.py`) :
+tout nouveau module Python importé (directement ou en cascade) doit être
+ajouté à la ligne `COPY scripts/...` du Dockerfile, sinon le déploiement
+échoue silencieusement avec ce message trompeur.
