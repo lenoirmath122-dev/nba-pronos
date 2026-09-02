@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signup } from "@/lib/auth/actions";
+import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
 
 export function SignupForm() {
@@ -89,6 +90,7 @@ export function SignupForm() {
           </label>
           <input id="code" name="code" type="text" className={styles.input} />
         </div>
+        <TurnstileWidget resetKey={state} />
         {(mismatchError || state?.error) && (
           <p role="alert" className={styles.error}>
             {mismatchError ?? state?.error}
