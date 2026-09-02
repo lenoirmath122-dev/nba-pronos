@@ -4,6 +4,63 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **NBA Cup Alpha — révélation des matchs AUTOMATISÉE le 02/09/2026**
+> (demande explicite de l'utilisateur : "comme si les résultats étaient
+> récupérés par l'API payante (bêta) et que le match se finissait tout
+> seul") -- jusqu'ici `scripts/nba-cup-reveal-match.mjs` devait être lancé
+> à la main le jour J. Nouveau module `lib/nbaCupAlpha/autoReveal.ts`
+> (`autoRevealAlphaMatches()`) + route `/api/nba-cup-alpha/auto-reveal`
+> (même patron Bearer `SYNC_SECRET`/runtime Node que `/api/sync/results`)
+> + workflow `nba-cup-alpha-reveal.yml` (cron 30 min, même cadence que
+> `sync-results.yml`) : dès qu'un match fictif atteint son `scheduled_at`,
+> il se révèle tout seul.
+>
+> **Repérage** : uniquement les matchs ayant un `entity_mappings`
+> `source_type='NBA_API'` (posé par `nba-cup-create-match.mjs`) --
+> distinct de `source_type='HIGHLIGHTLY'` utilisé par les vraies synchros,
+> donc ce cron ne touchera JAMAIS un match synchronisé normalement. Logique
+> de dérivation du score reprise à l'identique du script manuel (équipe ->
+> tricode -> `stats_equipes` -> somme `stats_box_scores.pts` du vrai
+> `game_id` emprunté). Différence utile par rapport au script : tourne DANS
+> Next.js, donc appelle directement `recomputeMatch`/
+> `advanceWinnerIfDecided` (server-only) au lieu d'avoir à réimplémenter
+> leur orchestration comme le script Node autonome devait le faire.
+>
+> **Résolution des paris chaînée automatiquement** (pas seulement la
+> révélation) : nouvelle fonction `resolveAllCalculableBets()` extraite de
+> `/api/resolve-bets` (les 14 resolvers agrégés, zéro comportement changé --
+> `/api/resolve-bets` refactoré pour l'utiliser aussi, aucune duplication)
+> et appelée juste après une révélation réussie -- possible ici (contrairement
+> au scénario réel, qui attend le rafraîchissement Data NBA quotidien) car
+> les stats empruntées à l'alpha sont des matchs déjà entièrement en base,
+> aucune donnée "de la veille" à attendre.
+>
+> **syncType journalisé en `RESULTS`** (pas de nouvelle valeur ajoutée à
+> l'enum Postgres `sync_type` pour un mécanisme temporaire -- une migration
+> aurait été disproportionnée pour ~7 matchs sur un mois) -- distingué dans
+> le texte du résumé (`sync_logs.summary`) via l'`endpoint`
+> (`/nba-cup-alpha/auto-reveal`).
+>
+> **Limite volontairement laissée de côté** : la création du match du tour
+> suivant (étape 3 du runbook plus bas, `nba-cup-create-match.mjs`) reste
+> manuelle -- l'utilisateur n'a demandé à automatiser que la révélation
+> (étape 1). Les 3 vrais matchs de demies/finale sont déjà choisis (table
+> plus bas), automatisable plus tard sur le même principe si souhaité.
+>
+> **Vérifié** : `tsc`/`eslint`/`vitest` (224/224)/`next build` (41 routes,
+> nouvelle route `/api/nba-cup-alpha/auto-reveal` bien listée) propres.
+> Testé en conditions réelles contre Supabase de prod en local (`next dev`,
+> vrai `SYNC_SECRET`) : `{"revealed":[],"skipped":[],"betsResolved":0}` --
+> comportement attendu et SANS RISQUE (aucun des 4 quarts n'atteint encore
+> son `scheduled_at`, le plus proche étant le 20/09) : confirme que la
+> route tourne et ne révèle rien prématurément, mais ne prouve pas encore
+> le chemin de révélation réel lui-même (aucun test qui ferait
+> artificiellement avancer `?date=` n'a été lancé, pour ne pas risquer de
+> basculer un vrai match fictif en `FINISHED` avant l'heure -- risque
+> spoiler déjà documenté plus bas). À vérifier pour de vrai au premier
+> match du 20/09 (les logs `sync_logs`/l'écran admin permettront de
+> confirmer la révélation automatique en direct).
+
 > **Validation des schémas dédiés de `structureAndScoreBet.ts` (point noté
 > pour la prochaine reprise, pas commencé, 01/09/2026)** — suite du chantier
 > fiabilité & QA : seul le ROUTAGE par mot-clé (`routeBetDescription`,
@@ -214,20 +271,21 @@
 > | Demi 2 (Nuggets/Bucks) | `221f571f-7c57-414a-8659-43cf4c3017f6` | `0022401057` (26/03/2025) | DEN 127-117 MIL |
 > | Finale (Celtics/Nuggets, à confirmer) | `aecc3c23-dcb3-49fb-b35f-d69f15f88277` | `0022400866` (2/03/2025) | BOS 110-103 DEN |
 >
-> **Reste à faire le jour J (à partir du 20/09)**, pour chaque match dans
-> l'ordre (quart → demi → finale) :
-> 1. `node --env-file=.env.local scripts/nba-cup-reveal-match.mjs --match=<id>`
->    du match du tour précédent (révèle le résultat, score les pronos/picks,
->    avance le vainqueur -- automatique et immédiat).
-> 2. `curl -X POST -H "Authorization: Bearer $SYNC_SECRET"
->    https://nba-pronos.vercel.app/api/resolve-bets` (affiché par le script
->    ci-dessus) -- pour résoudre les paris persos IA tout de suite plutôt que
->    d'attendre le cron quotidien (`refresh-stats-supabase.yml`, 10h UTC).
+> **Étapes 1 et 2 AUTOMATISÉES le 02/09/2026** (voir entrée dédiée en tête de
+> fichier) -- la révélation + résolution des paris ne demandent plus de
+> commande manuelle le jour J, elles se déclenchent toutes seules en cron.
+> **Reste à faire le jour J (à partir du 20/09)**, pour chaque tour :
+> 1. ~~`nba-cup-reveal-match.mjs`~~ -- automatique désormais (cron 30 min,
+>    `/api/nba-cup-alpha/auto-reveal`), rien à lancer.
+> 2. ~~`curl .../api/resolve-bets`~~ -- chaîné automatiquement après une
+>    révélation réussie (même route), rien à lancer.
 > 3. Une fois les 2 quarts (ou les 2 demies) d'un tour révélés : `node
 >    --env-file=.env.local scripts/nba-cup-create-match.mjs --series=<id
 >    ci-dessus> --game=<game_id ci-dessus> --at="2026-09-22T20:00"` (heure
 >    Paris) -- crée le match du tour suivant avec le vrai match déjà choisi,
->    plus besoin de rechercher quoi que ce soit ce jour-là.
+>    plus besoin de rechercher quoi que ce soit ce jour-là. **Pas automatisé**
+>    (choix des équipes suivantes déjà connu mais pas encore branché en
+>    cron -- voir limite notée dans l'entrée d'automatisation).
 > 4. Transmettre l'extrait correspondant de `NBA_CUP_ALPHA_EFFECTIFS.md` aux
 >    testeurs avant l'ouverture des paris/pronos sur ce tour.
 

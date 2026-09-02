@@ -1,22 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
-import {
-  resolveCalculableBets,
-  resolveCalculableSeriesBets,
-  resolveCalculableMatchTotalBets,
-  resolveCalculableTeamStatBets,
-  resolveCalculableComparisonBets,
-  resolveCalculableComboBets,
-  resolveCalculablePeriodBets,
-  resolveCalculableRosterSplitBets,
-  resolveCalculableRosterCountBets,
-  resolveCalculableSuperlativeBets,
-  resolveCalculableGameEventBets,
-  resolveCalculableTechnicalFoulsCountBets,
-  resolveCalculableLastBasketBets,
-  resolveCalculableBlockOnPlayerBets,
-  type ResolveBetsSummary,
-} from "@/lib/ai/resolveCalculableBets";
+import { resolveAllCalculableBets } from "@/lib/ai/resolveCalculableBets";
 
 // Phase 6 (résolution automatique des paris IA calculables, 22/08/2026) --
 // même authentification que /api/sync/* (Bearer SYNC_SECRET, lib/sync/
@@ -37,71 +21,7 @@ async function handle(request: Request): Promise<Response> {
   }
 
   try {
-    const [
-      matchSummary,
-      seriesSummary,
-      matchTotalSummary,
-      teamStatSummary,
-      comparisonSummary,
-      comboSummary,
-      periodSummary,
-      rosterSplitSummary,
-      rosterCountSummary,
-      superlativeSummary,
-      gameEventSummary,
-      technicalFoulsCountSummary,
-      lastBasketSummary,
-      blockOnPlayerSummary,
-    ] = await Promise.all([
-      resolveCalculableBets(),
-      resolveCalculableSeriesBets(),
-      resolveCalculableMatchTotalBets(),
-      resolveCalculableTeamStatBets(),
-      resolveCalculableComparisonBets(),
-      resolveCalculableComboBets(),
-      resolveCalculablePeriodBets(),
-      resolveCalculableRosterSplitBets(),
-      resolveCalculableRosterCountBets(),
-      resolveCalculableSuperlativeBets(),
-      resolveCalculableGameEventBets(),
-      resolveCalculableTechnicalFoulsCountBets(),
-      resolveCalculableLastBasketBets(),
-      resolveCalculableBlockOnPlayerBets(),
-    ]);
-    const summary: ResolveBetsSummary = {
-      resolved: [
-        ...matchSummary.resolved,
-        ...seriesSummary.resolved,
-        ...matchTotalSummary.resolved,
-        ...teamStatSummary.resolved,
-        ...comparisonSummary.resolved,
-        ...comboSummary.resolved,
-        ...periodSummary.resolved,
-        ...rosterSplitSummary.resolved,
-        ...rosterCountSummary.resolved,
-        ...superlativeSummary.resolved,
-        ...gameEventSummary.resolved,
-        ...technicalFoulsCountSummary.resolved,
-        ...lastBasketSummary.resolved,
-        ...blockOnPlayerSummary.resolved,
-      ],
-      skipped: [
-        ...matchSummary.skipped,
-        ...seriesSummary.skipped,
-        ...matchTotalSummary.skipped,
-        ...teamStatSummary.skipped,
-        ...comparisonSummary.skipped,
-        ...comboSummary.skipped,
-        ...periodSummary.skipped,
-        ...rosterSplitSummary.skipped,
-        ...rosterCountSummary.skipped,
-        ...superlativeSummary.skipped,
-        ...gameEventSummary.skipped,
-        ...technicalFoulsCountSummary.skipped,
-        ...lastBasketSummary.skipped,
-        ...blockOnPlayerSummary.skipped,
-      ],
-    };
+    const summary = await resolveAllCalculableBets();
     return NextResponse.json(summary);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur inconnue.";

@@ -2528,3 +2528,33 @@ export async function resolveCalculableBlockOnPlayerBets(): Promise<ResolveBetsS
 
   return summary;
 }
+
+/** Agrège les 14 resolvers ci-dessus en un seul résumé -- extrait de
+ *  /api/resolve-bets (22-26/08/2026) pour être réutilisable ailleurs sans
+ *  dupliquer la liste, notamment par l'auto-révélation NBA Cup alpha
+ *  (lib/nbaCupAlpha/autoReveal.ts, 02/09/2026) qui veut résoudre les paris
+ *  tout de suite après avoir révélé un match plutôt que d'attendre le cron
+ *  quotidien (les stats empruntées à l'alpha sont déjà en base, contrairement
+ *  au scénario normal qui attend le rafraîchissement Data NBA de la veille). */
+export async function resolveAllCalculableBets(): Promise<ResolveBetsSummary> {
+  const summaries = await Promise.all([
+    resolveCalculableBets(),
+    resolveCalculableSeriesBets(),
+    resolveCalculableMatchTotalBets(),
+    resolveCalculableTeamStatBets(),
+    resolveCalculableComparisonBets(),
+    resolveCalculableComboBets(),
+    resolveCalculablePeriodBets(),
+    resolveCalculableRosterSplitBets(),
+    resolveCalculableRosterCountBets(),
+    resolveCalculableSuperlativeBets(),
+    resolveCalculableGameEventBets(),
+    resolveCalculableTechnicalFoulsCountBets(),
+    resolveCalculableLastBasketBets(),
+    resolveCalculableBlockOnPlayerBets(),
+  ]);
+  return {
+    resolved: summaries.flatMap((s) => s.resolved),
+    skipped: summaries.flatMap((s) => s.skipped),
+  };
+}
