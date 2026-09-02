@@ -190,6 +190,29 @@ Exemples de mesures à prévoir :
 - procédure de gestion des incidents ;
 - procédure de notification d’une violation de données lorsque celle-ci est requise.
 
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+Contrairement aux autres sections de ce document, la sécurité technique de l'application a déjà fait l'objet d'un **audit dédié et bien plus approfondi** qu'un cadrage général ne pourrait l'être ici : `security-audit-report.md` (audit du 29/08/2026, 15 findings — 1 critique, 1 élevé, 6 moyens, 6 faibles, 1 info), avec son suivi détaillé dans `Cadrage/Suivi/GAPS_OUVERTS.md` et `Cadrage/Suivi/ETAT_ACTUEL.md` §2.128. Plutôt que de dupliquer ce travail, ce paragraphe se contente d'y renvoyer et de faire le lien avec les points propres à ce document juridique.
+
+| Point du §2.7 | Statut (au 02/09/2026) |
+|---|---|
+| Contrôle des droits d'accès | Couvert par Row Level Security Postgres + fonctions `SECURITY DEFINER` (audit : « un contournement de la couche applicative n'ouvre, dans la quasi-totalité des cas, aucun accès non désiré ») |
+| Séparation comptes utilisateurs/admin | Finding 4/12 (garde `is_admin()` explicite) — traité, commit `36c86f7` |
+| Protection des secrets et clés d'API | Finding 1 (critique, clé `service_role` fuitée) — traité : rotation + désactivation des clés legacy. Finding 2 (élevé, service Cloud Run public) — traité |
+| Chiffrement des communications | Non re-vérifié spécifiquement ici — couvert par défaut par Vercel/Supabase (HTTPS) |
+| Sauvegardes et restauration | Non couvert par l'audit sécurité ni ce document — **point non traité à date**, propre à la configuration Supabase (sauvegardes automatiques du plan utilisé, à vérifier) |
+| Journalisation des actions sensibles | `audit_logs` en place pour les actions admin (voir §9) |
+| Mise à jour des dépendances | Finding 9 — traité (`npm audit` 3 → 0) |
+| Limitation des données visibles publiquement | Finding 7 (headers de sécurité HTTP) — traité |
+| Procédure de gestion des incidents | Pas de procédure formalisée au-delà de la réaction ponctuelle à l'incident de fuite de clé (finding 1) — **point non traité à date** |
+| Procédure de notification de violation de données | **Finding 15, directement lié à ce document** (« aucune procédure documentée de rétention/effacement RGPD ») — CLOS le 02/09/2026 via `scripts/delete-player-account.mjs` (voir §2.1 point 6, §8.2) ; ne couvre que l'effacement sur demande, pas une procédure de notification en cas de violation de données (fuite, accès non autorisé) — **distinction à noter, ce volet-là reste non traité** |
+
+**Deux résidus pertinents pour le cadrage juridique**, au-delà du renvoi à l'audit :
+- **Protection contre les mots de passe compromis ("Leaked Password Protection")** : reporté, fonctionnalité réservée aux plans Supabase payants (le projet est sur le plan gratuit) — décision assumée par l'utilisateur pour l'alpha/bêta entre amis, à reprendre si le plan change.
+- **Énumération de compte au signup (finding 14)** : gardée telle quelle délibérément (message explicite conservé pour l'UX) — décision prise avec l'utilisateur, documentée dans le code (`lib/auth/actions.ts`), acceptable tant que le cercle reste fermé.
+
+**Conclusion** : pas de nouveau travail de cadrage nécessaire ici — la sécurité applicative est déjà largement couverte par le chantier d'audit dédié. Les deux vrais trous identifiés ce soir (sauvegardes/restauration, procédure de gestion des incidents/notification de violation) sont ajoutés en §8.2/§8.5 ci-dessous.
+
 ### 2.8. Propriété intellectuelle
 
 Il faut vérifier les droits applicables à tous les éléments utilisés ou diffusés :
@@ -436,6 +459,8 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
   - *Export* : action serveur authentifiée qui régénère, pour l'utilisateur connecté uniquement, un fichier (JSON suffisant à ce stade) contenant ses propres données : profil (bio, équipe favorite, préférences), paris (`bets`), messages de chat envoyés, signalements de bug, appartenances aux ligues. Pas besoin d'un format d'interopérabilité sophistiqué vu l'échelle actuelle.
 - Pas de prestataire d'e-mail transactionnel branché à ce jour : si un flux d'information RGPD (ex. confirmation, notification de suppression) doit passer par e-mail, il dépend d'un prestataire encore à choisir.
 - Aucune mise ni paiement aujourd'hui : pas de mesure technique de paiement à sécuriser pour l'instant.
+- **Vérifier les sauvegardes/restauration Supabase** (§2.7) : dépend du plan utilisé, non vérifié à ce jour.
+- **Formaliser une procédure de gestion des incidents / notification de violation de données** (§2.7) : distincte de la procédure d'effacement sur demande (finding 15, déjà traitée) — n'existe pas encore, même sous forme minimale (qui prévenir, sous quel délai, dans quels cas une notification CNIL/aux utilisateurs est requise).
 
 ### 8.3. Documents à publier
 

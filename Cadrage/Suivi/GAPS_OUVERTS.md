@@ -177,6 +177,36 @@
 > PNG de logos non référencés par le code, probablement des doublons
 > obsolètes à nettoyer.
 
+> **Chantier juridique — sécurité cadrée par renvoi, §2.7, et passage
+> systématique du document terminé (02/09/2026)** : plutôt que de refaire un
+> audit sécurité dans ce document, renvoi structuré vers le chantier dédié
+> déjà bien plus approfondi (`security-audit-report.md`, 15 findings, et
+> son suivi dans ce fichier/`ETAT_ACTUEL.md` §2.128). Tableau de
+> correspondance §2.7 → findings ajouté. Confirmation utile au passage :
+> **le finding 15 (procédure RGPD de rétention/effacement), clos plus tôt
+> ce soir en retrouvant `scripts/delete-player-account.mjs`, est bien la
+> même chose que ce chantier juridique vise à documenter** -- boucle
+> refermée entre les deux chantiers. Deux vrais trous identifiés au passage
+> (ni couverts par l'audit sécurité, ni par le reste du document) : pas de
+> vérification des sauvegardes/restauration Supabase, et pas de procédure
+> formalisée de gestion des incidents / notification de violation de
+> données (distincte de l'effacement sur demande) -- ajoutés en §8.2.
+> Résidus notés pour mémoire : "Leaked Password Protection" toujours
+> reporté (plan Supabase payant requis), énumération de compte au signup
+> toujours gardée telle quelle (décisions déjà actées, pas rouvertes ce
+> soir).
+>
+> **Avec ce passage, les 11 sous-sections du §2 du document juridique
+> (2.1 à 2.11) ont toutes été cadrées** au moins une fois (mineurs en
+> profondeur sur demande explicite, sécurité par renvoi argumenté, le
+> reste avec un niveau de détail intermédiaire). Restent en trous connus,
+> déjà tracés en §8 du document : self-service suppression/export (cadré,
+> pas codé), déclaration d'âge au signup (cadré, pas codé), signalement de
+> message de chat (cadré, pas codé), sauvegardes/restauration et procédure
+> d'incident (identifiés ce soir, pas encore cadrés en détail), et les
+> validations professionnelles listées en §8.5 (bases légales mineurs,
+> DPA Anthropic, logos NBA, région Supabase, modèle 2027).
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même
