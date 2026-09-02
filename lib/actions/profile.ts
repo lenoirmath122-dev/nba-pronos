@@ -5,8 +5,10 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { getProfileBadges } from "@/lib/queries/badges";
 import { toClientError } from "@/lib/actions/errors";
+import { ThemePreferenceSchema, BackgroundThemeSchema, optionalBoundedText } from "@/lib/actions/validation";
 
 const MAX_BIO_LENGTH = 2000;
+const BioSchema = optionalBoundedText(MAX_BIO_LENGTH);
 
 // Server actions de l'écran Profil (SPEC_ECRAN_PROFIL_V0_1 §7). Écriture
 // directe sur `users` (RLS self-update + trigger anti-escalade déjà en
@@ -19,10 +21,11 @@ const MAX_BIO_LENGTH = 2000;
 /** Thème Sombre/Clair/Photo (§4, 3e valeur PHOTO le 06/08/2026) : soumission
  *  immédiate, un seul champ. */
 export async function updateThemePreference(formData: FormData): Promise<void> {
-  const theme = String(formData.get("theme") ?? "");
-  if (theme !== "LIGHT" && theme !== "DARK" && theme !== "PHOTO") {
+  const themeParsed = ThemePreferenceSchema.safeParse(String(formData.get("theme") ?? ""));
+  if (!themeParsed.success) {
     redirect("/profile?profileError=Th%C3%A8me%20invalide.");
   }
+  const theme = themeParsed.data;
 
   const supabase = await getServerClient();
   const {
@@ -46,10 +49,11 @@ export async function updateThemePreference(formData: FormData): Promise<void> {
 /** Fond d'écran (§.photo-page) : soumission immédiate, un seul champ, même
  *  patron que updateThemePreference ci-dessus. */
 export async function updateBackgroundTheme(formData: FormData): Promise<void> {
-  const backgroundTheme = String(formData.get("backgroundTheme") ?? "");
-  if (backgroundTheme !== "MURAL" && backgroundTheme !== "HOOP" && backgroundTheme !== "HK") {
+  const backgroundThemeParsed = BackgroundThemeSchema.safeParse(String(formData.get("backgroundTheme") ?? ""));
+  if (!backgroundThemeParsed.success) {
     redirect("/profile?profileError=Fond%20d%27%C3%A9cran%20invalide.");
   }
+  const backgroundTheme = backgroundThemeParsed.data;
 
   const supabase = await getServerClient();
   const {
@@ -74,11 +78,11 @@ export async function updateBackgroundTheme(formData: FormData): Promise<void> {
 export async function updateProfile(formData: FormData): Promise<void> {
   const favoriteTeamIdRaw = String(formData.get("favoriteTeamId") ?? "");
   const favoriteTeamId = favoriteTeamIdRaw === "" ? null : favoriteTeamIdRaw;
-  const bioRaw = String(formData.get("bio") ?? "").trim();
-  const bio = bioRaw === "" ? null : bioRaw;
-  if (bio && bio.length > MAX_BIO_LENGTH) {
+  const bioParsed = BioSchema.safeParse(String(formData.get("bio") ?? ""));
+  if (!bioParsed.success) {
     redirect(`/profile?profileError=${encodeURIComponent(`${MAX_BIO_LENGTH} caractères maximum pour la bio.`)}`);
   }
+  const bio = bioParsed.data;
 
   const supabase = await getServerClient();
   const {

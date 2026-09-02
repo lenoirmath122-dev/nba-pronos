@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
+import { boundedText } from "@/lib/actions/validation";
 
 // SEULE écriture de l'écran "Mes pronos" (SPEC_ECRAN_MES_PRONOS_V0_1 §14).
 // Appelle la fonction SQL SECURITY DEFINER de la migration #7 via .rpc() —
@@ -15,6 +16,7 @@ import { getServerClient } from "@/lib/supabase/server";
 export type ActionResult = { success: true } | { success: false; error: string };
 
 const MAX_JUSTIFICATION_LENGTH = 2000;
+const JustificationSchema = boundedText(MAX_JUSTIFICATION_LENGTH);
 
 export async function requestPredictionCorrection(input: {
   matchId: string;
@@ -29,7 +31,7 @@ export async function requestPredictionCorrection(input: {
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
 
-  if (input.justification.length > MAX_JUSTIFICATION_LENGTH) {
+  if (!JustificationSchema.safeParse(input.justification).success) {
     return { success: false, error: `${MAX_JUSTIFICATION_LENGTH} caractères maximum.` };
   }
 

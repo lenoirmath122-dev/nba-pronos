@@ -4,6 +4,30 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Audit de sécurité, finding 5 (schémas zod) — PARTIELLEMENT TRAITÉ
+> (02/09/2026)** : ce finding Moyen avait disparu du suivi lors de la
+> remédiation du 29-30/08 (`§2.128 ETAT_ACTUEL.md` ne le liste pas parmi les
+> points restants, alors que `security-audit-report.md` §7 le maintenait
+> ouvert -- retrouvé en relisant le rapport complet, pas dans le résumé).
+> Nouveau module `lib/actions/validation.ts` (schémas zod réutilisables :
+> `requiredBoundedText`/`optionalBoundedText`/`boundedText`, énumérations
+> thème/fond d'écran/canal chat) branché sur les **6 champs de texte libre
+> explicitement nommés par le finding 6** (le plus concret des deux, même
+> rapport) : bio (`profile.ts`), description de signalement
+> (`bug-reports.ts`), description de pari (`bets.ts`), justification de
+> correction de prono et de pari (`corrections.ts`/`bet-corrections.ts`),
+> message de chat (`chat.ts`) -- plus les 3 petits enums fermés qui
+> vivaient en `if` ad hoc juste à côté (thème, fond d'écran, canal
+> GLOBAL/LEAGUE). Comportement inchangé à l'identique (mêmes bornes, mêmes
+> messages d'erreur, mêmes règles trim/vide autorisé ou non par champ) --
+> remplace la validation manuelle par un schéma, ne change aucune règle
+> métier. Vérifié : `tsc`/`eslint`/`vitest` (224/224)/`next build` (41
+> routes) propres.
+> **Reste hors de ce 1er lot** (13 fichiers de `lib/actions/` non touchés,
+> essentiellement admin/enums déjà contraints en base par des `CHECK`/RLS) :
+> à reprendre si une dérive concrète est constatée, ou en continu à mesure
+> que de nouvelles Server Actions texte libre sont ajoutées.
+
 > **NBA Cup Alpha — révélation des matchs AUTOMATISÉE le 02/09/2026**
 > (demande explicite de l'utilisateur : "comme si les résultats étaient
 > récupérés par l'API payante (bêta) et que le match se finissait tout
