@@ -98,6 +98,25 @@
 > pour la bêta fermée, et statuer sur la vérification d'âge vu que le
 > service est ouvert à tous âges.
 
+> **Chantier juridique — cadrage détaillé mineurs, §2.10 (02/09/2026)** :
+> suite de l'entrée ci-dessus, sur demande de l'utilisateur de couvrir le
+> sujet mineurs en profondeur avant de coder quoi que ce soit. Les 9
+> sous-points du §2.10 (âge, information, base légale, consentement,
+> visibilité, échanges, modération, limitation de la collecte, publicité)
+> traités un par un dans une nouvelle sous-section du document. Décisions
+> retenues AVEC l'utilisateur : en pratique que des adultes aujourd'hui mais
+> **aucune barrière technique** donc risque traité comme réel ; **ajouter
+> une déclaration d'âge simple au signup** (case/tranche d'âge, sans
+> justificatif -- pas de date de naissance complète) ; **ajouter un
+> signalement de message de chat** vers les admins (`bug_reports` ne couvre
+> pas ce cas aujourd'hui) ; chat/visibilité des profils laissés tels quels
+> pour la bêta fermée (cercle d'amis qui se connaît déjà) -- à revoir
+> entièrement à l'ouverture 2027. Repère légal utilisé : seuil CNIL de 15
+> ans pour le consentement autonome d'un mineur (source déjà citée en §6 du
+> doc). Explicitement choisi ce soir : **cadrage écrit uniquement, aucune
+> implémentation** -- les deux décisions techniques (champ âge au signup,
+> signalement de message) restent à coder dans une prochaine itération.
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même

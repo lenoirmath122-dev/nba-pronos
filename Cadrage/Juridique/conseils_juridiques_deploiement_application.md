@@ -190,6 +190,22 @@ Si des mineurs peuvent accéder à l’application, il faut prévoir une analyse
 - la limitation de la collecte ;
 - la publicité et les mécanismes incitatifs.
 
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+Repère légal général servant de fil conducteur : en droit français, un mineur de 15 ans ou plus peut consentir seul à un traitement de données reposant sur le consentement dans le cadre d'un service de la société de l'information ; en dessous de 15 ans, le consentement du titulaire de l'autorité parentale est requis en plus de celui du mineur (règle relayée par la CNIL, source citée en section 6). Ce repère ne couvre pas tous les traitements de l'application (une partie repose probablement sur l'exécution du contrat plutôt que sur le consentement) — la qualification précise par donnée/traitement reste un point de validation professionnelle (voir §8.5).
+
+1. **Âge des utilisateurs** : en pratique, à ce jour, uniquement des adultes (cercle d'amis existant pour l'alpha/bêta). Décision retenue : traiter le risque comme réel plutôt que théorique, car **aucune barrière technique n'empêche l'inscription d'un mineur** — l'app doit donc être cadrée pour ce cas dès maintenant plutôt que d'attendre qu'il se présente.
+2. **Rédaction d'informations adaptées** : la politique de confidentialité à rédiger (§8.3, pas encore écrite) devra mentionner explicitement le traitement applicable aux mineurs, dans un langage compréhensible par un adolescent.
+3. **Base légale du traitement** : à qualifier précisément par catégorie de donnée lors de la rédaction de la politique de confidentialité (probablement exécution du contrat pour le compte/le jeu, consentement pour les notifications push) — point de validation professionnelle, non tranché ici.
+4. **Mécanismes de consentement** : décision retenue — **ajouter une déclaration d'âge simple au signup** (déclarative, sans justificatif, ex. case à cocher ou tranche d'âge plutôt qu'une date de naissance complète pour rester minimal cf. point 8). Objectif : pouvoir distinguer les moins de 15 ans si besoin d'un mécanisme de consentement parental plus tard. **Non implémenté à ce jour** (`SignupForm.tsx` ne contient aucun champ d'âge) — cadrage seulement, implémentation à prévoir dans une prochaine itération.
+5. **Visibilité des profils** : le `pseudo` est public au sein du service (visible par les autres membres). Pas de photo de profil active (`avatar_url` non alimenté, cf. inventaire §3 point 4).
+6. **Échanges entre utilisateurs** : le chat (`chat_messages`) est visible par les membres du canal général ou de la ligue. Décision retenue : pour la bêta fermée sur invitation, le cercle est un groupe d'amis qui se connaît déjà — pas de mesure technique supplémentaire de mise en relation à traiter maintenant. Ce point sera à revoir entièrement à l'ouverture 2027 (des inconnus pourront alors se côtoyer).
+7. **Modération et signalement** : décision retenue — **ajouter un signalement de message de chat** par les utilisateurs vers les admins, en complément de `bug_reports` qui ne couvre aujourd'hui que les rapports de bug technique, pas les messages problématiques. **Non implémenté à ce jour** — cadrage seulement.
+8. **Limitation de la collecte** : la déclaration d'âge (point 4) devra rester minimale — trancher au moment de l'implémentation entre une simple case ("j'ai 15 ans ou plus") et une tranche d'âge, plutôt qu'une date de naissance complète non nécessaire à l'usage.
+9. **Publicité et mécanismes incitatifs** : aucune publicité ni mécanisme incitatif à ce jour (service gratuit, §3 point 5) — non applicable tant que le modèle économique ne change pas. À revoir si le modèle 2027 introduit de la publicité ou des mécaniques incitatives.
+
+**Résumé des décisions à implémenter (hors périmètre de ce cadrage, prochaine itération)** : champ/case de déclaration d'âge au signup ; mécanisme de signalement d'un message de chat vers les admins.
+
 ### 2.11. Jeux, concours et pronostics
 
 Une application de pronostics requiert une vigilance particulière lorsqu’elle comporte :
@@ -336,12 +352,13 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 
 - Identifier clairement l'exploitant (particulier en nom propre) dans une page accessible, même minimale.
 - Informer les utilisateurs sur les données collectées (`pseudo`, e-mail via Supabase Auth, messages de chat, signalements de bug, abonnements push) et leurs finalités.
-- Étant donné que le service est ouvert à tous âges sans vérification, documenter ce choix et vérifier s'il implique une information ou un mécanisme de consentement adapté (point à valider, cf. 8.5).
+- Étant donné que le service reste ouvert à tous âges (cadrage détaillé en §2.10) : informer les utilisateurs des règles applicables aux mineurs dans la politique de confidentialité.
 - Prévoir une manière pour un utilisateur de demander la suppression de son compte et de ses données.
 
 ### 8.2. Mesures techniques à intégrer
 
-- Déclaration ou vérification d'âge au signup : n'existe pas aujourd'hui (`SignupForm.tsx`) ; à ajouter au moins sous forme déclarative tant que le service reste ouvert à tous âges.
+- Déclaration d'âge simple au signup (case ou tranche d'âge, sans justificatif) : décidée en §2.10 point 4, n'existe pas aujourd'hui (`SignupForm.tsx`) — à implémenter dans une prochaine itération.
+- Signalement d'un message de chat vers les admins : décidé en §2.10 point 7, en complément de `bug_reports` qui ne couvre pas ce cas — à implémenter dans une prochaine itération.
 - Procédure de suppression de compte et des données associées (chat, signalements, abonnements push) — vérifier ce qui existe déjà côté Supabase/admin.
 - Pas de prestataire d'e-mail transactionnel branché à ce jour : si un flux d'information RGPD (ex. confirmation, notification de suppression) doit passer par e-mail, il dépend d'un prestataire encore à choisir.
 - Aucune mise ni paiement aujourd'hui : pas de mesure technique de paiement à sécuriser pour l'instant.
@@ -362,7 +379,7 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 
 ### 8.5. Points nécessitant une validation par un professionnel du droit
 
-- **Présence de mineurs sans aucune vérification d'âge** : le service étant ouvert à tous âges, vérifier les obligations spécifiques (information adaptée, éventuel consentement) — point non traité dans ce document, qui n'aborde le sujet mineurs que de façon générale (section 2.10).
+- **Qualification précise des bases légales par catégorie de donnée pour les mineurs** : le cadrage général est fait (§2.10 — décisions retenues : déclaration d'âge au signup, signalement de message de chat), mais la qualification base légale/mécanisme de consentement exact par traitement (§2.10 point 3) reste à valider par un professionnel avant l'ouverture au-delà du cercle d'amis actuel.
 - **Bascule vers un modèle payant en 2027** (modèle encore indéterminé) : à re-cadrer entièrement le moment venu, y compris la question d'une éventuelle mise financière (section 2.11) qui changerait le profil juridique du service.
 - **Ouverture géographique 2027** (périmètre non tranché) : à revoir si le public visé s'étend hors de France.
 - **Statut de l'exploitant** : particulier en nom propre pour l'instant — à revoir si l'activité se structure (auto-entreprise, société), notamment en cas de monétisation.
