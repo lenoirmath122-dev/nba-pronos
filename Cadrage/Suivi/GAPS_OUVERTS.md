@@ -4,6 +4,33 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Audit de sécurité, finding 15 (procédure RGPD de rétention/effacement) —
+> CLOS, procédure manuelle testée (02/09/2026)** : aucune fonctionnalité de
+> suppression de compte n'existe dans l'app (self-service ou admin) —
+> demande explicite de l'utilisateur avant de documenter comme différé :
+> pouvoir au moins le faire lui-même, manuellement, dès maintenant. Nouveau
+> `scripts/delete-player-account.mjs` (généralise `cleanup-test-data.mjs` à
+> UN pseudo quelconque plutôt qu'une liste de seed en dur) : purge
+> `bug_reports`/`chat_messages` (les 2 champs texte libre visés par le
+> finding) + les 10 autres tables qui référencent `user_id` sans cascade
+> (bets, match_predictions, bracket_picks, brackets, correction_requests,
+> league_memberships, leaderboard_snapshots, competition_superlatives,
+> competition_archives, audit_logs), puis `auth.admin.deleteUser()` (cascade
+> `public.users`/`push_subscriptions`/`reminder_log`/`chat_muted_channels`,
+> `ON DELETE CASCADE` déjà en place). Dry-run par défaut, `--confirm` pour
+> exécuter réellement -- même patron que `cleanup-test-data.mjs`.
+> **2 garde-fous explicites** (refuse plutôt que de deviner) : cible
+> `role=ADMIN` jamais purgée (perte d'historique d'audit disproportionnée,
+> décision humaine requise) ; cible ayant créé une ligue avec D'AUTRES
+> membres refusée aussi (les expulserait tous sans qu'ils l'aient demandé).
+> **Testé en conditions réelles** (dry-run, lecture seule) : contre
+> `Demo_Amis` (12 messages chat, 15 snapshots, bracket/pronos/paris réels
+> détectés correctement) ; contre `Rillettes-31` (admin, refus confirmé) ;
+> contre un pseudo inexistant (sortie propre). Un bug réel de comptage
+> corrigé en le testant (`league_memberships` n'a pas de colonne `id`,
+> `select("id", {count})` plantait -- généralisé en `select("*", {count})`
+> partout). `eslint` propre.
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même
