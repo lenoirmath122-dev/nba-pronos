@@ -117,6 +117,26 @@
 > implémentation** -- les deux décisions techniques (champ âge au signup,
 > signalement de message) restent à coder dans une prochaine itération.
 
+> **Chantier juridique — cadrage détaillé données/prestataires §2.1+§2.6 +
+> registre des traitements (02/09/2026)** : suite du passage systématique
+> du document. Cartographie données/finalités/bases légales/durées de
+> conservation rédigée, table des prestataires avec rôle/données/
+> localisation/statut sous-traitant complétée (inventaire technique +
+> recherche du script `scripts/delete-player-account.mjs`, jusque-là non
+> documenté dans le doc juridique -- CLI manuel, dry-run par défaut,
+> garde-fous : admin protégé, ligue avec membres actifs bloquée). Nouvelle
+> §9 "Registre des traitements initial" ajoutée (10 traitements). Décisions
+> retenues AVEC l'utilisateur : conservation tant que le compte est actif,
+> pas de purge automatique (assumé) ; **self-service suppression de compte
+> + export de données décidé** -- cadré en détail (§8.2, reprend les
+> garde-fous du script CLI) mais **codé lors d'une prochaine session, pas
+> ce soir** ; registre des traitements rédigé maintenant ; le flux du texte
+> libre des paris vers Anthropic (structuration IA, transfert hors UE)
+> conservé tel quel mais documenté comme sous-traitant à vérifier (DPA).
+> Points ajoutés en §8.5 : DPA Anthropic, localisation du projet Supabase
+> (non trouvable dans le dépôt, à vérifier dans le dashboard). Toujours
+> aucune implémentation ce soir sur ce chantier -- uniquement du cadrage.
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même

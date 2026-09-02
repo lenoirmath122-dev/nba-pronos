@@ -39,6 +39,18 @@ Les principaux travaux à mener sont les suivants :
 - encadrer les prestataires qui traitent les données pour le compte de l’éditeur ;
 - vérifier les éventuels transferts de données hors de l’Espace économique européen.
 
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+1. **Données collectées** : voir la cartographie détaillée en §9 (registre des traitements). En résumé : `pseudo` (public), e-mail (Supabase Auth, hors `public.users`), messages de chat, formulation libre des paris, signalements de bug, abonnements push, bio/équipe favorite/préférences d'affichage (profil). Pas de nom/prénom, pas de date de naissance, pas d'IP journalisée dans l'app (§9 détaille le journal `audit_logs`, qui ne contient aucune IP).
+2. **Finalité et base légale par donnée** : voir §9 — chaque ligne du registre associe une finalité et une base légale proposée (essentiellement exécution du contrat pour le fonctionnement du service, intérêt légitime pour la modération/sécurité, consentement pour les notifications push). Qualification précise à faire valider par un professionnel avant une ouverture au-delà du cercle d'amis actuel (déjà noté en §8.5).
+3. **Limitation de la collecte** : conforme à date — aucune donnée superflue identifiée (pas de date de naissance, pas d'adresse, `avatar_url` existe mais n'est alimentée par aucun flux).
+4. **Durées de conservation** — décision retenue : conservation tant que le compte reste actif, pas de purge automatique différée (cohérent avec une bêta fermée entre amis). Aucune colonne `expires_at` ni job de purge n'existe aujourd'hui dans le schéma — c'est un choix assumé, pas un oubli. Suppression uniquement sur demande (voir point 6). À revoir si le service s'ouvre largement (volume de données croissant, comptes inactifs qui s'accumulent).
+5. **Information des utilisateurs** : pas encore fait — dépend de la politique de confidentialité à rédiger (§8.3, toujours pas écrite).
+6. **Exercice des droits** — état actuel : suppression de compte possible uniquement via un script CLI manuel (`scripts/delete-player-account.mjs`, dry-run par défaut, `--confirm` requis), déclenché par l'exploitant sur demande, pas de self-service dans l'app ; pas de fonctionnalité d'export de données. Décision retenue : **construire un vrai self-service (suppression + export)**, mais cadré maintenant et codé lors d'une prochaine session plutôt que ce soir — spécification détaillée en §8.2.
+7. **Registre des traitements** — décision retenue : oui, un registre simple est nécessaire même pour un exploitant particulier, car le traitement est permanent (service en continu), pas occasionnel — voir §9.
+8. **Encadrement des prestataires** : voir §2.6 et §9.
+9. **Transferts hors Espace économique européen** : identifiés à date — **Anthropic** (API Claude, société américaine, reçoit le texte libre des paris pour structuration IA) et potentiellement **Vercel** (société américaine, bien que le calcul soit déployé en région `dub1`/Dublin) selon la localisation réelle de leurs sous-traitants internes. Décision retenue : le flux vers Anthropic est conservé (pas de changement d'architecture), mais doit être documenté dans la politique de confidentialité et son DPA/ses garanties de transfert (clauses contractuelles types) vérifiés — point ajouté en §8.5. Localisation exacte du projet Supabase non trouvée dans le dépôt (le sous-domaine `*.supabase.co` est un identifiant de projet, pas une région) — à vérifier directement dans le dashboard Supabase.
+
 ### 2.2. Cookies et traceurs
 
 Il faut recenser les cookies et traceurs utilisés par l’application, notamment ceux liés :
@@ -129,6 +141,22 @@ Pour chaque prestataire, il faut vérifier :
 - ses mesures de sécurité ;
 - les mécanismes encadrant les transferts internationaux ;
 - les conditions de restitution ou de suppression des données.
+
+#### Cadrage détaillé — nba-pronos (02/09/2026)
+
+| Prestataire | Rôle | Données auxquelles il accède | Localisation | Sous-traitant RGPD ? | À vérifier |
+|---|---|---|---|---|---|
+| Supabase | Authentification, base de données, temps réel, stockage | Toutes les données applicatives (auth, `public.*`) | Non trouvée dans le dépôt (project ref ≠ région) | Oui | Région du projet (dashboard Supabase), DPA/localisation |
+| Vercel | Hébergement, exécution des fonctions serveur | Toutes les requêtes transitent par Vercel (accès technique, pas de stockage applicatif propre) | Fonctions déployées en `dub1` (Dublin, UE) — `vercel.json` | Oui | Localisation des sous-traitants internes de Vercel (société US) |
+| Cloudflare (Turnstile) | Captcha au signup | Signal anti-bot du navigateur (pas de données de profil applicatives) | Réseau mondial Cloudflare | Oui (accès limité) | Qualification exacte des données de captcha |
+| Anthropic (Claude) | Structuration IA du texte libre des paris | Texte libre saisi par l'utilisateur pour un pari (`lib/ai/structureBet.ts`) | Société américaine | Oui | DPA / clauses contractuelles types pour le transfert hors UE (voir §2.1 point 9) |
+| Highlightly API + `nba_api` | Source de données NBA (matchs, équipes, stats officielles) | Aucune — appels sortants en lecture seule, pas d'envoi de données utilisateur | Non déterminé | Non — pas de donnée personnelle transmise | Confirmer qu'aucun identifiant utilisateur n'est jamais inclus dans les appels |
+| Web Push (VAPID) | Notifications push natives | Endpoint + clés cryptographiques du navigateur (`push_subscriptions`) | Relayé par le service push du navigateur (Google/Mozilla/Apple selon le navigateur de l'utilisateur) | Indirectement oui (relais technique, pas de contrat direct) | Pas d'action requise à ce stade — flux standard du protocole Web Push |
+| — | Envoi d'e-mail transactionnel | — | — | — | **Aucun prestataire branché à ce jour** (§3 point 6) — à choisir avant d'avoir besoin d'e-mails RGPD (confirmation, notification de suppression) |
+| — | Paiement | — | — | — | **Aucun prestataire** — non applicable, service gratuit (§3 point 5) |
+| — | Mesure d'audience / analytics | — | — | — | **Aucun outil** — non applicable |
+
+Le point le plus notable : **Anthropic est le seul sous-traitant qui reçoit du contenu généré par l'utilisateur en dehors de l'infrastructure Supabase/Vercel**, et c'est un transfert hors UE — décision retenue en §2.1 point 9 (flux conservé, à documenter et vérifier).
 
 ### 2.7. Sécurité et incidents
 
@@ -359,7 +387,9 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 
 - Déclaration d'âge simple au signup (case ou tranche d'âge, sans justificatif) : décidée en §2.10 point 4, n'existe pas aujourd'hui (`SignupForm.tsx`) — à implémenter dans une prochaine itération.
 - Signalement d'un message de chat vers les admins : décidé en §2.10 point 7, en complément de `bug_reports` qui ne couvre pas ce cas — à implémenter dans une prochaine itération.
-- Procédure de suppression de compte et des données associées (chat, signalements, abonnements push) — vérifier ce qui existe déjà côté Supabase/admin.
+- **Self-service suppression de compte + export de données** (décidé en §2.1 point 6) — cadré maintenant, à implémenter dans une prochaine session. Spécification fonctionnelle :
+  - *Suppression* : reprendre la logique du script CLI existant (`scripts/delete-player-account.mjs`) comme action serveur authentifiée, restreinte à l'utilisateur connecté (jamais à un autre `user_id`). Conserver les mêmes garde-fous métier : blocage si le compte a le rôle `ADMIN` (doit être rétrogradé par un autre admin avant de pouvoir se supprimer lui-même) ; blocage si l'utilisateur a créé une ligue ayant d'autres membres actifs (message clair invitant à transférer ou dissoudre la ligue d'abord, comportement exact à définir). Ajouter une confirmation explicite côté UI (ex. saisie du pseudo, pas juste un bouton) avant d'exécuter — le script CLI a un `--confirm` équivalent à reproduire.
+  - *Export* : action serveur authentifiée qui régénère, pour l'utilisateur connecté uniquement, un fichier (JSON suffisant à ce stade) contenant ses propres données : profil (bio, équipe favorite, préférences), paris (`bets`), messages de chat envoyés, signalements de bug, appartenances aux ligues. Pas besoin d'un format d'interopérabilité sophistiqué vu l'échelle actuelle.
 - Pas de prestataire d'e-mail transactionnel branché à ce jour : si un flux d'information RGPD (ex. confirmation, notification de suppression) doit passer par e-mail, il dépend d'un prestataire encore à choisir.
 - Aucune mise ni paiement aujourd'hui : pas de mesure technique de paiement à sécuriser pour l'instant.
 
@@ -383,3 +413,22 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 - **Bascule vers un modèle payant en 2027** (modèle encore indéterminé) : à re-cadrer entièrement le moment venu, y compris la question d'une éventuelle mise financière (section 2.11) qui changerait le profil juridique du service.
 - **Ouverture géographique 2027** (périmètre non tranché) : à revoir si le public visé s'étend hors de France.
 - **Statut de l'exploitant** : particulier en nom propre pour l'instant — à revoir si l'activité se structure (auto-entreprise, société), notamment en cas de monétisation.
+- **Transfert de données vers Anthropic (hors UE)** : le texte libre des paris est envoyé à l'API Claude pour structuration (§2.1 point 9, §2.6). DPA et garanties de transfert (clauses contractuelles types ou équivalent) à vérifier avant l'ouverture au-delà du cercle d'amis actuel.
+- **Localisation du projet Supabase** : non trouvée dans le dépôt — à vérifier directement dans le dashboard Supabase (§2.6), en particulier si elle est hors UE.
+
+## 9. Registre des traitements initial (02/09/2026)
+
+Premier registre, tenu par l'exploitant (particulier en nom propre). Bases légales indicatives, à confirmer par un professionnel avant l'ouverture au-delà du cercle d'amis actuel (§8.5). À mettre à jour à chaque évolution notable du produit (nouvelle donnée collectée, nouveau prestataire, changement de modèle économique).
+
+| Traitement | Données concernées | Finalité | Base légale (proposée) | Destinataires / sous-traitants | Durée de conservation | Transfert hors UE |
+|---|---|---|---|---|---|---|
+| Gestion du compte | `pseudo`, e-mail (Supabase Auth) | Authentification, identification au sein du service | Exécution du contrat | Supabase | Tant que le compte est actif | Non identifié (localisation Supabase à vérifier) |
+| Personnalisation du profil | `bio`, équipe favorite, préférences d'affichage, badges épinglés | Personnalisation de l'expérience | Exécution du contrat | Supabase | Tant que le compte est actif | — |
+| Pronostics | Formulation libre du pari, résultats, statuts, raisons de refus/correction | Fonctionnement du jeu (cœur du service) | Exécution du contrat | Supabase ; Anthropic (structuration IA du texte libre) | Tant que le compte est actif | **Oui — Anthropic (États-Unis)** |
+| Chat entre membres | Messages texte libre, horodatage, auteur | Échange entre membres d'une ligue/du canal général | Exécution du contrat / intérêt légitime (vie du service) | Supabase | Tant que le compte est actif | Non identifié |
+| Modération (à venir) | Signalement d'un message par un utilisateur (§2.10 point 7, non implémenté) | Modération des échanges, protection des utilisateurs (dont mineurs) | Intérêt légitime | Supabase | Tant que le compte est actif | — |
+| Signalement de bug | Description libre, chemin d'écran | Support technique, amélioration du service | Intérêt légitime | Supabase | Tant que le compte est actif | — |
+| Actions d'administration | `actor_user_id`, action, avant/après (JSONB) | Traçabilité des décisions admin (validation de paris, changement de rôle...) | Intérêt légitime (sécurité, litiges) | Supabase | Tant que le compte concerné est actif (supprimé en cascade avec le compte de l'acteur) | — |
+| Notifications push | Endpoint et clés cryptographiques du navigateur | Envoi de notifications | Consentement (activation par l'utilisateur) | Supabase ; service push du navigateur (Google/Mozilla/Apple) | Tant que l'abonnement est actif | Possible selon le service push du navigateur de l'utilisateur, hors du contrôle direct de l'application |
+| Sécurité du signup | Signal anti-bot Turnstile | Prévention des inscriptions automatisées | Intérêt légitime | Cloudflare | Le temps de la vérification | Réseau mondial Cloudflare |
+| Hébergement / exécution | Toutes les requêtes applicatives (accès technique) | Fonctionnement du service | Exécution du contrat | Vercel | Le temps du traitement de la requête | Vercel Inc. est une société américaine ; calcul déployé en `dub1` (UE) |
