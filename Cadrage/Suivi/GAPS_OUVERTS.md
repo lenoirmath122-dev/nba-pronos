@@ -62,6 +62,42 @@
 > `select("id", {count})` plantait -- généralisé en `select("*", {count})`
 > partout). `eslint` propre.
 
+> **Chantier juridique — cadrage initial déposé, rien traité à ce jour
+> (02/09/2026)** : nouveau document `Cadrage/Juridique/
+> conseils_juridiques_deploiement_application.md` (apporté par
+> l'utilisateur, jusque-là à la racine de `Cadrage/`, rangé dans un nouveau
+> dossier dédié sur le modèle de `Business/`/`DA/`/`Stats/`) -- checklist
+> générale RGPD, mentions légales, politique de confidentialité, CGU/CGV,
+> cookies, prestataires/sous-traitants, sécurité, propriété intellectuelle,
+> mineurs, et un point dédié "jeux, concours et pronostics" (§2.11).
+> Prochaine étape indiquée par le document lui-même (§7) : compléter les 10
+> informations de cadrage (§3 -- exploitant, public visé, pays ciblés,
+> données collectées, modèle économique, prestataires, mineurs, contenus
+> utilisateurs, mises/récompenses) avant d'établir une matrice d'obligations.
+> Point à trancher tôt vu la nature de l'app : présence ou non d'une mise
+> financière/de gains, qui change le profil juridique (§2.11/§2.9). Rien
+> d'engagé côté implémentation (mentions légales, politique de
+> confidentialité, etc.) à ce jour.
+
+> **Chantier juridique — les 10 informations de cadrage complétées + matrice
+> d'obligations initiale (02/09/2026)** : suite de l'entrée ci-dessus, §3 du
+> document complété (nouvelle sous-section "Réponses au cadrage") avec les
+> réponses de l'utilisateur et un inventaire technique du dépôt (prestataires,
+> données collectées, absence de mise réelle, absence de page légale,
+> absence de vérification d'âge). Nouvelle §8 "Matrice d'obligations
+> initiale" ajoutée avec les 5 catégories du §7 (obligations avant
+> lancement, mesures techniques, documents à publier, contrats/licences à
+> vérifier, points à valider par un professionnel). Décisions retenues :
+> exploitant = particulier en nom propre pour l'instant ; bêta en cercle
+> fermé France ; **mineurs autorisés sans restriction d'âge** (aucune
+> vérification dans le code -- flag ouvert) ; gratuit aujourd'hui, modèle
+> économique 2027 non tranché (payant pas exclu) ; ouverture géographique
+> 2027 non tranchée. Rien d'engagé côté implémentation à ce jour (toujours
+> aucune mention légale/politique de confidentialité/CGU publiée) --
+> prochaine étape naturelle : rédiger une première version de ces documents
+> pour la bêta fermée, et statuer sur la vérification d'âge vu que le
+> service est ouvert à tous âges.
+
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
 > détaillée du mécanisme (écran identique vs écran qui confirme -- même
