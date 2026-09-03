@@ -117,7 +117,8 @@ export default async function CguPage() {
           <h2 className={styles.sectionTitle}>6. Modération</h2>
           <p className={styles.body}>
             Les messages du chat peuvent être supprimés par un administrateur en cas de contenu contraire aux
-            règles d&apos;utilisation.
+            règles d&apos;utilisation. Vous pouvez également signaler un message problématique à un administrateur
+            directement depuis le chat.
           </p>
         </section>
 

@@ -36,9 +36,7 @@ L'éditeur se réserve le droit de retirer tout contenu contraire aux présentes
 
 ## 6. Modération
 
-Les messages du chat peuvent être supprimés par un administrateur en cas de contenu contraire aux règles d'utilisation.
-
-> Note interne (pas affichée dans la page publiée) : un mécanisme de signalement d'un message par les utilisateurs eux-mêmes est prévu mais pas encore disponible — voir le cadrage juridique §2.10 et §8.2.
+Les messages du chat peuvent être supprimés par un administrateur en cas de contenu contraire aux règles d'utilisation. Vous pouvez également signaler un message problématique à un administrateur directement depuis le chat.
 
 ## 7. Suspension et suppression de compte
 

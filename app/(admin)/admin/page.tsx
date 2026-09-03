@@ -96,6 +96,14 @@ export default async function AdminDashboardPage() {
             </span>
           </Link>
         </li>
+        <li>
+          <Link href="/admin/chat-reports" className={styles.linkEntryActive}>
+            Signalements de chat
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
       </ul>
 
       <RecalculateButton disabled={!data.competitionId} />
