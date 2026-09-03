@@ -31,9 +31,10 @@ export default async function ConfidentialitePage() {
           </p>
           <p className={styles.body}>
             Panier Ballon est aujourd&apos;hui un service <strong>gratuit, réservé à un cercle fermé
-            d&apos;utilisateurs invités</strong> (bêta privée, France). <strong>Aucun mineur n&apos;est vérifié à
-            l&apos;inscription</strong> : le service reste théoriquement accessible à tous âges (voir §7
-            &quot;Mineurs&quot; ci-dessous).
+            d&apos;utilisateurs invités</strong> (bêta privée, France). <strong>Une déclaration d&apos;âge est
+            demandée à l&apos;inscription</strong> (certifier avoir 15 ans ou plus) : le service n&apos;est pas
+            accessible en dessous de ce seuil, mais reste, au-delà, ouvert aux mineurs de 15 à 17 ans comme aux
+            majeurs (voir §7 &quot;Mineurs&quot; ci-dessous).
           </p>
         </section>
 
@@ -91,10 +92,18 @@ export default async function ConfidentialitePage() {
                 traçabilité des décisions (intérêt légitime), conservées tant que le compte concerné est actif.
               </span>
             </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Confirmation d&apos;avoir 15 ans ou plus</strong> (case cochée à l&apos;inscription,
+                horodatée) — vérifier votre éligibilité à l&apos;inscription (obligation légale), conservée tant
+                que votre compte est actif.
+              </span>
+            </li>
           </ul>
           <p className={styles.note}>
-            Ce qu&apos;on ne collecte pas : date de naissance, adresse postale, données professionnelles, adresse
-            IP.
+            Ce qu&apos;on ne collecte pas : date de naissance précise (nous ne demandons qu&apos;une confirmation
+            du seuil de 15 ans, jamais votre date de naissance), adresse postale, données professionnelles,
+            adresse IP.
           </p>
           <p className={styles.body}>
             Panier Ballon ne supprime aujourd&apos;hui aucune donnée automatiquement — vos données restent tant
@@ -195,10 +204,13 @@ export default async function ConfidentialitePage() {
         <section className={`${styles.section} glass-card`} aria-label="Mineurs">
           <h2 className={styles.sectionTitle}>7. Mineurs</h2>
           <p className={styles.body}>
-            Panier Ballon n&apos;a pas mis en place de vérification d&apos;âge à l&apos;inscription : le service
-            reste, en théorie, ouvert à tous âges, même si en pratique ses utilisateurs actuels sont des adultes
-            (cercle d&apos;amis). Si vous êtes mineur et que vous utilisez Panier Ballon, vos données sont
-            traitées selon les mêmes règles que celles décrites ci-dessus.
+            Depuis le 03/09/2026, l&apos;inscription nécessite de certifier avoir 15 ans ou plus (case à cocher,
+            déclarative, sans justificatif demandé) — en dessous de ce seuil, la création de compte est refusée,
+            faute de mécanisme de consentement parental actuellement en place. Ce seuil suit la règle retenue par
+            la CNIL : en France, un mineur de 15 ans ou plus peut consentir seul à un traitement de données
+            reposant sur le consentement ; en dessous, le consentement du titulaire de l&apos;autorité parentale
+            est requis en plus de celui du mineur. Si vous avez entre 15 et 17 ans et utilisez Panier Ballon, vos
+            données sont traitées selon les mêmes règles que celles décrites ci-dessus.
           </p>
         </section>
 

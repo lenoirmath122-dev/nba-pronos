@@ -58,9 +58,10 @@ export default async function CguPage() {
             </li>
             <li className={styles.listItem}>
               <span>
-                <strong>Aucune vérification d&apos;âge n&apos;est effectuée à l&apos;inscription.</strong> Le
-                service n&apos;est pas restreint aux majeurs à ce jour — voir la politique de confidentialité
-                pour plus de détails.
+                <strong>L&apos;inscription requiert de certifier avoir 15 ans ou plus</strong> (case à cocher,
+                déclarative, sans justificatif demandé) — le service n&apos;est pas ouvert en dessous de ce
+                seuil. Il n&apos;est en revanche pas restreint aux majeurs au-delà — voir la politique de
+                confidentialité pour plus de détails.
               </span>
             </li>
             <li className={styles.listItem}>

@@ -6,7 +6,7 @@
 
 nba-pronos est édité par Mathieu Lenoir, particulier, en nom propre — voir les mentions légales pour les coordonnées complètes. C'est cette personne qui est responsable du traitement de vos données au sens du RGPD.
 
-nba-pronos est aujourd'hui un service **gratuit, réservé à un cercle fermé d'utilisateurs invités** (bêta privée, France). **Aucun mineur n'est vérifié à l'inscription** : le service reste théoriquement accessible à tous âges (voir §7 "Mineurs" ci-dessous).
+nba-pronos est aujourd'hui un service **gratuit, réservé à un cercle fermé d'utilisateurs invités** (bêta privée, France). **Une déclaration d'âge est demandée à l'inscription** (certifier avoir 15 ans ou plus) : le service n'est pas accessible en dessous de ce seuil, mais reste, au-delà, ouvert aux mineurs de 15 à 17 ans comme aux majeurs (voir §7 "Mineurs" ci-dessous).
 
 ## 2. Quelles données on collecte, pourquoi, et combien de temps
 
@@ -22,8 +22,9 @@ Le tableau ci-dessous liste toutes les données que nba-pronos collecte à ce jo
 | Vos signalements de bug | Vous permettre de nous signaler un problème technique | Intérêt légitime (support) | Tant que votre compte est actif |
 | Abonnement aux notifications push | Vous envoyer des notifications si vous les avez activées | Votre consentement (activation volontaire) | Tant que l'abonnement est actif |
 | Actions des administrateurs (validation de paris, changements de rôle...) | Assurer la traçabilité des décisions prises sur votre compte ou vos paris | Intérêt légitime (sécurité, traitement des litiges) | Tant que le compte concerné est actif |
+| Confirmation d'avoir 15 ans ou plus (case cochée à l'inscription, horodatée) | Vérifier votre éligibilité à l'inscription (seuil légal RGPD pour le consentement des mineurs) | Obligation légale | Tant que votre compte est actif |
 
-**Ce qu'on ne collecte pas** : date de naissance, adresse postale, données professionnelles, adresse IP.
+**Ce qu'on ne collecte pas** : date de naissance précise (nous ne demandons qu'une confirmation du seuil de 15 ans, jamais votre date de naissance), adresse postale, données professionnelles, adresse IP.
 
 **Sur la durée de conservation** : nba-pronos ne supprime aujourd'hui aucune donnée automatiquement — vos données restent tant que votre compte existe, et sont supprimées seulement si vous en faites la demande (voir §5, "Vos droits"). C'est un choix assumé, adapté à la taille actuelle du service (bêta fermée entre amis), pas un oubli — et il sera revu si le service s'ouvre plus largement.
 
@@ -69,9 +70,9 @@ Nous mettons en œuvre des mesures de sécurité proportionnées à la nature du
 
 ## 7. Mineurs
 
-nba-pronos n'a pas mis en place de vérification d'âge à l'inscription : le service reste, en théorie, ouvert à tous âges, même si en pratique ses utilisateurs actuels sont des adultes (cercle d'amis). Si vous êtes mineur et que vous utilisez nba-pronos, vos données sont traitées selon les mêmes règles que celles décrites ci-dessus.
+Depuis le 03/09/2026, l'inscription nécessite de certifier avoir 15 ans ou plus (case à cocher, déclarative, sans justificatif demandé) — en dessous de ce seuil, la création de compte est refusée, faute de mécanisme de consentement parental actuellement en place. Ce seuil suit la règle retenue par la CNIL : en France, un mineur de 15 ans ou plus peut consentir seul à un traitement de données reposant sur le consentement ; en dessous, le consentement du titulaire de l'autorité parentale est requis en plus de celui du mineur. Si vous avez entre 15 et 17 ans et utilisez nba-pronos, vos données sont traitées selon les mêmes règles que celles décrites ci-dessus.
 
-> Note interne (pas affichée dans la page publiée) : la base légale/mécanisme de consentement exact pour les moins de 15 ans reste à valider avec un professionnel du droit avant toute ouverture au-delà du cercle actuel — voir §8.5 du cadrage juridique, non tranché à ce jour.
+> Note interne (pas affichée dans la page publiée) : cette déclaration d'âge referme le point le plus sensible identifié en cadrage (absence de base légale pour les moins de 15 ans, faute de consentement parental) — voir §2.10 point 4 et §8.2 du cadrage juridique, mis à jour le 03/09/2026. Reste à valider avec un professionnel du droit avant toute ouverture au-delà du cercle actuel : cadre exact applicable aux 15-17 ans (information adaptée, articulation avec l'autorité parentale sur certains aspects...) — voir §8.5, non tranché à ce jour.
 
 ## 8. Modification de cette politique
 

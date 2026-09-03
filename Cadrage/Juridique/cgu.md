@@ -16,7 +16,7 @@ Si ce modèle venait à changer (introduction de mises réelles, de récompenses
 
 - L'accès à nba-pronos se fait sur invitation, dans le cadre de la bêta actuelle.
 - Vous devez fournir un pseudo et une adresse e-mail valides pour créer un compte.
-- **Aucune vérification d'âge n'est effectuée à l'inscription.** Le service n'est pas restreint aux majeurs à ce jour — voir la politique de confidentialité pour plus de détails sur le traitement des données des utilisateurs mineurs.
+- **L'inscription requiert de certifier avoir 15 ans ou plus** (case à cocher, déclarative, sans justificatif demandé) — le service n'est pas ouvert en dessous de ce seuil. Il n'est en revanche pas restreint aux majeurs au-delà — voir la politique de confidentialité pour plus de détails sur le traitement des données des utilisateurs mineurs de 18 ans.
 - Vous êtes responsable de la confidentialité de vos identifiants de connexion.
 
 ## 4. Règles d'utilisation
