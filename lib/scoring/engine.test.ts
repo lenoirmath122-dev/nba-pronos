@@ -95,6 +95,15 @@ describe("scoreMatchPrediction (§5)", () => {
     expect(score).toEqual({ isWinnerCorrect: null, marginDiff: null, winnerPoints: 0, marginBonusPoints: 0 });
   });
 
+  it("cas 11b — match POSTPONED avec prono complet/figé → en attente (pas neutralisé, pas perdu) — item A5 de l'audit du 03/09/2026", () => {
+    const postponed = match({ id: "m3", status: "POSTPONED", homeScore: null, awayScore: null });
+    const score = scoreMatchPrediction({ predictedWinnerTeamId: "A", predictedMargin: 10, isFrozen: true }, postponed);
+    // Un report n'est pas une annulation : le prono reste en attente d'un
+    // futur FINISHED (rejoué) ou d'une CANCELLED explicite par un admin --
+    // jamais neutralisé à 0 comme CANCELLED, jamais scoré comme FINISHED.
+    expect(score).toEqual({ isWinnerCorrect: null, marginDiff: null, winnerPoints: null, marginBonusPoints: null });
+  });
+
   it("cas 11 — prédiction non figée ou partielle → absence, tout NULL", () => {
     expect(scoreMatchPrediction({ predictedWinnerTeamId: "A", predictedMargin: 10, isFrozen: false }, finishedMatch)).toEqual(
       { isWinnerCorrect: null, marginDiff: null, winnerPoints: null, marginBonusPoints: null }
@@ -287,6 +296,24 @@ describe("A2 — neutralisation et cascade (§9)", () => {
       exactScorePoints: 0,
       matchupPoints: 0,
     });
+  });
+
+  it("cas 25b — série POSTPONED → vainqueur/score EN ATTENTE (pas neutralisé comme CANCELLED) — item A5 de l'audit du 03/09/2026", () => {
+    // Un report (NBA Cup, série = 1 match) n'est pas une annulation : le
+    // pick reste en attente d'un futur FINISHED ou d'une CANCELLED
+    // explicite, contrairement au cas 25 ci-dessus (série CANCELLED).
+    const score = scoreBracketPick(
+      { predictedWinnerTeamId: "A", predictedScoreFormat: null },
+      "CUP_FINAL",
+      { status: "POSTPONED", winnerTeamId: null, scoreFormat: null },
+      { a: "A", b: "C" },
+      { a: "A", b: "C" }
+    );
+    expect(score.isWinnerCorrect).toBeNull();
+    expect(score.winnerPoints).toBeNull();
+    // L'affiche, elle, est indépendante du statut de la série (§6.3) : déjà
+    // correcte dès que la paire officielle est connue.
+    expect(score.isMatchupCorrect).toBe(true);
   });
 
   it("cas 26 — série amont CANCELLED, aval non résolu → affiche aval EN ATTENTE (pas 0)", () => {

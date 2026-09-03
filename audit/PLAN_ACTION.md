@@ -35,14 +35,10 @@
 - **Critère d'acceptation** : une limite de fréquence raisonnable bloque l'abus sans gêner l'usage normal.
 - **Rollback** : trivial (retrait du rate limiter).
 
-### A3 — Vérifier le comportement du micro-service Cloud Run en cas de panne
-- **Objectif** : lever l'inconnu identifié en Phase 8 avant de considérer le pipeline de paris IA comme pleinement fiable.
-- **Anomalies traitées** : point ouvert de `08-api-et-integrations.md`.
-- **Fichiers concernés** : `lib/ai/statsService.ts`.
-- **Effort estimé** : S (vérification), M si correction nécessaire.
-- **Risque** : faible.
-- **Stratégie de test** : T-API-01.
-- **Critère d'acceptation** : un pari reste soumissible même si le service de proba est indisponible.
+### A3 — ~~Vérifier le comportement du micro-service Cloud Run en cas de panne~~ FAIT — vérifié le 03/09/2026, déjà correct
+- **Statut** : clos sans code à écrire. Lecture complète de `lib/ai/statsService.ts` (18 fonctions `predict*()`) : URL absente → `null` immédiat, `fetch` sous timeout (20-40s), `!res.ok` → `null`, tout en `try/catch` → exception réseau also `null`. Côté `structureAndScoreBet.ts` : chaque site de consommation vérifie `if (!prediction) { markNotCalculable(); return; }` (vérifié sur les 10 branches), plus un `try/catch` global sur toute la fonction en filet de sécurité (`is_calculable` reste `NULL`, jamais d'exception qui casserait `submitBet`). Détail dans `08-api-et-integrations.md`.
+- **Anomalies traitées** : point auparavant ouvert de `08-api-et-integrations.md`, refermé.
+- **Reste optionnel** : T-API-01 (`BACKLOG_TESTS.md`) peut être ajouté comme test de non-régression pour figer ce comportement déjà correct, mais n'est plus urgent (rien à découvrir, juste à protéger).
 - **Rollback** : N/A (vérification, pas nécessairement un changement de code).
 
 ### A4 — Tests d'intégration RLS/permissions minimaux
@@ -56,15 +52,10 @@
 - **Critère d'acceptation** : les 4 scénarios IDOR/élévation de privilège du backlog de tests sont automatisés et passent en CI.
 - **Rollback** : N/A.
 
-### A5 — Résoudre l'ambiguïté du statut `POSTPONED`
-- **Objectif** : clarifier le comportement du scoring pour un match reporté (Phase 3).
-- **Anomalies traitées** : point ouvert de `03-conformite-fonctionnelle.md`.
-- **Fichiers concernés** : `lib/nba/client.ts` (`normalizeMatchStatus`), `lib/scoring/engine.ts`.
-- **Effort estimé** : S.
-- **Risque** : faible si le comportement actuel s'avère déjà correct après vérification ; moyen si un correctif de scoring est nécessaire (touche une logique déjà en production).
-- **Stratégie de test** : T-BIZ-01.
-- **Critère d'acceptation** : comportement documenté et testé explicitement.
-- **Rollback** : réversible.
+### A5 — ~~Résoudre l'ambiguïté du statut `POSTPONED`~~ FAIT — vérifié correct le 03/09/2026, tests ajoutés
+- **Statut** : clos, comportement déjà correct, aucun correctif de scoring nécessaire. `scoreMatchPrediction`/`scoreBracketPick` (`lib/scoring/engine.ts`) ne neutralisent explicitement que `CANCELLED` ; un match/série `POSTPONED` retombe sur la branche "pas encore FINISHED" → en attente (ni perdu ni neutralisé), symétrique à `SCHEDULED`/`IN_PROGRESS`. Comportement voulu : un report n'est pas une annulation.
+- **Tests ajoutés** : `lib/scoring/engine.test.ts` cas 11b (`scoreMatchPrediction`) et cas 25b (`scoreBracketPick`) — 230/230 tests passent.
+- **Anomalies traitées** : point auparavant ouvert de `03-conformite-fonctionnelle.md`, refermé.
 
 ---
 
