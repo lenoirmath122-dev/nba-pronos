@@ -29,6 +29,27 @@
 > pour les 15-17 ans (§8.5, validation par un professionnel du droit,
 > explicitement hors de portée d'un codage).
 
+> **Décision TTL cache / classify-then-structure — REPORTÉE, aucune donnée
+> disponible (03/09/2026)** : 5e point de la liste priorisée. Vérifié
+> directement (logs Vercel, requête "structureBet usage", fenêtres 1h et
+> 7j) : **aucune ligne** -- pas juste "pas encore assez de recul", deux
+> causes combinées. (1) Aucun pari perso soumis récemment, cohérent avec la
+> pause actuelle entre l'alpha et la vraie Cup ([[project_pause-inter-
+> alpha-beta]], aucune compétition active). (2) **Rétention des logs Vercel
+> limitée à 1h sur le plan Hobby** -- même d'éventuels appels plus tôt
+> aujourd'hui seraient déjà perdus. Le plan initial ("laisser tourner
+> quelques jours/semaines puis grep les logs") ne fonctionne pas tel quel
+> avec ce plan Vercel : la fenêtre d'observation est bien plus courte que
+> prévu.
+>
+> Décision AVEC l'utilisateur : reporter tel quel plutôt que de construire
+> une persistance dédiée (table Supabase) maintenant -- à revisiter au
+> démarrage de la vraie Cup, quand du trafic réel existera. Si le besoin de
+> suivre une tendance sur plusieurs jours se confirme à ce moment-là, il
+> faudra alors soit persister l'usage ailleurs que dans les logs Vercel
+> (option déjà identifiée, pas retenue ce soir), soit vérifier manuellement
+> et régulièrement (fenêtre de 1h) plutôt que compter sur un historique.
+
 > **Relecture de l'échantillon de 30 paris perso par l'utilisateur — 3 vrais
 > trous confirmés + 1 limite architecturale documentée (03/09/2026)** :
 > suite du test échantillon (entrée précédente). L'utilisateur a annoté les
