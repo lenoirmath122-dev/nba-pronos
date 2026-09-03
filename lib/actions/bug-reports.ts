@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { toClientError } from "@/lib/actions/errors";
 import { requiredBoundedText } from "@/lib/actions/validation";
+import { checkRateLimit } from "@/lib/actions/rateLimit";
 
 // Signalement rapide (28/08/2026, migration #33) — 2 actions distinctes :
 // submitBugReport (joueur, appelée en useTransition depuis BugReportButton,
@@ -28,6 +29,13 @@ export async function submitBugReport(input: {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  // SEC-001 de l'audit du 03/09/2026 : 5 signalements / heure -- un
+  // signalement de bug est par nature un événement rare, pas besoin de
+  // marge pour une rafale légitime.
+  if (!(await checkRateLimit(supabase, "bug_report", 5, 3600))) {
+    return { success: false, error: "Trop de signalements envoyés récemment, réessaie plus tard." };
+  }
 
   const parsed = DescriptionSchema.safeParse(input.description);
   if (!parsed.success) {

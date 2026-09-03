@@ -5,6 +5,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { structureAndScoreBet } from "@/lib/ai/structureAndScoreBet";
 import { boundedText } from "@/lib/actions/validation";
+import { checkRateLimit } from "@/lib/actions/rateLimit";
 
 // Server actions de l'écran Nouveau pari (SPEC_ECRAN_NOUVEAU_PARI_V0_1 §11) et
 // de Mes paris (suppression, §18/08/2026). AUCUNE écriture directe sur
@@ -38,6 +39,14 @@ async function callSaveBet(input: SaveBetInput, submit: boolean): Promise<Action
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  // SEC-001 de l'audit du 03/09/2026 : 20 tentatives / minute -- le quota
+  // métier réel (3 paris MATCH/série, save_bet) protège déjà le fond ;
+  // cette limite ne freine qu'un flot anormal de tentatives (brouillon
+  // modifié en boucle, script), pas une saisie/relecture normale.
+  if (!(await checkRateLimit(supabase, "bet_submit", 20, 60))) {
+    return { success: false, error: "Trop de tentatives, souffle un peu et réessaie dans une minute." };
+  }
 
   if (!DescriptionSchema.safeParse(input.description).success) {
     return { success: false, error: `${MAX_DESCRIPTION_LENGTH} caractères maximum.` };
