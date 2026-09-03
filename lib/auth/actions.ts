@@ -47,6 +47,7 @@ export async function signup(
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const code = String(formData.get("code") ?? "").trim();
+  const ageConfirmed = formData.get("ageConfirmed") === "on";
   const captchaToken = String(formData.get("cf-turnstile-response") ?? "");
 
   if (!pseudo || !email || !password) {
@@ -54,6 +55,14 @@ export async function signup(
   }
   if (password.length < 8) {
     return { error: "Le mot de passe doit faire au moins 8 caractères." };
+  }
+  // Déclaration d'âge (cadrage juridique §2.10 point 4, 03/09/2026) : case
+  // bloquante — aucun mécanisme de consentement parental n'existe pour les
+  // moins de 15 ans, donc pas de compte créé sans cette confirmation
+  // (handle_new_user horodate systématiquement age_confirmed_at ensuite,
+  // migration 20260903120000).
+  if (!ageConfirmed) {
+    return { error: "Panier Ballon est réservé aux 15 ans et plus. Coche la case pour confirmer ton âge." };
   }
 
   const supabase = await getServerClient();

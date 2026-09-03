@@ -4,6 +4,30 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Déclaration d'âge au signup — IMPLÉMENTÉE (03/09/2026)** : traite le
+> 1er des 2 points techniques identifiés par le cadrage mineurs §2.10 (voir
+> entrées ci-dessous), en tête de la liste des gaps triée par priorité avec
+> l'utilisateur ce soir. Décisions prises AVEC l'utilisateur au moment de
+> l'implémentation (le cadrage laissait volontairement les deux ouvertes,
+> §2.10 points 4/8) : **case à cocher** ("j'ai 15 ans ou plus") plutôt
+> qu'une tranche d'âge ou une date de naissance complète (proposée puis
+> écartée par l'utilisateur lui-même au nom de la minimisation déjà actée
+> dans le cadrage) ; **bloquante** — sans mécanisme de consentement
+> parental existant pour les moins de 15 ans, l'inscription est refusée si
+> la case n'est pas cochée, plutôt que juste enregistrer la déclaration
+> pour plus tard (option "autoriser et enregistrer" explicitement écartée).
+> Implémentation : case dans `SignupForm.tsx` (+ styles `AuthScreen.module.css`),
+> validation bloquante dans `lib/auth/actions.ts` (`signup()`), colonne
+> `users.age_confirmed_at` + trigger `handle_new_user` mis à jour (migration
+> `20260903120000_users_age_declaration.sql`, horodate systématiquement
+> puisque bloquant en amont). CGU (§3) et politique de confidentialité
+> (§1, §2, §7) mises à jour en conséquence, `.md` ET pages publiées en
+> parallèle (même convention que le 03/09 précédent). Cadrage juridique
+> (§2.10 points 4/8, résumé de section, §8.2) marqué comme fait.
+>
+> **Reste** (2e point du même cadrage, pas traité ici) : signalement de
+> message de chat vers les admins — prochain de la liste priorisée.
+
 > **Chantier juridique — mentions légales/politique de confidentialité/CGU
 > rédigées + décision logos NBA actée (03/09/2026)** : clôture du passage
 > systématique du document juridique (§2.1-2.11, fait le 02/09). Trois

@@ -90,6 +90,23 @@ export function SignupForm() {
           </label>
           <input id="code" name="code" type="text" className={styles.input} />
         </div>
+        {/* Déclaration d'âge (cadrage juridique §2.10 point 4, 03/09/2026) :
+            case bloquante plutôt qu'une date de naissance complète (point 8,
+            minimisation) — aucun mécanisme de consentement parental
+            n'existant pour les moins de 15 ans, l'inscription est refusée
+            si la case n'est pas cochée (lib/auth/actions.ts). */}
+        <div className={styles.checkboxField}>
+          <input
+            id="ageConfirmed"
+            name="ageConfirmed"
+            type="checkbox"
+            required
+            className={styles.checkbox}
+          />
+          <label htmlFor="ageConfirmed" className={styles.checkboxLabel}>
+            Je certifie avoir 15 ans ou plus.
+          </label>
+        </div>
         <TurnstileWidget resetKey={state} />
         {(mismatchError || state?.error) && (
           <p role="alert" className={styles.error}>
