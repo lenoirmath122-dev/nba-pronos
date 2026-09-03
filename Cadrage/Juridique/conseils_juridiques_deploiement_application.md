@@ -235,6 +235,7 @@ L’accès technique à une image, une donnée ou un contenu ne signifie pas né
 3. **Photographies et illustrations** : les images `hero-*.jpg` proviennent de photos Unsplash fournies par l'utilisateur (licence Unsplash, recompressées avant dépôt — `public/brand/README.md`). Aucune photo de joueur NBA trouvée dans le dépôt.
 4. **Logos, marques et identités visuelles** — point le plus sensible de cette section :
    - **30 logos d'équipes NBA** (`public/logos/teams/*.svg`, hébergés en interne) : **récupérés depuis une source publique en ligne (type Wikipedia), sans licence explicite obtenue de la NBA ou des équipes** (confirmé par l'utilisateur). Ce sont des marques déposées appartenant à la NBA/aux franchises — leur réutilisation dans une application tierce non affiliée, même gratuite, est un vrai point de vigilance marque (pas seulement droit d'auteur). Le `README.md` du dossier affirme des assets "licenciés ou possédés" — cette affirmation n'est pas corroborée par l'origine réelle des fichiers et mérite d'être corrigée ou nuancée. Il existe en plus 30 fichiers PNG dans le même dossier, non référencés par le code (probablement des doublons obsolètes) — à nettoyer.
+     **Décision retenue avec l'utilisateur (03/09/2026)** : le risque est accepté tel quel pour l'instant — cohérent avec le profil actuel du service (bêta gratuite, cercle fermé, pas de caractère commercial). Ce n'est pas un oubli : la décision est explicite et **à revoir obligatoirement avant toute ouverture publique ou commerciale** (2027), avec deux options déjà identifiées à ce moment-là : obtenir une licence, ou remplacer les logos par des visuels non protégés (couleurs d'équipe, initiales, etc.).
    - **Logo de l'app** (`public/brand/logo.svg`) : création originale de l'utilisateur (confirmé) — pas de risque tiers identifié.
 5. **Polices de caractères** : Sora et Oswald, chargées via `next/font/google` et auto-hébergées au build (pas de hotlink runtime) — polices Google Fonts, licence ouverte standard (Open Font License), pas de risque identifié.
 6. **Textes et contenus éditoriaux** : aucun contenu copié depuis une source externe identifié.
@@ -464,11 +465,11 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 
 ### 8.3. Documents à publier
 
-- Mentions légales (identité de l'exploitant particulier).
-- Politique de confidentialité, même simple, couvrant les données réellement collectées (section 3, point 4) et les prestataires (point 6).
-- CGU couvrant a minima : comportement attendu dans le chat, modération (suppression admin des messages), suppression de compte.
+- **Mentions légales — rédigées (03/09/2026)**, `Cadrage/Juridique/mentions_legales.md`. Contenu prêt, identité de l'exploitant en placeholder (`[Prénom NOM]`, adresse, contact) — pas encore intégrées comme page de l'application (décision explicite : contenu d'abord, intégration dans une prochaine itération).
+- **Politique de confidentialité — rédigée (03/09/2026)**, `Cadrage/Juridique/politique_confidentialite.md`, couvrant les données réellement collectées (§9 registre des traitements) et les prestataires (§2.6). Pas encore intégrée comme page.
+- **CGU — rédigées (03/09/2026)**, `Cadrage/Juridique/cgu.md`, couvrant a minima : comportement attendu dans le chat, modération, suppression de compte, absence de mise financière. Pas encore intégrées comme page.
 - Pas de CGV nécessaire tant que le service reste gratuit.
-- Pas de politique de cookies distincte nécessaire au-delà de la mention du cookie de session Supabase et du captcha Turnstile (à confirmer selon leur qualification exacte).
+- Pas de politique de cookies distincte nécessaire au-delà de la mention du cookie de session Supabase et du captcha Turnstile (à confirmer selon leur qualification exacte) — déjà couvert dans la politique de confidentialité rédigée ci-dessus.
 
 ### 8.4. Contrats et licences à vérifier
 
@@ -484,7 +485,7 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 - **Statut de l'exploitant** : particulier en nom propre pour l'instant — à revoir si l'activité se structure (auto-entreprise, société), notamment en cas de monétisation.
 - **Transfert de données vers Anthropic (hors UE)** : le texte libre des paris est envoyé à l'API Claude pour structuration (§2.1 point 9, §2.6). DPA et garanties de transfert (clauses contractuelles types ou équivalent) à vérifier avant l'ouverture au-delà du cercle d'amis actuel.
 - **Localisation du projet Supabase** : non trouvée dans le dépôt — à vérifier directement dans le dashboard Supabase (§2.6), en particulier si elle est hors UE.
-- **Logos d'équipes NBA sans licence obtenue** (§2.8 point 4) : les 30 logos affichés dans l'app ont été récupérés en ligne (source publique type Wikipedia), sans licence explicite de la NBA/des franchises — ce sont des marques déposées. Risque jugé limité tant que l'app reste un service gratuit à cercle fermé, mais **point à faire valider avant toute ouverture publique ou commerciale** (2027) : soit obtenir une licence, soit remplacer par des visuels non protégés (couleurs d'équipe, initiales, etc.).
+- ~~Logos d'équipes NBA sans licence obtenue~~ — **décision prise (03/09/2026), voir §2.8 point 4** : risque accepté tel quel pour l'instant, pas une validation professionnelle en attente.
 - **Usage de `nba_api`/données stats.nba.com** (§2.8 point 7) : zone grise largement tolérée dans l'écosystème open source, mais les conditions NBA.com encadrent l'usage automatisé/commercial de leurs données — à revoir si le service devient commercial ou public à grande échelle.
 
 ## 9. Registre des traitements initial (02/09/2026)

@@ -4,6 +4,24 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Chantier juridique — mentions légales/politique de confidentialité/CGU
+> rédigées + décision logos NBA actée (03/09/2026)** : clôture du passage
+> systématique du document juridique (§2.1-2.11, fait le 02/09). Trois
+> nouveaux fichiers `Cadrage/Juridique/{mentions_legales,
+> politique_confidentialite,cgu}.md` -- contenu complet, champs d'identité
+> de l'exploitant en placeholder (`[Prénom NOM]`, adresse, contact -- pas
+> inventés). Décision explicite avec l'utilisateur : **rédiger le contenu
+> d'abord, l'intégrer comme pages de l'app dans une prochaine itération**
+> (pas fait ce soir). Logos NBA sans licence (flag ouvert depuis le
+> 02/09) : **décision formelle prise, risque accepté tel quel** pour la
+> bêta fermée gratuite actuelle -- pas un oubli, à revoir obligatoirement
+> avant toute ouverture publique/commerciale (2027), 2 options déjà
+> identifiées (licence ou remplacement des visuels). §8.3/§8.5 du doc
+> juridique mis à jour en conséquence.
+> **Demande explicite de l'utilisateur** : revoir le contenu de ces 3
+> documents ensemble en détail une fois rédigés, pour qu'il comprenne
+> précisément ce qu'ils couvrent -- pas juste un dépôt de fichiers.
+
 > **Audit de sécurité, finding 3 (CAPTCHA/rate-limiting login) — TRAITÉ,
 > reste 1 point bloqué par le plan Supabase (02/09/2026)** : Cloudflare
 > Turnstile (mode Managed) branché sur login ET signup, nouveau composant
