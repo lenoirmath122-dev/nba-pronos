@@ -4,6 +4,61 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Relecture de l'échantillon de 30 paris perso par l'utilisateur — 3 vrais
+> trous confirmés + 1 limite architecturale documentée (03/09/2026)** :
+> suite du test échantillon (entrée précédente). L'utilisateur a annoté les
+> 12 résultats "non calculable" ligne par ligne. **Correction méthodologique
+> importante en cours de route** : 4 des 12 ("New York gagne 2 QT ou +",
+> "Les Pistons gagne les 4 quart temps", "L'équipe qui gagne à la mi-temps
+> perd le match", "Les Knicks... perdent les 4 quart temps") étaient
+> annotées "à ajouter" par l'utilisateur, mais **sont en réalité déjà
+> supportées en prod** — le test précédent appelait `structureBet.ts`
+> DIRECTEMENT, court-circuitant le routage par mot-clé réel
+> (`PERIOD_KEYWORD_REGEX`, `structureAndScoreBet.ts`) qui les aurait
+> envoyées vers `structurePeriodBet.ts` (QUARTERS_WON_COUNT/
+> LEADS_HALF_RESULT, déjà implémentés). **Re-vérifié avec de vrais appels**
+> (5 appels, ~$0,01) en reproduisant routage + schéma PERIOD fidèlement :
+> 4/5 confirmées `calculable=true` par le bon chemin.
+>
+> **3 vrais trous restants, confirmés par re-test** (décision AVEC
+> l'utilisateur : documentés seulement, pas codés ce soir -- faible volume,
+> 3 cas sur 415 paris réels) :
+> - "New York Knicks +32% à 3 points ET gagne les 4 quarts temps" (Corentin)
+>   -- pari COMPOSÉ (stat équipe seuil + résultat période), même routé vers
+>   PERIOD, `structurePeriodBet.ts` le rejette explicitement (2 types
+>   mélangés, non structurable en un seul schéma).
+> - "L'équipe qui gagne au début du 4e quart perd le match" (Simon) --
+>   scénario de comeback SANS le mot "temps" après "quart"
+>   (`PERIOD_KEYWORD_REGEX` ne matche pas "4eme quart perd", seulement
+>   "quart[s]?[\s-]?temps") -- jamais routé vers PERIOD, retombe sur
+>   `structureBet.ts` -> non calculable.
+> - "Harden... + de 3 pertes de balle" (Mathieu) -- aucun code de stat
+>   "turnover"/pertes de balle n'existe dans `lib/ai/statCodes.ts`
+>   (confirmé par lecture directe) -- absence de fonctionnalité réelle, pas
+>   un problème de routage/prompt.
+>
+> **Limite architecturale distincte, documentée (pas de code)** : 2 erreurs
+> de vérification d'effectif dans l'échantillon (Harden jugé absent du
+> match alors qu'il jouait aux Cavaliers ; Bane jugé absent alors qu'il
+> jouait à Detroit). Cause racine : la vérification "ce joueur joue-t-il
+> dans ce match" repose ENTIÈREMENT sur la connaissance générale de Claude
+> (`buildDynamicSystemText()`, "utilise ta connaissance des effectifs NBA
+> réels") -- **aucune donnée de roster réelle n'est injectée dans le
+> prompt**. Le service Python (`statsService.ts`) résout bien les joueurs
+> par nom pour le calcul de proba, mais seulement APRÈS que Claude ait déjà
+> décidé `not_in_match` (qui force `proba=0%` sans même interroger le
+> service). Un vrai correctif demanderait d'injecter une source de roster à
+> jour dans `buildDynamicSystemText()` (structureBet.ts ET les 8 schémas
+> dédiés) -- chantier distinct, à cadrer séparément, pas improvisé ce soir.
+>
+> **Confirmations sans action** : "99/120" (Nicolas) -- l'utilisateur
+> confirme que c'était bien un score de match, correctement jugé "trop
+> vague" pour ce mécanisme (les scores de match ont déjà leur propre écran
+> de pronostic dédié, pas besoin de les faire transiter par les paris
+> perso). "Wenby sera plus grand de 2 cm" et "Embiid MVP + minutes au match
+> d'après" (Maïno/Mathieu) -- confirmés non pariables par l'utilisateur,
+> corrects tels quels.
+
 > **Test échantillon paris perso via structureBet() — FAIT (03/09/2026),
 > bug réel trouvé et corrigé** : 4e point de la liste priorisée. 30 vrais
 > paris perso de l'archive playoffs 2026 (`Cadrage/DA/🏀 NBA Pronos -
