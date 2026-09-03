@@ -20,8 +20,10 @@ Codes --stat disponibles :
     ft, fg, fg3                          -> % de tir (lancers francs / tirs au panier / 3-points),
                                              --seuil en fraction (0.80 = 80%)
 
---adversaire (optionnel, code équipe/ville/nom) : n'affecte QUE le modèle
-des points (seul à utiliser l'historique face à cet adversaire précis).
+--adversaire (optionnel, code équipe/ville/nom) : affecte les modèles
+utilisant l'historique face à cet adversaire précis -- pts, et depuis le
+02/09/2026 aussi reb/ast/fg3m/stl/blk/fga/fg3a/oreb (généralisation
+vs_adversaire_{stat}_moy, GAPS_OUVERTS.md).
 --domicile/--exterieur, --repos : contexte du PROCHAIN match, illustratif
 si tu ne les précises pas (mêmes valeurs par défaut que demo_pari_reel.py).
 """
