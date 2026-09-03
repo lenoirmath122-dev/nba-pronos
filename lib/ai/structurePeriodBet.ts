@@ -128,33 +128,39 @@ function buildStaticSystemText(): string {
     "période, un autre service s'en charge, ne l'accepte JAMAIS ici même s'il mentionne un quart-temps en " +
     "passant ; un pourcentage des points totaux d'un JOUEUR (pas d'une équipe) sur une période (ex. \"Wembanyama " +
     "marque plus de 40% de ses points totaux au 4e quart-temps\") -- non géré, différent d'un seuil simple sur " +
-    "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain."
+    "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain." +
+    // Règle de vérification de présence déplacée ici (03/09/2026, optimisation
+    // coût, même geste que structureBet.ts) -- texte identique à chaque
+    // appel, donc mis en cache plutôt que payé en clair à chaque appel.
+    "\n\nVérification de présence au match : chaque pari précise plus bas les 2 équipes concernées (team1/team2), " +
+    "éventuellement accompagnées d'un ROSTER réel (joueurs ayant joué pour cette équipe dans les 30 derniers " +
+    "jours -- lib/ai/roster.ts). Vérifie que le(s) joueur(s) nommé(s) jouent actuellement pour l'une des 2 " +
+    "équipes. Si un ROSTER est fourni, traite-le comme un signal FORT mais pas absolu : un joueur qui y figure " +
+    "clairement (même avec une légère variante d'orthographe) est PRÉSENT, même si ta connaissance générale " +
+    "suggère le contraire (cas d'un transfert récent). Si aucun ROSTER n'est fourni, ou si le joueur n'y figure " +
+    "pas mais te semble par ailleurs clairement être un coéquipier actuel (liste possiblement incomplète), " +
+    "base-toi sur ta connaissance des effectifs NBA réels. Si le joueur ne joue vraiment pour aucune des 2 " +
+    "équipes, marque calculable=false. Corrige aussi l'orthographe du nom vers la convention standard NBA " +
+    "(ex: \"Junior\" -> \"Jr.\")."
   );
 }
 
-// `rosters` : voir la docstring de son homonyme dans structureBet.ts
-// (BUG-003 de l'audit du 03/09/2026) -- même correctif, même prudence
-// (signal fort, pas absolu). Ici une mauvaise vérification pénalise plus
-// fort (calculable=false direct, pas de not_in_match de repli comme le
-// schéma principal), donc le bénéfice de la liste réelle est encore plus
-// direct : évite de rejeter à tort un pari sur un joueur juste transféré.
+/** Ne porte QUE des faits qui varient d'un appel à l'autre (noms d'équipes,
+ *  listes ROSTER) -- l'explication de comment les utiliser vit dans le bloc
+ *  statique (identique à chaque appel, donc mis en cache) depuis le
+ *  03/09/2026. `rosters` : voir la docstring du bloc statique ci-dessus et
+ *  celle de structureBet.ts (BUG-003 de l'audit du 03/09/2026) -- ici une
+ *  mauvaise vérification pénalise plus fort (calculable=false direct, pas
+ *  de not_in_match de repli comme le schéma principal), donc le bénéfice
+ *  de la liste réelle est encore plus direct : évite de rejeter à tort un
+ *  pari sur un joueur juste transféré. */
 function buildDynamicSystemText(teamNames: [string, string] | null, rosters: KnownRosters | null): string {
   if (!teamNames) return "";
-  let text =
-    `\n\nCe pari concerne un match/une série entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**. ` +
-    "Vérifie que le(s) joueur(s) nommé(s) jouent actuellement pour l'une de ces 2 équipes (utilise ta " +
-    "connaissance des effectifs NBA réels) -- si ce n'est pas le cas, marque calculable=false. Corrige aussi " +
-    "l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> \"Jr.\").";
+  let text = `\n\nCe pari concerne un match/une série entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**.`;
   if (rosters) {
     const team1List = rosters.team1.join(", ") || "aucun trouvé";
     const team2List = rosters.team2.join(", ") || "aucun trouvé";
-    text +=
-      `\n\nEffectif RÉEL connu de team1 (${teamNames[0]}), joueurs ayant joué pour cette équipe dans les 30 ` +
-      `derniers jours : ${team1List}.\n` +
-      `Effectif RÉEL connu de team2 (${teamNames[1]}) : ${team2List}.\n` +
-      "Cette liste peut être incomplète -- traite-la comme un signal FORT mais pas absolu : un joueur qui y " +
-      "figure clairement (même avec une légère variante d'orthographe) est PRÉSENT, même si ta mémoire suggère " +
-      "le contraire (cas d'un transfert récent).";
+    text += `\nROSTER team1 : ${team1List}.\nROSTER team2 : ${team2List}.`;
   }
   return text;
 }
