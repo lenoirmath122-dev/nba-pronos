@@ -6,6 +6,7 @@ import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
 import { MATCH_STAT_CODES, MATCH_STAT_LABELS_FR, NO_THRESHOLD_MATCH_STATS } from "./matchStatCodes";
 import { TEAM_STAT_CODES, TEAM_STAT_LABELS_FR } from "./teamStatCodes";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
+import type { KnownRosters } from "./roster";
 
 // Union des 2 listes de codes valides dans un duel (joueur OU équipe,
 // cf. comparisonCodes.ts) -- un seul champ Zod pour les 2 côtés, la
@@ -231,23 +232,53 @@ function buildStaticSystemText(): string {
     "nécessite de compter sur tout le roster, pas encore géré).\n\n" +
     "Tout le reste (contre/action visant un joueur adverse précis, événement de match, paris fun/hors-terrain " +
     "comme \"l'entraîneur criera au moins 3 fois\", scénarios complexes, formulation trop vague, égalité exacte, " +
-    "ou total cumulé sur une série) doit être marqué calculable=false — ne force jamais une extraction incertaine."
+    "ou total cumulé sur une série) doit être marqué calculable=false — ne force jamais une extraction incertaine." +
+    // Règle de vérification de présence déplacée ici (03/09/2026, optimisation
+    // coût suite à un retour utilisateur -- BUG-003) : texte IDENTIQUE à
+    // chaque appel (ne dépend d'aucune donnée du match), donc mis en cache
+    // avec le reste du bloc statique plutôt que payé en clair à chaque appel
+    // dans buildDynamicSystemText(), qui ne garde plus que les FAITS
+    // variables (noms d'équipes, listes ROSTER). Contenu inchangé, juste
+    // déplacé -- aucune régression de comportement attendue.
+    "\n\nVérification de présence au match : chaque pari précise plus bas les 2 équipes concernées (team1/team2), " +
+    "éventuellement accompagnées d'un ROSTER réel (joueurs ayant joué pour cette équipe dans les 30 derniers " +
+    "jours -- lib/ai/roster.ts). Vérifie que le(s) joueur(s) nommé(s) jouent actuellement pour l'une des 2 " +
+    "équipes. Si un ROSTER est fourni, traite-le comme un signal FORT mais pas absolu : un joueur qui y figure " +
+    "clairement (même avec une légère variante d'orthographe) est PRÉSENT, même si ta connaissance générale " +
+    "suggère le contraire (cas d'un transfert récent) -- à l'inverse, un joueur absent des 2 ROSTER n'est pas " +
+    "automatiquement écarté s'il te semble par ailleurs clairement être un coéquipier actuel (liste possiblement " +
+    "incomplète : blessure longue durée, transfert très récent). Si aucun ROSTER n'est fourni, base-toi " +
+    "uniquement sur ta connaissance des effectifs NBA réels, comme d'habitude. Dans tous les cas, si le joueur " +
+    "ne joue pour aucune des 2 équipes (joueur d'une autre équipe, retraité, nom inventé...), marque " +
+    "not_in_match=true (pour PLAYER -- calculable reste true) plutôt que calculable=false. Corrige aussi " +
+    "l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> \"Jr.\") plutôt que de reprendre le " +
+    "texte exact du joueur, qui peut contenir des fautes de frappe."
   );
 }
 
 /** Partie DYNAMIQUE du prompt (varie selon le match) -- volontairement
  *  SÉPARÉE de buildStaticSystemText() pour rester hors du bloc mis en
- *  cache (cf. structureBet() ci-dessous). */
-function buildDynamicSystemText(teamNames: [string, string] | null): string {
+ *  cache (cf. structureBet() ci-dessous). Ne porte QUE des faits qui varient
+ *  d'un appel à l'autre (noms d'équipes, listes ROSTER) -- toute
+ *  l'explication de comment les utiliser vit dans le bloc statique
+ *  (identique à chaque appel, donc mis en cache) depuis le 03/09/2026.
+ *
+ *  `rosters` (BUG-003 de l'audit du 03/09/2026, GAPS_OUVERTS.md) : effectifs
+ *  réels des 2 équipes dérivés des stats des 30 derniers jours
+ *  (lib/ai/roster.ts), en complément -- jamais en remplacement -- de la
+ *  connaissance générale de Claude, qui s'est révélée fautive sur des
+ *  joueurs récemment échangés (traités comme absents alors qu'ils avaient
+ *  rejoint leur nouvelle équipe). `null` si non résolu (équipe hors
+ *  pipeline stats, ex. NBA Cup Alpha) -- comportement inchangé dans ce cas. */
+function buildDynamicSystemText(teamNames: [string, string] | null, rosters: KnownRosters | null): string {
   if (!teamNames) return "";
-  return (
-    `\n\nCe pari concerne un match/une série entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**. ` +
-    "Vérifie que le(s) joueur(s) nommé(s) jouent actuellement pour l'une de ces 2 équipes (utilise ta " +
-    "connaissance des effectifs NBA réels) -- si ce n'est pas le cas (joueur d'une autre équipe, joueur " +
-    "retraité, nom inventé...), marque not_in_match=true (pour PLAYER -- calculable reste true) plutôt que " +
-    "calculable=false. Corrige aussi l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> " +
-    "\"Jr.\") plutôt que de reprendre le texte exact du joueur, qui peut contenir des fautes de frappe."
-  );
+  let text = `\n\nCe pari concerne un match/une série entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**.`;
+  if (rosters) {
+    const team1List = rosters.team1.join(", ") || "aucun trouvé";
+    const team2List = rosters.team2.join(", ") || "aucun trouvé";
+    text += `\nROSTER team1 : ${team1List}.\nROSTER team2 : ${team2List}.`;
+  }
+  return text;
 }
 
 /** teamNames : les 2 équipes du match/de la série concernée par ce pari
@@ -274,6 +305,7 @@ export async function structureBet(
   description: string,
   teamNames: [string, string] | null = null,
   model = "claude-sonnet-5",
+  rosters: KnownRosters | null = null,
 ): Promise<BetStructuration | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -301,7 +333,7 @@ export async function structureBet(
       max_tokens: 2048,
       system: [
         { type: "text", text: buildStaticSystemText(), cache_control: { type: "ephemeral" } },
-        { type: "text", text: buildDynamicSystemText(teamNames) },
+        { type: "text", text: buildDynamicSystemText(teamNames, rosters) },
       ],
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(BetStructurationSchema) },

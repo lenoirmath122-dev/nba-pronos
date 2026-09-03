@@ -39,6 +39,7 @@ import { NO_THRESHOLD_MATCH_STATS, type MatchStatCode } from "./matchStatCodes";
 import { NO_THRESHOLD_PERIOD_OUTCOMES, TEAM_TARGETED_PERIOD_OUTCOMES, type PeriodCode, type PeriodOutcomeKind } from "./periodStatCodes";
 import type { BetCategory } from "@/lib/labels/bets";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
+import { resolveKnownRosters, type KnownRosters } from "./roster";
 
 // Orchestre la structuration IA + le calcul de proba pour UN pari, à la
 // soumission (SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §3/§6, décidé le
@@ -77,6 +78,28 @@ async function resolveMatchTeamNames(
   const name1 = nameById.get(series.team1_id);
   const name2 = nameById.get(series.team2_id);
   return name1 && name2 ? [name1, name2] : null;
+}
+
+/** Effectifs réels des 2 équipes (BUG-003 de l'audit du 03/09/2026,
+ *  GAPS_OUVERTS.md) -- même source (series.team1_id/team2_id) que
+ *  resolveMatchTeamNames() ci-dessus, requête séparée plutôt que d'étendre
+ *  son type de retour (déjà utilisé tel quel dans une quinzaine
+ *  d'emplacements de ce fichier). `null` si la série n'a pas encore ses 2
+ *  équipes déterminées OU si l'une d'elles n'est pas mappée côté pipeline
+ *  stats (ex. équipe fictive NBA Cup Alpha) -- structureBet()/
+ *  structurePeriodBet() retombent alors sur leur comportement précédent
+ *  (aucun roster injecté, jugement de Claude seul, AUCUNE régression). */
+async function resolveKnownRostersForSeries(
+  supabase: Awaited<ReturnType<typeof getServerClient>>,
+  seriesId: string,
+): Promise<KnownRosters | null> {
+  const { data: series } = await supabase
+    .from("series")
+    .select("team1_id, team2_id")
+    .eq("id", seriesId)
+    .maybeSingle<{ team1_id: string | null; team2_id: string | null }>();
+  if (!series?.team1_id || !series?.team2_id) return null;
+  return resolveKnownRosters(series.team1_id, series.team2_id);
 }
 
 /** Détecte un texte "de forme" pari période AVANT tout appel Claude
@@ -334,8 +357,8 @@ export async function structureAndScoreBet(
    *  Appelée UNIQUEMENT quand PERIOD_KEYWORD_REGEX matche (cf. try
    *  ci-dessous) -- structuration vient de structurePeriodBet(), un schéma
    *  séparé de structureBet.ts (voir sa docstring pour le pourquoi). */
-  async function handlePeriodBet(teamNames: [string, string] | null): Promise<void> {
-    const structuration = await structurePeriodBet(description, teamNames);
+  async function handlePeriodBet(teamNames: [string, string] | null, rosters: KnownRosters | null): Promise<void> {
+    const structuration = await structurePeriodBet(description, teamNames, undefined, rosters);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "PERIOD") {
       await markNotCalculable();
       return;
@@ -1079,6 +1102,14 @@ export async function structureAndScoreBet(
 
   try {
     const teamNames = await resolveMatchTeamNames(supabase, seriesId);
+    // BUG-003 de l'audit du 03/09/2026 (GAPS_OUVERTS.md) : effectifs réels
+    // injectés en complément de la connaissance générale de Claude pour
+    // les 2 seuls chemins qui vérifient l'appartenance d'un joueur à une
+    // équipe (structureBet.ts/PLAYER et structurePeriodBet.ts) -- les
+    // autres formes (roster-count/split, superlatif, dernier panier,
+    // fautes techniques, contre-sur-joueur, combo) ne font aujourd'hui
+    // aucune vérification de ce type, rien à y brancher pour l'instant.
+    const rosters = await resolveKnownRostersForSeries(supabase, seriesId);
 
     // Routage PERIOD par mot-clé (24/08/2026, GAPS_OUVERTS.md) -- PAS un 7e
     // bet_subject dans le schéma structureBet.ts : testé en conditions
@@ -1104,7 +1135,7 @@ export async function structureAndScoreBet(
     // jamais de repli automatique de l'un vers l'autre.
     const routing = routeBetDescription(description);
     if (routing === "PERIOD") {
-      await handlePeriodBet(teamNames);
+      await handlePeriodBet(teamNames, rosters);
       return;
     }
     if (routing === "ROSTER_COUNT") {
@@ -1136,7 +1167,7 @@ export async function structureAndScoreBet(
       return;
     }
 
-    const structuration = await structureBet(description, teamNames);
+    const structuration = await structureBet(description, teamNames, undefined, rosters);
     if (!structuration || !structuration.calculable || !structuration.bet_subject) {
       await markNotCalculable();
       return;
