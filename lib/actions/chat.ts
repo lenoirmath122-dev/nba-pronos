@@ -6,6 +6,7 @@ import { notifyNewChatMessage } from "@/lib/push/notifyChatMessage";
 import { toClientError } from "@/lib/actions/errors";
 import { z } from "zod";
 import { boundedText } from "@/lib/actions/validation";
+import { checkRateLimit } from "@/lib/actions/rateLimit";
 
 const ChatScopeSchema = z.enum(["GLOBAL", "LEAGUE"]);
 
@@ -52,6 +53,13 @@ export async function postChatMessageFormAction(
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { error: "Session expirée, reconnecte-toi." };
+
+  // SEC-001 de l'audit du 03/09/2026 : 8 messages / 10s -- généreux pour
+  // une vraie conversation (rafale de plusieurs messages courts), bloque
+  // le flood automatisé/répété.
+  if (!(await checkRateLimit(supabase, "chat_message", 8, 10))) {
+    return { error: "Tu envoies des messages trop vite, souffle un peu et réessaie." };
+  }
 
   const { error } = await supabase.from("chat_messages").insert({
     scope_type: scopeType,
