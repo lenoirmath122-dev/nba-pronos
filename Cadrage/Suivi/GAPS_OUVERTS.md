@@ -4,6 +4,40 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Test échantillon paris perso via structureBet() — FAIT (03/09/2026),
+> bug réel trouvé et corrigé** : 4e point de la liste priorisée. 30 vrais
+> paris perso de l'archive playoffs 2026 (`Cadrage/DA/🏀 NBA Pronos -
+> 22_04_2026 (réponses) (1).xlsx`, colonne "Pari Perso"), diversité de
+> longueur (6-81 caractères), passés dans la vraie logique de
+> `structureBet.ts` (schéma + construction du prompt copiés à l'identique
+> dans un script temporaire, jamais commité -- `import "server-only"`
+> empêche l'import direct hors contexte Next). Coût **prédit avant de
+> lancer** via `countTokens` (gratuit) : $0,15-0,24 pour les 30. Coût
+> **réel mesuré** : $0,169 -- dans la fourchette, partie entrée quasi
+> identique au prédit (8 355 tokens cachés vs 8 360 prédits), seul l'écart
+> venait de la sortie (annoncé comme la seule inconnue).
+>
+> **Résultat qualité** : 17/30 calculable, 12/30 non calculable (échantillon
+> incluant volontairement des paris fun/vagues) -- taux jugé correct.
+>
+> **Bug réel trouvé** : 1/30 ("Harper met plus de points que Fox", pourtant
+> un cas COMPARISON simple) a rempli les 1024 tokens de sortie sans
+> terminer sa réponse JSON -- parsing échoué, l'appli aurait silencieusement
+> traité ce pari comme "non calculable" en prod. **Corrigé** : `max_tokens`
+> passé de 1024 à 2048 dans `structureBet.ts` ET dans les 8 schémas dédiés
+> (`structurePeriodBet.ts`, `structureRosterSplitBet.ts`,
+> `structureRosterCountBet.ts`, `structureSuperlativeBet.ts`,
+> `structureTechnicalFoulsCountBet.ts`, `structureLastBasketBet.ts`,
+> `structureBlockOnPlayerBet.ts`, `structureComboBet.ts`) -- même risque
+> structurel identifié (même limite, sorties potentiellement aussi grosses
+> ou plus, notamment `structureComboBet.ts`), pas testé individuellement
+> mais correctif appliqué par cohérence plutôt que d'en laisser 8 sur 9
+> avec un défaut connu.
+>
+> Décision logging déjà en place (chantier précédent) : le taux réel de
+> troncature en prod pourra être surveillé via `response.usage.output_tokens`
+> dans les logs Vercel si besoin de revalider ce choix plus tard.
+
 > **DPA Anthropic — VÉRIFIÉ (03/09/2026)** : traite le 3e point de la liste
 > priorisée (après déclaration d'âge et signalement de chat). Contrairement
 > à la base légale mineurs (§8.5, celle-là reste une vraie validation
