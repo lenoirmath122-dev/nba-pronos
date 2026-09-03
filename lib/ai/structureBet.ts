@@ -296,6 +296,17 @@ export async function structureBet(
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(BetStructurationSchema) },
     });
+    // Mesure de conso réelle (02-03/09/2026, GAPS_OUVERTS.md, chantier
+    // "optimisation tokens paris persos") -- gratuit, lit un champ déjà
+    // présent dans la réponse. Objectif : avoir de vraies données pour
+    // trancher le TTL de cache (5 min vs 1h, cf. commentaire ci-dessus) et
+    // la piste "classifier puis structurer" plutôt que deviner. Grep sur
+    // "structureBet usage" dans les logs Vercel pour les récupérer.
+    console.log(
+      `structureBet usage : model=${model} input=${response.usage.input_tokens} ` +
+        `output=${response.usage.output_tokens} cache_read=${response.usage.cache_read_input_tokens ?? 0} ` +
+        `cache_creation=${response.usage.cache_creation_input_tokens ?? 0}`,
+    );
     return response.parsed_output;
   } catch {
     // Panne réseau/API/parsing : traité comme "non calculable cette fois",
