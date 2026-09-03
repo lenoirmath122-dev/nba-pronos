@@ -52,15 +52,10 @@
 - **Critère d'acceptation** : les 4 scénarios IDOR/élévation de privilège du backlog de tests sont automatisés et passent en CI.
 - **Rollback** : N/A.
 
-### A5 — Résoudre l'ambiguïté du statut `POSTPONED`
-- **Objectif** : clarifier le comportement du scoring pour un match reporté (Phase 3).
-- **Anomalies traitées** : point ouvert de `03-conformite-fonctionnelle.md`.
-- **Fichiers concernés** : `lib/nba/client.ts` (`normalizeMatchStatus`), `lib/scoring/engine.ts`.
-- **Effort estimé** : S.
-- **Risque** : faible si le comportement actuel s'avère déjà correct après vérification ; moyen si un correctif de scoring est nécessaire (touche une logique déjà en production).
-- **Stratégie de test** : T-BIZ-01.
-- **Critère d'acceptation** : comportement documenté et testé explicitement.
-- **Rollback** : réversible.
+### A5 — ~~Résoudre l'ambiguïté du statut `POSTPONED`~~ FAIT — vérifié correct le 03/09/2026, tests ajoutés
+- **Statut** : clos, comportement déjà correct, aucun correctif de scoring nécessaire. `scoreMatchPrediction`/`scoreBracketPick` (`lib/scoring/engine.ts`) ne neutralisent explicitement que `CANCELLED` ; un match/série `POSTPONED` retombe sur la branche "pas encore FINISHED" → en attente (ni perdu ni neutralisé), symétrique à `SCHEDULED`/`IN_PROGRESS`. Comportement voulu : un report n'est pas une annulation.
+- **Tests ajoutés** : `lib/scoring/engine.test.ts` cas 11b (`scoreMatchPrediction`) et cas 25b (`scoreBracketPick`) — 230/230 tests passent.
+- **Anomalies traitées** : point auparavant ouvert de `03-conformite-fonctionnelle.md`, refermé.
 
 ---
 

@@ -41,7 +41,7 @@ Test Files  18 passed (18)
 |---|---|---|---|---|---|
 | Permissions par rôle (joueur vs admin) | Élevé | Aucun test automatisé — vérification manuelle documentée uniquement | N/A | Test d'intégration RLS + Server Action forgée par un non-admin | **Haute** |
 | Accès à la ressource d'un autre utilisateur (IDOR) | Élevé | Aucun test automatisé — vérifié manuellement "en conditions réelles" au moment du développement de chaque fonctionnalité (ex. ligues) | N/A | Test d'intégration ciblé (édition de pari d'un tiers, accès à un canal de ligue non membre) | **Haute** |
-| Scoring des pronostics/bracket | Élevé | `engine.test.ts` | Bonne | Cas `POSTPONED` (voir `03-conformite-fonctionnelle.md`) | Moyenne |
+| Scoring des pronostics/bracket | Élevé | `engine.test.ts` | Bonne | Cas `POSTPONED` clarifié le 03/09 (comportement correct) mais toujours sans test dédié explicite | Basse |
 | Résolution automatique de paris IA | Élevé | 13 fichiers dédiés | Bonne | Test d'intégration bout-en-bout avec vraie base (actuellement fake) | Moyenne |
 | Double soumission / concurrence sur écriture | Moyen | Aucun test automatisé (garde-fou vérifié par lecture de code uniquement) | N/A | Test simulant deux résolutions concurrentes du même pari | Moyenne |
 | Erreur réseau / service externe indisponible (Anthropic, Cloud Run, Highlightly) | Moyen | Partiellement — le repli `null` de la structuration IA est couvert indirectement par les tests de resolvers (donnée manquante), pas un test dédié de panne réseau | Faible | Test simulant un timeout/erreur HTTP explicite | Moyenne |

@@ -9,7 +9,7 @@
 - **Scoring** (`lib/scoring/engine.ts:125-180`) : 10 pts si bon vainqueur, bonus d'écart additionnel seulement si le vainqueur est correct (écart exact +5, ≤2 +3, ≤5 +2, ≤9 +1) → total 10-15 pts, jamais de valeur intermédiaire. Match `CANCELLED` → 0 pour tout le monde, y compris les pronos jamais remplis. Une égalité en `FINISHED` est une anomalie journalisée (le NBA ne connaît pas le nul), jamais devinée.
 - **État "figé"** : un prono est figé (visible par les autres) s'il est `VALIDATED`/`LOCKED` **ou** `DRAFT` mais complet — dérivation **par complétude**, pas par statut brut. `sealDeadlines` (auto-validation attendue par le schéma initial) n'est invoquée nulle part dans le code — un `DRAFT` complet reste littéralement `DRAFT` en base indéfiniment (`recompute.ts:71-84`, confirmé par `GAPS_OUVERTS.md`).
 - **Rôles** : joueur (saisie), tout joueur (lecture des autres une fois son propre prono figé — règle "valider débloque la vue"), admin (correction, vue "qui manque à l'appel" sur `/admin/missing`).
-- **Anomalie potentielle** : le statut `POSTPONED` (match reporté) n'a pas de traitement dédié visible dans `engine.ts` (seul `CANCELLED` est testé) — **[À VÉRIFIER]** comportement exact d'un match reporté sur le scoring des pronos déjà saisis.
+- **Statut `POSTPONED` clarifié (03/09/2026, item A5) : comportement correct, pas un trou.** `scoreMatchPrediction` (`lib/scoring/engine.ts:156-160`) ne neutralise explicitement que `CANCELLED` ; un match `POSTPONED` retombe sur la branche `match.status !== "FINISHED"` → `ABSENT_MATCH_PREDICTION` (pronostic en attente, ni perdu ni neutralisé), exactement comme `SCHEDULED`/`IN_PROGRESS`. C'est le comportement voulu : un report n'est pas une annulation, le prono doit rester valide jusqu'à ce que le match soit rejoué (→ `FINISHED`) ou officiellement annulé par un admin (→ `CANCELLED`, neutralisé à ce moment-là). Même logique symétrique côté bracket (`scoreBracketPick`, `engine.ts:246`). `recompute.ts` protège en plus `POSTPONED` de tout écrasement automatique (`ADMIN_LOCKED_STATUSES`) — un report reste un état piloté par un admin, jamais dérivé silencieusement.
 
 ## 2. Bracket de playoffs / NBA Cup
 
@@ -78,7 +78,7 @@
 
 | Fonctionnalité | Rôle | Frontend | Backend | Stockage | Règle métier principale | Tests existants | Confiance | Anomalies détectées |
 |---|---|---|---|---|---|---|---|---|
-| Pronostic de match | Joueur | `components/matches/*` | `lib/actions/matches.ts`, `lib/queries/matches.ts` | `match_predictions` | Verrouillage temporel (`scheduled_at`), visibilité par complétude | `lib/scoring/engine.test.ts` (scoring pur) | Élevée | `sealDeadlines` jamais invoqué ; statut `POSTPONED` non testé explicitement |
+| Pronostic de match | Joueur | `components/matches/*` | `lib/actions/matches.ts`, `lib/queries/matches.ts` | `match_predictions` | Verrouillage temporel (`scheduled_at`), visibilité par complétude | `lib/scoring/engine.test.ts` (scoring pur) | Élevée | `sealDeadlines` jamais invoqué ; statut `POSTPONED` clarifié le 03/09 (comportement correct, non testé explicitement mais couvert par la même branche que SCHEDULED/IN_PROGRESS) |
 | Bracket / NBA Cup | Joueur | `components/bracket-fill/*`, `components/bracket/*` | `lib/scoring/advancement.ts`, `lib/nbaCupAlpha/*` | `series`, `matches`, `bracket_picks` | Cascade dérivée du pick joueur, jamais du résultat officiel | `engine.test.ts` (barèmes) | Élevée (scoring), Moyenne (cycle Alpha temporaire) | Désync `isLive`/`isDecided` corrigée le 16/08/2026 (vérifié) ; valeurs codées en dur assumées (alpha) |
 | Pari personnalisé (IA) | Joueur | `components/bets/BetForm.tsx` | `lib/ai/*`, `lib/actions/bets.ts` | `bets`, colonnes `bets_ai_*` | Auto-validation si calculable, jamais bloquant si l'IA échoue | 15+ fichiers `*.test.ts` dans `lib/ai/` | Élevée (mécanique), Moyenne (couverture réelle 69%) | Pas de données de roster réelles injectées dans le prompt (2 erreurs constatées) |
 | Sync NBA externe | Système (cron) | — | `lib/sync/*` | `matches`, `series`, `entity_mappings`, `sync_logs` | Rattachement déterministe, jamais heuristique | **[À VÉRIFIER]** aucun test identifié à ce stade | Moyenne | Réponse partielle silencieuse, pas d'alerte dédiée |
@@ -91,7 +91,6 @@
 
 ## Éléments non vérifiés dans cette phase
 
-- Comportement exact d'un match `POSTPONED` sur le scoring des pronos déjà saisis.
 - Couverture de test réelle de `lib/sync/*`, `lib/queries/leagues.ts`, `lib/queries/badges.ts`, `lib/actions/chat.ts` — à confirmer en Phase 12 (tests).
 - Fonctionnalité `chat_message_reports` (signalement de messages, migration la plus récente) — non explorée en détail.
 - Deuxième moitié de `resolveCalculableBets.ts` (2561 lignes, superlatifs/période) — patron vérifié cohérent sur la première moitié, non relu intégralement.

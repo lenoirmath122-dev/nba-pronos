@@ -64,13 +64,12 @@
 
 ## 3. Règles métier critiques
 
-### T-BIZ-01 — Statut `POSTPONED` d'un match sur le scoring des pronostics déjà saisis
-- **Objectif** : clarifier et verrouiller le comportement identifié comme ambigu en Phase 3.
-- **Étapes** : marquer un match `POSTPONED` avec des pronostics déjà saisis, exécuter `recomputeMatch`.
-- **Résultat attendu (à définir avec le produit)** : cohérent avec l'intention réelle (neutralisation comme `CANCELLED` ? conservation en attente ?).
-- **Niveau** : unitaire.
-- **Anomalie couverte** : point ouvert de `03-conformite-fonctionnelle.md`.
-- **Priorité** : Haute (ambiguïté non résolue).
+### T-BIZ-01 — Statut `POSTPONED` d'un match sur le scoring des pronostics déjà saisis (test de non-régression)
+- **Objectif** : le comportement a été clarifié par lecture de code le 03/09/2026 (item A5, `03-conformite-fonctionnelle.md`) — ce test fige ce comportement plutôt que de lever une ambiguïté.
+- **Étapes** : appeler `scoreMatchPrediction` avec un match `status: "POSTPONED"` et un pronostic complet/figé.
+- **Résultat attendu** : `ABSENT_MATCH_PREDICTION` (pronostic en attente, ni perdu ni neutralisé) — même résultat qu'un match `SCHEDULED`/`IN_PROGRESS`, différent de `CANCELLED`.
+- **Niveau** : unitaire (extension de `engine.test.ts`).
+- **Priorité** : Basse (protection d'un comportement déjà correct).
 
 ### T-BIZ-02 — Pari personnalisé avec correction en attente jamais résolu automatiquement
 - **Objectif** : confirmer sur un vrai scénario bout-en-bout (actuellement testé uniquement avec un fake Supabase).
