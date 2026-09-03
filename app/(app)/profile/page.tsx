@@ -9,6 +9,7 @@ import { getProfileStats } from "@/lib/queries/stats";
 import { getProfileBadges } from "@/lib/queries/badges";
 import { updateThemePreference, updateBackgroundTheme, updateProfile } from "@/lib/actions/profile";
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
+import { deleteAccountFormAction } from "@/lib/actions/account";
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
@@ -255,6 +256,42 @@ export default async function ProfilePage({
             <Link href="/cgu" className={styles.helpLink}>
               Conditions générales d&apos;utilisation
             </Link>
+          </section>
+
+          <section className={`${styles.section} glass-card`}>
+            <h2 className={styles.sectionTitle}>Mes données</h2>
+            <p className={styles.fieldLabel}>
+              Télécharge une copie de tes données personnelles (profil, paris, messages de chat, signalements de
+              bug, ligues) au format JSON.
+            </p>
+            <a href="/api/account/export" className={styles.helpLink}>
+              Télécharger mes données
+            </a>
+          </section>
+
+          <section className={`${styles.section} glass-card`}>
+            <h2 className={styles.sectionTitle}>Zone de danger</h2>
+            <p className={styles.fieldLabel}>
+              Supprimer ton compte efface définitivement ton profil, tes paris, tes pronostics, tes messages de
+              chat et tes signalements. Cette action est irréversible.
+            </p>
+            <form action={deleteAccountFormAction} className={styles.dangerForm}>
+              <label className={styles.field}>
+                <span className={styles.fieldLabel}>
+                  Tape ton pseudo « {profile.pseudo} » pour confirmer
+                </span>
+                <input
+                  type="text"
+                  name="pseudoConfirm"
+                  required
+                  autoComplete="off"
+                  className={styles.leagueInput}
+                />
+              </label>
+              <button type="submit" className={styles.logoutButton}>
+                Supprimer définitivement mon compte
+              </button>
+            </form>
           </section>
         </>
       )}

@@ -183,10 +183,10 @@ export default async function ConfidentialitePage() {
             et de portabilité de vos données, ainsi que du droit de vous opposer à certains traitements.
           </p>
           <p className={styles.body}>
-            Pour exercer ces droits, contactez panier.ballon.pronos@gmail.com. Étant donné la taille actuelle du
-            service, votre demande est traitée manuellement par l&apos;exploitant — un accès direct depuis
-            l&apos;application (export de vos données, suppression de votre compte) est prévu mais pas encore
-            disponible.
+            Depuis votre profil (onglet « Compte »), vous pouvez à tout moment télécharger une copie de vos
+            données personnelles ou supprimer définitivement votre compte, sans passer par une demande manuelle.
+            Pour toute autre demande (rectification, opposition...), contactez
+            panier.ballon.pronos@gmail.com.
           </p>
           <p className={styles.body}>
             Vous disposez également du droit d&apos;introduire une réclamation auprès de la CNIL (www.cnil.fr) si

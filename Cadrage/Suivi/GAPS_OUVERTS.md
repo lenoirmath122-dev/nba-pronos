@@ -4,6 +4,31 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Self-service suppression de compte + export de données — implémenté
+> (03/09/2026)** : dernier point cadré en §8.2 (`conseils_juridiques_
+> deploiement_application.md`) resté "à coder" — traité ce soir. Suppression
+> (`lib/actions/account.ts`, `deleteAccountFormAction`) : action serveur
+> scopée à `user.id` de la session (jamais un paramètre client), reprend
+> l'ordre feuilles-vers-racines et les garde-fous du script CLI
+> (`scripts/delete-player-account.mjs` — refus si rôle ADMIN, refus si ligue
+> créée avec d'autres membres actifs), confirmation par saisie du pseudo
+> exact avant exécution. Couvre en plus `chat_message_reports`
+> (message_author_id/resolved_by_admin_id nullifiés, reporter_user_id
+> supprimé) — table postérieure au script CLI, non gérée par celui-ci
+> jusqu'ici. Export (`app/api/account/export/route.ts`, route GET
+> authentifiée par session) : JSON téléchargeable (profil, bets,
+> chat_messages, bug_reports, league_memberships), scope exact du §8.2, pas
+> de format d'interopérabilité sophistiqué. UI : 2 nouvelles sections dans
+> l'onglet "Compte" du profil ("Mes données", "Zone de danger"). Le script
+> CLI reste en place pour les cas que le self-service refuse (admin doit
+> intervenir manuellement). `politique_confidentialite.md`/
+> `app/confidentialite/page.tsx` §5 mis à jour (retrait de la mention "prévu
+> mais pas encore disponible").
+>
+> Reste sur la liste originale de gaps : uniquement la base légale précise
+> pour les 15-17 ans (§8.5, validation par un professionnel du droit,
+> explicitement hors de portée d'un codage).
+
 > **Décision TTL cache / classify-then-structure — REPORTÉE, aucune donnée
 > disponible (03/09/2026)** : 5e point de la liste priorisée. Vérifié
 > directement (logs Vercel, requête "structureBet usage", fenêtres 1h et

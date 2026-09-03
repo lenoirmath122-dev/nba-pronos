@@ -18,6 +18,16 @@ function getResetSuccessServerSnapshot() {
   return false; // rendu serveur : pas de window, jamais le message au 1er rendu.
 }
 
+// Même patron que resetSuccess ci-dessus, pour confirmer une suppression de
+// compte en self-service (lib/actions/account.ts, redirect vers
+// /login?accountDeleted=1).
+function getAccountDeletedFromUrl() {
+  return new URLSearchParams(window.location.search).get("accountDeleted") === "1";
+}
+function getAccountDeletedServerSnapshot() {
+  return false;
+}
+
 export function LoginForm() {
   const [state, formAction, pending] = useActionState(login, undefined);
   // Lu côté client (pas useSearchParams, pour rester hors de toute contrainte
@@ -30,6 +40,11 @@ export function LoginForm() {
     getResetSuccessFromUrl,
     getResetSuccessServerSnapshot
   );
+  const accountDeleted = useSyncExternalStore(
+    subscribeToNothing,
+    getAccountDeletedFromUrl,
+    getAccountDeletedServerSnapshot
+  );
 
   return (
     <div className={`${styles.card} glass-card`}>
@@ -39,6 +54,9 @@ export function LoginForm() {
           <p className={styles.success}>
             Mot de passe mis à jour. Connecte-toi avec ton nouveau mot de passe.
           </p>
+        )}
+        {accountDeleted && (
+          <p className={styles.success}>Ton compte a bien été supprimé.</p>
         )}
         <div className={styles.field}>
           <label htmlFor="email" className={styles.fieldLabel}>
