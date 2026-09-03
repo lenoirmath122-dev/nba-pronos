@@ -15,25 +15,42 @@ import styles from "./PublicNav.module.css";
 // dédiée, non posée).
 export function PublicNav() {
   return (
-    <nav className={styles.bar} aria-label="Navigation">
-      <span className={styles.brand}>
-        <Image src="/brand/logo.svg" alt="" width={28} height={31} unoptimized className={styles.brandLogo} />
-        Panier Ballon
-      </span>
-      <div className={styles.links}>
-        <Link href="/leaderboard" className={styles.link}>
-          Classement
+    <>
+      <nav className={styles.bar} aria-label="Navigation">
+        <span className={styles.brand}>
+          <Image src="/brand/logo.svg" alt="" width={28} height={31} unoptimized className={styles.brandLogo} />
+          Panier Ballon
+        </span>
+        <div className={styles.links}>
+          <Link href="/leaderboard" className={styles.link}>
+            Classement
+          </Link>
+          <Link href="/bracket" className={styles.link}>
+            Bracket
+          </Link>
+          <Link href="/regles" className={styles.link}>
+            Règles
+          </Link>
+          <Link href="/login" className={styles.linkCta}>
+            Se connecter
+          </Link>
+        </div>
+      </nav>
+      {/* Rangée secondaire distincte de la nav réduite ci-dessus (0.2.9 §3,
+          T6a §3.1, volontairement Classement/Bracket/Règles/Se connecter
+          uniquement) -- seul point d'accès aux pages légales pour un
+          visiteur non connecté (03/09/2026, chantier RGPD). */}
+      <div className={styles.legalBar} aria-label="Informations légales">
+        <Link href="/mentions-legales" className={styles.legalLink}>
+          Mentions légales
         </Link>
-        <Link href="/bracket" className={styles.link}>
-          Bracket
+        <Link href="/confidentialite" className={styles.legalLink}>
+          Confidentialité
         </Link>
-        <Link href="/regles" className={styles.link}>
-          Règles
-        </Link>
-        <Link href="/login" className={styles.linkCta}>
-          Se connecter
+        <Link href="/cgu" className={styles.legalLink}>
+          CGU
         </Link>
       </div>
-    </nav>
+    </>
   );
 }

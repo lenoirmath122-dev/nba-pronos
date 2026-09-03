@@ -4,6 +4,48 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Chantier juridique — mentions légales/politique de confidentialité/CGU
+> rédigées + décision logos NBA actée (03/09/2026)** : clôture du passage
+> systématique du document juridique (§2.1-2.11, fait le 02/09). Trois
+> nouveaux fichiers `Cadrage/Juridique/{mentions_legales,
+> politique_confidentialite,cgu}.md` -- contenu complet, champs d'identité
+> de l'exploitant en placeholder (`[Prénom NOM]`, adresse, contact -- pas
+> inventés). Décision explicite avec l'utilisateur : **rédiger le contenu
+> d'abord, l'intégrer comme pages de l'app dans une prochaine itération**
+> (pas fait ce soir). Logos NBA sans licence (flag ouvert depuis le
+> 02/09) : **décision formelle prise, risque accepté tel quel** pour la
+> bêta fermée gratuite actuelle -- pas un oubli, à revoir obligatoirement
+> avant toute ouverture publique/commerciale (2027), 2 options déjà
+> identifiées (licence ou remplacement des visuels). §8.3/§8.5 du doc
+> juridique mis à jour en conséquence.
+> **Demande explicite de l'utilisateur** : revoir le contenu de ces 3
+> documents ensemble en détail une fois rédigés, pour qu'il comprenne
+> précisément ce qu'ils couvrent -- pas juste un dépôt de fichiers.
+
+> **Chantier juridique — mentions légales/confidentialité/CGU PUBLIÉES en
+> pages réelles (03/09/2026)** : suite de l'entrée ci-dessus -- après
+> relecture ensemble du contenu, l'utilisateur a demandé de publier tout
+> de suite plutôt que d'attendre une prochaine session. Infos manquantes
+> obtenues directement (nom : Mathieu Lenoir ; adresse : "communicable sur
+> demande à l'autorité compétente", pas affichée en clair ; contact :
+> panier.ballon.pronos@gmail.com) -- placeholders remplacés dans les 3
+> fichiers `Cadrage/Juridique/*.md` ET dans les 3 nouvelles pages.
+> 3 nouvelles routes physiques, même patron que `/regles` (T6a §3.2/§8.1,
+> `ScreenShell`, visiteur ou connecté) : `app/mentions-legales`,
+> `app/confidentialite`, `app/cgu`. Accessibles depuis 2 endroits :
+> nouvelle section "Informations légales" dans `app/(app)/profile/page.tsx`
+> (même patron que le lien existant vers `/regles`) pour les connectés ;
+> nouvelle rangée `.legalBar` sous la nav réduite (`PublicNav.tsx`,
+> volontairement distincte de la nav principale Classement/Bracket/Règles/
+> Se connecter -- design intent existant respecté) pour les visiteurs, seul
+> point d'accès pour ce public puisqu'aucun footer n'existe dans l'app.
+> Aucun contenu affiché n'expose de placeholder/TODO -- les 2 points encore
+> réellement ouverts (base légale mineurs <15 ans, DPA Anthropic) sont
+> retirés du texte public et gardés en note interne dans les .md sources
+> uniquement. Vérifié : `tsc`/`eslint` propres, `next build` (44 routes,
+> +3 vs les 41 précédents), test manuel des 3 routes (200, contenu correct)
+> + des liens (profil et nav publique) en `next dev`.
+
 > **Chantier optimisation tokens paris persos — logging de conso ajouté,
 > décisions en attente de vraies données (02-03/09/2026)** : parti d'une
 > question de coût pour tester les 415 paris perso en texte libre de
@@ -166,6 +208,115 @@
 > prochaine étape naturelle : rédiger une première version de ces documents
 > pour la bêta fermée, et statuer sur la vérification d'âge vu que le
 > service est ouvert à tous âges.
+
+> **Chantier juridique — cadrage détaillé mineurs, §2.10 (02/09/2026)** :
+> suite de l'entrée ci-dessus, sur demande de l'utilisateur de couvrir le
+> sujet mineurs en profondeur avant de coder quoi que ce soit. Les 9
+> sous-points du §2.10 (âge, information, base légale, consentement,
+> visibilité, échanges, modération, limitation de la collecte, publicité)
+> traités un par un dans une nouvelle sous-section du document. Décisions
+> retenues AVEC l'utilisateur : en pratique que des adultes aujourd'hui mais
+> **aucune barrière technique** donc risque traité comme réel ; **ajouter
+> une déclaration d'âge simple au signup** (case/tranche d'âge, sans
+> justificatif -- pas de date de naissance complète) ; **ajouter un
+> signalement de message de chat** vers les admins (`bug_reports` ne couvre
+> pas ce cas aujourd'hui) ; chat/visibilité des profils laissés tels quels
+> pour la bêta fermée (cercle d'amis qui se connaît déjà) -- à revoir
+> entièrement à l'ouverture 2027. Repère légal utilisé : seuil CNIL de 15
+> ans pour le consentement autonome d'un mineur (source déjà citée en §6 du
+> doc). Explicitement choisi ce soir : **cadrage écrit uniquement, aucune
+> implémentation** -- les deux décisions techniques (champ âge au signup,
+> signalement de message) restent à coder dans une prochaine itération.
+
+> **Chantier juridique — cadrage détaillé données/prestataires §2.1+§2.6 +
+> registre des traitements (02/09/2026)** : suite du passage systématique
+> du document. Cartographie données/finalités/bases légales/durées de
+> conservation rédigée, table des prestataires avec rôle/données/
+> localisation/statut sous-traitant complétée (inventaire technique +
+> recherche du script `scripts/delete-player-account.mjs`, jusque-là non
+> documenté dans le doc juridique -- CLI manuel, dry-run par défaut,
+> garde-fous : admin protégé, ligue avec membres actifs bloquée). Nouvelle
+> §9 "Registre des traitements initial" ajoutée (10 traitements). Décisions
+> retenues AVEC l'utilisateur : conservation tant que le compte est actif,
+> pas de purge automatique (assumé) ; **self-service suppression de compte
+> + export de données décidé** -- cadré en détail (§8.2, reprend les
+> garde-fous du script CLI) mais **codé lors d'une prochaine session, pas
+> ce soir** ; registre des traitements rédigé maintenant ; le flux du texte
+> libre des paris vers Anthropic (structuration IA, transfert hors UE)
+> conservé tel quel mais documenté comme sous-traitant à vérifier (DPA).
+> Points ajoutés en §8.5 : DPA Anthropic, localisation du projet Supabase
+> (non trouvable dans le dépôt, à vérifier dans le dashboard). Toujours
+> aucune implémentation ce soir sur ce chantier -- uniquement du cadrage.
+
+> **Chantier juridique — cookies §2.2, modèle économique §2.9 et
+> pronostics §2.11 cadrés (02/09/2026)** : passages rapides comme anticipé
+> (les deux derniers étaient déjà quasi répondus en §3). Cookies :
+> recensement technique (grep) -- cookie de session Supabase (auth),
+> widget Turnstile (anti-bot), `localStorage` pour l'état replié/déplié
+> d'une carte d'accueil (`CollapsibleCard.tsx`, préférence locale par
+> appareil, jamais envoyée au serveur) -- **les trois relèvent des
+> catégories exemptées de consentement (CNIL), aucun bandeau cookies
+> nécessaire aujourd'hui**, aucun outil d'analytics/pub/vidéo trouvé.
+> Modèle économique : aucun déclencheur présent (pas d'abonnement/achat/
+> pub/essai/renouvellement), aucune obligation du §2.9 applicable tant que
+> gratuit. Pronostics : vérification du vocabulaire de l'interface
+> (recherche "cote", "cagnotte", "jackpot", "argent réel", "€" dans
+> `app/`) -- **aucune occurrence**, communication cohérente avec un jeu à
+> points fictifs, pas de confusion avec une offre de pari réglementée.
+> Conclusion commune aux deux : rien à implémenter, juste à documenter
+> dans la politique de confidentialité/CGU à venir -- le point qui reste
+> réellement ouvert (modèle 2027 avec mises/gains réels) est déjà tracé en
+> §8.5 depuis le premier passage.
+
+> **Chantier juridique — propriété intellectuelle cadrée, §2.8 (02/09/2026)**
+> : recherche technique (logos/images, licences des dépendances, polices)
+> + vérification en ligne des CGU réelles de l'API Highlightly
+> (`highlightly.net/terms/`, consultées ce soir) et des conditions NBA.com
+> derrière `nba_api`. **Point le plus sensible trouvé : les 30 logos
+> d'équipes NBA affichés dans l'app (`public/logos/teams/*.svg`) ont été
+> récupérés en ligne (source publique type Wikipedia) sans licence
+> obtenue de la NBA/des franchises** -- confirmé avec l'utilisateur (le
+> `README.md` du dossier affirmait à tort des assets "licenciés ou
+> possédés"). Marques déposées, risque jugé limité tant que l'app reste
+> gratuite à cercle fermé, mais **ajouté en §8.5 comme point à valider
+> avant toute ouverture publique/commerciale (2027)**. Le logo de l'app
+> lui-même (`public/brand/logo.svg`) est en revanche une création
+> originale de l'utilisateur -- pas de risque. Autres points mineurs notés
+> : `fpdf2` (dépendance Python) sous licence LGPL plutôt que MIT/BSD ;
+> `nba_api`/données stats.nba.com dans une zone grise communément tolérée
+> mais pas formellement autorisée pour un usage commercial ; 30 fichiers
+> PNG de logos non référencés par le code, probablement des doublons
+> obsolètes à nettoyer.
+
+> **Chantier juridique — sécurité cadrée par renvoi, §2.7, et passage
+> systématique du document terminé (02/09/2026)** : plutôt que de refaire un
+> audit sécurité dans ce document, renvoi structuré vers le chantier dédié
+> déjà bien plus approfondi (`security-audit-report.md`, 15 findings, et
+> son suivi dans ce fichier/`ETAT_ACTUEL.md` §2.128). Tableau de
+> correspondance §2.7 → findings ajouté. Confirmation utile au passage :
+> **le finding 15 (procédure RGPD de rétention/effacement), clos plus tôt
+> ce soir en retrouvant `scripts/delete-player-account.mjs`, est bien la
+> même chose que ce chantier juridique vise à documenter** -- boucle
+> refermée entre les deux chantiers. Deux vrais trous identifiés au passage
+> (ni couverts par l'audit sécurité, ni par le reste du document) : pas de
+> vérification des sauvegardes/restauration Supabase, et pas de procédure
+> formalisée de gestion des incidents / notification de violation de
+> données (distincte de l'effacement sur demande) -- ajoutés en §8.2.
+> Résidus notés pour mémoire : "Leaked Password Protection" toujours
+> reporté (plan Supabase payant requis), énumération de compte au signup
+> toujours gardée telle quelle (décisions déjà actées, pas rouvertes ce
+> soir).
+>
+> **Avec ce passage, les 11 sous-sections du §2 du document juridique
+> (2.1 à 2.11) ont toutes été cadrées** au moins une fois (mineurs en
+> profondeur sur demande explicite, sécurité par renvoi argumenté, le
+> reste avec un niveau de détail intermédiaire). Restent en trous connus,
+> déjà tracés en §8 du document : self-service suppression/export (cadré,
+> pas codé), déclaration d'âge au signup (cadré, pas codé), signalement de
+> message de chat (cadré, pas codé), sauvegardes/restauration et procédure
+> d'incident (identifiés ce soir, pas encore cadrés en détail), et les
+> validations professionnelles listées en §8.5 (bases légales mineurs,
+> DPA Anthropic, logos NBA, région Supabase, modèle 2027).
 
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
