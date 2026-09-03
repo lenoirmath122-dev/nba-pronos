@@ -4,6 +4,33 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Chantier optimisation tokens paris persos — logging de conso ajouté,
+> décisions en attente de vraies données (02-03/09/2026)** : parti d'une
+> question de coût pour tester les 415 paris perso en texte libre de
+> l'archive playoffs réelle (`Cadrage/DA/🏀 NBA Pronos - 22_04_2026
+> (réponses) (1).xlsx`) à travers `lib/ai/structureBet.ts` -- ce test
+> lui-même reste une action différée (pas lancé). `structureBet()` déjà bien
+> optimisé (Sonnet 5 choisi le 22/08 après comparaison empirique, prompt
+> caching en place, `max_tokens` capé) mais **aucune mesure réelle de
+> conso n'existait** -- le commentaire du fichier flaggait déjà le TTL de
+> cache (5 min vs 1h) comme "à revoir si le taux de succès observé en prod
+> est faible", sans donnée pour trancher. `console.log("structureBet
+> usage : ...")` ajouté (gratuit, lit `response.usage` déjà présent dans
+> la réponse) -- grep dans les logs Vercel pour récupérer input/output/
+> cache_read/cache_creation par appel.
+> Piste alternative évoquée par l'utilisateur et évaluée avec lui :
+> "classifier le type de pari d'abord (petit appel), puis structurer
+> ensuite (appel ciblé sur le type)" -- **pas retenue pour l'instant**, pas
+> par manque de faisabilité mais parce que le gain est incertain (le
+> prompt statique actuel est déjà caché à ~90%, un split en 5 prompts par
+> type fragmenterait ce cache unique en 5 caches potentiellement moins
+> souvent réchauffés selon la distribution réelle des types, et ajoute un
+> 2e aller-retour réseau alors que l'appel est synchrone à la soumission
+> du pari côté joueur) -- à retrancher une fois les vraies données de
+> logging disponibles (distribution des types, taux de cache hit réel).
+> **Prochaine étape** : laisser tourner en prod quelques jours/semaines
+> puis revenir avec les chiffres pour trancher TTL + classify-then-structure.
+
 > **Audit de sécurité, finding 3 (CAPTCHA/rate-limiting login) — TRAITÉ,
 > reste 1 point bloqué par le plan Supabase (02/09/2026)** : Cloudflare
 > Turnstile (mode Managed) branché sur login ET signup, nouveau composant
