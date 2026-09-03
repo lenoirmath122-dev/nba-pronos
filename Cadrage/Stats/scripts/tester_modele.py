@@ -20,8 +20,10 @@ Codes --stat disponibles :
     ft, fg, fg3                          -> % de tir (lancers francs / tirs au panier / 3-points),
                                              --seuil en fraction (0.80 = 80%)
 
---adversaire (optionnel, code équipe/ville/nom) : n'affecte QUE le modèle
-des points (seul à utiliser l'historique face à cet adversaire précis).
+--adversaire (optionnel, code équipe/ville/nom) : affecte les modèles
+utilisant l'historique face à cet adversaire précis -- pts, et depuis le
+02/09/2026 aussi reb/ast/fg3m/stl/blk/fga/fg3a/oreb (généralisation
+vs_adversaire_{stat}_moy, GAPS_OUVERTS.md).
 --domicile/--exterieur, --repos : contexte du PROCHAIN match, illustratif
 si tu ne les précises pas (mêmes valeurs par défaut que demo_pari_reel.py).
 """
@@ -195,19 +197,26 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     context["fgm_sum10"], context["fga_sum10"] = recent["fgm"].sum(), recent["fga"].sum()
     context["fg3m_sum10"], context["fg3a_sum10"] = recent["fg3m"].sum(), recent["fg3a"].sum()
 
+    # "vs_adversaire_{stat}_moy" generalise le 02/09/2026 (GAPS_OUVERTS.md,
+    # chantier "nouvelles features") -- pts + les 8 stats de
+    # train_stat_model.py::VS_ADVERSAIRE_STATS, meme liste que
+    # service/supabase_context.py::build_context() (prod).
+    VS_ADVERSAIRE_STATS = ("pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb")
     if opponent_id is not None:
         vs_adv = pd.read_sql(
-            """
-            SELECT b.pts FROM box_scores b
+            f"""
+            SELECT b.{", b.".join(VS_ADVERSAIRE_STATS)} FROM box_scores b
             JOIN features_joueur f ON f.game_id = b.game_id AND f.player_id = b.player_id
             WHERE b.player_id = ? AND f.opponent_team_id = ?
             """,
             conn, params=(player_id, opponent_id),
         )
-        context["vs_adversaire_pts_moy"] = vs_adv["pts"].mean() if not vs_adv.empty else np.nan
+        for stat in VS_ADVERSAIRE_STATS:
+            context[f"vs_adversaire_{stat}_moy"] = vs_adv[stat].mean() if not vs_adv.empty else np.nan
         context["vs_adversaire_nb_matchs"] = len(vs_adv)
     else:
-        context["vs_adversaire_pts_moy"] = np.nan
+        for stat in VS_ADVERSAIRE_STATS:
+            context[f"vs_adversaire_{stat}_moy"] = np.nan
         context["vs_adversaire_nb_matchs"] = 0
 
     ecarttypes = {}

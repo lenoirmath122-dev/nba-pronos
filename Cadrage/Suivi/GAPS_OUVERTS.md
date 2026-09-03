@@ -31,6 +31,48 @@
 > **Prochaine étape** : laisser tourner en prod quelques jours/semaines
 > puis revenir avec les chiffres pour trancher TTL + classify-then-structure.
 
+> **Test de robustesse du moteur de scoring sur l'archive playoffs réelle
+> (02-03/09/2026)** : sur demande de l'utilisateur, `lib/scoring/engine.ts`
+> (moteur PUR, mêmes garanties que `seed-playoffs-simulation.mjs`) rejoué
+> contre les vrais pronos + résultats de la compétition manuelle "NBA
+> Pronos" d'avril-mai 2026 (`Cadrage/DA/🏀 NBA Pronos - 22_04_2026
+> (réponses) (1).xlsx`, onglets MASTER_PRONOS + RÉSULTATS_RÉELS). Nouveau
+> script `scripts/test-scoring-archive-playoffs.mjs` (lecture seule, aucune
+> écriture en base). **429/429 pronos traités, 0 anomalie** (aucune équipe
+> non résolue, aucun résultat manquant, aucun score `null` inattendu) —
+> objectif de robustesse atteint. Souci identifié AVANT de lancer (repéré
+> par l'utilisateur) et résolu avec son accord (option "a") : l'ancien
+> tableur fait parier une TRANCHE d'écart ("11-15 pts"), le moteur actuel
+> attend un NOMBRE précis (`predictedMargin`) — chaque tranche convertie en
+> son point médian (`bracketMidpoint()`), approximation **assumée et
+> gardée en détail** sur chaque ligne du rapport (`marginApproximated:
+> true` + tranche d'origine + point médian utilisé) pour pouvoir exclure
+> le détail écart du rapport sans tout relancer. Bug réel trouvé en
+> marge (pas dans ce script) : `tester_modele.py` cassé par la
+> généralisation `vs_adversaire_{stat}_moy` du 02/09 — corrigé, PR #18.
+>
+> **Reste à faire (documenté comme action différée, pas lancé)** : tester
+> les **415 paris perso en texte libre** de cette même archive (colonne
+> `Pari Perso`, `MASTER_PRONOS`) à travers la vraie structuration IA
+> (`lib/ai/structureBet.ts`). Piège technique identifié : ce module a
+> `import "server-only"` en tête, donc pas importable tel quel dans un
+> script Node autonome (contrairement au moteur de scoring pur) — il
+> faudra soit réimplémenter l'appel à l'identique (même patron que
+> `seed-playoffs-simulation.mjs` pour d'autres modules serveur), soit
+> trouver un autre point d'entrée. Avant de lancer : (1) chiffrer le coût
+> réel via `messages.countTokens` plutôt que d'estimer à la louche — a
+> priori peu cher vu que `structureBet()` utilise déjà Sonnet 5 + prompt
+> caching + `max_tokens` capé à 1024 (optimisations déjà en place, cf.
+> commentaires du fichier) ; (2) échantillonner plutôt que les 415 en
+> entier, en piochant dans les catégories déjà taguées par l'onglet
+> `PARIS_PERSOS_CATEGORIES` (Type/Sous-type/Cible/Stat) pour garder une
+> bonne couverture des cas sans tout faire passer. Point de vigilance sur
+> les données elles-mêmes : au moins un pari perso contient une blague à
+> caractère raciste ("Y'a un noir qui va claquer un 3 pts") — pas
+> bloquant pour le test (edge case réaliste, probablement
+> `calculable=false` faute de joueur nommé), mais à savoir avant que ça
+> ressorte dans un rapport.
+
 > **Audit de sécurité, finding 3 (CAPTCHA/rate-limiting login) — TRAITÉ,
 > reste 1 point bloqué par le plan Supabase (02/09/2026)** : Cloudflare
 > Turnstile (mode Managed) branché sur login ET signup, nouveau composant
@@ -88,6 +130,42 @@
 > corrigé en le testant (`league_memberships` n'a pas de colonne `id`,
 > `select("id", {count})` plantait -- généralisé en `select("*", {count})`
 > partout). `eslint` propre.
+
+> **Chantier juridique — cadrage initial déposé, rien traité à ce jour
+> (02/09/2026)** : nouveau document `Cadrage/Juridique/
+> conseils_juridiques_deploiement_application.md` (apporté par
+> l'utilisateur, jusque-là à la racine de `Cadrage/`, rangé dans un nouveau
+> dossier dédié sur le modèle de `Business/`/`DA/`/`Stats/`) -- checklist
+> générale RGPD, mentions légales, politique de confidentialité, CGU/CGV,
+> cookies, prestataires/sous-traitants, sécurité, propriété intellectuelle,
+> mineurs, et un point dédié "jeux, concours et pronostics" (§2.11).
+> Prochaine étape indiquée par le document lui-même (§7) : compléter les 10
+> informations de cadrage (§3 -- exploitant, public visé, pays ciblés,
+> données collectées, modèle économique, prestataires, mineurs, contenus
+> utilisateurs, mises/récompenses) avant d'établir une matrice d'obligations.
+> Point à trancher tôt vu la nature de l'app : présence ou non d'une mise
+> financière/de gains, qui change le profil juridique (§2.11/§2.9). Rien
+> d'engagé côté implémentation (mentions légales, politique de
+> confidentialité, etc.) à ce jour.
+
+> **Chantier juridique — les 10 informations de cadrage complétées + matrice
+> d'obligations initiale (02/09/2026)** : suite de l'entrée ci-dessus, §3 du
+> document complété (nouvelle sous-section "Réponses au cadrage") avec les
+> réponses de l'utilisateur et un inventaire technique du dépôt (prestataires,
+> données collectées, absence de mise réelle, absence de page légale,
+> absence de vérification d'âge). Nouvelle §8 "Matrice d'obligations
+> initiale" ajoutée avec les 5 catégories du §7 (obligations avant
+> lancement, mesures techniques, documents à publier, contrats/licences à
+> vérifier, points à valider par un professionnel). Décisions retenues :
+> exploitant = particulier en nom propre pour l'instant ; bêta en cercle
+> fermé France ; **mineurs autorisés sans restriction d'âge** (aucune
+> vérification dans le code -- flag ouvert) ; gratuit aujourd'hui, modèle
+> économique 2027 non tranché (payant pas exclu) ; ouverture géographique
+> 2027 non tranchée. Rien d'engagé côté implémentation à ce jour (toujours
+> aucune mention légale/politique de confidentialité/CGU publiée) --
+> prochaine étape naturelle : rédiger une première version de ces documents
+> pour la bêta fermée, et statuer sur la vérification d'âge vu que le
+> service est ouvert à tous âges.
 
 > **Audit de sécurité, finding 14 (énumération de compte au signup) — CLOS,
 > gardé tel quel (02/09/2026)** : décidé AVEC l'utilisateur après explication
