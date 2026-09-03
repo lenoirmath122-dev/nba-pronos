@@ -60,7 +60,9 @@ Aucun de ces éléments ne nécessite votre consentement — nous ne les utiliso
 
 Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données, ainsi que du droit de vous opposer à certains traitements.
 
-Pour exercer ces droits, contactez panier.ballon.pronos@gmail.com. Étant donné la taille actuelle du service, votre demande est traitée manuellement par l'exploitant — un accès direct depuis l'application (export de vos données, suppression de votre compte) est prévu mais pas encore disponible.
+Depuis votre profil (onglet « Compte »), vous pouvez à tout moment télécharger une copie de vos données personnelles ou supprimer définitivement votre compte, sans passer par une demande manuelle. Pour toute autre demande (rectification, opposition...), contactez panier.ballon.pronos@gmail.com.
+
+> Note interne (pas affichée dans la page publiée) : self-service implémenté le 03/09/2026 (`lib/actions/account.ts` pour la suppression, `app/api/account/export/route.ts` pour l'export) — referme le point §8.2 du cadrage juridique. La suppression reprend l'ordre du script CLI `scripts/delete-player-account.mjs` (mêmes garde-fous : refus si rôle ADMIN, refus si ligue créée avec d'autres membres actifs), scopée à la session (jamais un pseudo passé en paramètre). Le script CLI reste en place pour les cas que le self-service refuse (admin doit intervenir).
 
 Vous disposez également du droit d'introduire une réclamation auprès de la CNIL (www.cnil.fr) si vous estimez que vos droits ne sont pas respectés.
 

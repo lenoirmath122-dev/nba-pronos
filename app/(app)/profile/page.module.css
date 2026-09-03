@@ -462,6 +462,15 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Zone de danger (suppression de compte, 03/09/2026) — même patron que
+   .leagueForms/.field, juste un peu plus d'espace avant le bouton rouge. */
+.dangerForm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
 /* ============================================================================
    Onglet Stats (04/08/2026) — cf. lib/queries/stats.ts, JOURNAL_SESSIONS.md.
    ============================================================================ */
