@@ -1,0 +1,89 @@
+/* Même gabarit que .deleteButton (ChatMessageRow.module.css) -- couleur
+   neutre plutôt que --color-loss (réservée aux actions destructives, cf.
+   R-COL §17 du design system) : signaler n'efface rien. */
+.reportButton {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  font-size: 0.6875rem;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.reportButton:hover,
+.reportButton:focus-visible {
+  color: var(--color-text-secondary);
+}
+
+.reportButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+}
+
+.hint {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.textarea {
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  /* 16px (--font-size-base), pas --font-size-sm : sous 16px, iOS Safari
+     zoome l'écran au focus d'un champ (même patron/piège documenté sur
+     BugReportButton.module.css, autoFocus posé ici aussi). */
+  font-size: var(--font-size-base);
+  font-family: var(--font-ui);
+  resize: vertical;
+}
+
+.textarea:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-loss);
+}
+
+.submit {
+  align-self: flex-start;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.submit:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.sent {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}

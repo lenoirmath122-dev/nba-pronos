@@ -4,6 +4,35 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Signalement de message de chat vers les admins — IMPLÉMENTÉE
+> (03/09/2026)** : traite le 2e des 2 points techniques identifiés par le
+> cadrage mineurs §2.10 (voir la déclaration d'âge ci-dessous, 1er point,
+> et l'entrée cadrage §2.10 plus bas). Bouton "Signaler" par message
+> (`ReportMessageButton.tsx`, dans `ChatMessageRow.tsx`), visible sur tout
+> message qui n'est PAS le sien (`!isOwn`) — signaler son propre message
+> n'a pas de sens. Table `chat_message_reports` (migration
+> `20260903130000_chat_message_reports.sql`, même structure OPEN/RESOLVED
+> que `bug_reports`), avec une différence assumée par rapport à ce patron :
+> le texte et l'auteur du message signalé sont **snapshotés côté serveur**
+> à l'insertion (jamais fait confiance au client) et `message_id` référence
+> `chat_messages` en `on delete set null` plutôt qu'un `not null` bloquant
+> — un signalement doit survivre à la suppression du message (c'est
+> souvent ce qui la déclenche ; sans ça, un admin qui supprime un message
+> déjà signalé aurait fait échouer la suppression sur une contrainte FK).
+> File de traitement dédiée `/admin/chat-reports` (même patron liste/tabs/
+> formulaire natif que `/admin/bug-reports`), lien ajouté au hub admin.
+> CGU (§6) mise à jour (`.md` + page publiée), doc de cadrage juridique
+> marqué comme fait (§2.10 point 7, §8.2, §9 registre, résumé de section).
+> `tsc`/`eslint` propres. Migration poussée en base par l'utilisateur
+> (`npx supabase db push`, même contrainte que la précédente — bloqué côté
+> Claude par le classificateur de permissions).
+>
+> **Les 2 points techniques du cadrage mineurs §2.10 sont maintenant tous
+> les deux implémentés.** Reste seulement les points de validation
+> juridique professionnelle non codables (§8.5 : base légale précise pour
+> les 15-17 ans, DPA Anthropic) — voir les entrées cadrage mineurs
+> ci-dessous pour le détail.
+
 > **Déclaration d'âge au signup — IMPLÉMENTÉE (03/09/2026)** : traite le
 > 1er des 2 points techniques identifiés par le cadrage mineurs §2.10 (voir
 > entrées ci-dessous), en tête de la liste des gaps triée par priorité avec

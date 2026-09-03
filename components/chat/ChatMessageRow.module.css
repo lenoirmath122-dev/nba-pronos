@@ -59,8 +59,15 @@
   color: var(--color-text-primary);
 }
 
-.deleteForm {
+.actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
   margin-top: var(--space-1);
+}
+
+.deleteForm {
+  margin: 0;
 }
 
 .deleteButton {

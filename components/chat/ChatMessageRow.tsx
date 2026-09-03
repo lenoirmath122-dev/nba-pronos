@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect } from "react";
 import { deleteChatMessageFormAction } from "@/lib/actions/chat";
+import { ReportMessageButton } from "./ReportMessageButton";
 import type { ChatMessage } from "@/lib/queries/chat";
 import styles from "./ChatMessageRow.module.css";
 
@@ -10,6 +11,13 @@ import styles from "./ChatMessageRow.module.css";
 // serveur) -- chat_messages_delete_admin (RLS) reste la seule autorité
 // réelle, ce bouton n'est qu'un raccourci UI pour l'admin. Retrait purement
 // local via `onDeleted` (pas de diffusion Realtime, cf. ChatSubscriber).
+//
+// Bouton "Signaler" (03/09/2026, migration 20260903130000, cadrage
+// juridique §2.10 point 7) : visible sur tout message qui n'est PAS le
+// sien (`!isOwn`, déjà calculé pour le style de bulle) -- se signaler
+// soi-même n'a pas de sens. Contrairement à "Supprimer", visible de tous
+// les joueurs, pas seulement des admins (c'est bien le point du dispositif :
+// laisser un joueur alerter un admin, pas seulement un admin agir).
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -41,13 +49,18 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted }: ChatMes
           <span className={styles.time}>{formatTime(message.createdAt)}</span>
         </div>
         <p className={styles.body}>{message.body}</p>
-        {canDelete && (
-          <form action={formAction} className={styles.deleteForm}>
-            <input type="hidden" name="messageId" value={message.id} />
-            <button type="submit" disabled={pending} className={styles.deleteButton} aria-label="Supprimer ce message">
-              Supprimer
-            </button>
-          </form>
+        {(canDelete || !isOwn) && (
+          <div className={styles.actions}>
+            {canDelete && (
+              <form action={formAction} className={styles.deleteForm}>
+                <input type="hidden" name="messageId" value={message.id} />
+                <button type="submit" disabled={pending} className={styles.deleteButton} aria-label="Supprimer ce message">
+                  Supprimer
+                </button>
+              </form>
+            )}
+            {!isOwn && <ReportMessageButton messageId={message.id} />}
+          </div>
         )}
       </div>
       {state?.error && (
