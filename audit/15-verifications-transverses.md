@@ -40,7 +40,7 @@ Aucune incohérence bloquante identifiée dans le périmètre exploré. Le point
 
 ## 8. Appels externes retournant des réponses incomplètes
 
-Déjà traité en détail dans `08-api-et-integrations.md` : Highlightly (réponse vide/partielle traitée sans alerte), micro-service Cloud Run (comportement en cas de panne non vérifié dans cette session), Anthropic (panne capturée et isolée, comportement le mieux couvert des trois).
+Déjà traité en détail dans `08-api-et-integrations.md` : Highlightly (réponse vide/partielle traitée sans alerte), micro-service Cloud Run (comportement en cas de panne vérifié le 03/09/2026 — robuste, repli `null` uniforme + catch global), Anthropic (panne capturée et isolée). Les 3 intégrations externes du pipeline de paris IA gèrent donc correctement leur propre indisponibilité.
 
 ## 9. Tâches automatiques exécutées deux fois
 

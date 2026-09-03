@@ -28,7 +28,7 @@
 ### 2.2 Micro-service Cloud Run (proba ML)
 
 - **Authentification** : Bearer `STATS_SERVICE_SECRET`, vérifié fail-closed côté service (voir `07-securite.md`).
-- **Comportement si indisponible** : **non vérifié en détail dans cette session** — le pipeline de structuration appelle ce service après que Claude ait structuré le pari ; le comportement exact en cas de timeout/erreur HTTP de ce service (proba non calculée, pari quand même validé sans proba ? Erreur remontée ?) mérite une vérification dédiée. **À vérifier** — lire `lib/ai/statsService.ts` en détail.
+- **Comportement si indisponible** : **vérifié le 03/09/2026 (item A3 du plan d'action) — correct et déjà robuste, aucune correction nécessaire.** Les 18 fonctions `predict*()` de `lib/ai/statsService.ts` partagent le même patron strict : URL absente → `null` immédiat sans tenter l'appel ; `fetch` sous `AbortSignal.timeout` (20s pour `/predict`, 40s pour les 17 autres endpoints, marge pour un cold start Cloud Run) ; `!res.ok` (tout code HTTP non-2xx) → `null` ; tout le bloc est en `try/catch` → une exception réseau (DNS, timeout, connexion refusée) retombe aussi sur `null`. Côté appelant (`structureAndScoreBet.ts`), **chaque** site de consommation d'un résultat de prédiction suit `if (!prediction) { await markNotCalculable(); return; }` — vérifié sur les branches PLAYER, MATCH_TOTAL, PERIOD, COMPARISON, COMBO, ROSTER_SPLIT/COUNT, SUPERLATIVE, TECHNICAL_FOULS_COUNT, LAST_BASKET, BLOCK_ON_PLAYER. En complément, l'intégralité du corps de la fonction est enveloppée dans un `try/catch` global (dernière ligne du fichier) qui avale toute exception imprévue en laissant `is_calculable` à `NULL` (signal "panne", distinct de `false` = décision explicite) — jamais de pari cassé, jamais d'exception qui remonterait à `submitBet`. Une panne du micro-service fait donc systématiquement retomber le pari sur le mécanisme manuel de validation admin existant, exactement comme documenté pour une panne Anthropic.
 - **Données envoyées** : noms de joueurs/équipes et paramètres du pari structuré, pas de donnée personnelle utilisateur identifiée dans les appels (à confirmer).
 - **Réponse jamais garantie complète** : non vérifié explicitement — risque théorique si le service renvoie une proba partielle ou malformée sans validation de schéma côté TypeScript (contrairement à la sortie Claude, contrainte par Zod).
 
@@ -55,13 +55,12 @@
 
 | Risque | Fichier | Gravité perçue | Statut |
 |---|---|---|---|
-| Comportement du pipeline IA en cas de panne du micro-service Cloud Run non vérifié dans cette session | `lib/ai/statsService.ts` | À déterminer | **À vérifier** |
+| ~~Comportement du pipeline IA en cas de panne du micro-service Cloud Run~~ | `lib/ai/statsService.ts` | Nul (déjà robuste) | **Vérifié le 03/09/2026 — correct, aucune action requise** |
 | Absence d'alerte sur un mapping match↔série qui échoue de façon persistante (Highlightly) | `lib/sync/schedule.ts` | Faible-Moyen | Vérifié comme silencieux, pas d'alerte |
 | Décision de monitoring du coût/usage Anthropic reportée | `lib/ai/structureBet.ts` | Faible (produit à faible volume actuellement) | Reporté consciemment (`GAPS_OUVERTS.md`) |
 | Pas de retries/backoff explicites sur les appels Highlightly | `lib/sync/*.ts` | Faible (cron fréquent fait office de retry naturel) | Non vérifié comme un problème actif |
 
 ## 4. Ce qui n'a pas pu être vérifié dans cette phase
 
-- Le comportement détaillé du micro-service Cloud Run en cas d'indisponibilité côté appelant Next.js.
 - Le code Python du micro-service lui-même (hors périmètre TypeScript principal de cette session) — seule sa documentation de déploiement et son middleware d'authentification ont été vérifiés (Phase 7).
 - Le comportement réel de l'API Highlightly en cas d'erreur HTTP 5xx (timeout, 500) — seuls les cas "réponse vide"/"réponse partielle" ont été vérifiés dans le code, pas un test d'erreur HTTP explicite.

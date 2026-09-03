@@ -105,7 +105,7 @@ Modérée et bien identifiée : duplications documentées et assumées par l'éq
 
 ## 21. Actions obligatoires avant production (au sens : avant ouverture au-delà du cercle actuel)
 
-Voir Vague 1 de `PLAN_ACTION.md` : suppression de compte transactionnelle (`DATA-002`), rate limiting applicatif (`SEC-001`), vérification du comportement de panne du micro-service Cloud Run, tests d'intégration RLS minimaux (`TEST-002`), clarification du statut `POSTPONED`.
+Voir Vague 1 de `PLAN_ACTION.md` : suppression de compte transactionnelle (`DATA-002`), rate limiting applicatif (`SEC-001`), tests d'intégration RLS minimaux (`TEST-002`), clarification du statut `POSTPONED` (le comportement de panne du micro-service Cloud Run, initialement listé ici, s'est avéré déjà correct et robuste — vérifié le 03/09/2026).
 
 ## 22. Actions recommandées après lancement
 

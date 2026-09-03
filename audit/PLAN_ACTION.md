@@ -35,14 +35,10 @@
 - **Critère d'acceptation** : une limite de fréquence raisonnable bloque l'abus sans gêner l'usage normal.
 - **Rollback** : trivial (retrait du rate limiter).
 
-### A3 — Vérifier le comportement du micro-service Cloud Run en cas de panne
-- **Objectif** : lever l'inconnu identifié en Phase 8 avant de considérer le pipeline de paris IA comme pleinement fiable.
-- **Anomalies traitées** : point ouvert de `08-api-et-integrations.md`.
-- **Fichiers concernés** : `lib/ai/statsService.ts`.
-- **Effort estimé** : S (vérification), M si correction nécessaire.
-- **Risque** : faible.
-- **Stratégie de test** : T-API-01.
-- **Critère d'acceptation** : un pari reste soumissible même si le service de proba est indisponible.
+### A3 — ~~Vérifier le comportement du micro-service Cloud Run en cas de panne~~ FAIT — vérifié le 03/09/2026, déjà correct
+- **Statut** : clos sans code à écrire. Lecture complète de `lib/ai/statsService.ts` (18 fonctions `predict*()`) : URL absente → `null` immédiat, `fetch` sous timeout (20-40s), `!res.ok` → `null`, tout en `try/catch` → exception réseau also `null`. Côté `structureAndScoreBet.ts` : chaque site de consommation vérifie `if (!prediction) { markNotCalculable(); return; }` (vérifié sur les 10 branches), plus un `try/catch` global sur toute la fonction en filet de sécurité (`is_calculable` reste `NULL`, jamais d'exception qui casserait `submitBet`). Détail dans `08-api-et-integrations.md`.
+- **Anomalies traitées** : point auparavant ouvert de `08-api-et-integrations.md`, refermé.
+- **Reste optionnel** : T-API-01 (`BACKLOG_TESTS.md`) peut être ajouté comme test de non-régression pour figer ce comportement déjà correct, mais n'est plus urgent (rien à découvrir, juste à protéger).
 - **Rollback** : N/A (vérification, pas nécessairement un changement de code).
 
 ### A4 — Tests d'intégration RLS/permissions minimaux

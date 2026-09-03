@@ -85,11 +85,11 @@
 
 ## 4. API
 
-### T-API-01 — Comportement du micro-service Cloud Run indisponible
-- **Objectif** : lever l'inconnu de `08-api-et-integrations.md` — simuler une panne (timeout, 500) du service de proba pendant la structuration d'un pari.
-- **Résultat attendu (à définir)** : le pari doit rester structurable/soumissible sans proba, ou basculer proprement sur le mécanisme manuel.
+### T-API-01 — Comportement du micro-service Cloud Run indisponible (test de non-régression)
+- **Objectif** : le comportement a été vérifié correct par lecture de code le 03/09/2026 (`08-api-et-integrations.md`) — ce test fige ce comportement plutôt que de lever un inconnu.
+- **Résultat attendu** : un `fetch` en échec (timeout, 500, réseau) vers `STATS_SERVICE_URL` fait basculer le pari sur `is_calculable=false` (mécanisme manuel), jamais d'exception qui remonterait.
 - **Niveau** : intégration (mock HTTP).
-- **Priorité** : Haute.
+- **Priorité** : Moyenne (protection d'un comportement déjà correct, plus urgent ailleurs).
 
 ### T-API-02 — Réponse Highlightly partielle sur plusieurs cycles consécutifs
 - **Objectif** : vérifier qu'un match jamais synchronisé après N cycles est détectable par un admin (via `/admin/logs`) plutôt que silencieusement invisible.
