@@ -243,6 +243,19 @@ export default async function ProfilePage({
               Règles du jeu
             </Link>
           </section>
+
+          <section className={`${styles.section} glass-card`}>
+            <h2 className={styles.sectionTitle}>Informations légales</h2>
+            <Link href="/mentions-legales" className={styles.helpLink}>
+              Mentions légales
+            </Link>
+            <Link href="/confidentialite" className={styles.helpLink}>
+              Politique de confidentialité
+            </Link>
+            <Link href="/cgu" className={styles.helpLink}>
+              Conditions générales d&apos;utilisation
+            </Link>
+          </section>
         </>
       )}
 

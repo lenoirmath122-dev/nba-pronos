@@ -465,9 +465,10 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
 
 ### 8.3. Documents à publier
 
-- **Mentions légales — rédigées (03/09/2026)**, `Cadrage/Juridique/mentions_legales.md`. Contenu prêt, identité de l'exploitant en placeholder (`[Prénom NOM]`, adresse, contact) — pas encore intégrées comme page de l'application (décision explicite : contenu d'abord, intégration dans une prochaine itération).
-- **Politique de confidentialité — rédigée (03/09/2026)**, `Cadrage/Juridique/politique_confidentialite.md`, couvrant les données réellement collectées (§9 registre des traitements) et les prestataires (§2.6). Pas encore intégrée comme page.
-- **CGU — rédigées (03/09/2026)**, `Cadrage/Juridique/cgu.md`, couvrant a minima : comportement attendu dans le chat, modération, suppression de compte, absence de mise financière. Pas encore intégrées comme page.
+- **Mentions légales — rédigées ET publiées (03/09/2026)**, `Cadrage/Juridique/mentions_legales.md` (référence texte) + `app/mentions-legales/page.tsx` (page réelle, route `/mentions-legales`). Identité de l'exploitant complétée avec l'utilisateur (Mathieu Lenoir, adresse "communicable sur demande", contact `panier.ballon.pronos@gmail.com`).
+- **Politique de confidentialité — rédigée ET publiée (03/09/2026)**, `Cadrage/Juridique/politique_confidentialite.md` + `app/confidentialite/page.tsx` (route `/confidentialite`), couvrant les données réellement collectées (§9 registre des traitements) et les prestataires (§2.6).
+- **CGU — rédigées ET publiées (03/09/2026)**, `Cadrage/Juridique/cgu.md` + `app/cgu/page.tsx` (route `/cgu`), couvrant a minima : comportement attendu dans le chat, modération, suppression de compte, absence de mise financière.
+- Accessibles depuis l'app : section "Informations légales" du profil (utilisateurs connectés) + rangée de liens dédiée sous la nav réduite (`PublicNav`, visiteurs non connectés).
 - Pas de CGV nécessaire tant que le service reste gratuit.
 - Pas de politique de cookies distincte nécessaire au-delà de la mention du cookie de session Supabase et du captcha Turnstile (à confirmer selon leur qualification exacte) — déjà couvert dans la politique de confidentialité rédigée ci-dessus.
 

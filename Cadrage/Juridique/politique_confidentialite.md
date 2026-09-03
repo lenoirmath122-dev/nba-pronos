@@ -1,10 +1,10 @@
 # Politique de confidentialité
 
-> Brouillon rédigé le 03/09/2026 à partir du cadrage juridique complet (`conseils_juridiques_deploiement_application.md`, notamment §2.1, §2.6, §2.10 et §9 — registre des traitements). Les champs entre crochets `[...]` sont à compléter par l'exploitant. Pas encore publié dans l'application.
+> Rédigé le 03/09/2026 à partir du cadrage juridique complet (`conseils_juridiques_deploiement_application.md`, notamment §2.1, §2.6, §2.10 et §9 — registre des traitements). **Publié dans l'application** le 03/09/2026 (`app/confidentialite/page.tsx`) — ce fichier reste la référence texte, tenue à jour en parallèle de la page.
 
 ## 1. Qui est responsable de vos données ?
 
-nba-pronos est édité par [Prénom NOM], particulier, en nom propre — voir les mentions légales pour les coordonnées complètes. C'est cette personne qui est responsable du traitement de vos données au sens du RGPD.
+nba-pronos est édité par Mathieu Lenoir, particulier, en nom propre — voir les mentions légales pour les coordonnées complètes. C'est cette personne qui est responsable du traitement de vos données au sens du RGPD.
 
 nba-pronos est aujourd'hui un service **gratuit, réservé à un cercle fermé d'utilisateurs invités** (bêta privée, France). **Aucun mineur n'est vérifié à l'inscription** : le service reste théoriquement accessible à tous âges (voir §7 "Mineurs" ci-dessous).
 
@@ -39,7 +39,9 @@ Nous faisons appel aux prestataires suivants pour faire fonctionner nba-pronos. 
 | Anthropic (Claude) | Structuration automatique par IA du texte de vos paris personnalisés | Le texte que vous saisissez pour un pari personnalisé |
 | Service de notification push de votre navigateur (Google, Mozilla ou Apple selon le cas) | Relais technique des notifications, si vous les activez | Votre abonnement push |
 
-**Transfert hors de l'Union européenne** : Anthropic est une société américaine — le texte de vos paris personnalisés lui est transmis pour être analysé. [L'exploitant vérifiera et complétera ici les garanties de transfert applicables (clauses contractuelles types ou équivalent) avant toute ouverture au-delà du cercle actuel.]
+**Transfert hors de l'Union européenne** : Anthropic est une société américaine — le texte de vos paris personnalisés lui est transmis pour être analysé, ce qui constitue un transfert hors UE.
+
+> Note interne (pas affichée dans la page publiée) : garanties de transfert (DPA/clauses contractuelles types) restant à vérifier avant toute ouverture au-delà du cercle actuel — voir §8.5 du cadrage juridique.
 
 Nous ne faisons appel à aucun service de mesure d'audience, de publicité, ni de paiement.
 
@@ -57,7 +59,7 @@ Aucun de ces éléments ne nécessite votre consentement — nous ne les utiliso
 
 Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement et de portabilité de vos données, ainsi que du droit de vous opposer à certains traitements.
 
-Pour exercer ces droits, contactez [adresse e-mail de contact]. Étant donné la taille actuelle du service, votre demande est traitée manuellement par l'exploitant — un accès direct depuis l'application (export de vos données, suppression de votre compte) est prévu mais pas encore disponible.
+Pour exercer ces droits, contactez panier.ballon.pronos@gmail.com. Étant donné la taille actuelle du service, votre demande est traitée manuellement par l'exploitant — un accès direct depuis l'application (export de vos données, suppression de votre compte) est prévu mais pas encore disponible.
 
 Vous disposez également du droit d'introduire une réclamation auprès de la CNIL (www.cnil.fr) si vous estimez que vos droits ne sont pas respectés.
 
@@ -67,13 +69,12 @@ Nous mettons en œuvre des mesures de sécurité proportionnées à la nature du
 
 ## 7. Mineurs
 
-nba-pronos n'a pas mis en place de vérification d'âge à l'inscription : le service reste, en théorie, ouvert à tous âges, même si en pratique ses utilisateurs actuels sont des adultes (cercle d'amis). Si vous êtes mineur et que vous utilisez nba-pronos, sachez que :
+nba-pronos n'a pas mis en place de vérification d'âge à l'inscription : le service reste, en théorie, ouvert à tous âges, même si en pratique ses utilisateurs actuels sont des adultes (cercle d'amis). Si vous êtes mineur et que vous utilisez nba-pronos, vos données sont traitées selon les mêmes règles que celles décrites ci-dessus.
 
-- vos données sont traitées selon les mêmes règles que celles décrites ci-dessus ;
-- [ce paragraphe sera complété une fois la question du consentement pour les moins de 15 ans validée avec un professionnel du droit, voir §8.5 du cadrage juridique — non tranché à ce jour].
+> Note interne (pas affichée dans la page publiée) : la base légale/mécanisme de consentement exact pour les moins de 15 ans reste à valider avec un professionnel du droit avant toute ouverture au-delà du cercle actuel — voir §8.5 du cadrage juridique, non tranché à ce jour.
 
 ## 8. Modification de cette politique
 
 Cette politique de confidentialité peut évoluer, notamment si le service change de modèle économique ou s'ouvre à un public plus large. Toute modification substantielle vous sera communiquée.
 
-*Dernière mise à jour : [date de publication].*
+*Dernière mise à jour : 03/09/2026.*

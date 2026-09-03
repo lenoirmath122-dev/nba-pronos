@@ -1,21 +1,21 @@
 # Mentions légales
 
-> Brouillon rédigé le 03/09/2026 à partir du cadrage juridique complet (`conseils_juridiques_deploiement_application.md`). Les champs entre crochets `[...]` sont à compléter par l'exploitant — ce document ne les invente pas. Pas encore publié dans l'application (décision du 03/09/2026 : rédaction du contenu d'abord, intégration comme page de l'app dans un second temps).
+> Rédigé le 03/09/2026 à partir du cadrage juridique complet (`conseils_juridiques_deploiement_application.md`). **Publié dans l'application** le 03/09/2026 (`app/mentions-legales/page.tsx`) — ce fichier reste la référence texte, tenue à jour en parallèle de la page.
 
 ## 1. Éditeur du site
 
 Le service nba-pronos est édité par :
 
-- **Nom** : [Prénom NOM]
+- **Nom** : Mathieu Lenoir
 - **Statut** : particulier, en nom propre (pas de structure juridique déclarée à ce jour — voir §8.5 du cadrage juridique)
-- **Adresse** : [adresse postale ou, à défaut, mention "adresse communicable sur demande à l'autorité compétente"]
-- **Contact** : [adresse e-mail de contact]
+- **Adresse** : communicable sur demande à l'autorité compétente
+- **Contact** : panier.ballon.pronos@gmail.com
 
 > Un particulier qui édite un service à titre non professionnel peut, sous certaines conditions, ne pas être tenu de publier son adresse personnelle en clair et la tenir seulement à disposition de l'autorité judiciaire sur demande — point à confirmer selon la situation exacte (voir validation professionnelle recommandée, §8.5 du cadrage).
 
 ## 2. Directeur de la publication
 
-[Prénom NOM] (même identité que l'éditeur, en l'absence de structure distincte).
+Mathieu Lenoir (même identité que l'éditeur, en l'absence de structure distincte).
 
 ## 3. Hébergement
 
@@ -32,4 +32,4 @@ Le code source, les textes et l'identité visuelle propre à nba-pronos (logo de
 
 ## 6. Contact
 
-Pour toute question relative au service, à ses données ou à son fonctionnement : [adresse e-mail de contact].
+Pour toute question relative au service, à ses données ou à son fonctionnement : panier.ballon.pronos@gmail.com.

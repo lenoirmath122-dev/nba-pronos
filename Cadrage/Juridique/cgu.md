@@ -1,10 +1,10 @@
 # Conditions générales d'utilisation (CGU)
 
-> Brouillon rédigé le 03/09/2026 à partir du cadrage juridique complet (`conseils_juridiques_deploiement_application.md`, §2.5, §2.10, §2.11). Les champs entre crochets `[...]` sont à compléter par l'exploitant. Pas encore publié dans l'application.
+> Rédigé le 03/09/2026 à partir du cadrage juridique complet (`conseils_juridiques_deploiement_application.md`, §2.5, §2.10, §2.11). **Publié dans l'application** le 03/09/2026 (`app/cgu/page.tsx`) — ce fichier reste la référence texte, tenue à jour en parallèle de la page.
 
 ## 1. Objet
 
-Les présentes conditions générales d'utilisation (CGU) régissent l'accès et l'utilisation du service nba-pronos, édité par [Prénom NOM] (voir mentions légales). En créant un compte, vous acceptez ces conditions.
+Les présentes conditions générales d'utilisation (CGU) régissent l'accès et l'utilisation du service nba-pronos, édité par Mathieu Lenoir (voir mentions légales). En créant un compte, vous acceptez ces conditions.
 
 ## 2. Nature du service
 
@@ -36,12 +36,16 @@ L'éditeur se réserve le droit de retirer tout contenu contraire aux présentes
 
 ## 6. Modération
 
-Les messages du chat peuvent être supprimés par un administrateur en cas de contenu contraire aux règles d'utilisation. [Un mécanisme de signalement d'un message par les utilisateurs eux-mêmes est prévu mais pas encore disponible — voir le cadrage juridique §2.10 et §8.2.]
+Les messages du chat peuvent être supprimés par un administrateur en cas de contenu contraire aux règles d'utilisation.
+
+> Note interne (pas affichée dans la page publiée) : un mécanisme de signalement d'un message par les utilisateurs eux-mêmes est prévu mais pas encore disponible — voir le cadrage juridique §2.10 et §8.2.
 
 ## 7. Suspension et suppression de compte
 
 - L'éditeur peut suspendre ou supprimer un compte en cas de non-respect manifeste des présentes CGU.
-- Vous pouvez demander la suppression de votre compte et de vos données à tout moment en contactant [adresse e-mail de contact] — voir la politique de confidentialité pour le détail de la procédure. [Une suppression directement accessible depuis l'application est prévue mais pas encore disponible.]
+- Vous pouvez demander la suppression de votre compte et de vos données à tout moment en contactant panier.ballon.pronos@gmail.com — voir la politique de confidentialité pour le détail de la procédure.
+
+> Note interne (pas affichée dans la page publiée) : une suppression directement accessible depuis l'application est prévue mais pas encore disponible — voir §8.2 du cadrage juridique.
 
 ## 8. Disponibilité du service
 
@@ -63,4 +67,4 @@ Les présentes CGU sont soumises au droit français. En cas de différend, une s
 
 Ces CGU peuvent être modifiées, notamment en cas d'évolution du service (ouverture à un public plus large, changement de modèle économique). Toute modification substantielle vous sera communiquée.
 
-*Dernière mise à jour : [date de publication].*
+*Dernière mise à jour : 03/09/2026.*

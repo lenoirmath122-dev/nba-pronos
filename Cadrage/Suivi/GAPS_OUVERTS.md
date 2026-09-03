@@ -22,6 +22,30 @@
 > documents ensemble en détail une fois rédigés, pour qu'il comprenne
 > précisément ce qu'ils couvrent -- pas juste un dépôt de fichiers.
 
+> **Chantier juridique — mentions légales/confidentialité/CGU PUBLIÉES en
+> pages réelles (03/09/2026)** : suite de l'entrée ci-dessus -- après
+> relecture ensemble du contenu, l'utilisateur a demandé de publier tout
+> de suite plutôt que d'attendre une prochaine session. Infos manquantes
+> obtenues directement (nom : Mathieu Lenoir ; adresse : "communicable sur
+> demande à l'autorité compétente", pas affichée en clair ; contact :
+> panier.ballon.pronos@gmail.com) -- placeholders remplacés dans les 3
+> fichiers `Cadrage/Juridique/*.md` ET dans les 3 nouvelles pages.
+> 3 nouvelles routes physiques, même patron que `/regles` (T6a §3.2/§8.1,
+> `ScreenShell`, visiteur ou connecté) : `app/mentions-legales`,
+> `app/confidentialite`, `app/cgu`. Accessibles depuis 2 endroits :
+> nouvelle section "Informations légales" dans `app/(app)/profile/page.tsx`
+> (même patron que le lien existant vers `/regles`) pour les connectés ;
+> nouvelle rangée `.legalBar` sous la nav réduite (`PublicNav.tsx`,
+> volontairement distincte de la nav principale Classement/Bracket/Règles/
+> Se connecter -- design intent existant respecté) pour les visiteurs, seul
+> point d'accès pour ce public puisqu'aucun footer n'existe dans l'app.
+> Aucun contenu affiché n'expose de placeholder/TODO -- les 2 points encore
+> réellement ouverts (base légale mineurs <15 ans, DPA Anthropic) sont
+> retirés du texte public et gardés en note interne dans les .md sources
+> uniquement. Vérifié : `tsc`/`eslint` propres, `next build` (44 routes,
+> +3 vs les 41 précédents), test manuel des 3 routes (200, contenu correct)
+> + des liens (profil et nav publique) en `next dev`.
+
 > **Audit de sécurité, finding 3 (CAPTCHA/rate-limiting login) — TRAITÉ,
 > reste 1 point bloqué par le plan Supabase (02/09/2026)** : Cloudflare
 > Turnstile (mode Managed) branché sur login ET signup, nouveau composant
