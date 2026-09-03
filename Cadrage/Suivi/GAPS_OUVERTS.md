@@ -4,6 +4,48 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **Test de robustesse du moteur de scoring sur l'archive playoffs réelle
+> (02-03/09/2026)** : sur demande de l'utilisateur, `lib/scoring/engine.ts`
+> (moteur PUR, mêmes garanties que `seed-playoffs-simulation.mjs`) rejoué
+> contre les vrais pronos + résultats de la compétition manuelle "NBA
+> Pronos" d'avril-mai 2026 (`Cadrage/DA/🏀 NBA Pronos - 22_04_2026
+> (réponses) (1).xlsx`, onglets MASTER_PRONOS + RÉSULTATS_RÉELS). Nouveau
+> script `scripts/test-scoring-archive-playoffs.mjs` (lecture seule, aucune
+> écriture en base). **429/429 pronos traités, 0 anomalie** (aucune équipe
+> non résolue, aucun résultat manquant, aucun score `null` inattendu) —
+> objectif de robustesse atteint. Souci identifié AVANT de lancer (repéré
+> par l'utilisateur) et résolu avec son accord (option "a") : l'ancien
+> tableur fait parier une TRANCHE d'écart ("11-15 pts"), le moteur actuel
+> attend un NOMBRE précis (`predictedMargin`) — chaque tranche convertie en
+> son point médian (`bracketMidpoint()`), approximation **assumée et
+> gardée en détail** sur chaque ligne du rapport (`marginApproximated:
+> true` + tranche d'origine + point médian utilisé) pour pouvoir exclure
+> le détail écart du rapport sans tout relancer. Bug réel trouvé en
+> marge (pas dans ce script) : `tester_modele.py` cassé par la
+> généralisation `vs_adversaire_{stat}_moy` du 02/09 — corrigé, PR #18.
+>
+> **Reste à faire (documenté comme action différée, pas lancé)** : tester
+> les **415 paris perso en texte libre** de cette même archive (colonne
+> `Pari Perso`, `MASTER_PRONOS`) à travers la vraie structuration IA
+> (`lib/ai/structureBet.ts`). Piège technique identifié : ce module a
+> `import "server-only"` en tête, donc pas importable tel quel dans un
+> script Node autonome (contrairement au moteur de scoring pur) — il
+> faudra soit réimplémenter l'appel à l'identique (même patron que
+> `seed-playoffs-simulation.mjs` pour d'autres modules serveur), soit
+> trouver un autre point d'entrée. Avant de lancer : (1) chiffrer le coût
+> réel via `messages.countTokens` plutôt que d'estimer à la louche — a
+> priori peu cher vu que `structureBet()` utilise déjà Sonnet 5 + prompt
+> caching + `max_tokens` capé à 1024 (optimisations déjà en place, cf.
+> commentaires du fichier) ; (2) échantillonner plutôt que les 415 en
+> entier, en piochant dans les catégories déjà taguées par l'onglet
+> `PARIS_PERSOS_CATEGORIES` (Type/Sous-type/Cible/Stat) pour garder une
+> bonne couverture des cas sans tout faire passer. Point de vigilance sur
+> les données elles-mêmes : au moins un pari perso contient une blague à
+> caractère raciste ("Y'a un noir qui va claquer un 3 pts") — pas
+> bloquant pour le test (edge case réaliste, probablement
+> `calculable=false` faute de joueur nommé), mais à savoir avant que ça
+> ressorte dans un rapport.
+
 > **Audit de sécurité, finding 3 (CAPTCHA/rate-limiting login) — TRAITÉ,
 > reste 1 point bloqué par le plan Supabase (02/09/2026)** : Cloudflare
 > Turnstile (mode Managed) branché sur login ET signup, nouveau composant
