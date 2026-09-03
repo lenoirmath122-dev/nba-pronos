@@ -286,9 +286,19 @@ export async function structureBet(
   const client = new Anthropic({ apiKey });
 
   try {
+    // 2048 plutôt que 1024 (03/09/2026, GAPS_OUVERTS.md, chantier
+    // "optimisation tokens paris persos") -- trouvé en testant 30 vrais
+    // paris perso de l'archive playoffs 2026 : 1/30 a rempli les 1024
+    // tokens sans terminer sa réponse JSON (parsing échoué, résultat
+    // silencieusement traité comme "non calculable" par l'appelant), alors
+    // que le pari était un cas simple (COMPARISON basique). Le 2e plus gros
+    // cas observé faisait 715 tokens -- 2048 garde une marge confortable.
+    // Même correctif appliqué aux 8 schémas dédiés (structurePeriodBet.ts
+    // et consorts, mêmes tailles de sortie potentielles), pas testé
+    // individuellement mais même risque structurel.
     const response = await client.messages.parse({
       model,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: [
         { type: "text", text: buildStaticSystemText(), cache_control: { type: "ephemeral" } },
         { type: "text", text: buildDynamicSystemText(teamNames) },

@@ -115,7 +115,7 @@ export async function structureComboNestedBet(
   try {
     const response = await client.messages.parse({
       model,
-      max_tokens: 1024,
+      max_tokens: 2048,
       system: [
         { type: "text", text: buildStaticSystemText(), cache_control: { type: "ephemeral" } },
         { type: "text", text: buildDynamicSystemText(teamNames) },
