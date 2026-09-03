@@ -4,6 +4,26 @@
 > pour la trace de quand/comment). Ne pas laisser de points "résolus mais
 > gardés pour mémoire" ici — c'est le rôle du journal.
 
+> **DPA Anthropic — VÉRIFIÉ (03/09/2026)** : traite le 3e point de la liste
+> priorisée (après déclaration d'âge et signalement de chat). Contrairement
+> à la base légale mineurs (§8.5, celle-là reste une vraie validation
+> professionnelle), ce point ne demandait qu'une vérification factuelle sur
+> sources publiques Anthropic — recherche web directe, aucun code touché
+> côté logique métier. Résultat : le DPA d'Anthropic est incorporé par
+> référence à ses Commercial Terms of Service, qui couvrent tout usage de
+> l'API (facturation à l'usage comprise, pas réservé aux comptes Team/
+> Enterprise) — pas de signature séparée nécessaire. Le DPA intègre les
+> clauses contractuelles types (SCC, Module Two controller-to-processor)
+> "to the extent required by Applicable Data Protection Laws", s'appliquant
+> donc automatiquement à un client européen. Entraînement des modèles sur
+> le contenu client explicitement exclu par défaut. Sources citées en
+> détail dans `conseils_juridiques_deploiement_application.md` §2.1 point 9
+> (Commercial Terms + DPA, urls officielles anthropic.com/legal/*). Point
+> retiré du §8.5 (n'était pas un vrai point de validation professionnelle).
+> Politique de confidentialité mise à jour (`.md` + page publiée) : la
+> mention du transfert hors UE cite maintenant la garantie (SCC) plutôt que
+> de rester une simple constatation du transfert sans safeguard nommé.
+
 > **Signalement de message de chat vers les admins — IMPLÉMENTÉE
 > (03/09/2026)** : traite le 2e des 2 points techniques identifiés par le
 > cadrage mineurs §2.10 (voir la déclaration d'âge ci-dessous, 1er point,

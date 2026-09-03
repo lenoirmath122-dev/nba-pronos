@@ -153,7 +153,9 @@ export default async function ConfidentialitePage() {
           </ul>
           <p className={styles.note}>
             Anthropic est une société américaine — le texte de vos paris personnalisés lui est transmis pour être
-            analysé, ce qui constitue un transfert hors de l&apos;Union européenne.
+            analysé, ce qui constitue un transfert hors de l&apos;Union européenne. Ce transfert est encadré par
+            les clauses contractuelles types (SCC) de la Commission européenne, intégrées par défaut aux
+            conditions commerciales d&apos;Anthropic.
           </p>
           <p className={styles.body}>
             Nous ne faisons appel à aucun service de mesure d&apos;audience, de publicité, ni de paiement.
