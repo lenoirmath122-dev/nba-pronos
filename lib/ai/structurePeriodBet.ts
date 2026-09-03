@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
 import { PERIOD_CODES, PERIOD_LABELS_FR, PERIOD_OUTCOME_KINDS, PERIOD_OUTCOME_LABELS_FR, NO_THRESHOLD_PERIOD_OUTCOMES } from "./periodStatCodes";
+import type { KnownRosters } from "./roster";
 
 // Chantier "pari période" (24/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de
 // structureBet.ts, pas un 7e bet_subject dans le schéma existant. Découvert
@@ -131,14 +132,31 @@ function buildStaticSystemText(): string {
   );
 }
 
-function buildDynamicSystemText(teamNames: [string, string] | null): string {
+// `rosters` : voir la docstring de son homonyme dans structureBet.ts
+// (BUG-003 de l'audit du 03/09/2026) -- même correctif, même prudence
+// (signal fort, pas absolu). Ici une mauvaise vérification pénalise plus
+// fort (calculable=false direct, pas de not_in_match de repli comme le
+// schéma principal), donc le bénéfice de la liste réelle est encore plus
+// direct : évite de rejeter à tort un pari sur un joueur juste transféré.
+function buildDynamicSystemText(teamNames: [string, string] | null, rosters: KnownRosters | null): string {
   if (!teamNames) return "";
-  return (
+  let text =
     `\n\nCe pari concerne un match/une série entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**. ` +
     "Vérifie que le(s) joueur(s) nommé(s) jouent actuellement pour l'une de ces 2 équipes (utilise ta " +
     "connaissance des effectifs NBA réels) -- si ce n'est pas le cas, marque calculable=false. Corrige aussi " +
-    "l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> \"Jr.\")."
-  );
+    "l'orthographe du nom vers la convention standard NBA (ex: \"Junior\" -> \"Jr.\").";
+  if (rosters) {
+    const team1List = rosters.team1.join(", ") || "aucun trouvé";
+    const team2List = rosters.team2.join(", ") || "aucun trouvé";
+    text +=
+      `\n\nEffectif RÉEL connu de team1 (${teamNames[0]}), joueurs ayant joué pour cette équipe dans les 30 ` +
+      `derniers jours : ${team1List}.\n` +
+      `Effectif RÉEL connu de team2 (${teamNames[1]}) : ${team2List}.\n` +
+      "Cette liste peut être incomplète -- traite-la comme un signal FORT mais pas absolu : un joueur qui y " +
+      "figure clairement (même avec une légère variante d'orthographe) est PRÉSENT, même si ta mémoire suggère " +
+      "le contraire (cas d'un transfert récent).";
+  }
+  return text;
 }
 
 /** Même contrat/patron que structureBet() (modèle, cache de prompt) -- cf.
@@ -150,6 +168,7 @@ export async function structurePeriodBet(
   description: string,
   teamNames: [string, string] | null = null,
   model = "claude-sonnet-5",
+  rosters: KnownRosters | null = null,
 ): Promise<PeriodBetStructuration | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
@@ -164,7 +183,7 @@ export async function structurePeriodBet(
       max_tokens: 2048,
       system: [
         { type: "text", text: buildStaticSystemText(), cache_control: { type: "ephemeral" } },
-        { type: "text", text: buildDynamicSystemText(teamNames) },
+        { type: "text", text: buildDynamicSystemText(teamNames, rosters) },
       ],
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(PeriodBetStructurationSchema) },
