@@ -46,6 +46,75 @@
 > +3 vs les 41 précédents), test manuel des 3 routes (200, contenu correct)
 > + des liens (profil et nav publique) en `next dev`.
 
+> **Chantier optimisation tokens paris persos — logging de conso ajouté,
+> décisions en attente de vraies données (02-03/09/2026)** : parti d'une
+> question de coût pour tester les 415 paris perso en texte libre de
+> l'archive playoffs réelle (`Cadrage/DA/🏀 NBA Pronos - 22_04_2026
+> (réponses) (1).xlsx`) à travers `lib/ai/structureBet.ts` -- ce test
+> lui-même reste une action différée (pas lancé). `structureBet()` déjà bien
+> optimisé (Sonnet 5 choisi le 22/08 après comparaison empirique, prompt
+> caching en place, `max_tokens` capé) mais **aucune mesure réelle de
+> conso n'existait** -- le commentaire du fichier flaggait déjà le TTL de
+> cache (5 min vs 1h) comme "à revoir si le taux de succès observé en prod
+> est faible", sans donnée pour trancher. `console.log("structureBet
+> usage : ...")` ajouté (gratuit, lit `response.usage` déjà présent dans
+> la réponse) -- grep dans les logs Vercel pour récupérer input/output/
+> cache_read/cache_creation par appel.
+> Piste alternative évoquée par l'utilisateur et évaluée avec lui :
+> "classifier le type de pari d'abord (petit appel), puis structurer
+> ensuite (appel ciblé sur le type)" -- **pas retenue pour l'instant**, pas
+> par manque de faisabilité mais parce que le gain est incertain (le
+> prompt statique actuel est déjà caché à ~90%, un split en 5 prompts par
+> type fragmenterait ce cache unique en 5 caches potentiellement moins
+> souvent réchauffés selon la distribution réelle des types, et ajoute un
+> 2e aller-retour réseau alors que l'appel est synchrone à la soumission
+> du pari côté joueur) -- à retrancher une fois les vraies données de
+> logging disponibles (distribution des types, taux de cache hit réel).
+> **Prochaine étape** : laisser tourner en prod quelques jours/semaines
+> puis revenir avec les chiffres pour trancher TTL + classify-then-structure.
+
+> **Test de robustesse du moteur de scoring sur l'archive playoffs réelle
+> (02-03/09/2026)** : sur demande de l'utilisateur, `lib/scoring/engine.ts`
+> (moteur PUR, mêmes garanties que `seed-playoffs-simulation.mjs`) rejoué
+> contre les vrais pronos + résultats de la compétition manuelle "NBA
+> Pronos" d'avril-mai 2026 (`Cadrage/DA/🏀 NBA Pronos - 22_04_2026
+> (réponses) (1).xlsx`, onglets MASTER_PRONOS + RÉSULTATS_RÉELS). Nouveau
+> script `scripts/test-scoring-archive-playoffs.mjs` (lecture seule, aucune
+> écriture en base). **429/429 pronos traités, 0 anomalie** (aucune équipe
+> non résolue, aucun résultat manquant, aucun score `null` inattendu) —
+> objectif de robustesse atteint. Souci identifié AVANT de lancer (repéré
+> par l'utilisateur) et résolu avec son accord (option "a") : l'ancien
+> tableur fait parier une TRANCHE d'écart ("11-15 pts"), le moteur actuel
+> attend un NOMBRE précis (`predictedMargin`) — chaque tranche convertie en
+> son point médian (`bracketMidpoint()`), approximation **assumée et
+> gardée en détail** sur chaque ligne du rapport (`marginApproximated:
+> true` + tranche d'origine + point médian utilisé) pour pouvoir exclure
+> le détail écart du rapport sans tout relancer. Bug réel trouvé en
+> marge (pas dans ce script) : `tester_modele.py` cassé par la
+> généralisation `vs_adversaire_{stat}_moy` du 02/09 — corrigé, PR #18.
+>
+> **Reste à faire (documenté comme action différée, pas lancé)** : tester
+> les **415 paris perso en texte libre** de cette même archive (colonne
+> `Pari Perso`, `MASTER_PRONOS`) à travers la vraie structuration IA
+> (`lib/ai/structureBet.ts`). Piège technique identifié : ce module a
+> `import "server-only"` en tête, donc pas importable tel quel dans un
+> script Node autonome (contrairement au moteur de scoring pur) — il
+> faudra soit réimplémenter l'appel à l'identique (même patron que
+> `seed-playoffs-simulation.mjs` pour d'autres modules serveur), soit
+> trouver un autre point d'entrée. Avant de lancer : (1) chiffrer le coût
+> réel via `messages.countTokens` plutôt que d'estimer à la louche — a
+> priori peu cher vu que `structureBet()` utilise déjà Sonnet 5 + prompt
+> caching + `max_tokens` capé à 1024 (optimisations déjà en place, cf.
+> commentaires du fichier) ; (2) échantillonner plutôt que les 415 en
+> entier, en piochant dans les catégories déjà taguées par l'onglet
+> `PARIS_PERSOS_CATEGORIES` (Type/Sous-type/Cible/Stat) pour garder une
+> bonne couverture des cas sans tout faire passer. Point de vigilance sur
+> les données elles-mêmes : au moins un pari perso contient une blague à
+> caractère raciste ("Y'a un noir qui va claquer un 3 pts") — pas
+> bloquant pour le test (edge case réaliste, probablement
+> `calculable=false` faute de joueur nommé), mais à savoir avant que ça
+> ressorte dans un rapport.
+
 > **Audit de sécurité, finding 3 (CAPTCHA/rate-limiting login) — TRAITÉ,
 > reste 1 point bloqué par le plan Supabase (02/09/2026)** : Cloudflare
 > Turnstile (mode Managed) branché sur login ET signup, nouveau composant
