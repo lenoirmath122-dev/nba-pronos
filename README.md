@@ -48,9 +48,12 @@ Ouvrir [http://localhost:3000](http://localhost:3000).
 ```bash
 npm test                  # suite unitaire (vitest) -- ne nécessite pas Docker
 npm run test:integration  # tests d'intégration RLS -- nécessite `npx supabase start` au préalable
+npm run test:e2e          # parcours critiques (Playwright) -- nécessite `npx supabase start` au préalable
 npx tsc --noEmit           # vérification des types
 npm run lint               # ESLint
 ```
+
+`npm run test:e2e` lance son propre serveur de dev (port 3100) contre le Supabase local, avec des comptes/données de test créés puis nettoyés automatiquement (`e2e/seed.ts`) -- sans effet sur les données locales existantes. Premier lancement : `npx playwright install --with-deps chromium`.
 
 ## Build de production
 

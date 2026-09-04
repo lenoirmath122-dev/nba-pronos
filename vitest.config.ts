@@ -22,7 +22,10 @@ export default defineConfig({
     // Les tests d'intégration (test/integration/**) exigent un Supabase local
     // (`npx supabase start`) et se lancent séparément via `npm run
     // test:integration` (vitest.integration.config.ts) -- exclus ici pour que
-    // `npm test` reste utilisable sans Docker.
-    exclude: ["**/node_modules/**", "test/integration/**"],
+    // `npm test` reste utilisable sans Docker. `e2e/**` : specs Playwright
+    // (`npm run test:e2e`), pas vitest -- même pattern `*.spec.ts` par
+    // défaut que vitest ramasserait sinon (import `@playwright/test`
+    // incompris par vitest, échec de collecte).
+    exclude: ["**/node_modules/**", "test/integration/**", "e2e/**"],
   },
 });

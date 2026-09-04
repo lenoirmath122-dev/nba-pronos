@@ -56,3 +56,10 @@ __pycache__/
 
 # config Claude Code locale à la machine (permissions auto-approuvées, etc.)
 .claude/settings.local.json
+
+# e2e (Playwright, C1) : rapports/artefacts + état de session/seed générés
+# à chaque run, jamais committés.
+/playwright-report/
+/test-results/
+/e2e/.auth/
+/e2e/.e2e-seed.json
