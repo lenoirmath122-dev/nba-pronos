@@ -7,6 +7,7 @@ import { saveBracketPick, validateBracket } from "@/lib/actions/bracket-fill";
 import type { BetSeriesFormat, BracketFillSeries } from "@/lib/queries/bracket-fill";
 import { InlineBetForm } from "@/components/bets/InlineBetForm";
 import { ResetBracketButton } from "./ResetBracketButton";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./BracketFillBoard.module.css";
 
 // SEULE feuille "use client" de l'écran Bracket personnel (§1 de la spec) :
@@ -77,11 +78,12 @@ export function BracketFillBoard({ series, competitionType, isValidated, isAutoV
         // piégé et ne couvrirait plus toute la page (TabBar comprise).
         createPortal(
           <div className={styles.backdrop} role="presentation">
-            <div
+            <FocusTrap
               className={styles.dialog}
               role="alertdialog"
               aria-modal="true"
               aria-labelledby="validate-bracket-title"
+              onClose={() => setShowConfirm(false)}
             >
               <p id="validate-bracket-title" className={styles.dialogTitle}>
                 Valider ton bracket ?
@@ -103,7 +105,7 @@ export function BracketFillBoard({ series, competitionType, isValidated, isAutoV
                   Valider
                 </button>
               </div>
-            </div>
+            </FocusTrap>
           </div>,
           document.body
         )}

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { recalculateCompetition } from "@/lib/actions/admin";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./RecalculateButton.module.css";
 
 // SEULE feuille "use client" du tableau de bord (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1
@@ -47,7 +48,13 @@ export function RecalculateButton({ disabled }: RecalculateButtonProps) {
 
       {showConfirm && (
         <div className={styles.backdrop} role="presentation">
-          <div className={styles.dialog} role="alertdialog" aria-modal="true" aria-labelledby="recalculate-title">
+          <FocusTrap
+            className={styles.dialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="recalculate-title"
+            onClose={() => setShowConfirm(false)}
+          >
             <p id="recalculate-title" className={styles.dialogTitle}>
               Recalculer tous les scores ?
             </p>
@@ -69,7 +76,7 @@ export function RecalculateButton({ disabled }: RecalculateButtonProps) {
                 Recalculer
               </button>
             </div>
-          </div>
+          </FocusTrap>
         </div>
       )}
     </div>

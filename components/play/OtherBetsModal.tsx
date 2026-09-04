@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
 import type { OtherBet } from "@/lib/queries/play";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./OtherBetsModal.module.css";
 
 // Révélation publique des paris (0.2.4 §9) — déclencheur + popup, données
@@ -23,12 +24,13 @@ export function OtherBetsModal({ bets }: OtherBetsModalProps) {
       {open &&
         createPortal(
           <div className={styles.backdrop} role="presentation" onClick={() => setOpen(false)}>
-          <div
+          <FocusTrap
             className={styles.dialog}
             role="dialog"
             aria-modal="true"
             aria-labelledby="other-bets-title"
             onClick={(e) => e.stopPropagation()}
+            onClose={() => setOpen(false)}
           >
             <p id="other-bets-title" className={styles.title}>
               Paris des autres joueurs
@@ -58,7 +60,7 @@ export function OtherBetsModal({ bets }: OtherBetsModalProps) {
             <button type="button" className={styles.close} onClick={() => setOpen(false)}>
               Fermer
             </button>
-          </div>
+          </FocusTrap>
         </div>,
         document.body
       )}

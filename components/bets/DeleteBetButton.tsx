@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteBet } from "@/lib/actions/bets";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./DeleteBetButton.module.css";
 
 // Suppression d'un pari encore modifiable (18/08/2026, demandé par
@@ -44,7 +45,13 @@ export function DeleteBetButton({ betId }: DeleteBetButtonProps) {
 
       {showConfirm && (
         <div className={styles.backdrop} role="presentation">
-          <div className={styles.dialog} role="alertdialog" aria-modal="true" aria-labelledby="delete-bet-title">
+          <FocusTrap
+            className={styles.dialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-bet-title"
+            onClose={() => setShowConfirm(false)}
+          >
             <p id="delete-bet-title" className={styles.dialogTitle}>
               Supprimer ce pari ?
             </p>
@@ -64,7 +71,7 @@ export function DeleteBetButton({ betId }: DeleteBetButtonProps) {
                 Supprimer
               </button>
             </div>
-          </div>
+          </FocusTrap>
         </div>
       )}
     </div>

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { closeCompetition } from "@/lib/actions/admin-competitions";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./CloseCompetitionButton.module.css";
 
 // Clôture et archivage (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1 §9, lot 3/3) —
@@ -41,7 +42,13 @@ export function CloseCompetitionButton({ competitionId }: CloseCompetitionButton
 
       {showConfirm && (
         <div className={styles.backdrop} role="presentation">
-          <div className={styles.dialog} role="alertdialog" aria-modal="true" aria-labelledby="close-competition-title">
+          <FocusTrap
+            className={styles.dialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="close-competition-title"
+            onClose={() => setShowConfirm(false)}
+          >
             <p id="close-competition-title" className={styles.dialogTitle}>
               Clôturer cette compétition ?
             </p>
@@ -62,7 +69,7 @@ export function CloseCompetitionButton({ competitionId }: CloseCompetitionButton
                 Clôturer
               </button>
             </div>
-          </div>
+          </FocusTrap>
         </div>
       )}
     </div>

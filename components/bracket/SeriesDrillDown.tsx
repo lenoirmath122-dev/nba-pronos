@@ -9,6 +9,7 @@ import { BetBlock } from "@/components/play/BetBlock";
 import { RoundBanner } from "./RoundBanner";
 import { TreeConnectors } from "./TreeConnectors";
 import { buildMirroredPosterColumns, type PosterColumn } from "./posterColumns";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./SeriesDrillDown.module.css";
 
 // Drill-down d'une série (§11) : nominatif, groupé par pronostic, UNE SEULE
@@ -186,7 +187,12 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
         {openNode && (
           <>
             <div className={styles.sheetBackdrop} onClick={() => setOpenSeriesId(null)} />
-            <div className={styles.sheet} role="dialog" aria-label="Détail de la série">
+            <FocusTrap
+              className={styles.sheet}
+              role="dialog"
+              aria-label="Détail de la série"
+              onClose={() => setOpenSeriesId(null)}
+            >
               <div className={styles.sheetHeader}>
                 <p className={styles.sheetTitle}>
                   {openNode.teamA?.abbreviation ?? "—"} – {openNode.teamB?.abbreviation ?? "—"}
@@ -202,7 +208,7 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
               </div>
               {showBetLink && openNode.myBet && <BetBlock bet={openNode.myBet} returnTo="/bracket" />}
               <SeriesGroups groups={openNode.groups} />
-            </div>
+            </FocusTrap>
           </>
         )}
       </>
