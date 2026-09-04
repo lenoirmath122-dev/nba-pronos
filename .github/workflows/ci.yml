@@ -35,3 +35,13 @@ jobs:
 
       - name: Build (next build)
         run: npm run build
+
+      - name: Audit de dépendances (bundle runtime, non bloquant)
+        # --omit=dev : seul le code livré aux utilisateurs compte ici (les
+        # vulnérabilités dev-only, ex. la chaîne de build browserslist/
+        # postcss, n'affectent jamais le runtime servi -- SEC-002/OPS-003).
+        # continue-on-error : détecte une dérive sans faire échouer le build
+        # sur une vulnérabilité tierce qu'on ne peut pas corriger seul le
+        # jour même (ANOMALIES.md, OPS-003).
+        run: npm audit --omit=dev
+        continue-on-error: true

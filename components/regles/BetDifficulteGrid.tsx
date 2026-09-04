@@ -1,33 +1,23 @@
 import styles from "./RuleContent.module.css";
+import { BET_DIFFICULTY_POINTS } from "@/lib/scoring/engine";
+
+const LEVELS = [1, 2, 3, 4, 5] as const;
 
 // Barème par difficulté de pari personnalisé — extrait de
 // app/regles/page.tsx (28/08/2026) pour être réutilisé dans le pop-up d'aide
 // du formulaire de pari (RuleHelpButton sur InlineBetForm.tsx). Valeurs
-// alignées sur lib/scoring/engine.ts::BET_DIFFICULTY_POINTS.
+// lues depuis lib/scoring/engine.ts::BET_DIFFICULTY_POINTS (C3/ARCH-002)
+// plutôt que recopiées à la main.
 export function BetDifficulteGrid() {
   return (
     <>
       <div className={styles.statGridWide}>
-        <div className={styles.statCard}>
-          <span className={styles.statCardLabel}>Niveau 1</span>
-          <span className={styles.statCardValue}>5</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statCardLabel}>Niveau 2</span>
-          <span className={styles.statCardValue}>10</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statCardLabel}>Niveau 3</span>
-          <span className={styles.statCardValue}>15</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statCardLabel}>Niveau 4</span>
-          <span className={styles.statCardValue}>20</span>
-        </div>
-        <div className={styles.statCard}>
-          <span className={styles.statCardLabel}>Niveau 5</span>
-          <span className={styles.statCardValue}>25</span>
-        </div>
+        {LEVELS.map((level) => (
+          <div className={styles.statCard} key={level}>
+            <span className={styles.statCardLabel}>Niveau {level}</span>
+            <span className={styles.statCardValue}>{BET_DIFFICULTY_POINTS[level]}</span>
+          </div>
+        ))}
       </div>
       <p className={styles.note}>
         Un pari perdu ou annulé ne rapporte ni ne coûte rien (0 point, jamais de pénalité).

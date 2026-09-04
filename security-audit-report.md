@@ -1,5 +1,10 @@
 # Audit de sécurité — nba-pronos
 
+> **⚠️ Document figé au 29/08/2026, en partie dépassé.** La plupart des findings ci-dessous sont
+> déjà corrigés et vérifiés depuis (11 des 13 au 03/09/2026, davantage aujourd'hui). Pour le statut
+> à jour, voir `audit/RAPPORT_FINAL.md` (audit complet du 03/09/2026) et `audit/PLAN_ACTION.md`
+> (suivi des correctifs, C5/DOC-003).
+
 **Date de l'audit** : 29/08/2026
 **Périmètre** : dépôt `c:\dev\nba-pronos` en entier — application Next.js 16 (App Router) + Supabase (Postgres/Auth/RLS), Server Actions, routes API, migrations SQL, scripts, et micro-service Python (Cloud Run) de calcul de probabilités référencé depuis `Cadrage/Stats/`.
 **Nature** : audit **read-only**. Aucun fichier n'a été modifié. Toutes les recommandations sont à mettre en œuvre par l'équipe projet.

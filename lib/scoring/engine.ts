@@ -138,12 +138,23 @@ const ABSENT_MATCH_PREDICTION: MatchPredictionScore = {
   marginBonusPoints: null,
 };
 
+// Palier -> points, ET libellé d'affichage (§C3/ARCH-002) : une seule table,
+// pour que la page /regles (MatchBaremeGrid.tsx, via MARGIN_BONUS_DISPLAY_TIERS
+// ci-dessous) ne puisse pas diverger silencieusement du calcul réel.
+const MARGIN_BONUS_TIERS: { maxDiff: number; points: number; label: string }[] = [
+  { maxDiff: 0, points: 5, label: "Écart exact" },
+  { maxDiff: 2, points: 3, label: "Écart à 1-2 pts" },
+  { maxDiff: 5, points: 2, label: "Écart à 3-5 pts" },
+  { maxDiff: 9, points: 1, label: "Écart à 6-9 pts" },
+  { maxDiff: Infinity, points: 0, label: "Écart ≥ 10 pts" },
+];
+
+export const MARGIN_BONUS_DISPLAY_TIERS = MARGIN_BONUS_TIERS.map(({ label, points }) => ({ label, points }));
+
+export const MATCH_WINNER_POINTS = 10;
+
 function marginBonusFor(marginDiff: number): number {
-  if (marginDiff === 0) return 5;
-  if (marginDiff <= 2) return 3;
-  if (marginDiff <= 5) return 2;
-  if (marginDiff <= 9) return 1;
-  return 0;
+  return (MARGIN_BONUS_TIERS.find((tier) => marginDiff <= tier.maxDiff) ?? MARGIN_BONUS_TIERS[MARGIN_BONUS_TIERS.length - 1]).points;
 }
 
 export function scoreMatchPrediction(
@@ -174,7 +185,7 @@ export function scoreMatchPrediction(
   return {
     isWinnerCorrect: true,
     marginDiff,
-    winnerPoints: 10,
+    winnerPoints: MATCH_WINNER_POINTS,
     marginBonusPoints: marginBonusFor(marginDiff),
   };
 }
@@ -287,7 +298,7 @@ export function scoreBracketPick(
 
 // ── §8 — Barème PARIS personnalisés ──────────────────────────────────────
 
-const BET_DIFFICULTY_POINTS: Record<number, number> = { 1: 5, 2: 10, 3: 15, 4: 20, 5: 25 };
+export const BET_DIFFICULTY_POINTS: Record<number, number> = { 1: 5, 2: 10, 3: 15, 4: 20, 5: 25 };
 
 export function scoreBet(bet: { status: BetStatusValue; validatedDifficulty: number | null }): BetScore {
   switch (bet.status) {
