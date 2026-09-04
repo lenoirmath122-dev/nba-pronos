@@ -45,3 +45,37 @@ jobs:
         # jour même (ANOMALIES.md, OPS-003).
         run: npm audit --omit=dev
         continue-on-error: true
+
+  e2e:
+    # Job séparé (pas une étape de `checks`) : nécessite Docker (Supabase
+    # local) + navigateur Chromium, sensiblement plus lent -- ne doit pas
+    # ralentir le retour rapide de lint/types/tests unitaires. ubuntu-latest
+    # fournit Docker nativement, aucun secret requis (Supabase local +
+    # identifiants de test fixes, voir e2e/seed.ts).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - run: npm ci
+
+      - name: Supabase local (Docker)
+        run: npx supabase start
+
+      - name: Navigateur Playwright
+        run: npx playwright install --with-deps chromium
+
+      - name: Tests e2e (Playwright)
+        run: npm run test:e2e
+
+      - name: Rapport Playwright (si échec)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
