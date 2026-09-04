@@ -3,6 +3,7 @@ import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { getRemainingMatchBets } from "@/lib/queries/match-bets";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDateKey } from "@/lib/dates/paris";
+import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
 // §7. Un seul module, appelé avec getServerClient() : les requêtes passent par
@@ -399,45 +400,20 @@ async function getBetsTodo(
 
   if (!bets || bets.length === 0) return null;
 
-  const matchIds = [
-    ...new Set(bets.filter((bet) => bet.match_id).map((bet) => bet.match_id as string)),
-  ];
-  const seriesIds = [...new Set(bets.map((bet) => bet.series_id as string))];
-
-  const [{ data: targetMatches }, { data: seriesMatches }] = await Promise.all([
-    matchIds.length > 0
-      ? supabase.from("matches").select("id, scheduled_at").in("id", matchIds)
-      : Promise.resolve({ data: [] as { id: string; scheduled_at: string | null }[] }),
-    seriesIds.length > 0
-      ? supabase
-          .from("matches")
-          .select("series_id, scheduled_at")
-          .in("series_id", seriesIds)
-          .not("scheduled_at", "is", null)
-      : Promise.resolve({ data: [] as { series_id: string; scheduled_at: string | null }[] }),
-  ]);
-
-  const matchDeadline = new Map(
-    (targetMatches ?? []).map((match) => [match.id as string, match.scheduled_at as string | null])
+  // public.bet_deadline_open() (T3 §2), via lib/scoring/bet-deadline.ts (B3) :
+  // MATCH → coup d'envoi du match visé ; SÉRIE → coup d'envoi du 1er match.
+  const deadlines = await computeBetDeadlines(
+    supabase,
+    bets.map((bet) => ({
+      id: bet.id,
+      scope: bet.scope as "MATCH" | "SERIES",
+      seriesId: bet.series_id as string,
+      matchId: bet.match_id as string | null,
+    }))
   );
-  const seriesFirstMatch = new Map<string, string>();
-  for (const match of seriesMatches ?? []) {
-    const seriesId = match.series_id as string;
-    const scheduledAt = match.scheduled_at as string;
-    const current = seriesFirstMatch.get(seriesId);
-    if (!current || scheduledAt < current) {
-      seriesFirstMatch.set(seriesId, scheduledAt);
-    }
-  }
-
-  // Reproduit public.bet_deadline_open() (T3 §2) : MATCH → coup d'envoi du
-  // match visé ; SÉRIE → coup d'envoi du 1er match de la série.
   const nowMs = Date.now();
   const openBets = bets.flatMap((bet) => {
-    const deadline =
-      bet.scope === "MATCH"
-        ? matchDeadline.get((bet.match_id as string) ?? "") ?? null
-        : seriesFirstMatch.get(bet.series_id as string) ?? null;
+    const deadline = deadlines.get(bet.id) ?? null;
     if (!deadline || Date.parse(deadline) <= nowMs) return [];
     return [{ deadline, status: bet.status as string }];
   });
