@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { validateAllCompleteMatchPredictions } from "@/lib/actions/matches";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./ValidateAllBanner.module.css";
 
 // Bandeau « Tout valider » (§9) — feuille client n°3/3 : porte le dialogue de
@@ -39,11 +40,12 @@ export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
 
       {isConfirmOpen && (
         <div className={styles.backdrop} role="presentation">
-          <div
+          <FocusTrap
             className={styles.dialog}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby="validate-all-title"
+            onClose={() => setIsConfirmOpen(false)}
           >
             <p id="validate-all-title" className={styles.dialogTitle}>
               Valider {count} prono{count > 1 ? "s" : ""} ?
@@ -70,7 +72,7 @@ export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
                 Confirmer
               </button>
             </div>
-          </div>
+          </FocusTrap>
         </div>
       )}
     </div>

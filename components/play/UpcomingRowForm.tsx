@@ -9,6 +9,7 @@ import { MarginStepper } from "./MarginStepper";
 import { RevealPanelUpcoming } from "./RevealPanelUpcoming";
 import { BetBlock } from "./BetBlock";
 import { InlineBetForm, type InlineBetFields, type InlineBetOwned } from "@/components/bets/InlineBetForm";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./UpcomingRowForm.module.css";
 
 // Ligne dépliée d'un match pas encore verrouillé — ex-components/matches/
@@ -244,11 +245,12 @@ export function UpcomingRowForm({ match, winner }: UpcomingRowFormProps) {
           wording et déclencheur différents, ne pas fusionner. */}
       {showValidateConfirm && (
         <div className={styles.backdrop} role="presentation">
-          <div
+          <FocusTrap
             className={styles.dialog}
             role="alertdialog"
             aria-modal="true"
             aria-labelledby={`validate-title-${match.matchId}`}
+            onClose={() => setShowValidateConfirm(false)}
           >
             <p id={`validate-title-${match.matchId}`} className={styles.dialogTitle}>
               Valider ce prono ?
@@ -314,7 +316,7 @@ export function UpcomingRowForm({ match, winner }: UpcomingRowFormProps) {
                 </div>
               </>
             )}
-          </div>
+          </FocusTrap>
         </div>
       )}
     </div>

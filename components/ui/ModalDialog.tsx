@@ -1,6 +1,7 @@
 "use client";
 
 import { createPortal } from "react-dom";
+import { FocusTrap } from "./FocusTrap";
 import styles from "./ModalDialog.module.css";
 
 // Fenêtre centrée générique (17/08/2026, extraite de
@@ -22,7 +23,13 @@ type ModalDialogProps = {
 export function ModalDialog({ title, onClose, children }: ModalDialogProps) {
   return createPortal(
     <div className={styles.backdrop} role="presentation">
-      <div className={styles.dialog} role="dialog" aria-modal="true" aria-labelledby="modal-dialog-title">
+      <FocusTrap
+        className={styles.dialog}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-dialog-title"
+        onClose={onClose}
+      >
         <div className={styles.header}>
           <p id="modal-dialog-title" className={styles.title}>
             {title}
@@ -32,7 +39,7 @@ export function ModalDialog({ title, onClose, children }: ModalDialogProps) {
           </button>
         </div>
         {children}
-      </div>
+      </FocusTrap>
     </div>,
     document.body
   );

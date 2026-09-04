@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { resetBracket } from "@/lib/actions/bracket-fill";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./ResetBracketButton.module.css";
 
 // Remise à zéro du bracket personnel (17/08/2026, demandé par l'utilisateur)
@@ -43,11 +44,12 @@ export function ResetBracketButton({ onError }: ResetBracketButtonProps) {
       {showConfirm &&
         createPortal(
           <div className={styles.backdrop} role="presentation">
-            <div
+            <FocusTrap
               className={styles.dialog}
               role="alertdialog"
               aria-modal="true"
               aria-labelledby="reset-bracket-title"
+              onClose={() => setShowConfirm(false)}
             >
               <p id="reset-bracket-title" className={styles.dialogTitle}>
                 Remettre ton bracket à zéro ?
@@ -69,7 +71,7 @@ export function ResetBracketButton({ onError }: ResetBracketButtonProps) {
                   Remettre à zéro
                 </button>
               </div>
-            </div>
+            </FocusTrap>
           </div>,
           document.body
         )}

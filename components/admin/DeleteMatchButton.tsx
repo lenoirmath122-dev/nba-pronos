@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { deleteMatch } from "@/lib/actions/admin-results";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./DeleteMatchButton.module.css";
 
 // Suppression d'un match (17/08/2026, demandé par l'utilisateur — matchs
@@ -44,7 +45,13 @@ export function DeleteMatchButton({ matchId, matchLabel }: DeleteMatchButtonProp
 
       {showConfirm && (
         <div className={styles.backdrop} role="presentation">
-          <div className={styles.dialog} role="alertdialog" aria-modal="true" aria-labelledby="delete-match-title">
+          <FocusTrap
+            className={styles.dialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="delete-match-title"
+            onClose={() => setShowConfirm(false)}
+          >
             <p id="delete-match-title" className={styles.dialogTitle}>
               Supprimer {matchLabel} ?
             </p>
@@ -64,7 +71,7 @@ export function DeleteMatchButton({ matchId, matchLabel }: DeleteMatchButtonProp
                 Supprimer
               </button>
             </div>
-          </div>
+          </FocusTrap>
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BracketBaremeContent } from "@/components/regles/BracketBaremeContent";
 import { FillSeriesCard } from "./FillSeriesCard";
 import { ResetBracketButton } from "./ResetBracketButton";
+import { FocusTrap } from "@/components/ui/FocusTrap";
 import styles from "./FillPosterView.module.css";
 
 // Mode principal du remplissage, TOUJOURS l'écran d'arrivée depuis le
@@ -172,11 +173,12 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
       {showConfirm &&
         createPortal(
           <div className={styles.backdrop} role="presentation">
-            <div
+            <FocusTrap
               className={styles.dialog}
               role="alertdialog"
               aria-modal="true"
               aria-labelledby="validate-bracket-poster-title"
+              onClose={() => setShowConfirm(false)}
             >
               <p id="validate-bracket-poster-title" className={styles.dialogTitle}>
                 Valider ton bracket ?
@@ -198,7 +200,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
                   Valider
                 </button>
               </div>
-            </div>
+            </FocusTrap>
           </div>,
           document.body
         )}
