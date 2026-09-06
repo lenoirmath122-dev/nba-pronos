@@ -72,3 +72,36 @@ export const PERIOD_OUTCOME_LABELS_FR: Record<PeriodOutcomeKind, string> = {
   TOTAL_POINTS: "total de points combinés des 2 équipes sur la période",
   POINT_SHARE_PCT: "part des points TOTAUX du match marqués par l'équipe sur cette période",
 };
+
+// Taux de base HISTORIQUES (pas de modèle par match, calculés une fois sur
+// les matchs réels via calibrate_leads_period_result_rates.py le
+// 06/09/2026 -- 6297 observations pour Q1, 6426 pour Q3) pour "mène à la
+// fin de cette période" -> résultat final, UNIQUEMENT pour les périodes
+// SANS modèle dédié (Q1/Q3 -- H1/Q2 utilisent le vrai modèle
+// period_leads_half_result.joblib, entraîné DIRECTEMENT sur cette cible
+// jointe ; Q4/H2 sont dégénérés, mener à la toute fin du match égale déjà
+// le résultat final). Cohérent avec l'intuition basket : un retournement
+// devient plus rare plus tard dans le match (33.6% de défaites après avoir
+// mené au 1er quart, contre 17.5% après le 3e quart).
+// Usage INFORMATIF SEULEMENT (suggested_difficulty pour l'admin en file de
+// validation manuelle) -- jamais une proba pour auto-validation/
+// auto-résolution, cf. structureAndScoreBet.ts::handlePeriodBet().
+export const GENERIC_LEADS_PERIOD_RESULT_RATES: Partial<Record<PeriodCode, { winsRate: number; losesRate: number }>> = {
+  Q1: { winsRate: 0.664, losesRate: 0.336 },
+  Q3: { winsRate: 0.825, losesRate: 0.175 },
+  // Dégénérés (jamais mesurés empiriquement) : mener à la toute fin du
+  // match (Q4 cumulatif = le match entier, H2 cumulatif = idem) équivaut
+  // déjà au résultat final -- une égalité finale n'existant pas en NBA.
+  Q4: { winsRate: 1, losesRate: 0 },
+  H2: { winsRate: 1, losesRate: 0 },
+};
+
+/** null pour H1/Q2 (le vrai modèle period_leads_half_result.joblib est
+ *  utilisé à la place, cf. handlePeriodBet()) -- jamais appelée pour ces 2
+ *  valeurs en pratique, `null` reste le comportement sûr si jamais appelée
+ *  par erreur (pas de proba inventée). */
+export function estimateLeadsPeriodResultProba(period: PeriodCode, comparison: "OVER" | "UNDER"): number | null {
+  const rates = GENERIC_LEADS_PERIOD_RESULT_RATES[period];
+  if (!rates) return null;
+  return comparison === "UNDER" ? rates.losesRate : rates.winsRate;
+}

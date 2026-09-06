@@ -8,9 +8,19 @@ import styles from "./ValidationBetCard.module.css";
 // n'apparaît plus jamais dans cette file -- update_bet_structuration le
 // fait sauter direct en VALIDATED (auto-validation, voir
 // AutoValidatedBetCard.tsx pour la correction admin après coup). Un pari
-// ici a donc toujours `isCalculable: false`, la suggestion IA affichée
+// ici a donc toujours `isCalculable: false` -- la suggestion IA affichée
 // pendant la 1re version de cette fonctionnalité (avant l'auto-validation)
-// a été retirée -- devenue du code mort par construction.
+// avait été retirée comme code mort.
+//
+// Réintroduite le 06/09/2026 (GAPS_OUVERTS.md, "formulation période sans
+// le mot 'temps'") : `suggestedDifficulty` peut de nouveau être non-null
+// ici pour un sous-cas précis ("mène après un quart hors mi-temps puis
+// résultat", markNotCalculableWithEstimate() dans structureAndScoreBet.ts)
+// -- une estimation basée sur un taux de base HISTORIQUE, pas un calcul
+// par match comme l'auto-validation. D'où le texte explicite ci-dessous
+// ("estimation générale") plutôt que de laisser croire à un vrai calcul.
+// Purement informatif : le <select> Difficulté garde son défaut sur
+// `proposedDifficulty` (le pari du joueur), l'admin garde la main.
 
 // Une carte de la file de validation (SPEC_ECRAN_ADMIN_VALIDATION_V0_1 §2) :
 // contexte complet sans navigation + 2 formulaires natifs indépendants
@@ -30,6 +40,13 @@ export function ValidationBetCard({ bet, error }: ValidationBetCardProps) {
       </p>
       <p className={styles.target}>{bet.targetLabel}</p>
       <p className={styles.description}>{bet.description}</p>
+
+      {bet.suggestedDifficulty !== null && (
+        <p className={styles.suggestion}>
+          Suggestion IA : difficulté {bet.suggestedDifficulty} — {BET_DIFFICULTY_LABELS[bet.suggestedDifficulty]}{" "}
+          (estimation historique générale, pas un calcul par match)
+        </p>
+      )}
 
       {error && <p className={styles.error}>{error}</p>}
 
