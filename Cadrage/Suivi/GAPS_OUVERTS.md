@@ -113,6 +113,27 @@
 > Issue de l'audit UX du 16/08/2026 et de sessions ultérieures, jamais
 > reprise depuis.
 
+- **Aucun visuel de chargement à la soumission d'un pari personnalisé**
+  (demandé par l'utilisateur, 06/09/2026) — `components/bets/BetForm.tsx`
+  et `InlineBetForm.tsx` désactivent déjà le bouton pendant `isPending`
+  (`useTransition`) mais le libellé reste statique ("Soumettre à
+  validation"), aucun spinner ni changement de texte : la requête (appel
+  Claude pour structurer le pari, pas instantané) peut donner l'impression
+  que rien ne se passe. `components/ui/Spinner.tsx` existe déjà et est
+  réutilisable tel quel.
+- **Listes déroulantes qui ne passent pas au-dessus du reste de la page**
+  (demandé par l'utilisateur, 06/09/2026 -- reproduit sur le Profil) --
+  `components/profile/TeamPicker.tsx`/`.module.css` a pourtant déjà
+  `position: absolute` + `z-index: 10` sur son `.list` (pensé dès le
+  30/07/2026 pour flotter au-dessus, cf. commentaire dans le fichier) :
+  le bug est donc un contexte d'empilement d'un ANCÊTRE qui piège ce
+  z-index, pas un z-index manquant -- suspect principal, `.photo-page`
+  (`app/globals.css`) pose `isolation: isolate` sur toute la page Profil.
+  Vérifier aussi `components/chat/ChatNotificationToggle.module.css`
+  (`.error`, même patron trigger + `position: absolute`) et refaire un
+  grep large (`position: absolute` dans les `.module.css`, pas seulement
+  ceux qui ont déjà un `z-index`) pour trouver d'éventuels autres menus
+  du même genre encore non recensés.
 - **Notifications/popup à la connexion** (résumé depuis la dernière visite,
   badges débloqués, actus) — retenue comme piste produit face à une
   mécanique récurrente, jamais cadrée ni codée.

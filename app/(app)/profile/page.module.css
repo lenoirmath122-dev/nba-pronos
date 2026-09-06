@@ -84,11 +84,26 @@
 }
 
 .section {
+  position: relative;
+  z-index: 0;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
   border-radius: var(--radius-md);
+}
+
+/* glass-card applique un backdrop-filter (thème photo) qui crée un contexte
+   d'empilement PAR SECTION -- sans ceci, le z-index de TeamPicker.list
+   (position: absolute) ne se bat que dans le contexte de sa propre section
+   et se retrouve recouvert par les sections suivantes (Rappels, Aide...),
+   plus bas dans le DOM. Même patron que .row:has(:focus-within) dans
+   ChatChannelList.module.css (bug identique, déjà corrigé le 28/08/2026).
+   aria-expanded (posé par TeamPicker sur son bouton déclencheur) plutôt que
+   :focus-within : suit l'état d'ouverture exact du menu, indépendant des
+   quirks de focus au clic sur un <button> (Safari desktop notamment). */
+.section:has(button[aria-expanded="true"]) {
+  z-index: 1;
 }
 
 .sectionTitle {
