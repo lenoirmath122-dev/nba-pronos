@@ -128,7 +128,10 @@ function buildStaticSystemText(): string {
     "période, un autre service s'en charge, ne l'accepte JAMAIS ici même s'il mentionne un quart-temps en " +
     "passant ; un pourcentage des points totaux d'un JOUEUR (pas d'une équipe) sur une période (ex. \"Wembanyama " +
     "marque plus de 40% de ses points totaux au 4e quart-temps\") -- non géré, différent d'un seuil simple sur " +
-    "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain." +
+    "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain ; " +
+    "un pari COMPOSÉ mélangeant un seuil de stat ET un résultat de période dans la MÊME condition (ex. \"Les " +
+    "Knicks tirent à plus de 32% à 3 points ET remportent les 4 quarts-temps\") -- non géré, ne structure JAMAIS " +
+    "seulement une moitié de ce genre de pari (ne choisis pas la partie la plus facile, rejette le pari entier)." +
     // Règle de vérification de présence déplacée ici (03/09/2026, optimisation
     // coût, même geste que structureBet.ts) -- texte identique à chaque
     // appel, donc mis en cache plutôt que payé en clair à chaque appel.
