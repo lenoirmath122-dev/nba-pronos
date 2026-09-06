@@ -14,7 +14,11 @@ export type AdminDashboardData = {
   pendingValidationCount: number;
   pendingResolutionCount: number;
   pendingRequestsCount: number;
+  totalPlayers: number;
+  leagues: LeagueOverview[];
 };
+
+export type LeagueOverview = { id: string; name: string; memberCount: number };
 
 const EMPTY_COUNTS = {
   pendingValidationCount: 0,
@@ -30,14 +34,16 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   // Une seule compétition ACTIVE à la fois — aucune active ne vide PAS tout
   // l'écran (§8) : les compteurs de file retombent à 0, mais la page reste
   // utile (elle affiche quand même les entrées Gestion des joueurs / Logs).
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, name")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  // Total d'inscrits/ligues indépendants de la compétition -- calculés dans
+  // tous les cas, jamais dans le repli "aucune compétition active".
+  const [{ data: competition }, totalPlayers, leagues] = await Promise.all([
+    supabase.from("competitions").select("id, name").eq("status", "ACTIVE").maybeSingle<CompetitionRow>(),
+    getTotalPlayers(supabase),
+    getLeaguesOverview(supabase),
+  ]);
 
   if (!competition) {
-    return { competitionId: null, competitionName: null, ...EMPTY_COUNTS };
+    return { competitionId: null, competitionName: null, ...EMPTY_COUNTS, totalPlayers, leagues };
   }
 
   const [pendingValidationCount, pendingResolutionCount, pendingRequestsCount] =
@@ -53,7 +59,41 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     pendingValidationCount,
     pendingResolutionCount,
     pendingRequestsCount,
+    totalPlayers,
+    leagues,
   };
+}
+
+// Total d'inscrits (§ vue d'ensemble) : users_select est ouverte à tous
+// (using (true), migration #3) -- aucune policy admin dédiée nécessaire.
+async function getTotalPlayers(supabase: SupabaseServerClient): Promise<number> {
+  const { count } = await supabase.from("users").select("id", { count: "exact", head: true });
+  return count ?? 0;
+}
+
+// Nombre de membres par ligue (§ vue d'ensemble) : leagues_select_admin /
+// league_memberships_select_admin (migration du 06/09/2026) donnent à
+// l'admin une visibilité que la RLS de base (migration #16/#17) réserve
+// autrement aux seuls membres de chaque ligue.
+async function getLeaguesOverview(supabase: SupabaseServerClient): Promise<LeagueOverview[]> {
+  const [{ data: leagueRows }, { data: memberRows }] = await Promise.all([
+    supabase.from("leagues").select("id, name"),
+    supabase.from("league_memberships").select("league_id"),
+  ]);
+
+  const memberCountByLeague = new Map<string, number>();
+  for (const row of memberRows ?? []) {
+    const id = row.league_id as string;
+    memberCountByLeague.set(id, (memberCountByLeague.get(id) ?? 0) + 1);
+  }
+
+  return (leagueRows ?? [])
+    .map((row) => ({
+      id: row.id as string,
+      name: row.name as string,
+      memberCount: memberCountByLeague.get(row.id as string) ?? 0,
+    }))
+    .sort((a, b) => b.memberCount - a.memberCount || a.name.localeCompare(b.name));
 }
 
 // File de validation (§3.1) : paris SOUMIS de la compétition active. Même

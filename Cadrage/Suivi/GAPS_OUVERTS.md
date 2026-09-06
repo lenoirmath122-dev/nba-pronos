@@ -94,6 +94,10 @@
 
 ## Gaps techniques du prototype
 
+- **Rafraîchissement quotidien des stats Supabase en échec** (`refresh_daily.py`,
+  workflow `refresh-stats-supabase.yml`, §5 de `ETAT_ACTUEL.md`) — échoue
+  tous les jours actuellement (signalé 06/09/2026 par l'utilisateur). Pas
+  encore diagnostiqué, volontairement pas traité dans l'immédiat.
 - **Performance de `lib/botScripting.ts`** : requêtes Supabase séquentielles
   non batchées — a saturé la mémoire une fois (16 bots, "Avancer de N
   jours" élevé). Jugé hors scope pour un prototype jetable, pas de
