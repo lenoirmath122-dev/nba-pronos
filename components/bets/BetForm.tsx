@@ -3,6 +3,7 @@
 import { useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { TeamLogo } from "@/components/ui/TeamLogo";
+import { Spinner } from "@/components/ui/Spinner";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
 import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
@@ -344,7 +345,16 @@ export function BetForm(props: BetFormProps) {
               onClick={handleSubmit}
               disabled={isPending || descriptionEmpty}
             >
-              {isSubmittedBet ? "Soumettre les modifications" : "Soumettre à validation"}
+              {isPending ? (
+                <span className={styles.primaryPending}>
+                  <Spinner size="sm" />
+                  Envoi…
+                </span>
+              ) : isSubmittedBet ? (
+                "Soumettre les modifications"
+              ) : (
+                "Soumettre à validation"
+              )}
             </button>
             {isSubmittedBet && (
               <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>

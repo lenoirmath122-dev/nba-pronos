@@ -11,6 +11,7 @@ import {
 } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { ModalDialog } from "@/components/ui/ModalDialog";
+import { Spinner } from "@/components/ui/Spinner";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
 import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
@@ -245,7 +246,16 @@ export function InlineBetForm({
             onClick={handleSubmit}
             disabled={isPending || descriptionEmpty}
           >
-            {isSubmittedBet ? "Soumettre les modifications" : "Soumettre à validation"}
+            {isPending ? (
+              <span className={styles.primaryPending}>
+                <Spinner size="sm" />
+                Envoi…
+              </span>
+            ) : isSubmittedBet ? (
+              "Soumettre les modifications"
+            ) : (
+              "Soumettre à validation"
+            )}
           </button>
         )}
         {isSubmittedBet && (
