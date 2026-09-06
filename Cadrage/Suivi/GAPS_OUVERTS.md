@@ -13,6 +13,31 @@
 > `audit/PLAN_ACTION.md` (Vagues 0-4) — pas dupliqués ici, vérifier les deux
 > fichiers pour une vue complète des points ouverts.
 
+## Modèles de probabilité — maintenance
+
+- **Redéploiement Cloud Run en retard** — le réentraînement de
+  `train_stat_model.py`/`train_player_period_model.py` avec la feature
+  `vs_adversaire_{stat}_moy` généralisée (8 stats) a tourné en local dans
+  la nuit du 02-03/09/2026 (voir `JOURNAL_SESSIONS.md`, entrée du
+  06/09/2026 pour le détail et les chiffres) mais n'a jamais été
+  redéployé — le service en prod sert encore les anciens `.joblib`.
+  Action utilisateur (`gcloud`, voir `Cadrage/Stats/service/
+  DEPLOIEMENT_CLOUD_RUN.md` § "Redéployer après un changement de code").
+- **Calibration Poisson/normale jamais revérifiée à l'échelle PÉRIODE** —
+  `train_player_period_model.py` réutilise `POISSON_STATS` tel quel depuis
+  l'échelle match entier ; biais mesuré (sur-estimation) jusqu'à +22% sur
+  passes >1 et tirs à 3pts tentés >1 à l'échelle période, alors que les
+  stats déjà en Poisson (fg3m/stl/blk/oreb) restent bien calibrées à ce
+  grain. Piste : refaire le test empirique Poisson-vs-normale (même
+  méthode que `test_overdispersion_ft.py`) spécifiquement à l'échelle
+  période pour les 6 stats concernées (pts/reb/ast/fga/fg3a/min).
+- **`team_blk.joblib` mal calibré** — écarts jusqu'à +12.3% (le pire point,
+  seuil >4), pire que toutes les autres stats équipe du même script (sous
+  8% d'écart). Pas un problème d'hyperparamètres (déjà retunés, sans
+  effet) : suggère un manque de features utiles (profil défensif adverse,
+  taille/mobilité des joueurs sur le terrain), jamais capturées
+  actuellement.
+
 ## Chantier "paris personnalisés IA" — types encore non calculables
 
 - **Pertes de balle (tov)** : donnée brute déjà disponible localement, mais
