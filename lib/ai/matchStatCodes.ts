@@ -36,13 +36,18 @@
 // (au moins 1 panier marque a <=0.3s du buzzer, n'importe quelle periode),
 // MEME patron EXACT que had_backcourt_turnover -- se glisse tel quel dans
 // MATCH_TOTAL, PAS de seuil.
+
+// total_tov ajoute le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") --
+// ajoute par symetrie avec les formes joueur/equipe (aucune preuve d'usage
+// reel pour la forme combinee dans les 429 paris reels, cout marginal
+// faible -- meme patron que les autres total_* ci-dessus).
 export type MatchStatCode =
   | "total_points" | "total_reb" | "total_ast" | "total_fg3m" | "total_stl" | "total_blk" | "total_oreb"
-  | "went_to_ot" | "total_timeouts" | "had_backcourt_turnover" | "had_buzzer_beater";
+  | "total_tov" | "went_to_ot" | "total_timeouts" | "had_backcourt_turnover" | "had_buzzer_beater";
 
 export const MATCH_STAT_CODES: MatchStatCode[] = [
-  "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk", "total_oreb", "went_to_ot",
-  "total_timeouts", "had_backcourt_turnover", "had_buzzer_beater",
+  "total_points", "total_reb", "total_ast", "total_fg3m", "total_stl", "total_blk", "total_oreb", "total_tov",
+  "went_to_ot", "total_timeouts", "had_backcourt_turnover", "had_buzzer_beater",
 ];
 
 // Meme principe que NO_THRESHOLD_STATS (statCodes.ts, dd/td cote joueur) --
@@ -58,6 +63,7 @@ export const MATCH_STAT_LABELS_FR: Record<MatchStatCode, string> = {
   total_stl: "interceptions combinées du match (les 2 équipes additionnées)",
   total_blk: "contres combinés du match (les 2 équipes additionnées)",
   total_oreb: "rebonds offensifs combinés du match (les 2 équipes additionnées)",
+  total_tov: "pertes de balle combinées du match (les 2 équipes additionnées)",
   went_to_ot: "le match ira en prolongation",
   total_timeouts: "temps morts combinés du match (les 2 équipes additionnées)",
   had_backcourt_turnover: "au moins un retour en zone (violation de contre-attaque) durant le match",

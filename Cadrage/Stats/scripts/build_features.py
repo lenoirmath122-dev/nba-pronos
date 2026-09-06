@@ -75,6 +75,8 @@ CREATE TABLE features_equipe (
     blk_contre_moy5 REAL, blk_contre_moy10 REAL,
     oreb_pour_moy5 REAL, oreb_pour_moy10 REAL,
     oreb_contre_moy5 REAL, oreb_contre_moy10 REAL,
+    tov_pour_moy5 REAL, tov_pour_moy10 REAL,
+    tov_contre_moy5 REAL, tov_contre_moy10 REAL,
     fga_pour_moy5 REAL, fga_pour_moy10 REAL,
     fga_contre_moy5 REAL, fga_contre_moy10 REAL,
     fgm_pour_moy5 REAL, fgm_pour_moy10 REAL,
@@ -123,6 +125,7 @@ CREATE TABLE features_joueur (
     stl_moy5 REAL, stl_moy10 REAL, stl_ecarttype10 REAL,
     blk_moy5 REAL, blk_moy10 REAL, blk_ecarttype10 REAL,
     oreb_moy5 REAL, oreb_moy10 REAL, oreb_ecarttype10 REAL,
+    tov_moy5 REAL, tov_moy10 REAL, tov_ecarttype10 REAL,
     ts_pct_moy5 REAL, ts_pct_moy10 REAL,
     usg_pct_moy5 REAL, usg_pct_moy10 REAL,
     plus_minus_moy5 REAL, plus_minus_moy10 REAL, plus_minus_ecarttype10 REAL,
@@ -130,6 +133,7 @@ CREATE TABLE features_joueur (
     vs_adversaire_reb_moy REAL, vs_adversaire_ast_moy REAL, vs_adversaire_fg3m_moy REAL,
     vs_adversaire_stl_moy REAL, vs_adversaire_blk_moy REAL,
     vs_adversaire_fga_moy REAL, vs_adversaire_fg3a_moy REAL, vs_adversaire_oreb_moy REAL,
+    vs_adversaire_tov_moy REAL,
     vs_adversaire_nb_matchs INTEGER,
     matchs_manques_depuis_dernier INTEGER,
     fta_moy5 REAL, fta_moy10 REAL,
@@ -226,7 +230,9 @@ def compute_roster_continuity(conn: sqlite3.Connection) -> pd.DataFrame:
 # add_team_rolling_features() (deja en boucle) pour donner {stat}_pour/
 # contre_moy5/10 equipe, prerequis de l'etage "tentatives" de
 # train_team_pct_model.py. fg3m deja present (compte comptee historique).
-TEAM_COUNTING_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga", "fgm", "fta", "ftm", "fg3a"]
+# "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- meme
+# patron mecanique que oreb, deja presente dans box_scores (load_to_sqlite.py).
+TEAM_COUNTING_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "tov", "fga", "fgm", "fta", "ftm", "fg3a"]
 
 
 def build_team_games(conn: sqlite3.Connection) -> pd.DataFrame:
@@ -369,7 +375,7 @@ def compute_missed_games(conn: sqlite3.Connection) -> pd.DataFrame:
 def build_player_games(conn: sqlite3.Connection, team_context: pd.DataFrame) -> pd.DataFrame:
     box_scores = pd.read_sql(
         "SELECT game_id, player_id, team_id, minutes, pts, reb, ast, fg3m, stl, blk, plus_minus, "
-        "ftm, fta, fgm, fga, fg3a, oreb FROM box_scores",
+        "ftm, fta, fgm, fga, fg3a, oreb, tov FROM box_scores",
         conn, dtype={"game_id": str},
     )
     box_adv = pd.read_sql(
@@ -406,6 +412,7 @@ def add_player_rolling_features(players: pd.DataFrame) -> pd.DataFrame:
         df[f"stl_moy{window}"] = g["stl"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"blk_moy{window}"] = g["blk"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"oreb_moy{window}"] = g["oreb"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
+        df[f"tov_moy{window}"] = g["tov"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"ts_pct_moy{window}"] = g["ts_pct"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"usg_pct_moy{window}"] = g["usg_pct"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"plus_minus_moy{window}"] = g["plus_minus"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
@@ -420,7 +427,7 @@ def add_player_rolling_features(players: pd.DataFrame) -> pd.DataFrame:
     # directement ("tente plus de 7 tirs a 3 points").
     ecarttype_cols = {
         "pts": "pts", "reb": "reb", "ast": "ast", "fg3m": "fg3m", "stl": "stl", "blk": "blk", "min": "minutes_f",
-        "fga": "fga", "fg3a": "fg3a", "oreb": "oreb",
+        "fga": "fga", "fg3a": "fg3a", "oreb": "oreb", "tov": "tov",
         # "plus_minus" ajoute le 24/08/2026 (chantier "petits gains groupes",
         # GAPS_OUVERTS.md) -- moy5/moy10 deja calcules plus haut (utilises
         # comme feature partagee par d'autres modeles), seul l'ecart-type
@@ -451,7 +458,7 @@ def add_player_rolling_features(players: pd.DataFrame) -> pd.DataFrame:
     # du role/de la rotation de l'entraineur, pas de l'adversaire en face).
     # Meme calcul EXACT (shift(1).expanding().mean(), anti-fuite) pour
     # chaque stat, juste generalise en boucle plutot que duplique 9 fois.
-    VS_ADVERSAIRE_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb"]
+    VS_ADVERSAIRE_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb", "tov"]
     vs_opp = df.groupby(["player_id", "opponent_team_id"], group_keys=False)
     for stat in VS_ADVERSAIRE_STATS:
         df[f"vs_adversaire_{stat}_moy"] = vs_opp[stat].transform(lambda s: s.shift(1).expanding().mean())
@@ -470,6 +477,7 @@ TEAM_TABLE_COLUMNS = [
     "stl_pour_moy5", "stl_pour_moy10", "stl_contre_moy5", "stl_contre_moy10",
     "blk_pour_moy5", "blk_pour_moy10", "blk_contre_moy5", "blk_contre_moy10",
     "oreb_pour_moy5", "oreb_pour_moy10", "oreb_contre_moy5", "oreb_contre_moy10",
+    "tov_pour_moy5", "tov_pour_moy10", "tov_contre_moy5", "tov_contre_moy10",
     "fga_pour_moy5", "fga_pour_moy10", "fga_contre_moy5", "fga_contre_moy10",
     "fgm_pour_moy5", "fgm_pour_moy10", "fgm_contre_moy5", "fgm_contre_moy10",
     "fta_pour_moy5", "fta_pour_moy10", "fta_contre_moy5", "fta_contre_moy10",
@@ -495,12 +503,14 @@ PLAYER_TABLE_COLUMNS = [
     "stl_moy5", "stl_moy10", "stl_ecarttype10",
     "blk_moy5", "blk_moy10", "blk_ecarttype10",
     "oreb_moy5", "oreb_moy10", "oreb_ecarttype10",
+    "tov_moy5", "tov_moy10", "tov_ecarttype10",
     "ts_pct_moy5", "ts_pct_moy10", "usg_pct_moy5", "usg_pct_moy10",
     "plus_minus_moy5", "plus_minus_moy10", "plus_minus_ecarttype10",
     "vs_adversaire_pts_moy",
     "vs_adversaire_reb_moy", "vs_adversaire_ast_moy", "vs_adversaire_fg3m_moy",
     "vs_adversaire_stl_moy", "vs_adversaire_blk_moy",
     "vs_adversaire_fga_moy", "vs_adversaire_fg3a_moy", "vs_adversaire_oreb_moy",
+    "vs_adversaire_tov_moy",
     "vs_adversaire_nb_matchs",
     "matchs_manques_depuis_dernier",
     "fta_moy5", "fta_moy10",

@@ -45,6 +45,10 @@ STATS_TO_TRAIN = [
     # deja presents depuis le chantier "% tir equipe" (24/08/2026), jamais
     # entraine comme cible directe jusqu'ici.
     ("fga", "Tirs tentés", (75, 80, 85, 90, 95)),
+    # "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle" --
+    # demandee explicitement par l'utilisateur en testant "Les Warriors
+    # font au moins 5 pertes de balle").
+    ("tov", "Pertes de balle", (10, 12, 14, 16, 18)),
 ]
 
 

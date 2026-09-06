@@ -27,10 +27,14 @@
 // que les autres stats comptees d'equipe). Debloque au passage la
 // comparaison de volume de tirs (COMPARISON_TEAM_STAT_CODES = TEAM_STAT_CODES
 // au complet, comparisonCodes.ts).
-export type TeamStatCode = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "oreb" | "ft" | "fg" | "fg3" | "fga";
+// "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle" --
+// demandee explicitement par l'utilisateur en testant "Les Warriors font
+// au moins 5 pertes de balle") -- meme patron mecanique que oreb ci-dessus.
+export type TeamStatCode =
+  | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "oreb" | "ft" | "fg" | "fg3" | "fga" | "tov";
 
 export const TEAM_STAT_CODES: TeamStatCode[] = [
-  "pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "ft", "fg", "fg3", "fga",
+  "pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "ft", "fg", "fg3", "fga", "tov",
 ];
 
 // Meme role que PERCENTAGE_STATS (statCodes.ts, cote joueur) -- threshold
@@ -49,4 +53,5 @@ export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
   fg: "pourcentage au tir de l'équipe (FG%)",
   fg3: "pourcentage à 3-points de l'équipe (3P%)",
   fga: "tirs tentés de l'équipe",
+  tov: "pertes de balle de l'équipe",
 };

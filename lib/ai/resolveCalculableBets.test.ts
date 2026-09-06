@@ -31,7 +31,7 @@ function box(overrides: Partial<BoxScoreRow> = {}): BoxScoreRow {
     minutes: "30:00",
     pts: 0, reb: 0, ast: 0, fg3m: 0, stl: 0, blk: 0,
     ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0,
-    plus_minus: 0, technical_fouls: 0,
+    plus_minus: 0, technical_fouls: 0, tov: 0,
     ...overrides,
   };
 }

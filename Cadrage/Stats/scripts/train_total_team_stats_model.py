@@ -35,6 +35,10 @@ STATS_TO_TRAIN = [
     ("stl", "Interceptions", (10, 13, 16, 19, 22)),
     ("blk", "Contres", (6, 9, 12, 15, 18)),
     ("oreb", "Rebonds offensifs", (16, 19, 22, 25, 28)),
+    # "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") --
+    # ajoutee par symetrie avec les formes joueur/equipe (aucune preuve
+    # d'usage reel pour cette forme combinee, cout marginal faible).
+    ("tov", "Pertes de balle", (20, 24, 28, 32, 36)),
 ]
 
 

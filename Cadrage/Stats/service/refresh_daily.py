@@ -64,14 +64,14 @@ SEASON_INDEX_TIMEOUT = 15
 SEASON_INDEX_RETRIES = 1
 
 # Colonnes réellement présentes dans stats_box_scores (migration #31, étendue
-# par 20260823090000 pour team_id/off_rating/def_rating/net_rating/pace, puis
-# par 20260823210000 pour oreb) -- PAS BOX_SCORE_TABLE_COLUMNS de
-# load_to_sqlite.py, plus large (dreb/tov/pf/fg_pct/fg3_pct/ft_pct inclus,
-# absents ici -- table Supabase volontairement allégée aux seules colonnes
-# lues par build_context()/build_team_context()).
+# par 20260823090000 pour team_id/off_rating/def_rating/net_rating/pace, par
+# 20260823210000 pour oreb, puis par la migration tov du 06/09/2026) -- PAS
+# BOX_SCORE_TABLE_COLUMNS de load_to_sqlite.py, plus large (dreb/pf/fg_pct/
+# fg3_pct/ft_pct encore absents ici -- table Supabase volontairement
+# allégée aux seules colonnes lues par build_context()/build_team_context()).
 STATS_BOX_SCORE_TRAD_COLUMNS = [
     "game_id", "player_id", "team_id", "minutes", "pts", "reb", "ast", "fg3m", "stl", "blk",
-    "plus_minus", "ftm", "fta", "fgm", "fga", "fg3a", "oreb",
+    "plus_minus", "ftm", "fta", "fgm", "fga", "fg3a", "oreb", "tov",
     # "position" (24/08/2026, chantier "5 majeur/banc") -- déjà renvoyée
     # telle quelle par BoxScoreTraditionalV3 sous ce nom exact ("F"/"C"/"G"
     # = titulaire, "" = remplaçant), pas de renommage nécessaire.

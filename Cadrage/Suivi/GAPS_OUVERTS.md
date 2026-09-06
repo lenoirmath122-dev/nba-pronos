@@ -20,8 +20,12 @@
   `vs_adversaire_{stat}_moy` généralisée (8 stats) a tourné en local dans
   la nuit du 02-03/09/2026 (voir `JOURNAL_SESSIONS.md`, entrée du
   06/09/2026 pour le détail et les chiffres) mais n'a jamais été
-  redéployé — le service en prod sert encore les anciens `.joblib`.
-  Action utilisateur (`gcloud`, voir `Cadrage/Stats/service/
+  redéployé — le service en prod sert encore les anciens `.joblib`. Depuis
+  le même jour, 3 nouveaux modèles (`tov`/`team_tov`/`total_tov`, chantier
+  "pertes de balle") s'y ajoutent aussi, entraînés en local et vérifiés
+  (migration + backfill déjà faits contre la vraie base), mais pas encore
+  servis non plus tant que ce redéploiement n'a pas eu lieu. Action
+  utilisateur (`gcloud`, voir `Cadrage/Stats/service/
   DEPLOIEMENT_CLOUD_RUN.md` § "Redéployer après un changement de code").
 - **Calibration Poisson/normale jamais revérifiée à l'échelle PÉRIODE** —
   `train_player_period_model.py` réutilise `POISSON_STATS` tel quel depuis
@@ -40,10 +44,6 @@
 
 ## Chantier "paris personnalisés IA" — types encore non calculables
 
-- **Pertes de balle (tov)** : donnée brute déjà disponible localement, mais
-  absente de `STAT_CODES`/`TEAM_STAT_CODES`/`MATCH_STAT_CODES` — aucun pari
-  "X pertes de balle" n'est structurable. Décidé avec l'utilisateur : à
-  reprendre plus tard, même patron que l'extension `oreb`.
 - **Paris composés** mélangeant un seuil de stat et un résultat de période
   dans la même condition (ex. "Knicks +32% à 3pts ET gagne les 4 quarts") —
   `structurePeriodBet.ts` les rejette explicitement, non structurable en un

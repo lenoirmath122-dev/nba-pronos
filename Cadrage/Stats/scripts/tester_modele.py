@@ -1,5 +1,5 @@
 """
-Testeur générique : applique N'IMPORTE LEQUEL des 12 modèles sauvegardés
+Testeur générique : applique N'IMPORTE LEQUEL des modèles sauvegardés
 (models/*.joblib) à un joueur réel, en ligne de commande, sans rien éditer
 dans le code. Généralise demo_pari_reel.py (qui restait câblé en dur sur
 Tatum/points) — même principe (contexte reconstruit à partir des derniers
@@ -15,7 +15,8 @@ Usage:
 
 Codes --stat disponibles :
     pts, reb, ast, fg3m, stl, blk, min   -> régression + distribution (normale ou Poisson)
-    fga, fg3a, oreb                      -> tirs tentés / tirs à 3-points tentés / rebonds offensifs, régression
+    fga, fg3a, oreb, tov                 -> tirs tentés / tirs à 3-points tentés / rebonds offensifs /
+                                             pertes de balle, régression
     dd, td                               -> double-double / triple-double (probabilité directe, pas de --seuil)
     ft, fg, fg3                          -> % de tir (lancers francs / tirs au panier / 3-points),
                                              --seuil en fraction (0.80 = 80%)
@@ -23,7 +24,7 @@ Codes --stat disponibles :
 --adversaire (optionnel, code équipe/ville/nom) : affecte les modèles
 utilisant l'historique face à cet adversaire précis -- pts, et depuis le
 02/09/2026 aussi reb/ast/fg3m/stl/blk/fga/fg3a/oreb (généralisation
-vs_adversaire_{stat}_moy, GAPS_OUVERTS.md).
+vs_adversaire_{stat}_moy, GAPS_OUVERTS.md), et depuis le 06/09/2026 tov.
 --domicile/--exterieur, --repos : contexte du PROCHAIN match, illustratif
 si tu ne les précises pas (mêmes valeurs par défaut que demo_pari_reel.py).
 """
@@ -65,6 +66,9 @@ REGRESSION_STATS = {
     # ajoutee le 24/08/2026 (chantier "petits gains groupes",
     # GAPS_OUVERTS.md) -- plus_minus.joblib entraine (train_stat_model.py).
     "plus_minus": ("plus_minus", "plus_minus", "+/-"),
+    # ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- tov.joblib
+    # entraine (train_stat_model.py), meme patron mecanique que oreb.
+    "tov": ("tov", "tov", "Pertes de balle"),
 }
 CLASSIFIER_STATS = {
     "dd": ("double_double", "Double-double"),
@@ -157,7 +161,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     recent = pd.read_sql(
         """
         SELECT m.game_date, b.minutes, b.pts, b.reb, b.ast, b.fg3m, b.stl, b.blk,
-               b.plus_minus, b.ftm, b.fta, b.fgm, b.fga, b.fg3a, b.oreb,
+               b.plus_minus, b.ftm, b.fta, b.fgm, b.fga, b.fg3a, b.oreb, b.tov,
                a.ts_pct, a.usg_pct,
                f.games_played_season_avant
         FROM box_scores b
@@ -187,7 +191,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
+        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
     ):
         context[f"{stat}_moy5"] = last5[col].mean()
         context[f"{stat}_moy10"] = recent[col].mean()
@@ -201,7 +205,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     # chantier "nouvelles features") -- pts + les 8 stats de
     # train_stat_model.py::VS_ADVERSAIRE_STATS, meme liste que
     # service/supabase_context.py::build_context() (prod).
-    VS_ADVERSAIRE_STATS = ("pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb")
+    VS_ADVERSAIRE_STATS = ("pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb", "tov")
     if opponent_id is not None:
         vs_adv = pd.read_sql(
             f"""
@@ -223,7 +227,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
+        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
     ):
         ecarttypes[stat] = recent[col].std()
 

@@ -59,13 +59,19 @@ MODELS_DIR = SCRIPT_DIR.parent / "models"
 # stl/blk (moyenne ~1, mediane 1, 25e percentile 0) -- Poisson essaye
 # directement plutot que normale, a reverifier empiriquement comme les 3
 # autres (calibration_check ci-dessous).
-POISSON_STATS = {"fg3m", "stl", "blk", "oreb"}
+# "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- meme
+# profil low-count (moyenne ~1.3, mediane 1, 25e percentile 0) que oreb/
+# fg3m/stl/blk, Poisson essaye directement -- a reverifier empiriquement
+# comme les autres (calibration_check ci-dessous).
+POISSON_STATS = {"fg3m", "stl", "blk", "oreb", "tov"}
 
 # Stats bénéficiant de `vs_adversaire_{stat}_moy` (généralisé le 02/09/2026,
 # GAPS_OUVERTS.md) -- REGRESSION_STATS SAUF "min" (pas de lien avec
 # l'adversaire, cf. docstring du module) et "pts" (déjà géré à part par
-# train_points_model.py, jamais passé par feature_cols_for()).
-VS_ADVERSAIRE_STATS = {"reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb"}
+# train_points_model.py, jamais passé par feature_cols_for()). "tov" ajoutee
+# le 06/09/2026, meme raisonnement (les pertes de balle dependent bien de
+# l'agressivite defensive de l'adversaire en face).
+VS_ADVERSAIRE_STATS = {"reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb", "tov"}
 
 SHARED_COLS = [
     "min_moy5", "min_moy10",
@@ -179,6 +185,8 @@ def main():
     run("fga", "Tirs tentés", thresholds=(8, 12, 15, 18, 21))
     run("fg3a", "Tirs à 3-points tentés", thresholds=(3, 5, 7, 9, 11))
     run("oreb", "Rebonds offensifs", thresholds=(1, 2, 3, 4, 5))
+    # ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle")
+    run("tov", "Pertes de balle", thresholds=(1, 2, 3, 4, 5))
     # ajoutee le 24/08/2026 (chantier "petits gains groupes", GAPS_OUVERTS.md,
     # categorie "+/- comme stat pariable") -- plus_minus_moy5/10 deja
     # calculees (feature partagee par d'autres modeles), seul l'ecart-type

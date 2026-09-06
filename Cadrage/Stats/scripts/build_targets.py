@@ -66,6 +66,7 @@ CREATE TABLE labels_joueur (
     ftm REAL, fta REAL,
     fgm REAL, fga REAL, fg3a REAL,
     oreb REAL,
+    tov REAL,
     plus_minus REAL,
     double_double INTEGER,
     triple_double INTEGER,
@@ -238,6 +239,7 @@ MATCH_FEATURE_COLS = [
     "stl_pour_moy5", "stl_pour_moy10", "stl_contre_moy5", "stl_contre_moy10",
     "blk_pour_moy5", "blk_pour_moy10", "blk_contre_moy5", "blk_contre_moy10",
     "oreb_pour_moy5", "oreb_pour_moy10", "oreb_contre_moy5", "oreb_contre_moy10",
+    "tov_pour_moy5", "tov_pour_moy10", "tov_contre_moy5", "tov_contre_moy10",
     "victoires_pct_moy5", "victoires_pct_moy10",
     "off_rating_moy5", "off_rating_moy10", "def_rating_moy5", "def_rating_moy10",
     "net_rating_moy5", "net_rating_moy10", "pace_moy5", "pace_moy10",
@@ -267,7 +269,9 @@ MATCH_FEATURE_COLS = [
 # le NOMBRE de tirs tentes) -- home_{stat}/away_{stat}/total_{stat} generes
 # aussi dans entrainement_matchs via la boucle commune, redondants mais pas
 # geants (meme raisonnement que "pts" ci-dessus, pas de cas particulier).
-TEAM_TARGET_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga", "fgm", "fta", "ftm", "fg3a"]
+# "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- meme
+# patron mecanique que oreb.
+TEAM_TARGET_STATS = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "tov", "fga", "fgm", "fta", "ftm", "fg3a"]
 
 
 # Chantier "pari periode" equipe (GAPS_OUVERTS.md, 24/08/2026) -- 6 periodes
@@ -329,7 +333,7 @@ def _quarter_scores_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
 
 def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
     box = pd.read_sql(
-        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a, oreb, "
+        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a, oreb, tov, "
         "plus_minus "
         "FROM box_scores",
         conn, dtype={"game_id": str},

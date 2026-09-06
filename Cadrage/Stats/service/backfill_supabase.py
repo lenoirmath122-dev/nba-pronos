@@ -102,7 +102,7 @@ def main():
             b.game_id, b.player_id, b.team_id,
             f.opponent_team_id, m.game_date, m.season,
             b.minutes, b.pts, b.reb, b.ast, b.fg3m, b.stl, b.blk, b.plus_minus,
-            b.ftm, b.fta, b.fgm, b.fga, b.fg3a, b.oreb,
+            b.ftm, b.fta, b.fgm, b.fga, b.fg3a, b.oreb, b.tov,
             a.ts_pct, a.usg_pct, a.off_rating, a.def_rating, a.net_rating, a.pace,
             f.games_played_season_avant
         FROM box_scores b

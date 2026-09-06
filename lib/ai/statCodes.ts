@@ -1,8 +1,10 @@
-// Les 12 codes de stat que le micro-service de proba (Cadrage/Stats/service,
+// Les codes de stat que le micro-service de proba (Cadrage/Stats/service,
 // projet-data-nba.md) sait calculer — DOIVENT rester synchronisés à la main
 // avec STATS_DISPONIBLES côté service (Python, pas de génération partagée
 // entre les 2 dépôts/langages). Utilisé à la fois pour guider l'extraction
 // IA (structureBet.ts) et pour l'appel au service (statsService.ts).
+// (Le compte exact a fini par devenir périmé à chaque ajout — ne plus le
+// répéter en dur ici, STAT_CODES.length fait foi.)
 
 // "fga"/"fg3a"/"oreb" ajoutees le 23/08/2026 (extension "faciles",
 // types_de_paris_playoffs_2026.md, categories "Tentatives joueur" et
@@ -16,13 +18,16 @@
 // GAPS_OUVERTS.md, chantier "evenements de match") -- probabilite DIRECTE
 // (au moins 1 faute technique sur le match), meme principe que dd/td, cf.
 // CLASSIFIER_STATS cote Python (tech.joblib, train_game_event_model.py).
+// "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- meme
+// patron mecanique que l'extension oreb du 23/08/2026, stat a seuil comptee
+// (Poisson cote train_stat_model.py, meme profil que fg3m/stl/blk/oreb).
 export type StatCode =
   | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "min" | "dd" | "td" | "ft" | "fg" | "fg3"
-  | "fga" | "fg3a" | "oreb" | "plus_minus" | "tech";
+  | "fga" | "fg3a" | "oreb" | "plus_minus" | "tech" | "tov";
 
 export const STAT_CODES: StatCode[] = [
   "pts", "reb", "ast", "fg3m", "stl", "blk", "min", "dd", "td", "ft", "fg", "fg3", "fga", "fg3a", "oreb",
-  "plus_minus", "tech",
+  "plus_minus", "tech", "tov",
 ];
 
 // Stats sans seuil (probabilité directe, pas de "> X") — dd/td/tech dans
@@ -51,4 +56,5 @@ export const STAT_LABELS_FR: Record<StatCode, string> = {
   oreb: "rebonds offensifs",
   plus_minus: "+/-",
   tech: "faute technique (au moins une)",
+  tov: "pertes de balle",
 };
