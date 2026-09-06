@@ -12615,3 +12615,33 @@ tourne réellement (les workflows `schedule:` ne se déclenchent que
 depuis la branche par défaut). Commits de cette session faits sur
 `docs/gap-perfectionnement-modeles`, pas encore mergés dans `main`.
 ```
+
+## Rafraîchissement quotidien Supabase en échec depuis le 29/08 -- clé service_role legacy jamais tournée dans un secret CI (06/09/2026)
+
+```text
+**Bug réel signalé par l'utilisateur** : le workflow `refresh-stats-supabase.yml`
+échouait tous les jours depuis le 29/08/2026 (confirmé via `gh run list` --
+dernier succès le 28/08, échec systématique ensuite). Logs (`gh run view
+--log-failed`) : `postgrest.exceptions.APIError: "Legacy API keys are
+disabled"` -- la clé `service_role` legacy a été désactivée côté dashboard
+Supabase le 29/08/2026 à 13h50, exactement la date du premier échec.
+Rapprochement avec la rotation de clé faite pendant l'audit de sécurité
+(29-30/08, migration vers `sb_publishable_`/`sb_secret_`) : le secret
+GitHub Actions `SUPABASE_SERVICE_ROLE_KEY`, seul consommateur CI à parler
+directement à Supabase (tous les autres workflows passent par
+`SYNC_SECRET` + une route `/api/*` applicative), n'avait jamais été mis à
+jour avec la nouvelle clé secrète -- angle mort de la rotation, seul
+`refresh_daily.py` en dépendait directement.
+
+**Correctif** : aucun code à changer, uniquement une valeur de secret --
+l'utilisateur a mis à jour `SUPABASE_SERVICE_ROLE_KEY` (GitHub → Settings
+→ Secrets and variables → Actions) avec la nouvelle clé secrète copiée
+depuis le dashboard Supabase. Vérifié en relançant le workflow
+manuellement (`gh workflow run` + `gh run view`) : passe au vert, la
+requête `known_game_ids()` qui plantait fonctionne à nouveau ("Matchs
+déjà connus en base : 0", sortie propre). Des lignes `WARNING`/`ERROR`
+"Read timed out" sur `stats.nba.com` restent visibles dans les logs mais
+sont sans rapport -- la saison 2026-27 n'a pas encore commencé côté NBA,
+il n'y a simplement rien à récupérer pour l'instant, le script le gère
+sans faire échouer le job. Point retiré de `GAPS_OUVERTS.md`.
+```
