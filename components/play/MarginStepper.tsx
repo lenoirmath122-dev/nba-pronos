@@ -58,6 +58,9 @@ export function MarginStepper({ value, onChange, winnerTeamId, homeTeamId, awayT
           max={50}
           className={styles.input}
           defaultValue={value ?? ""}
+          // le bouton se transforme en champ suite à un clic explicite ;
+          // sans autoFocus l'utilisateur devrait re-cliquer pour taper.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
           autoFocus
           onBlur={(event) => commit(event.target.value)}
           onKeyDown={(event) => {

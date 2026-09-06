@@ -104,7 +104,8 @@ export function UnsavedGuardProvider({ children }: { children: React.ReactNode }
               Si tu quittes maintenant, ce que tu viens de saisir ne sera pas gardé.
             </p>
             <div className={styles.actions}>
-              {/* autoFocus intentionnel : "Rester" est le choix par défaut (§12). */}
+              {/* eslint-disable-next-line jsx-a11y/no-autofocus -- intentionnel :
+                  "Rester" est le choix par défaut (§12), pas de FocusTrap ici pour le faire. */}
               <button type="button" className={styles.stay} onClick={stay} autoFocus>
                 Rester
               </button>
