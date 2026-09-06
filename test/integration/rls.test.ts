@@ -75,6 +75,7 @@ async function createSignedInTestUser(label: string) {
 
 let userA: { id: string; client: SupabaseClient };
 let userB: { id: string; client: SupabaseClient };
+let userAdmin: { id: string; client: SupabaseClient };
 let competitionId: string;
 let seriesId: string;
 let matchId: string;
@@ -84,6 +85,12 @@ beforeAll(async () => {
 
   userA = await createSignedInTestUser("a");
   userB = await createSignedInTestUser("b");
+  userAdmin = await createSignedInTestUser("admin");
+  const { error: promoteError } = await serviceClient
+    .from("users")
+    .update({ role: "ADMIN" })
+    .eq("id", userAdmin.id);
+  if (promoteError) throw new Error(`Promotion admin échouée: ${promoteError.message}`);
 
   const inOneHour = new Date(Date.now() + 60 * 60 * 1000).toISOString();
   const inTwoDays = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
@@ -144,6 +151,7 @@ afterAll(async () => {
   await serviceClient.from("competitions").delete().eq("id", competitionId);
   await serviceClient.auth.admin.deleteUser(userA.id);
   await serviceClient.auth.admin.deleteUser(userB.id);
+  await serviceClient.auth.admin.deleteUser(userAdmin.id);
 });
 
 describe("RLS -- propriété des paris (T-SEC-02)", () => {
@@ -280,5 +288,46 @@ describe("RLS -- visibilité du bracket (analogue T-SEC-02/03 pour la Cup)", () 
 
     const { data: seenByB } = await userB.client.from("brackets").select("id").eq("id", bracketId).maybeSingle();
     expect(seenByB?.id).toBe(bracketId);
+  });
+});
+
+describe("RLS -- visibilité admin des ligues (tableau de bord admin)", () => {
+  let leagueId: string;
+
+  beforeAll(async () => {
+    const { data, error } = await userA.client.rpc("create_league", {
+      p_name: `RLS-TEST-LEAGUE-${RUN_ID}`,
+    });
+    if (error || !data?.[0]) throw new Error(`Création de la ligue de test échouée: ${error?.message}`);
+    leagueId = data[0].id;
+  });
+
+  afterAll(async () => {
+    await serviceClient.from("league_memberships").delete().eq("league_id", leagueId);
+    await serviceClient.from("league_secrets").delete().eq("league_id", leagueId);
+    await serviceClient.from("leagues").delete().eq("id", leagueId);
+  });
+
+  it("un joueur non-membre (B) ne voit ni la ligue de A ni son appartenance (IDOR)", async () => {
+    const { data: seenLeague } = await userB.client.from("leagues").select("id").eq("id", leagueId).maybeSingle();
+    expect(seenLeague).toBeNull();
+
+    const { data: seenMemberships } = await userB.client
+      .from("league_memberships")
+      .select("user_id")
+      .eq("league_id", leagueId);
+    expect(seenMemberships).toHaveLength(0);
+  });
+
+  it("un admin voit la ligue de A et son appartenance, sans en être membre", async () => {
+    const { data: seenLeague } = await userAdmin.client.from("leagues").select("id, name").eq("id", leagueId).maybeSingle();
+    expect(seenLeague?.id).toBe(leagueId);
+
+    const { data: seenMemberships } = await userAdmin.client
+      .from("league_memberships")
+      .select("user_id")
+      .eq("league_id", leagueId);
+    expect(seenMemberships).toHaveLength(1);
+    expect(seenMemberships?.[0]?.user_id).toBe(userA.id);
   });
 });
