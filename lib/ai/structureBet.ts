@@ -199,7 +199,7 @@ function buildStaticSystemText(): string {
     "pour un calcul de probabilité automatique. Le service de calcul sait gérer 5 types de paris, TOUJOURS pour " +
     "UN match précis (jamais une somme sur plusieurs matchs d'une série -- si le pari cumule explicitement sur " +
     "\"la série\"/\"les matchs\", marque calculable=false, ce cas n'est pas encore géré) :\n\n" +
-    "1. bet_subject=PLAYER -- UN seul joueur + UNE des 12 stats suivantes :\n" +
+    `1. bet_subject=PLAYER -- UN seul joueur + UNE des ${STAT_CODES.length} stats suivantes :\n` +
     statList +
     "\n\n2. bet_subject=TEAM_STAT -- UNE équipe précise (ex. \"Boston aura 45+ rebonds\") + UNE des stats " +
     "suivantes :\n" +

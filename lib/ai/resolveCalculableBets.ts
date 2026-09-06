@@ -49,7 +49,7 @@ export function minutesToFloat(raw: string | null): number {
  *  n'inclut PAS dd/td (calculées, voir isDoubleOrTripleDouble) ni les
  *  stats en pourcentage (voir PCT_MAKES_ATTEMPTS_COLUMNS), qui ont chacune
  *  leur propre logique ci-dessous. */
-const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus">> = {
+const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus" | "tov">> = {
   pts: "pts",
   reb: "reb",
   ast: "ast",
@@ -72,6 +72,10 @@ const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg
   // soit le vrai +/- du joueur. Corrigé ici + dans tous les SELECT qui
   // alimentent ces chemins (voir plus bas).
   plus_minus: "plus_minus",
+  // "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- meme
+  // patron mecanique que oreb, meme piege deja documente ci-dessus pour
+  // plus_minus (ne JAMAIS oublier cette entree en ajoutant une stat comptee).
+  tov: "tov",
 };
 
 const PCT_MAKES_ATTEMPTS_COLUMNS: Partial<Record<StatCode, ["ftm" | "fgm" | "fg3m", "fta" | "fga" | "fg3a"]>> = {
@@ -96,6 +100,7 @@ export type BoxScoreRow = {
   oreb: number | null;
   plus_minus: number | null;
   technical_fouls: number | null;
+  tov: number | null;
 };
 
 /** Même définition EXACTE que build_targets.py (Cadrage/Stats/scripts,
@@ -288,7 +293,7 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
 
     const { data: box } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
       .eq("game_id", gameId)
       .eq("player_id", bet.structured_player_id)
       .maybeSingle<BoxScoreRow>();
@@ -422,7 +427,7 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
       }
       const { data: box } = await supabase
         .from("stats_box_scores")
-        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
+        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
         .eq("game_id", gameId)
         .eq("player_id", bet.structured_player_id)
         .maybeSingle<BoxScoreRow>();
@@ -657,6 +662,7 @@ type EligibleTeamStatBetRow = {
 const TEAM_STAT_RESOLUTION_LABELS_FR: Record<TeamStatCode, string> = {
   pts: "points", reb: "rebonds", ast: "passes décisives", fg3m: "3-points réussis", stl: "interceptions", blk: "contres",
   oreb: "rebonds offensifs", ft: "% aux lancers francs", fg: "% au tir", fg3: "% à 3-points", fga: "tirs tentés",
+  tov: "pertes de balle",
 };
 
 // Chantier "% tir équipe" (24/08/2026, GAPS_OUVERTS.md) -- ft/fg/fg3 n'ont
@@ -884,7 +890,7 @@ async function resolveDuelOperandActual(
   // resolveCalculableTeamStatBets() ci-dessus, qui caste `stat` en
   // TeamStatCode pour la meme raison).
   const column = (operand.stat === "min" ? "minutes" : operand.stat) as
-    | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "minutes";
+    | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "tov" | "minutes";
 
   if (operand.kind === "PLAYER") {
     const playerIds = operand.player_ids ?? [];
@@ -1040,7 +1046,7 @@ type EligibleComboBetRow = {
 // service (supabase_context.py::_condition_proba, REGRESSION_STATS) : pas
 // de dd/td/pourcentage, qui n'ont pas de valeur numerique directe a
 // sommer.
-type ComboSumColumn = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus";
+type ComboSumColumn = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus" | "tov";
 
 /** Valeur réelle (true/false/null) d'UNE condition combo pour le match
  *  résolu (24/08/2026, GAPS_OUVERTS.md, chantier combo). 2 chemins, MÊME
@@ -1064,7 +1070,7 @@ async function resolveComboConditionSatisfied(
     if (!playerId) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
       .eq("game_id", gameId)
       .eq("player_id", playerId);
     if (!rows || rows.length === 0) return null;
@@ -1077,7 +1083,7 @@ async function resolveComboConditionSatisfied(
     if (playerIds.length === 0) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus, tov")
       .eq("game_id", gameId)
       .in("player_id", playerIds);
     if (!rows || rows.length === 0) return null;
@@ -1091,7 +1097,7 @@ async function resolveComboConditionSatisfied(
     if (nbaTeamId === null) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus")
+      .select("pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus, tov")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
     if (!rows || rows.length === 0) return null;
@@ -1486,6 +1492,11 @@ export async function resolveCalculablePeriodBets(): Promise<ResolveBetsSummary>
         // "tech" n'a de toute façon pas de sens à l'échelle d'une seule
         // période (probabilité directe "au moins 1 sur le match entier").
         technical_fouls: null,
+        // Même limite pour tov (06/09/2026) -- stats_box_scores_by_period
+        // n'a pas non plus de colonne tov, volontairement laissé hors
+        // scope de ce chantier (pas de preuve d'usage réel à l'échelle
+        // période, demanderait une 2e migration).
+        tov: null,
       };
       const won = computeOutcome(stat, bet.structured_threshold, bet.structured_comparison, box);
       if (won === null) {
@@ -1597,6 +1608,7 @@ export function sumBoxRows(rows: RosterSplitBoxRow[]): BoxScoreRow {
     fgm: sum("fgm"), fga: sum("fga"), fg3a: sum("fg3a"), oreb: sum("oreb"),
     plus_minus: sum("plus_minus"),
     technical_fouls: sum("technical_fouls"),
+    tov: sum("tov"),
   };
 }
 
@@ -1666,7 +1678,7 @@ export async function resolveCalculableRosterSplitBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
+      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
     if (!rows || rows.length === 0) {
@@ -1768,7 +1780,7 @@ type EligibleRosterCountBetRow = {
  *  minute") dépend justement de ce comptage pour être résolu du tout. */
 const ZERO_BOX_ROW: BoxScoreRow = {
   minutes: null, pts: 0, reb: 0, ast: 0, fg3m: 0, stl: 0, blk: 0,
-  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0, technical_fouls: 0,
+  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0, technical_fouls: 0, tov: 0,
 };
 
 /** Résolution des paris ROSTER_COUNT -- lit stats_box_scores PAR
@@ -1846,7 +1858,7 @@ export async function resolveCalculableRosterCountBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
       .eq("game_id", gameId)
       .in("player_id", rc.player_ids);
     const boxByPlayer = new Map(
@@ -1987,7 +1999,7 @@ export async function resolveCalculableSuperlativeBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov")
       .eq("game_id", gameId);
     if (!rows || rows.length === 0) {
       summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });

@@ -12691,3 +12691,77 @@ gitignorés) supprimés une fois leurs chiffres utiles capturés ci-dessus ;
 `*.log` ajouté à `.gitignore` sous ce dossier pour éviter qu'ils
 réapparaissent comme fichiers non suivis à chaque nouveau run.
 ```
+
+## Pertes de balle (tov) -- nouvelle stat pariable (06/09/2026)
+
+```text
+1er des 3 petits gaps "paris personnalisés IA" repris ce jour (suite de la
+reprise du chantier "modèles de proba" plus haut). Même patron mécanique
+EXACT que l'extension `oreb` du 23/08/2026 (commit `988af8c`) -- recherche
+complète faite avant de coder (agent Explore) pour mapper 1:1 chaque
+endroit touché par `oreb` sur `tov`, augmenté de tout ce qui a été ajouté
+au pipeline depuis (vs_adversaire, combo bets, roster split/count,
+superlative...). Périmètre décidé avec l'utilisateur : joueur + équipe
+précise + total combiné (comme `oreb`) -- joueur (1 occurrence dans le
+combo Harden des 429 paris réels) et équipe (trouvé par l'utilisateur en
+testant "Les Warriors font au moins 5 pertes de balle") ont une preuve
+d'usage réel, le total ajouté par symétrie (coût marginal faible, pas de
+preuve d'usage). Le niveau PÉRIODE reste explicitement hors scope (aucune
+preuve d'usage, demanderait une 2e migration sur
+`stats_box_scores_by_period`) -- traité comme `plus_minus`/`technical_fouls`
+dans le resolver période (`tov: null`, jamais un faux 0 silencieux).
+
+**Code** : ~20 points mécaniques dans `lib/ai/resolveCalculableBets.ts`
+(SELECT/unions/labels), 3 fichiers de codes de stat (`statCodes.ts`/
+`teamStatCodes.ts`/`matchStatCodes.ts`), 1 fixture de test corrigée
+(`resolveCalculableBets.test.ts`, seule des 9 fichiers de test à typer
+son mock en `BoxScoreRow` exhaustif -- les 8 autres utilisent un `Record`
+non exhaustif, aucun changement requis). Corrigé en passant : le
+commentaire/prompt IA hardcodait encore "12 stats" (stale depuis l'ajout
+de `plus_minus`/`tech`) -- remplacé par `STAT_CODES.length`.
+
+Côté Python (10 fichiers, `Cadrage/Stats/scripts/`+`service/`) : mêmes
+points que `oreb` dans `build_features.py`/`build_targets.py`
+(CREATE TABLE, SELECT, rolling means, écarts-types, `VS_ADVERSAIRE_STATS`),
+`train_stat_model.py` (Poisson, même profil low-count que fg3m/stl/blk/
+oreb -- calibration empirique confirmée : écart max -1.2%, aucune
+correction nécessaire), `train_team_stats_model.py`/
+`train_total_team_stats_model.py`, `tester_modele.py`/
+`supabase_context.py` (contexte CLI local + service prod, dupliqués comme
+toujours), `app.py` (2 listes de stats équipe), `refresh_daily.py`/
+`backfill_supabase.py` (colonnes synchronisées).
+
+**Migration** `20260906100000_stats_box_scores_tov.sql` (`alter table
+stats_box_scores add column tov integer`) -- exécutée par Claude
+directement (clé service_role déjà en local), pas par l'utilisateur.
+Bundlée avec `20260906090000_admin_leagues_visibility.sql` (PR #41,
+mergée mais jamais poussée en prod jusqu'ici -- `supabase db push` ne
+permet pas de pousser une migration à la fois) : bénigne (2 policies RLS
+additives gardées par `is_admin()`), signalée à l'utilisateur avant de
+pousser plutôt que silencieusement embarquée.
+
+**Vérification en 2 temps, jamais sur la seule confiance du mécanisme**
+(1) contre Supabase LOCAL d'abord (Docker relancé, migration +
+`backfill_supabase.py` avec `load_env` monkeypatché sur les identifiants
+locaux, service Python relancé en local avec les 3 nouveaux `.joblib`) :
+`/predict` (Jokić, 3.03 pertes de balle prédites, P(>3)=35.9%),
+`/predict-team-stat` (Nuggets vs Lakers, 11.8 prédites, P(>13)=36.3%),
+`/predict-total-team-stat` (25.2 prédites, P(>28)=28.4%) -- tous plausibles
+et cohérents avec les moyennes réelles observées à l'entraînement (13.3
+équipe, 26.7 combiné). (2) Une fois confirmé en local, MÊME migration +
+backfill rejoués contre la vraie base (140016 lignes, `tov` non-null
+partout après coup, vérifié par lecture directe) -- pas de nouveau test
+de service contre la prod (déjà prouvé identique en local).
+
+tsc/eslint/vitest (240/240)/next build propres à chaque étape TypeScript.
+
+**Reste à faire, action utilisateur** : redéploiement Cloud Run (les 3
+nouveaux `.joblib` sont prêts en local, jamais poussés) -- à regrouper
+avec le redéploiement déjà en attente du chantier vs_adversaire (même
+point dans `GAPS_OUVERTS.md`, mis à jour). Pas de vrai appel Claude
+Sonnet 5 de bout en bout cette fois (contrairement à `oreb` en 08/2026) --
+jugé disproportionné vu que l'ajout au prompt/schéma est purement
+générique (dérivé de `STAT_CODES` comme les 17 autres stats déjà là,
+aucun cas particulier ajouté) et que la couche TypeScript est déjà
+couverte par les tests unitaires + tsc exhaustif sur `BoxScoreRow`.
+```

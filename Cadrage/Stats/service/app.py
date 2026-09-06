@@ -566,11 +566,13 @@ def predict_team_rebounds(req: PredictTeamReboundsRequest):
 # sur un stat valide cote "equipe precise" mais absent cote "combine".
 # "oreb" (23/08/2026, extension "faciles") : les 2 formes, contrairement a
 # "pts" -- total_oreb.joblib ET team_oreb.joblib existent tous les 2.
-TOTAL_TEAM_STAT_CODES = ["reb", "ast", "fg3m", "stl", "blk", "oreb"]
+# "tov" (06/09/2026, GAPS_OUVERTS.md, "pertes de balle") : les 2 formes
+# aussi -- total_tov.joblib ET team_tov.joblib existent tous les 2.
+TOTAL_TEAM_STAT_CODES = ["reb", "ast", "fg3m", "stl", "blk", "oreb", "tov"]
 # "fga" ajoutee le 24/08/2026 (chantier "petits gains groupes",
 # GAPS_OUVERTS.md) -- team_fga.joblib entraine, meme famille regression que
 # pts/reb/ast/etc (PAS TOTAL_TEAM_STAT_CODES : pas de modele total_fga).
-TEAM_STAT_CODES = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga"]
+TEAM_STAT_CODES = ["pts", "reb", "ast", "fg3m", "stl", "blk", "oreb", "fga", "tov"]
 
 
 class PredictTotalTeamStatRequest(BaseModel):

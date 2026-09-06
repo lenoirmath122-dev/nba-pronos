@@ -57,7 +57,7 @@ PAGE_SIZE = 1000  # limite par defaut de PostgREST (meme constante que
 # ci-dessus, ce script n'est pas copie dans l'image Cloud Run (cf. Dockerfile,
 # bug reel du 02/09/2026 avec tuning.py : un import manquant de l'image fait
 # planter le service au demarrage).
-VS_ADVERSAIRE_STATS = ("pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb")
+VS_ADVERSAIRE_STATS = ("pts", "reb", "ast", "fg3m", "stl", "blk", "fga", "fg3a", "oreb", "tov")
 
 
 def fetch_all_rows(query_builder) -> list:
@@ -126,7 +126,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     rows = (
         client.table("stats_box_scores")
         .select("game_date, minutes, pts, reb, ast, fg3m, stl, blk, plus_minus, "
-                 "ftm, fta, fgm, fga, fg3a, oreb, ts_pct, usg_pct, games_played_season_avant")
+                 "ftm, fta, fgm, fga, fg3a, oreb, tov, ts_pct, usg_pct, games_played_season_avant")
         .eq("player_id", player_id)
         .order("game_date", desc=True)
         .limit(10)
@@ -157,7 +157,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
+        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
         ("plus_minus", "plus_minus"),
     ):
         context[f"{stat}_moy5"] = last5[col].mean()
@@ -197,7 +197,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"),
+        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
     ):
         ecarttypes[stat] = recent[col].std()
 
@@ -639,7 +639,7 @@ def compute_total_points_proba(*args, **kwargs) -> dict:
 
 TEAM_STAT_LABELS_FR = {
     "pts": "Points", "reb": "Rebonds", "ast": "Passes décisives", "fg3m": "3-points réussis",
-    "stl": "Interceptions", "blk": "Contres", "oreb": "Rebonds offensifs",
+    "stl": "Interceptions", "blk": "Contres", "oreb": "Rebonds offensifs", "tov": "Pertes de balle",
 }
 # Accord genre/nombre different de TEAM_STAT_LABELS_FR (ast/stl feminins
 # pluriels -> "combinées", pas "combinés") : dict a part plutot que deduire
@@ -651,6 +651,7 @@ TEAM_STAT_TOTAL_LABELS_FR = {
     "stl": "Interceptions combinées du match",
     "blk": "Contres combinés du match",
     "oreb": "Rebonds offensifs combinés du match",
+    "tov": "Pertes de balle combinées du match",
 }
 
 
