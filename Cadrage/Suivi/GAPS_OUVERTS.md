@@ -44,13 +44,6 @@
 
 ## Chantier "paris personnalisés IA" — types encore non calculables
 
-- **Paris composés** mélangeant un seuil de stat et un résultat de période
-  dans la même condition (ex. "Knicks +32% à 3pts ET gagne les 4 quarts") —
-  `structurePeriodBet.ts` les rejette explicitement, non structurable en un
-  seul schéma.
-- **Formulation période sans le mot "temps"** après "quart" (ex. "l'équipe
-  qui mène au début du 4e quart perd") — `PERIOD_KEYWORD_REGEX` ne matche
-  que `quart[s]?[\s-]?temps`, jamais routé vers le schéma dédié.
 - **+/- joueur par période** mal résolu : `plus_minus` est exclue des 10
   modèles `train_player_period_model.py` et absente de
   `stats_box_scores_by_period` — un pari "+/- en 1ère mi-temps" reste

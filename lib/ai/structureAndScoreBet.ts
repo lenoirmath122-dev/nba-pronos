@@ -36,7 +36,13 @@ import type { TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 import { NO_THRESHOLD_MATCH_STATS, type MatchStatCode } from "./matchStatCodes";
-import { NO_THRESHOLD_PERIOD_OUTCOMES, TEAM_TARGETED_PERIOD_OUTCOMES, type PeriodCode, type PeriodOutcomeKind } from "./periodStatCodes";
+import {
+  NO_THRESHOLD_PERIOD_OUTCOMES,
+  TEAM_TARGETED_PERIOD_OUTCOMES,
+  estimateLeadsPeriodResultProba,
+  type PeriodCode,
+  type PeriodOutcomeKind,
+} from "./periodStatCodes";
 import type { BetCategory } from "@/lib/labels/bets";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 import { resolveKnownRosters, type KnownRosters } from "./roster";
@@ -114,8 +120,18 @@ async function resolveKnownRostersForSeries(
  *  calculable=false -> file de validation manuelle admin -- même filet de
  *  sécurité que tout autre cas non géré aujourd'hui, jamais une réponse
  *  fausse. Voir structurePeriodBet.ts pour le POURQUOI de ce routage (pas
- *  un 2e schéma dans structureBet.ts). */
-const PERIOD_KEYWORD_REGEX = /quart[s]?[\s-]?temps|mi[\s-]?temps|\bqt\d*\b|\bmt\d*\b/i;
+ *  un 2e schéma dans structureBet.ts).
+ *
+ *  "quart" SANS "temps" ajouté le 06/09/2026 (GAPS_OUVERTS.md) -- ex.
+ *  "l'équipe qui mène au début du 4e quart perd le match", jamais routé
+ *  jusqu'ici. Exige un ordinal/nombre juste avant "quart(s)" (jamais bare
+ *  "quart" seul, trop ambigu -- cf. "quart de ses points", gap distinct
+ *  volontairement laissé de côté) et exclut explicitement "quart de
+ *  finale" (vocabulaire NBA Cup, aucun rapport avec un quart-temps) --
+ *  validé sans régression sur les 167 paris réels de
+ *  types_de_paris_playoffs_2026.md avant d'être élargi. */
+const PERIOD_KEYWORD_REGEX =
+  /quart[s]?[\s-]?temps|mi[\s-]?temps|\bqt\d*\b|\bmt\d*\b|\b(?:\d{1,2}\s*(?:e|è|er|ère|ème|eme|éme)?|premier|première|deuxi[eè]me|troisi[eè]me|quatri[eè]me|dernier|derni[eè]re)\s+quarts?\b(?!\s+de\s+finale)/i;
 
 /** Détecte un texte "de forme" pari 5 majeur/banc AVANT tout appel Claude
  *  (24/08/2026, GAPS_OUVERTS.md, chantier "5 majeur/banc") -- même
@@ -349,6 +365,49 @@ export async function structureAndScoreBet(
     }
   }
 
+  /** Même effet que markNotCalculable() (is_calculable=false, reste dans
+   *  la file de validation admin pour validation ET résolution manuelles)
+   *  SAUF que calculated_proba/suggested_difficulty portent une estimation
+   *  -- taux de base HISTORIQUE (periodStatCodes.ts::
+   *  GENERIC_LEADS_PERIOD_RESULT_RATES), pas un calcul par match. Ajouté
+   *  le 06/09/2026 (GAPS_OUVERTS.md, "formulation période sans le mot
+   *  'temps'") pour "mène après un quart hors mi-temps puis résultat" --
+   *  aucun modèle dédié pour ces périodes (le seul modèle,
+   *  period_leads_half_result.joblib, est entraîné DIRECTEMENT sur la
+   *  mi-temps, pas généralisable sans nouvel entraînement). Usage
+   *  INFORMATIF SEULEMENT (aide l'admin à fixer un barème cohérent) --
+   *  JAMAIS auto-validé/auto-résolu sur cette estimation, jugée trop
+   *  grossière pour ça. Nécessite la branche `else` de
+   *  update_bet_structuration étendue (migration 20260906110000). */
+  async function markNotCalculableWithEstimate(proba: number): Promise<void> {
+    try {
+      await supabase.rpc("update_bet_structuration", {
+        p_bet_id: betId,
+        p_structured_player_name: null,
+        p_structured_player_id: null,
+        p_structured_team_id: null,
+        p_structured_duel: null,
+        p_structured_combo: null,
+        p_structured_period: null,
+        p_structured_roster_split: null,
+        p_structured_roster_count: null,
+        p_structured_superlative: null,
+        p_structured_technical_fouls_count: null,
+        p_structured_last_basket: null,
+        p_structured_block_on_player: null,
+        p_structured_negation: false,
+        p_stat: null,
+        p_threshold: null,
+        p_comparison: null,
+        p_is_calculable: false,
+        p_calculated_proba: proba,
+        p_suggested_difficulty: probaToDifficulty(proba),
+      });
+    } catch {
+      // Best-effort, comme le reste de cette fonction.
+    }
+  }
+
   /** Pari PERIOD (24/08/2026, GAPS_OUVERTS.md, chantier "pari période") --
    *  porte sur un quart-temps/mi-temps précis. 2 formes distinguées par
    *  periodBet.player : ÉQUIPE (vainqueur de période, écart, total,
@@ -466,6 +525,23 @@ export async function structureAndScoreBet(
     const needsThreshold = needsComparison && outcomeKind !== "LEADS_HALF_RESULT";
     if ((needsComparison && !periodBet.comparison) || (needsThreshold && periodBet.threshold === null)) {
       await markNotCalculable();
+      return;
+    }
+
+    // "mène après un quart hors mi-temps puis résultat" (06/09/2026,
+    // GAPS_OUVERTS.md) -- period_leads_half_result.joblib est entraîné
+    // DIRECTEMENT sur la mi-temps (H1/Q2), jamais généralisable à Q1/Q3/Q4/
+    // H2 sans le réentraîner : l'appeler tel quel pour period=Q3 donnerait
+    // une proba fausse (le modèle ignore period, hardcodé sur H1 des 2
+    // côtés TS/Python). Repli sur un taux de base historique, informatif
+    // seulement -- voir markNotCalculableWithEstimate().
+    if (outcomeKind === "LEADS_HALF_RESULT" && periodBet.period !== "H1" && periodBet.period !== "Q2") {
+      const estimate = estimateLeadsPeriodResultProba(periodBet.period as PeriodCode, periodBet.comparison as "OVER" | "UNDER");
+      if (estimate !== null) {
+        await markNotCalculableWithEstimate(estimate);
+      } else {
+        await markNotCalculable();
+      }
       return;
     }
 

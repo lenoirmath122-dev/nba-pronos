@@ -12765,3 +12765,85 @@ générique (dérivé de `STAT_CODES` comme les 17 autres stats déjà là,
 aucun cas particulier ajouté) et que la couche TypeScript est déjà
 couverte par les tests unitaires + tsc exhaustif sur `BoxScoreRow`.
 ```
+
+## Derniers 2 gaps "paris personnalisés IA" -- paris composés + formulation période (06/09/2026)
+
+```text
+Suite directe du chantier tov -- les 2 derniers petits gaps de
+GAPS_OUVERTS.md. Recherche approfondie faite AVANT de coder (2 agents
+Explore) pour les 2 : les deux se sont révélés plus subtils que prévu,
+présentés à l'utilisateur avant d'implémenter quoi que ce soit.
+
+**Paris composés stat+période** (ex. "Knicks +32% à 3pts ET gagne les 4
+quarts-temps") -- découverte : il n'existe en réalité AUCUN rejet
+explicite aujourd'hui, contrairement à ce que disait la note. Rien
+n'empêche Claude de silencieusement ne structurer que la moitié la plus
+facile du pari, donnant un calculable=true avec une proba pour un pari
+plus simple que celui réellement posé -- un mauvais résultat SILENCIEUX,
+pas un repli sûr. Corrigé par un garde-fou (exemple calculable=false
+explicite dans le prompt de `structurePeriodBet.ts`, instruction de ne
+jamais choisir la partie la plus facile) plutôt qu'un vrai mécanisme
+combo+période complet -- décidé avec l'utilisateur : coût élevé pour 1
+seul pari observé sur 429, et proba mécaniquement biaisée de toute façon
+(les 2 conditions sont corrélées, pas indépendantes comme le suppose le
+mécanisme combo actuel -- même raisonnement déjà appliqué à
+LEADS_HALF_RESULT, cible jointe plutôt que composée).
+
+**Formulation période sans le mot "temps"** (ex. "l'équipe qui mène au
+début du 4e quart perd") -- élargir `PERIOD_KEYWORD_REGEX` pour matcher
+un ordinal+"quart" (validé sans régression sur les 167 paris réels de
+`types_de_paris_playoffs_2026.md`, "quart de finale" bien exclu) était
+sûr, MAIS l'exemple exact avait un problème plus profond : le seul
+mécanisme "mène puis résultat" (`LEADS_HALF_RESULT`) est un modèle
+entraîné DIRECTEMENT sur la mi-temps (cible jointe 3 classes, corrélation
+trop forte pour composer par indépendance) -- ni le schéma ni le code
+n'empêchaient Claude de renvoyer period=Q3 pour ce outcome_kind, et le
+code (TS `periodQuarterIndices("H1")` codé en dur, Python `_own_opp_row()`
+sans période) l'aurait IGNORÉ silencieusement -- une proba et une
+résolution FAUSSES, pas juste "non calculable".
+
+Présenté à l'utilisateur : généraliser proprement demanderait un nouveau
+modèle ML pour un événement encore plus rare qu'à la mi-temps (12.8% de
+"mène puis perd" à l'échelle mi-temps sur 13204 lignes, encore plus rare
+à Q1/Q3) -- pour 1 seul pari observé. Décision finale, après une
+clarification de l'utilisateur ("peut-on déjà estimer une proba
+générique pour ces paris difficilement calculables ?") : PAS de nouveau
+modèle, mais un TAUX DE BASE HISTORIQUE (comptage simple sur les matchs
+réels, pas un modèle par match) attaché en `calculated_proba`/
+`suggested_difficulty` -- **informatif seulement**, jamais pour
+auto-valider/auto-résoudre (`is_calculable` reste `false`, le pari reste
+dans la file de validation ET résolution manuelles admin).
+
+**Découverte en creusant l'implémentation** : `update_bet_structuration`
+ignorait déjà totalement `p_calculated_proba`/`p_suggested_difficulty`
+dans sa branche `else` (is_calculable=false), malgré leur présence dans
+la signature -- migration nécessaire (`20260906110000_bets_structuration_
+soft_estimate.sql`, signature identique, corps de la branche `else`
+étendu, tous les appelants existants passaient déjà `null` explicitement
+donc comportement inchangé pour eux). Et `components/admin/
+ValidationBetCard.tsx` avait un affichage de suggestion IA retiré comme
+"code mort" le 21/08/2026 (tout pari y arrivant avait alors TOUJOURS
+`suggestedDifficulty=null`, l'auto-validation ayant pris le relais pour
+les cas calculables) -- réintroduit sobrement (texte d'info, PAS un
+changement du `<select>` par défaut qui reste `proposedDifficulty`,
+l'admin garde la main).
+
+**Taux calculés** (`Cadrage/Stats/scripts/calibrate_leads_period_result_
+rates.py`, nouveau script committé, même patron que `calibrate_
+difficulty_thresholds.py`) : mène après Q1 puis perd = 33.6% (6297
+observations), mène après Q3 puis perd = 17.5% (6426 observations) --
+cohérent avec l'intuition basket (un retournement devient plus rare plus
+tard dans le match). Q4/H2 traités comme dégénérés (100%/0%, jamais
+mesurés empiriquement -- mener à la toute fin du match égale déjà le
+résultat final, aucune égalité possible en NBA).
+
+Vérifié en conditions réelles avant la vraie base : migration appliquée
+contre Supabase local, appel RPC direct (compte + pari jetables, cleanup
+après) confirmant `is_calculable=false` + `calculated_proba`/
+`suggested_difficulty` bien écrits + `status` resté `SUBMITTED` (jamais
+auto-validé) -- puis rejouée à l'identique contre la vraie base.
+
+tsc/eslint/vitest (254/254, +14 nouveaux cas)/next build propres à chaque
+étape. Pas de vrai appel Claude Sonnet 5 (changement mécanique, 1 seul
+nouvel exemple de prompt, pas de nouveau schéma envoyé à l'IA).
+```

@@ -17,6 +17,11 @@ import { routeBetDescription } from "./structureAndScoreBet";
 describe("routeBetDescription — chaque forme vers son propre schéma", () => {
   it.each([
     ["L'écart de points à la fin du 3ème quart-temps est strictement inférieur à 5.", "PERIOD"],
+    // "quart" SANS "temps" (06/09/2026, GAPS_OUVERTS.md) -- phrasing exact
+    // du gap réel confirmé (Cadrage/Suivi/archive/
+    // GAPS_OUVERTS_journal_archive_jusquau_2026-09-06.md, cas "Simon").
+    ["L'équipe qui gagne au début du 4e quart perd le match.", "PERIOD"],
+    ["Les Knicks gagnent le premier quart.", "PERIOD"],
     ["Au moins deux joueurs du match ne joueront aucune minute (DNP).", "ROSTER_COUNT"],
     ["Le cinq majeur des Knicks marque plus de 68% des points totaux de l'équipe.", "ROSTER_SPLIT"],
     ["Jaylen Brown marque plus de points que tout autre joueur du match.", "SUPERLATIVE"],
@@ -48,6 +53,11 @@ describe("routeBetDescription — collisions documentées, l'ORDRE de vérificat
 
   it("le superlatif ('tout autre joueur') ne collisionne pas avec ROSTER_COUNT malgré le mot 'joueur'", () => {
     expect(routeBetDescription("De'Aaron Fox marque plus de points que tout autre joueur sur le terrain.")).toBe("SUPERLATIVE");
+  });
+
+  it("'quart de finale' (vocabulaire NBA Cup) ne déclenche PAS PERIOD malgré un ordinal + 'quart'", () => {
+    expect(routeBetDescription("Les Knicks sont éliminés en quart de finale.")).not.toBe("PERIOD");
+    expect(routeBetDescription("Les 4 quarts de finale sont joués le même soir.")).not.toBe("PERIOD");
   });
 });
 

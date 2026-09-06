@@ -115,7 +115,9 @@ function buildStaticSystemText(): string {
     "une stat JOUEUR normale limitée à cette période (remplis `player`+`player_stat`, laisse `team`/`outcome_kind` " +
     "à null), une des stats suivantes :\n" + statList + "\n\n" +
     "Exemples calculable=true : \"Minnesota mène à la mi-temps et Denver gagne le match\" (LEADS_HALF_RESULT, " +
-    "period=H1, team=Minnesota, comparison=UNDER -- Minnesota mène mais perd), \"les Knicks gagnent au moins 2 " +
+    "period=H1, team=Minnesota, comparison=UNDER -- Minnesota mène mais perd), \"l'équipe qui mène au début du 4e " +
+    "quart perd le match\" (LEADS_HALF_RESULT, period=Q3 -- \"au début du 4e quart\" = le score CUMULÉ à la FIN " +
+    "du 3e quart, pas le 4e quart lui-même ; team=l'équipe qui mène, comparison=UNDER), \"les Knicks gagnent au moins 2 " +
     "quarts-temps\" (QUARTERS_WON_COUNT, period=null -- match entier, team=Knicks, threshold=1, comparison=OVER), " +
     "\"Orlando perd le 3e quart-temps\" (QUARTER_WINNER, period=Q3, team=Orlando adversaire -- décris la proba " +
     "que l'AUTRE équipe gagne ce quart), \"l'écart à la mi-temps est de 5 points ou moins\" (MARGIN, period=H1, " +
@@ -128,7 +130,10 @@ function buildStaticSystemText(): string {
     "période, un autre service s'en charge, ne l'accepte JAMAIS ici même s'il mentionne un quart-temps en " +
     "passant ; un pourcentage des points totaux d'un JOUEUR (pas d'une équipe) sur une période (ex. \"Wembanyama " +
     "marque plus de 40% de ses points totaux au 4e quart-temps\") -- non géré, différent d'un seuil simple sur " +
-    "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain." +
+    "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain ; " +
+    "un pari COMPOSÉ mélangeant un seuil de stat ET un résultat de période dans la MÊME condition (ex. \"Les " +
+    "Knicks tirent à plus de 32% à 3 points ET remportent les 4 quarts-temps\") -- non géré, ne structure JAMAIS " +
+    "seulement une moitié de ce genre de pari (ne choisis pas la partie la plus facile, rejette le pari entier)." +
     // Règle de vérification de présence déplacée ici (03/09/2026, optimisation
     // coût, même geste que structureBet.ts) -- texte identique à chaque
     // appel, donc mis en cache plutôt que payé en clair à chaque appel.
