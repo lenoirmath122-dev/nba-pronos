@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, Oswald } from "next/font/google";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getServerClient } from "@/lib/supabase/server";
 import "./globals.css";
 
@@ -69,7 +70,13 @@ export default async function RootLayout({
       data-bg={theme === "PHOTO" && backgroundTheme !== "MURAL" ? backgroundTheme.toLowerCase() : undefined}
       className={`${sora.variable} ${oswald.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        {/* D4/PERF (11-performances.md §5) : Web Vitals réels jamais mesurés
+            faute d'accès navigateur en audit — RUM via Vercel (déploiement
+            existant), aucun code de collecte à maintenir. */}
+        <SpeedInsights />
+      </body>
     </html>
   );
 }

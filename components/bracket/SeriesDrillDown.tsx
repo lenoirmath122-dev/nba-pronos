@@ -186,7 +186,8 @@ export function SeriesDrillDown({ rounds, isDeadlinePassed, view, competitionTyp
 
         {openNode && (
           <>
-            <div className={styles.sheetBackdrop} onClick={() => setOpenSeriesId(null)} />
+            {/* aria-hidden : scrim mouse-only, Échap (FocusTrap) et le bouton "Fermer" couvrent déjà le clavier. */}
+            <div className={styles.sheetBackdrop} aria-hidden="true" onClick={() => setOpenSeriesId(null)} />
             <FocusTrap
               className={styles.sheet}
               role="dialog"

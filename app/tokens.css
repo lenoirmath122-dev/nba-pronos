@@ -25,7 +25,6 @@
    À CONFIRMER / À VÉRIFIER (signalés inline par « TODO ») :
    - valeurs « dérivées » là où l'amendement ne restitue pas un token d'origine
      (surface-overlay, surface-arena solide de repli, glow clair) ;
-   - contraste AA de --color-trend sur fond CLAIR (une seule valeur donnée, §15.4) ;
    - @font-face Inter auto-hébergée (à ajouter quand l'asset arrive — pas de hotlink) ;
    - --hero-image pointe vers un asset non encore fourni (voir public/brand/README).
    ========================================================================== */
@@ -68,7 +67,8 @@
   --c-green-500: #2FBF71;  --c-green-600: #1E9E58; /* gagné dark / clair */
   --c-red-500:   #E5484D;  --c-red-600:   #C7443F; /* perdu dark / clair */
   --c-red-live:  #FF2D4B;  --c-blue-300:  #6FA8FF;
-  --c-trend:     #9FC6E0;  /* bleu-froid neutre (§15.4) */
+  --c-trend:     #9FC6E0;  /* bleu-froid neutre, dark (§15.4) */
+  --c-trend-700: #2E719E;  /* assombri pour le contraste AA sur fond clair (§15.4, A11Y-001) */
 }
 
 
@@ -340,7 +340,7 @@
   --color-live:         var(--c-red-live);   /* inchangé */
   --color-pending:      var(--c-slate-400);
   --color-neutralized:  var(--c-slate-400);
-  --color-trend:        var(--c-trend);       /* TODO vérifier contraste AA sur fond clair (§15.4) */
+  --color-trend:        var(--c-trend-700);   /* A11Y-001 : ratio 4.67-5.29:1 selon la surface claire (>=4.5:1 AA) */
 
   /* Élévation réduite en clair (§5.3 / §15.6) */
   --elevation-raised:  0 1px 2px rgba(16, 20, 29, 0.08);

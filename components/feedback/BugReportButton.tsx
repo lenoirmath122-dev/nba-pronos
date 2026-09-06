@@ -74,7 +74,6 @@ export function BugReportButton() {
                   placeholder="Ex. Le bouton Valider ne réagit pas sur cet écran"
                   rows={4}
                   maxLength={5000}
-                  autoFocus
                 />
                 {error && (
                   <p className={styles.error} role="alert">

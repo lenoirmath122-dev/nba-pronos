@@ -69,7 +69,6 @@ export function ReportMessageButton({ messageId }: ReportMessageButtonProps) {
                   placeholder="Ex. Propos injurieux envers un autre joueur"
                   rows={3}
                   maxLength={500}
-                  autoFocus
                 />
                 {error && (
                   <p className={styles.error} role="alert">
