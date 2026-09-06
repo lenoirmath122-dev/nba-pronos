@@ -12645,3 +12645,49 @@ sont sans rapport -- la saison 2026-27 n'a pas encore commencé côté NBA,
 il n'y a simplement rien à récupérer pour l'instant, le script le gère
 sans faire échouer le job. Point retiré de `GAPS_OUVERTS.md`.
 ```
+
+## Réentraînement `vs_adversaire` (8 stats) retrouvé fait mais jamais clos (06/09/2026)
+
+```text
+Reprise du chantier "perfectionnement des modèles" à la demande de
+l'utilisateur -- en creusant l'état réel avant de proposer une suite,
+plutôt que de se fier à la dernière note écrite (qui disait encore
+"entraînement volontairement pas encore lancé", cf. l'archive du
+journal au 02/09/2026).
+
+Constat, fait en lisant les artefacts plutôt qu'en devinant : les logs
+non commités qui traînaient dans `Cadrage/Stats/scripts/` (`*_tuned_v2.log`)
+et les `.joblib` correspondants (horodatés en conséquence, `Cadrage/Stats/models/`,
+gitignoré) montrent que le réentraînement de `train_stat_model.py` et
+`train_player_period_model.py` avec la nouvelle feature
+`vs_adversaire_{stat}_moy` (8 stats : reb/ast/fg3m/stl/blk/fga/fg3a/oreb,
+généralisée le 02/09/2026 par le commit `48b32d7`) a bien tourné dans la
+nuit du 02 au 03/09/2026, exactement comme prévu ("tourner de nuit") --
+mais sans suite : jamais documenté, jamais redéployé sur Cloud Run.
+
+Effet mesuré (comparaison des logs `_tuned` (hyperparamètres seuls) vs
+`_tuned_v2` (+ la feature), sur le R² test de `train_stat_model.py`) :
+gain modeste mais réel et cohérent sur les 7 stats concernées par ce
+script -- reb +0.006 (0.424→0.430), ast +0.006 (0.484→0.490), fg3m +0.003
+(0.298→0.301), blk +0.011 (0.182→0.193), fga +0.002 (0.613→0.615), fg3a
++0.007 (0.528→0.535), oreb +0.010 (0.266→0.276) ; stl quasi neutre
+(0.099→0.098). MAE inchangé à 0.01-0.02 près partout. `min`/`plus_minus`
+(pas concernés par la feature) inchangés à l'identique, comme attendu --
+confirme que la mesure isole bien l'effet de la nouvelle feature, pas du
+bruit d'un autre changement.
+
+**Action encore nécessaire, côté utilisateur (gcloud, pas accessible
+depuis cet environnement)** : redéployer le service Cloud Run
+(`Cadrage/Stats/service/DEPLOIEMENT_CLOUD_RUN.md`, section "Redéployer
+après un changement de code") pour que les nouveaux `.joblib` (déjà
+générés en local, jamais poussés) soient effectivement servis en prod --
+tant que ce n'est pas fait, le service tourne encore sur les anciens
+modèles (hyperparamètres tunés, mais sans la feature `vs_adversaire`
+étendue).
+
+Nettoyage en passant : les logs de run (`Cadrage/Stats/scripts/*.log`,
+jamais commités par convention -- même principe que les `.joblib`
+gitignorés) supprimés une fois leurs chiffres utiles capturés ci-dessus ;
+`*.log` ajouté à `.gitignore` sous ce dossier pour éviter qu'ils
+réapparaissent comme fichiers non suivis à chaque nouveau run.
+```

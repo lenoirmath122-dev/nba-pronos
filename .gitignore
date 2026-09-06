@@ -52,6 +52,9 @@ public/brand/*.dev.*
 /Cadrage/Stats/data/
 # modèles entraînés (volumineux, régénérables via les scripts train_*.py)
 /Cadrage/Stats/models/
+# logs de run des scripts train_*.py (régénérables, jamais commités par
+# convention -- les chiffres utiles vont dans JOURNAL_SESSIONS.md/GAPS_OUVERTS.md)
+/Cadrage/Stats/scripts/*.log
 __pycache__/
 
 # config Claude Code locale à la machine (permissions auto-approuvées, etc.)
