@@ -370,6 +370,28 @@ describe("recomputeBet — idempotence et jamais de valeur négative (cas 30)", 
   });
 });
 
+// ── recomputeBet — reflète une correction admin entre 2 passes (T-DATA-03) ──
+// Étend les cas d'idempotence ci-dessus (input FIGÉ entre les 2 passes) à un
+// scénario où l'admin corrige validated_difficulty ENTRE les deux : la 2e
+// passe doit refléter la NOUVELLE valeur, pas rester figée sur le résultat
+// de la 1ère (recomputeBet ne doit rien mettre en cache côté application).
+
+describe("recomputeBet — recompute après correction admin entre 2 passes (cas 30, T-DATA-03)", () => {
+  it("validated_difficulty relevé par un admin entre 2 passes -> la 2e passe applique le NOUVEAU barème", async () => {
+    seed("bets", [{ id: "bet6", competition_id: "c4", status: "WON", validated_difficulty: 3 }]);
+    await recomputeBet("bet6");
+    expect(readRow("bets", "bet6")?.points_awarded).toBe(15); // barème difficulté 3 → 15.
+
+    // Correction admin (même geste qu'un admin ajustant la difficulté validée
+    // depuis l'écran de résolution) -- écriture directe entre les 2 passes,
+    // pas via recomputeBet lui-même.
+    readRow("bets", "bet6")!.validated_difficulty = 5;
+
+    await recomputeBet("bet6");
+    expect(readRow("bets", "bet6")?.points_awarded).toBe(25); // barème difficulté 5 → 25, pas resté figé à 15.
+  });
+});
+
 // ── recomputeCompetition — filet de sécurité, idempotence bout en bout ──
 
 describe("recomputeCompetition — rejeu intégral idempotent (cas 31-32)", () => {

@@ -36,6 +36,9 @@ jobs:
       - name: Build (next build)
         run: npm run build
 
+      - name: Aucune route pré-rendue statiquement par erreur (p1-4, T-SMOKE-02)
+        run: npm run check:static-routes
+
       - name: Audit de dépendances (bundle runtime, non bloquant)
         # --omit=dev : seul le code livré aux utilisateurs compte ici (les
         # vulnérabilités dev-only, ex. la chaîne de build browserslist/
