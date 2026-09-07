@@ -1,7 +1,8 @@
 // Tests d'intégration RLS (A4, TEST-002) -- scope réduit décidé pour l'alpha
 // NBA Cup du 20/09/2026 : les deux scénarios IDOR que l'alpha exerce
 // réellement, plutôt que la matrice complète de audit/BACKLOG_TESTS.md
-// (T-SEC-01 à T-SEC-04).
+// (T-SEC-01 à T-SEC-04). T-SEC-01 ajouté le 07/09/2026 (p1-4, feuille de
+// route Phase 1) -- les 3 autres (T-SEC-03/04) restent hors scope.
 //
 // Tape un vrai Postgres via un Supabase local (`npx supabase start`) --
 // lancé séparément de la suite unitaire via `npm run test:integration`
@@ -295,5 +296,104 @@ describe("RLS -- visibilité admin des ligues (tableau de bord admin)", () => {
       .eq("league_id", leagueId);
     expect(seenMemberships).toHaveLength(1);
     expect(seenMemberships?.[0]?.user_id).toBe(userA.id);
+  });
+});
+
+describe("RLS -- anti auto-promotion admin (T-SEC-01, p1-4)", () => {
+  // users_update_self (id = auth.uid()) autorise un joueur à modifier SA
+  // PROPRE ligne sans restriction de colonne au niveau RLS -- la vraie
+  // garde vit dans le trigger enforce_users_invariants (migration #3),
+  // jamais dans la policy elle-même. Objectif du test : confirmer que ce
+  // trigger bloque bel et bien une tentative qui contournerait entièrement
+  // setPlayerRole() (lib/actions/admin-players.ts, sa propre garde
+  // is_admin() app-level) -- ex. un appel direct forgé au client Supabase,
+  // hors UI/Server Action. Scénario "Server Action forgée" du backlog.
+  it("un joueur non-admin ne peut pas se promouvoir ADMIN lui-même, même en écrivant directement sur sa propre ligne", async () => {
+    const { data: before } = await serviceClient.from("users").select("role").eq("id", userA.id).single();
+    expect(before?.role).toBe("PLAYER");
+
+    const { data: updated, error } = await userA.client
+      .from("users")
+      .update({ role: "ADMIN" })
+      .eq("id", userA.id)
+      .select("id");
+    expect(updated).toBeNull();
+    expect(error).not.toBeNull();
+    expect(error?.message).toContain("reservee aux admins");
+
+    const { data: after } = await serviceClient.from("users").select("role").eq("id", userA.id).single();
+    expect(after?.role).toBe("PLAYER");
+  });
+
+  it("aucune entrée audit_logs trompeuse n'apparaît suite à la tentative bloquée", async () => {
+    const { data: entries } = await serviceClient
+      .from("audit_logs")
+      .select("id")
+      .eq("target_type", "user")
+      .eq("target_id", userA.id);
+    expect(entries ?? []).toHaveLength(0);
+  });
+});
+
+describe("Quota « 3 paris MATCH/série » -- aucun backstop DB (T-DATA-02, p1-4)", () => {
+  // Documenté explicitement en tête de 20260726130000_bet_write_functions.sql
+  // (migration #9) : ce cap n'est exprimable ni en index ni en RLS, donc
+  // exclusivement gardé par un COUNT applicatif DANS save_bet() (+ un
+  // pg_advisory_xact_lock pour fermer la fenêtre de course entre 2
+  // soumissions quasi simultanées). Ce test CONFIRME ce trou déjà connu
+  // plutôt que de le découvrir : une écriture directe via service_role
+  // (jamais accessible à un joueur normal -- RLS s'applique à TOUT le
+  // reste, seul save_bet() l'contourne délibérément en SECURITY DEFINER)
+  // n'est bloquée par AUCUNE contrainte base. Résultat attendu du backlog
+  // ("si l'insertion réussit, documenter le trou") : le trou existe, reste
+  // sans risque tant que service_role n'est jamais exposé côté client
+  // (jamais le cas dans ce dépôt -- clé service_role uniquement côté
+  // serveur/cron, cf. lib/supabase/service.ts).
+  // 4 matchs DÉDIÉS (game_number 2-5) -- jamais matchId (game_number 1, déjà
+  // utilisé par le pari fixture de "RLS -- propriété des paris" plus haut
+  // dans ce fichier) : uniq_active_match_bet (1 pari actif par match, CELUI-
+  // LÀ a bien un backstop d'index) aurait fait échouer l'insertion pour une
+  // raison différente de celle testée ici.
+  let extraMatchIds: string[] = [];
+
+  beforeAll(async () => {
+    const inTwoDays = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await serviceClient
+      .from("matches")
+      .insert([
+        { competition_id: competitionId, series_id: seriesId, game_number: 2, scheduled_at: inTwoDays, status: "SCHEDULED" },
+        { competition_id: competitionId, series_id: seriesId, game_number: 3, scheduled_at: inTwoDays, status: "SCHEDULED" },
+        { competition_id: competitionId, series_id: seriesId, game_number: 4, scheduled_at: inTwoDays, status: "SCHEDULED" },
+        { competition_id: competitionId, series_id: seriesId, game_number: 5, scheduled_at: inTwoDays, status: "SCHEDULED" },
+      ])
+      .select("id");
+    if (error || !data || data.length !== 4) throw new Error(`Création des matchs supplémentaires échouée: ${error?.message}`);
+    extraMatchIds = data.map((m) => m.id as string);
+  });
+
+  afterAll(async () => {
+    await serviceClient.from("bets").delete().in("match_id", extraMatchIds).eq("user_id", userA.id).eq("description", "Test T-DATA-02");
+    await serviceClient.from("matches").delete().in("id", extraMatchIds);
+  });
+
+  it("4 paris MATCH actifs sur 4 matchs différents de la même série s'insèrent tous sans erreur via service_role", async () => {
+    const { data: inserted, error } = await serviceClient
+      .from("bets")
+      .insert(
+        extraMatchIds.map((mId) => ({
+          competition_id: competitionId,
+          user_id: userA.id,
+          scope: "MATCH" as const,
+          series_id: seriesId,
+          match_id: mId,
+          description: "Test T-DATA-02",
+          proposed_category: "SCORE_TOTAL" as const,
+          proposed_difficulty: 1,
+          status: "SUBMITTED" as const,
+        }))
+      )
+      .select("id");
+    expect(error).toBeNull();
+    expect(inserted).toHaveLength(4);
   });
 });
