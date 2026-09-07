@@ -92,6 +92,10 @@ describe("computeOutcome — dd/td/tech (NO_THRESHOLD_STATS)", () => {
     expect(computeOutcome("tech", null, null, box({ technical_fouls: 0 }))).toBe(false);
     expect(computeOutcome("tech", null, null, box({ pts: 30, reb: 15, ast: 12, technical_fouls: 0 }))).toBe(false);
   });
+
+  it("tech = null (donnée indisponible) → indéterminé, jamais confondu avec 0 faute (p1-25)", () => {
+    expect(computeOutcome("tech", null, null, box({ technical_fouls: null }))).toBeNull();
+  });
 });
 
 // ── computeOutcome — stats en pourcentage (ft/fg/fg3) ────────────────────
@@ -146,6 +150,20 @@ describe("computeOutcome — stats comptées à seuil", () => {
     const b = box({ pts: 25 });
     expect(computeOutcome("pts", null, "OVER", b)).toBeNull();
     expect(computeOutcome("pts", 20, null, b)).toBeNull();
+  });
+
+  it("valeur null (donnée indisponible) → indéterminé, jamais confondu avec un vrai 0 (p1-25)", () => {
+    // Bug réel (feuille de route Phase 1, p1-25) : un pari +/- par période
+    // se résolvait TOUJOURS perdant, car resolveCalculablePeriodBets() pose
+    // explicitement plus_minus=null (colonne absente de
+    // stats_box_scores_by_period) et le `?? 0` d'origine ici confondait ce
+    // null avec un vrai 0 -- jamais de "non calculable", juste une fausse
+    // résolution silencieuse. Même risque pour technical_fouls/tov côté
+    // MATCH sur une ligne pas encore backfillée (colonnes ajoutées après
+    // coup, migrations du 25/08 et du 06/09).
+    expect(computeOutcome("plus_minus", 10, "OVER", box({ plus_minus: null }))).toBeNull();
+    expect(computeOutcome("plus_minus", -5, "UNDER", box({ plus_minus: null }))).toBeNull();
+    expect(computeOutcome("tov", 2, "OVER", box({ tov: null }))).toBeNull();
   });
 });
 

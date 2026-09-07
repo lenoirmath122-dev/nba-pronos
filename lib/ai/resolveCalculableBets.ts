@@ -134,8 +134,20 @@ export function computeOutcome(
   // la branche dd/td (categoriesAtTen >= 3, comme "td") -- jamais teste
   // avant d'ajouter "tech" a NO_THRESHOLD_STATS, corrige avant tout
   // deploiement.
+  // null (pas juste absent) = donnée structurellement indisponible plutôt
+  // qu'un vrai 0 -- signal explicitement posé par l'appelant PERIOD
+  // (plus_minus/technical_fouls/tov n'existent pas dans
+  // stats_box_scores_by_period, cf. resolveCalculableBets.ts plus bas) mais
+  // vrai aussi côté MATCH pour une ligne stats_box_scores pas encore
+  // backfillée sur une colonne ajoutée après coup (technical_fouls/tov,
+  // migrations du 25/08 et du 06/09). Bug réel (p1-25, feuille de route
+  // Phase 1) : le `?? 0` d'origine confondait les deux, résolvant TOUJOURS
+  // "perdu" pour ce cas plutôt que de laisser le pari non résolu (skip côté
+  // appelant sur un retour null, même contrat que threshold/comparison
+  // manquants ci-dessous).
   if (stat === "tech") {
-    return (box.technical_fouls ?? 0) >= 1;
+    if (box.technical_fouls === null) return null;
+    return box.technical_fouls >= 1;
   }
 
   if (PERCENTAGE_STATS.has(stat)) {
@@ -148,8 +160,13 @@ export function computeOutcome(
   }
 
   if (threshold === null || comparison === null) return null;
-  const actual = stat === "min" ? minutesToFloat(box.minutes) : (box[COUNTING_STAT_COLUMN[stat]!] ?? 0);
-  return comparison === "UNDER" ? actual < threshold : actual > threshold;
+  if (stat === "min") {
+    const actual = minutesToFloat(box.minutes);
+    return comparison === "UNDER" ? actual < threshold : actual > threshold;
+  }
+  const rawValue = box[COUNTING_STAT_COLUMN[stat]!];
+  if (rawValue === null) return null;
+  return comparison === "UNDER" ? rawValue < threshold : rawValue > threshold;
 }
 
 /** Retrouve le vrai game_id NBA (stats_matchs) pour un match de l'appli --
