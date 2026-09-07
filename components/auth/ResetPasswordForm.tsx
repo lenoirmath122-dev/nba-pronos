@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import { MailIcon } from "@/components/icons/auth-icons";
+import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
 
 // Flux Supabase STANDARD (T2 §8, T6a arbre app/ — UNE seule route pour les 2
@@ -25,6 +26,10 @@ export function ResetPasswordForm() {
   const [error, setError] = useState<string | null>(null);
   const [requestSent, setRequestSent] = useState(false);
   const [pending, setPending] = useState(false);
+  // Compteur simple (pas de useActionState ici, cf. TurnstileWidget) : change
+  // à chaque échec pour forcer le widget à générer un nouveau jeton, un
+  // jeton Turnstile étant à usage unique.
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
   useEffect(() => {
     const supabase = getBrowserClient();
@@ -43,17 +48,26 @@ export function ResetPasswordForm() {
     return () => subscription.unsubscribe();
   }, []);
 
-  async function handleRequest(e: FormEvent) {
+  async function handleRequest(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError(null);
     setPending(true);
+    // Bug réel trouvé le 07/09/2026 (GAPS_OUVERTS.md, Phase 0) : ce flux
+    // n'a jamais transmis de jeton Turnstile, contrairement à
+    // LoginForm/SignupForm -- avec la protection CAPTCHA Supabase activée
+    // au niveau du projet (pas seulement câblée app-side sur login/signup),
+    // CHAQUE demande de réinitialisation échouait en silence côté serveur
+    // (error_code "captcha_failed"), masqué par ce message générique.
+    const captchaToken = String(new FormData(e.currentTarget).get("cf-turnstile-response") ?? "");
     const supabase = getBrowserClient();
     const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
+      captchaToken,
     });
     setPending(false);
     if (resetError) {
       setError("Impossible d'envoyer l'email pour le moment. Réessaie plus tard.");
+      setTurnstileResetKey((key) => key + 1);
       return;
     }
     // Message générique QUE l'email existe ou non en base (D5 : l'email
@@ -126,6 +140,7 @@ export function ResetPasswordForm() {
               className={styles.input}
             />
           </div>
+          <TurnstileWidget resetKey={turnstileResetKey} />
           {error && (
             <p role="alert" className={styles.error}>
               {error}
