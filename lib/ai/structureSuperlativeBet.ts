@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_LABELS_FR } from "./statCodes";
 import { COMPARISON_PLAYER_STAT_CODES } from "./comparisonCodes";
+import { recordAnthropicUsage } from "./usageTracking";
 
 // Chantier "meilleur marqueur" / superlatif implicite (étape 4 du plan de
 // reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de
@@ -105,6 +106,7 @@ export async function structureSuperlativeBet(
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(SuperlativeBetStructurationSchema) },
     });
+    await recordAnthropicUsage("structureSuperlativeBet", model, response.usage);
     return response.parsed_output;
   } catch {
     return null;

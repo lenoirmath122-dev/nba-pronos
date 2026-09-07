@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR } from "./statCodes";
+import { recordAnthropicUsage } from "./usageTracking";
 
 // Chantier "comptage roster-wide" (étape 3 du plan de reprise post-audit,
 // 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de structureBet.ts, même
@@ -146,6 +147,7 @@ export async function structureRosterCountBet(
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(RosterCountBetStructurationSchema) },
     });
+    await recordAnthropicUsage("structureRosterCountBet", model, response.usage);
     return response.parsed_output;
   } catch {
     return null;

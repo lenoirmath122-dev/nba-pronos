@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR } from "./statCodes";
+import { recordAnthropicUsage } from "./usageTracking";
 
 // Chantier "5 majeur / banc" (24/08/2026, GAPS_OUVERTS.md) -- schéma
 // SÉPARÉ de structureBet.ts, même patron que structurePeriodBet.ts (voir
@@ -109,6 +110,7 @@ export async function structureRosterSplitBet(
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(RosterSplitBetStructurationSchema) },
     });
+    await recordAnthropicUsage("structureRosterSplitBet", model, response.usage);
     return response.parsed_output;
   } catch {
     return null;

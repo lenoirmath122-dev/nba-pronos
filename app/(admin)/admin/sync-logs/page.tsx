@@ -1,6 +1,9 @@
 import Link from "next/link";
-import { getSyncLogs, SYNC_TYPE_LABELS } from "@/lib/queries/admin-sync-logs";
+import { getSyncLogs, getLatestHighlightlyQuota, SYNC_TYPE_LABELS } from "@/lib/queries/admin-sync-logs";
 import { SyncLogRow } from "@/components/admin/SyncLogRow";
+import { LOW_QUOTA_THRESHOLD } from "@/lib/sync/logging";
+import { getTodaySpendUsd, DAILY_COST_CAP_USD } from "@/lib/ai/usageTracking";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 import styles from "./page.module.css";
 
 // Logs de synchronisation (p1-6, feuille de route Phase 1) : sync_logs est
@@ -19,13 +22,24 @@ export default async function AdminSyncLogsPage({
   const sp = await searchParams;
   const filters = { syncType: sp.type, failedOnly: sp.failed === "1" };
 
-  const logs = await getSyncLogs(filters);
+  const [logs, quota, aiSpendUsd] = await Promise.all([getSyncLogs(filters), getLatestHighlightlyQuota(), getTodaySpendUsd()]);
   const hasActiveFilters = Boolean(sp.type || sp.failed);
+  const quotaLow = quota !== null && quota.requestsRemaining <= LOW_QUOTA_THRESHOLD;
+  const aiSpendHigh = aiSpendUsd >= DAILY_COST_CAP_USD;
 
   return (
     <div className={styles.page}>
       <h1 className={styles.title}>Logs de synchronisation</h1>
       <p className={styles.intro}>100 derniers événements des routes /api/sync/* et du heartbeat.</p>
+
+      {quota && (
+        <p className={quotaLow ? styles.quotaBannerLow : styles.quotaBanner}>
+          {quotaLow && "⚠️ "}Quota Highlightly : {quota.requestsRemaining} requête(s) restante(s) (lu {parisDateTimeLabel(quota.createdAt)})
+        </p>
+      )}
+      <p className={aiSpendHigh ? styles.quotaBannerLow : styles.quotaBanner}>
+        {aiSpendHigh && "⚠️ "}Dépense IA (structuration de paris) aujourd&apos;hui : {aiSpendUsd.toFixed(2)}$ / {DAILY_COST_CAP_USD}$
+      </p>
 
       <form method="get" className={styles.filters}>
         <label className={styles.field}>

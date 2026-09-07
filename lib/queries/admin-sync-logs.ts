@@ -65,3 +65,20 @@ export async function getSyncLogs(filters: SyncLogFilters): Promise<SyncLogRow[]
     requestsRemaining: log.requests_remaining,
   }));
 }
+
+/** Dernière lecture connue du quota Highlightly (p1-7, feuille de route
+ *  Phase 1) -- requests_remaining est déjà écrit à chaque synchro
+ *  (lib/sync/logging.ts) mais restait noyé ligne par ligne dans la liste
+ *  ci-dessus, jamais mis en avant. `null` si aucune synchro n'a encore
+ *  renvoyé de valeur (ex. base tout juste initialisée). */
+export async function getLatestHighlightlyQuota(): Promise<{ requestsRemaining: number; createdAt: string } | null> {
+  const supabase = await getServerClient();
+  const { data } = await supabase
+    .from("sync_logs")
+    .select("created_at, requests_remaining")
+    .not("requests_remaining", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle<{ created_at: string; requests_remaining: number }>();
+  return data ? { requestsRemaining: data.requests_remaining, createdAt: data.created_at } : null;
+}

@@ -1,0 +1,52 @@
+name: Contrôle de santé (Supabase + Cloud Run)
+
+# Supervision minimale du service Cloud Run (p1-9, feuille de route Phase 1).
+# /api/health (durci le 07/09/2026, p0-11) vérifie déjà Supabase ET le
+# service Cloud Run (Cadrage/Stats/service/app.py::/health), renvoie 503 si
+# l'un des deux est en panne -- mais RIEN ne l'appelait périodiquement
+# jusqu'ici (son propre commentaire prévoyait "un moniteur externe type
+# UptimeRobot", jamais mis en place). Ce workflow comble ce trou sans
+# dépendance à un service tiers, même patron que heartbeat.yml/
+# keep-alive.yml : alerte GitHub Issue en cas d'échec, dédupliquée par
+# titre. Fréquence 4x/jour -- plus réactif que le heartbeat (1x/jour) sans
+# solliciter Cloud Run à l'excès (scale à zéro).
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Appeler /api/health
+        run: |
+          curl --fail --show-error --silent --max-time 30 \
+            "https://nba-pronos.vercel.app/api/health"
+
+      # Alerte minimale (même patron que heartbeat.yml/keep-alive.yml) : pas
+      # d'infra de monitoring dédiée, une issue GitHub auto-créée suffit.
+      # Dédupliquée par titre (une seule issue ouverte à la fois par
+      # workflow, pas une par run raté).
+      - name: Alerter en cas d'échec
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Échec planifié : Contrôle de santé (Supabase + Cloud Run)";
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "cron-failure",
+            });
+            if (existing.some((issue) => issue.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ["cron-failure"],
+              body: `Le workflow planifié a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });
