@@ -10,7 +10,7 @@ Le principal écart entre le niveau d'ingénierie du cœur du système (scoring,
 
 ## 2. Périmètre réellement audité
 
-- Intégralité du code applicatif TypeScript (`app/`, `components/`, `lib/`), 85 migrations SQL, 9 workflows GitHub Actions, configuration de build/déploiement (`next.config.ts`, `vercel.json`, `package.json`).
+- Intégralité du code applicatif TypeScript (`app/`, `components/`, `lib/`), 66 migrations SQL [le chiffre "85" initialement écrit ici était une erreur de comptage — corrigé le 07/09/2026, 69 migrations au 07/09/2026, voir `audit/ANOMALIES.md`], 9 workflows GitHub Actions, configuration de build/déploiement (`next.config.ts`, `vercel.json`, `package.json`).
 - Documentation de suivi interne échantillonnée en profondeur (audits antérieurs intégraux, entrées les plus récentes des journaux volumineux).
 - Exécution réelle : `tsc --noEmit`, `eslint`, `vitest run` (224 tests), `npm audit`, `npm run build` (production).
 - 5 axes d'exploration indépendante en profondeur : architecture/authentification/autorisations, logique métier (scoring, IA, sync), modèle de données/RLS, état actuel des findings de sécurité antérieurs, frontend/UX/tests/CI.
@@ -146,5 +146,5 @@ nba-pronos est un projet dont le cœur technique (sécurité, autorisation, mod�
 - Les 30 anomalies mentionnées dans ce rapport existent toutes dans `ANOMALIES.md` avec le même identifiant.
 - Toutes les anomalies P2/P3 figurent dans `PLAN_ACTION.md` (Vagues 1-2) ; les P4 figurent en Vague 3-4.
 - Aucune recommandation de ce rapport ne contredit une autre (vérifié par relecture croisée des 15 fichiers de phase).
-- Chiffres vérifiés : 31 anomalies (0 P0, 0 P1, 5 P2, 9 P3, 17 P4 — `BUG-001` reclassé P3→P4/corrigé le 03/09/2026, voir `ANOMALIES.md`), 224 tests, 85 migrations, 18 fichiers de test, 5 agents d'exploration.
+- Chiffres vérifiés : 31 anomalies (0 P0, 0 P1, 5 P2, 9 P3, 17 P4 — `BUG-001` reclassé P3→P4/corrigé le 03/09/2026, voir `ANOMALIES.md`), 224 tests, 66 migrations [corrigé le 07/09/2026, "85" était une erreur de comptage], 18 fichiers de test, 5 agents d'exploration.
 - **Vérification finale de l'état Git** effectuée après rédaction de ce rapport : voir ci-dessous.

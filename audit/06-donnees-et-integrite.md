@@ -1,6 +1,6 @@
 # 06 — Données et intégrité
 
-*Périmètre : 85 migrations SQL (`supabase/migrations/`, du 18/07/2026 au 03/09/2026). Analyse par lecture intégrale des fichiers structurants + grep exhaustif sur le reste. Aucune modification effectuée, aucune connexion à une base distante.*
+*Périmètre : 66 migrations SQL [corrigé le 07/09/2026, "85" était une erreur de comptage — 69 au 07/09/2026] (`supabase/migrations/`, du 18/07/2026 au 03/09/2026). Analyse par lecture intégrale des fichiers structurants + grep exhaustif sur le reste. Aucune modification effectuée, aucune connexion à une base distante.*
 
 ## 1. Schéma synthétique
 
@@ -49,7 +49,7 @@ Le dépôt documente explicitement, en tête de chaque migration corrective, l'i
 
 Ces cinq migrations partagent un même motif : **une règle métier a changé (nouveau statut, nouvelle colonne, nouvelle table) sans qu'une revue systématique de tous les objets qui en dépendaient (index uniques partiels, policies, fonctions) ait été faite au même moment.** C'est un pattern de risque récurrent à surveiller pour toute future évolution de statut — voir `DATA-001`.
 
-**Irréversibilité** : aucun `DROP TABLE` dans les 85 migrations. Les seuls `DROP COLUMN` (`use_team_colors`, `tutorial_seen_at`) concernent des colonnes de préférences UX abandonnées, documentées comme telles et sans donnée métier perdue. Le seul `DROP COLUMN` touchant une donnée sensible (`competitions.join_code`) est précédé d'un `INSERT INTO competition_secrets ... SELECT` de migration — pas de perte sèche.
+**Irréversibilité** : aucun `DROP TABLE` dans les 66 migrations [corrigé le 07/09/2026, "85" était une erreur de comptage]. Les seuls `DROP COLUMN` (`use_team_colors`, `tutorial_seen_at`) concernent des colonnes de préférences UX abandonnées, documentées comme telles et sans donnée métier perdue. Le seul `DROP COLUMN` touchant une donnée sensible (`competitions.join_code`) est précédé d'un `INSERT INTO competition_secrets ... SELECT` de migration — pas de perte sèche.
 
 ## 5. Nouvelles tables du 03/09/2026 — cohérence vérifiée
 
@@ -73,7 +73,7 @@ Couverture globale correcte sur les tables à fort volume (`bets`, `match_predic
 
 ## 8. Dates et fuseaux horaires
 
-**Vérifié** : toutes les colonnes temporelles sont en `timestamptz` — aucune colonne `timestamp without time zone` trouvée dans les 85 migrations. Bon choix : Postgres stocke en UTC, la conversion d'affichage est déléguée à l'application.
+**Vérifié** : toutes les colonnes temporelles sont en `timestamptz` — aucune colonne `timestamp without time zone` trouvée dans les 66 migrations [corrigé le 07/09/2026, "85" était une erreur de comptage]. Bon choix : Postgres stocke en UTC, la conversion d'affichage est déléguée à l'application.
 
 Le double fuseau applicatif répond à deux besoins distincts et non concurrents, sans confusion identifiée :
 - `lib/dates/newyork.ts` : construit le paramètre `date` des appels à l'API sportive externe (Highlightly), qui interprète elle-même ce paramètre comme un jour calendaire America/New_York — contrainte du fournisseur, pas un choix arbitraire.

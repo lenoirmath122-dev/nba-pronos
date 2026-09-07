@@ -5,6 +5,15 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  // Vercel gère TLS/HTTPS nativement mais n'ajoute pas ce header par défaut
+  // (audit sécurité 29/08/2026, finding "Absence de headers de sécurité
+  // HTTP"). max-age 2 ans + preload : aucun sous-domaine HTTP n'existe.
+  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
+  // Aucune de ces API n'est utilisée par l'app aujourd'hui (pas de caméra/
+  // micro/géoloc/paiement web) — désactivées par défaut, à revoir si un
+  // besoin réel apparaît (ex. Stripe en Phase 5 pourrait nécessiter payment=()
+  // assoupli pour son propre frame).
+  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=(), usb=(), interest-cohort=()" },
   {
     key: "Content-Security-Policy",
     value: [

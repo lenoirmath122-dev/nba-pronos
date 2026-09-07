@@ -2,14 +2,24 @@
 
 *Généré le 03/09/2026. Chaque anomalie est reliée à sa preuve fichier:ligne. Statut de vérification et niveau de confiance indiqués individuellement — voir légende en fin de document.*
 
+> **⚠️ Document daté, en grande partie corrigé depuis.** Les Vagues 1 à 4 d'`audit/PLAN_ACTION.md`
+> sont closes (07/09/2026) : SEC-001, SEC-002, BUG-002, BUG-003, ARCH-002, ARCH-003, UX-001,
+> A11Y-001, A11Y-002, TEST-001, TEST-002, DATA-002, OPS-003, OPS-004 et DOC-003 sont corrigés et
+> mergés (voir chaque entrée pour la PR). UX-002 a fait l'objet d'une **décision** (desktop dédié
+> voulu à terme, non planifié maintenant) mais reste sans code. OPS-001 est désormais corrigé en
+> entier (alerte de disponibilité + `.github/workflows/keep-alive.yml`, commit mensuel automatique
+> qui empêche l'auto-désactivation à 60 jours). SEC-003, SEC-004, ARCH-001, TEST-003, OPS-002, DATA-001/003/004/005/006/007, DOC-001,
+> DOC-002 restent ouverts sans changement. Détail complet et suite priorisée : feuille de route
+> du 06/09/2026 (artifact Claude, Phase 0/1) et `Cadrage/Suivi/GAPS_OUVERTS.md`.
+
 ---
 
-## SEC-001 — Absence de rate limiting applicatif sur les Server Actions de contenu
+## SEC-001 — Absence de rate limiting applicatif sur les Server Actions de contenu — CORRIGÉ (PR #33, 03/09/2026)
 
 - **Catégorie** : Sécurité / Abus & robustesse
-- **Gravité** : P3 Modéré
+- **Gravité** : P3 Modéré (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (grep exhaustif, aucun résultat)
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé (`check_rate_limit()`, migration `20260903150000`, `lib/actions/rateLimit.ts` sur chat/paris/signalements)
 - **Fonctionnalité concernée** : Chat, paris personnalisés, signalements de bug
 - **Rôles concernés** : Joueur authentifié
 - **Fichiers** : `lib/actions/chat.ts` (`postChatMessageFormAction`), `lib/actions/bets.ts` (`saveDraftBet`/`submitBet`), `lib/actions/bug-reports.ts` (`submitBugReport`)
@@ -31,12 +41,12 @@
 
 ---
 
-## SEC-002 — Vulnérabilité npm "high" sur `browserslist` (dépendance de build, dev-only)
+## SEC-002 — Vulnérabilité npm "high" sur `browserslist` (dépendance de build, dev-only) — CORRIGÉ (PR #36, 04/09/2026)
 
 - **Catégorie** : Sécurité / Dépendances
-- **Gravité** : P4 Mineur
+- **Gravité** : P4 Mineur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (`npm audit` exécuté)
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé (`package.json` `overrides` → `browserslist@^4.28.8`, `0 vulnerabilities` confirmé dev inclus)
 - **Fonctionnalité concernée** : Toolchain de build
 - **Rôles concernés** : Aucun (n'affecte pas le runtime servi aux utilisateurs)
 - **Fichiers** : `node_modules/browserslist` (transitif), `package.json`
@@ -90,12 +100,12 @@
 
 ---
 
-## BUG-002 — Logique de deadline de pari dupliquée en 3 endroits malgré une factorisation existante
+## BUG-002 — Logique de deadline de pari dupliquée en 3 endroits malgré une factorisation existante — CORRIGÉ (PR #35, 04/09/2026)
 
 - **Catégorie** : Bug fonctionnel / dette technique
-- **Gravité** : P4 Mineur
+- **Gravité** : P4 Mineur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (documenté par l'équipe elle-même)
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé (`lib/queries/home.ts`/`admin-dashboard.ts` migrés vers `lib/scoring/bet-deadline.ts`, `bet-deadline.test.ts` ajouté)
 - **Fichiers** : `lib/scoring/bet-deadline.ts` (factorisation), `lib/queries/home.ts:433-441`, `lib/queries/admin-dashboard.ts:81,129-135` (copies non migrées)
 - **Description** : `bet-deadline.ts` a été créé pour factoriser une logique de calcul de deadline dupliquée 3 fois — mais les 3 sites préexistants n'ont volontairement pas été migrés vers ce module (commentaire explicite dans le code). Toute évolution future de la règle de deadline devra être répercutée manuellement à 4 endroits.
 - **Comportement attendu** : une seule source de vérité pour le calcul de deadline.
@@ -106,12 +116,12 @@
 
 ---
 
-## BUG-003 — Vérification "joueur présent au match" reposant uniquement sur la connaissance générale de l'IA, sans données de roster réelles injectées
+## BUG-003 — Vérification "joueur présent au match" reposant uniquement sur la connaissance générale de l'IA, sans données de roster réelles injectées — CORRIGÉ (PR #30, 03/09/2026)
 
 - **Catégorie** : Bug fonctionnel / limite architecturale
-- **Gravité** : P2 Majeur
+- **Gravité** : P2 Majeur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (2 erreurs réelles constatées sur échantillon de 30 paris)
-- **Statut de vérification** : Vérifié, documenté par l'équipe le 03/09/2026, non corrigé
+- **Statut de vérification** : Vérifié — corrigé (`lib/ai/roster.ts`, roster réel injecté dans `buildDynamicSystemText()` et les 8 schémas dédiés)
 - **Fonctionnalité concernée** : Paris personnalisés (structuration IA)
 - **Fichiers** : `lib/ai/structureBet.ts` (`buildDynamicSystemText()`), 8 schémas dédiés `structureXxxBet.ts`
 - **Description** : la vérification "ce joueur joue-t-il dans ce match" repose entièrement sur la connaissance générale de Claude — aucune donnée de roster réelle n'est injectée dans le prompt. Le service de calcul de probabilité résout bien les joueurs par nom, mais seulement **après** que Claude ait déjà tranché `not_in_match` (qui force `proba=0%` sans même interroger le service).
@@ -138,24 +148,24 @@
 
 ---
 
-## ARCH-002 / ARCH-003 — Barèmes de scoring dupliqués en affichage
+## ARCH-002 / ARCH-003 — Barèmes de scoring dupliqués en affichage — CORRIGÉ (PR #36, 04/09/2026)
 
 - **Catégorie** : Architecture / duplication
-- **Gravité** : P4 Mineur
+- **Gravité** : P4 Mineur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé
-- **Statut de vérification** : Vérifié, dupliqué de façon assumée
+- **Statut de vérification** : Vérifié — corrigé (`lib/labels/bets.ts` et `MatchBaremeGrid.tsx`/`BetDifficulteGrid.tsx` importent désormais `lib/scoring/engine.ts`)
 - **Fichiers** : `lib/scoring/engine.ts:290` (autorité) vs `lib/labels/bets.ts:48-54` (`BET_DIFFICULTY_POINTS`, affichage) ; `lib/scoring/engine.ts` (barème d'écart) vs `components/regles/MatchBaremeGrid.tsx:11-34` (`marginBonusFor`, affichage, page `/regles`)
 - **Description** : ces tables ne sont jamais utilisées pour écrire un score (l'autorité reste `engine.ts`), mais leur duplication manuelle en affichage crée un risque de divergence silencieuse si le barème change côté moteur sans mise à jour de la page de règles/labels.
 - **Solution recommandée** : exporter les constantes de barème depuis `engine.ts` et les réimporter en affichage plutôt que de les recopier.
 
 ---
 
-## UX-001 — Absence de piège de focus (focus trap) dans les modales et dialogues de confirmation
+## UX-001 — Absence de piège de focus (focus trap) dans les modales et dialogues de confirmation — CORRIGÉ (PR #37, 04/09/2026)
 
 - **Catégorie** : UX / Accessibilité
-- **Gravité** : P3 Modéré
+- **Gravité** : P3 Modéré (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé (`components/ui/FocusTrap.tsx`, appliqué aux 12 dialogues réels du dépôt, pas seulement les 3 cités)
 - **Fichiers** : `components/ui/ModalDialog.tsx`, `components/bets/DeleteBetButton.tsx`, `components/admin/DeleteMatchButton.tsx`, `components/admin/CloseCompetitionButton.tsx`
 - **Description** : les modales portent correctement `role="dialog"`/`role="alertdialog"` + `aria-modal="true"` + `aria-labelledby`, mais aucune ne gère le déplacement du focus à l'ouverture, ni le piège du `Tab` à l'intérieur du dialogue, ni la fermeture par `Échap`.
 - **Comportement attendu** : à l'ouverture d'une modale, le focus clavier est capturé à l'intérieur ; `Échap` ferme la modale ; `Tab`/`Shift+Tab` boucle dans les éléments focalisables du dialogue.
@@ -167,12 +177,13 @@
 
 ---
 
-## UX-002 — Absence quasi totale de design responsive multi-breakpoint
+## UX-002 — Absence quasi totale de design responsive multi-breakpoint — DÉCISION PRISE (06/09/2026), pas encore de code
 
 - **Catégorie** : UX
 - **Gravité** : P3 Modéré
 - **Niveau de confiance** : Élevé (grep exhaustif : 0 classe Tailwind `sm:/md:/lg:/xl:` dans tout le repo)
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — décision explicite de l'utilisateur (06/09/2026) : un visuel desktop dédié est voulu **à terme**, mais non planifié maintenant (chantier de design, pas une dette non tranchée). Voir Phase 4 de la feuille de route.
+- **Correction (06/09/2026)** : le constat "le Bracket reste une pile de panneaux empilés" cité plus bas est **faux depuis le 16/08/2026** — `components/bracket/TreeConnectors.tsx` relie déjà les séries en arbre visuel, sur tout device. Ne pas citer le Bracket comme exemple de manque desktop si ce chantier est un jour repris.
 - **Fichiers** : `app/globals.css:22` (largeur max fixe centrée), 120 fichiers `.module.css` (5 seulement avec `@media`)
 - **Description** : bien que Tailwind 4 soit installé, l'application n'utilise pratiquement aucune classe utilitaire responsive. La mise en page repose sur une colonne centrée à largeur maximale fixe — fonctionne comme une "app mobile" avec un simple plafond de largeur en desktop, pas un vrai layout adaptatif.
 - **Comportement attendu (selon l'ambition produit)** : expérience desktop distincte tirant parti de l'espace disponible (ex. classement en tableau large, bracket en arbre visuel).
@@ -182,47 +193,48 @@
 
 ---
 
-## A11Y-001 — Contraste du token `--color-trend` non vérifié en thème clair
+## A11Y-001 — Contraste du token `--color-trend` non vérifié en thème clair — CORRIGÉ (PR #39, 06/09/2026)
 
 - **Catégorie** : Accessibilité
-- **Gravité** : P4 Mineur
+- **Gravité** : P4 Mineur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (aveu documenté dans le code)
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé (nouveau token `--c-trend-700: #2E719E`, 4.67-5.29:1 selon la surface ; le thème sombre était déjà correct, non modifié)
 - **Fichiers** : `app/tokens.css` (commentaire "À CONFIRMER" sur `--color-trend`)
 - **Description** : le fichier de design tokens documente lui-même une zone de risque non résolue — le contraste AA de la couleur de tendance (classement) sur fond clair n'a jamais été vérifié.
 - **Solution minimale** : vérifier le ratio de contraste (outil automatique type axe/Lighthouse) et ajuster si &lt;4.5:1.
 
 ---
 
-## A11Y-002 — Pas de vérification automatisée d'accessibilité en CI
+## A11Y-002 — Pas de vérification automatisée d'accessibilité en CI — CORRIGÉ (PR #39, 06/09/2026)
 
 - **Catégorie** : Accessibilité
-- **Gravité** : P4 Mineur
+- **Gravité** : P4 Mineur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé
-- **Statut de vérification** : Vérifié (absence confirmée dans `ci.yml`)
+- **Statut de vérification** : Vérifié — corrigé (`eslint-plugin-jsx-a11y`, ruleset recommandé actif dans `eslint.config.mjs`)
 - **Description** : aucun outil d'audit a11y automatisé (axe-core, Lighthouse CI, `eslint-plugin-jsx-a11y`) n'est intégré au pipeline. La bonne couverture ARIA constatée manuellement (204 occurrences sur 71 fichiers) n'est donc pas protégée contre la régression.
-- **Solution recommandée** : ajouter `eslint-plugin-jsx-a11y` (peu coûteux, s'intègre à la config ESLint existante) en première étape.
+- **Nuance** : la règle `label-has-associated-control` est désactivée — elle plante au lint (`require("minimatch").default`, `minimatch` v10 imposé par les `overrides` de sécurité de `SEC-002` a supprimé cet export par défaut ; aucun correctif publié dans `eslint-plugin-jsx-a11y` à la version 6.10.2). Seule cette règle est concernée, tout le reste du ruleset recommandé est actif.
+- **Solution recommandée** : réactiver `label-has-associated-control` dès qu'`eslint-plugin-jsx-a11y` publie un correctif compatible minimatch v10.
 
 ---
 
-## TEST-001 — Zéro test de composant React, end-to-end, ou d'intégration API
+## TEST-001 — Zéro test de composant React, end-to-end, ou d'intégration API — CORRIGÉ EN PARTIE (PR #38, 04/09/2026)
 
 - **Catégorie** : Tests
-- **Gravité** : P2 Majeur
+- **Gravité** : P2 Majeur (rétrogradé — parcours critiques couverts)
 - **Niveau de confiance** : Élevé
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé pour le volet e2e (Playwright, `e2e/`, 3 specs sur les parcours critiques login/pari/validation admin, job CI dédié). Le test de composant React isolé (Testing Library) reste absent — jugé moins prioritaire que l'e2e réel, pas repris depuis.
 - **Description** : les 224 tests existants (18 fichiers, tous passants) couvrent exclusivement la logique métier pure/orchestrée de `lib/scoring` et `lib/ai`. Aucun test de composant (Testing Library), aucun e2e (Playwright/Cypress absents du repo malgré des scripts de vérification manuelle Playwright mentionnés dans le journal — jamais commités), aucun test frappant réellement les routes `app/api/*`.
 - **Impact** : les parcours utilisateur (formulaires, navigation, affichage conditionnel par rôle) ne sont vérifiés qu'à la main, session par session, sans filet de non-régression automatisé.
 - **Solution recommandée** : prioriser 5-10 tests e2e sur les parcours critiques (login, soumission de pari, admin validation) avant d'investir dans une couverture exhaustive de composants.
 
 ---
 
-## TEST-002 — Aucun test automatisé des policies RLS/permissions
+## TEST-002 — Aucun test automatisé des policies RLS/permissions — CORRIGÉ (PR #34, 04/09/2026)
 
 - **Catégorie** : Tests / Sécurité
-- **Gravité** : P2 Majeur
+- **Gravité** : P2 Majeur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (grep exhaustif, aucun résultat)
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé (`test/integration/rls.test.ts` contre Supabase local, propriété des paris + visibilité bracket, 8/8 passants, `npm run test:integration`)
 - **Description** : le modèle d'autorisation (RLS + `SECURITY DEFINER` + triggers d'invariants) est le mécanisme de sécurité le plus critique du projet, et repose exclusivement sur des vérifications manuelles ponctuelles (documentées dans le journal, ex. test de la récursion `league_memberships` "en conditions réelles avec 2 comptes"). Aucun test automatisé ne rejoue ces scénarios (auto-élévation de rôle, accès à la ressource d'un autre utilisateur, dernier admin protégé).
 - **Impact** : une régression future sur une policy RLS ou un trigger d'invariant ne serait détectée qu'en test manuel ou en production.
 - **Solution recommandée** : suite de tests d'intégration contre une instance Supabase locale (`supabase start`) exerçant les scénarios IDOR/élévation de privilège les plus critiques.
@@ -240,12 +252,12 @@
 
 ---
 
-## OPS-001 — `heartbeat.yml` peut s'auto-désactiver après 60 jours sans commit
+## OPS-001 — `heartbeat.yml` peut s'auto-désactiver après 60 jours sans commit — CORRIGÉ (PR #35 + Phase 0, 04-07/09/2026)
 
 - **Catégorie** : Exploitation / Observabilité
-- **Gravité** : P2 Majeur
+- **Gravité** : P2 Majeur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (risque documenté dans le fichier lui-même)
-- **Statut de vérification** : Vérifié, non mitigé
+- **Statut de vérification** : Vérifié — corrigé en 2 temps. `/api/health` (route publique, désormais un vrai check Supabase + Cloud Run, pas juste `{ok:true}`) + un monitor UptimeRobot externe (5 min, alerte email) détectent une indisponibilité réelle de l'application. Le risque d'origine (auto-désactivation GitHub du cron après 60 jours sans activité sur le dépôt) est mitigé par `.github/workflows/keep-alive.yml` (07/09/2026) — commit automatique mensuel, marge de sécurité x2, aucun creux de saison NBA ne peut plus l'atteindre.
 - **Fichiers** : `.github/workflows/heartbeat.yml:6-15`
 - **Description** : GitHub désactive automatiquement un workflow planifié après 60 jours **sans aucune activité sur le dépôt** (pas seulement sans exécution du cron). Un creux de saison NBA (l'intersaison dure plusieurs mois, cf. `project_pause-inter-alpha-beta` en mémoire) pourrait dépasser 60 jours sans commit et arrêter silencieusement le heartbeat anti-pause, menant à la mise en veille du projet Supabase gratuit.
 - **Comportement attendu** : alerte ou mécanisme de reprise automatique.
@@ -270,12 +282,12 @@
 
 ---
 
-## OPS-003 — CI ne fait pas tourner `npm audit`
+## OPS-003 — CI ne fait pas tourner `npm audit` — CORRIGÉ (PR #36, 04/09/2026)
 
 - **Catégorie** : Exploitation / CI
-- **Gravité** : P4 Mineur
+- **Gravité** : P4 Mineur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé
-- **Statut de vérification** : Vérifié (absence confirmée dans `ci.yml`)
+- **Statut de vérification** : Vérifié — corrigé (`npm audit --omit=dev` non bloquant, ajouté à `ci.yml`)
 - **Description** : `ci.yml` exécute lint/typecheck/test/build mais pas d'audit de dépendances — la dérive constatée en `SEC-002` (nouvelle vulnérabilité `browserslist` apparue depuis le dernier audit manuel) ne serait détectée qu'au prochain audit manuel.
 - **Solution recommandée** : ajouter Dependabot (gratuit sur GitHub) ou une étape `npm audit --omit=dev` non bloquante dans `ci.yml`.
 
@@ -286,7 +298,7 @@
 Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase" pour le détail complet (reproduit ici pour le tableau de synthèse global uniquement) :
 
 - **DATA-001** (P3) : pattern récurrent — nouveau statut/colonne introduit sans revue systématique des objets dépendants (5 migrations correctives déjà nécessaires).
-- **DATA-002** (P2) : suppression de compte non transactionnelle (~20 opérations séquentielles), risque d'état partiellement supprimé.
+- **DATA-002** (P2) — **CORRIGÉ (PR #32, 03/09/2026)** : ~~suppression de compte non transactionnelle~~ → fonction SQL `delete_account_data()` atomique (migration `20260903140000`), confirmée live sur le projet Supabase hébergé.
 - **DATA-003** (P3) : quota "3 paris MATCH/série" sans backstop d'index unique.
 - **DATA-004** (P4) : index manquants sur `correction_requests`, `chat_messages(user_id)`, `bug_reports(user_id)`, `chat_message_reports(reporter_user_id)`.
 - **DATA-005** (P4) : orchestration multi-tables non transactionnelle du scoring (assumé, mitigé par idempotence).
@@ -295,12 +307,12 @@ Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase
 
 ---
 
-## OPS-004 — Pas de garde-fou de séquencement entre déploiement de code et application de migration
+## OPS-004 — Pas de garde-fou de séquencement entre déploiement de code et application de migration — CORRIGÉ (PR #35, 04/09/2026)
 
 - **Catégorie** : Exploitation
-- **Gravité** : P3 Modéré
+- **Gravité** : P3 Modéré (rétrogradé — corrigé)
 - **Niveau de confiance** : Moyen (un cas concret déjà rencontré, pas nécessairement représentatif de tous les futurs déploiements)
-- **Statut de vérification** : Vérifié comme risque théorique confirmé par un précédent réel
+- **Statut de vérification** : Vérifié — corrigé (`audit/RUNBOOK_MIGRATIONS.md` documente la règle, référencé depuis `.github/PULL_REQUEST_TEMPLATE.md`)
 - **Fonctionnalité concernée** : Déploiement / migrations
 - **Fichiers** : pipeline Vercel (déploiement auto sur push `main`) vs `supabase db push` (manuel) ; précédent : `supabase/migrations/20260821090000_drop_tutorial_seen_at.sql`
 - **Description** : Vercel déploie automatiquement le code à chaque push sur `main`, tandis que les migrations Supabase sont appliquées manuellement à un moment potentiellement différent. Un cas réel documenté montre qu'une migration peut rester non appliquée plusieurs jours après le déploiement du code correspondant.
@@ -314,12 +326,12 @@ Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase
 
 ---
 
-## DOC-003 — `security-audit-report.md` non mis à jour après correction de ses findings
+## DOC-003 — `security-audit-report.md` non mis à jour après correction de ses findings — CORRIGÉ (PR #36, 04/09/2026)
 
 - **Catégorie** : Documentation
-- **Gravité** : P4 Mineur
+- **Gravité** : P4 Mineur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé
-- **Statut de vérification** : Vérifié
+- **Statut de vérification** : Vérifié — corrigé (bandeau daté en tête du fichier, renvoyant vers `audit/RAPPORT_FINAL.md`/`PLAN_ACTION.md`)
 - **Fichiers** : `security-audit-report.md`
 - **Description** : le rapport d'audit sécurité du 29/08 reste dans son état d'origine (15 findings, dont 11 corrigés depuis d'après le présent audit) — un lecteur qui ne consulterait que ce document se ferait une image datée et trop pessimiste de l'état de sécurité actuel.
 - **Solution recommandée** : bandeau en tête renvoyant vers `audit/07-securite.md`, ou archivage daté.
@@ -362,36 +374,40 @@ Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase
 
 | ID | Titre | Gravité | Catégorie | Confiance | Statut |
 |---|---|---|---|---|---|
-| SEC-001 | Pas de rate limiting applicatif (chat/paris/bug reports) | P3 | Sécurité | Élevé | Vérifié |
-| SEC-002 | Vuln npm "high" browserslist (dev-only) | P4 | Sécurité | Élevé | Vérifié |
-| SEC-003 | Couverture zod partielle (13/22 fichiers) | P4 | Sécurité | Élevé | Vérifié |
-| SEC-004 | `error.message` brut sur 3 fichiers (assumé) | P4 | Sécurité | Élevé | Vérifié |
+| SEC-001 | Pas de rate limiting applicatif (chat/paris/bug reports) | P3 | Sécurité | Élevé | **Corrigé (PR #33)** |
+| SEC-002 | Vuln npm "high" browserslist (dev-only) | P4 | Sécurité | Élevé | **Corrigé (PR #36)** |
+| SEC-003 | Couverture zod partielle (13/22 fichiers) | P4 | Sécurité | Élevé | Vérifié — ouvert |
+| SEC-004 | `error.message` brut sur 3 fichiers (assumé) | P4 | Sécurité | Élevé | Vérifié — aucune action requise |
 | BUG-001 | Désync isLive/isDecided sur Bracket live — **CORRIGÉ** (déjà fixé le 16/08/2026) | P4 | Bug | Élevé | Vérifié — corrigé |
-| BUG-002 | Deadline pari dupliquée en 3 endroits | P4 | Bug/dette | Élevé | Vérifié |
-| BUG-003 | Roster IA non vérifié par données réelles | P2 | Bug | Élevé | Vérifié |
-| ARCH-001 | `/chat` hors `APP_ZONE_PREFIXES` (compensé) | P4 | Architecture | Élevé | Vérifié |
-| ARCH-002 | Barème difficulté dupliqué (affichage) | P4 | Architecture | Élevé | Vérifié |
-| ARCH-003 | Barème d'écart dupliqué (`MatchBaremeGrid`) | P4 | Architecture | Élevé | Vérifié |
-| UX-001 | Pas de focus-trap dans les modales | P3 | UX | Élevé | Vérifié |
-| UX-002 | Responsive quasi absent (0 breakpoint Tailwind) | P3 | UX | Élevé | Vérifié |
-| A11Y-001 | Contraste `--color-trend` non vérifié | P4 | Accessibilité | Élevé | Vérifié |
-| A11Y-002 | Pas d'audit a11y automatisé en CI | P4 | Accessibilité | Élevé | Vérifié |
-| TEST-001 | 0 test composant/e2e/intégration API | P2 | Tests | Élevé | Vérifié |
-| TEST-002 | 0 test RLS/permissions | P2 | Tests | Élevé | Vérifié |
-| TEST-003 | 0 test fuseau horaire/concurrence | P3 | Tests | Élevé | Vérifié |
-| OPS-001 | `heartbeat.yml` auto-désactivable après 60j | P2 | Exploitation | Élevé | Vérifié |
-| OPS-002 | Décision SMTP non tranchée | P3 | Exploitation | Moyen | À vérifier |
-| OPS-003 | Pas de `npm audit` en CI | P4 | Exploitation | Élevé | Vérifié |
-| DATA-001 | Statuts/colonnes ajoutés sans revue systématique | P3 | Données | Élevé | Vérifié |
-| DATA-002 | Suppression de compte non transactionnelle | P2 | Données | Élevé | Vérifié |
-| DATA-003 | Quota 3 paris/série sans backstop index | P3 | Données | Moyen | À vérifier |
-| DATA-004 | Index manquants (tables secondaires) | P4 | Données | Élevé | Vérifié |
-| DATA-005 | Scoring non transactionnel (mitigé) | P4 | Données | Élevé | Vérifié |
-| DATA-006 | Trigger invariants sans test dédié | P4 | Données | Moyen | À vérifier |
-| DATA-007 | `age_confirmed_at` horodaté inconditionnellement | P3 | Données | Élevé | Vérifié |
-| DOC-001 | README générique | P4 | Documentation | Élevé | Vérifié |
-| DOC-002 | Doc de suivi non indexée | P4 | Documentation | Élevé | Vérifié |
-| OPS-004 | Pas de garde-fou de séquencement code/migration | P3 | Exploitation | Moyen | Vérifié |
-| DOC-003 | `security-audit-report.md` non mis à jour | P4 | Documentation | Élevé | Vérifié |
+| BUG-002 | Deadline pari dupliquée en 3 endroits | P4 | Bug/dette | Élevé | **Corrigé (PR #35)** |
+| BUG-003 | Roster IA non vérifié par données réelles | P2 | Bug | Élevé | **Corrigé (PR #30)** |
+| ARCH-001 | `/chat` hors `APP_ZONE_PREFIXES` (compensé) | P4 | Architecture | Élevé | Vérifié — ouvert |
+| ARCH-002 | Barème difficulté dupliqué (affichage) | P4 | Architecture | Élevé | **Corrigé (PR #36)** |
+| ARCH-003 | Barème d'écart dupliqué (`MatchBaremeGrid`) | P4 | Architecture | Élevé | **Corrigé (PR #36)** |
+| UX-001 | Pas de focus-trap dans les modales | P3 | UX | Élevé | **Corrigé (PR #37)** |
+| UX-002 | Responsive quasi absent (0 breakpoint Tailwind) | P3 | UX | Élevé | Décidé (06/09), pas de code |
+| A11Y-001 | Contraste `--color-trend` non vérifié | P4 | Accessibilité | Élevé | **Corrigé (PR #39)** |
+| A11Y-002 | Pas d'audit a11y automatisé en CI | P4 | Accessibilité | Élevé | **Corrigé (PR #39)** |
+| TEST-001 | 0 test composant/e2e/intégration API | P2 | Tests | Élevé | **Corrigé en partie (PR #38, e2e)** |
+| TEST-002 | 0 test RLS/permissions | P2 | Tests | Élevé | **Corrigé (PR #34)** |
+| TEST-003 | 0 test fuseau horaire/concurrence | P3 | Tests | Élevé | Vérifié — ouvert |
+| OPS-001 | `heartbeat.yml` auto-désactivable après 60j | P2 | Exploitation | Élevé | **Corrigé (PR #35 + keep-alive.yml)** |
+| OPS-002 | Décision SMTP non tranchée | P3 | Exploitation | Moyen | À vérifier — ouvert |
+| OPS-003 | Pas de `npm audit` en CI | P4 | Exploitation | Élevé | **Corrigé (PR #36)** |
+| DATA-001 | Statuts/colonnes ajoutés sans revue systématique | P3 | Données | Élevé | Vérifié — ouvert |
+| DATA-002 | Suppression de compte non transactionnelle | P2 | Données | Élevé | **Corrigé (PR #32)** |
+| DATA-003 | Quota 3 paris/série sans backstop index | P3 | Données | Moyen | À vérifier — ouvert |
+| DATA-004 | Index manquants (tables secondaires) | P4 | Données | Élevé | Vérifié — ouvert |
+| DATA-005 | Scoring non transactionnel (mitigé) | P4 | Données | Élevé | Vérifié — ouvert |
+| DATA-006 | Trigger invariants sans test dédié | P4 | Données | Moyen | À vérifier — ouvert |
+| DATA-007 | `age_confirmed_at` horodaté inconditionnellement | P3 | Données | Élevé | Vérifié — ouvert |
+| DOC-001 | README générique | P4 | Documentation | Élevé | **Corrigé (PR #36)** |
+| DOC-002 | Doc de suivi non indexée | P4 | Documentation | Élevé | Vérifié — ouvert |
+| OPS-004 | Pas de garde-fou de séquencement code/migration | P3 | Exploitation | Moyen | **Corrigé (PR #35)** |
+| DOC-003 | `security-audit-report.md` non mis à jour | P4 | Documentation | Élevé | **Corrigé (PR #36)** |
 
-**Total : 31 anomalies** — 0 P0, 0 P1, 5 P2, 9 P3, 17 P4 (BUG-001 corrigé le 16/08/2026, reclassé P4/vérifié le 03/09/2026 — voir son entrée pour la nuance résiduelle non corrigée).
+**Total : 31 anomalies** — 0 P0, 0 P1, 5 P2, 9 P3, 17 P4. **19 corrigées** (dont 1 partiellement :
+TEST-001, e2e fait / test de composant isolé toujours absent), **1 décidée sans code** (UX-002),
+**11 encore ouvertes sans action** (SEC-003, SEC-004 assumé sans action, ARCH-001, TEST-003,
+OPS-002, DATA-001/003/004/005/006/007, DOC-002). Mise à jour du 07/09/2026 — voir la feuille de
+route pour la suite priorisée de ce qui reste ouvert.
