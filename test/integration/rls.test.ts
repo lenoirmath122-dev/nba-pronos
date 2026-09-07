@@ -10,18 +10,13 @@
 // base peut confirmer que les policies bloquent ce qu'elles doivent
 // bloquer.
 
-import { randomUUID } from "node:crypto";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { type SupabaseClient } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { LOCAL_SUPABASE } from "./env";
+import { createSignedInTestUser, newRunId, purgeLeftoverTestUsers, serviceClient } from "./fixtures";
 
-const RUN_ID = randomUUID().slice(0, 8);
+const RUN_ID = newRunId();
 const COMPETITION_NAME_PREFIX = "RLS-TEST-";
 const TEST_USER_EMAIL_DOMAIN = "@rls-test.local";
-
-const serviceClient = createClient(LOCAL_SUPABASE.url, LOCAL_SUPABASE.serviceRoleKey, {
-  auth: { autoRefreshToken: false, persistSession: false },
-});
 
 // Nettoie les résidus d'une exécution précédente interrompue avant son
 // afterAll (ex. process tué) -- sans ça, l'index unique "1 seule compétition
@@ -41,36 +36,7 @@ async function purgeLeftoverTestData() {
     await serviceClient.from("competitions").delete().in("id", competitionIds);
   }
 
-  const { data: usersPage } = await serviceClient.auth.admin.listUsers({ perPage: 200 });
-  for (const u of usersPage?.users ?? []) {
-    if (u.email?.endsWith(TEST_USER_EMAIL_DOMAIN)) {
-      await serviceClient.auth.admin.deleteUser(u.id);
-    }
-  }
-}
-
-async function createSignedInTestUser(label: string) {
-  const email = `rls-${label}-${RUN_ID}${TEST_USER_EMAIL_DOMAIN}`;
-  const password = `Test-${randomUUID()}`;
-  const { data: created, error: createError } = await serviceClient.auth.admin.createUser({
-    email,
-    password,
-    email_confirm: true,
-    user_metadata: { pseudo: `rls_${label}_${RUN_ID}` },
-  });
-  if (createError || !created.user) {
-    throw new Error(`Création user de test échouée (${label}): ${createError?.message}`);
-  }
-
-  const anonClient = createClient(LOCAL_SUPABASE.url, LOCAL_SUPABASE.anonKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-  const { error: signInError } = await anonClient.auth.signInWithPassword({ email, password });
-  if (signInError) {
-    throw new Error(`Sign-in user de test échoué (${label}): ${signInError.message}`);
-  }
-
-  return { id: created.user.id, client: anonClient };
+  await purgeLeftoverTestUsers(TEST_USER_EMAIL_DOMAIN);
 }
 
 let userA: { id: string; client: SupabaseClient };
@@ -83,9 +49,9 @@ let matchId: string;
 beforeAll(async () => {
   await purgeLeftoverTestData();
 
-  userA = await createSignedInTestUser("a");
-  userB = await createSignedInTestUser("b");
-  userAdmin = await createSignedInTestUser("admin");
+  userA = await createSignedInTestUser("a", RUN_ID, TEST_USER_EMAIL_DOMAIN);
+  userB = await createSignedInTestUser("b", RUN_ID, TEST_USER_EMAIL_DOMAIN);
+  userAdmin = await createSignedInTestUser("admin", RUN_ID, TEST_USER_EMAIL_DOMAIN);
   const { error: promoteError } = await serviceClient
     .from("users")
     .update({ role: "ADMIN" })
