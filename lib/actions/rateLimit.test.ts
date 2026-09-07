@@ -1,7 +1,6 @@
 // Test de checkRateLimit() (SEC-001 de l'audit du 03/09/2026, item A2) --
-// vérifie le passage des paramètres à la RPC et le comportement "laisse
-// passer" en cas de panne du mécanisme lui-même (jamais bloquant pour une
-// raison indépendante du joueur).
+// vérifie le passage des paramètres à la RPC et le comportement fail-closed
+// (p1-13, feuille de route Phase 1) en cas de panne du mécanisme lui-même.
 
 import { describe, it, expect, vi } from "vitest";
 import { checkRateLimit } from "./rateLimit";
@@ -30,8 +29,8 @@ describe("checkRateLimit", () => {
     expect(await checkRateLimit(supabase, "bet_submit", 20, 60)).toBe(false);
   });
 
-  it("laisse passer (true) si la RPC échoue -- jamais bloquant pour une panne du mécanisme", async () => {
+  it("bloque (false) si la RPC échoue -- fail-closed, ne rouvre jamais la porte en silence", async () => {
     const supabase = fakeSupabase(async () => ({ data: null, error: { message: "fonction pas encore migrée" } }));
-    expect(await checkRateLimit(supabase, "bug_report", 5, 3600)).toBe(true);
+    expect(await checkRateLimit(supabase, "bug_report", 5, 3600)).toBe(false);
   });
 });

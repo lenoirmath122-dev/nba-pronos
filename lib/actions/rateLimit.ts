@@ -10,9 +10,15 @@ type SupabaseServerClient = Awaited<ReturnType<typeof getServerClient>>;
 // interne pour savoir qui limiter, résolu uniquement dans ce contexte).
 //
 // Panne du mécanisme lui-même (colonne/fonction pas encore migrée, erreur
-// réseau) : LAISSE PASSER plutôt que de bloquer une action légitime pour
-// une raison indépendante du joueur -- best-effort, même philosophie que
-// le reste du pipeline non critique de ce dépôt (ex. notifyChatMessage).
+// réseau) : BLOQUE par défaut (fail-closed, p1-13, feuille de route
+// Phase 1) -- un rate-limit qui laisse passer sous panne n'en est plus un.
+// Changé le 07/09/2026 : ce module protégeait jusqu'ici en fail-open, avec
+// la même philosophie best-effort que le reste du pipeline non critique de
+// ce dépôt (ex. notifyChatMessage) -- mais une panne SQL est justement le
+// cas qu'un attaquant peut chercher à provoquer pour désactiver la
+// protection. Compromis assumé : une vraie panne transitoire du mécanisme
+// bloque aussi les joueurs légitimes (chat/paris/signalements) le temps
+// qu'elle se résorbe, plutôt que de rouvrir la porte en silence.
 
 /** `action` : identifiant court et stable (ex. "chat_message", "bet_submit",
  *  "bug_report") -- partagé entre tous les appelants du même type d'action,
@@ -29,6 +35,9 @@ export async function checkRateLimit(
     p_max_count: maxCount,
     p_window_seconds: windowSeconds,
   });
-  if (error) return true;
+  if (error) {
+    console.error(`checkRateLimit(${action}) : RPC en échec, refus par défaut (fail-closed) — ${error.message}`);
+    return false;
+  }
   return data === true;
 }

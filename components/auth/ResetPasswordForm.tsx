@@ -3,21 +3,25 @@
 import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { getBrowserClient } from "@/lib/supabase/browser";
+import { requestPasswordReset } from "@/lib/auth/actions";
 import { MailIcon } from "@/components/icons/auth-icons";
 import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
 
 // Flux Supabase STANDARD (T2 §8, T6a arbre app/ — UNE seule route pour les 2
-// étapes) : ni server action, ni logique métier à nous — la demande ET la
-// confirmation passent directement par le SDK client (contrairement à
-// login/signup/logout, server actions, car il n'y a ici aucune donnée
-// applicative à nous à valider avant Supabase). Le lien reçu par email dépose
-// un jeton dans l'URL (fragment `#access_token=...&type=recovery`) que le
+// étapes). La CONFIRMATION (choix du nouveau mot de passe) passe par le SDK
+// client, aucune alternative possible : le lien reçu par email dépose un
+// jeton dans l'URL (fragment `#access_token=...&type=recovery`) que le
 // client navigateur (session en cookie, lib/supabase/browser.ts) détecte
 // automatiquement au chargement — c'est CE signal (`onAuthStateChange`,
 // événement `PASSWORD_RECOVERY`) qui bascule cette page de "demander un
 // email" à "choisir un nouveau mot de passe", jamais un paramètre d'URL lu
-// nous-mêmes.
+// nous-mêmes. La DEMANDE (envoi de l'email), elle, passe par la server
+// action requestPasswordReset() (lib/auth/actions.ts) depuis le 07/09/2026
+// (p1-12, feuille de route Phase 1) — seul changement : un frein applicatif
+// par IP manquait à ce formulaire (Turnstile déjà présent), impossible à
+// poser sans passer par le serveur (l'IP du client ne peut pas s'auto-
+// déclarer de façon fiable).
 export function ResetPasswordForm() {
   const [mode, setMode] = useState<"checking" | "request" | "confirm">("checking");
   const [email, setEmail] = useState("");
@@ -59,14 +63,10 @@ export function ResetPasswordForm() {
     // CHAQUE demande de réinitialisation échouait en silence côté serveur
     // (error_code "captcha_failed"), masqué par ce message générique.
     const captchaToken = String(new FormData(e.currentTarget).get("cf-turnstile-response") ?? "");
-    const supabase = getBrowserClient();
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-      captchaToken,
-    });
+    const { error: resetError } = await requestPasswordReset(email, captchaToken);
     setPending(false);
     if (resetError) {
-      setError("Impossible d'envoyer l'email pour le moment. Réessaie plus tard.");
+      setError(resetError);
       setTurnstileResetKey((key) => key + 1);
       return;
     }
