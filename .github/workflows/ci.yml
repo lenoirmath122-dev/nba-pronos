@@ -66,6 +66,13 @@ jobs:
       - name: Supabase local (Docker)
         run: npx supabase start
 
+      - name: Tests d'intégration RLS/permissions
+        # Réutilise le Supabase local déjà démarré ci-dessus (même instance
+        # que les specs e2e) — TEST-002/A4 (ANOMALIES.md) avait le test écrit
+        # depuis le 04/09/2026 mais jamais branché en CI, seulement lancé à la
+        # main (GAPS_OUVERTS.md, Phase 0).
+        run: npm run test:integration
+
       - name: Navigateur Playwright
         run: npx playwright install --with-deps chromium
 
