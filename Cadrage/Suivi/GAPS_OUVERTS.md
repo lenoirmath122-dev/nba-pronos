@@ -15,18 +15,6 @@
 
 ## Modèles de probabilité — maintenance
 
-- **Redéploiement Cloud Run en retard** — le réentraînement de
-  `train_stat_model.py`/`train_player_period_model.py` avec la feature
-  `vs_adversaire_{stat}_moy` généralisée (8 stats) a tourné en local dans
-  la nuit du 02-03/09/2026 (voir `JOURNAL_SESSIONS.md`, entrée du
-  06/09/2026 pour le détail et les chiffres) mais n'a jamais été
-  redéployé — le service en prod sert encore les anciens `.joblib`. Depuis
-  le même jour, 3 nouveaux modèles (`tov`/`team_tov`/`total_tov`, chantier
-  "pertes de balle") s'y ajoutent aussi, entraînés en local et vérifiés
-  (migration + backfill déjà faits contre la vraie base), mais pas encore
-  servis non plus tant que ce redéploiement n'a pas eu lieu. Action
-  utilisateur (`gcloud`, voir `Cadrage/Stats/service/
-  DEPLOIEMENT_CLOUD_RUN.md` § "Redéployer après un changement de code").
 - **Calibration Poisson/normale jamais revérifiée à l'échelle PÉRIODE** —
   `train_player_period_model.py` réutilise `POISSON_STATS` tel quel depuis
   l'échelle match entier ; biais mesuré (sur-estimation) jusqu'à +22% sur

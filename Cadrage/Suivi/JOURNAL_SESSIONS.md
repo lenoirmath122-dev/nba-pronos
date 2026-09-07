@@ -12920,3 +12920,47 @@ lien -> nouveau mot de passe -> connexion) revérifié fonctionnel par
 l'utilisateur après les 3 correctifs. tsc/eslint/vitest propres sur les 2
 PR de code (#47, #48).
 ```
+
+## Phase 0 close : rotation SYNC_SECRET, redéploiement Cloud Run, Sentry (07/09/2026)
+
+```text
+Les 3 derniers points de la Phase 0 (feuille de route du 06/09/2026),
+bloqués sur une action utilisateur, tous clos et vérifiés dans la même
+session que la découverte SMTP Gmail ci-dessus :
+
+**Rotation SYNC_SECRET** (`.env.local` + secret GitHub Actions via `gh
+secret set`, Vercel mis à jour par l'utilisateur dans son dashboard --
+répartition choisie ensemble). Vérifiée par un vrai déclenchement manuel
+du workflow `Heartbeat Supabase` après rotation (`gh workflow run` ->
+`gh run view` -> `completed success`), pas seulement par la mise à jour
+des valeurs.
+
+**Redéploiement Cloud Run** -- fait par l'utilisateur (`gcloud`, cf.
+`DEPLOIEMENT_CLOUD_RUN.md`). Sert désormais la feature `vs_adversaire`
+généralisée (8 stats) et les 3 nouveaux modèles `tov`/`team_tov`/
+`total_tov` du chantier "pertes de balle" (06/09/2026), jusque-là
+entraînés et vérifiés en local mais jamais poussés. Gap correspondant
+retiré de `GAPS_OUVERTS.md` (point traité, trace ici comme le veut la
+convention du fichier).
+
+**Sentry** (PR #50, `feat/sentry-error-tracking`) -- `@sentry/nextjs`
+10.73, conventions Next.js 15+/16 vérifiées dans
+`node_modules/next/dist/docs` avant d'écrire le code (`instrumentation.ts`
++ `instrumentation-client.ts`, plus l'ancien `sentry.client.config.ts`
+des versions précédentes du SDK) : `instrumentation.ts`
+(`register()`/`onRequestError`), `instrumentation-client.ts` +
+`sentry.server.config.ts`/`sentry.edge.config.ts` par runtime, capture
+ajoutée dans `app/error.tsx`/`global-error.tsx` sans toucher à leur UI
+française/`unstable_retry()` existants, `next.config.ts` enveloppé par
+`withSentryConfig` (import corrigé vers `@sentry/nextjs/config` avant
+même de committer -- l'ancien chemin est déprécié en v10.73). Pas de
+Session Replay (coût quota/vie privée jugé disproportionné pour ce
+trafic) ni d'org/project/authToken (désactive juste l'upload de source
+maps, pas la capture -- à ajouter plus tard si des stack traces lisibles
+deviennent nécessaires). Vérifié en conditions réelles : route de test
+jetable qui throw, erreur reçue sur le dashboard Sentry + email d'alerte,
+confirmé par l'utilisateur, route supprimée après coup.
+
+**Phase 0 de la feuille de route intégralement close (21/21)** à l'issue
+de cette session (PR #47, #48, #49, #50).
+```
