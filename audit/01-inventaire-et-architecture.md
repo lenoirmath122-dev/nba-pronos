@@ -19,7 +19,7 @@ Ces documents de suivi sont volumineux (jusqu'à 466 Ko) et n'ont pas été lus 
 
 **Nature du produit** : application web de pronostics NBA à jouer entre amis (cercle fermé, alpha en cours) — pronostics match par match, remplissage de bracket de playoffs, paris personnalisés en texte libre structurés et résolus automatiquement par IA, classement avec ligues privées, badges/gamification, chat temps réel, panneau d'administration complet.
 
-**Échelle** (confirmée par `BILAN_GLOBAL_01_09_2026.md`, à recouper avec l'état actuel légèrement postérieur) : ~32 000 lignes TypeScript au 01/09/2026, 359 commits, 62 migrations SQL à cette date (**85 migrations** au 03/09/2026 d'après le décompte direct de ce jour — croissance rapide et continue), micro-service Python séparé (Cloud Run) pour le calcul de probabilités. Développé en ~6-7 semaines (18/07 → 03/09/2026), très largement au-delà du "prototype jetable" envisagé au cadrage initial.
+**Échelle** (confirmée par `BILAN_GLOBAL_01_09_2026.md`, à recouper avec l'état actuel légèrement postérieur) : ~32 000 lignes TypeScript au 01/09/2026, 359 commits, 62 migrations SQL à cette date (**66 migrations** au 03/09/2026 — croissance continue ; le "85" initialement écrit ici était une erreur de comptage du décompte direct ce jour-là, corrigée le 07/09/2026, où le dépôt en compte 69), micro-service Python séparé (Cloud Run) pour le calcul de probabilités. Développé en ~6-7 semaines (18/07 → 03/09/2026), très largement au-delà du "prototype jetable" envisagé au cadrage initial.
 
 ## 2. Stack technique
 
@@ -74,7 +74,7 @@ Modules `lib/` principaux :
 
 ### 3.3 Données
 
-Supabase Postgres, 85 migrations SQL (`supabase/migrations/`), modèle détaillé dans `06-donnees-et-integrite.md`. Autorisation fine portée exclusivement en base : Row Level Security + fonctions `SECURITY DEFINER` + triggers d'invariants (jamais un contrôle applicatif isolé) — modèle confirmé "très solide" par l'audit du 29/08/2026 et revérifié dans cet audit (`07-securite.md`).
+Supabase Postgres, 66 migrations SQL [corrigé le 07/09/2026, "85" était une erreur de comptage — 69 au 07/09/2026] (`supabase/migrations/`), modèle détaillé dans `06-donnees-et-integrite.md`. Autorisation fine portée exclusivement en base : Row Level Security + fonctions `SECURITY DEFINER` + triggers d'invariants (jamais un contrôle applicatif isolé) — modèle confirmé "très solide" par l'audit du 29/08/2026 et revérifié dans cet audit (`07-securite.md`).
 
 ### 3.4 Services externes
 

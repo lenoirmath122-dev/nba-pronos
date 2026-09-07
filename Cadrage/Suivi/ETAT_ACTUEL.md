@@ -83,18 +83,23 @@ Services    : Highlightly (données NBA officielles, synchro calendrier/
 Écriture    : exclusivement via Server Actions (lib/actions/*) ; lecture via
               des requêtes dédiées (lib/queries/*) — séparation stricte,
               aucune Server Action ne sert à la fois lecture et écriture.
-Déploiement : Vercel (région Dublin — dub1, alignée sur la région Supabase
-              eu-west-1), déploiement auto sur merge vers `main`. Migrations
-              Supabase séparées du déploiement applicatif, jamais
-              automatiques (voir audit/RUNBOOK_MIGRATIONS.md).
+Déploiement : Vercel (région Dublin — dub1), déploiement auto sur merge vers
+              `main`. Région du projet Supabase **non confirmée** (corrigé
+              07/09/2026 — ce document affirmait à tort "eu-west-1, alignée
+              sur Vercel" ; en réalité jamais vérifiée dans le dashboard,
+              cohérent avec Cadrage/Juridique/mentions_legales.md et
+              conseils_juridiques_deploiement_application.md qui la
+              signalent tous deux comme à confirmer). Migrations Supabase
+              séparées du déploiement applicatif, jamais automatiques (voir
+              audit/RUNBOOK_MIGRATIONS.md).
 ```
 
 ---
 
 ## 3. Modèle de données
 
-66 migrations SQL versionnées (`supabase/migrations/`, nommage
-`<timestamp>_nom.sql`), appliquées via `npx supabase db push`. 31 tables
+69 migrations SQL versionnées (`supabase/migrations/`, nommage
+`<timestamp>_nom.sql`, décompte vérifié le 07/09/2026), appliquées via `npx supabase db push`. 31 tables
 publiques, RLS activée sur 100% d'entre elles (vérifié exhaustivement par
 l'audit du 03/09/2026). Domaines couverts :
 
@@ -417,7 +422,7 @@ components/   — un dossier par domaine d'écran (admin, auth, bets, bracket,
   profile, regles) ; ui/ — primitives partagées transversalement
   (ModalDialog.tsx, etc.).
 
-supabase/migrations/ — 66 migrations SQL versionnées, voir §3.
+supabase/migrations/ — 69 migrations SQL versionnées, voir §3.
 
 Cadrage/
   Fonctionnel/, V1/ — specs produit/techniques.

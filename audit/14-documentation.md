@@ -12,7 +12,7 @@ Situation atypique et à double tranchant. La documentation de **suivi de projet
 | Prérequis / variables d'environnement | Non documentées dans un fichier dédié (`.env.example` absent) — l'inventaire des variables n'existe que dans `.env.local` lui-même (non versionné) | Absence de `.env.example` constatée |
 | Lancement / build / tests | Scripts npm standards (`dev`, `build`, `start`, `lint`, `test`) présents dans `package.json`, mais non explicités dans un README | `package.json` |
 | Architecture | Documentée en profondeur mais dispersée dans `Cadrage/V1/SPEC_TECHNIQUE_*` (9 fichiers), sans point d'entrée unique qui les référence tous | `Cadrage/V1/` |
-| Modèle de données | `Cadrage/V1/SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md` existe mais son degré de synchronisation avec les 85 migrations réelles n'a pas été vérifié exhaustivement dans cette session (échantillonné, non comparé ligne à ligne) | — |
+| Modèle de données | `Cadrage/V1/SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md` existe mais son degré de synchronisation avec les 66 migrations réelles [corrigé le 07/09/2026, "85" était une erreur de comptage] n'a pas été vérifié exhaustivement dans cette session (échantillonné, non comparé ligne à ligne) | — |
 | Rôles / permissions | Documentées dans `SPEC_TECHNIQUE_RLS_V0.1.md` et `SPEC_TECHNIQUE_AUTH_V0.1.md`, cohérentes avec le code au niveau des principes généraux vérifiés (Phase 7) | — |
 | Procédures d'incident | Aucune procédure formelle trouvée (pas de runbook "que faire si Supabase est en pause", "que faire si le heartbeat s'est désactivé") — le risque `OPS-001` n'a pas de procédure de reprise documentée | — |
 | Conventions de code | Implicites (cohérence observée dans le code : queries/actions séparées, CSS Modules) mais non écrites dans un `CONTRIBUTING.md` ou équivalent | Absence constatée |
@@ -48,4 +48,4 @@ Remarquablement complète et à jour, mais **volumineuse et non indexée** (`DOC
 
 ## Limites de cette phase
 
-`Cadrage/V1/SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md` et les autres specs techniques `V1` n'ont pas été comparées ligne à ligne aux 85 migrations réelles dans cette session (l'essentiel de la vérification du modèle de données s'est appuyé directement sur le code SQL, jugé plus fiable — Phase 6). Le degré de dérive exact entre ces specs et l'implémentation n'est donc pas quantifié précisément.
+`Cadrage/V1/SPEC_TECHNIQUE_MODELE_DONNEES_V0.1.md` et les autres specs techniques `V1` n'ont pas été comparées ligne à ligne aux 66 migrations réelles [corrigé le 07/09/2026, "85" était une erreur de comptage] dans cette session (l'essentiel de la vérification du modèle de données s'est appuyé directement sur le code SQL, jugé plus fiable — Phase 6). Le degré de dérive exact entre ces specs et l'implémentation n'est donc pas quantifié précisément.
