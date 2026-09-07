@@ -16,6 +16,7 @@ jobs:
   refresh:
     runs-on: ubuntu-latest
     permissions:
+      contents: read # requis pour actions/checkout : un bloc permissions met tout scope non listé à "none"
       issues: write
     steps:
       - uses: actions/checkout@v4
