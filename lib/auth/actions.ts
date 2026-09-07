@@ -3,8 +3,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
+import { checkAnonRateLimit } from "@/lib/auth/anonRateLimit";
 
 export type AuthFormState = { error: string } | undefined;
+
+const RATE_LIMIT_ERROR = "Trop de tentatives. Réessaie dans quelques minutes.";
 
 export async function login(
   _prevState: AuthFormState,
@@ -16,6 +19,15 @@ export async function login(
 
   if (!email || !password) {
     return { error: "Email et mot de passe requis." };
+  }
+
+  // Frein applicatif par IP (p1-12, feuille de route Phase 1) -- jusqu'ici
+  // seul Turnstile protégeait ce formulaire (bloque les bots, pas un
+  // attaquant humain qui enchaîne les tentatives). 10 essais / 5 min :
+  // généreux pour un joueur qui se trompe de mot de passe, bloque
+  // l'énumération/brute-force répété depuis une même IP.
+  if (!(await checkAnonRateLimit("login", 10, 300))) {
+    return { error: RATE_LIMIT_ERROR };
   }
 
   const supabase = await getServerClient();
@@ -63,6 +75,13 @@ export async function signup(
   // migration 20260903120000).
   if (!ageConfirmed) {
     return { error: "Panier Ballon est réservé aux 15 ans et plus. Coche la case pour confirmer ton âge." };
+  }
+
+  // Frein applicatif par IP (p1-12, feuille de route Phase 1) -- même
+  // garde que login(), fenêtre plus large (création de compte, pas besoin
+  // d'autant d'essais qu'une tentative de connexion légitime).
+  if (!(await checkAnonRateLimit("signup", 5, 3600))) {
+    return { error: RATE_LIMIT_ERROR };
   }
 
   const supabase = await getServerClient();
@@ -114,11 +133,12 @@ export async function signup(
   // GAPS_OUVERTS.md) : ce message confirme explicitement sur l'écran qu'un
   // email donné a déjà un compte, contrairement au flux reset-password qui
   // reste générique. Compromis conscient plutôt qu'un oubli -- gain UX jugé
-  // supérieur au risque tant que l'app reste un cercle fermé d'amis (pas de
-  // rate-limiting/CAPTCHA sur le login non plus, finding 3, donc
-  // l'énumération seule n'ouvre aucun accès). À généraliser (même patron que
-  // ResetPasswordForm.tsx, toujours rediriger vers /verify-email avec un
-  // message conditionnel) si l'app s'ouvre un jour à un public plus large.
+  // supérieur au risque tant que l'app reste un cercle fermé d'amis (Turnstile
+  // ET rate-limit par IP protègent déjà login/signup depuis p1-12/finding 3,
+  // donc l'énumération seule n'ouvre aucun accès supplémentaire). À
+  // généraliser (même patron que ResetPasswordForm.tsx, toujours rediriger
+  // vers /verify-email avec un message conditionnel) si l'app s'ouvre un
+  // jour à un public plus large.
   if (signUpError) {
     if (signUpError.message.toLowerCase().includes("already registered")) {
       return { error: "Un compte existe déjà avec cet email." };
@@ -151,6 +171,36 @@ export async function signup(
   // Temps 3b — compte ACTIVE immédiat + session ouverte (C4, quand Confirm
   // email est désactivé).
   redirect("/home");
+}
+
+// Demande de reset-password (p1-12, feuille de route Phase 1) -- SEUL le
+// "temps 1" (demande d'email) est ici, extrait de ResetPasswordForm.tsx qui
+// appelait jusqu'ici supabase.auth.resetPasswordForEmail() directement
+// depuis le navigateur (aucune donnée applicative à nous à valider avant
+// Supabase, cf. son commentaire de tête). Extraction MINIMALE : seul un
+// frein applicatif par IP manquait à ce flux (Turnstile déjà présent) --
+// la confirmation (choix du nouveau mot de passe) reste côté client, elle
+// a besoin de détecter l'évènement PASSWORD_RECOVERY du SDK navigateur.
+export async function requestPasswordReset(
+  email: string,
+  captchaToken: string
+): Promise<{ error: string | null }> {
+  if (!(await checkAnonRateLimit("reset_password_request", 5, 3600))) {
+    return { error: RATE_LIMIT_ERROR };
+  }
+
+  const supabase = await getServerClient();
+  const headerList = await headers();
+  const origin = `${headerList.get("x-forwarded-proto") ?? "http"}://${headerList.get("host")}`;
+
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${origin}/reset-password`,
+    captchaToken,
+  });
+  if (error) {
+    return { error: "Impossible d'envoyer l'email pour le moment. Réessaie plus tard." };
+  }
+  return { error: null };
 }
 
 export async function logout() {
