@@ -13,6 +13,26 @@
 > `audit/PLAN_ACTION.md` (Vagues 0-4) — pas dupliqués ici, vérifier les deux
 > fichiers pour une vue complète des points ouverts.
 
+## e2e / cross-browser
+
+- **WebKit (Safari) mis de côté pour la suite e2e** (p1-2, 07/09/2026) —
+  `playwright.config.ts` n'a que `chromium`/`mobile-chrome` (Pixel 7).
+  Essayé sur un projet `mobile-safari` (`devices["iPhone 14"]`) : 2 des 3
+  specs échouent de façon reproductible (pas des flakes) :
+  - **T-UI-01** (focus-trap) : le focus n'est jamais restauré sur le bouton
+    déclencheur après `Échap`, contrairement à Chromium — quirk WebKit
+    documenté sur la restauration de focus programmatique des `<button>`.
+  - **T-UI-02** (connexion → prono → déconnexion) : le flux de validation
+    du prono n'aboutit pas (le texte récap "✓ E2H +3" n'apparaît jamais) —
+    piste la plus probable : `hasTouch: true` de l'émulation iPhone change
+    la sémantique tap/click sur les contrôles `UpcomingRow.tsx`/dialogue de
+    validation, jamais testée jusqu'ici.
+  - Pas creusé plus loin (décision utilisateur, priorité au viewport mobile
+    -- livré et fiable via `mobile-chrome` -- plutôt qu'au moteur Safari).
+    À reprendre si Safari/iOS devient un profil de trafic significatif :
+    commencer par `components/ui/FocusTrap.tsx` (focus restoration) et le
+    dialogue de validation de `UpcomingRow.tsx`/`UpcomingRowForm.tsx`.
+
 ## Modèles de probabilité — maintenance
 
 - **Calibration Poisson/normale jamais revérifiée à l'échelle PÉRIODE** —

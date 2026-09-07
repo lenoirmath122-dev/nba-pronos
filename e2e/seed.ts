@@ -1,24 +1,34 @@
 import { createClient } from "@supabase/supabase-js";
 import { LOCAL_SUPABASE } from "../test/integration/env";
+import { E2E_BROWSER_PROJECTS, type E2EBrowserProject } from "./projects";
 
 // Données de test pour la suite e2e (C1) -- même patron que
 // test/integration/rls.test.ts (A4) : service_role contre le Supabase
-// LOCAL, jamais le projet hébergé de .env.local. Un seul jeu de données
-// partagé par les 3 specs T-UI-01/02/03 (créé une fois par `globalSetup`,
-// nettoyé par `globalTeardown`), écrit dans e2e/.e2e-seed.json pour que
-// chaque fichier de test (process séparé) puisse le relire.
+// LOCAL, jamais le projet hébergé de .env.local. Un seul jeu de données créé
+// une fois par `globalSetup` (nettoyé par `globalTeardown`), écrit dans
+// e2e/.e2e-seed.json pour que chaque fichier de test (process séparé) puisse
+// le relire -- partagé par les 3 specs T-UI-01/02/03, sauf match2/match3 qui
+// ont une entrée par project Playwright (voir E2ESeed ci-dessous).
 
 export const SEED_FILE = `${__dirname}/.e2e-seed.json`;
 const NAME_PREFIX = "E2E-TEST-";
 const EMAIL_DOMAIN = "@e2e-test.local";
 
-type MatchSeed = { id: string; homeTeamName: string };
+type MatchSeed = { id: string; homeTeamName: string; homeTeamAbbreviation: string };
 
 export type E2ESeed = {
   competitionId: string;
-  match1: MatchSeed; // T-UI-01 -- pré-alimenté d'un pari DRAFT à supprimer.
-  match2: MatchSeed; // T-UI-02 -- prono de bout en bout (joueur B, connexion réelle).
-  match3: MatchSeed; // T-UI-03 -- nouveau pari personnalisé (joueur A).
+  match1: MatchSeed; // T-UI-01 -- pré-alimenté d'un pari DRAFT à supprimer (jamais confirmé par le test, rejouable par plusieurs projects sans conflit).
+  // T-UI-02/03 MUTENT l'état serveur (bet validé / soumis) -- pas rejouables
+  // à l'identique par 2 projects Playwright qui partagent le même
+  // serveur/DB (workers: 1, un seul webServer, voir playwright.config.ts).
+  // Un match DISTINCT par project (e2e/projects.ts) plutôt qu'un seul
+  // partagé -- sinon le 2e project à s'exécuter retrouve l'état déjà muté
+  // par le 1er (bug trouvé le 07/09/2026 en ajoutant mobile-chrome : le
+  // pari de T-UI-02 était déjà VALIDATED, le bouton de T-UI-03 déjà passé
+  // à "Modifier le pari").
+  match2: Record<E2EBrowserProject, MatchSeed>; // T-UI-02 -- prono de bout en bout (joueur B, connexion réelle).
+  match3: Record<E2EBrowserProject, MatchSeed>; // T-UI-03 -- nouveau pari personnalisé (joueur A).
   playerA: { email: string; password: string };
   playerB: { email: string; password: string };
   preSeededBetId: string;
@@ -129,12 +139,24 @@ export async function seedE2EData(): Promise<E2ESeed> {
       .select("id, series_id")
       .single();
     if (matchError || !match) throw new Error(`Match e2e échoué: ${matchError?.message}`);
-    return { id: match.id as string, seriesId: match.series_id as string, homeTeamName: `E2E T${index} Home` };
+    return {
+      id: match.id as string,
+      seriesId: match.series_id as string,
+      homeTeamName: `E2E T${index} Home`,
+      homeTeamAbbreviation: `E${index}H`,
+    };
   }
 
   const match1 = await createMatch(1, 0);
-  const match2 = await createMatch(2, 1);
-  const match3 = await createMatch(3, 2);
+
+  const match2 = {} as Record<E2EBrowserProject, MatchSeed>;
+  const match3 = {} as Record<E2EBrowserProject, MatchSeed>;
+  let nextIndex = 2;
+  let nextSlot = 1;
+  for (const projectName of E2E_BROWSER_PROJECTS) {
+    match2[projectName] = await createMatch(nextIndex++, nextSlot++);
+    match3[projectName] = await createMatch(nextIndex++, nextSlot++);
+  }
 
   // Pari DRAFT pré-alimenté pour playerA sur match1 (T-UI-01 -- teste la
   // suppression, pas besoin de d'abord passer par tout le flux de saisie).
@@ -157,9 +179,9 @@ export async function seedE2EData(): Promise<E2ESeed> {
 
   const seed: E2ESeed = {
     competitionId,
-    match1: { id: match1.id, homeTeamName: match1.homeTeamName },
-    match2: { id: match2.id, homeTeamName: match2.homeTeamName },
-    match3: { id: match3.id, homeTeamName: match3.homeTeamName },
+    match1: { id: match1.id, homeTeamName: match1.homeTeamName, homeTeamAbbreviation: match1.homeTeamAbbreviation },
+    match2,
+    match3,
     playerA: { email: playerA.email, password: playerA.password },
     playerB: { email: playerB.email, password: playerB.password },
     preSeededBetId: bet.id as string,

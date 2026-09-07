@@ -74,6 +74,8 @@ jobs:
         run: npm run test:integration
 
       - name: Navigateur Playwright
+        # mobile-chrome (p1-2, Phase 1) réutilise le moteur chromium déjà
+        # installé -- pas de nouveau binaire nécessaire pour ce projet.
         run: npx playwright install --with-deps chromium
 
       - name: Tests e2e (Playwright)

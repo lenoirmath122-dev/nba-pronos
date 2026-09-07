@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { SEED_FILE, type E2ESeed } from "./seed";
 import { gotoAndWaitReady, clickUntilVisible } from "./helpers";
+import type { E2EBrowserProject } from "./projects";
 
 // T-UI-02 (audit/BACKLOG_TESTS.md §7) : parcours critique de bout en bout
 // -- connexion → soumission d'un pronostic → déconnexion. Contrairement à
@@ -15,7 +16,12 @@ test.beforeAll(() => {
   seed = JSON.parse(readFileSync(SEED_FILE, "utf8"));
 });
 
-test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }) => {
+test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }, testInfo) => {
+  // match2 est DISTINCT par project (voir seed.ts) : ce test valide un
+  // pari, une mutation serveur permanente, pas rejouable à l'identique
+  // contre le même match par 2 projects qui partagent le même serveur/DB.
+  const match2 = seed.match2[testInfo.project.name as E2EBrowserProject];
+
   await gotoAndWaitReady(page, "/login");
   await page.getByLabel("Email").fill(seed.playerB.email);
   await page.getByLabel("Mot de passe").fill(seed.playerB.password);
@@ -30,7 +36,7 @@ test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }) 
   // (écart, "Valider le prono"...) sont les SEULS de leur genre visibles
   // sur la page -- aucune autre ligne n'est ouverte en parallèle.
   const increaseMargin = page.getByRole("button", { name: "Augmenter l'écart" });
-  await clickUntilVisible(page.getByRole("button", { name: seed.match2.homeTeamName }), increaseMargin);
+  await clickUntilVisible(page.getByRole("button", { name: match2.homeTeamName }), increaseMargin);
 
   // 3 taps sur "Augmenter l'écart" -> écart de 3 (part de null).
   await increaseMargin.click();
@@ -44,9 +50,11 @@ test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }) 
 
   await expect(dialog).not.toBeVisible();
   // La ligne se replie après validation -- récap compact dans le bouton
-  // "Détails du match" ("✓ E2H +3"), pas le texte "Ton prono : ..." de la
-  // vue dépliée (UpcomingRowForm, jamais réaffichée ici).
-  await expect(page.getByText(/✓\s*E2H\s*\+3/)).toBeVisible();
+  // "Détails du match" ("✓ E2H +3", abréviation qui varie par project
+  // depuis que match2 est distinct -- voir seed.ts), pas le texte "Ton
+  // prono : ..." de la vue dépliée (UpcomingRowForm, jamais réaffichée ici).
+  const recapRegex = new RegExp(`✓\\s*${match2.homeTeamAbbreviation}\\s*\\+3`);
+  await expect(page.getByText(recapRegex)).toBeVisible();
 
   await gotoAndWaitReady(page, "/profile");
   await page.getByRole("button", { name: "Déconnexion" }).click();
