@@ -85,7 +85,7 @@ export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctio
         <BetCorrectionForm
           betId={bet.betId}
           returnTo={returnTo}
-          hasPendingRequest={bet.hasPendingCorrectionRequest}
+          correctionRequest={bet.correctionRequest}
           forceOpen={forceOpenCorrection}
           error={correctionError}
         />
@@ -97,15 +97,15 @@ export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctio
 type BetCorrectionFormProps = {
   betId: string;
   returnTo: string;
-  hasPendingRequest: boolean;
+  correctionRequest: PlayAssociatedBet["correctionRequest"];
   forceOpen: boolean;
   error?: string;
 };
 
-function BetCorrectionForm({ betId, returnTo, hasPendingRequest, forceOpen, error }: BetCorrectionFormProps) {
+function BetCorrectionForm({ betId, returnTo, correctionRequest, forceOpen, error }: BetCorrectionFormProps) {
   // Une requête PENDING bloque déjà côté base (migration #11) — on évite ici
   // de proposer un second dépôt qui échouerait forcément.
-  if (hasPendingRequest) {
+  if (correctionRequest?.status === "PENDING") {
     return <p className={styles.pending}>Requête en attente.</p>;
   }
 
@@ -113,6 +113,16 @@ function BetCorrectionForm({ betId, returnTo, hasPendingRequest, forceOpen, erro
     <details className={styles.details} open={forceOpen}>
       <summary className={styles.summary}>Signaler à un admin</summary>
 
+      {/* p1-20 (feuille de route Phase 1) : même patron que
+          CorrectionRequestForm.tsx côté prono -- avant ce correctif, une
+          requête refusée redevenait silencieusement invisible dès que son
+          statut PENDING passait à REJECTED (le formulaire se rouvrait sans
+          jamais dire pourquoi la précédente avait échoué). PROCESSED n'a
+          pas besoin de message dédié : le statut/resolutionReason du pari
+          lui-même reflète déjà le résultat de la correction. */}
+      {correctionRequest?.status === "REJECTED" && (
+        <p className={styles.rejected}>Requête refusée : {correctionRequest.adminReason}</p>
+      )}
       {error && <p className={styles.error}>{error}</p>}
 
       <form action={requestBetCorrectionFormAction} className={styles.form}>
