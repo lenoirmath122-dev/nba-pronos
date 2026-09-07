@@ -116,6 +116,14 @@ export default async function AdminDashboardPage() {
           </Link>
         </li>
         <li>
+          <Link href="/admin/sync-logs" className={styles.linkEntryActive}>
+            Logs de synchronisation
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
+        <li>
           <Link href="/admin/missing" className={styles.linkEntryActive}>
             Qui manque à l&apos;appel
             <span className={styles.chevron} aria-hidden="true">
