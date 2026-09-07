@@ -1,11 +1,13 @@
 # Image du micro-service de proba (Cadrage/Stats/service), Phase 4
 # (projet-data-nba.md §22-23) -- destinee a Google Cloud Run.
 #
-# Architecture "sans etat" : aucune donnee (nba.db, 575 Mo) n'est embarquee
-# dans l'image -- le contexte joueur vient de Supabase a la demande
-# (service/supabase_context.py). Seuls les modeles entraines (models/,
-# ~103 Mo) sont copies, plus les fichiers Python necessaires a l'inference
-# (pas tout scripts/ -- fetch_nba_data.py/nba_api etc. inutiles ici).
+# Architecture "sans etat" : aucune donnee (nba.db, ~710 Mo au 07/09/2026)
+# n'est embarquee dans l'image -- le contexte joueur vient de Supabase a la
+# demande (service/supabase_context.py). Seuls les modeles entraines
+# (models/, ~920 Mo au 07/09/2026 -- grossit a chaque nouveau modele
+# entraine, chiffre a reverifier avant de le citer ailleurs) sont copies,
+# plus les fichiers Python necessaires a l'inference (pas tout scripts/ --
+# fetch_nba_data.py/nba_api etc. inutiles ici).
 #
 # tuning.py OBLIGATOIRE dans cette liste (bug reel du 02/09/2026) :
 # train_home_win_model.py fait `from tuning import tune_random_forest`
