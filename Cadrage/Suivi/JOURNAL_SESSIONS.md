@@ -12847,3 +12847,76 @@ tsc/eslint/vitest (254/254, +14 nouveaux cas)/next build propres à chaque
 étape. Pas de vrai appel Claude Sonnet 5 (changement mécanique, 1 seul
 nouvel exemple de prompt, pas de nouveau schéma envoyé à l'IA).
 ```
+
+## Phase 0 de la feuille de route + rotation de clé Resend qui révèle 3 bugs réels sans rapport (07/09/2026)
+
+```text
+**Phase 0 attaquée dans l'ordre** (feuille de route du 06/09/2026, artifact
+Claude) : 17 des 21 points codés en une session (PR #47, mergée) --
+gouvernance documentaire (ANOMALIES.md/PLAN_ACTION.md réécrits pour
+refléter l'état réel des Vagues 1-4, déjà closes depuis le 03-06/09 sans
+que personne ne l'ait noté ; erreur de comptage des migrations SQL
+corrigée dans 7 documents, "85" était faux, 69 le vrai chiffre ; région
+Supabase : ETAT_ACTUEL.md affirmait "eu-west-1 vérifié" alors que les 2
+docs juridiques disaient l'inverse, corrigé pour ne plus affirmer ce qui
+n'a jamais été vérifié) ; app/error.tsx/global-error.tsx/not-found.tsx
+(absents jusqu'ici, en français, `unstable_retry()` -- API Next 16.2+
+vérifiée dans node_modules/next/dist/docs avant d'écrire le code, cf.
+AGENTS.md) ; index `/players` (route dynamique existait sans page
+d'accueil, 404 direct) ; `/api/health` corrigé pour vérifier réellement
+Supabase + Cloud Run (renvoyait `{ok:true}` inconditionnellement depuis sa
+création) ; alerte GitHub Issue sur échec des 8 crons + nouveau
+`keep-alive.yml` (commit mensuel automatique, mitige l'auto-désactivation
+GitHub à 60 jours d'inactivité, jamais traitée jusqu'ici) ; tests
+d'intégration RLS branchés sur la CI (existaient depuis le 04/09, jamais
+lancés qu'à la main) ; headers HSTS/Permissions-Policy ; `devDateOverride.ts`
+durci (n'était protégé qu'en amont par SYNC_SECRET, techniquement actif en
+prod) ; nettoyage logos (README corrigé, 30 PNG obsolètes supprimés).
+Restaient bloqués sur l'utilisateur : rotation Resend/SYNC_SECRET,
+redéploiement Cloud Run, compte Sentry.
+
+**Rotation de la clé Resend -- 3 bugs réels indépendants trouvés en la
+faisant** (aucun n'a de rapport avec la rotation elle-même) :
+
+1. **La doc mentait sur le fournisseur SMTP réel.** `OPS-002`/
+   `GAPS_OUVERTS.md` décrivaient un SMTP Resend en mode bac-à-sable --
+   faux depuis un moment : le SMTP réellement configuré dans le dashboard
+   Supabase est **Gmail** (`smtp.gmail.com`, compte personnel de
+   l'utilisateur), jamais documenté nulle part. Hypothèse la plus
+   probable : bascule volontaire, à un moment non retrouvé, pour
+   contourner la limite "1 seule adresse" du bac-à-sable Resend pendant
+   les tests avec plusieurs comptes réels d'amis. La nouvelle clé Resend
+   générée pour la rotation ne sert donc finalement à rien -- gardée de
+   côté, pas utilisée. Corrigé : mot de passe Gmail classique (qui ne
+   fonctionnait plus, `535 BadCredentials`) remplacé par un vrai mot de
+   passe d'application Gmail dédié. `ANOMALIES.md`/OPS-002 mis à jour pour
+   refléter l'état réel ; la question de fond (rester sur Gmail personnel
+   vs. domaine Resend vérifié pour un vrai lancement) reste ouverte,
+   seulement rafistolée -- à trancher avant l'élargissement (Phase 2).
+
+2. **`ResetPasswordForm.tsx` ne transmettait jamais de jeton Turnstile**
+   (PR #48, mergée) -- contrairement à `LoginForm.tsx`/`SignupForm.tsx`.
+   La protection CAPTCHA du projet Supabase s'applique aussi à
+   `/auth/v1/recover`, pas seulement login/signup comme le supposait le
+   code -- CHAQUE demande de réinitialisation de mot de passe échouait
+   silencieusement (`error_code: "captcha_failed"`) depuis l'activation de
+   Turnstile, masqué par le message générique anti-énumération déjà en
+   place. Un bug de production resté invisible parce qu'indiscernable
+   d'un "email inexistant" du point de vue utilisateur. Diagnostiqué en
+   interrogeant directement `/auth/v1/recover` (curl + clé publique du
+   projet) plutôt qu'en devinant depuis les logs. Corrigé : widget ajouté,
+   jeton lu depuis le FormData natif de l'événement (pas de
+   `useActionState` ici, ce flux appelle le SDK client directement).
+
+3. **`https://panierballon.fr/reset-password` absent de la liste blanche
+   des URLs de redirection Supabase** (Authentication → URL Configuration)
+   -- le lien reçu par email retombait sur la Site URL par défaut, que
+   `app/page.tsx` redirige lui-même vers `/login`, perdant le jeton de
+   récupération au passage. Corrigé par l'utilisateur directement dans le
+   dashboard (ajout de l'URL à la liste), aucun changement de code.
+
+Flux bout-en-bout (déconnecté -> "mot de passe oublié" -> email reçu ->
+lien -> nouveau mot de passe -> connexion) revérifié fonctionnel par
+l'utilisateur après les 3 correctifs. tsc/eslint/vitest propres sur les 2
+PR de code (#47, #48).
+```

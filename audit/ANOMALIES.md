@@ -8,7 +8,8 @@
 > mergés (voir chaque entrée pour la PR). UX-002 a fait l'objet d'une **décision** (desktop dédié
 > voulu à terme, non planifié maintenant) mais reste sans code. OPS-001 est désormais corrigé en
 > entier (alerte de disponibilité + `.github/workflows/keep-alive.yml`, commit mensuel automatique
-> qui empêche l'auto-désactivation à 60 jours). SEC-003, SEC-004, ARCH-001, TEST-003, OPS-002, DATA-001/003/004/005/006/007, DOC-001,
+> qui empêche l'auto-désactivation à 60 jours). OPS-002 corrigé en partie (07/09/2026 — SMTP réparé,
+> décision de fond toujours ouverte). SEC-003, SEC-004, ARCH-001, TEST-003, DATA-001/003/004/005/006/007, DOC-001,
 > DOC-002 restent ouverts sans changement. Détail complet et suite priorisée : feuille de route
 > du 06/09/2026 (artifact Claude, Phase 0/1) et `Cadrage/Suivi/GAPS_OUVERTS.md`.
 
@@ -270,13 +271,14 @@
 
 ---
 
-## OPS-002 — Décision SMTP (quota email) non tranchée pour un vrai lancement
+## OPS-002 — Décision SMTP (quota email) — CORRIGÉ EN PARTIE (07/09/2026, rotation de clé)
 
 - **Catégorie** : Exploitation
 - **Gravité** : P3 Modéré
-- **Niveau de confiance** : Moyen — documenté le 16/08/2026, **statut actuel non revérifié dans cet audit**
-- **Statut de vérification** : À vérifier davantage
-- **Description** : le service email intégré Supabase plafonne à 2 emails/heure ; un SMTP externe (Resend, mode bac-à-sable) a été configuré mais ne peut livrer qu'à une seule adresse tant qu'aucun domaine n'est vérifié. Décision explicitement non tranchée au 16/08/2026 : garder ce compromis ou passer à un domaine vérifié.
+- **Niveau de confiance** : Élevé — revérifié en conditions réelles le 07/09/2026 (rotation de clé demandée par l'utilisateur)
+- **Statut de vérification** : Vérifié — **la description ci-dessous datée du 16/08/2026 est fausse depuis un moment** : le SMTP réellement configuré en production n'est PAS Resend mais **Gmail** (`smtp.gmail.com`, compte personnel de l'utilisateur) — dérive jamais documentée, découverte seulement en tentant de faire tourner la clé Resend (qui n'est en réalité plus utilisée du tout). Hypothèse la plus probable : bascule volontaire pour contourner la limite "1 seule adresse" du bac-à-sable Resend pendant les tests avec plusieurs comptes réels d'amis.
+- **Ce qui a été fait le 07/09/2026** : le mot de passe Gmail classique collé dans le champ SMTP ne fonctionnait plus (`535 BadCredentials`) — remplacé par un vrai mot de passe d'application Gmail dédié. 2 autres bugs réels trouvés et corrigés en marge (sans lien avec le SMTP lui-même) : `ResetPasswordForm.tsx` ne transmettait jamais de jeton Turnstile alors que la protection CAPTCHA du projet Supabase l'exige aussi sur `/recover` (PR #48) — CHAQUE demande de réinitialisation de mot de passe échouait silencieusement depuis l'activation de Turnstile, tous comptes confondus ; et `https://panierballon.fr/reset-password` n'était pas dans la liste blanche des URLs de redirection Supabase (Authentication → URL Configuration), ce qui faisait retomber le lien reçu par email sur `/login` en perdant le jeton de récupération. Les deux corrigés, flux bout-en-bout revérifié fonctionnel par l'utilisateur.
+- **Reste ouvert** : la vraie question de fond (rester sur Gmail personnel indéfiniment vs. domaine Resend vérifié pour un vrai lancement à plusieurs joueurs) n'a toujours pas été tranchée consciemment — seulement rafistolée. Gmail a ses propres limites d'envoi (~500/jour, largement suffisant à ce stade, mais un compte personnel mélangé à un usage applicatif n'est pas un choix d'architecture propre). À revisiter avant l'élargissement (Phase 2 de la feuille de route). La clé Resend d'origine (celle qui avait fuité dans le chat) est à révoquer par l'utilisateur si ce n'est pas déjà fait, indépendamment de ce choix.
 - **Impact** : plusieurs amis s'inscrivant dans la même heure au lancement d'une compétition tomberaient sur un échec de création de compte avec message générique.
 - **Solution recommandée** : trancher avant tout vrai lancement à plusieurs joueurs simultanés (vérifier un domaine chez Resend, ~1-3€/an).
 
@@ -392,7 +394,7 @@ Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase
 | TEST-002 | 0 test RLS/permissions | P2 | Tests | Élevé | **Corrigé (PR #34)** |
 | TEST-003 | 0 test fuseau horaire/concurrence | P3 | Tests | Élevé | Vérifié — ouvert |
 | OPS-001 | `heartbeat.yml` auto-désactivable après 60j | P2 | Exploitation | Élevé | **Corrigé (PR #35 + keep-alive.yml)** |
-| OPS-002 | Décision SMTP non tranchée | P3 | Exploitation | Moyen | À vérifier — ouvert |
+| OPS-002 | SMTP en fait Gmail, pas Resend — décision de fond toujours ouverte | P3 | Exploitation | Élevé | **Corrigé en partie (07/09/2026)** |
 | OPS-003 | Pas de `npm audit` en CI | P4 | Exploitation | Élevé | **Corrigé (PR #36)** |
 | DATA-001 | Statuts/colonnes ajoutés sans revue systématique | P3 | Données | Élevé | Vérifié — ouvert |
 | DATA-002 | Suppression de compte non transactionnelle | P2 | Données | Élevé | **Corrigé (PR #32)** |
@@ -406,8 +408,9 @@ Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase
 | OPS-004 | Pas de garde-fou de séquencement code/migration | P3 | Exploitation | Moyen | **Corrigé (PR #35)** |
 | DOC-003 | `security-audit-report.md` non mis à jour | P4 | Documentation | Élevé | **Corrigé (PR #36)** |
 
-**Total : 31 anomalies** — 0 P0, 0 P1, 5 P2, 9 P3, 17 P4. **19 corrigées** (dont 1 partiellement :
-TEST-001, e2e fait / test de composant isolé toujours absent), **1 décidée sans code** (UX-002),
-**11 encore ouvertes sans action** (SEC-003, SEC-004 assumé sans action, ARCH-001, TEST-003,
-OPS-002, DATA-001/003/004/005/006/007, DOC-002). Mise à jour du 07/09/2026 — voir la feuille de
-route pour la suite priorisée de ce qui reste ouvert.
+**Total : 31 anomalies** — 0 P0, 0 P1, 5 P2, 9 P3, 17 P4. **20 corrigées** (dont 2 partiellement :
+TEST-001 — e2e fait, test de composant isolé toujours absent ; OPS-002 — SMTP réparé, décision de
+fond toujours ouverte), **1 décidée sans code** (UX-002), **10 encore ouvertes sans action**
+(SEC-003, SEC-004 assumé sans action, ARCH-001, TEST-003, DATA-001/003/004/005/006/007, DOC-002).
+Mise à jour du 07/09/2026 — voir la feuille de route pour la suite priorisée de ce qui reste
+ouvert.
