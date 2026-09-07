@@ -30,8 +30,8 @@ jobs:
       - name: Types (tsc --noEmit)
         run: npx tsc --noEmit
 
-      - name: Tests (vitest)
-        run: npm test
+      - name: Tests (vitest) + seuil de couverture (p1-3)
+        run: npm run test:coverage
 
       - name: Build (next build)
         run: npm run build

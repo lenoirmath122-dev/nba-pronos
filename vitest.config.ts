@@ -27,5 +27,33 @@ export default defineConfig({
     // défaut que vitest ramasserait sinon (import `@playwright/test`
     // incompris par vitest, échec de collecte).
     exclude: ["**/node_modules/**", "test/integration/**", "e2e/**"],
+    // p1-3 (feuille de route Phase 1) : seuil PLANCHER anti-régression, pas
+    // un objectif de 100% -- calé (07/09/2026) sur la couverture réelle du
+    // jour (lib/**, tout le reste de l'app -- pages, composants -- n'a
+    // aucun test unitaire et n'est pas dans le périmètre de cette mesure).
+    // `include` explicite (Vitest 4, plus d'option `all` séparée -- voir
+    // AGENTS.md) : sans ça, seuls les fichiers déjà importés par un test
+    // auraient compté, gonflant artificiellement le pourcentage en ignorant
+    // tout fichier de lib/ à 0 test.
+    coverage: {
+      provider: "v8",
+      include: ["lib/**/*.ts"],
+      exclude: [
+        "lib/**/*.test.ts",
+        // Testé séparément par test/integration/** (Docker/Supabase local,
+        // voir vitest.integration.config.ts) -- compter ces fichiers ICI
+        // les afficherait à 0% alors qu'ils ont 27 tests d'intégration.
+        "lib/queries/**",
+        // Fines enveloppes de création de client Supabase -- aucune
+        // logique à tester sans un vrai serveur/navigateur derrière.
+        "lib/supabase/**",
+      ],
+      thresholds: {
+        statements: 30,
+        branches: 25,
+        functions: 35,
+        lines: 30,
+      },
+    },
   },
 });
