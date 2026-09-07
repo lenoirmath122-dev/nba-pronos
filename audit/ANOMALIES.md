@@ -6,9 +6,9 @@
 > sont closes (07/09/2026) : SEC-001, SEC-002, BUG-002, BUG-003, ARCH-002, ARCH-003, UX-001,
 > A11Y-001, A11Y-002, TEST-001, TEST-002, DATA-002, OPS-003, OPS-004 et DOC-003 sont corrigés et
 > mergés (voir chaque entrée pour la PR). UX-002 a fait l'objet d'une **décision** (desktop dédié
-> voulu à terme, non planifié maintenant) mais reste sans code. OPS-001 n'est que **partiellement**
-> corrigé (l'alerte de disponibilité existe, le risque d'auto-désactivation à 60 jours du heartbeat
-> subsiste). SEC-003, SEC-004, ARCH-001, TEST-003, OPS-002, DATA-001/003/004/005/006/007, DOC-001,
+> voulu à terme, non planifié maintenant) mais reste sans code. OPS-001 est désormais corrigé en
+> entier (alerte de disponibilité + `.github/workflows/keep-alive.yml`, commit mensuel automatique
+> qui empêche l'auto-désactivation à 60 jours). SEC-003, SEC-004, ARCH-001, TEST-003, OPS-002, DATA-001/003/004/005/006/007, DOC-001,
 > DOC-002 restent ouverts sans changement. Détail complet et suite priorisée : feuille de route
 > du 06/09/2026 (artifact Claude, Phase 0/1) et `Cadrage/Suivi/GAPS_OUVERTS.md`.
 
@@ -252,12 +252,12 @@
 
 ---
 
-## OPS-001 — `heartbeat.yml` peut s'auto-désactiver après 60 jours sans commit — CORRIGÉ EN PARTIE (PR #35, 04/09/2026)
+## OPS-001 — `heartbeat.yml` peut s'auto-désactiver après 60 jours sans commit — CORRIGÉ (PR #35 + Phase 0, 04-07/09/2026)
 
 - **Catégorie** : Exploitation / Observabilité
-- **Gravité** : P2 Majeur (le volet alerte est traité, le risque de fond reste ouvert)
+- **Gravité** : P2 Majeur (rétrogradé — corrigé)
 - **Niveau de confiance** : Élevé (risque documenté dans le fichier lui-même)
-- **Statut de vérification** : Vérifié — **partiellement corrigé**. `/api/health` (route publique) + un monitor UptimeRobot externe (5 min, alerte email) détectent désormais une indisponibilité réelle de l'application. **Mais le risque d'origine (auto-désactivation GitHub du cron après 60 jours sans activité sur le dépôt) n'est pas mitigé** — un creux de saison NBA suffisamment long l'arrêterait toujours silencieusement, sans qu'UptimeRobot ne le détecte tant que Supabase lui-même ne se met pas en veille. Reste en Phase 0 de la feuille de route.
+- **Statut de vérification** : Vérifié — corrigé en 2 temps. `/api/health` (route publique, désormais un vrai check Supabase + Cloud Run, pas juste `{ok:true}`) + un monitor UptimeRobot externe (5 min, alerte email) détectent une indisponibilité réelle de l'application. Le risque d'origine (auto-désactivation GitHub du cron après 60 jours sans activité sur le dépôt) est mitigé par `.github/workflows/keep-alive.yml` (07/09/2026) — commit automatique mensuel, marge de sécurité x2, aucun creux de saison NBA ne peut plus l'atteindre.
 - **Fichiers** : `.github/workflows/heartbeat.yml:6-15`
 - **Description** : GitHub désactive automatiquement un workflow planifié après 60 jours **sans aucune activité sur le dépôt** (pas seulement sans exécution du cron). Un creux de saison NBA (l'intersaison dure plusieurs mois, cf. `project_pause-inter-alpha-beta` en mémoire) pourrait dépasser 60 jours sans commit et arrêter silencieusement le heartbeat anti-pause, menant à la mise en veille du projet Supabase gratuit.
 - **Comportement attendu** : alerte ou mécanisme de reprise automatique.
@@ -391,7 +391,7 @@ Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase
 | TEST-001 | 0 test composant/e2e/intégration API | P2 | Tests | Élevé | **Corrigé en partie (PR #38, e2e)** |
 | TEST-002 | 0 test RLS/permissions | P2 | Tests | Élevé | **Corrigé (PR #34)** |
 | TEST-003 | 0 test fuseau horaire/concurrence | P3 | Tests | Élevé | Vérifié — ouvert |
-| OPS-001 | `heartbeat.yml` auto-désactivable après 60j | P2 | Exploitation | Élevé | **Corrigé en partie (PR #35, alerte seulement)** |
+| OPS-001 | `heartbeat.yml` auto-désactivable après 60j | P2 | Exploitation | Élevé | **Corrigé (PR #35 + keep-alive.yml)** |
 | OPS-002 | Décision SMTP non tranchée | P3 | Exploitation | Moyen | À vérifier — ouvert |
 | OPS-003 | Pas de `npm audit` en CI | P4 | Exploitation | Élevé | **Corrigé (PR #36)** |
 | DATA-001 | Statuts/colonnes ajoutés sans revue systématique | P3 | Données | Élevé | Vérifié — ouvert |
@@ -406,8 +406,8 @@ Voir `audit/06-donnees-et-integrite.md` §"Registre des anomalies de cette phase
 | OPS-004 | Pas de garde-fou de séquencement code/migration | P3 | Exploitation | Moyen | **Corrigé (PR #35)** |
 | DOC-003 | `security-audit-report.md` non mis à jour | P4 | Documentation | Élevé | **Corrigé (PR #36)** |
 
-**Total : 31 anomalies** — 0 P0, 0 P1, 5 P2, 9 P3, 17 P4. **19 corrigées** (dont 2 partiellement :
-TEST-001 e2e seulement, OPS-001 alerte seulement), **1 décidée sans code** (UX-002), **11 encore
-ouvertes sans action** (SEC-003, SEC-004 assumé sans action, ARCH-001, TEST-003, OPS-002,
-DATA-001/003/004/005/006/007, DOC-002). Mise à jour du 07/09/2026 — voir la feuille de route pour
-la suite priorisée de ce qui reste ouvert.
+**Total : 31 anomalies** — 0 P0, 0 P1, 5 P2, 9 P3, 17 P4. **19 corrigées** (dont 1 partiellement :
+TEST-001, e2e fait / test de composant isolé toujours absent), **1 décidée sans code** (UX-002),
+**11 encore ouvertes sans action** (SEC-003, SEC-004 assumé sans action, ARCH-001, TEST-003,
+OPS-002, DATA-001/003/004/005/006/007, DOC-002). Mise à jour du 07/09/2026 — voir la feuille de
+route pour la suite priorisée de ce qui reste ouvert.

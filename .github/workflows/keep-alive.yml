@@ -1,0 +1,65 @@
+name: Garde-fou anti-désactivation (60 jours d'inactivité)
+
+# GitHub désactive automatiquement TOUS les workflows planifiés d'un dépôt
+# après 60 jours consécutifs SANS AUCUNE activité (n'importe quel commit --
+# pas seulement un déclenchement de cron, qui ne compte pas). Risque
+# documenté depuis la création de heartbeat.yml, jamais mitigé jusqu'ici
+# (OPS-001, GAPS_OUVERTS.md « Phase 0 ») : un creux de saison NBA
+# (intersaison, grossièrement juin -> fin octobre) peut largement dépasser
+# 60 jours sans commit humain sur ce dépôt.
+#
+# Commit automatique inoffensif tous les 30 jours (marge de sécurité x2) --
+# suffit à ce qu'aucun cron du dépôt (heartbeat inclus) ne soit jamais
+# désactivé, indépendamment de l'activité humaine réelle.
+on:
+  schedule:
+    - cron: "0 3 1 * *" # le 1er de chaque mois, 03h00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Mettre à jour l'horodatage
+        run: date -u +"%Y-%m-%dT%H:%M:%SZ" > .github/keep-alive.txt
+
+      - name: Committer et pousser (si changement)
+        # git diff --quiet évite un `git commit` en échec (rien à committer)
+        # si ce workflow est redéclenché manuellement plusieurs fois le même
+        # jour (workflow_dispatch) -- le timestamp n'aurait alors pas changé.
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .github/keep-alive.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: ping mensuel anti-désactivation des workflows planifiés (OPS-001)"
+          git push
+
+      # Alerte minimale (Phase 0, GAPS_OUVERTS.md) : pas d'infra de monitoring
+      # dédiée, une issue GitHub auto-créée suffit. Dédupliquée par titre (une
+      # seule issue ouverte à la fois par workflow, pas une par run raté).
+      - name: Alerter en cas d'échec
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Échec planifié : Garde-fou anti-désactivation";
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "cron-failure",
+            });
+            if (existing.some((issue) => issue.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ["cron-failure"],
+              body: `Le workflow planifié a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });

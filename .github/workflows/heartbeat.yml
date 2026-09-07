@@ -4,16 +4,13 @@ name: Heartbeat Supabase
 # automatique du projet Supabase gratuit (déclenchée après 7 jours
 # d'inactivité). 1x/jour suffit largement.
 #
-# LIMITE CONNUE, à garder en tête (pas corrigée ici, juste documentée) :
-# GitHub désactive automatiquement un workflow planifié après 60 jours SANS
-# AUCUNE activité sur le dépôt (commit/push — pas le déclenchement du
-# workflow lui-même qui compte). Les creux de saison NBA (ex. entre la fin
-# des Playoffs en juin et le début de la Cup en novembre) peuvent largement
-# dépasser 60 jours SANS commit sur ce dépôt — le heartbeat s'arrêterait
-# alors silencieusement, sans email ni alerte, et Supabase finirait par se
-# mettre en pause quand même. Parade la plus simple si ça se confirme un
-# jour : un commit ou un `workflow_dispatch` manuel avant le 60e jour de
-# silence (aucune automatisation prévue pour ça à ce stade).
+# LIMITE CONNUE, mitigée le 07/09/2026 : GitHub désactive automatiquement un
+# workflow planifié après 60 jours SANS AUCUNE activité sur le dépôt
+# (commit/push — pas le déclenchement du workflow lui-même qui compte). Les
+# creux de saison NBA (ex. entre la fin des Playoffs en juin et le début de
+# la Cup en novembre) peuvent largement dépasser 60 jours SANS commit sur ce
+# dépôt. Voir .github/workflows/keep-alive.yml (commit automatique mensuel,
+# marge de sécurité x2) — plus besoin d'y penser manuellement.
 on:
   schedule:
     - cron: "0 6 * * *"
@@ -22,6 +19,8 @@ on:
 jobs:
   call:
     runs-on: ubuntu-latest
+    permissions:
+      issues: write
     steps:
       - name: Appeler /api/heartbeat
         run: |
@@ -29,3 +28,27 @@ jobs:
             -X POST \
             -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
             "https://nba-pronos.vercel.app/api/heartbeat"
+
+      # Alerte minimale (Phase 0, GAPS_OUVERTS.md) : pas d'infra de monitoring
+      # dédiée, une issue GitHub auto-créée suffit. Dédupliquée par titre (une
+      # seule issue ouverte à la fois par workflow, pas une par run raté).
+      - name: Alerter en cas d'échec
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Échec planifié : Heartbeat Supabase";
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "cron-failure",
+            });
+            if (existing.some((issue) => issue.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ["cron-failure"],
+              body: `Le workflow planifié a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });

@@ -96,8 +96,8 @@
 - **Critère d'acceptation** : une seule implémentation, les 2 écrans concernés inchangés visuellement.
 - **Rollback** : trivial.
 
-### B4 — Alerte externe minimale sur la disponibilité (`OPS-001`) — FAIT (PR #35, 04/09/2026)
-- **Statut** : clos pour son propre critère d'acceptation (alerte de disponibilité). `/api/health` public en prod + monitor UptimeRobot (5 min, alerte email), confirmé fonctionnel par l'utilisateur. **Ne couvre pas** le risque de fond d'`OPS-001` (auto-désactivation GitHub du cron après 60 jours sans activité dépôt) — reste ouvert, voir Phase 0 de la feuille de route.
+### B4 — Alerte externe minimale sur la disponibilité (`OPS-001`) — FAIT (PR #35, 04/09/2026 ; complété 07/09/2026)
+- **Statut** : clos. `/api/health` public en prod (durci le 07/09/2026 — vérifie réellement Supabase + Cloud Run, plus un simple `{ok:true}`) + monitor UptimeRobot (5 min, alerte email), confirmé fonctionnel par l'utilisateur. Le risque de fond d'`OPS-001` (auto-désactivation GitHub du cron après 60 jours sans activité dépôt) est désormais aussi mitigé, `.github/workflows/keep-alive.yml` (commit mensuel automatique). Les 8 workflows planifiés créent en plus une issue GitHub (dédupliquée) sur tout échec.
 - **Objectif** : détecter une panne du heartbeat/de l'application avant qu'un utilisateur ne la signale.
 - **Anomalies traitées** : `OPS-001`.
 - **Effort estimé** : S (service externe gratuit type UptimeRobot sur une route de santé).
