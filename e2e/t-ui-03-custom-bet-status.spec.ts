@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { test, expect } from "@playwright/test";
 import { SEED_FILE, type E2ESeed } from "./seed";
 import { gotoAndWaitReady, matchRow } from "./helpers";
+import type { E2EBrowserProject } from "./projects";
 
 // T-UI-03 (audit/BACKLOG_TESTS.md §7) : soumission d'un pari personnalisé
 // texte libre -> vérification du statut. "Avec mock de l'appel Anthropic"
@@ -20,10 +21,15 @@ test.beforeAll(() => {
   seed = JSON.parse(readFileSync(SEED_FILE, "utf8"));
 });
 
-test("soumission d'un pari personnalisé -> statut SOUMIS", async ({ page }) => {
+test("soumission d'un pari personnalisé -> statut SOUMIS", async ({ page }, testInfo) => {
+  // match3 est DISTINCT par project (voir seed.ts) : ce test soumet un
+  // pari, une mutation serveur permanente, pas rejouable à l'identique
+  // contre le même match par 2 projects qui partagent le même serveur/DB.
+  const match3 = seed.match3[testInfo.project.name as E2EBrowserProject];
+
   await gotoAndWaitReady(page, "/play");
 
-  const row = matchRow(page, seed.match3.homeTeamName);
+  const row = matchRow(page, match3.homeTeamName);
   // Un seul clic (pas clickUntilVisible) : ce bouton BASCULE (pas
   // idempotent), un retry le refermerait.
   await row.getByRole("button", { name: "Détails du match" }).click();
