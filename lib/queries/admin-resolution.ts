@@ -1,13 +1,25 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { BET_DIFFICULTY_POINTS } from "@/lib/labels/bets";
-import { computeBetDeadlinesPassed } from "@/lib/scoring/bet-deadline";
+import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 
 // Lecture de la file de résolution admin (SPEC_ECRAN_ADMIN_RESOLUTION_V0_1
 // §1/§2) — même construction de libellés que lib/queries/admin-validation.ts,
 // élargie à TOUS les joueurs, filtrée sur VALIDATED + échéance dépassée.
+//
+// `orphan` (p1-15, feuille de route Phase 1) : un pari VALIDATED dont
+// l'échéance calculée est `null` (aucun match connu pour son match/sa
+// série -- lib/scoring/bet-deadline.ts) reste "toujours ouvert" côté RLS,
+// PAR CONSTRUCTION -- comportement voulu tant que le calendrier n'est pas
+// encore connu. Le risque réel n'est pas ce comportement (correct) mais sa
+// dépendance à la fiabilité INVISIBLE de la synchro quotidienne : si un
+// match censé arriver ne se synchronise jamais (bug/panne silencieuse), le
+// pari correspondant ne rentre JAMAIS dans la file de résolution ci-dessus
+// (filtrée sur échéance PASSÉE) ni nulle part ailleurs -- littéralement
+// invisible. Rendu visible ici plutôt que résolu automatiquement : aucune
+// date connue ne permet de trancher WON/LOST à la place de l'admin.
 
 export type PendingResolutionBet = {
   betId: string;
@@ -49,35 +61,24 @@ type BetRow = {
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null };
 type MatchRow = { id: string; game_number: number; scheduled_at: string | null };
 
-export async function getPendingResolutionBets(): Promise<PendingResolutionBet[]> {
-  const supabase = await getServerClient();
+export type ResolutionQueues = {
+  due: PendingResolutionBet[]; // échéance PASSÉE -- à résoudre normalement.
+  orphan: PendingResolutionBet[]; // échéance INCONNUE (null) -- à investiguer, cf. commentaire de module.
+};
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
-  if (!competition) return [];
-
-  const { data: betsData } = await supabase
-    .from("bets")
-    .select("id, user_id, scope, series_id, match_id, description, validated_category, validated_difficulty")
-    .eq("competition_id", competition.id)
-    .eq("status", "VALIDATED");
-  const bets = (betsData ?? []) as BetRow[];
+/** Hydrate un sous-ensemble de bets VALIDATED (déjà filtré par appelant) en
+ *  PendingResolutionBet[] -- requêtes annexes (joueurs/séries/matchs/
+ *  contestations/équipes) partagées par les 2 files ci-dessous. */
+async function hydrateResolutionBets(
+  supabase: Awaited<ReturnType<typeof getServerClient>>,
+  bets: BetRow[]
+): Promise<PendingResolutionBet[]> {
   if (bets.length === 0) return [];
 
-  const passedIds = await computeBetDeadlinesPassed(
-    supabase,
-    bets.map((b) => ({ id: b.id, scope: b.scope, seriesId: b.series_id, matchId: b.match_id }))
-  );
-  const dueBets = bets.filter((b) => passedIds.has(b.id));
-  if (dueBets.length === 0) return [];
-
-  const userIds = [...new Set(dueBets.map((b) => b.user_id))];
-  const seriesIds = [...new Set(dueBets.map((b) => b.series_id))];
-  const matchIds = [...new Set(dueBets.map((b) => b.match_id).filter((id): id is string => id !== null))];
-  const betIds = dueBets.map((b) => b.id);
+  const userIds = [...new Set(bets.map((b) => b.user_id))];
+  const seriesIds = [...new Set(bets.map((b) => b.series_id))];
+  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
+  const betIds = bets.map((b) => b.id);
 
   const [{ data: usersData }, { data: seriesData }, { data: matchesData }, { data: pendingData }] = await Promise.all([
     supabase.from("users").select("id, pseudo").in("id", userIds),
@@ -101,7 +102,7 @@ export async function getPendingResolutionBets(): Promise<PendingResolutionBet[]
       : { data: [] as { id: string; abbreviation: string }[] };
   const abbrevById = new Map((teamsData ?? []).map((t) => [t.id, t.abbreviation]));
 
-  return dueBets.map((b) => {
+  return bets.map((b) => {
     const s = seriesById.get(b.series_id);
     const m = b.match_id ? matchById.get(b.match_id) : null;
     const targetLabel = b.scope === "MATCH" && m ? matchLabel(m.game_number, m.scheduled_at) : s ? seriesLabel(s, abbrevById) : "—";
@@ -121,4 +122,42 @@ export async function getPendingResolutionBets(): Promise<PendingResolutionBet[]
       isContested: contestedBetIds.has(b.id),
     };
   });
+}
+
+export async function getResolutionQueues(): Promise<ResolutionQueues> {
+  const supabase = await getServerClient();
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("id")
+    .eq("status", "ACTIVE")
+    .maybeSingle<CompetitionRow>();
+  if (!competition) return { due: [], orphan: [] };
+
+  const { data: betsData } = await supabase
+    .from("bets")
+    .select("id, user_id, scope, series_id, match_id, description, validated_category, validated_difficulty")
+    .eq("competition_id", competition.id)
+    .eq("status", "VALIDATED");
+  const bets = (betsData ?? []) as BetRow[];
+  if (bets.length === 0) return { due: [], orphan: [] };
+
+  const deadlines = await computeBetDeadlines(
+    supabase,
+    bets.map((b) => ({ id: b.id, scope: b.scope, seriesId: b.series_id, matchId: b.match_id }))
+  );
+  const nowMs = Date.now();
+  const dueBets: BetRow[] = [];
+  const orphanBets: BetRow[] = [];
+  for (const b of bets) {
+    const deadline = deadlines.get(b.id) ?? null;
+    if (deadline === null) orphanBets.push(b);
+    else if (Date.parse(deadline) <= nowMs) dueBets.push(b);
+  }
+
+  const [due, orphan] = await Promise.all([
+    hydrateResolutionBets(supabase, dueBets),
+    hydrateResolutionBets(supabase, orphanBets),
+  ]);
+  return { due, orphan };
 }
