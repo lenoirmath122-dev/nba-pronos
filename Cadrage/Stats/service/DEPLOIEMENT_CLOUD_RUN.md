@@ -119,7 +119,9 @@ commande.)
 
 Une confirmation `Do you want to continue (Y/n)?` apparaît au 1er
 déploiement (création du dépôt Artifact Registry) — répondre `Y`. Le build
-+ déploiement prend quelques minutes (upload des ~103 Mo de modèles inclus).
++ déploiement prend quelques minutes (upload des modèles inclus, ~920 Mo au
+07/09/2026 — grossit à chaque nouveau modèle entraîné, `du -sh Cadrage/Stats/models`
+pour le chiffre à jour).
 
 `gcloud` retourne une URL du style
 `https://nba-pronos-stats-xxxxx.europe-west1.run.app` à la fin du
