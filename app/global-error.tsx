@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import "./globals.css";
 
 // Ne se déclenche que si le root layout lui-même plante (cas rare — voir
@@ -11,11 +13,16 @@ import "./globals.css";
 // tombe sur le thème sombre par défaut de :root, cohérent avec le reste de
 // l'app avant toute préférence utilisateur.
 export default function GlobalError({
+  error,
   unstable_retry,
 }: {
   error: Error & { digest?: string };
   unstable_retry: () => void;
 }) {
+  useEffect(() => {
+    Sentry.captureException(error);
+  }, [error]);
+
   return (
     <html lang="fr">
       <body

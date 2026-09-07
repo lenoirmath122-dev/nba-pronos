@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import * as Sentry from "@sentry/nextjs";
 import { StatusScreen } from "@/components/ui/StatusScreen";
 import styles from "@/components/ui/StatusScreen.module.css";
 
@@ -16,6 +17,7 @@ export default function ErrorBoundary({
 }) {
   useEffect(() => {
     console.error(error);
+    Sentry.captureException(error);
   }, [error]);
 
   return (
