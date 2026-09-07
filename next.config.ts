@@ -1,5 +1,6 @@
 import type { NextConfig } from "next";
 import path from "path";
+import { withSentryConfig } from "@sentry/nextjs/config";
 
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
@@ -53,4 +54,11 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// org/project/authToken absents volontairement (07/09/2026) : pas de compte
+// CI/token créé pour l'instant, ce qui désactive juste l'upload des source
+// maps (stack traces minifiées en prod) -- la capture d'erreurs elle-même
+// fonctionne sans ça. À ajouter plus tard (SENTRY_ORG/SENTRY_PROJECT/
+// SENTRY_AUTH_TOKEN) si des traces lisibles deviennent nécessaires.
+export default withSentryConfig(nextConfig, {
+  silent: true,
+});
