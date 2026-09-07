@@ -9,7 +9,16 @@
 //
 // Ancré à midi UTC (pas minuit) pour éviter toute ambiguïté de bascule de
 // jour America/New_York — même technique que lib/dates/paris.ts.
+//
+// Durci le 07/09/2026 (GAPS_OUVERTS.md, Phase 0) : jusqu'ici la seule
+// protection était le Bearer SYNC_SECRET en amont — suffisant contre un tiers,
+// mais le paramètre restait techniquement actif en production (n'importe qui
+// détenant SYNC_SECRET, y compris un admin distrait, pouvait faire "avancer"
+// la sync réelle sur une fausse date). Ignoré désormais dès que
+// NODE_ENV==="production" (posé par Vercel/`next build`, jamais overridable
+// par une variable d'environnement projet) — le comportement réel en
+// production (new Date()) est inchangé, seul le paramètre devient inerte.
 export function resolveReferenceDate(dateParam: string | null): Date {
-  if (!dateParam) return new Date();
+  if (!dateParam || process.env.NODE_ENV === "production") return new Date();
   return new Date(`${dateParam}T12:00:00.000Z`);
 }
