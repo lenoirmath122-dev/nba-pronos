@@ -91,3 +91,42 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  stats-service:
+    # Job séparé (comme e2e) : p1-5 (feuille de route Phase 1) -- un vrai
+    # `docker build` + démarrage du conteneur aurait attrapé le bug réel du
+    # 02/09/2026 (tuning.py manquant dans la liste COPY du Dockerfile --
+    # crash au démarrage AVANT même d'écouter sur le port ; Cloud Run le
+    # rapportait à tort comme "failed to start and listen on PORT", la
+    # vraie cause était dans les logs du conteneur, pas dans `gcloud run
+    # deploy`). Cadrage/Stats/models/ est gitignoré (920 Mo de modèles
+    # entraînés, jamais commités -- p1-10) : /health tolère explicitement
+    # leur absence (app.py : "healthcheck simple sans Supabase joignable",
+    # client Supabase construit paresseusement, jamais au chargement du
+    # module) -- un dossier models/ VIDE suffit pour que `COPY models/
+    # ./models/` du Dockerfile ne casse pas, aucune vraie donnée
+    # nécessaire pour vérifier que le service démarre.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Dossier models/ vide (gitignoré -- /health n'en a pas besoin)
+        run: mkdir -p Cadrage/Stats/models
+
+      - name: Build de l'image (celle déployée sur Cloud Run)
+        run: docker build -f Cadrage/Stats/Dockerfile -t nba-pronos-stats-test Cadrage/Stats
+
+      - name: Démarrage du conteneur
+        run: docker run -d --name stats-test -p 8080:8080 nba-pronos-stats-test
+
+      - name: /health répond 200 (le service a démarré, toutes ses dépendances se sont importées)
+        run: |
+          for i in $(seq 1 15); do
+            if curl -sf http://localhost:8080/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "::error::/health n'a jamais répondu -- logs du conteneur :"
+          docker logs stats-test
+          exit 1
