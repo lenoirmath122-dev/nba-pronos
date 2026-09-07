@@ -2,6 +2,20 @@ import type { NextConfig } from "next";
 import path from "path";
 import { withSentryConfig } from "@sentry/nextjs/config";
 
+// connect-src doit couvrir le VRAI Supabase utilisé, pas seulement le
+// domaine hébergé de prod -- en local/CI (e2e, Playwright), NEXT_PUBLIC_
+// SUPABASE_URL pointe vers http://127.0.0.1:54321 (Supabase CLI), qui ne
+// matche jamais "https://*.supabase.co". Avec ce wildcard figé, la CSP
+// bloquait SILENCIEUSEMENT tout appel d'auth du navigateur en dev (aucune
+// erreur réseau visible pour l'utilisateur -- juste un bouton "Connexion…"
+// qui ne se débloque jamais), détecté en essayant de faire tourner e2e sur
+// un nouveau projet Playwright (07/09/2026). Calculé dynamiquement à partir
+// de la même variable que le reste de l'app, jamais codé en dur deux fois.
+const supabaseOrigin = process.env.NEXT_PUBLIC_SUPABASE_URL
+  ? new URL(process.env.NEXT_PUBLIC_SUPABASE_URL).origin
+  : "https://*.supabase.co";
+const supabaseWsOrigin = supabaseOrigin.replace(/^http/, "ws");
+
 const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
@@ -26,7 +40,15 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.anthropic.com https://challenges.cloudflare.com",
+      // https://*.sentry.io : découvert manquant en creusant le flake e2e
+      // ci-dessus (07/09/2026) -- le sous-domaine d'ingestion est propre à
+      // l'organisation/région (ex. o<id>.ingest.de.sentry.io), wildcardé
+      // plutôt que figé au cas où Sentry le fasse évoluer. Sans cette ligne,
+      // Sentry.captureException() côté NAVIGATEUR (instrumentation-client.ts)
+      // était bloqué depuis son intégration (PR #50) -- jamais remarqué car
+      // la vérification de bout en bout avait utilisé une route API (erreur
+      // CÔTÉ SERVEUR, jamais soumise à la CSP du navigateur).
+      `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin} https://api.anthropic.com https://challenges.cloudflare.com https://*.sentry.io`,
       "frame-src https://challenges.cloudflare.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",

@@ -43,6 +43,16 @@ export default defineConfig({
   // uniquement en CI (jamais ouvert automatiquement) -- exploitable comme
   // artefact en cas d'échec (voir .github/workflows/ci.yml, job e2e).
   reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  // Turbopack compile CHAQUE route à la demande, au 1er hit -- observé
+  // jusqu'à ~8s sur la route de connexion (server action) seule, sur une
+  // machine de dev pourtant pas particulièrement chargée (07/09/2026,
+  // creusé en ajoutant les projets mobile-chrome/mobile-safari : le defaut
+  // Playwright de 5000ms faisait échouer authenticate as playerA de façon
+  // parfaitement reproductible, pas un flake). Un seul webServer partagé
+  // par tous les projets (voir plus bas) -- seul le tout 1er hit de chaque
+  // route paie ce coût, les projets suivants profitent du cache Turbopack.
+  expect: { timeout: 15_000 },
+  timeout: 45_000,
   globalSetup: "./e2e/global-setup.ts",
   globalTeardown: "./e2e/global-teardown.ts",
   use: {
@@ -56,6 +66,25 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"], storageState: `${__dirname}/e2e/.auth/player-a.json` },
       dependencies: ["setup"],
     },
+    // Viewport mobile (p1-2, feuille de route Phase 1) : l'app est
+    // mobile-first (cf. son propre CSS -- breakpoints, tap targets 44px...)
+    // mais n'était vérifiée qu'en Desktop Chrome jusqu'ici. Les 3 specs
+    // existantes utilisent des locators par rôle/texte (getByRole/
+    // getByLabel), jamais de coordonnées ni de survol -- aucune n'a eu
+    // besoin d'adaptation pour passer sur ce nouveau projet.
+    {
+      name: "mobile-chrome",
+      use: { ...devices["Pixel 7"], storageState: `${__dirname}/e2e/.auth/player-a.json` },
+      dependencies: ["setup"],
+    },
+    // WebKit (p1-2 le demandait "si possible") essayé le 07/09/2026 sur un
+    // projet "mobile-safari" (devices["iPhone 14"]) : 2 vrais échecs
+    // reproductibles (pas des flakes), pas des adaptations de spec triviales
+    // -- focus jamais restauré au déclencheur après Échap (T-UI-01, quirk
+    // WebKit connu sur les <button>) et le flux de validation de prono qui
+    // n'aboutit pas (T-UI-02, possiblement lié à hasTouch:true de
+    // l'émulation iPhone). Mis de côté plutôt qu'activé à moitié -- voir
+    // GAPS_OUVERTS.md pour le détail, à reprendre si jugé prioritaire.
   ],
   webServer: {
     command: "npm run dev -- --port 3100",
