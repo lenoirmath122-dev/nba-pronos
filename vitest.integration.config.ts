@@ -15,5 +15,10 @@ export default defineConfig({
     include: ["test/integration/**/*.test.ts"],
     testTimeout: 20000,
     hookTimeout: 20000,
+    // Chaque suite crée SA PROPRE compétition ACTIVE -- un index partiel
+    // unique (migration initiale) n'en tolère qu'une seule à la fois en
+    // base. Fichiers en série (pas de fileParallelism) pour ne jamais faire
+    // chevaucher 2 suites sur ce point.
+    fileParallelism: false,
   },
 });
