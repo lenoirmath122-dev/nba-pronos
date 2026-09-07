@@ -98,7 +98,15 @@ export type PlayAssociatedBet = {
    *  SPEC_ECRAN_MES_PARIS), toujours faux pour une ligne UpcomingMatchRow
    *  (son match, par construction, n'est pas encore joué). */
   isForgottenResolution: boolean;
-  hasPendingCorrectionRequest: boolean;
+  /** Dernière requête de correction déposée sur CE pari, quel que soit son
+   *  statut (p1-20, feuille de route Phase 1) -- même contrat que
+   *  LockedMatchRow.correctionRequest côté prono. Avant ce correctif, seul
+   *  un booléen "en attente" existait ici : une fois la requête traitée par
+   *  un admin (acceptée OU refusée), le joueur n'avait plus aucun moyen de
+   *  savoir ce qu'il en était advenu -- angle mort réel, pas un choix
+   *  délibéré (contrairement à l'absence de délai de dépôt, jamais touchée
+   *  ici, cf. SPEC_ECRAN_MES_PRONOS_V0_1 §... "pas de délai limite"). */
+  correctionRequest: CorrectionRequestState | null;
   /** REJECTED + deadline pas encore passée. Toujours null hors de l'onglet
    *  Mes pronos : bet_deadline_open() ferme la reproposition exactement au
    *  verrouillage du match (§3.3 de la spec, vérification de dépôt §13.3). */
@@ -257,8 +265,9 @@ function toPlayAssociatedBet(
   b: BetSourceRow,
   targetFinished: boolean,
   deadlineOpen: boolean,
-  pendingBetIds: Set<string>
+  correctionRequestByBetId: Map<string, BetCorrectionRequestRow>
 ): PlayAssociatedBet {
+  const cr = correctionRequestByBetId.get(b.id);
   return {
     betId: b.id,
     description: b.description,
@@ -271,7 +280,7 @@ function toPlayAssociatedBet(
     resolutionReason: b.resolution_reason,
     pointsAwarded: b.points_awarded,
     isForgottenResolution: b.status === "VALIDATED" && targetFinished,
-    hasPendingCorrectionRequest: pendingBetIds.has(b.id),
+    correctionRequest: cr ? { status: cr.status, adminReason: cr.admin_reason, createdAt: cr.created_at } : null,
     reproposeHref: b.status === "REJECTED" && deadlineOpen ? `/play/bets/new?matchId=${b.match_id}` : null,
     isCalculable: b.is_calculable ?? false,
     calculatedProba: b.calculated_proba,
@@ -485,7 +494,7 @@ async function fetchUpcomingWindow(
       // que BetBlock en lecture seule sur l'ancien pari. Sans effet sur les
       // lignes VERROUILLÉES (ci-dessous, l.837) : la fenêtre de pari y est
       // de toute façon fermée, l'historique reste affiché tel quel.
-      bet: ownBet && !RELEASED_BET_STATUSES.has(ownBet.status) ? toPlayAssociatedBet(ownBet, false, true, new Set()) : null,
+      bet: ownBet && !RELEASED_BET_STATUSES.has(ownBet.status) ? toPlayAssociatedBet(ownBet, false, true, new Map()) : null,
     });
   }
 
@@ -631,6 +640,13 @@ type PredictionRow = {
 
 type CorrectionRequestRow = {
   target_match_prediction_id: string;
+  status: "PENDING" | "PROCESSED" | "REJECTED";
+  admin_reason: string | null;
+  created_at: string;
+};
+
+type BetCorrectionRequestRow = {
+  target_bet_id: string;
   status: "PENDING" | "PROCESSED" | "REJECTED";
   admin_reason: string | null;
   created_at: string;
@@ -807,19 +823,26 @@ async function fetchLockedRows(
     }
   }
 
-  // Requêtes de correction PENDING sur MES paris de ces matchs — alimente
-  // hasPendingCorrectionRequest (cas "pari oublié", §7 SPEC_ECRAN_MES_PARIS).
+  // Requêtes de correction sur MES paris de ces matchs — TOUS statuts (p1-20,
+  // feuille de route Phase 1), pas seulement PENDING : le joueur doit pouvoir
+  // voir le sort d'une requête déjà traitée, même contrat que
+  // correctionRequestByPredictionId ci-dessus côté prono.
   const ownBetIds = bets.filter((b) => b.user_id === userId).map((b) => b.id);
-  const { data: pendingBetCrData } =
+  const { data: betCrData } =
     ownBetIds.length > 0
       ? await supabase
           .from("correction_requests")
-          .select("target_bet_id")
+          .select("target_bet_id, status, admin_reason, created_at")
           .eq("requester_user_id", userId)
-          .eq("status", "PENDING")
           .in("target_bet_id", ownBetIds)
-      : { data: [] as { target_bet_id: string }[] };
-  const pendingBetIds = new Set((pendingBetCrData ?? []).map((r) => r.target_bet_id));
+          .order("created_at", { ascending: false })
+      : { data: [] as BetCorrectionRequestRow[] };
+  const correctionRequestByBetId = new Map<string, BetCorrectionRequestRow>();
+  for (const row of (betCrData ?? []) as BetCorrectionRequestRow[]) {
+    if (!correctionRequestByBetId.has(row.target_bet_id)) {
+      correctionRequestByBetId.set(row.target_bet_id, row);
+    }
+  }
 
   const predictionsByMatch = new Map<string, PredictionRow[]>();
   for (const p of predictions) {
@@ -878,7 +901,7 @@ async function fetchLockedRows(
       // targetFinished=match.status==="FINISHED", deadlineOpen=false : une
       // ligne verrouillée a toujours scheduled_at <= now(), donc
       // bet_deadline_open() est toujours fermée (§3.3, vérif §13.3).
-      bet: ownBet ? toPlayAssociatedBet(ownBet, match.status === "FINISHED", false, pendingBetIds) : null,
+      bet: ownBet ? toPlayAssociatedBet(ownBet, match.status === "FINISHED", false, correctionRequestByBetId) : null,
       others,
       absenteeCount,
       otherBets: otherBetsByMatch.get(match.id) ?? [],

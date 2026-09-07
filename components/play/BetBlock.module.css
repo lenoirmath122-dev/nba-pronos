@@ -132,6 +132,12 @@
   color: var(--color-text-muted);
 }
 
+.rejected {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-loss);
+}
+
 .form {
   display: flex;
   flex-direction: column;

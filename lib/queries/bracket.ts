@@ -279,18 +279,31 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
     activeBetBySeriesId.set(row.series_id, row);
   }
 
-  // "Pari oublié" (myBet.isForgottenResolution, même mécanisme que
-  // lib/queries/play.ts pour les paris MATCH) : une requête PENDING bloque
-  // déjà un 2e dépôt côté base (migration #11) -- juste besoin de savoir
-  // laquelle est déjà en attente pour ne pas reproposer le formulaire.
+  // Requêtes de correction sur ces paris SÉRIE engagés — TOUS statuts (p1-20,
+  // feuille de route Phase 1, même correctif que lib/queries/play.ts côté
+  // paris MATCH) : le joueur doit voir le sort d'une requête déjà traitée,
+  // pas seulement si une nouvelle est bloquée par la garde PENDING côté base
+  // (migration #11).
   const engagedBetIds = [...activeBetBySeriesId.values()]
     .filter((row) => !EDITABLE_SERIES_BET_STATUSES.has(row.status))
     .map((row) => row.id);
-  const { data: pendingCorrectionsData } =
+  const { data: correctionsData } =
     engagedBetIds.length > 0
-      ? await supabase.from("correction_requests").select("target_bet_id").eq("status", "PENDING").in("target_bet_id", engagedBetIds)
-      : { data: [] as { target_bet_id: string }[] };
-  const pendingCorrectionBetIds = new Set((pendingCorrectionsData ?? []).map((row) => row.target_bet_id as string));
+      ? await supabase
+          .from("correction_requests")
+          .select("target_bet_id, status, admin_reason, created_at")
+          .in("target_bet_id", engagedBetIds)
+          .order("created_at", { ascending: false })
+      : { data: [] as { target_bet_id: string; status: "PENDING" | "PROCESSED" | "REJECTED"; admin_reason: string | null; created_at: string }[] };
+  const correctionRequestByBetId = new Map<
+    string,
+    { status: "PENDING" | "PROCESSED" | "REJECTED"; admin_reason: string | null; created_at: string }
+  >();
+  for (const row of correctionsData ?? []) {
+    if (!correctionRequestByBetId.has(row.target_bet_id)) {
+      correctionRequestByBetId.set(row.target_bet_id, row);
+    }
+  }
 
   // Correctif (16/08/2026, bug trouvé en audit) : une série TERMINÉE/
   // ANNULÉE/REPORTÉE n'accepte plus de pari — `BetForm.tsx::isSeriesSelectable`
@@ -411,6 +424,7 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
         myBet: (() => {
           const activeBet = activeBetBySeriesId.get(row.id);
           if (!activeBet || EDITABLE_SERIES_BET_STATUSES.has(activeBet.status)) return null;
+          const cr = correctionRequestByBetId.get(activeBet.id);
           const bet: PlayAssociatedBet = {
             betId: activeBet.id,
             description: activeBet.description,
@@ -426,7 +440,7 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
             // + série déjà décidée pour de vrai (official_status FINISHED) =
             // aurait dû être résolu (WON/LOST) mais ne l'est pas encore.
             isForgottenResolution: activeBet.status === "VALIDATED" && row.official_status === "FINISHED",
-            hasPendingCorrectionRequest: pendingCorrectionBetIds.has(activeBet.id),
+            correctionRequest: cr ? { status: cr.status, adminReason: cr.admin_reason, createdAt: cr.created_at } : null,
             reproposeHref: null, // REJECTED déjà exclu de activeBetBySeriesId (toujours libéré, 0.2.4 §6) -- jamais ce cas ici
             isCalculable: activeBet.is_calculable ?? false,
             calculatedProba: activeBet.calculated_proba,
