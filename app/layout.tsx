@@ -65,7 +65,7 @@ export default async function RootLayout({
 
   return (
     <html
-      lang="en"
+      lang="fr"
       data-theme={theme === "LIGHT" ? "light" : theme === "PHOTO" ? "photo" : undefined}
       data-bg={theme === "PHOTO" && backgroundTheme !== "MURAL" ? backgroundTheme.toLowerCase() : undefined}
       className={`${sora.variable} ${oswald.variable} h-full antialiased`}
