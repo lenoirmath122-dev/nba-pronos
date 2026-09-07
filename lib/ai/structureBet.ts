@@ -7,6 +7,7 @@ import { MATCH_STAT_CODES, MATCH_STAT_LABELS_FR, NO_THRESHOLD_MATCH_STATS } from
 import { TEAM_STAT_CODES, TEAM_STAT_LABELS_FR } from "./teamStatCodes";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 import type { KnownRosters } from "./roster";
+import { recordAnthropicUsage } from "./usageTracking";
 
 // Union des 2 listes de codes valides dans un duel (joueur OU équipe,
 // cf. comparisonCodes.ts) -- un seul champ Zod pour les 2 côtés, la
@@ -349,6 +350,7 @@ export async function structureBet(
         `output=${response.usage.output_tokens} cache_read=${response.usage.cache_read_input_tokens ?? 0} ` +
         `cache_creation=${response.usage.cache_creation_input_tokens ?? 0}`,
     );
+    await recordAnthropicUsage("structureBet", model, response.usage);
     return response.parsed_output;
   } catch {
     // Panne réseau/API/parsing : traité comme "non calculable cette fois",

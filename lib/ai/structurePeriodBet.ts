@@ -5,6 +5,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
 import { PERIOD_CODES, PERIOD_LABELS_FR, PERIOD_OUTCOME_KINDS, PERIOD_OUTCOME_LABELS_FR, NO_THRESHOLD_PERIOD_OUTCOMES } from "./periodStatCodes";
 import type { KnownRosters } from "./roster";
+import { recordAnthropicUsage } from "./usageTracking";
 
 // Chantier "pari période" (24/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de
 // structureBet.ts, pas un 7e bet_subject dans le schéma existant. Découvert
@@ -199,6 +200,7 @@ export async function structurePeriodBet(
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(PeriodBetStructurationSchema) },
     });
+    await recordAnthropicUsage("structurePeriodBet", model, response.usage);
     return response.parsed_output;
   } catch {
     return null;

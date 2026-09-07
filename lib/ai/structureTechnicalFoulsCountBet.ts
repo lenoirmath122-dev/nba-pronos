@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
+import { recordAnthropicUsage } from "./usageTracking";
 
 // Chantier "événements de match" (étape 5 du plan de reprise post-audit,
 // 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de structureBet.ts, même
@@ -97,6 +98,7 @@ export async function structureTechnicalFoulsCountBet(
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(TechnicalFoulsCountBetStructurationSchema) },
     });
+    await recordAnthropicUsage("structureTechnicalFoulsCountBet", model, response.usage);
     return response.parsed_output;
   } catch {
     return null;

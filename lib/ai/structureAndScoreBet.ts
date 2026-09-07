@@ -46,6 +46,7 @@ import {
 import type { BetCategory } from "@/lib/labels/bets";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 import { resolveKnownRosters, type KnownRosters } from "./roster";
+import { DAILY_COST_CAP_USD, getTodaySpendUsd } from "./usageTracking";
 
 // Orchestre la structuration IA + le calcul de proba pour UN pari, à la
 // soumission (SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §3/§6, décidé le
@@ -1177,6 +1178,18 @@ export async function structureAndScoreBet(
   }
 
   try {
+    // Plafond de dépense IA (p1-8, feuille de route Phase 1) -- vérifié EN
+    // PREMIER, avant tout appel Claude (les 9 structure*Bet() ci-dessous
+    // partagent tous ce point d'entrée unique). Dépassé : même repli que
+    // toute autre panne de cette étape, jamais bloquant pour le joueur --
+    // le pari reste soumis, avec le mécanisme manuel existant comme seul
+    // recours (voir markNotCalculable() plus haut).
+    if ((await getTodaySpendUsd()) >= DAILY_COST_CAP_USD) {
+      console.warn(`structureAndScoreBet : plafond de dépense IA quotidien atteint (${DAILY_COST_CAP_USD}$), pari ${betId} non structuré.`);
+      await markNotCalculable();
+      return;
+    }
+
     const teamNames = await resolveMatchTeamNames(supabase, seriesId);
     // BUG-003 de l'audit du 03/09/2026 (GAPS_OUVERTS.md) : effectifs réels
     // injectés en complément de la connaissance générale de Claude pour

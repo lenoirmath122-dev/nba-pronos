@@ -10,7 +10,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 // implémenté. "Proche de 0" n'est pas chiffré par la spec (quota 100/jour, §2
 // du doc maître) — seuil choisi ici, 10% du quota journalier, pas un choix
 // produit : à ajuster si un vrai épuisement de quota est observé en usage.
-const LOW_QUOTA_THRESHOLD = 10;
+export const LOW_QUOTA_THRESHOLD = 10;
 
 export async function writeSyncLog(
   supabase: ReturnType<typeof getServiceClient>,

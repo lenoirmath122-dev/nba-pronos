@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES } from "./statCodes";
 import { TEAM_STAT_CODES } from "./teamStatCodes";
+import { recordAnthropicUsage } from "./usageTracking";
 
 // Chantier "OU imbriqué dans un ET" (étape 7 du plan de reprise post-audit,
 // 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de structureBet.ts, même
@@ -123,6 +124,7 @@ export async function structureComboNestedBet(
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(ComboNestedBetStructurationSchema) },
     });
+    await recordAnthropicUsage("structureComboNestedBet", model, response.usage);
     return response.parsed_output;
   } catch {
     return null;
