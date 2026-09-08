@@ -185,6 +185,20 @@ async function main() {
     }
   }
 
+  // ── Ligues créées par la cible (bug trouvé en investiguant p1-28, feuille
+  // de route Phase 1) : le garde-fou ci-dessus ne bloque que si la ligue a
+  // D'AUTRES membres, donc une ligue SOLO passe -- mais sans cette étape la
+  // ligne `leagues` restait, et created_by_user_id (references users(id),
+  // pas de ON DELETE) faisait échouer le CASCADE d'auth.admin.deleteUser()
+  // plus bas avec une violation de FK, laissant le compte partiellement
+  // supprimé. Sûr ici : le garde-fou a déjà confirmé zéro autre membre.
+  if (DRY_RUN) {
+    const { count, error } = await supabase.from("leagues").select("*", { count: "exact", head: true }).eq("created_by_user_id", user.id);
+    ok("[dry-run] leagues where created_by_user_id=" + user.id, { data: [], error, count: count ?? 0 });
+  } else {
+    ok("DELETE leagues where created_by_user_id=" + user.id, await supabase.from("leagues").delete({ count: "exact" }).eq("created_by_user_id", user.id));
+  }
+
   // ── Compte auth (cascade vers public.users, push_subscriptions, reminder_log, chat_muted_channels) ──
   if (DRY_RUN) {
     console.log(`[dry-run] auth.admin.deleteUser(${user.id}) — pseudo ${pseudo} (cascade : public.users, push_subscriptions, reminder_log, chat_muted_channels)`);
