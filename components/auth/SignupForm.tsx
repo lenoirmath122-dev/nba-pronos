@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signup } from "@/lib/auth/actions";
+import { MIN_PASSWORD_LENGTH } from "@/lib/auth/passwordPolicy";
 import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
 
@@ -65,7 +66,7 @@ export function SignupForm() {
             name="password"
             type="password"
             required
-            minLength={8}
+            minLength={MIN_PASSWORD_LENGTH}
             autoComplete="new-password"
             className={styles.input}
           />
@@ -79,7 +80,7 @@ export function SignupForm() {
             name="confirmPassword"
             type="password"
             required
-            minLength={8}
+            minLength={MIN_PASSWORD_LENGTH}
             autoComplete="new-password"
             className={styles.input}
           />
