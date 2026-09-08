@@ -6,7 +6,11 @@ name: Data NBA — rafraîchissement quotidien Supabase
 # micro-service Cloud Run (architecture "sans état", §23) -- ce job écrit
 # directement dans Supabase, le service ne fait qu'y LIRE au moment d'un
 # /predict. Une exécution par jour suffit : les stats servent à un calcul de
-# proba fait bien avant un match, pas un besoin temps réel.
+# proba fait bien avant un match, pas un besoin temps réel. GitHub Actions
+# n'exécute qu'en UTC (10:00 UTC = 11:00 ou 12:00 heure de Paris selon
+# l'heure d'été, p1-27 feuille de route Phase 1, vérifié) : le dérapage d'1h
+# entre CET/CEST est sans conséquence, le job tourne largement avant les
+# matchs du soir dans les deux cas.
 on:
   schedule:
     - cron: "0 10 * * *"
