@@ -7,6 +7,23 @@ import styles from "./layout.module.css";
 // SESSION du proxy (qui protège déjà /admin/* en amont, redirect /login).
 // Re-vérifiée à chaque navigation, jamais un état client mis en cache —
 // même défense en profondeur que app/(app)/layout.tsx pour la session.
+
+// p1-24 (feuille de route Phase 1) : recalculateCompetition() (lib/actions/
+// admin.ts, bouton « Recalculer ») rejoue TOUT le barème d'une compétition
+// en boucles séquentielles (lib/scoring/recompute.ts::recomputeCompetition,
+// délibérément sans grosse transaction ni parallélisation — voir le
+// commentaire de ce module, compensé par l'idempotence) : sur une vraie
+// compétition remplie (tous les matchs + tous les picks de bracket + tous
+// les paris), le nombre d'allers-retours réseau séquentiels peut dépasser
+// la durée par défaut d'une Server Action Vercel avant d'avoir fini, sans
+// que la case "action admin rare" ne le rende improbable pour autant.
+// Étendue ici (route segment config, couvre toutes les Server Actions
+// appelées depuis une page sous ce layout) à 60s — valeur sûre quel que
+// soit le palier Vercel, pas une estimation précise du vrai besoin.
+// Rejouable sans risque si jamais atteinte malgré tout (idempotence déjà
+// garantie par conception).
+export const maxDuration = 60;
+
 export default async function AdminLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
