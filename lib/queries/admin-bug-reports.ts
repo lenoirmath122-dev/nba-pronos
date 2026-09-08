@@ -5,6 +5,11 @@ import { parisDateTimeLabel } from "@/lib/dates/paris";
 // même patron que lib/queries/admin-requests.ts : jointure pseudo faite
 // séparément (2 requêtes), pas d'embed Supabase.
 
+// p1-22 (feuille de route Phase 1) : plafond de sécurité, pas une vraie
+// pagination — même patron qu'admin-logs.ts::LOG_LIMIT. RESOLVED grossit
+// indéfiniment (aucune purge) contrairement à OPEN.
+const REPORT_LIMIT = 200;
+
 export type BugReport = {
   reportId: string;
   reporterUserId: string;
@@ -33,7 +38,8 @@ export async function getBugReports(status: "OPEN" | "RESOLVED" = "OPEN"): Promi
     .from("bug_reports")
     .select("id, user_id, description, screen_path, status, admin_note, created_at")
     .eq("status", status)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(REPORT_LIMIT);
   const rows = (reports ?? []) as BugReportRow[];
   if (rows.length === 0) return [];
 

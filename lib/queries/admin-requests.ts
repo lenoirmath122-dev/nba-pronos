@@ -6,6 +6,10 @@ import { parisDateTimeLabel } from "@/lib/dates/paris";
 // §1/§2) — TOUTES les correction_requests PENDING, MATCH_PREDICTION ET
 // BET (0.2.7 §6 : une seule file, pas de distinction par type de cible).
 
+// p1-22 (feuille de route Phase 1) : plafond de sécurité, pas une vraie
+// pagination — même patron qu'admin-logs.ts::LOG_LIMIT.
+const REQUEST_LIMIT = 200;
+
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
   return `Match ${gameNumber} — ${parisDateTimeLabel(scheduledAt)}`;
@@ -94,7 +98,8 @@ export async function getPendingCorrectionRequests(): Promise<PendingCorrectionR
       "id, requester_user_id, justification, created_at, target_type, target_match_prediction_id, target_bet_id, proposed_winner_team_id, proposed_margin"
     )
     .eq("status", "PENDING")
-    .order("created_at", { ascending: true });
+    .order("created_at", { ascending: true })
+    .limit(REQUEST_LIMIT);
   const requests = (requestsData ?? []) as RequestRow[];
   if (requests.length === 0) return [];
 

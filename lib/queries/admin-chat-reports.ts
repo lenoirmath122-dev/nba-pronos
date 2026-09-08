@@ -8,6 +8,11 @@ import { parisDateTimeLabel } from "@/lib/dates/paris";
 // contrainte not null) -- pas de cas connu à ce jour, mais pas d'hypothèse
 // prise sur ce point.
 
+// p1-22 (feuille de route Phase 1) : plafond de sécurité, pas une vraie
+// pagination — même patron qu'admin-logs.ts::LOG_LIMIT. RESOLVED grossit
+// indéfiniment (aucune purge) contrairement à OPEN.
+const REPORT_LIMIT = 200;
+
 export type ChatMessageReport = {
   reportId: string;
   reporterUserId: string;
@@ -41,7 +46,8 @@ export async function getChatMessageReports(status: "OPEN" | "RESOLVED" = "OPEN"
     .from("chat_message_reports")
     .select("id, message_id, message_body_snapshot, message_author_id, reporter_user_id, reason, status, admin_note, created_at")
     .eq("status", status)
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false })
+    .limit(REPORT_LIMIT);
   const rows = (reports ?? []) as ChatMessageReportRow[];
   if (rows.length === 0) return [];
 
