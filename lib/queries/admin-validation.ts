@@ -8,6 +8,12 @@ import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 // à TOUS les joueurs de la compétition active (pas seulement auth.uid()) —
 // RLS bets_select (is_admin() y donne accès à toutes les lignes).
 
+// p1-22 (feuille de route Phase 1) : plafond de sécurité, pas une vraie
+// pagination — même patron qu'admin-logs.ts::LOG_LIMIT. Empêche une requête
+// non bornée le jour où le volume grossit ; les files ci-dessous restent
+// aujourd'hui naturellement petites (bornées par le nombre de joueurs actifs).
+const QUEUE_LIMIT = 200;
+
 export type PendingValidationBet = {
   betId: string;
   playerUserId: string; // ajouté le 30/07/2026, lien /players/[userId]
@@ -83,7 +89,8 @@ export async function getPendingValidationBets(): Promise<PendingValidationBet[]
     )
     .eq("competition_id", competition.id)
     .eq("status", "SUBMITTED")
-    .order("submitted_at", { ascending: true });
+    .order("submitted_at", { ascending: true })
+    .limit(QUEUE_LIMIT);
 
   const bets = (betsData ?? []) as BetRow[];
   if (bets.length === 0) return [];
@@ -197,7 +204,8 @@ export async function getAutoValidatedBets(): Promise<AutoValidatedBet[]> {
     .eq("is_calculable", true)
     .is("validated_by_admin_id", null)
     .in("status", ["VALIDATED", "WON", "LOST"])
-    .order("validated_at", { ascending: false });
+    .order("validated_at", { ascending: false })
+    .limit(QUEUE_LIMIT);
 
   const bets = (betsData ?? []) as AutoValidatedBetRow[];
   if (bets.length === 0) return [];
