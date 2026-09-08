@@ -1,3 +1,4 @@
+import * as Sentry from "@sentry/nextjs";
 import { getServerClient } from "@/lib/supabase/server";
 
 // Journalisation admin partagée (T6b §6, SPEC_ECRAN_ADMIN_VALIDATION_V0_1
@@ -31,8 +32,19 @@ export async function logAdminAction(
 
   // Best-effort (§4 de la spec validation) : la transition métier est déjà
   // posée au moment où logAdminAction est appelée, on ne l'annule pas pour
-  // un problème d'audit — mais on ne le passe pas sous silence non plus.
+  // un problème d'audit — mais on ne le passe pas sous silence non plus
+  // (p1-17, feuille de route Phase 1) : un console.error seul n'est jamais
+  // lu en prod (logs serverless Vercel, personne ne les surveille), donc
+  // remonté aussi à Sentry (déjà en place depuis p0-10) qui l'est.
   if (error) {
     console.error(`logAdminAction a échoué pour "${input.action}" (${input.targetId}) :`, error.message);
+    Sentry.captureException(new Error(`logAdminAction a échoué pour "${input.action}" : ${error.message}`), {
+      extra: {
+        actorUserId: input.actorUserId,
+        action: input.action,
+        targetType: input.targetType,
+        targetId: input.targetId,
+      },
+    });
   }
 }
