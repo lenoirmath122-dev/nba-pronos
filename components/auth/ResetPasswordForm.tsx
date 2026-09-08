@@ -4,6 +4,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import { requestPasswordReset } from "@/lib/auth/actions";
+import { MIN_PASSWORD_LENGTH, passwordPolicyError } from "@/lib/auth/passwordPolicy";
 import { MailIcon } from "@/components/icons/auth-icons";
 import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
@@ -79,8 +80,9 @@ export function ResetPasswordForm() {
   async function handleConfirm(e: FormEvent) {
     e.preventDefault();
     setError(null);
-    if (password.length < 8) {
-      setError("Le mot de passe doit faire au moins 8 caractères.");
+    const passwordError = passwordPolicyError(password);
+    if (passwordError) {
+      setError(passwordError);
       return;
     }
     if (password !== confirmPassword) {
@@ -174,7 +176,7 @@ export function ResetPasswordForm() {
             name="password"
             type="password"
             required
-            minLength={8}
+            minLength={MIN_PASSWORD_LENGTH}
             autoComplete="new-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
@@ -190,7 +192,7 @@ export function ResetPasswordForm() {
             name="confirmPassword"
             type="password"
             required
-            minLength={8}
+            minLength={MIN_PASSWORD_LENGTH}
             autoComplete="new-password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}

@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { checkAnonRateLimit } from "@/lib/auth/anonRateLimit";
+import { passwordPolicyError } from "@/lib/auth/passwordPolicy";
 
 export type AuthFormState = { error: string } | undefined;
 
@@ -65,8 +66,9 @@ export async function signup(
   if (!pseudo || !email || !password) {
     return { error: "Tous les champs sont obligatoires." };
   }
-  if (password.length < 8) {
-    return { error: "Le mot de passe doit faire au moins 8 caractères." };
+  const passwordError = passwordPolicyError(password);
+  if (passwordError) {
+    return { error: passwordError };
   }
   // Déclaration d'âge (cadrage juridique §2.10 point 4, 03/09/2026) : case
   // bloquante — aucun mécanisme de consentement parental n'existe pour les
