@@ -206,7 +206,7 @@ Contrairement aux autres sections de ce document, la sécurité technique de l'a
 | Séparation comptes utilisateurs/admin | Finding 4/12 (garde `is_admin()` explicite) — traité, commit `36c86f7` |
 | Protection des secrets et clés d'API | Finding 1 (critique, clé `service_role` fuitée) — traité : rotation + désactivation des clés legacy. Finding 2 (élevé, service Cloud Run public) — traité |
 | Chiffrement des communications | Non re-vérifié spécifiquement ici — couvert par défaut par Vercel/Supabase (HTTPS) |
-| Sauvegardes et restauration | Non couvert par l'audit sécurité ni ce document — **point non traité à date**, propre à la configuration Supabase (sauvegardes automatiques du plan utilisé, à vérifier) |
+| Sauvegardes et restauration | **CLOS le 09/09/2026** — `Cadrage/Juridique/procedure_sauvegarde_restauration.md` (p1-18, feuille de route Phase 1) : cycle sauvegarde/restauration/vérification testé pour de vrai contre la prod, 100% de correspondance sur les 30 tables de données. Manuel (plan gratuit, pas de sauvegarde automatique dashboard) — limite assumée, voir le doc |
 | Journalisation des actions sensibles | `audit_logs` en place pour les actions admin (voir §9) |
 | Mise à jour des dépendances | Finding 9 — traité (`npm audit` 3 → 0) |
 | Limitation des données visibles publiquement | Finding 7 (headers de sécurité HTTP) — traité |
@@ -466,7 +466,7 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
   - *Export* : `app/api/account/export/route.ts` (route GET authentifiée par session), régénère à la volée un JSON téléchargeable (profil, `bets`, `chat_messages`, `bug_reports`, `league_memberships`) pour l'utilisateur connecté uniquement. **Complété le 09/09/2026 (p1-21, feuille de route Phase 1)** : ajoute `match_predictions` (pronos de match), `brackets`+`bracket_picks` (bracket) et les badges (calculés à la volée via `getProfileBadges()`, pas de table dédiée) — corrige l'écart signalé par l'audit entre ce que le joueur peut voir de son propre historique dans l'app et ce que l'export en récupérait.
 - Pas de prestataire d'e-mail transactionnel branché à ce jour : si un flux d'information RGPD (ex. confirmation, notification de suppression) doit passer par e-mail, il dépend d'un prestataire encore à choisir.
 - Aucune mise ni paiement aujourd'hui : pas de mesure technique de paiement à sécuriser pour l'instant.
-- **Vérifier les sauvegardes/restauration Supabase** (§2.7) : dépend du plan utilisé, non vérifié à ce jour (p1-18, nécessite l'exploitant directement).
+- ~~Vérifier les sauvegardes/restauration Supabase~~ (§2.7) : **testée pour de vrai le 09/09/2026**, `Cadrage/Juridique/procedure_sauvegarde_restauration.md` (p1-18) — cycle sauvegarde/restauration/vérification exécuté contre la prod, 100% de correspondance. Manuel (plan gratuit), procédure documentée pour la rejouer.
 - ~~Formaliser une procédure de gestion des incidents / notification de violation de données~~ (§2.7) : **rédigée le 09/09/2026**, `Cadrage/Juridique/procedure_incident_violation_donnees.md` (p1-19) — qui prévenir, délais 72h/notification directe selon le risque (art. 33/34 RGPD), registre interne des violations. Distincte de la procédure d'effacement sur demande (finding 15, déjà traitée).
 
 ### 8.3. Documents à publier
