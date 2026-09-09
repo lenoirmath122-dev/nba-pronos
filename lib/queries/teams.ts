@@ -26,12 +26,27 @@ import { createClient } from "@supabase/supabase-js";
 // un mécanisme d'invalidation pour un évènement qui ne se produit jamais.
 export type Team = { id: string; name: string; abbreviation: string; conference: "EAST" | "WEST" };
 
-export const getAllTeams = unstable_cache(
-  async (): Promise<Team[]> => {
-    const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { data } = await supabase.from("teams").select("id, name, abbreviation, conference");
-    return (data ?? []) as Team[];
-  },
-  ["teams-all"],
-  { revalidate: 86400, tags: ["teams"] }
-);
+async function fetchAllTeams(): Promise<Team[]> {
+  const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
+  const { data } = await supabase.from("teams").select("id, name, abbreviation, conference");
+  return (data ?? []) as Team[];
+}
+
+const cachedGetAllTeams = unstable_cache(fetchAllTeams, ["teams-all"], { revalidate: 86400, tags: ["teams"] });
+
+// unstable_cache() a besoin d'un incrementalCache posé par le runtime Next.js
+// pendant une vraie requête -- absent quand ces fonctions de lib/queries/
+// sont appelées DIRECTEMENT (test/integration/*.test.ts, Vitest, jamais un
+// vrai serveur Next) : lève "Invariant: incrementalCache missing" (bug réel
+// découvert en CI, PR #74, 09/09/2026 -- les 6 fichiers migrés vers
+// getAllTeams() cassaient tous les tests d'intégration qui les exercent).
+// Repli sur l'appel direct, non caché, plutôt que de détecter l'environnement
+// de test (process.env.VITEST) : couvre AUSSI tout futur appel hors runtime
+// Next (script, cron autonome) sans dépendre d'un nom de runner précis.
+export async function getAllTeams(): Promise<Team[]> {
+  try {
+    return await cachedGetAllTeams();
+  } catch {
+    return fetchAllTeams();
+  }
+}
