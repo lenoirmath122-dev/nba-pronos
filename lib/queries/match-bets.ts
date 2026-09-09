@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import { MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/lib/labels/bets";
+import type { PrefetchedCompetitionContext } from "@/lib/queries/series-bets";
 
 // Lecture DÉDIÉE aux paris MATCH pour l'Accueil — miroir de
 // lib/queries/series-bets.ts::getRemainingSeriesBets() pour le scope MATCH.
@@ -37,21 +38,33 @@ function matchLabel(homeAbbr: string, awayAbbr: string, gameNumber: number, sche
 }
 
 /** Matchs où un pari MATCH reste POSSIBLE et pas encore posé — réutilisée par
- *  lib/queries/home.ts uniquement pour l'instant. */
-export async function getRemainingMatchBets(): Promise<RemainingMatchBet[]> {
-  const supabase = await getServerClient();
+ *  lib/queries/home.ts uniquement pour l'instant. `prefetched` optionnel
+ *  (p1-32, feuille de route Phase 1) : évite de refaire auth.getUser()/le
+ *  SELECT competitions ACTIVE quand l'appelant les a déjà en main — sans
+ *  lui, se comporte exactement comme avant. */
+export async function getRemainingMatchBets(prefetched?: PrefetchedCompetitionContext): Promise<RemainingMatchBet[]> {
+  const supabase = prefetched?.supabase ?? (await getServerClient());
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
+  let userId: string;
+  let competition: CompetitionRow;
+  if (prefetched) {
+    userId = prefetched.userId;
+    competition = prefetched.competition;
+  } else {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    userId = user.id;
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, type")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
-  if (!competition) return [];
+    const { data } = await supabase
+      .from("competitions")
+      .select("id, type")
+      .eq("status", "ACTIVE")
+      .maybeSingle<CompetitionRow>();
+    if (!data) return [];
+    competition = data;
+  }
 
   const nowIso = new Date().toISOString();
   const { data: matchesData } = await supabase
@@ -77,7 +90,7 @@ export async function getRemainingMatchBets(): Promise<RemainingMatchBet[]> {
     supabase
       .from("bets")
       .select("match_id, series_id, status")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("competition_id", competition.id)
       .eq("scope", "MATCH")
       .in("match_id", matchIds),

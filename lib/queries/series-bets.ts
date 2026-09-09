@@ -30,25 +30,47 @@ type TeamRow = { id: string; abbreviation: string };
 type SeriesBetRow = { series_id: string; status: string };
 type MatchRow = { series_id: string; scheduled_at: string };
 
+/** Contexte déjà résolu par l'appelant (utilisateur + compétition ACTIVE) --
+ *  évite de refaire auth.getUser()/le SELECT competitions ACTIVE quand
+ *  l'écran appelant (home.ts, play-hub.ts) les a déjà en main (p1-32,
+ *  feuille de route Phase 1 -- 3 allers-retours redondants sur l'Accueil
+ *  avant ce correctif : getHomeData() + cette fonction + getRemainingMatchBets()). */
+export type PrefetchedCompetitionContext = {
+  supabase: Awaited<ReturnType<typeof getServerClient>>;
+  userId: string;
+  competition: CompetitionRow;
+};
+
 /** Séries où un pari SÉRIE reste POSSIBLE et pas encore posé, sur les VRAIES
  *  équipes qualifiées — NBA Cup exclue (pas de paris séries, une "série" y
  *  est 1 seul match). Réutilisée par lib/queries/home.ts et
  *  lib/queries/play-hub.ts — jamais recalculée deux fois avec une logique
- *  divergente. */
-export async function getRemainingSeriesBets(): Promise<RemainingSeriesBet[]> {
-  const supabase = await getServerClient();
+ *  divergente. `prefetched` optionnel : sans lui, se comporte exactement
+ *  comme avant (résout sa propre session + compétition active). */
+export async function getRemainingSeriesBets(prefetched?: PrefetchedCompetitionContext): Promise<RemainingSeriesBet[]> {
+  const supabase = prefetched?.supabase ?? (await getServerClient());
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
+  let userId: string;
+  let competition: CompetitionRow;
+  if (prefetched) {
+    userId = prefetched.userId;
+    competition = prefetched.competition;
+    if (competition.type !== "PLAYOFFS") return [];
+  } else {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) return [];
+    userId = user.id;
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, type")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
-  if (!competition || competition.type !== "PLAYOFFS") return [];
+    const { data } = await supabase
+      .from("competitions")
+      .select("id, type")
+      .eq("status", "ACTIVE")
+      .maybeSingle<CompetitionRow>();
+    if (!data || data.type !== "PLAYOFFS") return [];
+    competition = data;
+  }
 
   const { data: seriesData } = await supabase
     .from("series")
@@ -66,7 +88,7 @@ export async function getRemainingSeriesBets(): Promise<RemainingSeriesBet[]> {
     supabase
       .from("bets")
       .select("series_id, status")
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .eq("competition_id", competition.id)
       .eq("scope", "SERIES")
       .in("series_id", knownSeriesIds),
