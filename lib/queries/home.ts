@@ -127,8 +127,8 @@ export async function getHomeData(): Promise<HomeData> {
     getHeader(supabase, competition, user.id),
     getTodo(supabase, competition, user.id),
     getAdminTodo(supabase, competition.id),
-    getSeriesBetsTodo(),
-    getMatchBetsTodo(),
+    getSeriesBetsTodo(supabase, user.id, competition),
+    getMatchBetsTodo(supabase, user.id, competition),
     getFeed(supabase, competition.id, user.id),
   ]);
 
@@ -142,11 +142,19 @@ export async function getHomeData(): Promise<HomeData> {
 // état vide affiché, contrairement à « À traiter »/« Ça vient de tomber »).
 // Réutilise getRemainingSeriesBets()/getRemainingMatchBets() — même logique
 // que la carte Bracket du hub Jouer pour les séries, jamais recalculée deux
-// fois.
+// fois. supabase/user.id/competition déjà résolus par getHomeData() leur
+// sont passés directement (p1-32, feuille de route Phase 1) — sans ça,
+// chacune des 2 fonctions refaisait sa propre auth.getUser() + son propre
+// SELECT competitions ACTIVE, 3 fois la même paire de requêtes sur un seul
+// chargement de l'Accueil.
 // ============================================================================
 
-async function getSeriesBetsTodo(): Promise<BetTodoItem[]> {
-  const remaining = await getRemainingSeriesBets();
+async function getSeriesBetsTodo(
+  supabase: SupabaseServerClient,
+  userId: string,
+  competition: CompetitionRow
+): Promise<BetTodoItem[]> {
+  const remaining = await getRemainingSeriesBets({ supabase, userId, competition });
   return remaining.map((series) => ({
     id: series.seriesId,
     title: `${ROUND_LABELS[series.round] ?? series.round} — ${series.teamA.abbreviation} vs ${series.teamB.abbreviation}`,
@@ -154,8 +162,12 @@ async function getSeriesBetsTodo(): Promise<BetTodoItem[]> {
   }));
 }
 
-async function getMatchBetsTodo(): Promise<BetTodoItem[]> {
-  const remaining = await getRemainingMatchBets();
+async function getMatchBetsTodo(
+  supabase: SupabaseServerClient,
+  userId: string,
+  competition: CompetitionRow
+): Promise<BetTodoItem[]> {
+  const remaining = await getRemainingMatchBets({ supabase, userId, competition });
   return remaining.map((match) => ({
     id: match.matchId,
     title: match.label,
