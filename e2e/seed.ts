@@ -29,6 +29,7 @@ export type E2ESeed = {
   // à "Modifier le pari").
   match2: Record<E2EBrowserProject, MatchSeed>; // T-UI-02 -- prono de bout en bout (joueur B, connexion réelle).
   match3: Record<E2EBrowserProject, MatchSeed>; // T-UI-03 -- nouveau pari personnalisé (joueur A).
+  match4: Record<E2EBrowserProject, MatchSeed>; // T-ERR-02 -- session expirée en cours de soumission (joueur A).
   playerA: { email: string; password: string };
   playerB: { email: string; password: string };
   preSeededBetId: string;
@@ -151,11 +152,13 @@ export async function seedE2EData(): Promise<E2ESeed> {
 
   const match2 = {} as Record<E2EBrowserProject, MatchSeed>;
   const match3 = {} as Record<E2EBrowserProject, MatchSeed>;
+  const match4 = {} as Record<E2EBrowserProject, MatchSeed>;
   let nextIndex = 2;
   let nextSlot = 1;
   for (const projectName of E2E_BROWSER_PROJECTS) {
     match2[projectName] = await createMatch(nextIndex++, nextSlot++);
     match3[projectName] = await createMatch(nextIndex++, nextSlot++);
+    match4[projectName] = await createMatch(nextIndex++, nextSlot++);
   }
 
   // Pari DRAFT pré-alimenté pour playerA sur match1 (T-UI-01 -- teste la
@@ -182,6 +185,7 @@ export async function seedE2EData(): Promise<E2ESeed> {
     match1: { id: match1.id, homeTeamName: match1.homeTeamName, homeTeamAbbreviation: match1.homeTeamAbbreviation },
     match2,
     match3,
+    match4,
     playerA: { email: playerA.email, password: playerA.password },
     playerB: { email: playerB.email, password: playerB.password },
     preSeededBetId: bet.id as string,
