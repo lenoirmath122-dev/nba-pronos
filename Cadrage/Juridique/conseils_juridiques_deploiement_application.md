@@ -210,8 +210,8 @@ Contrairement aux autres sections de ce document, la sécurité technique de l'a
 | Journalisation des actions sensibles | `audit_logs` en place pour les actions admin (voir §9) |
 | Mise à jour des dépendances | Finding 9 — traité (`npm audit` 3 → 0) |
 | Limitation des données visibles publiquement | Finding 7 (headers de sécurité HTTP) — traité |
-| Procédure de gestion des incidents | Pas de procédure formalisée au-delà de la réaction ponctuelle à l'incident de fuite de clé (finding 1) — **point non traité à date** |
-| Procédure de notification de violation de données | **Finding 15, directement lié à ce document** (« aucune procédure documentée de rétention/effacement RGPD ») — CLOS le 02/09/2026 via `scripts/delete-player-account.mjs` (voir §2.1 point 6, §8.2) ; ne couvre que l'effacement sur demande, pas une procédure de notification en cas de violation de données (fuite, accès non autorisé) — **distinction à noter, ce volet-là reste non traité** |
+| Procédure de gestion des incidents | **CLOS le 09/09/2026** — `Cadrage/Juridique/procedure_incident_violation_donnees.md` (p1-19, feuille de route Phase 1) |
+| Procédure de notification de violation de données | **Finding 15, directement lié à ce document** (« aucune procédure documentée de rétention/effacement RGPD ») — CLOS le 02/09/2026 via `scripts/delete-player-account.mjs` (voir §2.1 point 6, §8.2) pour l'effacement sur demande ; le volet distinct « fuite/accès non autorisé » **CLOS le 09/09/2026** via `Cadrage/Juridique/procedure_incident_violation_donnees.md` (délais art. 33/34 RGPD, registre interne des violations, contacts utiles) |
 
 **Deux résidus pertinents pour le cadrage juridique**, au-delà du renvoi à l'audit :
 - **Protection contre les mots de passe compromis ("Leaked Password Protection")** : reporté, fonctionnalité réservée aux plans Supabase payants (le projet est sur le plan gratuit) — décision assumée par l'utilisateur pour l'alpha/bêta entre amis, à reprendre si le plan change.
@@ -466,8 +466,8 @@ Compléter les dix informations listées dans la section 3, puis établir une ma
   - *Export* : `app/api/account/export/route.ts` (route GET authentifiée par session), régénère à la volée un JSON téléchargeable (profil, `bets`, `chat_messages`, `bug_reports`, `league_memberships`) pour l'utilisateur connecté uniquement.
 - Pas de prestataire d'e-mail transactionnel branché à ce jour : si un flux d'information RGPD (ex. confirmation, notification de suppression) doit passer par e-mail, il dépend d'un prestataire encore à choisir.
 - Aucune mise ni paiement aujourd'hui : pas de mesure technique de paiement à sécuriser pour l'instant.
-- **Vérifier les sauvegardes/restauration Supabase** (§2.7) : dépend du plan utilisé, non vérifié à ce jour.
-- **Formaliser une procédure de gestion des incidents / notification de violation de données** (§2.7) : distincte de la procédure d'effacement sur demande (finding 15, déjà traitée) — n'existe pas encore, même sous forme minimale (qui prévenir, sous quel délai, dans quels cas une notification CNIL/aux utilisateurs est requise).
+- **Vérifier les sauvegardes/restauration Supabase** (§2.7) : dépend du plan utilisé, non vérifié à ce jour (p1-18, nécessite l'exploitant directement).
+- ~~Formaliser une procédure de gestion des incidents / notification de violation de données~~ (§2.7) : **rédigée le 09/09/2026**, `Cadrage/Juridique/procedure_incident_violation_donnees.md` (p1-19) — qui prévenir, délais 72h/notification directe selon le risque (art. 33/34 RGPD), registre interne des violations. Distincte de la procédure d'effacement sur demande (finding 15, déjà traitée).
 
 ### 8.3. Documents à publier
 
