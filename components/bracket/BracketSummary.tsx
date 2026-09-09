@@ -31,8 +31,8 @@ export function BracketSummary({ data, competitionName, liveSeed, myLeagues, can
       <div className={styles.page}>
         <div className={`${styles.header} hero-banner`}>
           <div>
-            <p className={`${styles.title} hero-banner-title`}>Bracket</p>
-            <p className={`${styles.competitionName} hero-banner-subtitle`}>
+            <p className={styles.title}>Bracket</p>
+            <p className={styles.competitionName}>
               {competitionName}
               {data.scopeLeagueName ? ` — ${data.scopeLeagueName}` : ""}
             </p>

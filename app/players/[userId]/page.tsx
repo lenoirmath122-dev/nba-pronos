@@ -38,7 +38,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     <ScreenShell authenticated={user !== null}>
       <div className={`${styles.page} photo-page`}>
         <header className={`${styles.header} hero-banner glass-card`}>
-          <p className={`${styles.pseudo} hero-banner-title`}>
+          <p className={styles.pseudo}>
             {profile.pseudo}
             <PinnedBadges badges={profile.pinnedBadges} />
           </p>

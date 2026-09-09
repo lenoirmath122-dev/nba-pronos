@@ -1,18 +1,12 @@
 import type { PendingCorrectionRequest } from "@/lib/queries/admin-requests";
 import { processCorrectionRequestFormAction, rejectCorrectionRequestFormAction } from "@/lib/actions/admin-requests";
 import { PlayerLink } from "@/components/ui/PlayerLink";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 import styles from "./RequestCard.module.css";
 
 // Une carte de la file des requêtes (SPEC_ECRAN_ADMIN_REQUESTS_V0_1 §2) —
 // DEUX rendus selon targetType (§0 : asymétrie réelle, pas un oubli).
 // 2 formulaires natifs indépendants (Traiter / Refuser), aucun "use client".
-
-function formatDate(iso: string): string {
-  const date = new Date(iso);
-  return new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(
-    date
-  );
-}
 
 type RequestCardProps = {
   request: PendingCorrectionRequest;
@@ -26,7 +20,7 @@ export function RequestCard({ request, error }: RequestCardProps) {
         <p className={styles.player}>
           <PlayerLink userId={request.requesterUserId} pseudo={request.requesterPseudo} />
         </p>
-        <span className={styles.timestamp}>{formatDate(request.createdAt)}</span>
+        <span className={styles.timestamp}>{parisDateTimeLabel(request.createdAt)}</span>
       </div>
       <p className={styles.target}>{request.targetLabel}</p>
       <p className={styles.justification}>« {request.justification} »</p>

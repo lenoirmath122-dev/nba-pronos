@@ -1,18 +1,10 @@
 import type { AuditLogRow as AuditLogRowData } from "@/lib/queries/admin-logs";
 import { PlayerLink } from "@/components/ui/PlayerLink";
+import { parisDateTimeLabel } from "@/lib/dates/paris";
 import styles from "./AuditLogRow.module.css";
 
 // Une ligne de l'Historique des logs (SPEC_ECRAN_ADMIN_LOGS_V0_1 §2) —
 // consultation PURE, aucune action, aucun formulaire.
-
-const TIMESTAMP_TIMEZONE = "Europe/Paris";
-
-function formatTimestamp(iso: string): string {
-  const date = new Date(iso);
-  const datePart = new Intl.DateTimeFormat("fr-FR", { timeZone: TIMESTAMP_TIMEZONE, day: "2-digit", month: "2-digit" }).format(date);
-  const timePart = new Intl.DateTimeFormat("fr-FR", { timeZone: TIMESTAMP_TIMEZONE, hour: "2-digit", minute: "2-digit" }).format(date);
-  return `${datePart} ${timePart}`;
-}
 
 function targetLabel(log: AuditLogRowData): string {
   if (log.targetPseudo) return `${log.targetType} · ${log.targetPseudo}`;
@@ -23,7 +15,7 @@ export function AuditLogRow({ log }: { log: AuditLogRowData }) {
   return (
     <li className={styles.row}>
       <div className={styles.header}>
-        <span className={styles.timestamp}>{formatTimestamp(log.createdAt)}</span>
+        <span className={styles.timestamp}>{parisDateTimeLabel(log.createdAt)}</span>
         <span className={styles.actor}>
           {log.actorUserId ? <PlayerLink userId={log.actorUserId} pseudo={log.actorPseudo} /> : log.actorPseudo}
         </span>

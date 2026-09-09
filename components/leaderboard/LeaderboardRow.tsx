@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { LeaderboardRow as RowData, RankTrend, SortKey } from "@/lib/queries/leaderboard";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import { clickableRowProps } from "@/lib/hooks/clickableRow";
@@ -16,7 +17,7 @@ type LeaderboardRowProps = {
   row: RowData;
   sortKey: SortKey;
   expanded: boolean;
-  onToggle: () => void;
+  onToggle: (userId: string) => void;
 };
 
 function detailColClass(column: SortKey, sortKey: SortKey): string {
@@ -125,7 +126,12 @@ function TrendBadge({ trend }: { trend: RankTrend }) {
   );
 }
 
-export function LeaderboardRow({ row, sortKey, expanded, onToggle }: LeaderboardRowProps) {
+// p1-29 (feuille de route Phase 1) : memo() -- combiné à la référence
+// stable de `onToggle` posée dans LeaderboardRowList, une ligne dont `row`/
+// `expanded`/`sortKey` n'ont pas changé ne se re-rend plus quand une AUTRE
+// ligne est dépliée/repliée (avant : les 2 re-rendaient tout l'accordéon,
+// closure inline recréée à chaque clic).
+export const LeaderboardRow = memo(function LeaderboardRow({ row, sortKey, expanded, onToggle }: LeaderboardRowProps) {
   const correctionTitle =
     row.adminCorrectionsCount > 0
       ? `${plural(row.adminCorrectionsCount, "élément")} corrigé${row.adminCorrectionsCount > 1 ? "s" : ""} par un admin, sur requête`
@@ -148,7 +154,7 @@ export function LeaderboardRow({ row, sortKey, expanded, onToggle }: Leaderboard
       data-top-rank={topRank}
     >
       <div
-        {...clickableRowProps(onToggle)}
+        {...clickableRowProps(() => onToggle(row.userId))}
         id={row.isCurrentUser ? "me-row" : undefined}
         className={styles.row}
         aria-expanded={expanded}
@@ -233,4 +239,4 @@ export function LeaderboardRow({ row, sortKey, expanded, onToggle }: Leaderboard
       )}
     </div>
   );
-}
+});

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import type { LeaderboardRow as RowData, SortKey } from "@/lib/queries/leaderboard";
 import { LeaderboardRow } from "./LeaderboardRow";
 
@@ -17,6 +17,16 @@ type LeaderboardRowListProps = {
 export function LeaderboardRowList({ rows, sortKey }: LeaderboardRowListProps) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
+  // p1-29 (feuille de route Phase 1) : référence STABLE entre re-renders
+  // (useCallback sans dépendance, le setter fonctionnel n'a besoin de rien
+  // d'autre) — condition pour que React.memo sur LeaderboardRow (voir ce
+  // fichier) empêche les lignes non concernées de se re-rendre à chaque clic
+  // déplier/replier. Une closure inline recréée à chaque render aurait cassé
+  // le memo pour TOUTES les lignes, pas seulement celle cliquée.
+  const handleToggle = useCallback((userId: string) => {
+    setExpandedUserId((current) => (current === userId ? null : userId));
+  }, []);
+
   return (
     <div role="rowgroup">
       {rows.map((row) => (
@@ -25,7 +35,7 @@ export function LeaderboardRowList({ rows, sortKey }: LeaderboardRowListProps) {
           row={row}
           sortKey={sortKey}
           expanded={row.userId === expandedUserId}
-          onToggle={() => setExpandedUserId((current) => (current === row.userId ? null : row.userId))}
+          onToggle={handleToggle}
         />
       ))}
     </div>
