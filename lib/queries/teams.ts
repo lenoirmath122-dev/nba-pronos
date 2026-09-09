@@ -1,6 +1,7 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
 import { createClient } from "@supabase/supabase-js";
+import { getServerClient } from "@/lib/supabase/server";
 
 // p1-23 (feuille de route Phase 1) : première stratégie de cache posée dans
 // ce projet (zéro aujourd'hui malgré 93 revalidatePath -- qui invalident un
@@ -40,13 +41,26 @@ const cachedGetAllTeams = unstable_cache(fetchAllTeams, ["teams-all"], { revalid
 // vrai serveur Next) : lève "Invariant: incrementalCache missing" (bug réel
 // découvert en CI, PR #74, 09/09/2026 -- les 6 fichiers migrés vers
 // getAllTeams() cassaient tous les tests d'intégration qui les exercent).
-// Repli sur l'appel direct, non caché, plutôt que de détecter l'environnement
-// de test (process.env.VITEST) : couvre AUSSI tout futur appel hors runtime
-// Next (script, cron autonome) sans dépendre d'un nom de runner précis.
+//
+// Repli via getServerClient() plutôt que de rappeler fetchAllTeams() : cette
+// dernière lit NEXT_PUBLIC_SUPABASE_URL, délibérément ABSENT du job `e2e` de
+// la CI (.github/workflows/ci.yml : "Aucun secret nécessaire") -- levait
+// "supabaseUrl is required" dès que ce repli tentait de la relire (2e bug,
+// même PR). getServerClient() est mocké par chaque test d'intégration vers
+// un client Supabase local réel (test/integration/fixtures.ts), donc aucune
+// variable d'environnement requise ici. Sans risque de retomber dans
+// l'interdiction "cookies() dans unstable_cache" : cette fonction n'est PAS
+// enveloppée par unstable_cache, contrairement à fetchAllTeams ci-dessus.
+async function fetchAllTeamsFallback(): Promise<Team[]> {
+  const supabase = await getServerClient();
+  const { data } = await supabase.from("teams").select("id, name, abbreviation, conference");
+  return (data ?? []) as Team[];
+}
+
 export async function getAllTeams(): Promise<Team[]> {
   try {
     return await cachedGetAllTeams();
   } catch {
-    return fetchAllTeams();
+    return fetchAllTeamsFallback();
   }
 }
