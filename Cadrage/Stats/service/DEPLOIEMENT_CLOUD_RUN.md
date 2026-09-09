@@ -163,6 +163,18 @@ désormais** (code changé ou nouveaux modèles entraînés + poussés vers la
 sauvegarde) — la procédure manuelle ci-dessus reste documentée comme
 solution de secours/dépannage.
 
+**⚠️ Piège réel à connaître, propre à ce workflow** : contrairement au
+déploiement manuel (qui prend toujours les modèles les plus frais du disque
+de l'exploitant), ce workflow déploie ce qui est **dans la sauvegarde GCS**,
+pas ce qui est sur la machine locale. Or `REPRODUCTIBILITE.md` documente que
+cette sauvegarde ne se met à jour que manuellement
+(`gcloud storage rsync Cadrage/Stats/models gs://nba-pronos-stats-2026-models-backup/models --recursive`),
+jamais automatiquement. **Après tout nouvel entraînement de modèle,
+resynchroniser la sauvegarde AVANT de lancer ce workflow** — sinon il
+redéploie silencieusement une génération de modèles périmée. Un simple
+changement de code du service (sans nouveau modèle) n'a pas ce problème : la
+sauvegarde existante reste valide.
+
 ### Mise en place unique (à exécuter une seule fois, par l'exploitant)
 
 Authentification par **Workload Identity Federation** plutôt qu'une clé de

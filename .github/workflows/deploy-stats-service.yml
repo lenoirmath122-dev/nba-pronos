@@ -21,6 +21,12 @@ name: Déployer le service Cloud Run (Stats)
 # externe gs://nba-pronos-stats-2026-models-backup (créée lors de p1-10)
 # avant de construire l'image, plutôt que de dépendre du disque de
 # l'exploitant.
+#
+# ATTENTION -- cette sauvegarde ne se resynchronise pas toute seule
+# (Cadrage/Stats/REPRODUCTIBILITE.md) : après un nouvel entraînement,
+# lancer `gcloud storage rsync Cadrage/Stats/models
+# gs://nba-pronos-stats-2026-models-backup/models --recursive` AVANT ce
+# workflow, sinon il redéploie une génération de modèles périmée.
 
 on:
   workflow_dispatch: {}
