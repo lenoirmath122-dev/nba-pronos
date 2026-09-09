@@ -55,6 +55,18 @@ gcloud storage rsync Cadrage/Stats/models gs://nba-pronos-stats-2026-models-back
 `rsync` ne retransfère que ce qui a changé — rapide après le premier
 upload complet.
 
+**Note ajoutée le 09/09/2026** : les entraînements sont généralement lancés
+depuis Claude Code (dans VS Code), pas manuellement par l'exploitant — cette
+commande de resynchronisation fait donc partie de la fin de toute session
+d'entraînement à faire exécuter par Claude Code dans la foulée, avant de
+considérer la session terminée, plutôt qu'un rappel laissé à l'exploitant
+pour plus tard. Pertinent en particulier depuis p1-11 (feuille de route
+Phase 1) : le déploiement Cloud Run automatisé (`.github/workflows/
+deploy-stats-service.yml`) part de cette sauvegarde, pas du disque local —
+une sauvegarde oubliée après entraînement se traduit directement par un
+déploiement de modèles périmés (voir `service/DEPLOIEMENT_CLOUD_RUN.md`
+§« Déploiement automatisé »).
+
 ### Restaurer depuis la sauvegarde (cas le plus probable : machine perdue mais modèles pas retouchés récemment)
 
 ```powershell
