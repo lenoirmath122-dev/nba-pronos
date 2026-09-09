@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getAllTeams } from "@/lib/queries/teams";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { getRemainingMatchBets } from "@/lib/queries/match-bets";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
@@ -345,7 +346,7 @@ async function getMatchesTodo(
   if (pending.length === 0) return null;
 
   const nextMatch = pending[0]; // déjà trié par scheduled_at croissant
-  const matchup = await describeUpcomingMatch(supabase, nextMatch);
+  const matchup = await describeUpcomingMatch(nextMatch);
 
   return {
     kind: "matches",
@@ -359,7 +360,6 @@ async function getMatchesTodo(
 }
 
 async function describeUpcomingMatch(
-  supabase: SupabaseServerClient,
   match: { home_team_id: string | null; away_team_id: string | null; game_number: number }
 ): Promise<TodoItem["matchup"]> {
   const teamIds = [match.home_team_id, match.away_team_id].filter(
@@ -367,13 +367,10 @@ async function describeUpcomingMatch(
   );
   if (teamIds.length !== 2) return null;
 
-  const { data: teams } = await supabase
-    .from("teams")
-    .select("id, abbreviation, name")
-    .in("id", teamIds);
+  const teams = await getAllTeams();
 
   const teamOf = (id: string): TodoMatchupTeam => {
-    const team = (teams ?? []).find((row) => row.id === id);
+    const team = teams.find((row) => row.id === id);
     return { abbreviation: team?.abbreviation ?? "?", name: team?.name ?? "?" };
   };
 
@@ -573,13 +570,10 @@ async function getFeed(
         .filter((id): id is string => id !== null)
     ),
   ];
-  const { data: teams } =
-    teamIds.length > 0
-      ? await supabase.from("teams").select("id, abbreviation").in("id", teamIds)
-      : { data: [] as { id: string; abbreviation: string }[] };
+  const teams = teamIds.length > 0 ? await getAllTeams() : [];
 
   const teamAbbrev = (id: string | null) =>
-    id ? (teams ?? []).find((team) => team.id === id)?.abbreviation ?? "?" : "?";
+    id ? teams.find((team) => team.id === id)?.abbreviation ?? "?" : "?";
   const matchById = new Map((matches ?? []).map((match) => [match.id, match as MatchScoreRow]));
 
   const matchItems: FeedItem[] = (scoredPredictions ?? []).map((prediction) => {

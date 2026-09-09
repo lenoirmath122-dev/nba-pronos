@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getAllTeams } from "@/lib/queries/teams";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDayBoundsUtc, parisDateKey } from "@/lib/dates/paris";
 import type { TeamRef } from "@/lib/queries/matches";
@@ -383,13 +384,13 @@ async function fetchUpcomingWindow(
   const matchIds = matches.map((m) => m.id);
 
   const [
-    { data: teamsData },
+    teamsData,
     { data: ownPredictionsData },
     { data: ownBetsData },
     { data: activeUsersData },
     { data: isAdminData },
   ] = await Promise.all([
-    supabase.from("teams").select("id, name, abbreviation"),
+    getAllTeams(),
     supabase
       .from("match_predictions")
       .select("match_id, predicted_winner_team_id, predicted_margin, status")
@@ -769,8 +770,8 @@ async function fetchLockedRows(
 
   const matchIds = matches.map((m) => m.id);
 
-  const [{ data: teamsData }, { data: predictionsData }, { data: betsData }, { data: activeUsersData }] = await Promise.all([
-    supabase.from("teams").select("id, name, abbreviation"),
+  const [teamsData, { data: predictionsData }, { data: betsData }, { data: activeUsersData }] = await Promise.all([
+    getAllTeams(),
     supabase
       .from("match_predictions")
       .select(
@@ -1028,11 +1029,11 @@ async function getAvailableFilters(
   const availableDates = [...dateKeys].sort((a, b) => (a < b ? 1 : -1));
 
   const seriesIds = [...latestMsBySeries.keys()];
-  const [{ data: seriesData }, { data: teamsData }] = await Promise.all([
+  const [{ data: seriesData }, teamsData] = await Promise.all([
     supabase.from("series").select("id, round, team1_id, team2_id").in("id", seriesIds),
-    supabase.from("teams").select("id, name, abbreviation"),
+    getAllTeams(),
   ]);
-  const abbrevById = new Map(((teamsData ?? []) as TeamRow[]).map((t) => [t.id, t.abbreviation]));
+  const abbrevById = new Map((teamsData as TeamRow[]).map((t) => [t.id, t.abbreviation]));
   const seriesById = new Map(((seriesData ?? []) as SeriesRow[]).map((s) => [s.id, s]));
 
   const availableSeries = seriesIds
@@ -1080,11 +1081,11 @@ async function getQuotas(supabase: SupabaseServerClient, userId: string, competi
   }
 
   const seriesIds = [...new Set(activeBets.map((b) => b.series_id))];
-  const [{ data: seriesData }, { data: teamsData }] = await Promise.all([
+  const [{ data: seriesData }, teamsData] = await Promise.all([
     supabase.from("series").select("id, round, team1_id, team2_id").in("id", seriesIds),
-    supabase.from("teams").select("id, name, abbreviation"),
+    getAllTeams(),
   ]);
-  const abbrevById = new Map(((teamsData ?? []) as TeamRow[]).map((t) => [t.id, t.abbreviation]));
+  const abbrevById = new Map((teamsData as TeamRow[]).map((t) => [t.id, t.abbreviation]));
   const seriesById = new Map(((seriesData ?? []) as SeriesRow[]).map((s) => [s.id, s]));
 
   return seriesIds.map((seriesId) => {

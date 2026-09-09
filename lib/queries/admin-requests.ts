@@ -6,9 +6,12 @@ import { parisDateTimeLabel } from "@/lib/dates/paris";
 // §1/§2) — TOUTES les correction_requests PENDING, MATCH_PREDICTION ET
 // BET (0.2.7 §6 : une seule file, pas de distinction par type de cible).
 
-// p1-22 (feuille de route Phase 1) : plafond de sécurité, pas une vraie
-// pagination — même patron qu'admin-logs.ts::LOG_LIMIT.
+// p1-22 (feuille de route Phase 1) : vraie pagination, même patron que
+// admin-logs.ts::getAuditLogs (.range() + REQUEST_LIMIT+1 pour détecter une
+// page suivante, sans compter() séparément).
 const REQUEST_LIMIT = 200;
+
+export type PendingCorrectionRequestsPage = { requests: PendingCorrectionRequest[]; hasMore: boolean };
 
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
@@ -89,9 +92,10 @@ type BetRow = {
   proposed_difficulty: number;
 };
 
-export async function getPendingCorrectionRequests(): Promise<PendingCorrectionRequest[]> {
+export async function getPendingCorrectionRequests(page = 1): Promise<PendingCorrectionRequestsPage> {
   const supabase = await getServerClient();
 
+  const offset = (Math.max(1, page) - 1) * REQUEST_LIMIT;
   const { data: requestsData } = await supabase
     .from("correction_requests")
     .select(
@@ -99,9 +103,11 @@ export async function getPendingCorrectionRequests(): Promise<PendingCorrectionR
     )
     .eq("status", "PENDING")
     .order("created_at", { ascending: true })
-    .limit(REQUEST_LIMIT);
-  const requests = (requestsData ?? []) as RequestRow[];
-  if (requests.length === 0) return [];
+    .range(offset, offset + REQUEST_LIMIT);
+  const fetched = (requestsData ?? []) as RequestRow[];
+  const hasMore = fetched.length > REQUEST_LIMIT;
+  const requests = hasMore ? fetched.slice(0, REQUEST_LIMIT) : fetched;
+  if (requests.length === 0) return { requests: [], hasMore: false };
 
   const userIds = [...new Set(requests.map((r) => r.requester_user_id))];
   const predictionIds = requests.filter((r) => r.target_type === "MATCH_PREDICTION").map((r) => r.target_match_prediction_id as string);
@@ -215,5 +221,5 @@ export async function getPendingCorrectionRequests(): Promise<PendingCorrectionR
     }
   }
 
-  return results;
+  return { requests: results, hasMore };
 }

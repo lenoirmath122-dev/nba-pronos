@@ -8,10 +8,12 @@ import { parisDateTimeLabel } from "@/lib/dates/paris";
 // contrainte not null) -- pas de cas connu à ce jour, mais pas d'hypothèse
 // prise sur ce point.
 
-// p1-22 (feuille de route Phase 1) : plafond de sécurité, pas une vraie
-// pagination — même patron qu'admin-logs.ts::LOG_LIMIT. RESOLVED grossit
-// indéfiniment (aucune purge) contrairement à OPEN.
+// p1-22 (feuille de route Phase 1) : vraie pagination, même patron que
+// admin-logs.ts::getAuditLogs. RESOLVED grossit indéfiniment (aucune purge)
+// contrairement à OPEN.
 const REPORT_LIMIT = 200;
+
+export type ChatMessageReportsPage = { reports: ChatMessageReport[]; hasMore: boolean };
 
 export type ChatMessageReport = {
   reportId: string;
@@ -39,33 +41,39 @@ type ChatMessageReportRow = {
   created_at: string;
 };
 
-export async function getChatMessageReports(status: "OPEN" | "RESOLVED" = "OPEN"): Promise<ChatMessageReport[]> {
+export async function getChatMessageReports(status: "OPEN" | "RESOLVED" = "OPEN", page = 1): Promise<ChatMessageReportsPage> {
   const supabase = await getServerClient();
 
+  const offset = (Math.max(1, page) - 1) * REPORT_LIMIT;
   const { data: reports } = await supabase
     .from("chat_message_reports")
     .select("id, message_id, message_body_snapshot, message_author_id, reporter_user_id, reason, status, admin_note, created_at")
     .eq("status", status)
     .order("created_at", { ascending: false })
-    .limit(REPORT_LIMIT);
-  const rows = (reports ?? []) as ChatMessageReportRow[];
-  if (rows.length === 0) return [];
+    .range(offset, offset + REPORT_LIMIT);
+  const fetched = (reports ?? []) as ChatMessageReportRow[];
+  const hasMore = fetched.length > REPORT_LIMIT;
+  const rows = hasMore ? fetched.slice(0, REPORT_LIMIT) : fetched;
+  if (rows.length === 0) return { reports: [], hasMore: false };
 
   const userIds = [...new Set(rows.flatMap((row) => [row.reporter_user_id, row.message_author_id]).filter((id): id is string => id !== null))];
   const { data: users } = await supabase.from("users").select("id, pseudo").in("id", userIds);
   const pseudoById = new Map((users ?? []).map((u) => [u.id as string, u.pseudo as string]));
 
-  return rows.map((row) => ({
-    reportId: row.id,
-    reporterUserId: row.reporter_user_id,
-    reporterPseudo: pseudoById.get(row.reporter_user_id) ?? "—",
-    messageAuthorId: row.message_author_id,
-    messageAuthorPseudo: row.message_author_id ? pseudoById.get(row.message_author_id) ?? "—" : "—",
-    messageBodySnapshot: row.message_body_snapshot,
-    messageStillExists: row.message_id !== null,
-    reason: row.reason,
-    createdAtLabel: parisDateTimeLabel(row.created_at),
-    status: row.status,
-    adminNote: row.admin_note,
-  }));
+  return {
+    reports: rows.map((row) => ({
+      reportId: row.id,
+      reporterUserId: row.reporter_user_id,
+      reporterPseudo: pseudoById.get(row.reporter_user_id) ?? "—",
+      messageAuthorId: row.message_author_id,
+      messageAuthorPseudo: row.message_author_id ? pseudoById.get(row.message_author_id) ?? "—" : "—",
+      messageBodySnapshot: row.message_body_snapshot,
+      messageStillExists: row.message_id !== null,
+      reason: row.reason,
+      createdAtLabel: parisDateTimeLabel(row.created_at),
+      status: row.status,
+      adminNote: row.admin_note,
+    })),
+    hasMore,
+  };
 }
