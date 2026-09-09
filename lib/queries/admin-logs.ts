@@ -23,7 +23,9 @@ export type AuditLogRow = {
   afterValue: unknown;
 };
 
-export type AuditLogFilters = { action?: string; actorUserId?: string; date?: string };
+export type AuditLogFilters = { action?: string; actorUserId?: string; date?: string; page?: number };
+
+export type AuditLogPage = { logs: AuditLogRow[]; hasMore: boolean };
 
 export type AuditLogFilterOptions = {
   actions: { value: string; label: string }[];
@@ -42,14 +44,18 @@ type LogRecord = {
   created_at: string;
 };
 
-export async function getAuditLogs(filters: AuditLogFilters): Promise<AuditLogRow[]> {
+export async function getAuditLogs(filters: AuditLogFilters): Promise<AuditLogPage> {
   const supabase = await getServerClient();
+
+  const page = filters.page && filters.page > 1 ? filters.page : 1;
+  const offset = (page - 1) * LOG_LIMIT;
 
   let query = supabase
     .from("audit_logs")
     .select("id, actor_user_id, action, target_type, target_id, reason, before_value, after_value, created_at")
     .order("created_at", { ascending: false })
-    .limit(LOG_LIMIT);
+    // +1 pour détecter une page suivante sans faire un 2e aller-retour count().
+    .range(offset, offset + LOG_LIMIT);
 
   if (filters.action) query = query.eq("action", filters.action);
   if (filters.actorUserId) query = query.eq("actor_user_id", filters.actorUserId);
@@ -59,8 +65,10 @@ export async function getAuditLogs(filters: AuditLogFilters): Promise<AuditLogRo
   }
 
   const { data } = await query;
-  const logs = (data ?? []) as LogRecord[];
-  if (logs.length === 0) return [];
+  const fetched = (data ?? []) as LogRecord[];
+  const hasMore = fetched.length > LOG_LIMIT;
+  const logs = hasMore ? fetched.slice(0, LOG_LIMIT) : fetched;
+  if (logs.length === 0) return { logs: [], hasMore: false };
 
   // Résout acteur + cible "user" en un seul aller — SEUL target_type "user"
   // est enrichi d'un pseudo (§2 : "bet" resterait un id brut, jointures non
@@ -76,20 +84,23 @@ export async function getAuditLogs(filters: AuditLogFilters): Promise<AuditLogRo
       : { data: [] as { id: string; pseudo: string }[] };
   const pseudoById = new Map((usersData ?? []).map((u) => [u.id as string, u.pseudo as string]));
 
-  return logs.map((log) => ({
-    id: log.id,
-    createdAt: log.created_at,
-    actorUserId: log.actor_user_id,
-    actorPseudo: log.actor_user_id ? (pseudoById.get(log.actor_user_id) ?? "—") : "Système",
-    action: log.action,
-    actionLabel: adminActionLabel(log.action),
-    targetType: log.target_type,
-    targetId: log.target_id,
-    targetPseudo: log.target_type === "user" && log.target_id ? (pseudoById.get(log.target_id) ?? null) : null,
-    reason: log.reason,
-    beforeValue: log.before_value,
-    afterValue: log.after_value,
-  }));
+  return {
+    logs: logs.map((log) => ({
+      id: log.id,
+      createdAt: log.created_at,
+      actorUserId: log.actor_user_id,
+      actorPseudo: log.actor_user_id ? (pseudoById.get(log.actor_user_id) ?? "—") : "Système",
+      action: log.action,
+      actionLabel: adminActionLabel(log.action),
+      targetType: log.target_type,
+      targetId: log.target_id,
+      targetPseudo: log.target_type === "user" && log.target_id ? (pseudoById.get(log.target_id) ?? null) : null,
+      reason: log.reason,
+      beforeValue: log.before_value,
+      afterValue: log.after_value,
+    })),
+    hasMore,
+  };
 }
 
 export async function getAuditLogFilterOptions(): Promise<AuditLogFilterOptions> {
