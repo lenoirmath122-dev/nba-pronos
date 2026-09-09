@@ -36,7 +36,13 @@ const securityHeaders = [
       // https://challenges.cloudflare.com : script du widget CAPTCHA Turnstile
       // (audit de sécurité, finding 3, 02/09/2026) -- ajouté en script-src ET
       // frame-src, le widget se rend dans un iframe cross-origin.
-      "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
+      // 'unsafe-eval' UNIQUEMENT en dev (jamais en prod, cf. NODE_ENV
+      // ci-dessous) : React s'en sert pour reconstruire des stack traces
+      // lisibles en mode dev (Fast Refresh) -- absent, chaque montage de
+      // composant loggait "eval() is not supported in this environment"
+      // dans la console (constaté 09/09/2026), sans casser l'app (React
+      // n'utilise jamais eval() en production, le message le dit lui-même).
+      `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
