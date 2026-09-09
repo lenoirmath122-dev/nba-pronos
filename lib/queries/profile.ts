@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getAllTeams } from "@/lib/queries/teams";
 import type { TeamRef } from "@/lib/queries/matches";
 
 // Lecture de l'écran Profil (SPEC_ECRAN_PROFIL_V0_1 §9). Composants serveur
@@ -59,7 +60,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
 
   if (error || !data) return null;
 
-  const favoriteTeam = data.favorite_team_id ? await fetchTeam(supabase, data.favorite_team_id) : null;
+  const favoriteTeam = data.favorite_team_id ? await fetchTeam(data.favorite_team_id) : null;
 
   return {
     pseudo: data.pseudo,
@@ -73,25 +74,18 @@ export async function getProfileData(): Promise<ProfileData | null> {
   };
 }
 
-async function fetchTeam(
-  supabase: Awaited<ReturnType<typeof getServerClient>>,
-  teamId: string
-): Promise<TeamRef | null> {
-  const { data } = await supabase.from("teams").select("id, abbreviation, name").eq("id", teamId).maybeSingle();
-  return data ? { id: data.id, abbreviation: data.abbreviation, name: data.name } : null;
+async function fetchTeam(teamId: string): Promise<TeamRef | null> {
+  const teams = await getAllTeams();
+  const team = teams.find((t) => t.id === teamId);
+  return team ? { id: team.id, abbreviation: team.abbreviation, name: team.name } : null;
 }
 
 // Référentiel global des 30 équipes (D6, jamais scopé par compétition) — pour
 // le sélecteur d'équipe favorite (§3).
 export async function getTeamOptions(): Promise<TeamOption[]> {
-  const supabase = await getServerClient();
+  const teams = await getAllTeams();
 
-  const { data, error } = await supabase
-    .from("teams")
-    .select("id, abbreviation, name")
-    .order("name", { ascending: true });
-
-  if (error || !data) return [];
-
-  return data.map((t) => ({ teamId: t.id, abbreviation: t.abbreviation, name: t.name }));
+  return [...teams]
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((t) => ({ teamId: t.id, abbreviation: t.abbreviation, name: t.name }));
 }

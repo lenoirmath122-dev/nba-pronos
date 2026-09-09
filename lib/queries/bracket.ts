@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getAllTeams } from "@/lib/queries/teams";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
@@ -242,8 +243,8 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
 
   const seriesIds = series.map((row) => row.id);
 
-  const [{ data: teamsData }, { data: ownBetsData }] = await Promise.all([
-    supabase.from("teams").select("id, name, abbreviation"),
+  const [teamsData, { data: ownBetsData }] = await Promise.all([
+    getAllTeams(),
     user
       ? supabase
           .from("bets")
@@ -498,8 +499,8 @@ export async function getSeriesLiveSeed(competitionId: string): Promise<SeriesLi
   const series = (seriesData ?? []) as Pick<SeriesRow, "id" | "team1_id" | "team2_id">[];
   if (series.length === 0) return [];
 
-  const { data: teamsData } = await supabase.from("teams").select("id, name, abbreviation");
-  const teams = new Map(((teamsData ?? []) as TeamRow[]).map((team) => [team.id, team.abbreviation]));
+  const teamsData = await getAllTeams();
+  const teams = new Map((teamsData as TeamRow[]).map((team) => [team.id, team.abbreviation]));
 
   return series.map((row) => ({
     seriesId: row.id,

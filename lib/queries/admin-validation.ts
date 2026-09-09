@@ -8,10 +8,11 @@ import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 // à TOUS les joueurs de la compétition active (pas seulement auth.uid()) —
 // RLS bets_select (is_admin() y donne accès à toutes les lignes).
 
-// p1-22 (feuille de route Phase 1) : plafond de sécurité, pas une vraie
-// pagination — même patron qu'admin-logs.ts::LOG_LIMIT. Empêche une requête
-// non bornée le jour où le volume grossit ; les files ci-dessous restent
-// aujourd'hui naturellement petites (bornées par le nombre de joueurs actifs).
+// p1-22 (feuille de route Phase 1) : vraie pagination, même patron que
+// admin-logs.ts::getAuditLogs. Les 2 files ci-dessous restent aujourd'hui
+// naturellement petites (bornées par le nombre de joueurs actifs) mais
+// suivent le même patron que les autres files admin pour rester cohérentes
+// si ça change.
 const QUEUE_LIMIT = 200;
 
 export type PendingValidationBet = {
@@ -35,6 +36,8 @@ export type PendingValidationBet = {
   calculatedProba: number | null;
   suggestedDifficulty: BetDifficulty | null;
 };
+
+export type PendingValidationBetsPage = { bets: PendingValidationBet[]; hasMore: boolean };
 
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
@@ -72,7 +75,7 @@ type BetRow = {
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null };
 type MatchRow = { id: string; game_number: number; scheduled_at: string | null };
 
-export async function getPendingValidationBets(): Promise<PendingValidationBet[]> {
+export async function getPendingValidationBets(page = 1): Promise<PendingValidationBetsPage> {
   const supabase = await getServerClient();
 
   const { data: competition } = await supabase
@@ -80,8 +83,9 @@ export async function getPendingValidationBets(): Promise<PendingValidationBet[]
     .select("id")
     .eq("status", "ACTIVE")
     .maybeSingle<CompetitionRow>();
-  if (!competition) return [];
+  if (!competition) return { bets: [], hasMore: false };
 
+  const offset = (Math.max(1, page) - 1) * QUEUE_LIMIT;
   const { data: betsData } = await supabase
     .from("bets")
     .select(
@@ -90,10 +94,12 @@ export async function getPendingValidationBets(): Promise<PendingValidationBet[]
     .eq("competition_id", competition.id)
     .eq("status", "SUBMITTED")
     .order("submitted_at", { ascending: true })
-    .limit(QUEUE_LIMIT);
+    .range(offset, offset + QUEUE_LIMIT);
 
-  const bets = (betsData ?? []) as BetRow[];
-  if (bets.length === 0) return [];
+  const fetched = (betsData ?? []) as BetRow[];
+  const hasMore = fetched.length > QUEUE_LIMIT;
+  const bets = hasMore ? fetched.slice(0, QUEUE_LIMIT) : fetched;
+  if (bets.length === 0) return { bets: [], hasMore: false };
 
   const userIds = [...new Set(bets.map((b) => b.user_id))];
   const seriesIds = [...new Set(bets.map((b) => b.series_id))];
@@ -119,29 +125,32 @@ export async function getPendingValidationBets(): Promise<PendingValidationBet[]
       : { data: [] as { id: string; abbreviation: string }[] };
   const abbrevById = new Map((teamsData ?? []).map((t) => [t.id, t.abbreviation]));
 
-  return bets.map((b) => {
-    const s = seriesById.get(b.series_id);
-    const m = b.match_id ? matchById.get(b.match_id) : null;
-    const targetLabel = b.scope === "MATCH" && m ? matchLabel(m.game_number, m.scheduled_at) : s ? seriesLabel(s, abbrevById) : "—";
+  return {
+    bets: bets.map((b) => {
+      const s = seriesById.get(b.series_id);
+      const m = b.match_id ? matchById.get(b.match_id) : null;
+      const targetLabel = b.scope === "MATCH" && m ? matchLabel(m.game_number, m.scheduled_at) : s ? seriesLabel(s, abbrevById) : "—";
 
-    return {
-      betId: b.id,
-      playerUserId: b.user_id,
-      playerPseudo: pseudoById.get(b.user_id) ?? "—",
-      targetLabel,
-      description: b.description,
-      proposedCategory: b.proposed_category,
-      proposedDifficulty: b.proposed_difficulty,
-      submittedAt: b.submitted_at ?? "",
-      isCalculable: b.is_calculable ?? false,
-      structuredPlayerName: b.structured_player_name,
-      structuredStat: b.structured_stat,
-      structuredThreshold: b.structured_threshold,
-      structuredComparison: b.structured_comparison,
-      calculatedProba: b.calculated_proba,
-      suggestedDifficulty: b.suggested_difficulty,
-    };
-  });
+      return {
+        betId: b.id,
+        playerUserId: b.user_id,
+        playerPseudo: pseudoById.get(b.user_id) ?? "—",
+        targetLabel,
+        description: b.description,
+        proposedCategory: b.proposed_category,
+        proposedDifficulty: b.proposed_difficulty,
+        submittedAt: b.submitted_at ?? "",
+        isCalculable: b.is_calculable ?? false,
+        structuredPlayerName: b.structured_player_name,
+        structuredStat: b.structured_stat,
+        structuredThreshold: b.structured_threshold,
+        structuredComparison: b.structured_comparison,
+        calculatedProba: b.calculated_proba,
+        suggestedDifficulty: b.suggested_difficulty,
+      };
+    }),
+    hasMore,
+  };
 }
 
 // ============================================================================
@@ -168,6 +177,8 @@ export type AutoValidatedBet = {
   validatedAt: string;
 };
 
+export type AutoValidatedBetsPage = { bets: AutoValidatedBet[]; hasMore: boolean };
+
 type AutoValidatedBetRow = {
   id: string;
   user_id: string;
@@ -185,7 +196,7 @@ type AutoValidatedBetRow = {
   validated_at: string | null;
 };
 
-export async function getAutoValidatedBets(): Promise<AutoValidatedBet[]> {
+export async function getAutoValidatedBets(page = 1): Promise<AutoValidatedBetsPage> {
   const supabase = await getServerClient();
 
   const { data: competition } = await supabase
@@ -193,8 +204,9 @@ export async function getAutoValidatedBets(): Promise<AutoValidatedBet[]> {
     .select("id")
     .eq("status", "ACTIVE")
     .maybeSingle<CompetitionRow>();
-  if (!competition) return [];
+  if (!competition) return { bets: [], hasMore: false };
 
+  const offset = (Math.max(1, page) - 1) * QUEUE_LIMIT;
   const { data: betsData } = await supabase
     .from("bets")
     .select(
@@ -205,10 +217,12 @@ export async function getAutoValidatedBets(): Promise<AutoValidatedBet[]> {
     .is("validated_by_admin_id", null)
     .in("status", ["VALIDATED", "WON", "LOST"])
     .order("validated_at", { ascending: false })
-    .limit(QUEUE_LIMIT);
+    .range(offset, offset + QUEUE_LIMIT);
 
-  const bets = (betsData ?? []) as AutoValidatedBetRow[];
-  if (bets.length === 0) return [];
+  const fetched = (betsData ?? []) as AutoValidatedBetRow[];
+  const hasMore = fetched.length > QUEUE_LIMIT;
+  const bets = hasMore ? fetched.slice(0, QUEUE_LIMIT) : fetched;
+  if (bets.length === 0) return { bets: [], hasMore: false };
 
   const userIds = [...new Set(bets.map((b) => b.user_id))];
   const seriesIds = [...new Set(bets.map((b) => b.series_id))];
@@ -234,25 +248,28 @@ export async function getAutoValidatedBets(): Promise<AutoValidatedBet[]> {
       : { data: [] as { id: string; abbreviation: string }[] };
   const abbrevById = new Map((teamsData ?? []).map((t) => [t.id, t.abbreviation]));
 
-  return bets.map((b) => {
-    const s = seriesById.get(b.series_id);
-    const m = b.match_id ? matchById.get(b.match_id) : null;
-    const targetLabel = b.scope === "MATCH" && m ? matchLabel(m.game_number, m.scheduled_at) : s ? seriesLabel(s, abbrevById) : "—";
+  return {
+    bets: bets.map((b) => {
+      const s = seriesById.get(b.series_id);
+      const m = b.match_id ? matchById.get(b.match_id) : null;
+      const targetLabel = b.scope === "MATCH" && m ? matchLabel(m.game_number, m.scheduled_at) : s ? seriesLabel(s, abbrevById) : "—";
 
-    return {
-      betId: b.id,
-      playerUserId: b.user_id,
-      playerPseudo: pseudoById.get(b.user_id) ?? "—",
-      targetLabel,
-      description: b.description,
-      structuredPlayerName: b.structured_player_name,
-      structuredStat: b.structured_stat,
-      structuredThreshold: b.structured_threshold,
-      structuredComparison: b.structured_comparison,
-      calculatedProba: b.calculated_proba,
-      currentDifficulty: b.validated_difficulty,
-      status: b.status,
-      validatedAt: b.validated_at ?? "",
-    };
-  });
+      return {
+        betId: b.id,
+        playerUserId: b.user_id,
+        playerPseudo: pseudoById.get(b.user_id) ?? "—",
+        targetLabel,
+        description: b.description,
+        structuredPlayerName: b.structured_player_name,
+        structuredStat: b.structured_stat,
+        structuredThreshold: b.structured_threshold,
+        structuredComparison: b.structured_comparison,
+        calculatedProba: b.calculated_proba,
+        currentDifficulty: b.validated_difficulty,
+        status: b.status,
+        validatedAt: b.validated_at ?? "",
+      };
+    }),
+    hasMore,
+  };
 }

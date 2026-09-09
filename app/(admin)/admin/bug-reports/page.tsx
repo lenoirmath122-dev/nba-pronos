@@ -7,7 +7,7 @@ import styles from "./page.module.css";
 // /admin/requests : composant serveur, aucun "use client". `statut` bascule
 // OPEN/RESOLVED (repli OPEN, l'écran d'arrivée pour traiter la file).
 
-type SearchParams = { statut?: string; reportId?: string; bugReportError?: string };
+type SearchParams = { statut?: string; reportId?: string; bugReportError?: string; page?: string };
 
 export default async function AdminBugReportsPage({
   searchParams,
@@ -16,7 +16,16 @@ export default async function AdminBugReportsPage({
 }) {
   const sp = await searchParams;
   const status = sp.statut === "resolved" ? "RESOLVED" : "OPEN";
-  const reports = await getBugReports(status);
+  const page = Math.max(1, Number(sp.page) || 1);
+  const { reports, hasMore } = await getBugReports(status, page);
+
+  const pageLink = (targetPage: number) => {
+    const params = new URLSearchParams();
+    if (status === "RESOLVED") params.set("statut", "resolved");
+    if (targetPage > 1) params.set("page", String(targetPage));
+    const qs = params.toString();
+    return qs ? `/admin/bug-reports?${qs}` : "/admin/bug-reports";
+  };
 
   return (
     <div className={styles.page}>
@@ -36,15 +45,37 @@ export default async function AdminBugReportsPage({
           {status === "OPEN" ? "Rien à traiter pour le moment." : "Aucun signalement résolu pour le moment."}
         </p>
       ) : (
-        <ul className={styles.list}>
-          {reports.map((report) => (
-            <BugReportCard
-              key={report.reportId}
-              report={report}
-              error={sp.reportId === report.reportId ? sp.bugReportError : undefined}
-            />
-          ))}
-        </ul>
+        <>
+          <ul className={styles.list}>
+            {reports.map((report) => (
+              <BugReportCard
+                key={report.reportId}
+                report={report}
+                error={sp.reportId === report.reportId ? sp.bugReportError : undefined}
+              />
+            ))}
+          </ul>
+
+          {(page > 1 || hasMore) && (
+            <nav className={styles.pagination} aria-label="Pagination des signalements">
+              {page > 1 ? (
+                <Link href={pageLink(page - 1)} className={styles.pageLink}>
+                  ← Précédent
+                </Link>
+              ) : (
+                <span />
+              )}
+              <span className={styles.pageNum}>Page {page}</span>
+              {hasMore ? (
+                <Link href={pageLink(page + 1)} className={styles.pageLink}>
+                  Suivant →
+                </Link>
+              ) : (
+                <span />
+              )}
+            </nav>
+          )}
+        </>
       )}
     </div>
   );
