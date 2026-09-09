@@ -146,6 +146,98 @@ curl -X POST https://<url-du-service>/predict -H "Content-Type: application/json
 Doit renvoyer exactement les mêmes résultats que les tests en local (vérifié
 le 21/08/2026 — Tatum FT% 26.8%, Jokić double-double 75.1%, etc.)
 
+## Déploiement automatisé (CI, hors machine personnelle)
+
+**Ajouté le 09/09/2026 (p1-11, feuille de route Phase 1)** : le déploiement
+manuel ci-dessus dépend entièrement de la machine de l'exploitant (upload des
+~920 Mo de modèles compris, terminal ouvert le temps du build). Un workflow
+GitHub Actions (`.github/workflows/deploy-stats-service.yml`) fait la même
+chose sans cette dépendance : déclenché manuellement (`workflow_dispatch`,
+bouton "Run workflow" dans l'onglet Actions de GitHub), il récupère les
+modèles depuis la sauvegarde externe (`gs://nba-pronos-stats-2026-models-backup`,
+créée lors de p1-10) puis lance le même `gcloud run deploy --source` que la
+commande manuelle.
+
+**À utiliser plutôt que la commande manuelle pour tout redéploiement
+désormais** (code changé ou nouveaux modèles entraînés + poussés vers la
+sauvegarde) — la procédure manuelle ci-dessus reste documentée comme
+solution de secours/dépannage.
+
+**⚠️ Piège réel à connaître, propre à ce workflow** : contrairement au
+déploiement manuel (qui prend toujours les modèles les plus frais du disque
+de l'exploitant), ce workflow déploie ce qui est **dans la sauvegarde GCS**,
+pas ce qui est sur la machine locale. Or `REPRODUCTIBILITE.md` documente que
+cette sauvegarde ne se met à jour que manuellement
+(`gcloud storage rsync Cadrage/Stats/models gs://nba-pronos-stats-2026-models-backup/models --recursive`),
+jamais automatiquement. **Après tout nouvel entraînement de modèle,
+resynchroniser la sauvegarde AVANT de lancer ce workflow** — sinon il
+redéploie silencieusement une génération de modèles périmée. Un simple
+changement de code du service (sans nouveau modèle) n'a pas ce problème : la
+sauvegarde existante reste valide.
+
+### Mise en place unique (à exécuter une seule fois, par l'exploitant)
+
+Authentification par **Workload Identity Federation** plutôt qu'une clé de
+service account statique — pas d'identifiant long-lived supplémentaire à
+protéger (ce projet a déjà eu un incident de fuite de clé, cf. section
+précédente). Toutes les commandes ci-dessous s'exécutent avec `gcloud` déjà
+authentifié sur le projet `nba-pronos-stats-2026` (même pré-requis que le
+reste de ce guide, pas accessible depuis cet environnement).
+
+1. Récupérer le numéro de projet (différent de l'ID texte) :
+   ```powershell
+   gcloud projects describe nba-pronos-stats-2026 --format="value(projectNumber)"
+   ```
+
+2. Créer le pool d'identité fédérée et son fournisseur OIDC, restreint à ce
+   dépôt précis :
+   ```powershell
+   gcloud iam workload-identity-pools create "github-pool" --project="nba-pronos-stats-2026" --location="global" --display-name="GitHub Actions"
+
+   gcloud iam workload-identity-pools providers create-oidc "github-provider" --project="nba-pronos-stats-2026" --location="global" --workload-identity-pool="github-pool" --display-name="GitHub" --attribute-mapping="google.subject=assertion.sub,attribute.repository=assertion.repository" --attribute-condition="assertion.repository=='lenoirmath122-dev/nba-pronos'" --issuer-uri="https://token.actions.githubusercontent.com"
+   ```
+
+3. Créer un service account dédié au déploiement (pas le compte par défaut
+   Compute Engine utilisé par le service lui-même) et lui accorder les rôles
+   nécessaires pour construire + déployer via `--source` :
+   ```powershell
+   gcloud iam service-accounts create github-deployer --project="nba-pronos-stats-2026" --display-name="Déploiement GitHub Actions (Cloud Run stats)"
+
+   gcloud projects add-iam-policy-binding nba-pronos-stats-2026 --member="serviceAccount:github-deployer@nba-pronos-stats-2026.iam.gserviceaccount.com" --role="roles/run.admin"
+   gcloud projects add-iam-policy-binding nba-pronos-stats-2026 --member="serviceAccount:github-deployer@nba-pronos-stats-2026.iam.gserviceaccount.com" --role="roles/cloudbuild.builds.editor"
+   gcloud projects add-iam-policy-binding nba-pronos-stats-2026 --member="serviceAccount:github-deployer@nba-pronos-stats-2026.iam.gserviceaccount.com" --role="roles/artifactregistry.writer"
+   gcloud projects add-iam-policy-binding nba-pronos-stats-2026 --member="serviceAccount:github-deployer@nba-pronos-stats-2026.iam.gserviceaccount.com" --role="roles/storage.admin"
+   gcloud projects add-iam-policy-binding nba-pronos-stats-2026 --member="serviceAccount:github-deployer@nba-pronos-stats-2026.iam.gserviceaccount.com" --role="roles/iam.serviceAccountUser"
+   ```
+   (`storage.admin` couvre à la fois le bucket de staging que Cloud Build
+   crée pour `--source` et la lecture de `gs://nba-pronos-stats-2026-models-backup` —
+   même projet GCP pour les deux, pas la peine de granulariser plus finement
+   pour un exploitant seul.)
+
+4. Autoriser le fournisseur OIDC à emprunter l'identité de ce service
+   account, uniquement depuis ce dépôt (remplacer `TON_NUMERO_PROJET` par la
+   valeur récupérée à l'étape 1) :
+   ```powershell
+   gcloud iam service-accounts add-iam-policy-binding "github-deployer@nba-pronos-stats-2026.iam.gserviceaccount.com" --project="nba-pronos-stats-2026" --role="roles/iam.workloadIdentityUser" --member="principalSet://iam.googleapis.com/projects/TON_NUMERO_PROJET/locations/global/workloadIdentityPools/github-pool/attribute.repository/lenoirmath122-dev/nba-pronos"
+   ```
+
+5. Récupérer le nom complet du fournisseur (à coller dans le secret GitHub
+   à l'étape suivante) :
+   ```powershell
+   gcloud iam workload-identity-pools providers describe "github-provider" --project="nba-pronos-stats-2026" --location="global" --workload-identity-pool="github-pool" --format="value(name)"
+   ```
+
+6. Ajouter 2 secrets sur le dépôt GitHub (Settings → Secrets and variables →
+   Actions → New repository secret) :
+   - `GCP_WORKLOAD_IDENTITY_PROVIDER` : la valeur récupérée à l'étape 5
+     (format `projects/.../locations/global/workloadIdentityPools/github-pool/providers/github-provider`).
+   - `GCP_DEPLOY_SERVICE_ACCOUNT` : `github-deployer@nba-pronos-stats-2026.iam.gserviceaccount.com`
+
+Une fois ces 2 secrets posés, le workflow "Déployer le service Cloud Run
+(Stats)" est utilisable depuis l'onglet Actions de GitHub (bouton "Run
+workflow") — aucune autre action locale nécessaire pour les déploiements
+suivants.
+
 ## Redéployer après un changement de code
 
 ```

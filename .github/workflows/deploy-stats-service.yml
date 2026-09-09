@@ -1,0 +1,68 @@
+name: Déployer le service Cloud Run (Stats)
+
+# Sort le build + déploiement de l'image Cloud Run de la dépendance à une
+# machine personnelle (p1-11, feuille de route Phase 1) -- jusqu'ici
+# `gcloud run deploy --source .` était lancé à la main depuis le poste de
+# l'exploitant (Cadrage/Stats/service/DEPLOIEMENT_CLOUD_RUN.md), upload des
+# ~920 Mo de modèles compris. Déclenchement manuel uniquement
+# (workflow_dispatch) : un redéploiement n'est nécessaire qu'après un
+# changement de code du service ou un réentraînement des modèles, pas à
+# chaque push -- même logique que la commande manuelle qu'il remplace.
+#
+# Authentification GCP par Workload Identity Federation (pas de clé de
+# service account statique à stocker en secret GitHub -- ce projet a déjà
+# eu un incident de fuite de clé Supabase, autant ne pas ajouter un
+# identifiant long-lived de plus). Mise en place unique (pool + provider +
+# service account, à exécuter par l'exploitant via gcloud) documentée dans
+# DEPLOIEMENT_CLOUD_RUN.md, section "Déploiement automatisé".
+#
+# Cadrage/Stats/models/ (920 Mo de modèles entraînés) est gitignoré --
+# jamais commité (p1-10). Ce workflow les récupère depuis la sauvegarde
+# externe gs://nba-pronos-stats-2026-models-backup (créée lors de p1-10)
+# avant de construire l'image, plutôt que de dépendre du disque de
+# l'exploitant.
+#
+# ATTENTION -- cette sauvegarde ne se resynchronise pas toute seule
+# (Cadrage/Stats/REPRODUCTIBILITE.md) : après un nouvel entraînement,
+# lancer `gcloud storage rsync Cadrage/Stats/models
+# gs://nba-pronos-stats-2026-models-backup/models --recursive` AVANT ce
+# workflow, sinon il redéploie une génération de modèles périmée.
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write # requis pour l'échange OIDC -> jeton GCP (Workload Identity Federation)
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Authentification GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Récupérer les modèles entraînés depuis la sauvegarde externe (p1-10)
+        run: |
+          mkdir -p Cadrage/Stats/models
+          gcloud storage cp -r "gs://nba-pronos-stats-2026-models-backup/*" Cadrage/Stats/models/
+
+      - name: Déployer sur Cloud Run
+        # Pas de --set-env-vars/--set-secrets ici : les variables et secrets
+        # déjà configurés sur le service (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY,
+        # STATS_SERVICE_SECRET) sont conservés d'une révision à l'autre, même
+        # comportement que la commande manuelle de redéploiement documentée
+        # dans DEPLOIEMENT_CLOUD_RUN.md.
+        run: |
+          gcloud run deploy nba-pronos-stats \
+            --source Cadrage/Stats \
+            --project nba-pronos-stats-2026 \
+            --region europe-west1 \
+            --quiet
