@@ -261,8 +261,8 @@ export default async function ProfilePage({
           <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Mes données</h2>
             <p className={styles.fieldLabel}>
-              Télécharge une copie de tes données personnelles (profil, paris, messages de chat, signalements de
-              bug, ligues) au format JSON.
+              Télécharge une copie de tes données personnelles (profil, pronostics de match, bracket, paris,
+              badges, messages de chat, signalements de bug, ligues) au format JSON.
             </p>
             <a href="/api/account/export" className={styles.helpLink}>
               Télécharger mes données
