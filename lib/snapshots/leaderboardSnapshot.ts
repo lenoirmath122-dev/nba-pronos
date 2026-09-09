@@ -1,26 +1,12 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { assignRanks, type RankableScore } from "@/lib/scoring/ranking";
+import { parisDateKey } from "@/lib/dates/paris";
 
 // Snapshot quotidien du classement (BACKLOG_V1.md « Fun / esprit ligue entre
 // potes » — socle pour "plus grosse remontée" + le futur "courbe d'évolution").
 // Fréquence confirmée AVEC l'utilisateur (30/07/2026) : 1x/jour, même patron
 // que lib/reminders/*.ts (service_role, déclenché par un planificateur
 // GitHub Actions, endpoint Bearer SYNC_SECRET séparé).
-
-const SNAPSHOT_TIMEZONE = "Europe/Paris";
-
-// Même technique que lib/queries/matches.ts::localDateKey (en-CA -> YYYY-MM-DD,
-// ordre lexicographique = ordre chronologique) — dupliquée plutôt que
-// partagée : fonction privée de 3 lignes, pas encore de module utilitaire
-// dédié aux dates dans ce projet.
-function todayKey(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: SNAPSHOT_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
 
 export async function runLeaderboardSnapshot(): Promise<{ snapshotted: number }> {
   const supabase = getServiceClient();
@@ -42,7 +28,7 @@ export async function runLeaderboardSnapshot(): Promise<{ snapshotted: number }>
   if (scoreRows.length === 0) return { snapshotted: 0 };
 
   const ranks = assignRanks(scoreRows);
-  const date = todayKey();
+  const date = parisDateKey(Date.now());
 
   const rows = scoreRows.map((row) => ({
     competition_id: competition.id,

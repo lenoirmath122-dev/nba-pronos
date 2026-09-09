@@ -91,9 +91,9 @@ body {
 /* Texte du bandeau (15/08/2026) : plus de couleur/ombre figées — le fond
    n'est plus une photo sombre constante, chaque écran garde donc la couleur
    theme-aware déjà posée sur son propre titre (--color-text-primary/
-   -secondary, CSS Module), exactement comme un glass-card ordinaire. Classes
-   ci-dessous laissées dans le HTML des 4 écrans (marqueurs sans effet), pas
-   nettoyées ici — hors-sujet de cette demande. */
+   -secondary, CSS Module), exactement comme un glass-card ordinaire.
+   .hero-banner-title/-subtitle (marqueurs sans règle CSS associée) retirés
+   des 4 écrans le 09/09/2026 (p1-33, feuille de route Phase 1). */
 
 /* ============================================================================
    Fond photo PLEIN ÉCRAN + cartes verre — 3e THÈME (06/08/2026, révisé) :

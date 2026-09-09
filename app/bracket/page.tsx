@@ -38,14 +38,14 @@ export default async function BracketPage({ searchParams }: BracketPageProps) {
       {data.competitionId === null ? (
         <>
           <div className={`${styles.header} hero-banner`}>
-            <p className={`${styles.title} hero-banner-title`}>Bracket</p>
+            <p className={styles.title}>Bracket</p>
           </div>
           <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
         </>
       ) : !data.isStructureKnown ? (
         <>
           <div className={`${styles.header} hero-banner`}>
-            <p className={`${styles.title} hero-banner-title`}>Bracket</p>
+            <p className={styles.title}>Bracket</p>
           </div>
           <EmptyState
             title="La phase finale n'est pas encore définie"

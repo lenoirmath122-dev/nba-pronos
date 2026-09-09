@@ -138,7 +138,7 @@ export default async function ProfilePage({
           />
         )}
         <div className={styles.headerText}>
-          <h1 className={`${styles.pseudo}${teamColors ? ` ${styles.pseudoTeam}` : ""} hero-banner-title`}>
+          <h1 className={`${styles.pseudo}${teamColors ? ` ${styles.pseudoTeam}` : ""}`}>
             {profile.pseudo}
             <PinnedBadges badges={badges.pinnedBadges} />
           </h1>

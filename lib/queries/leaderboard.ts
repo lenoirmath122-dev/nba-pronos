@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { assignRanks } from "@/lib/scoring/ranking";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
+import { parisDateKey } from "@/lib/dates/paris";
 
 // Lecture de l'écran Classement (composants serveur uniquement),
 // SPEC_ECRAN_CLASSEMENT_BRACKET §15.1. Un seul module, appelé avec
@@ -90,23 +91,13 @@ function emptyData(sortKey: SortKey, sortDirection: SortDirection): LeaderboardD
   };
 }
 
-const SNAPSHOT_TIMEZONE = "Europe/Paris";
+// p1-30 (feuille de route Phase 1) : todayKey() dupliquait
+// lib/dates/paris.ts::parisDateKey (extraite depuis, l'inverse de l'ancien
+// commentaire — un module utilitaire de dates existe désormais). Un appel
+// direct suffit : todayKey() === parisDateKey(Date.now()).
 
-// Même technique que lib/snapshots/leaderboardSnapshot.ts::todayKey
-// (en-CA -> YYYY-MM-DD) — dupliquée plutôt que partagée, même raison que
-// là-bas : fonction privée de 3 lignes, pas de module utilitaire de dates
-// dans ce projet.
-function todayKey(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: SNAPSHOT_TIMEZONE,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date());
-}
-
-// `fromKey`/`toKey` : clés YYYY-MM-DD déjà résolues dans SNAPSHOT_TIMEZONE
-// (todayKey()) — comparées comme des dates calendaires pures via Date.UTC,
+// `fromKey`/`toKey` : clés YYYY-MM-DD déjà résolues dans le fuseau Europe/Paris
+// (parisDateKey) — comparées comme des dates calendaires pures via Date.UTC,
 // aucun souci de fuseau horaire puisqu'aucune des deux ne porte d'heure.
 function daysBetween(fromKey: string, toKey: string): number {
   const [fy, fm, fd] = fromKey.split("-").map(Number);
@@ -221,7 +212,7 @@ export async function getLeaderboard(
         .from("leaderboard_snapshots")
         .select("snapshot_date")
         .eq("competition_id", competition.id)
-        .lt("snapshot_date", todayKey())
+        .lt("snapshot_date", parisDateKey(Date.now()))
         .order("snapshot_date", { ascending: false })
         .limit(1)
         .maybeSingle<{ snapshot_date: string }>();
@@ -275,7 +266,7 @@ export async function getLeaderboard(
   // plutôt qu'un par joueur.
   const previousRankByUser = new Map<string, number>();
   const lastSnapshotDate = lastSnapshotDateResult?.data?.snapshot_date;
-  const daysAgo = lastSnapshotDate ? daysBetween(lastSnapshotDate, todayKey()) : 0;
+  const daysAgo = lastSnapshotDate ? daysBetween(lastSnapshotDate, parisDateKey(Date.now())) : 0;
   if (lastSnapshotDate) {
     const { data: prevRows } = await supabase
       .from("leaderboard_snapshots")
