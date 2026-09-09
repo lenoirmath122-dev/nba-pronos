@@ -47,6 +47,20 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  // Un appel de Server Action (header `next-action`, posé par le runtime
+  // Next.js côté client) vers une page de zone protégée n'est PAS une
+  // navigation -- une redirection ici renvoie une réponse HTTP que le
+  // client interprète comme invalide pour une action ("An unexpected
+  // response was received from the server"), affichant l'écran d'erreur
+  // générique (app/error.tsx) au lieu du message géré par l'action elle-même
+  // (chaque action de lib/actions/ vérifie déjà `auth.getUser()` et renvoie
+  // `{success: false, error: "Tu dois être connecté."}` -- trouvé le
+  // 09/09/2026 en écrivant T-ERR-02, feuille de route p1-4, sur une session
+  // expirée en cours de soumission). Laisser passer ne retire AUCUNE
+  // protection réelle : celle-ci vit dans l'action + RLS, jamais ici (cf.
+  // commentaire d'en-tête de ce fichier).
+  if (request.headers.get("next-action")) return response;
+
   const { pathname } = request.nextUrl;
 
   const isAppZone = APP_ZONE_PREFIXES.some(
