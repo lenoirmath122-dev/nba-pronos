@@ -1,0 +1,359 @@
+<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Feuille de route</title><style>
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  :root{
+    --ink:#1a1d22; --ink-soft:#4b4e56; --paper:#efeeea; --paper-raised:#f8f7f4;
+    --line:#dad7cf; --accent:#c1381f; --accent-soft:#f3ded8;
+    --sev-watch:#a8792a; --sev-watch-soft:#f2e6cf;
+    --sev-parked:#6f6a5d; --sev-parked-soft:#e7e4da;
+    --sev-third:#3f6b8a; --sev-third-soft:#dbe6ec;
+    --sev-ok:#3f7a52; --sev-ok-soft:#dcece0;
+    --shadow:0 1px 2px rgba(26,29,34,.06), 0 4px 14px rgba(26,29,34,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#ece9e2; --ink-soft:#b6b2a7; --paper:#17181a; --paper-raised:#1f2023;
+      --line:#34353a; --accent:#e2724f; --accent-soft:#3a241d;
+      --sev-watch:#d9a544; --sev-watch-soft:#3a2f19;
+      --sev-parked:#9c9686; --sev-parked-soft:#2a2924;
+      --sev-third:#7fadcf; --sev-third-soft:#1e2a31;
+      --sev-ok:#5fae78; --sev-ok-soft:#1c2a20;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#ece9e2; --ink-soft:#b6b2a7; --paper:#17181a; --paper-raised:#1f2023;
+    --line:#34353a; --accent:#e2724f; --accent-soft:#3a241d;
+    --sev-watch:#d9a544; --sev-watch-soft:#3a2f19;
+    --sev-parked:#9c9686; --sev-parked-soft:#2a2924;
+    --sev-third:#7fadcf; --sev-third-soft:#1e2a31;
+    --sev-ok:#5fae78; --sev-ok-soft:#1c2a20;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:920px; margin:0 auto; padding:0 20px 96px;}
+  h1,h2,h3,.eyebrow,.tab,.pill,.stat-num,.stat-label,.trigger-label{font-family:'Oswald','Arial Narrow',sans-serif;}
+  .mono{font-family:'IBM Plex Mono', ui-monospace, monospace;}
+  .cover{padding:44px 0 22px; border-bottom:3px solid var(--ink);}
+  .eyebrow{font-size:12.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 12px;}
+  h1{font-size:clamp(30px,5.4vw,46px); line-height:1.03; font-weight:700; margin:0 0 14px; text-wrap:balance; text-transform:uppercase;}
+  .cover p{font-size:16px; line-height:1.55; max-width:66ch; margin:0 0 10px; color:var(--ink-soft);}
+  .cover-meta{display:flex; flex-wrap:wrap; gap:6px 20px; font-size:12.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-top:14px;}
+  .overall{margin:28px 0 6px; padding:18px 20px; background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; box-shadow:var(--shadow); display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
+  .ring{position:relative; width:64px; height:64px; flex-shrink:0;}
+  .ring svg{transform:rotate(-90deg);}
+  .ring-num{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px;}
+  .overall-text{flex:1; min-width:200px;}
+  .overall-text .big{font-family:'Oswald',sans-serif; font-size:13px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; margin:0 0 4px;}
+  .overall-text .small{font-size:13px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin:22px 0 4px; font-size:12px; color:var(--ink-soft);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:9px; height:9px; border-radius:2px; display:inline-block;}
+  .tabnav{display:flex; gap:2px; margin:26px 0 0; border-bottom:2px solid var(--ink); overflow-x:auto; scrollbar-width:none;}
+  .tabnav::-webkit-scrollbar{display:none;}
+  .tabnav button{font-family:'Oswald',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; padding:11px 14px 9px; background:none; border:none; color:var(--ink-soft); cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-2px;}
+  .tabnav button .n{font-family:'IBM Plex Mono',monospace; font-weight:400; font-size:10.5px; opacity:.75; margin-left:5px;}
+  .tabnav button:hover{color:var(--ink);}
+  .tabnav button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent);}
+  .tabnav button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .panel{display:none; padding-top:22px;}
+  .panel.active{display:block;}
+  .phase-head{margin-bottom:22px;}
+  .phase-head h2{font-size:22px; margin:0 0 8px; text-transform:none; font-weight:700; letter-spacing:.005em;}
+  .trigger{display:flex; gap:8px; align-items:baseline; font-size:12.5px; color:var(--sev-third); margin:0 0 10px;}
+  .trigger-label{font-weight:600; letter-spacing:.06em; text-transform:uppercase; font-size:10.5px; flex-shrink:0; padding-top:1px;}
+  .phase-head p.intro{font-size:15px; line-height:1.6; color:var(--ink-soft); max-width:66ch; margin:0;}
+  .phase-bar{height:8px; border-radius:3px; background:var(--line); overflow:hidden; margin:14px 0 0; max-width:320px;}
+  .phase-bar-fill{height:100%; background:var(--accent); border-radius:3px; transition:width .25s ease;}
+  .group{margin:26px 0;}
+  .group h3{font-size:12px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; color:var(--ink); margin:0 0 2px; padding-bottom:7px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px;}
+  .group h3 .n{font-family:'IBM Plex Mono',monospace; font-weight:400; color:var(--ink-soft); font-size:11px; text-transform:none; letter-spacing:0;}
+  .item{display:grid; grid-template-columns:22px 1fr auto; gap:10px; align-items:start; padding:9px 2px; border-bottom:1px solid var(--line); font-size:14.5px; line-height:1.48;}
+  .item:last-child{border-bottom:none;}
+  .item.done .t{color:var(--ink-soft); text-decoration:line-through; text-decoration-color:var(--line);}
+  .item input[type=checkbox]{width:18px; height:18px; margin:2px 0 0; accent-color:var(--accent); cursor:pointer; flex-shrink:0;}
+  .item .t{cursor:pointer;}
+  .flag{color:var(--accent); font-weight:700; margin-right:3px;}
+  .pill{font-size:9px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; padding:3px 6px; border-radius:3px; white-space:nowrap; height:fit-content;}
+  .pill.watch{background:var(--sev-watch-soft); color:var(--sev-watch);}
+  .pill.parked{background:var(--sev-parked-soft); color:var(--sev-parked);}
+  .pill.third{background:var(--sev-third-soft); color:var(--sev-third);}
+  .note{font-size:13px; color:var(--sev-ok); padding:8px 2px; display:flex; gap:8px; align-items:baseline;}
+  .note b{font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:.06em; text-transform:uppercase; background:var(--sev-ok-soft); padding:2px 6px; border-radius:3px; flex-shrink:0;}
+  .save-flag{position:fixed; bottom:16px; right:16px; background:var(--ink); color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:8px 13px; border-radius:5px; opacity:0; transform:translateY(6px); transition:opacity .2s,transform .2s; pointer-events:none; z-index:50;}
+  .save-flag.show{opacity:1; transform:translateY(0);}
+  .save-flag.err{background:var(--sev-watch);}
+  footer{margin-top:56px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  @media (max-width:600px){ .cover{padding:34px 0 18px;} .item{grid-template-columns:20px 1fr; } .item .pill{grid-column:2; margin-top:4px; justify-self:start;} }
+  </style></head><body><div class="wrap">
+  <div class="cover">
+    <p class="eyebrow">Panier Ballon — Feuille de route</p>
+    <h1>Feuille de route<br>vers le vrai lancement</h1>
+    <p>Suite directe du rapport de scoutisme du 06/09/2026 : les 127 points recensés, aucun oublié (128 depuis l'ajout du 09/09/2026), reclassés non pas par gravité seule mais par <b>ce qui doit arriver avant quoi</b> — 9 phases, chacune avec son déclencheur (une date, un évènement, une dépendance), plus un backlog explicitement mis en pause.</p>
+    <div class="cover-meta">
+      <span>Écrit le 06/09/2026</span>
+      <span id="meta-count" class="mono"></span>
+      <span>Coche au fil de l'eau — chaque case se sauvegarde toute seule</span>
+    </div>
+  </div>
+
+  <div class="overall">
+    <div class="ring">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="27" fill="none" stroke="var(--line)" stroke-width="7"/>
+        <circle id="ring-fill" cx="32" cy="32" r="27" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="169.6"/>
+      </svg>
+      <div class="ring-num" id="ring-num">0%</div>
+    </div>
+    <div class="overall-text">
+      <p class="big">Avancement global</p>
+      <p class="small" id="overall-detail">0 / 0 points traités</p>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--sev-watch)"></i> Non fait — pas de décision de report</span>
+    <span><i style="background:var(--sev-parked)"></i> Reporté — décision déjà prise</span>
+    <span><i style="background:var(--sev-third)"></i> Tiers requis</span>
+    <span><span class="flag">●</span> priorité dans sa phase</span>
+  </div>
+
+  <div class="tabnav" role="tablist" id="tabnav"></div>
+  <div id="panels"></div>
+
+  <footer>Reprend l'intégralité du rapport de scoutisme du 06/09/2026 — rien retiré, tout replacé dans le temps. État sauvegardé dans le document lui-même : rouvre ce lien plus tard, tes coches sont là.</footer>
+</div>
+<div class="save-flag" id="save-flag">enregistré</div><script>const DATA = [{"key":"p0","label":"Phase 0 — Étancher","trigger":"Maintenant, tout de suite","intro":"Rien ici ne dépend d'autre chose : des corrections courtes et à fort effet de levier, à faire avant de rouvrir le capot ailleurs. Vise 1 à 2 semaines de sessions courtes, pas un chantier.","groups":[{"h":"0.1 Remettre les compteurs à zéro (gouvernance documentaire)","items":[{"id":"p0-1","t":"P0-1 Réécrire audit/ANOMALIES.md et audit/PLAN_ACTION.md pour refléter l'état réel (rate-limiting, suppression de compte, e2e, focus-trap, roster IA, npm audit sont déjà faits).","s":"watch","f":1},{"id":"p0-2","t":"P0-2 Ajouter un bandeau daté à security-audit-report.md (11/13 findings déjà corrigés).","s":"watch"},{"id":"p0-3","t":"P0-3 Trancher le vrai nombre de migrations (85 vs 66 vs 69) et corriger toutes les sources.","s":"watch"},{"id":"p0-4","t":"P0-4 Vérifier la région réelle du projet Supabase dans le dashboard et corriger la contradiction entre les 2 docs.","s":"watch","f":1},{"id":"p0-5","t":"P0-5 Confirmer (ou faire) la rotation de la clé Resend et du SYNC_SECRET exposés par le passé dans le chat.","s":"third","f":1},{"id":"p0-6","t":"P0-6 Gitignorer Cadrage/Stats/scripts/*.log et nettoyer les 17 fichiers de log déjà commités.","s":"watch"}]},{"h":"0.2 Fiabilité — colmater le plus visible","items":[{"id":"p0-7","t":"P0-7 Ajouter app/error.tsx, global-error.tsx et un not-found.tsx en français.","s":"watch","f":1},{"id":"p0-8","t":"P0-8 Créer une page index /players (annuaire des joueurs) pour combler le trou qui tombe sur ce 404.","s":"watch"},{"id":"p0-9","t":"P0-9 Corriger \u003Chtml lang=\"en\"> en lang=\"fr\".","s":"watch","f":1}]},{"h":"0.3 Observabilité — le minimum vital","items":[{"id":"p0-10","t":"P0-10 Installer un outil d'error tracking (Sentry ou équivalent) sur l'app Next.js.","s":"watch","f":1},{"id":"p0-11","t":"P0-11 Faire vérifier réellement Supabase (et idéalement Cloud Run) par /api/health, pas juste renvoyer { ok: true }.","s":"watch"},{"id":"p0-12","t":"P0-12 Ajouter une alerte minimale sur échec des 8 workflows cron (une issue GitHub auto-créée suffit, pas besoin d'infra).","s":"watch","f":1},{"id":"p0-13","t":"P0-13 Mitiger l'auto-désactivation GitHub à 60 jours d'inactivité du heartbeat (un commit périodique programmé, ou un rappel calendrier).","s":"watch"},{"id":"p0-14","t":"P0-14 Ajouter test/integration/rls.test.ts à ci.yml — une ligne de config, protège tout le modèle d'autorisation.","s":"watch","f":1}]},{"h":"0.4 Sécurité — quasi gratuit","items":[{"id":"p0-15","t":"P0-15 Ajouter les en-têtes Strict-Transport-Security et Permissions-Policy dans next.config.ts.","s":"watch"},{"id":"p0-16","t":"P0-16 Vérifier que devDateOverride.ts est strictement inactivable en production.","s":"watch"}]},{"h":"0.5 Nettoyage rapide","items":[{"id":"p0-17","t":"P0-17 Corriger le README de public/logos/teams/ (affirmation « licenciés ou possédés » non corroborée).","s":"watch"},{"id":"p0-18","t":"P0-18 Supprimer les 30 PNG de logos obsolètes non référencés.","s":"watch"}]},{"h":"0.6 Déjà en cours / prêt à clore","items":[{"id":"p0-19","t":"P0-19 Spinner de soumission de pari personnalisé (déjà sur la branche courante).","s":"watch"},{"id":"p0-20","t":"P0-20 Listes déroulantes sous le reste de la page (diagnostic déjà posé, déjà sur la branche courante).","s":"watch"},{"id":"p0-21","t":"P0-21 Redéployer Cloud Run (vs_adversaire + les 3 modèles tov, déjà entraînés et vérifiés) — une seule commande gcloud.","s":"third","f":1}]}]},{"key":"p1","label":"Phase 1 — Le filet","trigger":"Après la Phase 0 · viser fini avant fin octobre","intro":"Le filet de sécurité qui doit exister avant que le nombre de joueurs augmente réellement : couverture de tests là où ça compte, reproductibilité du moteur ML, sécurité en profondeur, dette de code qui ralentit chaque futur changement.","groups":[{"h":"1.1 Tests — combler l'asymétrie","items":[{"id":"p1-1","t":"P1-1 Écrire des tests sur lib/queries/ (classement, bracket, accueil) — zéro test aujourd'hui sur 6530 lignes.","s":"watch","f":1},{"id":"p1-2","t":"P1-2 Étendre Playwright à un viewport mobile (et idéalement WebKit) — un seul projet Desktop Chrome aujourd'hui sur une app mobile-first.","s":"watch"},{"id":"p1-3","t":"P1-3 Mettre en place une mesure de couverture de test (seuil minimal, pas besoin de 100%).","s":"watch"},{"id":"p1-4","t":"P1-4 Écrire les tests spécifiés jamais faits : auto-promotion admin, quota de 3 paris, idempotence du recompute, panne du micro-service, DST, ex-aequo classement, double résolution concurrente, session expirée en cours de soumission, bascule accidentelle d'une page en statique.","s":"watch"},{"id":"p1-5","t":"P1-5 Ajouter au moins un test de démarrage du service Python en CI (le bug réel du Dockerfile en 08/2026 aurait été attrapé par ça).","s":"watch"}]},{"h":"1.2 Observabilité — la suite","items":[{"id":"p1-6","t":"P1-6 Construire un écran (même minimal) qui affiche sync_logs — aujourd'hui écrit par 4 routes, lu par aucune.","s":"watch"},{"id":"p1-7","t":"P1-7 Rendre visible le suivi de quota Highlightly (déjà calculé, jamais affiché).","s":"watch"},{"id":"p1-8","t":"P1-8 Ajouter un compteur/plafond de coût sur les appels Anthropic (structuration IA à chaque pari soumis).","s":"watch"},{"id":"p1-9","t":"P1-9 Mettre un minimum de supervision sur le service Cloud Run.","s":"watch"}]},{"h":"1.3 Reproductibilité du moteur ML","items":[{"id":"p1-10","t":"P1-10 Décider et documenter comment les modèles/données NBA (hors dépôt) seraient reconstruits si ta machine disparaissait — au minimum une procédure écrite, idéalement une sauvegarde externe.","s":"watch","f":1},{"id":"p1-11","t":"P1-11 Sortir le build de l'image Cloud Run de la dépendance à une machine personnelle.","s":"watch"}]},{"h":"1.4 Sécurité en profondeur","items":[{"id":"p1-12","t":"P1-12 Ajouter un rate-limit sur login/signup/reset-password (aujourd'hui seul Turnstile protège, aucun frein applicatif).","s":"watch","f":1},{"id":"p1-13","t":"P1-13 Rendre le rate-limiting fail-closed plutôt que fail-open en cas d'erreur SQL.","s":"watch"},{"id":"p1-14","t":"P1-14 Durcir un peu la politique de mot de passe (au-delà de « 8 caractères »).","s":"watch"},{"id":"p1-15","t":"P1-15 Corriger le bug deadline null = pari toujours ouvert (lib/scoring/bet-deadline.ts) — dépend de la fiabilité invisible de la sync quotidienne.","s":"watch","f":1},{"id":"p1-16","t":"P1-16 Paginer les logs d'audit admin (plafonnés à 100 lignes sans page suivante).","s":"watch"},{"id":"p1-17","t":"P1-17 Rendre l'écriture des logs d'audit plus robuste que best-effort (aujourd'hui : un console.error non lu en cas d'échec).","s":"watch"}]},{"h":"1.5 Sauvegardes & procédures — condition avant l'élargissement","items":[{"id":"p1-18","t":"P1-18 Tester réellement une sauvegarde ET une restauration Supabase — confirmé « jamais fait » y compris par le doc juridique.","s":"third","f":1},{"id":"p1-19","t":"P1-19 Écrire une procédure minimale d'incident / notification de violation de données.","s":"watch"}]},{"h":"1.6 Confiance joueur — avant que le groupe grandisse","items":[{"id":"p1-20","t":"P1-20 Clarifier la procédure de contestation côté joueur (délai annoncé, statut consultable) — terrain classique de dispute sur un jeu à ego.","s":"watch","f":1},{"id":"p1-21","t":"P1-21 Compléter l'export de compte (pronos de match, bracket, badges manquent aujourd'hui).","s":"watch"}]},{"h":"1.7 Croissance — avant que ça grossisse pour de vrai","items":[{"id":"p1-22","t":"P1-22 Paginer les modules de requêtes les plus lourds (classement, files admin) — 21 modules sur 24 ne paginent rien aujourd'hui.","s":"watch","f":1},{"id":"p1-23","t":"P1-23 Poser une première stratégie de cache (zéro aujourd'hui malgré 93 revalidatePath).","s":"watch"},{"id":"p1-24","t":"P1-24 Sécuriser recomputeCompetition() (boucle séquentielle sans transaction) avant qu'un vrai volume la fasse timeout à moitié.","s":"watch"}]},{"h":"1.8 Correctness — petits bugs réels, pas de la dette cosmétique","items":[{"id":"p1-25","t":"P1-25 +/- joueur par période se résout toujours à 0 silencieusement (faute de backfill) — au minimum le marquer explicitement non calculable plutôt qu'un faux 0.","s":"watch","f":1},{"id":"p1-26","t":"P1-26 « LF suite à des fautes personnelles » : vérifié (08/09/2026), PAS équivalent au FT% équipe déjà géré — vrai type de pari manquant (comptage, pas un %), déjà noté « Partiel » dans l'audit des types de paris. Corriger demande d'entraîner un nouveau modèle ML (nouveau stat code équipe + script d'entraînement + câblage structuration/résolution) — hors scope d'une session sans ML dédiée.","s":"watch"},{"id":"p1-27","t":"P1-27 Vérifier le décalage UTC du cron de sync et ajouter un test de changement d'heure (DST).","s":"watch"},{"id":"p1-28","t":"P1-28 Tracer le comportement d'affichage d'un pari/message d'un utilisateur supprimé référencé depuis un écran tiers.","s":"watch"}]},{"h":"1.9 Dette de code accumulée","items":[{"id":"p1-29","t":"P1-29 Mémoïser LeaderboardRow (chaque clic déplier re-rend tout le tableau).","s":"watch"},{"id":"p1-30","t":"P1-30 Factoriser le formatage de date dupliqué et RELEASED_*_BET_STATUSES (7 fichiers). Fait (PR #73, 09/09/2026) : todayKey() (2 fichiers) remplacé par parisDateKey, formatTimestamp/formatDate identiques (2 fichiers) remplacés par parisDateTimeLabel, RELEASED_BET_STATUSES déjà factorisé (rien à faire). Les formatDate() locaux restants (page Qui manque à l'appel, graphique de progression de rang) sont des formats réellement différents (jour de semaine, axe de graphique) -- pas des doublons, volontairement laissés tels quels.","s":"watch"},{"id":"p1-31","t":"P1-31 Découper resolveCalculableBets.ts (2561 lignes).","s":"watch"},{"id":"p1-32","t":"P1-32 Factoriser le motif « ligne cliquable » dupliqué 3 fois, et regrouper les requêtes dupliquées (auth.getUser()/compétition active refaits 3× par écran).","s":"watch"},{"id":"p1-33","t":"P1-33 Factoriser un composant Button partagé — 27 fichiers en pratique, pas 19 (CSS morte .hero-banner-title/-subtitle déjà retirée, PR #73). Reporté après la fin de l'alpha (~24/09/2026), décision prise le 09/09/2026.","s":"parked"}]}]},{"key":"pa","label":"Phase 2 — Alpha","trigger":"Démarre le 20/09/2026","intro":"Le vrai lancement, auprès du premier cercle de joueurs — tout ce qui devait être réglé avant d'élargir au-delà des amis directs, et les actions de lancement elles-mêmes.","groups":[{"h":"2.1 Élargissement — ce qui casse à plusieurs personnes en même temps","items":[{"id":"p2-6","t":"P2-6 Trancher la décision SMTP (le service email Supabase plafonne à 2/heure) — coût ~1-3€/an, bloquant dès que plusieurs amis s'inscrivent la même heure.","s":"watch","f":1},{"id":"p2-7","t":"P2-7 Retirer ou convertir le compte de démo partagé Demo_Amis en comptes individuels.","s":"parked"},{"id":"p2-8","t":"P2-8 Ajouter une 2FA (au moins pour le compte admin) et un écran de gestion des sessions connectées.","s":"watch"}]},{"h":"2.2 Légal — dès que le cercle dépasse les amis directs","items":[{"id":"p2-9","t":"P2-9 Faire valider par un professionnel du droit la base légale précise pour les 15-17 ans avant l'élargissement au-delà du cercle d'amis de l'alpha. Reporté (10/09/2026) : l'alpha reste dans le cercle d'amis directs, hors du déclencheur réel de cet item (« dès que le cercle dépasse les amis directs ») ; base actuelle (déclaration 15+) déjà alignée sur le seuil RGPD français, pas un point aveugle. À reprendre au moment de l'élargissement réel (~fin octobre, vraie Cup).","s":"parked"}]},{"h":"2.3 Aller-chercher les joueurs — actions calendrier en attente","items":[{"id":"p2-10","t":"P2-10 Reprendre le SEO (quasi nul aujourd'hui) avant l'élargissement d'octobre.","s":"watch"},{"id":"p2-11","t":"P2-11 Envoyer le message d'invitation aux 3-5 groupes de potes, publier les visuels de marque Instagram.","s":"watch"},{"id":"p2-12","t":"P2-12 Trancher la cover du Post 3 Instagram (réutilise une photo déjà vue 2 fois).","s":"watch"},{"id":"p2-13","t":"P2-13 Revoir le mot « paris » dans l'UI elle-même à l'aune de la vigilance ANJ (déjà faite dans le cadrage, jamais reportée dans le vocabulaire produit).","s":"watch"}]}]},{"key":"pr","label":"Phase 3 — Retours de l'alpha","trigger":"Après l'alpha (~24/09/2026), jusqu'au vrai calendrier Cup","intro":"Les ajustements qui remonteront de l'usage réel par le premier cercle de joueurs pendant l'alpha — corrections, frictions découvertes, petites améliorations. Vide pour l'instant, à remplir au fil des retours.","groups":[]},{"key":"p2","label":"Phase 4 — Vraie Cup","trigger":"Déclenché par le calendrier NBA réel (tirage ~fin octobre)","intro":"Pas une question de semaines mais d'évènement : tout ce qui ne peut être vérifié qu'avec le vrai calendrier NBA Cup.","groups":[{"h":"2.1 Recruter des testeurs","items":[{"id":"p2-14","t":"P2-14 Construire une stratégie de communication pour recruter un nombre conséquent de testeurs avant le lancement de la vraie Cup — au-delà du cercle d'amis de l'alpha.","s":"watch","f":1}]},{"h":"2.2 NBA Cup réelle","items":[{"id":"p2-1","t":"P2-1 Construire le mapping automatique des 4 matchs de quarts vers les 7 séries internes (jamais sondé empiriquement, l'API est match-centrique).","s":"parked"},{"id":"p2-2","t":"P2-2 Exercer pour de vrai la garde bet_scope=SERIES interdit en NBA Cup (vérifiée seulement par relecture de code jusqu'ici).","s":"watch"},{"id":"p2-3","t":"P2-3 Vérifier le rendu « à pronostiquer » d'un match Cup encore SCHEDULED en conditions réelles.","s":"watch"},{"id":"p2-4","t":"P2-4 Confirmer que la résolution automatique des paris se déclenche pour de vrai sur le calendrier réel.","s":"watch"},{"id":"p2-5","t":"P2-5 Revisiter la décision TTL cache/classify-then-structure une fois du trafic réel disponible.","s":"parked"}]}]},{"key":"p3","label":"Phase 5 — Se rendre trouvable","trigger":"En parallèle de la Phase 2","intro":"Dès qu'il y a un public un peu plus large : donner envie de partager, de revenir, et de savoir ce qui s'est passé pendant son absence. Rien ici n'est bloquant pour la Phase 2, mais tout devient plus utile une fois le cercle élargi.","groups":[{"h":"3.1 Découvrabilité & partage","items":[{"id":"p3-1","t":"P3-1 Ajouter des balises Open Graph/Twitter Card et un titre par page (33 pages, un seul titre générique aujourd'hui).","s":"watch","f":1},{"id":"p3-2","t":"P3-2 Construire une landing publique (/ redirige aujourd'hui directement vers /login).","s":"watch","f":1},{"id":"p3-3","t":"P3-3 Ajouter un système de parrainage simple (lien d'invitation traçable).","s":"watch"}]},{"h":"3.2 Fidélisation & rattrapage","items":[{"id":"p3-4","t":"P3-4 Construire un centre de notifications in-app (le push existe mais un push manqué est perdu définitivement aujourd'hui).","s":"watch","f":1},{"id":"p3-5","t":"P3-5 Ajouter un historique d'activité lisible par le joueur (aujourd'hui tracé côté admin seulement).","s":"watch"}]},{"h":"3.3 Accessibilité — au-delà du strict minimum","items":[{"id":"p3-6","t":"P3-6 Ajouter des aria-live sur les mises à jour asynchrones (chat, ticker, soumission de pari) — un seul aujourd'hui sur toute l'app.","s":"watch"},{"id":"p3-7","t":"P3-7 Ajouter un skip link et réactiver la vérification label/champ (désactivée pour incompatibilité d'outillage).","s":"watch"}]}]},{"key":"p4","label":"Phase 6 — Approfondir","trigger":"Au fil de l'eau, dès qu'une session est libre","intro":"Rien ici ne bloque quoi que ce soit d'autre. C'est le vrai backlog produit/design — à piocher par envie ou par opportunité, pas par urgence. Classé par thème pour naviguer facilement.","groups":[{"h":"4.1 Engagement — la piste la plus prometteuse","items":[{"id":"p4-1","t":"P4-1 Étudier une mécanique récurrente hebdomadaire (type « duel de la semaine ») — identifiée comme le manque d'engagement le plus net face au risque d'essoufflement en cours de saison.","s":"parked","f":1},{"id":"p4-2","t":"P4-2 Booster/multiplicateur de points ponctuel.","s":"parked"},{"id":"p4-3","t":"P4-3 Notification/popup de connexion (résumé depuis la dernière visite).","s":"parked"},{"id":"p4-4","t":"P4-4 Bilan de fin de saison partageable (« ta saison en chiffres ») — le contenu le plus naturellement viral, n'existe pas.","s":"watch"}]},{"h":"4.2 Écrans & fonctionnalités backlog","items":[{"id":"p4-5","t":"P4-5 Export calendrier .ics des deadlines.","s":"parked"},{"id":"p4-6","t":"P4-6 Classement all-time toutes compétitions — bloqué sur un choix de barème stable dans le temps.","s":"parked"},{"id":"p4-7","t":"P4-7 Renommage de l'écran Classement en « Hall of shame ».","s":"parked"},{"id":"p4-8","t":"P4-8 Page perso détaillée (historique complet pronos vs résultat réel).","s":"parked"},{"id":"p4-9","t":"P4-9 Face-à-face entre 2 joueurs précis.","s":"parked"},{"id":"p4-10","t":"P4-10 Image exportable du classement/bracket à partager hors app.","s":"watch"},{"id":"p4-11","t":"P4-11 Notifications journalières programmées.","s":"watch"},{"id":"p4-12","t":"P4-12 Canal Email des rappels — bloqué sur le même choix SMTP que la Phase 2.","s":"parked"},{"id":"p4-13","t":"P4-13 Recherche (chat, paris, joueurs, logs admin).","s":"watch"},{"id":"p4-14","t":"P4-14 Rôles au-delà de joueur/admin (ex. propriétaire de ligue).","s":"watch"}]},{"h":"4.3 Badges","items":[{"id":"p4-15","t":"P4-15 Badge « Grimpeur » (progression de rang) — mécanisme déjà spécifié, explicitement pas retenu pour cette version.","s":"parked"},{"id":"p4-16","t":"P4-16 Axe « Fan de tel joueur » — demanderait un référentiel joueurs NBA structuré.","s":"parked"},{"id":"p4-17","t":"P4-17 Notification de déblocage de badge.","s":"parked"},{"id":"p4-18","t":"P4-18 Clarifier avec l'utilisateur l'affichage de la série de bons vainqueurs en cours.","s":"parked"},{"id":"p4-19","t":"P4-19 Remplacer les icônes stopgap par des visuels IA (3/35 badges pilotés).","s":"parked"},{"id":"p4-20","t":"P4-20 Cadrer le rendu visuel des badges (couleurs par palier, mise en page).","s":"parked"}]},{"h":"4.4 Design & UI en attente","items":[{"id":"p4-21","t":"P4-21 Photo de profil — bucket Storage à créer, format/recadrage non tranchés.","s":"parked"},{"id":"p4-22","t":"P4-22 Ticker « en direct » — posé à l'essai, jamais confirmé garder ou retirer.","s":"parked"},{"id":"p4-23","t":"P4-23 Logos de franchise encore en texte seul sur le feed Accueil et le Classement.","s":"watch"},{"id":"p4-24","t":"P4-24 Taille du logo de la carte-sélecteur d'équipe.","s":"parked"},{"id":"p4-25","t":"P4-25 Dédupliquer les 3 abonnements Apple sur le compte de démo.","s":"parked"},{"id":"p4-26","t":"P4-26 Trancher les micro-décisions de design en attente (marqueur « corrigé » au classement, séparateur du Total, portée du bandeau parquet en clair, image dédiée au bracket global horizontal).","s":"parked"},{"id":"p4-27","t":"P4-27 Restaurer l'affordance de scroll perdue sur les zones à défilement horizontal (barres masquées globalement).","s":"watch"},{"id":"p4-28","t":"P4-28 Ajouter un versionnage/suivi de dérive sur les modèles ML.","s":"watch"},{"id":"p4-29","t":"P4-29 Écrire un CONTRIBUTING.md et une doc d'API pour le service Python.","s":"watch"},{"id":"p4-30","t":"P4-30 Ajouter des tests de charge, d'accessibilité automatisés et de régression visuelle.","s":"watch"}]},{"h":"4.5 Paris personnalisés IA — types encore non calculables","items":[{"id":"p4-31","t":"P4-31 Paris « cumulé sur la série » (ex. 100+ points sur toute la série).","s":"parked"},{"id":"p4-32","t":"P4-32 Paris SÉRIE sur stat équipe/total (pas seulement joueur).","s":"watch"},{"id":"p4-33","t":"P4-33 Comparer 2 comptages entre équipes, et égalité exacte entre 2 comptages.","s":"parked"},{"id":"p4-34","t":"P4-34 Ratio de performance d'un joueur sur une période, et égalité exacte entre 2 joueurs/tout le roster.","s":"parked"},{"id":"p4-35","t":"P4-35 Étendre le OU logique aux pourcentages (aujourd'hui seulement les stats comptées).","s":"watch"},{"id":"p4-36","t":"P4-36 Trancher le barème du fallback pour les paris non calculables (2 pistes déjà notées).","s":"parked"}]},{"h":"4.6 Marque","items":[{"id":"p4-37","t":"P4-37 Concevoir une itération non-provisoire du nom/logo.","s":"parked"},{"id":"p4-38","t":"P4-38 Mascotte — dernier maillon, rien à trancher avant le lancement.","s":"parked"}]}]},{"key":"p5","label":"Phase 7 — Bascule payante","trigger":"Décembre 2026 – mars 2027, aligné sur ta propre roadmap business","intro":"Tout ce que ton propre calendrier business place dans cette fenêtre : la décision de modèle économique et l'infrastructure qu'elle suppose, plus les validations juridiques qu'il vaut mieux lancer tôt (les délais d'avocat ne se compriment pas).","groups":[{"h":"5.1 Infrastructure de paiement","items":[{"id":"p5-1","t":"P5-1 Construire l'infrastructure de paiement (Stripe ou équivalent) — pas juste « brancher », un chantier de plusieurs semaines : facturation, TVA/OSS, rétractation, colonne de plan dans le modèle de données.","s":"watch","f":1}]},{"h":"5.2 Juridique & marque avant la bascule","items":[{"id":"p5-2","t":"P5-2 Obtenir un avis juridique sur le nom de marque et l'usage des logos NBA en communication publique.","s":"third","f":1},{"id":"p5-3","t":"P5-3 Lancer une recherche INPI approfondie (~50€) avant un vrai dépôt de marque.","s":"third"},{"id":"p5-4","t":"P5-4 Clarifier les points juridiques mineurs restants (qualification du cookie Turnstile, licence LGPL de fpdf2, absence d'identifiant utilisateur dans les appels externes).","s":"third"}]}]},{"key":"p6","label":"Phase 8 — Ouverture publique","trigger":"Avril 2027 — au moment du lancement public prévu","intro":"Ce qui ne devient un vrai sujet qu'au moment où l'app quitte le cercle fermé pour de bon.","groups":[{"h":"6.1 Ce que le lancement public suppose","items":[{"id":"p6-1","t":"P6-1 Résoudre la licence des logos NBA (licence ou remplacement des visuels) — risque explicitement accepté jusqu'ici pour la bêta fermée.","s":"watch","f":1},{"id":"p6-2","t":"P6-2 Ajouter un vrai KYC/vérification d'âge si des mises/lots à valeur réelle apparaissent.","s":"watch"},{"id":"p6-3","t":"P6-3 Revoir le statut de l'exploitant, l'usage de nba_api en contexte commercial, et l'ouverture géographique hors France.","s":"watch"},{"id":"p6-4","t":"P6-4 Démarrer le packaging natif (Capacitor/TWA) si le lancement iOS/Android est confirmé — aucun travail d'empaquetage n'existe encore sur la PWA actuelle.","s":"watch"},{"id":"p6-5","t":"P6-5 Lever la contrainte « une seule compétition active » si Playoffs et NBA Cup doivent tourner en parallèle.","s":"watch"}]}]},{"key":"pk","label":"Backlog en pause","trigger":"Décisions déjà prises de ne pas traiter maintenant","intro":"Gardé ici pour ne jamais les perdre — pas pour culpabiliser de ne pas y toucher. Rien ici n'attend une date précise ; à rouvrir seulement si le contexte qui justifiait la pause change.","groups":[{"h":"B.1 Modèles de probabilité — mis de côté aujourd'hui, sur ta demande","items":[{"id":"pk-1","t":"PK-1 Recalibration Poisson/normale à l'échelle période — biais mesuré jusqu'à +22% de sur-estimation.","s":"parked"},{"id":"pk-2","t":"PK-2 team_blk.joblib mal calibré (+12,3% d'écart) — manque probable de features défensives.","s":"parked"},{"id":"pk-3","t":"PK-3 Backtesting du moteur de proba sur de vrais paris résolus — à refaire une fois le volume réel accumulé (probablement en Phase 2).","s":"parked"}]},{"h":"B.2 Autres pauses assumées","items":[{"id":"pk-4","t":"PK-4 Performance de lib/botScripting.ts (a saturé la mémoire une fois) — jugé hors scope pour un prototype jetable.","s":"parked"},{"id":"pk-5","t":"PK-5 6 canaux de communication en réserve (Discord structuré, X, TikTok...) — mis de côté pour rester tenable en solo.","s":"parked"},{"id":"pk-6","t":"PK-6 Contrainte d'une seule compétition active — décision de design, pas une dette (revisitée en Phase 6 si besoin réel).","s":"parked"}]}]}];let CHECKED = {"p1-18":true,"p1-4":true,"p1-24":true,"p1-16":true,"p0-1":true,"p0-2":true,"p0-3":true,"p0-4":true,"p0-6":true,"p0-10":true,"p0-7":true,"p0-8":true,"p0-9":true,"p0-11":true,"p0-12":true,"p0-13":true,"p0-14":true,"p0-15":true,"p0-16":true,"p0-17":true,"p0-18":true,"p0-19":true,"p0-20":true,"p0-5":true,"p0-21":true,"p1-1":true,"p1-2":true,"p1-3":true,"p1-5":true,"p1-6":true,"p1-7":true,"p1-8":true,"p1-9":true,"p1-12":true,"p1-13":true,"p1-15":true,"p1-25":true,"p1-10":true,"p1-20":true,"p3-4":false,"p1-14":true,"p1-27":true,"p1-28":true,"p1-17":true,"p1-29":true,"p1-30":true,"p1-22":true,"p1-23":true,"p1-11":true,"p1-19":true,"p1-31":true,"p1-21":true,"p1-32":true,"p2-12":true,"p2-6":true};const render = function render(){
+  var tabnav = document.getElementById('tabnav');
+  var total = 0, done = 0;
+  var current = sessionStorage.getItem('rm-tab') || DATA[0].key;
+  if(!DATA.some(function(c){return c.key===current;})) current = DATA[0].key;
+
+  tabnav.innerHTML = '';
+  var panelsHtml = '';
+
+  DATA.forEach(function(cat){
+    var catTotal = 0, catDone = 0;
+    cat.groups.forEach(function(g){ g.items.forEach(function(it){ catTotal++; if(CHECKED[it.id]) catDone++; }); });
+    total += catTotal; done += catDone;
+
+    var btn = document.createElement('button');
+    btn.setAttribute('role','tab');
+    btn.setAttribute('aria-selected', cat.key===current ? 'true':'false');
+    btn.dataset.key = cat.key;
+    btn.innerHTML = cat.label + (catTotal ? ' <span class="n">'+catDone+'/'+catTotal+'</span>' : '');
+    btn.addEventListener('click', function(){ selectTab(cat.key); });
+    tabnav.appendChild(btn);
+
+    var groupsHtml = '';
+    cat.groups.forEach(function(g){
+      var itemsHtml = g.items.map(function(it){
+        var checked = !!CHECKED[it.id];
+        var pillLabel = it.s==='watch' ? 'Non fait' : it.s==='parked' ? 'Reporté' : 'Tiers';
+        return '<div class="item'+(checked?' done':'')+'">'
+          + '<input type="checkbox" id="cb-'+it.id+'" data-id="'+it.id+'" '+(checked?'checked':'')+'>'
+          + '<label class="t" for="cb-'+it.id+'">'+(it.f?'<span class="flag">●</span>':'')+it.t+'</label>'
+          + '<span class="pill '+it.s+'">'+pillLabel+'</span>'
+          + '</div>';
+      }).join('');
+      groupsHtml += '<div class="group"><h3>'+g.h+' <span class="n">'+g.items.length+'</span></h3>'+itemsHtml+'</div>';
+    });
+
+    var pct = catTotal ? Math.round(catDone/catTotal*100) : 0;
+    panelsHtml += '<div class="panel'+(cat.key===current?' active':'')+'" id="panel-'+cat.key+'">'
+      + '<div class="phase-head"><h2>'+cat.label.replace(/^Phase \d+ ?— ?/,'')+'</h2>'
+      + '<div class="trigger"><span class="trigger-label">Déclencheur</span><span>'+cat.trigger+'</span></div>'
+      + '<p class="intro">'+cat.intro+'</p>'
+      + '<div class="phase-bar"><div class="phase-bar-fill" style="width:'+pct+'%"></div></div>'
+      + '</div>'
+      + groupsHtml
+      + '</div>';
+  });
+
+  panels.innerHTML = panelsHtml;
+  document.getElementById('meta-count').textContent = total + ' points suivis';
+
+  var overallPct = total ? Math.round(done/total*100) : 0;
+  document.getElementById('overall-detail').textContent = done + ' / ' + total + ' points traités';
+  document.getElementById('ring-num').textContent = overallPct + '%';
+  var circumference = 169.6;
+  document.getElementById('ring-fill').style.strokeDashoffset = (circumference - (overallPct/100)*circumference);
+
+  document.querySelectorAll('.item input[type=checkbox]').forEach(function(cb){
+    cb.addEventListener('change', function(){ toggle(cb.dataset.id, cb.checked); });
+  });
+};const panels = document.getElementById("panels");const selectTab = function selectTab(key){
+  sessionStorage.setItem('rm-tab', key);
+  document.querySelectorAll('.tabnav button').forEach(function(b){ b.setAttribute('aria-selected', b.dataset.key===key ? 'true':'false'); });
+  document.querySelectorAll('.panel').forEach(function(p){ p.classList.toggle('active', p.id === 'panel-'+key); });
+};const toggle = function toggle(id, val){
+  CHECKED[id] = val;
+  try{ sessionStorage.setItem('rm-tab', sessionStorage.getItem('rm-tab') || DATA[0].key); }catch(e){}
+  render();
+  publishNow();
+};const flash = function flash(msg, isErr){
+  var el = document.getElementById('save-flag');
+  el.textContent = msg;
+  el.className = 'save-flag show' + (isErr ? ' err' : '');
+  clearTimeout(window.__flagT);
+  window.__flagT = setTimeout(function(){ el.classList.remove('show'); }, isErr ? 3200 : 1400);
+};const publishNow = async function publishNow(){
+  try{
+    var art = await claude.use('artifact');
+    if(!art){ flash('sauvegarde indisponible ici', true); return; }
+    await art.publish(buildDoc());
+  }catch(e){
+    if(e && e.code === 'conflict'){ return; }
+    flash('non enregistré — réessaie', true);
+    console.warn('publish failed', e);
+  }
+};const buildDoc = function buildDoc(){
+  // Contenu statique figé EN DUR ici (jamais relu depuis le DOM en direct,
+  // qui peut porter des mutations d'exécution ou des ajouts de la
+  // plateforme) -- copie exacte du <head>/<body> tel qu'écrit à l'origine,
+  // seuls DATA/CHECKED varient d'une publication à l'autre.
+  var CSS = `
+  @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;0,8..60,700;1,8..60,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
+  :root{
+    --ink:#1a1d22; --ink-soft:#4b4e56; --paper:#efeeea; --paper-raised:#f8f7f4;
+    --line:#dad7cf; --accent:#c1381f; --accent-soft:#f3ded8;
+    --sev-watch:#a8792a; --sev-watch-soft:#f2e6cf;
+    --sev-parked:#6f6a5d; --sev-parked-soft:#e7e4da;
+    --sev-third:#3f6b8a; --sev-third-soft:#dbe6ec;
+    --sev-ok:#3f7a52; --sev-ok-soft:#dcece0;
+    --shadow:0 1px 2px rgba(26,29,34,.06), 0 4px 14px rgba(26,29,34,.05);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#ece9e2; --ink-soft:#b6b2a7; --paper:#17181a; --paper-raised:#1f2023;
+      --line:#34353a; --accent:#e2724f; --accent-soft:#3a241d;
+      --sev-watch:#d9a544; --sev-watch-soft:#3a2f19;
+      --sev-parked:#9c9686; --sev-parked-soft:#2a2924;
+      --sev-third:#7fadcf; --sev-third-soft:#1e2a31;
+      --sev-ok:#5fae78; --sev-ok-soft:#1c2a20;
+      --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ink:#ece9e2; --ink-soft:#b6b2a7; --paper:#17181a; --paper-raised:#1f2023;
+    --line:#34353a; --accent:#e2724f; --accent-soft:#3a241d;
+    --sev-watch:#d9a544; --sev-watch-soft:#3a2f19;
+    --sev-parked:#9c9686; --sev-parked-soft:#2a2924;
+    --sev-third:#7fadcf; --sev-third-soft:#1e2a31;
+    --sev-ok:#5fae78; --sev-ok-soft:#1c2a20;
+    --shadow:0 1px 2px rgba(0,0,0,.3), 0 4px 20px rgba(0,0,0,.35);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Source Serif 4', Georgia, serif; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:920px; margin:0 auto; padding:0 20px 96px;}
+  h1,h2,h3,.eyebrow,.tab,.pill,.stat-num,.stat-label,.trigger-label{font-family:'Oswald','Arial Narrow',sans-serif;}
+  .mono{font-family:'IBM Plex Mono', ui-monospace, monospace;}
+  .cover{padding:44px 0 22px; border-bottom:3px solid var(--ink);}
+  .eyebrow{font-size:12.5px; font-weight:600; letter-spacing:.14em; text-transform:uppercase; color:var(--accent); margin:0 0 12px;}
+  h1{font-size:clamp(30px,5.4vw,46px); line-height:1.03; font-weight:700; margin:0 0 14px; text-wrap:balance; text-transform:uppercase;}
+  .cover p{font-size:16px; line-height:1.55; max-width:66ch; margin:0 0 10px; color:var(--ink-soft);}
+  .cover-meta{display:flex; flex-wrap:wrap; gap:6px 20px; font-size:12.5px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace; margin-top:14px;}
+  .overall{margin:28px 0 6px; padding:18px 20px; background:var(--paper-raised); border:1px solid var(--line); border-radius:6px; box-shadow:var(--shadow); display:flex; align-items:center; gap:18px; flex-wrap:wrap;}
+  .ring{position:relative; width:64px; height:64px; flex-shrink:0;}
+  .ring svg{transform:rotate(-90deg);}
+  .ring-num{position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px;}
+  .overall-text{flex:1; min-width:200px;}
+  .overall-text .big{font-family:'Oswald',sans-serif; font-size:13px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; margin:0 0 4px;}
+  .overall-text .small{font-size:13px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  .legend{display:flex; flex-wrap:wrap; gap:14px; margin:22px 0 4px; font-size:12px; color:var(--ink-soft);}
+  .legend span{display:inline-flex; align-items:center; gap:6px;}
+  .legend i{width:9px; height:9px; border-radius:2px; display:inline-block;}
+  .tabnav{display:flex; gap:2px; margin:26px 0 0; border-bottom:2px solid var(--ink); overflow-x:auto; scrollbar-width:none;}
+  .tabnav::-webkit-scrollbar{display:none;}
+  .tabnav button{font-family:'Oswald',sans-serif; font-size:12.5px; font-weight:600; letter-spacing:.03em; text-transform:uppercase; padding:11px 14px 9px; background:none; border:none; color:var(--ink-soft); cursor:pointer; white-space:nowrap; border-bottom:3px solid transparent; margin-bottom:-2px;}
+  .tabnav button .n{font-family:'IBM Plex Mono',monospace; font-weight:400; font-size:10.5px; opacity:.75; margin-left:5px;}
+  .tabnav button:hover{color:var(--ink);}
+  .tabnav button[aria-selected="true"]{color:var(--ink); border-bottom-color:var(--accent);}
+  .tabnav button:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .panel{display:none; padding-top:22px;}
+  .panel.active{display:block;}
+  .phase-head{margin-bottom:22px;}
+  .phase-head h2{font-size:22px; margin:0 0 8px; text-transform:none; font-weight:700; letter-spacing:.005em;}
+  .trigger{display:flex; gap:8px; align-items:baseline; font-size:12.5px; color:var(--sev-third); margin:0 0 10px;}
+  .trigger-label{font-weight:600; letter-spacing:.06em; text-transform:uppercase; font-size:10.5px; flex-shrink:0; padding-top:1px;}
+  .phase-head p.intro{font-size:15px; line-height:1.6; color:var(--ink-soft); max-width:66ch; margin:0;}
+  .phase-bar{height:8px; border-radius:3px; background:var(--line); overflow:hidden; margin:14px 0 0; max-width:320px;}
+  .phase-bar-fill{height:100%; background:var(--accent); border-radius:3px; transition:width .25s ease;}
+  .group{margin:26px 0;}
+  .group h3{font-size:12px; letter-spacing:.08em; text-transform:uppercase; font-weight:600; color:var(--ink); margin:0 0 2px; padding-bottom:7px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; gap:10px;}
+  .group h3 .n{font-family:'IBM Plex Mono',monospace; font-weight:400; color:var(--ink-soft); font-size:11px; text-transform:none; letter-spacing:0;}
+  .item{display:grid; grid-template-columns:22px 1fr auto; gap:10px; align-items:start; padding:9px 2px; border-bottom:1px solid var(--line); font-size:14.5px; line-height:1.48;}
+  .item:last-child{border-bottom:none;}
+  .item.done .t{color:var(--ink-soft); text-decoration:line-through; text-decoration-color:var(--line);}
+  .item input[type=checkbox]{width:18px; height:18px; margin:2px 0 0; accent-color:var(--accent); cursor:pointer; flex-shrink:0;}
+  .item .t{cursor:pointer;}
+  .flag{color:var(--accent); font-weight:700; margin-right:3px;}
+  .pill{font-size:9px; font-weight:600; letter-spacing:.05em; text-transform:uppercase; padding:3px 6px; border-radius:3px; white-space:nowrap; height:fit-content;}
+  .pill.watch{background:var(--sev-watch-soft); color:var(--sev-watch);}
+  .pill.parked{background:var(--sev-parked-soft); color:var(--sev-parked);}
+  .pill.third{background:var(--sev-third-soft); color:var(--sev-third);}
+  .note{font-size:13px; color:var(--sev-ok); padding:8px 2px; display:flex; gap:8px; align-items:baseline;}
+  .note b{font-family:'Oswald',sans-serif; font-size:10px; letter-spacing:.06em; text-transform:uppercase; background:var(--sev-ok-soft); padding:2px 6px; border-radius:3px; flex-shrink:0;}
+  .save-flag{position:fixed; bottom:16px; right:16px; background:var(--ink); color:var(--paper); font-family:'IBM Plex Mono',monospace; font-size:11.5px; padding:8px 13px; border-radius:5px; opacity:0; transform:translateY(6px); transition:opacity .2s,transform .2s; pointer-events:none; z-index:50;}
+  .save-flag.show{opacity:1; transform:translateY(0);}
+  .save-flag.err{background:var(--sev-watch);}
+  footer{margin-top:56px; padding-top:18px; border-top:1px solid var(--line); font-size:12px; color:var(--ink-soft); font-family:'IBM Plex Mono',monospace;}
+  @media (max-width:600px){ .cover{padding:34px 0 18px;} .item{grid-template-columns:20px 1fr; } .item .pill{grid-column:2; margin-top:4px; justify-self:start;} }
+  `;
+  var BODY = `<div class="wrap">
+  <div class="cover">
+    <p class="eyebrow">Panier Ballon — Feuille de route</p>
+    <h1>Feuille de route<br>vers le vrai lancement</h1>
+    <p>Suite directe du rapport de scoutisme du 06/09/2026 : les 127 points recensés, aucun oublié (128 depuis l'ajout du 09/09/2026), reclassés non pas par gravité seule mais par <b>ce qui doit arriver avant quoi</b> — 9 phases, chacune avec son déclencheur (une date, un évènement, une dépendance), plus un backlog explicitement mis en pause.</p>
+    <div class="cover-meta">
+      <span>Écrit le 06/09/2026</span>
+      <span id="meta-count" class="mono"></span>
+      <span>Coche au fil de l'eau — chaque case se sauvegarde toute seule</span>
+    </div>
+  </div>
+
+  <div class="overall">
+    <div class="ring">
+      <svg width="64" height="64" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="27" fill="none" stroke="var(--line)" stroke-width="7"/>
+        <circle id="ring-fill" cx="32" cy="32" r="27" fill="none" stroke="var(--accent)" stroke-width="7" stroke-linecap="round" stroke-dasharray="169.6" stroke-dashoffset="169.6"/>
+      </svg>
+      <div class="ring-num" id="ring-num">0%</div>
+    </div>
+    <div class="overall-text">
+      <p class="big">Avancement global</p>
+      <p class="small" id="overall-detail">0 / 0 points traités</p>
+    </div>
+  </div>
+
+  <div class="legend">
+    <span><i style="background:var(--sev-watch)"></i> Non fait — pas de décision de report</span>
+    <span><i style="background:var(--sev-parked)"></i> Reporté — décision déjà prise</span>
+    <span><i style="background:var(--sev-third)"></i> Tiers requis</span>
+    <span><span class="flag">●</span> priorité dans sa phase</span>
+  </div>
+
+  <div class="tabnav" role="tablist" id="tabnav"></div>
+  <div id="panels"></div>
+
+  <footer>Reprend l'intégralité du rapport de scoutisme du 06/09/2026 — rien retiré, tout replacé dans le temps. État sauvegardé dans le document lui-même : rouvre ce lien plus tard, tes coches sont là.</footer>
+</div>
+<div class="save-flag" id="save-flag">enregistré</div>`;
+
+  var dataJson = JSON.stringify(DATA).replace(/</g,'\\u003C');
+  var checkedJson = JSON.stringify(CHECKED).replace(/</g,'\\u003C');
+  return '<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Feuille de route</title><style>'
+    + CSS + '</style></head><body>' + BODY
+    + '<' + 'script>'
+    + 'const DATA = ' + dataJson + ';'
+    + 'let CHECKED = ' + checkedJson + ';'
+    + 'const render = ' + render.toString() + ';'
+    + 'const panels = document.getElementById("panels");'
+    + 'const selectTab = ' + selectTab.toString() + ';'
+    + 'const toggle = ' + toggle.toString() + ';'
+    + 'const flash = ' + flash.toString() + ';'
+    + 'const publishNow = ' + publishNow.toString() + ';'
+    + 'const buildDoc = ' + buildDoc.toString() + ';'
+    + 'render();'
+    + '<' + '/script></body></html>';
+};render();</script></body></html>
