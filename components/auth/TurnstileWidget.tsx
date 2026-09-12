@@ -8,7 +8,7 @@ declare global {
     turnstile?: {
       render: (
         container: HTMLElement,
-        options: { sitekey: string }
+        options: { sitekey: string; size?: "normal" | "compact" | "flexible" }
       ) => string;
       reset: (widgetId: string) => void;
     };
@@ -46,7 +46,10 @@ export function TurnstileWidget({ resetKey }: { resetKey: unknown }) {
   useEffect(() => {
     if (!scriptLoaded || !containerRef.current || !window.turnstile || !SITE_KEY) return;
     if (widgetIdRef.current === null) {
-      widgetIdRef.current = window.turnstile.render(containerRef.current, { sitekey: SITE_KEY });
+      widgetIdRef.current = window.turnstile.render(containerRef.current, {
+        sitekey: SITE_KEY,
+        size: "flexible",
+      });
     } else {
       window.turnstile.reset(widgetIdRef.current);
     }
