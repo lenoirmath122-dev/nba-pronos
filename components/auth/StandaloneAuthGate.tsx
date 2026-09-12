@@ -4,16 +4,38 @@ import { useSyncExternalStore } from "react";
 import styles from "./AuthScreen.module.css";
 
 // Même patron que resetSuccess/accountDeleted dans LoginForm.tsx : lit une
-// donnée EXTERNE (navigator.standalone) sans le risque de désynchro
+// donnée EXTERNE (mode d'affichage standalone) sans le risque de désynchro
 // hydratation d'un useEffect + setState classique (pas de valeur côté
 // serveur, jamais "standalone" au 1er rendu SSR).
 function subscribeToNothing() {
   return () => {};
 }
-function getIsStandalone(): boolean {
+
+// Le site n'a pas la balise historique apple-mobile-web-app-capable (seul
+// app/manifest.ts déclare display:"standalone") : navigator.standalone
+// (mécanisme Apple pré-manifest) reste donc toujours undefined ici, même
+// une fois réellement lancé en standalone — il faut aussi vérifier la
+// media query display-mode, la détection moderne basée sur le manifest.
+// Restreint à iOS : les PWA Android tournent sur le moteur Chrome complet,
+// pas concernées par la restriction Turnstile visée par ce composant.
+function isIOSDevice(): boolean {
+  const nav = window.navigator;
   return (
-    (window.navigator as Navigator & { standalone?: boolean }).standalone ===
-    true
+    /iPad|iPhone|iPod/.test(nav.userAgent) ||
+    // iPadOS 13+ se présente comme "MacIntel" en desktop mode — seul le
+    // support tactile le distingue d'un vrai Mac.
+    (nav.platform === "MacIntel" && nav.maxTouchPoints > 1)
+  );
+}
+
+function getIsStandalone(): boolean {
+  if (!isIOSDevice()) return false;
+  const legacyAppleFlag = (
+    window.navigator as Navigator & { standalone?: boolean }
+  ).standalone;
+  return (
+    legacyAppleFlag === true ||
+    window.matchMedia("(display-mode: standalone)").matches
   );
 }
 function getIsStandaloneServerSnapshot(): boolean {
