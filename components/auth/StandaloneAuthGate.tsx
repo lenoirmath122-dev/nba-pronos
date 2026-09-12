@@ -82,9 +82,14 @@ export function StandaloneAuthGate({
     <div className={`${styles.card} glass-card`}>
       <p className={styles.success}>
         La vérification de sécurité ne fonctionne pas dans l&apos;application
-        installée sur ton iPhone. Copie ce lien et colle-le dans un nouvel
-        onglet Safari pour continuer.
+        installée sur ton iPhone.
       </p>
+      <ol className={styles.standaloneSteps}>
+        <li>Copie le lien ci-dessous</li>
+        <li>Ouvre l&apos;app Safari (pas cette icône)</li>
+        <li>Colle le lien dans la barre d&apos;adresse et connecte-toi</li>
+        <li>Reviens sur cette icône ensuite : tu seras déjà connecté</li>
+      </ol>
       <p className={styles.standaloneUrl}>{window.location.href}</p>
       <button type="button" onClick={handleCopy} className={styles.submit}>
         {copied ? "Lien copié !" : "Copier le lien"}
