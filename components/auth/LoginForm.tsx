@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useActionState, useSyncExternalStore } from "react";
 import { login } from "@/lib/auth/actions";
-import { StandaloneAuthGate } from "./StandaloneAuthGate";
 import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
 
@@ -48,7 +47,6 @@ export function LoginForm() {
   );
 
   return (
-    <StandaloneAuthGate>
     <div className={`${styles.card} glass-card`}>
       <h1 className={styles.cardTitle}>Connexion</h1>
       <form action={formAction} className={styles.form}>
@@ -110,6 +108,5 @@ export function LoginForm() {
         </p>
       </div>
     </div>
-    </StandaloneAuthGate>
   );
 }
