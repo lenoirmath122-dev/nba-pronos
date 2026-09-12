@@ -168,10 +168,24 @@
   box-shadow: var(--focus-ring);
 }
 
-/* StandaloneAuthGate — affiche l'URL en clair (copier/coller manuel dans
-   Safari, aucun mécanisme d'échappement automatique fiable depuis le mode
-   standalone iOS) ; break-all nécessaire, une URL est un mot unique sans
-   espace qui déborderait sinon de la carte à 24rem de large. */
+/* StandaloneAuthGate — étapes explicites (demandé par l'utilisateur,
+   12/09/2026 : le message initial en une phrase ne précisait pas assez
+   clairement qu'il faut ouvrir l'app Safari elle-même, pas juste "un
+   nouvel onglet" depuis l'icône installée). */
+.standaloneSteps {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Affiche l'URL en clair (copier/coller manuel dans Safari, aucun
+   mécanisme d'échappement automatique fiable depuis le mode standalone
+   iOS) ; break-all nécessaire, une URL est un mot unique sans espace qui
+   déborderait sinon de la carte à 24rem de large. */
 .standaloneUrl {
   margin: 0;
   padding: var(--space-2) var(--space-3);
