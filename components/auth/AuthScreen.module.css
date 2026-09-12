@@ -168,6 +168,16 @@
   box-shadow: var(--focus-ring);
 }
 
+/* StandaloneAuthGate — le <a> réutilise .submit (même look que le bouton
+   d'action principal) mais a besoin de son propre centrage/texte, un <a>
+   n'étant pas un <button>. */
+.standaloneLink {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
 .links {
   display: flex;
   flex-direction: column;
