@@ -18,10 +18,16 @@ export async function gotoAndWaitReady(page: Page, path: string) {
  *  domicile -- /play affiche TOUS les matchs de la compétition active à
  *  tout joueur connecté, pas seulement "ses" matchs (voir e2e/seed.ts). */
 export function matchRow(page: Page, homeTeamName: string): Locator {
-  // 2 niveaux : le bouton équipe est dans un conteneur qui n'inclut PAS
-  // "Détails du match" (son cousin, pas son frère) -- vérifié via un
-  // instantané ARIA Playwright, pas deviné.
-  return page.getByRole("button", { name: homeTeamName }).locator("xpath=../..");
+  // Remonte jusqu'à la carte ENTIÈRE via son id stable (`match-<matchId>`,
+  // posé sur le conteneur racine par UpcomingRow.tsx), pas un compte de
+  // niveaux XPath relatifs (`../..`) -- ça avait cassé silencieusement le
+  // 16/09/2026 quand la carte a perdu son dépliage (UpcomingRowForm fusionné
+  // dans UpcomingRow.tsx, structure interne changée) : `../..` pointait vers
+  // un conteneur qui n'incluait plus les actions (Valider/Brouillon), en
+  // dehors de tout test qui l'aurait immédiatement révélé. `ancestor::` reste
+  // correct quelle que soit la profondeur d'imbrication interne du bouton
+  // équipe.
+  return page.getByRole("button", { name: homeTeamName }).locator('xpath=ancestor::*[starts-with(@id, "match-")]');
 }
 
 /** Clique `trigger`, en RÉessayant jusqu'à ce que `until` apparaisse --

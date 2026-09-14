@@ -12,6 +12,7 @@ import {
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { ModalDialog } from "@/components/ui/ModalDialog";
 import { Spinner } from "@/components/ui/Spinner";
+import { BetsIcon } from "@/components/icons/home-icons";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
 import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
@@ -55,6 +56,16 @@ type InlineBetFormProps = {
    *  inchangé. Le bouton déclencheur reste identique dans les 2 cas — seul
    *  le rendu une fois ouvert diffère. */
   presentation?: "inline" | "modal";
+  /** Déclencheur en icône compacte plutôt qu'en bouton texte pleine largeur
+   *  (14/09/2026, carte pronostic — le libellé devient le nom accessible du
+   *  bouton au lieu de son contenu visible). Sans effet sur le Bracket, qui
+   *  ne passe pas cette prop. */
+  compactTrigger?: boolean;
+  /** Sous-titre affiché dans la popup à l'ouverture, ex. "2 restants"
+   *  (16/09/2026 — retiré du bouton compact lui-même pour l'agrandir, mais
+   *  l'utilisateur veut que l'info reste visible une fois le bouton cliqué).
+   *  Ignoré hors présentation "modal" et si un pari existe déjà (myBet). */
+  remainingHint?: string;
 };
 
 export function InlineBetForm({
@@ -67,6 +78,8 @@ export function InlineBetForm({
   hideSubmit,
   onFieldsChange,
   presentation = "inline",
+  compactTrigger = false,
+  remainingHint,
 }: InlineBetFormProps) {
   // En mode "modal" (17/08/2026), jamais ouvert par défaut même s'il existe
   // déjà un pari : contrairement à l'inline (où afficher direct le
@@ -112,17 +125,33 @@ export function InlineBetForm({
   // Pari déjà posé mais dans un statut non éditable ici (VALIDATED/WON/LOST) :
   // lecture seule, pas de ré-ouverture inline.
   if (hasBet && !myBet) {
+    const disabledLabel = `Pari déjà posé sur cette ${scope === "SERIES" ? "série" : "match"}`;
+    if (compactTrigger) {
+      return (
+        <span className={styles.triggerIconDisabled} aria-label={disabledLabel}>
+          <BetsIcon size={14} aria-hidden="true" />
+        </span>
+      );
+    }
     return (
       <span className={styles.disabled} aria-disabled="true">
-        Pari déjà posé sur cette {scope === "SERIES" ? "série" : "match"}
+        {disabledLabel}
       </span>
     );
   }
 
   if (!isOpen) {
+    const openLabel = myBet ? "Modifier le pari" : triggerLabel;
+    if (compactTrigger) {
+      return (
+        <button type="button" className={styles.triggerIcon} onClick={() => setIsOpen(true)} aria-label={openLabel}>
+          <BetsIcon size={14} aria-hidden="true" />
+        </button>
+      );
+    }
     return (
       <button type="button" className={styles.trigger} onClick={() => setIsOpen(true)}>
-        {myBet ? "Modifier le pari" : triggerLabel}
+        {openLabel}
       </button>
     );
   }
@@ -278,7 +307,10 @@ export function InlineBetForm({
   if (presentation === "modal") {
     return (
       <ModalDialog title={myBet ? "Modifier le pari" : "Proposer un pari"} onClose={() => setIsOpen(false)}>
-        <div className={styles.formModal}>{fields}</div>
+        <div className={styles.formModal}>
+          {remainingHint && !myBet && <p className={styles.remainingHint}>{remainingHint}</p>}
+          {fields}
+        </div>
       </ModalDialog>
     );
   }

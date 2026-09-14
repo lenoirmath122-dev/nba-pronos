@@ -4,7 +4,9 @@ import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./RevealPanelUpcoming.module.css";
 
 // Panneau "valider = voir" (§8 SPEC_ECRAN_MATCHS) — sans "use client" propre,
-// rendu par UpcomingRowForm. Le compteur X/N est TOUJOURS affiché ; le détail
+// rendu dans la popup de ParticipationTrigger (14/09/2026, ex-rendu direct
+// par UpcomingRowForm avant sa fusion dans UpcomingRow.tsx). Le compteur X/N
+// est TOUJOURS affiché ; le détail
 // nominatif (others/absentees) n'arrive que si isRevealed — et dans ce cas,
 // il est déjà VIDE côté serveur quand ce n'est pas le cas (lib/queries/play.ts),
 // donc ce composant ne fait ici que rendre ce qu'on lui donne, jamais un filtrage.

@@ -1,21 +1,31 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import type { UpcomingMatchRow as UpcomingMatchRowData } from "@/lib/queries/play";
+import { useEffect, useState, useTransition } from "react";
+import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
+import { saveMatchPredictionDraft, validateMatchPrediction } from "@/lib/actions/matches";
+import type { BetSlotIndicator, UpcomingMatchRow as UpcomingMatchRowData } from "@/lib/queries/play";
 import { TeamLogo } from "@/components/ui/TeamLogo";
-import { UpcomingRowForm } from "./UpcomingRowForm";
+import { InlineBetForm, type InlineBetOwned } from "@/components/bets/InlineBetForm";
+import { FocusTrap } from "@/components/ui/FocusTrap";
+import { MarginStepper } from "./MarginStepper";
+import { ParticipationTrigger } from "./ParticipationTrigger";
+import { BetBlock } from "./BetBlock";
 import styles from "./UpcomingRow.module.css";
 
-// Ligne de match pas encore verrouillé — ex-components/matches/MatchRow.tsx.
-// Feuille client : porte son PROPRE booléen d'ouverture. Plusieurs lignes
-// peuvent être ouvertes en même temps ; aucun état ne remonte à un parent
-// (MatchDayGroup et la page restent serveur). État d'ouverture non persisté.
+// Ligne de match pas encore verrouillé — ex-components/matches/MatchRow.tsx,
+// puis fusionné le 19/08/2026 avec l'ex-TeamPicker (sélection du vainqueur
+// sur les boutons logo) et le 14/09/2026 avec l'ex-UpcomingRowForm.tsx : le
+// dépliage/repliage (isOpen) a été entièrement supprimé à la demande de
+// l'utilisateur — la carte affiche TOUJOURS son contenu complet (équipes +
+// icônes pari/participation, actions brouillon/valider, méta), il n'y a plus
+// de raison de garder deux composants séparés dont l'un n'existait que pour
+// être monté/démonté à la demande.
 //
-// En-tête équipes alignée sur LockedRow.tsx (logo + abréviations, neutre) —
-// avant le 19/08/2026, ce composant avait son PROPRE style de chip coloré en
-// dégradé par équipe (logo en filigrane à peine visible), redondant avec le
-// vrai logo affiché juste en dessous par TeamPicker une fois la ligne
-// ouverte (doublon signalé par l'utilisateur).
+// Ordre vertical de la carte (imposé par l'utilisateur, 14/09/2026) :
+// équipes (+ stepper d'écart à côté du nom, + colonne icônes pari/
+// participation en haut à droite) → actions brouillon/valider (seulement si
+// un vainqueur est choisi) → bloc pari en lecture seule si non éditable →
+// rangée méta (heure, verrou, statut).
 
 const ONE_HOUR_MS = 60 * 60 * 1000;
 
@@ -74,136 +84,327 @@ function winnerAbbreviation(match: UpcomingMatchRowData): string | null {
   return null;
 }
 
+function triggerLabelFor(betSlot: BetSlotIndicator): string {
+  return betSlot.mode === "BINARY" ? "Proposer un pari" : `Proposer un pari · ${betSlot.usedSlots}/${betSlot.totalSlots}`;
+}
+
+// Compteur affiché sous l'icône pari (14/09/2026) — dérivé du même
+// BetSlotIndicator que triggerLabelFor, purement présentation, aucune
+// nouvelle règle métier : BINARY autorise 1 pari par match (0 ou 1 restant),
+// SERIES_QUOTA un quota partagé par série (totalSlots − usedSlots).
+function remainingBetsLabel(betSlot: BetSlotIndicator): string {
+  const remaining = betSlot.mode === "BINARY" ? (betSlot.hasBetOnThisMatch ? 0 : 1) : Math.max(0, betSlot.totalSlots - betSlot.usedSlots);
+  return `${remaining} restant${remaining > 1 ? "s" : ""}`;
+}
+
+/** Un pari DRAFT/SUBMITTED reste éditable (InlineBetForm) ; tout autre statut
+ *  existant bascule en lecture seule (BetBlock) — même statuts, y compris
+ *  annulé/refusé, restent visibles (décision actée avant la fusion). */
+function toInlineBetOwned(bet: UpcomingMatchRowData["bet"]): InlineBetOwned | null {
+  if (!bet || (bet.status !== "DRAFT" && bet.status !== "SUBMITTED")) return null;
+  return { betId: bet.betId, status: bet.status, description: bet.description, category: bet.category, difficulty: bet.difficulty };
+}
+
 type UpcomingRowProps = { match: UpcomingMatchRowData };
 
 export function UpcomingRow({ match }: UpcomingRowProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const { markDirty, clearDirty } = useUnsavedGuard(match.matchId);
+  const [isPending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+  const [showValidateConfirm, setShowValidateConfirm] = useState(false);
 
-  // Vainqueur : levé ici (plutôt que dans UpcomingRowForm) pour que les
-  // boutons logo de l'en-tête, TOUJOURS montés, puissent le modifier — un
-  // tap choisit ET déplie en une seule action (fusion avec l'ex-TeamPicker).
-  // Remis à match.myWinnerTeamId à la FERMETURE (handleToggle, pas un effet
-  // — react-hooks/set-state-in-effect, déjà rencontré §2.89 ETAT_ACTUEL) :
-  // même garantie qu'avant le levage, quand UpcomingRowForm se démontait
-  // avec son propre état local et perdait le brouillon non enregistré.
+  // Vainqueur ET écart : la carte n'ayant plus d'état ouvert/fermé, ces deux
+  // valeurs vivent directement ici, en permanence — un tap sur une équipe la
+  // sélectionne, le stepper "−"/"+" apparaît à côté de son nom.
   const [winner, setWinner] = useState<string | null>(match.myWinnerTeamId);
+  const [margin, setMargin] = useState<number | null>(match.myMargin);
 
   const isReadOnly = match.viewStatus === "VALIDATED";
+  const isComplete = winner !== null && margin !== null;
+  const isUnsaved = winner !== match.myWinnerTeamId || margin !== match.myMargin;
 
-  // Repli automatique demandé par l'utilisateur le 21/08/2026 (libérer la
-  // vue après validation) : se déclenche UNE FOIS, au moment précis où le
-  // statut bascule sur VALIDATED pendant que la ligne est ouverte -- jamais
-  // en repliant de force une ligne déjà validée qu'on rouvre ensuite pour
-  // consulter le récap (isReadOnly reste consultable via handleToggle
-  // normal). previousStatus en ref plutôt qu'en dépendance d'effet : on ne
-  // veut réagir qu'à la TRANSITION, pas rejouer à chaque re-render une fois
-  // déjà VALIDATED.
-  const previousStatusRef = useRef(match.viewStatus);
   useEffect(() => {
-    if (previousStatusRef.current !== "VALIDATED" && match.viewStatus === "VALIDATED") {
-      setIsOpen(false);
-    }
-    previousStatusRef.current = match.viewStatus;
-  }, [match.viewStatus]);
+    const dirty = winner !== match.myWinnerTeamId || margin !== match.myMargin;
+    if (dirty) markDirty();
+    else clearDirty();
+  }, [winner, margin, match.myWinnerTeamId, match.myMargin, markDirty, clearDirty]);
 
   function handleSelectTeam(teamId: string) {
     if (isReadOnly) return;
     setWinner(teamId);
-    setIsOpen(true);
   }
 
-  function handleToggle() {
-    setIsOpen((wasOpen) => {
-      if (!wasOpen) return true;
-      setWinner(match.myWinnerTeamId);
-      return false;
-    });
-  }
-
-  // Repère TEXTUEL, pas un décompte vivant : calculé une seule fois au
-  // montage, jamais pendant le rendu (piège d'hydratation déjà rencontré sur
-  // components/ui/Countdown.tsx).
+  // Repère de verrouillage — ticking en permanence désormais (plus de ligne
+  // "repliée" à économiser depuis la suppression du dépliage) : label grossier
+  // tant qu'il reste plus d'une heure, décompte seconde par seconde ensuite.
   const [lockLabel, setLockLabel] = useState<string | null>(null);
   useEffect(() => {
-    function computeOnce() {
-      setLockLabel(formatLockLabel(match.scheduledAt, Date.now()));
-    }
-    computeOnce();
-  }, [match.scheduledAt]);
-
-  // Décompte ANIMÉ — réservé à la ligne dépliée : ne tourne que pendant que
-  // isOpen est vrai, s'arrête net à la fermeture.
-  const [liveLockLabel, setLiveLockLabel] = useState<string | null>(null);
-  useEffect(() => {
-    function reset() {
-      setLiveLockLabel(null);
-    }
-    if (!isOpen) {
-      reset();
-      return;
-    }
     let timeoutId: ReturnType<typeof setTimeout>;
     function tick() {
       const remainingMs = Date.parse(match.scheduledAt) - Date.now();
       if (remainingMs <= ONE_HOUR_MS) {
-        setLiveLockLabel(formatLiveLockLabel(match.scheduledAt, Date.now()));
+        setLockLabel(formatLiveLockLabel(match.scheduledAt, Date.now()));
         timeoutId = setTimeout(tick, 1000);
       } else {
-        setLiveLockLabel(formatLockLabel(match.scheduledAt, Date.now()));
+        setLockLabel(formatLockLabel(match.scheduledAt, Date.now()));
         timeoutId = setTimeout(tick, 30_000);
       }
     }
     tick();
     return () => clearTimeout(timeoutId);
-  }, [isOpen, match.scheduledAt]);
+  }, [match.scheduledAt]);
 
+  const myBet = toInlineBetOwned(match.bet);
+  const readOnlyBet = match.bet && !myBet ? match.bet : null;
   const recap = match.viewStatus === "VALIDATED" ? winnerAbbreviation(match) : null;
+
+  function handleSaveDraft() {
+    setError(null);
+    startTransition(async () => {
+      const result = await saveMatchPredictionDraft({
+        matchId: match.matchId,
+        predictedWinnerTeamId: winner,
+        predictedMargin: margin,
+      });
+      if (result.success) {
+        clearDirty();
+        setShowValidateConfirm(false);
+      } else {
+        setError(result.error);
+      }
+    });
+  }
+
+  function handleValidate() {
+    setError(null);
+    startTransition(async () => {
+      const result = await validateMatchPrediction(match.matchId);
+      setShowValidateConfirm(false);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      clearDirty();
+    });
+  }
+
+  function handleValidateDefinitively() {
+    setError(null);
+    startTransition(async () => {
+      const saveResult = await saveMatchPredictionDraft({
+        matchId: match.matchId,
+        predictedWinnerTeamId: winner,
+        predictedMargin: margin,
+      });
+      if (!saveResult.success) {
+        setError(saveResult.error);
+        return;
+      }
+      const result = await validateMatchPrediction(match.matchId);
+      setShowValidateConfirm(false);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      clearDirty();
+    });
+  }
 
   return (
     <div id={`match-${match.matchId}`} className={`${styles.row} glass-card`}>
       <div className={styles.header}>
-        <div className={styles.teams}>
-          {[match.homeTeam, match.awayTeam].map((team) => (
+        <div className={styles.topRow}>
+          {/* Grille à 3 colonnes (équipe / zone stepper partagée / équipe) —
+              14/09/2026, remplace un découpage par équipe avec wrap qui
+              faisait "flotter" le stepper hors de sa pastille quand il ne
+              tenait pas sur la même ligne (signalé par l'utilisateur). La
+              zone centrale est PARTAGÉE : elle affiche le stepper de
+              l'équipe sélectionnée, quelle qu'elle soit — donc toujours à
+              droite du nom pour l'équipe de gauche, toujours à gauche du nom
+              pour l'équipe de droite, sans jamais pouvoir "flotter" ailleurs. */}
+          <div className={styles.teams}>
             <button
-              key={team.id}
               type="button"
-              className={winner === team.id ? `${styles.teamButton} ${styles.teamButtonSelected}` : styles.teamButton}
-              onClick={() => handleSelectTeam(team.id)}
+              className={
+                winner === match.homeTeam.id ? `${styles.teamButton} ${styles.teamButtonSelected}` : styles.teamButton
+              }
+              onClick={() => handleSelectTeam(match.homeTeam.id)}
               disabled={isReadOnly}
-              aria-pressed={winner === team.id}
-              aria-label={team.name}
+              aria-pressed={winner === match.homeTeam.id}
+              aria-label={match.homeTeam.name}
             >
-              <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={32} />
-              {team.abbreviation}
+              <TeamLogo abbreviation={match.homeTeam.abbreviation} alt={match.homeTeam.name} size={32} />
+              {match.homeTeam.abbreviation}
             </button>
-          ))}
+
+            <div className={styles.stepperSlot}>
+              {winner !== null && !isReadOnly && <MarginStepper value={margin} onChange={setMargin} />}
+            </div>
+
+            <button
+              type="button"
+              className={
+                winner === match.awayTeam.id ? `${styles.teamButton} ${styles.teamButtonSelected}` : styles.teamButton
+              }
+              onClick={() => handleSelectTeam(match.awayTeam.id)}
+              disabled={isReadOnly}
+              aria-pressed={winner === match.awayTeam.id}
+              aria-label={match.awayTeam.name}
+            >
+              <TeamLogo abbreviation={match.awayTeam.abbreviation} alt={match.awayTeam.name} size={32} />
+              {match.awayTeam.abbreviation}
+            </button>
+          </div>
+
+          <div className={styles.iconColumn}>
+            {/* Compteur de paris restants retiré du libellé visible
+                (16/09/2026, demandé par l'utilisateur) : il reste accessible
+                via aria-label et s'affichera dans la popup elle-même — ça
+                libère de la hauteur pour agrandir les 2 boutons. */}
+            {!readOnlyBet && (
+              <InlineBetForm
+                scope="MATCH"
+                matchId={match.matchId}
+                seriesId={match.seriesId}
+                hasBet={match.bet !== null}
+                triggerLabel={triggerLabelFor(match.betSlot)}
+                myBet={myBet}
+                presentation="modal"
+                compactTrigger
+                remainingHint={remainingBetsLabel(match.betSlot)}
+              />
+            )}
+            <ParticipationTrigger
+              isRevealed={match.isRevealed}
+              predictedCount={match.predictedCount}
+              eligibleCount={match.eligibleCount}
+              others={match.others}
+              absentees={match.absentees}
+            />
+          </div>
         </div>
-        <button
-          type="button"
-          className={styles.metaToggle}
-          onClick={handleToggle}
-          aria-expanded={isOpen}
-          aria-label="Détails du match"
-        >
+
+        {error && (
+          <p className={styles.error} role="alert">
+            {error}
+          </p>
+        )}
+
+        {/* Brouillon/Valider n'apparaissent qu'une fois un vainqueur choisi
+            (14/09/2026, à la demande de l'utilisateur), côte à côte, entre la
+            rangée équipes et la rangée méta. */}
+        {winner !== null && !isReadOnly && (
+          <div className={styles.actions}>
+            <button type="button" className={styles.secondary} onClick={handleSaveDraft} disabled={isPending}>
+              Enregistrer le brouillon
+            </button>
+            <button
+              type="button"
+              className={styles.primary}
+              onClick={() => setShowValidateConfirm(true)}
+              disabled={isPending || !isComplete}
+            >
+              Valider le prono
+            </button>
+          </div>
+        )}
+
+        {/* Le prono et le pari sont deux entités indépendantes — un pari déjà
+            posé et non modifiable ici reste visible même si le prono n'est
+            pas encore validé. */}
+        {readOnlyBet && <BetBlock bet={readOnlyBet} returnTo="/play" />}
+
+        <div className={styles.metaRow}>
           <span className={styles.meta}>
             <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
-            <span className={styles.lock}>{isOpen ? liveLockLabel : lockLabel}</span>
+            <span className={styles.lock}>{lockLabel}</span>
           </span>
-          <span className={styles.metaRight}>
-            <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
-              {/* "+" pas "−" (22/08/2026, signalé par l'utilisateur --
-                  "CHI −4" se lisait comme un ecart negatif alors que
-                  myMargin est toujours l'ecart de victoire du vainqueur
-                  choisi). */}
-              {recap !== null ? `✓ ${recap} +${match.myMargin}` : STATUS_LABEL[match.viewStatus]}
-            </span>
-            <span className={isOpen ? styles.chevronOpen : styles.chevron} aria-hidden="true">
-              ▾
-            </span>
+          <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
+            {/* "+" pas "−" (22/08/2026, signalé par l'utilisateur --
+                "CHI −4" se lisait comme un ecart negatif alors que
+                myMargin est toujours l'ecart de victoire du vainqueur
+                choisi). */}
+            {recap !== null ? `✓ ${recap} +${match.myMargin}` : STATUS_LABEL[match.viewStatus]}
           </span>
-        </button>
+        </div>
       </div>
-      {isOpen && <UpcomingRowForm match={match} winner={winner} />}
+
+      {/* Dialogue de VALIDATION — distinct du dialogue C2 de perte de saisie :
+          wording et déclencheur différents, ne pas fusionner. */}
+      {showValidateConfirm && (
+        <div className={styles.backdrop} role="presentation">
+          <FocusTrap
+            className={styles.dialog}
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby={`validate-title-${match.matchId}`}
+            onClose={() => setShowValidateConfirm(false)}
+          >
+            <p id={`validate-title-${match.matchId}`} className={styles.dialogTitle}>
+              Valider ce prono ?
+            </p>
+            {isUnsaved ? (
+              <>
+                <p className={styles.dialogBody}>
+                  Attention, ton brouillon n&rsquo;est pas encore enregistré. Une fois validé, le prono
+                  n&rsquo;est plus modifiable — enregistre-le d&rsquo;abord si tu veux pouvoir revenir dessus.
+                </p>
+                <div className={styles.dialogActions}>
+                  <button
+                    type="button"
+                    className={styles.dialogCancel}
+                    onClick={() => setShowValidateConfirm(false)}
+                    disabled={isPending}
+                  >
+                    Retour
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dialogSecondary}
+                    onClick={handleSaveDraft}
+                    disabled={isPending}
+                  >
+                    Enregistrer le brouillon
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dialogConfirm}
+                    onClick={handleValidateDefinitively}
+                    disabled={isPending}
+                  >
+                    Valider définitivement
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className={styles.dialogBody}>
+                  Une fois validé, il n&rsquo;est plus modifiable — et tu verras (comme les autres joueurs) les
+                  pronos déjà déposés sur ce match.
+                </p>
+                <div className={styles.dialogActions}>
+                  <button
+                    type="button"
+                    className={styles.dialogCancel}
+                    onClick={() => setShowValidateConfirm(false)}
+                    disabled={isPending}
+                  >
+                    Annuler
+                  </button>
+                  <button
+                    type="button"
+                    className={styles.dialogConfirm}
+                    onClick={handleValidate}
+                    disabled={isPending}
+                  >
+                    Valider
+                  </button>
+                </div>
+              </>
+            )}
+          </FocusTrap>
+        </div>
+      )}
     </div>
   );
 }
