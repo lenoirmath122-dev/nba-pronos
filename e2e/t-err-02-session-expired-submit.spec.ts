@@ -33,10 +33,11 @@ test("session expirée pendant la soumission d'un pari -> message d'erreur, sais
 
   await gotoAndWaitReady(page, "/play");
 
+  // La carte n'a plus de dépliage (16/09/2026) : le déclencheur pari est
+  // TOUJOURS monté, mais désormais un par carte -- scopé à `row`, plutôt que
+  // page-level, puisque chaque match affiche le sien simultanément.
   const row = matchRow(page, match4.homeTeamName);
-  await row.getByRole("button", { name: "Détails du match" }).click();
-
-  const trigger = page.getByRole("button", { name: /Proposer un pari/ });
+  const trigger = row.getByRole("button", { name: /Proposer un pari/ });
   await expect(trigger).toBeVisible({ timeout: 10_000 });
   await trigger.click();
 

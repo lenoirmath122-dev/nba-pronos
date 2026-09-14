@@ -21,12 +21,13 @@ test("le dialogue de suppression de pari piège le focus et se ferme à l'Échap
   await gotoAndWaitReady(page, "/play");
 
   const row = matchRow(page, seed.match1.homeTeamName);
+  // La carte n'a plus de dépliage (16/09/2026) : le pari DRAFT pré-semé
+  // n'apparaît plus automatiquement -- le déclencheur pari (compact, en
+  // popup désormais) doit être ouvert explicitement pour révéler le
+  // formulaire où vit "Supprimer" (même en mode popup, InlineBetForm ne
+  // s'ouvre jamais tout seul au chargement, voir son commentaire de tête).
+  await row.getByRole("button", { name: "Modifier le pari" }).click();
   const triggers = page.getByRole("button", { name: "Supprimer", exact: true });
-  // Déplie la ligne (indépendant du choix de vainqueur) pour révéler le
-  // formulaire de pari inline, où vit le pari DRAFT pré-semé. Un seul clic
-  // (pas clickUntilVisible) : ce bouton BASCULE (pas idempotent), un retry
-  // le refermerait.
-  await row.getByRole("button", { name: "Détails du match" }).click();
   await expect(triggers).toHaveCount(1, { timeout: 10_000 });
   const trigger = triggers.first();
   const dialog = page.getByRole("alertdialog");

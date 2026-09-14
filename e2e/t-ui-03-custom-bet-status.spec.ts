@@ -30,13 +30,13 @@ test("soumission d'un pari personnalisé -> statut SOUMIS", async ({ page }, tes
   await gotoAndWaitReady(page, "/play");
 
   const row = matchRow(page, match3.homeTeamName);
-  // Un seul clic (pas clickUntilVisible) : ce bouton BASCULE (pas
-  // idempotent), un retry le refermerait.
-  await row.getByRole("button", { name: "Détails du match" }).click();
-
-  // Une fois dépliée, ses contrôles sont les seuls de leur genre visibles
-  // (aucune autre ligne ouverte en parallèle) -- locators page-level.
-  const trigger = page.getByRole("button", { name: /Proposer un pari/ });
+  // La carte n'a plus de dépliage (16/09/2026) : le déclencheur pari est
+  // TOUJOURS monté, mais désormais un par carte -- scopé à `row`, plutôt que
+  // page-level, puisque chaque match affiche le sien simultanément. Le
+  // formulaire lui-même s'ouvre en popup (portalée hors de `row`), donc les
+  // locators qui le ciblent restent page-level (uniques : une seule popup
+  // ouverte à la fois).
+  const trigger = row.getByRole("button", { name: /Proposer un pari/ });
   await expect(trigger).toBeVisible({ timeout: 10_000 });
   await trigger.click();
 
@@ -45,7 +45,7 @@ test("soumission d'un pari personnalisé -> statut SOUMIS", async ({ page }, tes
 
   // Repli automatique après succès (InlineBetForm) -> le déclencheur redevient
   // visible, changé de "Proposer un pari" à "Modifier le pari" (myBet existe).
-  const editTrigger = page.getByRole("button", { name: "Modifier le pari" });
+  const editTrigger = row.getByRole("button", { name: "Modifier le pari" });
   await expect(editTrigger).toBeVisible();
 
   // Statut réel : rouvrir montre "Soumettre les modifications" (SUBMITTED),
