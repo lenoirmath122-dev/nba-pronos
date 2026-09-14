@@ -89,9 +89,10 @@ export function MfaSetupForm() {
         avant de continuer. Scanne ce QR code avec une appli comme Google Authenticator ou Authy.
       </p>
       <div className={styles.qrWrap}>
-        {/* SVG renvoyé tel quel par Supabase (auth.mfa.enroll) — pas d'image
-            distante à charger, encodé en data URI pour un <img> classique. */}
-        <img src={`data:image/svg+xml,${encodeURIComponent(step.qrCode)}`} alt="Code QR de la 2FA" />
+        {/* qr_code (auth.mfa.enroll) est déjà une data URI complète et
+            utilisable telle quelle (cf. doc Supabase) — PAS du SVG brut à
+            encoder soi-même, contrairement à ce qu'on pourrait croire. */}
+        <img src={step.qrCode} alt="Code QR de la 2FA" />
       </div>
       <p className={styles.secret}>Ou saisis ce code manuellement : {step.secret}</p>
       <form onSubmit={handleSubmit} className={styles.form}>
