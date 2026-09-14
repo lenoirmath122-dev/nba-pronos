@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { getServerClient } from "@/lib/supabase/server";
 import styles from "./layout.module.css";
 
@@ -43,6 +44,33 @@ export default async function AdminLayout({
     // Pas de fuite d'existence d'écran (T6a §4.2) : même redirection que
     // pour un visiteur non connecté sur une route joueur.
     redirect("/home");
+  }
+
+  // 2FA obligatoire pour l'admin (p2-8, feuille de route Phase 2) — un mot
+  // de passe seul protège aujourd'hui le compte qui a accès à toutes les
+  // données du jeu. Pas encore de facteur TOTP vérifié => on force
+  // l'enrôlement avant de laisser passer, pas juste une option proposée.
+  const { data: factors } = await supabase.auth.mfa.listFactors();
+  const hasVerifiedTotp = factors?.all.some((f) => f.factor_type === "totp" && f.status === "verified");
+  if (!hasVerifiedTotp) {
+    redirect("/mfa-setup");
+  }
+
+  const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+  if (aal?.currentLevel !== "aal2") {
+    // Repli codes de récupération (téléphone perdu) : l'AAL Supabase reste
+    // aal1 dans ce cas, donc on accepte aussi une session de secours posée
+    // par verifyRecoveryCode() (lib/actions/mfa.ts) — jamais permanente
+    // (30 min, vérifiée en base à chaque requête, pas juste un cookie lu
+    // tel quel).
+    const cookieStore = await cookies();
+    const recoveryCookie = cookieStore.get("admin_recovery_session")?.value;
+    const { data: recoveryValid } = recoveryCookie
+      ? await supabase.rpc("check_admin_recovery_session", { p_session_id: recoveryCookie })
+      : { data: false };
+    if (!recoveryValid) {
+      redirect("/mfa-challenge");
+    }
   }
 
   return (
