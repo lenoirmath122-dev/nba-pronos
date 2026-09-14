@@ -91,7 +91,7 @@ export function MfaSetupForm() {
       <div className={styles.qrWrap}>
         {/* SVG renvoyé tel quel par Supabase (auth.mfa.enroll) — pas d'image
             distante à charger, encodé en data URI pour un <img> classique. */}
-        <img src={`data:image/svg+xml;utf8,${encodeURIComponent(step.qrCode)}`} alt="Code QR de la 2FA" />
+        <img src={`data:image/svg+xml,${encodeURIComponent(step.qrCode)}`} alt="Code QR de la 2FA" />
       </div>
       <p className={styles.secret}>Ou saisis ce code manuellement : {step.secret}</p>
       <form onSubmit={handleSubmit} className={styles.form}>
