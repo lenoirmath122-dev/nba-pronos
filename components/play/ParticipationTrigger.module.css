@@ -1,0 +1,25 @@
+/* Rectangulaire, fond accent, hauteur sous --tap-target-min (16/09/2026,
+   même exception assumée que .triggerIcon dans InlineBetForm.module.css —
+   les 2 boutons de la colonne doivent tenir empilés dans la hauteur de la
+   rangée équipes). */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  cursor: pointer;
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.modalContent {
+  padding: var(--space-4);
+}

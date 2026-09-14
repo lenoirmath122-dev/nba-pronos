@@ -12,16 +12,36 @@
   color: var(--color-text-primary);
 }
 
-/* Sélection du vainqueur ET dépliage en un seul tap (fusion avec l'ex-
-   TeamPicker, affiché en double sous l'en-tête avant le 19/08/2026) — grille
-   2 colonnes pleine largeur pour rester alignée avec celle de
-   MarginStepper.module.css juste en dessous une fois la ligne ouverte
-   (mêmes 2 colonnes, le "−"/"+" doit tomber sous la bonne équipe). */
-.teams {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+/* Rangée équipes + colonne icônes pari/participation (14/09/2026, remplace
+   la colonne qui vivait en bas de la carte dépliée — plus de dépliage). */
+.topRow {
+  display: flex;
+  align-items: flex-start;
   gap: var(--space-2);
   width: 100%;
+}
+
+/* Sélection du vainqueur (fusion avec l'ex-TeamPicker, affiché en double
+   sous l'en-tête avant le 19/08/2026) — grille à 3 colonnes (équipe / zone
+   stepper PARTAGÉE / équipe, 16/09/2026) : la colonne centrale, sizée à son
+   contenu, affiche le stepper de l'équipe sélectionnée quelle qu'elle soit —
+   remplace un découpage par équipe avec wrap qui pouvait faire "flotter" le
+   stepper hors de sa pastille quand il ne tenait pas sur la même ligne
+   (signalé par l'utilisateur). Sans stepper, la colonne centrale est vide
+   (largeur ~0), les 2 boutons équipe restent donc naturellement côte à côte. */
+.teams {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepperSlot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .teamButton {
@@ -30,6 +50,7 @@
   justify-content: center;
   gap: var(--space-2);
   min-height: var(--tap-target-min);
+  min-width: 0;
   padding: var(--space-2) var(--space-3);
   background: var(--color-surface-inset);
   border: 1px solid var(--color-border-subtle);
@@ -55,7 +76,78 @@
   background: var(--color-accent-soft);
 }
 
-.metaToggle {
+/* Icône pari + compteur restant + icône participation, en haut à droite de
+   la carte, alignées avec la rangée équipes. */
+.iconColumn {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-loss);
+}
+
+/* Côte à côte, n'apparaît qu'une fois un vainqueur choisi. */
+.actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+}
+
+.secondary {
+  flex: 1;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.secondary:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.secondary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.primary {
+  flex: 1;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.primary:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.primary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Rangée méta — simple affichage désormais (plus de bouton dépliant/chevron
+   depuis la suppression du dépliage, 14/09/2026). */
+.metaRow {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -64,25 +156,6 @@
   min-height: var(--tap-target-min);
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border-subtle);
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-bottom: none;
-  cursor: pointer;
-  text-align: left;
-  color: var(--color-text-primary);
-}
-
-.metaToggle:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.metaRight {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  flex-shrink: 0;
 }
 
 .meta {
@@ -114,6 +187,7 @@
   min-height: calc(var(--tap-target-min) * 0.55);
   border-radius: var(--radius-pill);
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .status::before {
@@ -160,15 +234,98 @@
   background: var(--color-accent);
 }
 
-/* Pas de transition animée ici : les seules durées définies par les tokens
-   (--motion-flash-*, --motion-pulse-*) sont pour la donnée qui change et le
-   point live — les réutiliser pour un chevron donnerait une bascule à
-   contretemps. Rotation instantanée plutôt qu'une durée inventée. */
-.chevron,
-.chevronOpen {
-  color: var(--color-text-muted);
+/* --- Dialogue de validation (distinct du dialogue C2) --- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
 }
 
-.chevronOpen {
-  transform: rotate(180deg);
+.dialog {
+  width: 100%;
+  max-width: 22rem;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-arena);
+  padding: var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.dialogTitle {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.dialogBody {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-secondary);
+}
+
+.dialogActions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+
+.dialogCancel {
+  min-height: var(--tap-target-min);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.dialogCancel:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dialogSecondary {
+  min-height: var(--tap-target-min);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-strong);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+}
+
+.dialogSecondary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.dialogConfirm {
+  min-height: var(--tap-target-min);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.dialogConfirm:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }

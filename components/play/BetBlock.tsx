@@ -11,7 +11,8 @@ import styles from "./BetBlock.module.css";
 // n'a existé. Utilisé sur les DEUX onglets dès qu'un pari existe et n'est
 // PLUS éditable (statut ≠ DRAFT/SUBMITTED, ou match verrouillé — §3.3 de la
 // spec : les deux deadlines coïncident). Le chemin ÉDITABLE (CTA "Parier" /
-// InlineBetForm) reste orchestré par l'appelant (UpcomingRowForm), jamais ici.
+// InlineBetForm) reste orchestré par l'appelant (UpcomingRow.tsx, ex-
+// UpcomingRowForm.tsx avant sa fusion le 14/09/2026), jamais ici.
 
 const STATUS_LABEL: Record<PlayAssociatedBet["status"], string> = {
   DRAFT: "Brouillon",

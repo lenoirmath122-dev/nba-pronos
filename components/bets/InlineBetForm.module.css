@@ -29,6 +29,44 @@
   font-size: var(--font-size-xs);
 }
 
+/* Déclencheur compact (14/09/2026, carte pronostic ; redimensionné le
+   16/09/2026 à la demande de l'utilisateur, qui a retiré le libellé "X
+   restant" sous ce bouton — l'info vit maintenant dans la popup elle-même,
+   voir `remainingHint` — pour agrandir les 2 boutons de la colonne). Hauteur
+   volontairement SOUS --tap-target-min (44px, cible tactile minimale du
+   design system) : ce bouton + celui de ParticipationTrigger doivent tenir
+   empilés dans la hauteur de la rangée équipes juste au-dessus (~48px) ;
+   exception assumée pour ces 2 boutons précis tant que l'utilisateur n'a pas
+   validé le rendu. */
+.triggerIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  cursor: pointer;
+}
+
+.triggerIcon:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.triggerIconDisabled {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  border: 1px dashed var(--color-border-subtle);
+  color: var(--color-text-muted);
+}
+
 .form {
   display: flex;
   flex-direction: column;
@@ -47,6 +85,12 @@
   flex-direction: column;
   gap: var(--space-3);
   padding: var(--space-4);
+}
+
+.remainingHint {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
 }
 
 .field {
