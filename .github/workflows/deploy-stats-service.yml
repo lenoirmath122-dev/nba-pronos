@@ -50,9 +50,24 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
 
       - name: Récupérer les modèles entraînés depuis la sauvegarde externe (p1-10)
+        # Bug réel trouvé le 14/09/2026 (service en prod avec /health "ok" mais
+        # modeles_charges: [], TOUT calcul de proba cassé depuis le 1er run de
+        # ce workflow le 09/09/2026) : le bucket a un seul dossier racine
+        # `models/` -- "gs://.../* " ne matche QUE ce dossier, et `cp -r`
+        # recopie son NOM en plus, produisant Cadrage/Stats/models/models/*.joblib
+        # au lieu de Cadrage/Stats/models/*.joblib (COPY models/ ./models/ du
+        # Dockerfile ne trouve alors rien au bon niveau). Jamais détecté avant
+        # : ce déploiement "réussit" quand même (cp ne connaît pas la structure
+        # attendue par le service, gcloud run deploy ne vérifie rien de plus
+        # que le démarrage du conteneur) et /health ne vérifie pas non plus que
+        # des modèles sont réellement chargés. Corrigé en pointant directement
+        # sur le contenu de models/ (un niveau plus bas), qui s'aplatit
+        # correctement dans Cadrage/Stats/models/ -- même geste que l'ancien
+        # process manuel (DEPLOIEMENT_CLOUD_RUN.md), qui n'avait jamais ce
+        # problème car il ne passait par aucune copie de bucket.
         run: |
           mkdir -p Cadrage/Stats/models
-          gcloud storage cp -r "gs://nba-pronos-stats-2026-models-backup/*" Cadrage/Stats/models/
+          gcloud storage cp -r "gs://nba-pronos-stats-2026-models-backup/models/*" Cadrage/Stats/models/
 
       - name: Déployer sur Cloud Run
         # Pas de --set-env-vars/--set-secrets ici : les variables et secrets
