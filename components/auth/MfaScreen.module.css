@@ -1,0 +1,160 @@
+/* Écrans 2FA admin (/mfa-setup, /mfa-challenge, p2-8 feuille de route Phase
+   2) — post-connexion, contrairement à AuthScreen.module.css (login/signup/
+   reset-password, pré-connexion) : pas de bloc marque/fond photo, juste la
+   carte centrée sur le fond normal de l'app. */
+
+.page {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6) var(--space-4);
+}
+
+.card {
+  width: 100%;
+  max-width: 26rem;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-4);
+  border-radius: var(--radius-md);
+  box-shadow: var(--elevation-raised);
+}
+
+.cardTitle {
+  margin: 0;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.helpText {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.qrWrap {
+  display: flex;
+  justify-content: center;
+  padding: var(--space-3);
+  background: #fff;
+  border-radius: var(--radius-md);
+}
+
+.qrWrap img {
+  width: 180px;
+  height: 180px;
+}
+
+.secret {
+  word-break: break-all;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-mono, monospace);
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.fieldLabel {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-secondary);
+}
+
+.input {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-base);
+  font-family: var(--font-ui);
+  letter-spacing: 0.05em;
+}
+
+.input:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-loss);
+}
+
+.submit {
+  min-height: var(--tap-target-min);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.submit:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.submit:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  align-self: center;
+}
+
+.linkButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Codes de récupération, montrés une seule fois (enrôlement + régénération) —
+   monospace pour éviter toute ambiguïté de lecture (0/O, 1/I déjà exclus de
+   l'alphabet des codes, lib/auth/mfa.ts, mais la police doit suivre). */
+.recoveryList {
+  margin: 0;
+  padding: var(--space-3);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-md);
+  list-style: none;
+  font-family: var(--font-mono, monospace);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  text-align: center;
+}
+
+.recoveryWarning {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-loss);
+}

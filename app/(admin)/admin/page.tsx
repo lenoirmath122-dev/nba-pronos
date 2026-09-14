@@ -147,6 +147,14 @@ export default async function AdminDashboardPage() {
             </span>
           </Link>
         </li>
+        <li>
+          <Link href="/admin/security" className={styles.linkEntryActive}>
+            Sécurité du compte
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
       </ul>
 
       <RecalculateButton disabled={!data.competitionId} />
