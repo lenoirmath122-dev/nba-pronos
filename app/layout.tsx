@@ -18,9 +18,33 @@ const oswald = Oswald({
   subsets: ["latin"],
 });
 
+// Open Graph / Twitter Card (p2-10, feuille de route Phase 2) : sans ça, un
+// lien Panier Ballon partagé (Instagram, SMS...) s'affichait nu, sans
+// logo/titre/description. Référencement Google volontairement PAS traité ici
+// (app en alpha fermée sur invitation, rien à indexer d'utile pour l'instant)
+// -- prévu plus tard, à l'ouverture réelle (p5-1/p5-2). `icon-512.png`
+// (déjà utilisé par app/manifest.ts) réemployé comme image d'aperçu -- carré,
+// donc carte "summary" plutôt que "summary_large_image" (pensée pour une
+// image panoramique ~2:1, qui recadrerait mal un carré).
 export const metadata: Metadata = {
+  metadataBase: new URL("https://panierballon.fr"),
   title: "Panier Ballon",
   description: "Pronostics et paris entre amis sur les playoffs NBA.",
+  openGraph: {
+    title: "Panier Ballon",
+    description: "Pronostics et paris entre amis sur les playoffs NBA.",
+    siteName: "Panier Ballon",
+    url: "https://panierballon.fr",
+    locale: "fr_FR",
+    type: "website",
+    images: [{ url: "/icons/icon-512.png", width: 512, height: 512 }],
+  },
+  twitter: {
+    card: "summary",
+    title: "Panier Ballon",
+    description: "Pronostics et paris entre amis sur les playoffs NBA.",
+    images: ["/icons/icon-512.png"],
+  },
 };
 
 type SitePreferences = {
