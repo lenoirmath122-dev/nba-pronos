@@ -1,0 +1,25 @@
+/* Même gabarit que .triggerIcon (InlineBetForm.module.css) -- rectangulaire,
+   fond accent, hauteur sous --tap-target-min (exception assumée par
+   l'utilisateur, même raison : les icônes de la colonne doivent tenir
+   empilées dans la hauteur de la rangée équipes). */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  cursor: pointer;
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.modalContent {
+  padding: var(--space-4);
+}

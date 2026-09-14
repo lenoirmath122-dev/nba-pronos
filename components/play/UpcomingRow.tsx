@@ -9,7 +9,7 @@ import { InlineBetForm, type InlineBetOwned } from "@/components/bets/InlineBetF
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { MarginStepper } from "./MarginStepper";
 import { ParticipationTrigger } from "./ParticipationTrigger";
-import { BetBlock } from "./BetBlock";
+import { ViewBetTrigger } from "./ViewBetTrigger";
 import styles from "./UpcomingRow.module.css";
 
 // Ligne de match pas encore verrouillé — ex-components/matches/MatchRow.tsx,
@@ -261,7 +261,14 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
                 (16/09/2026, demandé par l'utilisateur) : il reste accessible
                 via aria-label et s'affichera dans la popup elle-même — ça
                 libère de la hauteur pour agrandir les 2 boutons. */}
-            {!readOnlyBet && (
+            {/* Le bouton pari reste TOUJOURS visible, même un pari déjà
+                validé/refusé/résolu (16/09/2026, demandé par l'utilisateur) :
+                ViewBetTrigger ouvre BetBlock en lecture seule dans une popup
+                au lieu de l'afficher en plein cadre dans la carte -- la carte
+                "de base" ne garde que équipes + prono. */}
+            {readOnlyBet ? (
+              <ViewBetTrigger bet={readOnlyBet} />
+            ) : (
               <InlineBetForm
                 scope="MATCH"
                 matchId={match.matchId}
@@ -308,11 +315,6 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
             </button>
           </div>
         )}
-
-        {/* Le prono et le pari sont deux entités indépendantes — un pari déjà
-            posé et non modifiable ici reste visible même si le prono n'est
-            pas encore validé. */}
-        {readOnlyBet && <BetBlock bet={readOnlyBet} returnTo="/play" />}
 
         <div className={styles.metaRow}>
           <span className={styles.meta}>
