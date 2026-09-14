@@ -25,6 +25,17 @@ export async function startMfaEnrollment(): Promise<
   const { data: isAdmin } = await supabase.rpc("is_admin");
   if (!isAdmin) return { success: false, error: "Réservé aux admins." };
 
+  // Nettoie tout facteur TOTP jamais vérifié d'un essai précédent (page
+  // rechargée avant de saisir le code, double-montage React StrictMode en
+  // dev...) -- sinon enroll() échoue avec "A factor with the friendly name
+  // ... already exists" (Supabase refuse 2 facteurs du même nom pour un
+  // utilisateur, même non vérifiés).
+  const { data: existingFactors } = await supabase.auth.mfa.listFactors();
+  const stale = existingFactors?.all.filter((f) => f.factor_type === "totp" && f.status === "unverified") ?? [];
+  for (const factor of stale) {
+    await supabase.auth.mfa.unenroll({ factorId: factor.id });
+  }
+
   const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp" });
   if (error || !data) {
     return { success: false, error: toClientError("startMfaEnrollment", error ?? { message: "no data" }) };
