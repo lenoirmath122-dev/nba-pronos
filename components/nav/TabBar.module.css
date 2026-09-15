@@ -42,6 +42,7 @@
 }
 
 .iconWrap {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,4 +61,45 @@
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-medium);
   line-height: var(--line-height-tight);
+}
+
+/* Pastilles « action à faire » (Jouer) / « nouveau » (Accueil) — 18/09/2026.
+   Positionnées en haut à droite de l'icône, jamais du libellé (repère visuel
+   constant que l'onglet soit actif ou non). */
+.badgeCount {
+  position: absolute;
+  top: -4px;
+  right: -6px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 16px;
+  text-align: center;
+}
+
+.badgeDot {
+  position: absolute;
+  top: -2px;
+  right: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-full);
+  background: var(--color-accent);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }

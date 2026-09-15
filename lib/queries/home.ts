@@ -629,3 +629,59 @@ async function getFeed(
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
     .slice(0, FEED_MAX_ITEMS);
 }
+
+// ============================================================================
+// Pastilles de la TabBar (components/nav/TabBar.tsx) — lues par app/(app)/
+// layout.tsx, donc pas rafraîchies à chaque navigation cliente (seulement à
+// l'entrée dans la zone (app) et après une action serveur qui revalide "/home"
+// ou "/play", déjà en place dans lib/actions/bets.ts etc.). Réutilise les
+// mêmes helpers que getHomeData() plutôt que de dupliquer leur logique ;
+// getFeed() est déjà trié décroissant, donc feed[0] EST le plus récent.
+// ============================================================================
+
+export type NavBadgeData = {
+  /** Somme des actions en attente accessibles depuis l'onglet Jouer (bracket
+   *  + matchs à pronostiquer + paris à finaliser + paris disponibles). */
+  playPendingCount: number;
+  /** Date du plus récent item de « Ça vient de tomber », pour que la TabBar
+   *  (client) la compare à son propre repère localStorage — aucun état
+   *  « vu » n'existe côté serveur (même choix que CollapsibleCard). */
+  latestFeedAt: string | null;
+};
+
+const EMPTY_NAV_BADGE_DATA: NavBadgeData = { playPendingCount: 0, latestFeedAt: null };
+
+export async function getNavBadgeData(): Promise<NavBadgeData> {
+  const supabase = await getServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return EMPTY_NAV_BADGE_DATA;
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("id, name, type, bracket_deadline")
+    .eq("status", "ACTIVE")
+    .maybeSingle<CompetitionRow>();
+
+  if (!competition) return EMPTY_NAV_BADGE_DATA;
+
+  const [bracketItem, matchesItem, betsItem, seriesBets, matchBets, feed] = await Promise.all([
+    getBracketTodo(supabase, competition, user.id),
+    getMatchesTodo(supabase, competition.id, user.id),
+    getBetsTodo(supabase, competition.id, user.id),
+    getRemainingSeriesBets({ supabase, userId: user.id, competition }),
+    getRemainingMatchBets({ supabase, userId: user.id, competition }),
+    getFeed(supabase, competition.id, user.id),
+  ]);
+
+  const playPendingCount =
+    (bracketItem?.count ?? 0) +
+    (matchesItem?.count ?? 0) +
+    (betsItem?.count ?? 0) +
+    seriesBets.length +
+    matchBets.length;
+
+  return { playPendingCount, latestFeedAt: feed[0]?.occurredAt ?? null };
+}

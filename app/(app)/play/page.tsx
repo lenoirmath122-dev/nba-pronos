@@ -4,7 +4,6 @@ import { PlayTabs } from "@/components/play/PlayTabs";
 import { BracketEntry } from "@/components/play/BracketEntry";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { MatchBaremeGrid } from "@/components/regles/MatchBaremeGrid";
-import { QuotaBanner } from "@/components/my-bets/QuotaBanner";
 import { ValidateAllBanner } from "@/components/play/ValidateAllBanner";
 import { MatchDayGroup } from "@/components/play/MatchDayGroup";
 import { BeyondWindowSection } from "@/components/play/BeyondWindowSection";
@@ -75,7 +74,6 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
         />
       ) : (
         <>
-          <QuotaBanner quotas={data.quotas} />
           {data.readyCount > 0 && <ValidateAllBanner readyMatches={readyMatches} />}
 
           {data.days.map((day) => (

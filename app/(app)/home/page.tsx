@@ -5,6 +5,7 @@ import { BetsAccordionList } from "@/components/home/BetsAccordionList";
 import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
+import { MarkFeedSeen } from "@/components/home/MarkFeedSeen";
 import { WipDisclaimer } from "@/components/ui/WipDisclaimer";
 import styles from "./page.module.css";
 
@@ -32,6 +33,7 @@ export default async function HomePage() {
 
   return (
     <div className={`${styles.page} photo-page`}>
+      <MarkFeedSeen latestAt={feed[0]?.occurredAt ?? null} />
       <HomeHeader header={header} />
 
       <WipDisclaimer />
