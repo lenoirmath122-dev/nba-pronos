@@ -143,8 +143,17 @@ export function InlineBetForm({
   if (!isOpen) {
     const openLabel = myBet ? "Modifier le pari" : triggerLabel;
     if (compactTrigger) {
+      // Style "négatif" (20/09/2026, demandé par l'utilisateur) quand un pari
+      // est déjà noté sur ce match : reste cliquable (édition du brouillon/
+      // pari soumis toujours possible), mais l'inversion de couleur signale
+      // qu'il ne s'agit plus d'en proposer un nouveau.
       return (
-        <button type="button" className={styles.triggerIcon} onClick={() => setIsOpen(true)} aria-label={openLabel}>
+        <button
+          type="button"
+          className={myBet ? styles.triggerIconGhost : styles.triggerIcon}
+          onClick={() => setIsOpen(true)}
+          aria-label={openLabel}
+        >
           <BetsIcon size={14} aria-hidden="true" />
         </button>
       );

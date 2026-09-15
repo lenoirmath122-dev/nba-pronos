@@ -56,6 +56,17 @@
   box-shadow: var(--focus-ring);
 }
 
+/* Style "négatif" (20/09/2026, demandé par l'utilisateur) : un pari est déjà
+   noté sur ce match (éditable), le bouton reste cliquable mais s'inverse
+   (fond transparent, contour/icône accent) pour ne plus se confondre avec le
+   bouton "proposer un pari" plein. Même gabarit que .triggerIcon. */
+.triggerIconGhost {
+  composes: triggerIcon;
+  background: transparent;
+  border: 1px solid var(--color-accent-line);
+  color: var(--color-accent);
+}
+
 .triggerIconDisabled {
   display: inline-flex;
   align-items: center;

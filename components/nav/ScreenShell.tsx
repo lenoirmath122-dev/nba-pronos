@@ -1,6 +1,7 @@
 import { TabBar } from "./TabBar";
 import { PublicNav } from "./PublicNav";
 import { BugReportButton } from "@/components/feedback/BugReportButton";
+import { getNavBadgeData } from "@/lib/queries/home";
 import styles from "./ScreenShell.module.css";
 
 // Coquille des écrans à route physique unique, hors des route groups
@@ -22,13 +23,17 @@ type ScreenShellProps = {
   children: React.ReactNode;
 };
 
-export function ScreenShell({ authenticated, children }: ScreenShellProps) {
+export async function ScreenShell({ authenticated, children }: ScreenShellProps) {
   if (authenticated) {
+    // Pastilles TabBar (18/09/2026) : même donnée que app/(app)/layout.tsx,
+    // ici recalculée par écran plutôt que par layout puisque ces routes n'en
+    // partagent aucun (voir commentaire en tête de fichier).
+    const navBadges = await getNavBadgeData();
     return (
       <div className={styles.shell}>
         <main className={styles.content}>{children}</main>
         <BugReportButton />
-        <TabBar />
+        <TabBar navBadges={navBadges} />
       </div>
     );
   }

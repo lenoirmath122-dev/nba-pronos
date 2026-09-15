@@ -27,6 +27,27 @@ pas une brique du plan actuel.
 | 2 — Itération | Déc. 2026 – mars 2027 | Corriger, trancher le modèle de monétisation, préparer le lancement |
 | 3 — Lancement | Avril 2027 → | Lancement iOS/Android (calé sur les vrais playoffs NBA), bascule en mode entretien (< 5h/semaine) |
 
+### Addendum — session Cowork du 15/09/2026
+
+**Précision actée le 15/09/2026** : la Phase 1 — Bêta déborde légèrement la fenêtre
+"oct.–nov." indiquée plus haut — la vraie NBA Cup se joue en phase de groupes du
+30 octobre au 27 novembre, puis en phases finales à élimination directe du 4 au
+11 décembre (quarts 4-5 déc., demies 8-9 déc., finale 11 déc.). C'est cette dernière
+semaine qui sert de bêta non-officielle à plus grande échelle : cible indicative
+50-100 utilisateurs actifs, en fonction du recrutement réel pendant l'alpha et le
+début de bêta — pas un chiffre à atteindre au 1er novembre, un palier à viser sur
+la fenêtre NBA Cup.
+
+Deux vagues d'élargissement supplémentaires ensuite, avant la Phase 2 (creux
+volontaire) :
+- **Christmas Day (25 déc.)** — pas un bracket, un pick'em léger sur les 5 matchs
+  du jour ; bonne relance juste après la NBA Cup, pendant que tout le monde est
+  devant la télé.
+- **Play-In Tournament (mi-avril 2027, dates non encore publiées par la NBA)** —
+  mini-bracket par conférence (7e vs 8e, 9e vs 10e, barrage) : répétition générale
+  du vrai tournoi des playoffs, une semaine avant, qui vient nourrir directement
+  la Phase 3b (Lancement avril).
+
 ### Monétisation de l'app — non tranchée
 
 Le choix entre achat unique et abonnement/freemium reste ouvert. Recommandation : un achat
@@ -143,6 +164,20 @@ lancement.
 > micro-créateurs restent entièrement documentés en fin de section 3 (« En réserve »),
 > prêts à être réactivés plus tard si le besoin s'en fait sentir. Rien n'est perdu, juste
 > mis de côté.
+
+**Complément acté le 15/09/2026** : le recentrage Instagram + réseau perso tient
+tel quel jusqu'à fin septembre (alpha fermée). À partir d'octobre, trois canaux
+déjà documentés en réserve passent en actif : Discord, référencement (SEO), et
+contact direct des créateurs/médias basket FR.
+
+Discord n'a besoin d'aucune conception supplémentaire — structure, rôles et
+messages sont déjà rédigés plus bas (§ "Discord — structure") ; la catégorie
+BÊTA (#liste-attente, #bugs-et-retours, #idées) colle même déjà à la fenêtre
+oct.-nov. Il n'y a qu'à créer le serveur et l'ouvrir.
+
+SEO et créateurs, eux, restent à construire de zéro : guide pas-à-pas dédié
+plutôt qu'un ajout de ligne ici, ce terrain étant nouveau. Voir
+`Cadrage/Business/panier_ballon_elargissement_octobre.md`.
 
 ### Positionnement
 
@@ -421,6 +456,15 @@ Ces canaux ont été travaillés en détail avant le recentrage sur Instagram + 
 Rien n'est perdu : ils restent prêts à être activés si ces deux canaux ne suffisent pas,
 ou une fois que le rythme de croisière (< 5h/semaine) laisse de la marge.
 
+> **Mise à jour du 15/09/2026** : Discord est désormais activé à partir d'octobre (voir
+> l'addendum en tête de section 3) — la structure ci-dessous n'est plus « en réserve »,
+> elle est prête à être exécutée telle quelle. X, TikTok, TrashTalk/forums, groupes
+> Facebook et micro-créateurs restent en réserve pour Instagram et le réseau perso, mais
+> une partie (créateurs, forums, groupes Facebook) est elle aussi activée à partir
+> d'octobre — voir `Cadrage/Business/panier_ballon_elargissement_octobre.md`, qui reprend
+> et adapte les messages-types ci-dessous au contexte bêta plutôt qu'au contexte
+> pré-lancement pour lequel ils avaient été écrits.
+
 #### Discord — structure
 
 ```
@@ -586,6 +630,14 @@ intéresser votre communauté — sans obligation, juste pour avoir votre avis.
 
 Relancé en semaine 3 de mars pour confirmer une mention au lancement.
 
+> **Note du 15/09/2026** : ce message TrashTalk/forums de février reste valable tel
+> quel pour une relance de confirmation en mars, proche du vrai lancement. Pour un
+> premier contact dès octobre (bêta, pas lancement), utiliser la version adaptée dans
+> `Cadrage/Business/panier_ballon_elargissement_octobre.md` (§2.3) — même structure,
+> langage « bêta ouverte sur la vraie NBA Cup » plutôt que « je lance en avril ». Le
+> post forums/Facebook ci-dessus, lui, est déjà écrit pour octobre et n'a pas besoin
+> d'adaptation.
+
 ---
 
 ## Prochaines actions
@@ -600,7 +652,8 @@ Relancé en semaine 3 de mars pour confirmer une mention au lancement.
       Normal à ce stade (domaine tout juste pointé, app derrière connexion donc rien
       d'indexable, aucun lien externe pointant dessus) — pas urgent pendant l'alpha
       fermée, à reprendre avant l'élargissement d'octobre ou le lancement public
-      (mots-clés, page d'accueil publique indexable, backlinks Instagram/réseau perso)
+      (mots-clés, page d'accueil publique indexable, backlinks Instagram/réseau perso).
+      **Repris à partir d'octobre** — voir `Cadrage/Business/panier_ballon_elargissement_octobre.md`
 - [x] Recherche INPI formelle sur « Panier Ballon » — faite le 27/08/2026, RAS (marques + sociétés)
 - [x] Logo provisoire généré (IA)
 - [ ] Envoyer le message d'invitation à l'alpha aux 3-5 groupes de potes (l'app V1 est prête)
@@ -610,6 +663,10 @@ Relancé en semaine 3 de mars pour confirmer une mention au lancement.
 - [ ] Lancer les visuels de marque pour Instagram (photo de profil, gabarits de
       post/Reel) — piste : skill « design » pour produire des mockups dans l'identité
       définie ici
+- [ ] Créer le serveur Discord à partir de la structure ci-dessus (à partir d'octobre —
+      voir `Cadrage/Business/panier_ballon_elargissement_octobre.md`)
+- [ ] Corriger le mot « paris » dans `app/layout.tsx` et `app/manifest.ts` (repéré le
+      15/09/2026, détail dans `panier_ballon_elargissement_octobre.md` §1.2)
 
 ---
 

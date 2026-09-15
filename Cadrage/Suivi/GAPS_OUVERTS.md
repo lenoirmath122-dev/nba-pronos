@@ -13,6 +13,23 @@
 > `audit/PLAN_ACTION.md` (Vagues 0-4) — pas dupliqués ici, vérifier les deux
 > fichiers pour une vue complète des points ouverts.
 
+## Capacité — test de charge
+
+- **Test de charge réel jamais fait** (11/09/2026) — cible théorique connue
+  (pooler Supabase local : `default_pool_size=20`, `max_client_conn=100`,
+  largement au-dessus des dizaines d'utilisateurs visées par ligue de 10-30
+  personnes), mais aucune mesure empirique. Tentative de test local via
+  Docker/Supabase CLI abandonnée le jour même : la machine principale (8 Go
+  RAM) fait chuter la RAM libre à moins d'1 Go dès le démarrage de Docker
+  Desktop (même profil que le BSOD du 07/09/2026) ; la machine de secours
+  envisagée a un disque C: saturé (0 Go libre, DISM cassé, nettoyages sans
+  effet). Nouveau plan : projet Supabase cloud dédié (`load-test/setup.mjs`
+  et `load-test/k6-scenario.js` déjà écrits dans le repo, non commités,
+  pointent encore sur `127.0.0.1:54321` — à adapter au projet cloud une fois
+  créé). Bloqué sur le quota de 2 projets gratuits Supabase : le projet perso
+  "saoulking" doit être mis en pause pour libérer un slot. Reporté après
+  l'alpha (voir item P3-1 de la feuille de route).
+
 ## e2e / cross-browser
 
 - **WebKit (Safari) mis de côté pour la suite e2e** (p1-2, 07/09/2026) —

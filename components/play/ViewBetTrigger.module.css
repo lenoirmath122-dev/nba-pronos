@@ -1,0 +1,28 @@
+/* Même gabarit que .triggerIconGhost (InlineBetForm.module.css) --
+   rectangulaire, hauteur sous --tap-target-min (exception assumée par
+   l'utilisateur, même raison : les icônes de la colonne doivent tenir
+   empilées dans la hauteur de la rangée équipes). Style "négatif" (fond
+   transparent, contour/icône accent) plutôt que fond plein (20/09/2026,
+   demandé par l'utilisateur) : ce déclencheur ne représente QUE des paris
+   déjà posés (jamais un nouveau pari à proposer), donc toujours cet état. */
+.trigger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-accent-line);
+  background: transparent;
+  color: var(--color-accent);
+  cursor: pointer;
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.modalContent {
+  padding: var(--space-4);
+}

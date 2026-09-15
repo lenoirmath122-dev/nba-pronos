@@ -9,7 +9,7 @@ import { InlineBetForm, type InlineBetOwned } from "@/components/bets/InlineBetF
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { MarginStepper } from "./MarginStepper";
 import { ParticipationTrigger } from "./ParticipationTrigger";
-import { BetBlock } from "./BetBlock";
+import { ViewBetTrigger } from "./ViewBetTrigger";
 import styles from "./UpcomingRow.module.css";
 
 // Ligne de match pas encore verrouillé — ex-components/matches/MatchRow.tsx,
@@ -54,12 +54,12 @@ function formatLockLabel(scheduledAt: string, nowMs: number): string {
   // (demandé par l'utilisateur, 31/08/2026) : jamais plus de 2 niveaux (donc
   // jamais de minutes affichées une fois qu'on est passé en jours).
   if (days > 0) {
-    return hours === 0 ? `verrou dans ${days} j` : `verrou dans ${days} j ${hours} h`;
+    return hours === 0 ? `match dans ${days} j` : `match dans ${days} j ${hours} h`;
   }
   if (hours > 0) {
-    return minutes === 0 ? `verrou dans ${hours} h` : `verrou dans ${hours} h ${String(minutes).padStart(2, "0")}`;
+    return minutes === 0 ? `match dans ${hours} h` : `match dans ${hours} h ${String(minutes).padStart(2, "0")}`;
   }
-  return `verrou dans ${minutes} min`;
+  return `match dans ${minutes} min`;
 }
 
 function formatLiveLockLabel(scheduledAt: string, nowMs: number): string {
@@ -67,7 +67,7 @@ function formatLiveLockLabel(scheduledAt: string, nowMs: number): string {
   const totalSeconds = Math.floor(remainingMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `verrou dans ${minutes}:${String(seconds).padStart(2, "0")}`;
+  return `match dans ${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function formatKickoff(iso: string): string {
@@ -88,12 +88,16 @@ function triggerLabelFor(betSlot: BetSlotIndicator): string {
   return betSlot.mode === "BINARY" ? "Proposer un pari" : `Proposer un pari · ${betSlot.usedSlots}/${betSlot.totalSlots}`;
 }
 
-// Compteur affiché sous l'icône pari (14/09/2026) — dérivé du même
-// BetSlotIndicator que triggerLabelFor, purement présentation, aucune
-// nouvelle règle métier : BINARY autorise 1 pari par match (0 ou 1 restant),
+// Nombre de paris encore possibles sur ce match, dérivé du même
+// BetSlotIndicator : BINARY autorise 1 pari par match (0 ou 1 restant),
 // SERIES_QUOTA un quota partagé par série (totalSlots − usedSlots).
+function remainingBets(betSlot: BetSlotIndicator): number {
+  return betSlot.mode === "BINARY" ? (betSlot.hasBetOnThisMatch ? 0 : 1) : Math.max(0, betSlot.totalSlots - betSlot.usedSlots);
+}
+
+// Compteur affiché sous l'icône pari (14/09/2026), purement présentation.
 function remainingBetsLabel(betSlot: BetSlotIndicator): string {
-  const remaining = betSlot.mode === "BINARY" ? (betSlot.hasBetOnThisMatch ? 0 : 1) : Math.max(0, betSlot.totalSlots - betSlot.usedSlots);
+  const remaining = remainingBets(betSlot);
   return `${remaining} restant${remaining > 1 ? "s" : ""}`;
 }
 
@@ -211,7 +215,10 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
   }
 
   return (
-    <div id={`match-${match.matchId}`} className={`${styles.row} glass-card`}>
+    <div
+      id={`match-${match.matchId}`}
+      className={`${styles.row} glass-card`}
+    >
       <div className={styles.header}>
         <div className={styles.topRow}>
           {/* Grille à 3 colonnes (équipe / zone stepper partagée / équipe) —
@@ -261,7 +268,14 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
                 (16/09/2026, demandé par l'utilisateur) : il reste accessible
                 via aria-label et s'affichera dans la popup elle-même — ça
                 libère de la hauteur pour agrandir les 2 boutons. */}
-            {!readOnlyBet && (
+            {/* Le bouton pari reste TOUJOURS visible, même un pari déjà
+                validé/refusé/résolu (16/09/2026, demandé par l'utilisateur) :
+                ViewBetTrigger ouvre BetBlock en lecture seule dans une popup
+                au lieu de l'afficher en plein cadre dans la carte -- la carte
+                "de base" ne garde que équipes + prono. */}
+            {readOnlyBet ? (
+              <ViewBetTrigger bet={readOnlyBet} />
+            ) : (
               <InlineBetForm
                 scope="MATCH"
                 matchId={match.matchId}
@@ -309,11 +323,6 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
           </div>
         )}
 
-        {/* Le prono et le pari sont deux entités indépendantes — un pari déjà
-            posé et non modifiable ici reste visible même si le prono n'est
-            pas encore validé. */}
-        {readOnlyBet && <BetBlock bet={readOnlyBet} returnTo="/play" />}
-
         <div className={styles.metaRow}>
           <span className={styles.meta}>
             <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
@@ -323,8 +332,13 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
             {/* "+" pas "−" (22/08/2026, signalé par l'utilisateur --
                 "CHI −4" se lisait comme un ecart negatif alors que
                 myMargin est toujours l'ecart de victoire du vainqueur
-                choisi). */}
-            {recap !== null ? `✓ ${recap} +${match.myMargin}` : STATUS_LABEL[match.viewStatus]}
+                choisi). Mention du pari verrouillé ajoutée le 15/09/2026
+                (demandé par l'utilisateur) : évite d'avoir à regarder la
+                colonne icônes pour savoir si un pari perso existe encore sur
+                un match dont le prono est déjà validé. */}
+            {recap !== null
+              ? `✓ ${recap} +${match.myMargin}pts d'écart${readOnlyBet ? " et 1 pari perso verrouillé" : ""}`
+              : STATUS_LABEL[match.viewStatus]}
           </span>
         </div>
       </div>
