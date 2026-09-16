@@ -221,14 +221,11 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
     >
       <div className={styles.header}>
         <div className={styles.topRow}>
-          {/* Grille à 3 colonnes (équipe / zone stepper partagée / équipe) —
-              14/09/2026, remplace un découpage par équipe avec wrap qui
-              faisait "flotter" le stepper hors de sa pastille quand il ne
-              tenait pas sur la même ligne (signalé par l'utilisateur). La
-              zone centrale est PARTAGÉE : elle affiche le stepper de
-              l'équipe sélectionnée, quelle qu'elle soit — donc toujours à
-              droite du nom pour l'équipe de gauche, toujours à gauche du nom
-              pour l'équipe de droite, sans jamais pouvoir "flotter" ailleurs. */}
+          {/* Grille à 2 colonnes (équipe / équipe) — 16/09/2026, remplace la
+              grille à 3 colonnes (équipe / zone stepper partagée / équipe) qui
+              rétrécissait les boutons équipe (noms à l'étroit, signalé par
+              l'utilisateur). Le stepper de l'équipe sélectionnée vit
+              maintenant sur sa propre rangée, sous les 2 boutons. */}
           <div className={styles.teams}>
             <button
               type="button"
@@ -243,10 +240,6 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
               <TeamLogo abbreviation={match.homeTeam.abbreviation} alt={match.homeTeam.name} size={32} />
               {match.homeTeam.abbreviation}
             </button>
-
-            <div className={styles.stepperSlot}>
-              {winner !== null && !isReadOnly && <MarginStepper value={margin} onChange={setMargin} />}
-            </div>
 
             <button
               type="button"
@@ -296,6 +289,19 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
               absentees={match.absentees}
             />
           </div>
+
+          {/* Stepper d'écart sous la rangée équipes (16/09/2026, remplace la
+              zone centrale partagée de la grille équipes qui rétrécissait les
+              boutons — noms d'équipe à l'étroit, signalé par l'utilisateur).
+              Placé dans la même grille que .teams/.iconColumn (pas en
+              rangée pleine largeur sous topRow) pour être centré entre les 2
+              boutons équipe, pas entre les bords de toute la carte — sinon
+              la colonne icônes à droite décale visuellement le centre. */}
+          {winner !== null && !isReadOnly && (
+            <div className={styles.stepperRow}>
+              <MarginStepper value={margin} onChange={setMargin} />
+            </div>
+          )}
         </div>
 
         {error && (

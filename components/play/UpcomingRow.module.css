@@ -15,32 +15,36 @@
 /* Rangée équipes + colonne icônes pari/participation (14/09/2026, remplace
    la colonne qui vivait en bas de la carte dépliée — plus de dépliage). */
 .topRow {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: start;
   gap: var(--space-2);
   width: 100%;
 }
 
 /* Sélection du vainqueur (fusion avec l'ex-TeamPicker, affiché en double
-   sous l'en-tête avant le 19/08/2026) — grille à 3 colonnes (équipe / zone
-   stepper PARTAGÉE / équipe, 16/09/2026) : la colonne centrale, sizée à son
-   contenu, affiche le stepper de l'équipe sélectionnée quelle qu'elle soit —
-   remplace un découpage par équipe avec wrap qui pouvait faire "flotter" le
-   stepper hors de sa pastille quand il ne tenait pas sur la même ligne
-   (signalé par l'utilisateur). Sans stepper, la colonne centrale est vide
-   (largeur ~0), les 2 boutons équipe restent donc naturellement côte à côte. */
+   sous l'en-tête avant le 19/08/2026) — grille à 2 colonnes (équipe / équipe,
+   16/09/2026) : remplace la grille à 3 colonnes avec zone stepper centrale
+   partagée, qui rétrécissait les boutons équipe (noms à l'étroit, signalé
+   par l'utilisateur). Le stepper vit maintenant sous cette rangée
+   (.stepperRow), plus dans la grille elle-même. */
 .teams {
-  flex: 1;
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
   gap: var(--space-2);
 }
 
-.stepperSlot {
+/* Rangée dédiée au stepper d'écart. Même colonne que .teams (grid-column: 1,
+   jamais pleine largeur de .topRow) et centrée dedans : reste alignée entre
+   les 2 boutons équipe, sans être décalée par la colonne icônes à droite. */
+.stepperRow {
+  grid-column: 1;
+  grid-row: 2;
   display: flex;
-  align-items: center;
   justify-content: center;
 }
 
@@ -79,7 +83,8 @@
 /* Icône pari + compteur restant + icône participation, en haut à droite de
    la carte, alignées avec la rangée équipes. */
 .iconColumn {
-  flex-shrink: 0;
+  grid-column: 2;
+  grid-row: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
