@@ -14,13 +14,28 @@ en tête de chaque fichier quand il existe :
   ensuite. Une info obsolète dans un fichier figé est normale et attendue,
   ce n'est pas un bug à corriger.
 
+## Méthode de travail
+
+Toute reprise de développement suit la même règle, une étape à la fois :
+
+1. **Une seule étape par conversation** (un écran, un chantier, un correctif
+   de fond). Pas d'enchaînement de plusieurs étapes dans la même session. Si
+   la prochaine étape n'est pas évidente, la soumettre explicitement à
+   l'utilisateur plutôt que de la deviner.
+2. **Documenter avant de s'arrêter, pas après coup** : mettre à jour
+   `JOURNAL_SESSIONS.md` (nouvelle entrée), `ETAT_ACTUEL.md` et
+   `GAPS_OUVERTS.md` pour refléter ce qui vient d'être fait et ce qui reste
+   ouvert — avant de considérer la session terminée.
+3. **Reprendre dans une nouvelle conversation**, en relisant d'abord ce
+   fichier puis les 3 fichiers vivants ci-dessous.
+
 ## Fichiers vivants
 
 | Fichier | Rôle |
 |---|---|
 | [`ETAT_ACTUEL.md`](ETAT_ACTUEL.md) | Vue d'ensemble de l'état RÉEL du projet — architecture, fonctionnalités livrées, conventions. Réécrit entièrement à chaque mise à jour, jamais accumulé. Point d'entrée pour reprendre le projet à froid. |
 | [`GAPS_OUVERTS.md`](GAPS_OUVERTS.md) | Liste des points fonctionnels/produit encore ouverts. Un point retiré = un point traité (la trace du traitement va dans `JOURNAL_SESSIONS.md`, pas ici). |
-| [`JOURNAL_SESSIONS.md`](JOURNAL_SESSIONS.md) | Journal chronologique append-only : qui a changé quoi, quand, pourquoi. Jamais réécrit, seulement complété. |
+| [`JOURNAL_SESSIONS.md`](JOURNAL_SESSIONS.md) | Journal chronologique append-only : qui a changé quoi, quand, pourquoi. Seulement complété — sauf compression périodique quand il devient trop long (voir `archive/` ci-dessous), qui réécrit le fichier en synthèse sans en changer le principe append-only pour la suite. |
 | [`BACKLOG_V1.md`](BACKLOG_V1.md) | Backlog produit (idées/fonctionnalités à considérer). Garde les items faits en `~~barré~~` plutôt que de les retirer — accepté tel quel, volume encore gérable. |
 
 ## Fichiers figés (historique)
@@ -38,11 +53,20 @@ en tête de chaque fichier quand il existe :
 
 `ETAT_ACTUEL.md` et `GAPS_OUVERTS.md` avaient dérivé en journaux
 accumulés (respectivement 7 828 et 4 505 lignes), à rebours de leur propre
-règle de fonctionnement — restructurés le 06/09/2026. Le contenu intégral
-d'avant restructuration est conservé, non modifié, dans
+règle de fonctionnement — restructurés le 06/09/2026. `JOURNAL_SESSIONS.md`
+avait le problème inverse : sa règle (append-only) était respectée, mais
+sans jamais être compressée il avait atteint 12 966 lignes — compressé à
+son tour le 18/09/2026, en une ligne de synthèse par session (le titre de
+chaque section, déjà rédigé comme un résumé). Le contenu intégral
+d'avant restructuration/compression est conservé, non modifié, dans
 [`archive/`](archive/) pour référence historique. Ne pas y ajouter de
-nouveau contenu — `JOURNAL_SESSIONS.md` est la référence pour tout ce qui
-est chronologique.
+nouveau contenu.
+
+Règle générale pour les trois fichiers vivants : quand un fichier redevient
+trop long pour être relu d'une traite en début de session, archiver sa
+version complète sous `archive/NOM_FICHIER_archive_jusquau_AAAA-MM-JJ.md`
+(jamais modifiée ensuite), puis réécrire le fichier actif en version
+courte qui pointe vers l'archive pour le détail.
 
 ## Voir aussi `audit/`
 
