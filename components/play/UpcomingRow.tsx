@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
 import { saveMatchPredictionDraft, validateMatchPrediction } from "@/lib/actions/matches";
 import type { BetSlotIndicator, UpcomingMatchRow as UpcomingMatchRowData } from "@/lib/queries/play";
@@ -350,81 +351,87 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
       </div>
 
       {/* Dialogue de VALIDATION — distinct du dialogue C2 de perte de saisie :
-          wording et déclencheur différents, ne pas fusionner. */}
-      {showValidateConfirm && (
-        <div className={styles.backdrop} role="presentation">
-          <FocusTrap
-            className={styles.dialog}
-            role="alertdialog"
-            aria-modal="true"
-            aria-labelledby={`validate-title-${match.matchId}`}
-            onClose={() => setShowValidateConfirm(false)}
-          >
-            <p id={`validate-title-${match.matchId}`} className={styles.dialogTitle}>
-              Valider ce prono ?
-            </p>
-            {isUnsaved ? (
-              <>
-                <p className={styles.dialogBody}>
-                  Attention, ton brouillon n&rsquo;est pas encore enregistré. Une fois validé, le prono
-                  n&rsquo;est plus modifiable — enregistre-le d&rsquo;abord si tu veux pouvoir revenir dessus.
-                </p>
-                <div className={styles.dialogActions}>
-                  <button
-                    type="button"
-                    className={styles.dialogCancel}
-                    onClick={() => setShowValidateConfirm(false)}
-                    disabled={isPending}
-                  >
-                    Retour
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.dialogSecondary}
-                    onClick={handleSaveDraft}
-                    disabled={isPending}
-                  >
-                    Enregistrer le brouillon
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.dialogConfirm}
-                    onClick={handleValidateDefinitively}
-                    disabled={isPending}
-                  >
-                    Valider définitivement
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <p className={styles.dialogBody}>
-                  Une fois validé, il n&rsquo;est plus modifiable — et tu verras (comme les autres joueurs) les
-                  pronos déjà déposés sur ce match.
-                </p>
-                <div className={styles.dialogActions}>
-                  <button
-                    type="button"
-                    className={styles.dialogCancel}
-                    onClick={() => setShowValidateConfirm(false)}
-                    disabled={isPending}
-                  >
-                    Annuler
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.dialogConfirm}
-                    onClick={handleValidate}
-                    disabled={isPending}
-                  >
-                    Valider
-                  </button>
-                </div>
-              </>
-            )}
-          </FocusTrap>
-        </div>
-      )}
+          wording et déclencheur différents, ne pas fusionner. Portalé vers
+          document.body (20/09/2026) : la carte porte .glass-card, dont le
+          backdrop-filter (thème Photo) crée un contexte d'empilement qui
+          piégeait le backdrop position:fixed à l'intérieur de la carte —
+          même raison/fix que ModalDialog. */}
+      {showValidateConfirm &&
+        createPortal(
+          <div className={styles.backdrop} role="presentation">
+            <FocusTrap
+              className={styles.dialog}
+              role="alertdialog"
+              aria-modal="true"
+              aria-labelledby={`validate-title-${match.matchId}`}
+              onClose={() => setShowValidateConfirm(false)}
+            >
+              <p id={`validate-title-${match.matchId}`} className={styles.dialogTitle}>
+                Valider ce prono ?
+              </p>
+              {isUnsaved ? (
+                <>
+                  <p className={styles.dialogBody}>
+                    Attention, ton brouillon n&rsquo;est pas encore enregistré. Une fois validé, le prono
+                    n&rsquo;est plus modifiable — enregistre-le d&rsquo;abord si tu veux pouvoir revenir dessus.
+                  </p>
+                  <div className={styles.dialogActions}>
+                    <button
+                      type="button"
+                      className={styles.dialogCancel}
+                      onClick={() => setShowValidateConfirm(false)}
+                      disabled={isPending}
+                    >
+                      Retour
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dialogSecondary}
+                      onClick={handleSaveDraft}
+                      disabled={isPending}
+                    >
+                      Enregistrer le brouillon
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dialogConfirm}
+                      onClick={handleValidateDefinitively}
+                      disabled={isPending}
+                    >
+                      Valider définitivement
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <p className={styles.dialogBody}>
+                    Une fois validé, il n&rsquo;est plus modifiable — et tu verras (comme les autres joueurs) les
+                    pronos déjà déposés sur ce match.
+                  </p>
+                  <div className={styles.dialogActions}>
+                    <button
+                      type="button"
+                      className={styles.dialogCancel}
+                      onClick={() => setShowValidateConfirm(false)}
+                      disabled={isPending}
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      type="button"
+                      className={styles.dialogConfirm}
+                      onClick={handleValidate}
+                      disabled={isPending}
+                    >
+                      Valider
+                    </button>
+                  </div>
+                </>
+              )}
+            </FocusTrap>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
