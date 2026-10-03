@@ -282,6 +282,10 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 - Phase 0 de la feuille de route + rotation de clé Resend qui révèle 3 bugs réels sans rapport (07/09/2026)
 - Phase 0 close : rotation SYNC_SECRET, redéploiement Cloud Run, Sentry (07/09/2026)
 
+## Octobre 2026
+
+- Retrait volontaire du skill `task-observer` (03/10/2026) -- skill Claude Code tiers ("One Skill to Rule Them All", observation des sessions pour proposer des skills) embarqué le 15/09/2026 dans le commit de la carte pronostic (`483b5bb`, PR #92) avec une consigne `CLAUDE.md` de l'invoquer en début de session. Retiré par décision de l'utilisateur : dossier `.claude/skills/task-observer/` supprimé, `CLAUDE.md` ramené à `@AGENTS.md` seul. Aucun impact sur l'application.
+
 
 ## Référence
 
