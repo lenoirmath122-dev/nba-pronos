@@ -1,5 +1,5 @@
 import { getServiceClient } from "@/lib/supabase/service";
-import { sendPushToSubscriptions, type PushSubscriptionRow } from "@/lib/push/send";
+import { sendPushToSubscriptions, ttlUntil, type PushSubscriptionRow } from "@/lib/push/send";
 
 // Rappel "la deadline du bracket approche" (backlog "Rappels ciblés",
 // PRIORITÉ). Fenêtre de déclenchement (choix d'implémentation, non fixé par
@@ -97,11 +97,15 @@ export async function runBracketReminder(): Promise<{ notified: number }> {
       const subscriptions = subscriptionsByUser.get(user.id) ?? [];
       if (subscriptions.length === 0) continue;
 
-      const { deadSubscriptionIds: dead } = await sendPushToSubscriptions(subscriptions, {
-        title: "Deadline du bracket",
-        body: "Ton bracket n'est pas encore complet et la deadline approche.",
-        url: "/play/bracket",
-      });
+      const { deadSubscriptionIds: dead } = await sendPushToSubscriptions(
+        subscriptions,
+        {
+          title: "Deadline du bracket",
+          body: "Ton bracket n'est pas encore complet et la deadline approche.",
+          url: "/play/bracket",
+        },
+        { ttlSeconds: ttlUntil(competition.bracket_deadline) }
+      );
       dead.forEach((id) => deadSubscriptionIds.add(id));
 
       await supabase
