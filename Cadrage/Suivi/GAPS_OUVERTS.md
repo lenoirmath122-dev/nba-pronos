@@ -13,6 +13,36 @@
 > `audit/PLAN_ACTION.md` (Vagues 0-4) — pas dupliqués ici, vérifier les deux
 > fichiers pour une vue complète des points ouverts.
 
+## Retours de l'alpha (03/10/2026)
+
+> Détail et correspondance avec le code/la feuille de route :
+> `RETOURS_ALPHA_NBA_CUP.md`. Priorisés le 03/10/2026 dans la Phase 3 de
+> la feuille de route (p3-3 à p3-12, dans l'ordre de traitement).
+
+- **Notifications (retour principal)** : elles arrivent quand l'app a été
+  ouverte récemment, plus du tout quand elle est fermée depuis un moment.
+  Piste non vérifiée : push envoyés en urgence `normal` par défaut
+  (`lib/push/send.ts`, aucune option passée à `sendNotification`),
+  retardés par les économies d'énergie Android/iOS. Tester `urgency:
+  "high"` sur les rappels. Le natif (p8-4, avril 2027) arrive après la
+  vraie Cup, donc à traiter sur la PWA.
+- **Feedback des actions** : confirmation explicite d'un pari enregistré,
+  animations de validation (bracket, pronos, paris, paris série).
+- **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
+  plus tard), débrief des matchs de la veille via un média.
+- **Pastilles** : messages de chat non lus (aucun état de lecture
+  aujourd'hui) ; entrée Bracket dans l'onglet Jouer.
+- **Écrans** : bandeau récap « BOS +3 » plus « arena » ; Bracket réduit à
+  l'arbre (retirer la vue cartes) ; indication rotation/toucher une ligne
+  au Classement ; Résultats : paris des autres derrière un seul bouton, et
+  détail (% et points possibles) des paris réussis.
+- **Popups** : fermeture par clic sur le fond (absent de `ModalDialog`).
+- **Déjà dans la feuille de route mais reportés, redemandés par les
+  testeurs** : popup de badge gagné + design des badges (p6-18/p6-20/
+  p6-21), photo de profil/avatars (p6-22), landing page (p5-2).
+- **Couverture des types de paris** : choisir sa difficulté n'est pas
+  intuitif. Couvrir plus de types (modèles ML) et aider au choix.
+
 ## Capacité — test de charge
 
 - **Test de charge réel jamais fait** (11/09/2026) — cible théorique connue
