@@ -21,11 +21,15 @@
 
 - **Notifications (retour principal)** : elles arrivent quand l'app a été
   ouverte récemment, plus du tout quand elle est fermée depuis un moment.
-  Piste non vérifiée : push envoyés en urgence `normal` par défaut
-  (`lib/push/send.ts`, aucune option passée à `sendNotification`),
-  retardés par les économies d'énergie Android/iOS. Tester `urgency:
-  "high"` sur les rappels. Le natif (p8-4, avril 2027) arrive après la
-  vraie Cup, donc à traiter sur la PWA.
+  Correctif posé le 03/10/2026 (p3-3, branche `fix/push-urgence`) : tous les
+  push partent en urgence `high` avec un TTL calé sur l'échéance (avant :
+  urgence `normal` + TTL 4 semaines, défauts web-push), et les échecs d'envoi
+  sont journalisés au lieu d'être avalés. **Reste à vérifier sur de vrais
+  téléphones** (Android + iOS, app fermée depuis plusieurs heures) — pas
+  vérifiable depuis le code. Constat en base au passage : seuls 3 des 9
+  joueurs actifs ont activé le push (6 en `NONE`, aucun abonnement) — pour
+  eux, rien ne pouvait arriver ; une incitation à l'activation reste à
+  décider.
 - **Feedback des actions** : confirmation explicite d'un pari enregistré,
   animations de validation (bracket, pronos, paris, paris série).
 - **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante

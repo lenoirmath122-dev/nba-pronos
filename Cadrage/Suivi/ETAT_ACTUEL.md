@@ -198,7 +198,8 @@ distinct du panneau `/admin/bug-reports`).
 Web Push (VAPID) pour les rappels ciblés (deadlines de pronostic/bracket
 proches), notifications de chat par canal. Rappels automatisés côté serveur
 via workflows GitHub Actions programmés (`reminder-bracket.yml`,
-`reminder-matches.yml`).
+`reminder-matches.yml`). Tous les push partent en urgence `high` avec un TTL
+calé sur l'échéance du rappel (`lib/push/send.ts`).
 
 ### 4.7 Panneau d'administration
 Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des

@@ -1,5 +1,5 @@
 import { getServiceClient } from "@/lib/supabase/service";
-import { sendPushToSubscriptions, type PushSubscriptionRow } from "@/lib/push/send";
+import { sendPushToSubscriptions, ttlUntil, type PushSubscriptionRow } from "@/lib/push/send";
 
 // Rappel "match du soir non pronostiqué" (backlog "Rappels ciblés", PRIORITÉ).
 // Fenêtre de déclenchement (choix d'implémentation, non fixé par le backlog —
@@ -98,11 +98,15 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
 
     const home = teamById.get(match.home_team_id) ?? "?";
     const away = teamById.get(match.away_team_id) ?? "?";
-    const { deadSubscriptionIds: dead } = await sendPushToSubscriptions(subscriptions, {
-      title: "Match ce soir",
-      body: `${home} - ${away} : tu n'as pas encore pronostiqué.`,
-      url: "/play",
-    });
+    const { deadSubscriptionIds: dead } = await sendPushToSubscriptions(
+      subscriptions,
+      {
+        title: "Match ce soir",
+        body: `${home} - ${away} : tu n'as pas encore pronostiqué.`,
+        url: "/play",
+      },
+      { ttlSeconds: ttlUntil(match.scheduled_at) }
+    );
     dead.forEach((id) => deadSubscriptionIds.add(id));
 
     await supabase.from("reminder_log").insert({ user_id: userId, kind: "MATCH_TONIGHT", ref_id: match.id });
