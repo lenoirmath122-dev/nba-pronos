@@ -16,8 +16,8 @@
 ## Retours de l'alpha (03/10/2026)
 
 > Détail et correspondance avec le code/la feuille de route :
-> `RETOURS_ALPHA_NBA_CUP.md`. Pas encore priorisés ni reportés dans la
-> Phase 3 de la feuille de route.
+> `RETOURS_ALPHA_NBA_CUP.md`. Priorisés le 03/10/2026 dans la Phase 3 de
+> la feuille de route (p3-3 à p3-12, dans l'ordre de traitement).
 
 - **Notifications (retour principal)** : elles arrivent quand l'app a été
   ouverte récemment, plus du tout quand elle est fermée depuis un moment.
