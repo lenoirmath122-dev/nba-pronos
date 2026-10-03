@@ -285,6 +285,7 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 ## Octobre 2026
 
 - Retrait volontaire du skill `task-observer` (03/10/2026) -- skill Claude Code tiers ("One Skill to Rule Them All", observation des sessions pour proposer des skills) embarqué le 15/09/2026 dans le commit de la carte pronostic (`483b5bb`, PR #92) avec une consigne `CLAUDE.md` de l'invoquer en début de session. Retiré par décision de l'utilisateur : dossier `.claude/skills/task-observer/` supprimé, `CLAUDE.md` ramené à `@AGENTS.md` seul. Aucun impact sur l'application.
+- Retours de l'alpha NBA Cup rangés et confrontés à l'avancement (03/10/2026) -- PDF fourni par l'utilisateur déplacé de `Cadrage/` vers `Cadrage/Suivi/RETOURS_ALPHA_NBA_CUP.pdf`, transcrit et mis en regard du code et de la feuille de route dans `RETOURS_ALPHA_NBA_CUP.md` (16 retours : 9 nouveaux, 3 partiels, 4 déjà prévus dont 3 reportés). Section « Retours de l'alpha » ajoutée à `GAPS_OUVERTS.md`. Aucun code modifié ; Phase 3 de la feuille de route pas encore remplie (priorisation à faire avec l'utilisateur).
 
 
 ## Référence

@@ -48,6 +48,7 @@ Toute reprise de développement suit la même règle, une étape à la fois :
 | [`SPEC_CHAT_V0_1.md`](SPEC_CHAT_V0_1.md) | 27/08/2026 | Spec de la fonctionnalité chat (livrée depuis) — gardée comme mémoire de conception. |
 | [`NBA_CUP_ALPHA_EFFECTIFS.md`](NBA_CUP_ALPHA_EFFECTIFS.md) + `.csv` | 28/08/2026 | Effectifs réels générés pour l'alpha NBA Cup fictive (rosters de test). |
 | [`BILAN_GLOBAL_01_09_2026.md`](BILAN_GLOBAL_01_09_2026.md) | 01/09/2026 | Bilan global ponctuel — pour l'état courant, préférer `ETAT_ACTUEL.md` (les chiffres ici datent). |
+| [`RETOURS_ALPHA_NBA_CUP.md`](RETOURS_ALPHA_NBA_CUP.md) + `.pdf` | 03/10/2026 | Retours joueurs de l'alpha NBA Cup (PDF source) confrontés au code et à la feuille de route. |
 
 ## `archive/` — contenu pré-restructuration
 
