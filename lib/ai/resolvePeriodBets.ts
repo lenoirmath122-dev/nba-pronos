@@ -3,7 +3,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
 import { TEAM_TARGETED_PERIOD_OUTCOMES, PERIOD_LABELS_FR, type PeriodCode, type PeriodOutcomeKind } from "./periodStatCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId, isBoxScoreSynced, DNP_RESOLUTION_REASON } from "./resolveBetsShared";
 
 export type QuarterScores = { homeTeam: number[]; awayTeam: number[] };
 
@@ -240,24 +240,53 @@ export async function resolveCalculablePeriodBets(): Promise<ResolveBetsSummary>
         .eq("game_id", gameId)
         .eq("player_id", sp.player_id)
         .in("period", dbPeriods);
+      // Aucune ligne pour ces quarts-temps (p3-15) : 3 cas. Joueur absent
+      // du box score du match entier déjà importé -> n'a pas joué -> LOST.
+      // A joué le match mais aucun de ces quarts-temps (les lignes sans
+      // minutes ne sont pas importées, cf. refresh_daily.py) -> vraies
+      // stats à 0 sur la période, dès que les stats par période du match
+      // sont là. Sinon : pas encore synchronisé, on réessaiera.
+      let dnp = false;
       if (!rows || rows.length === 0) {
-        summary.skipped.push({ betId: bet.id, reason: "pas encore de stats par période synchronisées pour ce joueur" });
-        continue;
+        const { data: playedRow } = await supabase
+          .from("stats_box_scores")
+          .select("player_id")
+          .eq("game_id", gameId)
+          .eq("player_id", sp.player_id)
+          .maybeSingle();
+        if (!playedRow) {
+          if (!(await isBoxScoreSynced(supabase, gameId))) {
+            summary.skipped.push({ betId: bet.id, reason: "pas encore de stats par période synchronisées pour ce joueur" });
+            continue;
+          }
+          dnp = true;
+        } else {
+          const { data: anyPeriodRows } = await supabase
+            .from("stats_box_scores_by_period")
+            .select("player_id")
+            .eq("game_id", gameId)
+            .limit(1);
+          if (!anyPeriodRows || anyPeriodRows.length === 0) {
+            summary.skipped.push({ betId: bet.id, reason: "pas encore de stats par période synchronisées pour ce joueur" });
+            continue;
+          }
+        }
       }
+      const periodRows = rows ?? [];
       const box: BoxScoreRow = {
-        minutes: rows.reduce((sum, r) => sum + ((r.minutes as number | null) ?? 0), 0).toString(),
-        pts: rows.reduce((sum, r) => sum + ((r.pts as number | null) ?? 0), 0),
-        reb: rows.reduce((sum, r) => sum + ((r.reb as number | null) ?? 0), 0),
-        ast: rows.reduce((sum, r) => sum + ((r.ast as number | null) ?? 0), 0),
-        fg3m: rows.reduce((sum, r) => sum + ((r.fg3m as number | null) ?? 0), 0),
-        stl: rows.reduce((sum, r) => sum + ((r.stl as number | null) ?? 0), 0),
-        blk: rows.reduce((sum, r) => sum + ((r.blk as number | null) ?? 0), 0),
-        ftm: rows.reduce((sum, r) => sum + ((r.ftm as number | null) ?? 0), 0),
-        fta: rows.reduce((sum, r) => sum + ((r.fta as number | null) ?? 0), 0),
-        fgm: rows.reduce((sum, r) => sum + ((r.fgm as number | null) ?? 0), 0),
-        fga: rows.reduce((sum, r) => sum + ((r.fga as number | null) ?? 0), 0),
-        fg3a: rows.reduce((sum, r) => sum + ((r.fg3a as number | null) ?? 0), 0),
-        oreb: rows.reduce((sum, r) => sum + ((r.oreb as number | null) ?? 0), 0),
+        minutes: periodRows.reduce((sum, r) => sum + ((r.minutes as number | null) ?? 0), 0).toString(),
+        pts: periodRows.reduce((sum, r) => sum + ((r.pts as number | null) ?? 0), 0),
+        reb: periodRows.reduce((sum, r) => sum + ((r.reb as number | null) ?? 0), 0),
+        ast: periodRows.reduce((sum, r) => sum + ((r.ast as number | null) ?? 0), 0),
+        fg3m: periodRows.reduce((sum, r) => sum + ((r.fg3m as number | null) ?? 0), 0),
+        stl: periodRows.reduce((sum, r) => sum + ((r.stl as number | null) ?? 0), 0),
+        blk: periodRows.reduce((sum, r) => sum + ((r.blk as number | null) ?? 0), 0),
+        ftm: periodRows.reduce((sum, r) => sum + ((r.ftm as number | null) ?? 0), 0),
+        fta: periodRows.reduce((sum, r) => sum + ((r.fta as number | null) ?? 0), 0),
+        fgm: periodRows.reduce((sum, r) => sum + ((r.fgm as number | null) ?? 0), 0),
+        fga: periodRows.reduce((sum, r) => sum + ((r.fga as number | null) ?? 0), 0),
+        fg3a: periodRows.reduce((sum, r) => sum + ((r.fg3a as number | null) ?? 0), 0),
+        oreb: periodRows.reduce((sum, r) => sum + ((r.oreb as number | null) ?? 0), 0),
         // stats_box_scores_by_period n'a PAS de colonne plus_minus (cf.
         // migration 20260824150000) -- un pari joueur+période sur cette
         // stat resterait donc structurable (plus_minus est dans
@@ -277,7 +306,7 @@ export async function resolveCalculablePeriodBets(): Promise<ResolveBetsSummary>
         // période, demanderait une 2e migration).
         tov: null,
       };
-      const won = computeOutcome(stat, bet.structured_threshold, bet.structured_comparison, box);
+      const won = dnp ? false : computeOutcome(stat, bet.structured_threshold, bet.structured_comparison, box);
       if (won === null) {
         summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant pour ce pari joueur+période" });
         continue;
@@ -287,7 +316,9 @@ export async function resolveCalculablePeriodBets(): Promise<ResolveBetsSummary>
         .from("bets")
         .update({
           status: outcome,
-          resolution_reason: `Résolu automatiquement via les statistiques officielles du match, ${PERIOD_LABELS_FR[sp.period]}.`,
+          resolution_reason: dnp
+            ? DNP_RESOLUTION_REASON
+            : `Résolu automatiquement via les statistiques officielles du match, ${PERIOD_LABELS_FR[sp.period]}.`,
           resolved_at: new Date().toISOString(),
           resolved_by_admin_id: null,
         })

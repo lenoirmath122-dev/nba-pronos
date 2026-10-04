@@ -179,7 +179,11 @@ SUPERLATIF, entre autres) ; la résolution automatique
 (`lib/ai/resolveCalculable*.ts`, une fonction dédiée par famille) calcule
 gagné/perdu une fois les données officielles disponibles, avec repli
 `is_calculable=false` (jamais bloquant) si la formulation ne peut pas être
-résolue automatiquement — un admin traite alors le pari à la main. Chaque
+résolue automatiquement — un admin traite alors le pari à la main. Un
+pari (ou une condition de combo/duel) qui nomme un joueur absent du match
+(blessure, repos, DNP) est perdu dès que le box score du match est importé
+(`isBoxScoreSynced()`, `lib/ai/resolveBetsShared.ts`), règle affichée sur
+`/regles` ; en relation « OU », seul le côté du joueur absent échoue. Chaque
 pari jugé calculable par l'IA est validé directement, sans geste admin ;
 l'admin garde un droit de correction après coup. Le pipeline de probabilités
 pré-match (utilisé pour informer/valider certains paris) s'appuie sur le
@@ -292,8 +296,8 @@ code — à confirmer manuellement si besoin.
 
 ## 7. Qualité, tests, CI/CD
 
-- **Tests unitaires** (`npm test`, Vitest) : 240 tests sur 21 fichiers,
-  tous verts au 06/09/2026. Couvrent la logique métier la plus critique —
+- **Tests unitaires** (`npm test`, Vitest) : 307 tests sur 30 fichiers,
+  tous verts au 04/10/2026. Couvrent la logique métier la plus critique —
   moteur de scoring pur, résolution automatique des paris IA (une fonction
   de test dédiée par famille de pari), deadline de pari (désormais
   factorisée en un seul module, `lib/scoring/bet-deadline.ts`).

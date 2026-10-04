@@ -1,7 +1,7 @@
 import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
-import { type ResolveBetsSummary, type SupabaseServiceClient, minutesToFloat, resolveNbaGameId, resolveNbaTeamId } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type SupabaseServiceClient, minutesToFloat, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced, DNP_RESOLUTION_REASON } from "./resolveBetsShared";
 
 type DuelOperandMeta = {
   kind: "PLAYER" | "TEAM";
@@ -30,10 +30,12 @@ type EligibleDuelBetRow = {
  *  resolveCalculableTeamStatBets() ci-dessus (team_id NBA résolu depuis
  *  l'uuid app via resolveNbaTeamId()). "min" à part (colonne `minutes`,
  *  format texte "12:34" -- minutesToFloat() comme le reste du fichier).
- *  null si les stats ne sont pas encore synchronisées pour ce match. */
+ *  null si les stats ne sont pas encore synchronisées pour ce match ;
+ *  "DNP" si elles le sont mais qu'un joueur nommé de l'opérande n'a pas
+ *  joué (p3-15, cf. isBoxScoreSynced()). */
 async function resolveDuelOperandActual(
   supabase: SupabaseServiceClient, operand: DuelOperandMeta, gameId: string
-): Promise<number | null> {
+): Promise<number | "DNP" | null> {
   // Cast vers une union de litéraux (pas `string` générique) -- necessaire
   // pour que le client Supabase typé résolve un vrai type de ligne au lieu
   // de GenericStringError sur un .select() dynamique (meme piège que
@@ -50,7 +52,8 @@ async function resolveDuelOperandActual(
       .select(column)
       .eq("game_id", gameId)
       .in("player_id", playerIds);
-    if (!rows || rows.length === 0) return null;
+    if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? "DNP" : null;
+    if (rows.length < new Set(playerIds).size) return "DNP";
     return rows.reduce((sum, r) => {
       const raw = (r as Record<string, unknown>)[column];
       return sum + (operand.stat === "min" ? minutesToFloat(raw as string | null) : ((raw as number | null) ?? 0));
@@ -138,21 +141,31 @@ export async function resolveCalculableComparisonBets(): Promise<ResolveBetsSumm
       continue;
     }
 
+    // Joueur absent (p3-15) : en OU, seul son côté échoue, l'autre peut
+    // encore faire gagner le pari ; en GT/DIFF_LT, la comparaison n'a pas
+    // de sens sans lui -> perdu.
+    const threshold = bet.structured_threshold as number;
+    const hasDnp = actualLeft === "DNP" || actualRight === "DNP";
     const won =
-      relation === "GT"
-        ? actualLeft > multiplier * actualRight
-        : relation === "OR"
-          ? actualLeft > (bet.structured_threshold as number) || actualRight > (bet.structured_threshold as number)
-          : Math.abs(actualLeft - actualRight) < (bet.structured_threshold as number);
+      relation === "OR"
+        ? (actualLeft !== "DNP" && actualLeft > threshold) || (actualRight !== "DNP" && actualRight > threshold)
+        : actualLeft === "DNP" || actualRight === "DNP"
+          ? false
+          : relation === "GT"
+            ? actualLeft > multiplier * actualRight
+            : Math.abs(actualLeft - actualRight) < threshold;
     const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
+    const formatSide = (v: number | "DNP") => (v === "DNP" ? "n'a pas joué" : v.toFixed(1));
 
     const { data: updated } = await supabase
       .from("bets")
       .update({
         status: outcome,
         resolution_reason:
-          `Résolu automatiquement via les statistiques officielles du match ` +
-          `(gauche=${actualLeft.toFixed(1)}, droite=${actualRight.toFixed(1)}).`,
+          hasDnp && !won
+            ? DNP_RESOLUTION_REASON
+            : `Résolu automatiquement via les statistiques officielles du match ` +
+              `(gauche=${formatSide(actualLeft)}, droite=${formatSide(actualRight)}).`,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

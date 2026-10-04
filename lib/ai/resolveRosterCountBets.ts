@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId, ZERO_BOX_ROW } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId, ZERO_BOX_ROW, isBoxScoreSynced } from "./resolveBetsShared";
 
 // ============================================================================
 // Chantier "comptage roster-wide" (étape 3 du plan de reprise post-audit,
@@ -97,8 +97,7 @@ export async function resolveCalculableRosterCountBets(): Promise<ResolveBetsSum
     // joueurs peut légitimement compter des DNP réels, cf. ZERO_BOX_ROW
     // ci-dessus, donc un résultat vide filtré par player_ids ne prouve
     // rien sur l'état de la synchro).
-    const { data: anyRows } = await supabase.from("stats_box_scores").select("player_id").eq("game_id", gameId).limit(1);
-    if (!anyRows || anyRows.length === 0) {
+    if (!(await isBoxScoreSynced(supabase, gameId))) {
       summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
       continue;
     }

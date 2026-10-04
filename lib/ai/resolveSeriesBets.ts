@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId, isBoxScoreSynced } from "./resolveBetsShared";
 
 type EligibleSeriesBetRow = {
   id: string;
@@ -95,11 +95,12 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
         .eq("player_id", bet.structured_player_id)
         .maybeSingle<BoxScoreRow>();
       if (!box) {
-        // Pas encore synchronisé (ou joueur réellement absent de CE match
-        // précis -- traded, DNP...) -- même prudence que resolveCalculableBets() :
-        // ne bloque que la décision LOST, un hit sur un AUTRE match de la
-        // série reste possible et prime de toute façon.
-        dataMissing = true;
+        // Box score de ce match importé mais pas de ligne : le joueur n'a
+        // pas joué CE match (DNP, blessure, transfert...) -- pas de hit
+        // possible ici, le reste de la série décide (p3-15). Sinon pas
+        // encore synchronisé : ne bloque que la décision LOST, un hit sur
+        // un AUTRE match de la série reste possible et prime de toute façon.
+        if (!(await isBoxScoreSynced(supabase, gameId))) dataMissing = true;
         continue;
       }
       if (computeOutcome(stat, bet.structured_threshold, bet.structured_comparison, box)) {

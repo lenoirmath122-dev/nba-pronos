@@ -42,6 +42,10 @@ class FakeBuilder {
     if (op === "is" && val === null) this.filters.push((r) => r[col] !== null && r[col] !== undefined);
     return this;
   }
+  limit(n: number) {
+    void n; // le fake renvoie toutes les lignes filtrées -- isBoxScoreSynced() ne regarde que "au moins une".
+    return this;
+  }
   single<T = Row>() {
     this.singleMode = "single";
     return this as unknown as PromiseLike<{ data: T | null; error: { message: string } | null }>;
@@ -195,6 +199,39 @@ describe("resolveCalculableSeriesBets — série terminée, sans hit", () => {
     const summary = await resolveCalculableSeriesBets();
 
     expect(summary.skipped).toEqual([{ betId: "bet4", reason: "données manquantes pour au moins un match de la série" }]);
+  });
+
+  it("joueur absent d'un match dont le box score est importé (DNP, p3-15) -> pas de hit, LOST en fin de série", async () => {
+    seed("series", [{ id: "s1", official_status: "FINISHED" }]);
+    seed("matches", [{ id: "m1", series_id: "s1", status: "FINISHED" }]);
+    seed("entity_mappings", [{ entity_type: "MATCH", source_type: "NBA_API", internal_id: "m1", source_ref: "G1" }]);
+    seed("stats_box_scores", [boxScoreRow({ game_id: "G1", player_id: 202, pts: 30 })]); // un autre joueur, pas 201.
+    seed("bets", [betRow({ id: "bet4b" })]);
+
+    const summary = await resolveCalculableSeriesBets();
+
+    expect(summary.resolved).toEqual([{ betId: "bet4b", outcome: "LOST" }]);
+  });
+
+  it("DNP sur un match, hit sur un autre -> WON", async () => {
+    seed("series", [{ id: "s1", official_status: "FINISHED" }]);
+    seed("matches", [
+      { id: "m1", series_id: "s1", status: "FINISHED" },
+      { id: "m2", series_id: "s1", status: "FINISHED" },
+    ]);
+    seed("entity_mappings", [
+      { entity_type: "MATCH", source_type: "NBA_API", internal_id: "m1", source_ref: "G1" },
+      { entity_type: "MATCH", source_type: "NBA_API", internal_id: "m2", source_ref: "G2" },
+    ]);
+    seed("stats_box_scores", [
+      boxScoreRow({ game_id: "G1", player_id: 202, pts: 30 }), // 201 absent du match 1.
+      boxScoreRow({ game_id: "G2", player_id: 201, pts: 25 }), // hit au match 2.
+    ]);
+    seed("bets", [betRow({ id: "bet4c" })]);
+
+    const summary = await resolveCalculableSeriesBets();
+
+    expect(summary.resolved).toEqual([{ betId: "bet4c", outcome: "WON" }]);
   });
 
   it("zéro match FINISHED trouvé pour la série -> SKIPPED, même raison", async () => {

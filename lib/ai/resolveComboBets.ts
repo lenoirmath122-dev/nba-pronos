@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, minutesToFloat, computeOutcome, resolveNbaGameId, resolveNbaTeamId } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, minutesToFloat, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced } from "./resolveBetsShared";
 
 type ComboConditionRow = {
   kind: "PLAYER" | "TEAM";
@@ -39,7 +39,9 @@ type ComboSumColumn = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "
  *  - SOMME (plusieurs entités et/ou plusieurs stats) : additionne les
  *    valeurs brutes (stats comptées uniquement, déjà garanti côté
  *    structuration -- structureAndScoreBet.ts/supabase_context.py).
- *  null si les stats ne sont pas encore synchronisées pour ce match. */
+ *  null si les stats ne sont pas encore synchronisées pour ce match ;
+ *  false si elles le sont mais qu'un joueur nommé n'a pas joué (p3-15,
+ *  cf. isBoxScoreSynced()). */
 async function resolveComboConditionSatisfied(
   supabase: SupabaseServiceClient, condition: ComboConditionRow, gameId: string
 ): Promise<boolean | null> {
@@ -55,7 +57,7 @@ async function resolveComboConditionSatisfied(
       .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
       .eq("game_id", gameId)
       .eq("player_id", playerId);
-    if (!rows || rows.length === 0) return null;
+    if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
     return computeOutcome(condition.stats[0] as StatCode, condition.threshold, condition.comparison, rows[0] as BoxScoreRow);
   }
 
@@ -68,7 +70,11 @@ async function resolveComboConditionSatisfied(
       .select("minutes, pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus, tov")
       .eq("game_id", gameId)
       .in("player_id", playerIds);
-    if (!rows || rows.length === 0) return null;
+    if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
+    // Box score importé (au moins un des joueurs a une ligne) mais un
+    // joueur nommé manque : il n'a pas joué, la condition est fausse
+    // (p3-15) -- avant, sa part comptait silencieusement pour 0.
+    if (rows.length < new Set(playerIds).size) return false;
     for (const r of rows as (Pick<BoxScoreRow, "minutes"> & Record<ComboSumColumn, number | null>)[]) {
       for (const s of condition.stats) {
         total += s === "min" ? minutesToFloat(r.minutes) : (r[s as ComboSumColumn] ?? 0);
