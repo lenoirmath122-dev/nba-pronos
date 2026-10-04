@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { validateAllCompleteMatchPredictions } from "@/lib/actions/matches";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 import styles from "./ValidateAllBanner.module.css";
 
 // Bandeau « Tout valider » (§9) — feuille client n°3/3 : porte le dialogue de
@@ -20,11 +22,16 @@ type ValidateAllBannerProps = { readyMatches: ReadyMatch[] };
 export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const showToast = useToast();
 
+  // Confirmation (p3-5) : ce bandeau disparaît avec le dernier prono validé
+  // (plus aucun "prêt"), le toast vit dans la coquille et lui survit.
   function handleConfirm() {
     startTransition(async () => {
-      await validateAllCompleteMatchPredictions();
+      const { validatedMatchIds } = await validateAllCompleteMatchPredictions();
       setIsConfirmOpen(false);
+      const n = validatedMatchIds.length;
+      if (n > 0) showToast(n > 1 ? `${n} pronos validés` : "Prono validé");
     });
   }
 
@@ -70,7 +77,14 @@ export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
                 Annuler
               </button>
               <button type="button" className={styles.dialogConfirm} onClick={handleConfirm} disabled={isPending}>
-                Confirmer
+                {isPending ? (
+                  <span className={styles.pendingLabel}>
+                    <Spinner size="sm" />
+                    Validation…
+                  </span>
+                ) : (
+                  "Confirmer"
+                )}
               </button>
             </div>
           </FocusTrap>

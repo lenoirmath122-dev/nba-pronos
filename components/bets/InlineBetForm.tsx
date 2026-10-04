@@ -12,6 +12,9 @@ import {
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { ModalDialog } from "@/components/ui/ModalDialog";
 import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
+import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
+import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { BetsIcon } from "@/components/icons/home-icons";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
@@ -92,6 +95,10 @@ export function InlineBetForm({
   const [difficulty, setDifficulty] = useState<BetDifficulty>(myBet?.difficulty ?? DEFAULT_BET_DIFFICULTY);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const showToast = useToast();
+  // Éclat sur le bouton déclencheur une fois la popup refermée après une
+  // soumission (p3-5) : ramène l'œil sur la carte où le pari vit désormais.
+  const [triggerFlashing, flashTrigger] = useSuccessFlash();
 
   // Garde C2 (18/08/2026, vérification de dépôt §13.2 de
   // SPEC_REFONTE_ONGLET_JOUER_V0_1 : ce formulaire n'avait JAMAIS porté cette
@@ -150,7 +157,7 @@ export function InlineBetForm({
       return (
         <button
           type="button"
-          className={myBet ? styles.triggerIconGhost : styles.triggerIcon}
+          className={`${myBet ? styles.triggerIconGhost : styles.triggerIcon}${triggerFlashing ? ` ${flashStyles.flash}` : ""}`}
           onClick={() => setIsOpen(true)}
           aria-label={openLabel}
         >
@@ -159,7 +166,11 @@ export function InlineBetForm({
       );
     }
     return (
-      <button type="button" className={styles.trigger} onClick={() => setIsOpen(true)}>
+      <button
+        type="button"
+        className={`${styles.trigger}${triggerFlashing ? ` ${flashStyles.flash}` : ""}`}
+        onClick={() => setIsOpen(true)}
+      >
         {openLabel}
       </button>
     );
@@ -184,8 +195,12 @@ export function InlineBetForm({
     setError(null);
     startTransition(async () => {
       const result = await saveDraftBet(targetPayload());
-      if (result.success) clearDirty();
-      else setError(result.error);
+      if (result.success) {
+        clearDirty();
+        showToast("Brouillon enregistré");
+      } else {
+        setError(result.error);
+      }
     });
   }
 
@@ -201,6 +216,8 @@ export function InlineBetForm({
         // succès (ModalDialog ne fait que porter le bouton de fermeture
         // manuelle, onClose).
         setIsOpen(false);
+        showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
+        flashTrigger();
       } else {
         setError(result.error);
       }
@@ -212,7 +229,8 @@ export function InlineBetForm({
     setError(null);
     startTransition(async () => {
       const result = await withdrawBet(myBet.betId);
-      if (!result.success) setError(result.error);
+      if (result.success) showToast("Pari repassé en brouillon");
+      else setError(result.error);
     });
   }
 
@@ -287,7 +305,7 @@ export function InlineBetForm({
             {isPending ? (
               <span className={styles.primaryPending}>
                 <Spinner size="sm" />
-                Envoi…
+                Analyse du pari…
               </span>
             ) : isSubmittedBet ? (
               "Soumettre les modifications"

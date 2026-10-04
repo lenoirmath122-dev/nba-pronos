@@ -9,6 +9,10 @@ import { TeamLogo } from "@/components/ui/TeamLogo";
 import { InlineBetForm, type InlineBetOwned } from "@/components/bets/InlineBetForm";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
+import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
+import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { MarginStepper } from "./MarginStepper";
 import { ParticipationTrigger } from "./ParticipationTrigger";
 import { ViewBetTrigger } from "./ViewBetTrigger";
@@ -118,6 +122,11 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [showValidateConfirm, setShowValidateConfirm] = useState(false);
+  // Bouton à l'origine de l'appel en cours, pour poser le spinner sur LUI
+  // seul (p3-5) — `isPending` ne dit pas lequel a été touché.
+  const [pendingAction, setPendingAction] = useState<"draft" | "validate" | null>(null);
+  const showToast = useToast();
+  const [flashing, flash] = useSuccessFlash();
 
   // Vainqueur ET écart : la carte n'ayant plus d'état ouvert/fermé, ces deux
   // valeurs vivent directement ici, en permanence — un tap sur une équipe la
@@ -166,6 +175,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
 
   function handleSaveDraft() {
     setError(null);
+    setPendingAction("draft");
     startTransition(async () => {
       const result = await saveMatchPredictionDraft({
         matchId: match.matchId,
@@ -175,6 +185,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
       if (result.success) {
         clearDirty();
         setShowValidateConfirm(false);
+        showToast("Brouillon enregistré");
       } else {
         setError(result.error);
       }
@@ -183,6 +194,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
 
   function handleValidate() {
     setError(null);
+    setPendingAction("validate");
     startTransition(async () => {
       const result = await validateMatchPrediction(match.matchId);
       setShowValidateConfirm(false);
@@ -191,11 +203,14 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
         return;
       }
       clearDirty();
+      showToast("Prono validé");
+      flash();
     });
   }
 
   function handleValidateDefinitively() {
     setError(null);
+    setPendingAction("validate");
     startTransition(async () => {
       const saveResult = await saveMatchPredictionDraft({
         matchId: match.matchId,
@@ -213,13 +228,15 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
         return;
       }
       clearDirty();
+      showToast("Prono validé");
+      flash();
     });
   }
 
   return (
     <div
       id={`match-${match.matchId}`}
-      className={`${styles.row} glass-card`}
+      className={`${styles.row} glass-card${flashing ? ` ${flashStyles.flash}` : ""}`}
     >
       <div className={styles.header}>
         <div className={styles.topRow}>
@@ -318,7 +335,11 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
         {winner !== null && !isReadOnly && (
           <div className={styles.actions}>
             <button type="button" className={styles.secondary} onClick={handleSaveDraft} disabled={isPending}>
-              Enregistrer le brouillon
+              {isPending && pendingAction === "draft" && !showValidateConfirm ? (
+                <PendingLabel label="Enregistrement…" />
+              ) : (
+                "Enregistrer le brouillon"
+              )}
             </button>
             <button
               type="button"
@@ -391,7 +412,11 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
                       onClick={handleSaveDraft}
                       disabled={isPending}
                     >
-                      Enregistrer le brouillon
+                      {isPending && pendingAction === "draft" ? (
+                        <PendingLabel label="Enregistrement…" />
+                      ) : (
+                        "Enregistrer le brouillon"
+                      )}
                     </button>
                     <button
                       type="button"
@@ -399,7 +424,11 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
                       onClick={handleValidateDefinitively}
                       disabled={isPending}
                     >
-                      Valider définitivement
+                      {isPending && pendingAction === "validate" ? (
+                        <PendingLabel label="Validation…" />
+                      ) : (
+                        "Valider définitivement"
+                      )}
                     </button>
                   </div>
                 </>
@@ -424,7 +453,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
                       onClick={handleValidate}
                       disabled={isPending}
                     >
-                      Valider
+                      {isPending && pendingAction === "validate" ? <PendingLabel label="Validation…" /> : "Valider"}
                     </button>
                   </div>
                 </>
@@ -434,5 +463,14 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
           document.body
         )}
     </div>
+  );
+}
+
+function PendingLabel({ label }: { label: string }) {
+  return (
+    <span className={styles.pendingLabel}>
+      <Spinner size="sm" />
+      {label}
+    </span>
   );
 }

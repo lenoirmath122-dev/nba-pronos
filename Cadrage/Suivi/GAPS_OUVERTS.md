@@ -19,26 +19,17 @@
 > `RETOURS_ALPHA_NBA_CUP.md`. Priorisés le 03/10/2026 dans la Phase 3 de
 > la feuille de route (p3-3 à p3-12, dans l'ordre de traitement).
 
-- **Notifications à l'arrivée dans l'app (p3-13)** : code livré (carte
-  d'activation en haut de l'Accueil, voir journal 04/10/2026). Reste à
-  vérifier sur de vrais téléphones après merge : Android (activation
-  du compte), iPhone dans Safari (consigne d'installation), iPhone depuis
-  l'écran d'accueil (cas « compte en push mais pas cet appareil »).
-- **Feedback des actions** : confirmation explicite d'un pari enregistré,
-  animations de validation (bracket, pronos, paris, paris série).
+- **Feedback des actions (p3-5)** : code livré (toast de confirmation,
+  spinners, éclat de validation sur les cartes, coche sur les picks du
+  bracket — voir journal 04/10/2026). Reste à vérifier sur téléphone après
+  merge (aucun test en session connectée possible ici).
 - **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
   plus tard), débrief des matchs de la veille via un média.
-- **Petites corrections (p3-4)** : code livré (fermeture des popups au
-  toucher du fond, bracket réduit à l'arbre, indication au Classement,
-  pastille sur l'entrée Bracket — voir journal 04/10/2026). Reste à
-  vérifier sur téléphone après merge.
 - **Pastilles** : messages de chat non lus (aucun état de lecture
   aujourd'hui).
 - **Écrans** : bandeau récap « BOS +3 » plus « arena » ; Résultats : paris
   des autres derrière un seul bouton, et détail (% et points possibles) des
   paris réussis.
-- **Bracket global `/bracket` en arbre seul** : code livré (voir journal
-  04/10/2026, suite de p3-4). Reste à vérifier sur téléphone après merge.
 - **Déjà dans la feuille de route mais reportés, redemandés par les
   testeurs** : popup de badge gagné + design des badges (p6-18/p6-20/
   p6-21), photo de profil/avatars (p6-22), landing page (p5-2).

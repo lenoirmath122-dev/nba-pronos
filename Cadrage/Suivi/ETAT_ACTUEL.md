@@ -158,7 +158,11 @@ par ligue, progression et compte à rebours dans l'en-tête ; « Quitter » mèn
 (best-of-7, score de série) et NBA Cup (élimination directe, barème dédié).
 Live : statut/score de série poussé en Realtime (publication
 `supabase_realtime` sur `matches`), bandeau LiveTicker épinglé au-dessus de
-la TabBar sur l'écran Jouer.
+la TabBar sur l'écran Jouer. Retour visuel des actions : spinner sur le
+bouton en attente, toast de confirmation (prono validé, brouillon
+enregistré, pari envoyé à validation, bracket validé…), éclat vert sur la
+carte du prono validé, coche « Enregistré » sur la carte de chaque pick du
+bracket (sans toast, un tap = un enregistrement).
 
 ### 4.3 Paris personnalisés structurés par IA
 Fonctionnalité différenciante du produit (~4000 lignes,
@@ -434,7 +438,10 @@ components/   — un dossier par domaine d'écran (admin, auth, bets, bracket,
   bracket-fill, chat, feedback, home, leaderboard, my-bets, nav, play,
   profile, regles) ; ui/ — primitives partagées transversalement
   (ModalDialog.tsx, FocusTrap.tsx, Backdrop.tsx — fond de popup qui ferme
-  au toucher, utilisé par toutes les popups de l'app, etc.).
+  au toucher, utilisé par toutes les popups de l'app ; Toast.tsx — toast de
+  confirmation des actions réussies, monté par la coquille de la zone
+  joueur ; SuccessFlash.module.css + lib/hooks/useSuccessFlash.ts — éclat
+  vert de validation sur la carte concernée, etc.).
 
 supabase/migrations/ — 69 migrations SQL versionnées, voir §3.
 

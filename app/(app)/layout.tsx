@@ -4,6 +4,7 @@ import { getNavBadgeData } from "@/lib/queries/home";
 import { TabBar } from "@/components/nav/TabBar";
 import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
+import { ToastProvider } from "@/components/ui/Toast";
 import styles from "./layout.module.css";
 
 // Zone joueur connecté (T6a §3.1) : garde de session + nav 4 onglets.
@@ -33,9 +34,11 @@ export default async function AppLayout({
   return (
     <div className={styles.shell}>
       <UnsavedGuardProvider>
-        <main className={styles.content}>{children}</main>
-        <BugReportButton />
-        <TabBar navBadges={navBadges} />
+        <ToastProvider>
+          <main className={styles.content}>{children}</main>
+          <BugReportButton />
+          <TabBar navBadges={navBadges} />
+        </ToastProvider>
       </UnsavedGuardProvider>
     </div>
   );

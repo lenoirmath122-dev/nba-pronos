@@ -1,0 +1,86 @@
+/* Toast de confirmation (Toast.tsx). Centré au-dessus de la TabBar, aligné
+   sur la colonne du body comme elle. z-index 40 : au-dessus des dialogues
+   (30, ModalDialog.module.css) — un brouillon enregistré DANS une popup qui
+   reste ouverte doit rester visible. Ne capte jamais le toucher
+   (pointer-events: none) : il ne masque aucun bouton pendant ses 2,6 s. */
+.region {
+  position: fixed;
+  inset-inline: 0;
+  bottom: calc(var(--tabbar-height) + var(--space-3));
+  z-index: 40;
+  max-width: var(--layout-max-width);
+  margin-inline: auto;
+  display: flex;
+  justify-content: center;
+  padding-inline: var(--space-4);
+  pointer-events: none;
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  max-width: 100%;
+  padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
+  border: 1px solid color-mix(in srgb, var(--color-win) 45%, transparent);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-raised);
+  box-shadow: var(--elevation-arena);
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  animation:
+    toast-in 260ms cubic-bezier(0.2, 0, 0, 1),
+    toast-out 220ms ease-in 2380ms forwards;
+}
+
+.check {
+  flex-shrink: 0;
+}
+
+.checkCircle {
+  fill: var(--color-win);
+}
+
+.checkMark {
+  fill: none;
+  stroke: var(--color-surface-raised);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 16;
+  stroke-dashoffset: 16;
+  animation: toast-check-draw 320ms ease-out 140ms forwards;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+}
+
+@keyframes toast-out {
+  to {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+}
+
+@keyframes toast-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: toast-out 1ms linear 2600ms forwards;
+  }
+
+  .checkMark {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { deleteBet } from "@/lib/actions/bets";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
+import { useToast } from "@/components/ui/Toast";
 import styles from "./DeleteBetButton.module.css";
 
 // Suppression d'un pari encore modifiable (18/08/2026, demandé par
@@ -22,13 +23,15 @@ export function DeleteBetButton({ betId }: DeleteBetButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const showToast = useToast();
 
   function handleConfirm() {
     setError(null);
     startTransition(async () => {
       const result = await deleteBet(betId);
       setShowConfirm(false);
-      if (!result.success) setError(result.error);
+      if (result.success) showToast("Pari supprimé");
+      else setError(result.error);
     });
   }
 
