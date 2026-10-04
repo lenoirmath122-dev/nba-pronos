@@ -19,10 +19,6 @@
 > `RETOURS_ALPHA_NBA_CUP.md`. Priorisés le 03/10/2026 dans la Phase 3 de
 > la feuille de route (p3-3 à p3-12, dans l'ordre de traitement).
 
-- **Feedback des actions (p3-5)** : code livré (toast de confirmation,
-  spinners, éclat de validation sur les cartes, coche sur les picks du
-  bracket — voir journal 04/10/2026). Reste à vérifier sur téléphone après
-  merge (aucun test en session connectée possible ici).
 - **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
   plus tard), débrief des matchs de la veille via un média.
 - **Pastilles** : messages de chat non lus (aucun état de lecture
@@ -35,21 +31,14 @@
   p6-21), photo de profil/avatars (p6-22), landing page (p5-2).
 - **Couverture des types de paris** : choisir sa difficulté n'est pas
   intuitif. Couvrir plus de types (modèles ML) et aider au choix.
-- **Paris restés `VALIDATED` pour toujours (p3-14, p3-15)**, trouvés en
-  préparant la clôture de l'Alpha NBA Cup (04/10/2026). Ce n'est pas une
-  panne du resolver, il s'arrête volontairement. Deux trous :
-  (a) **joueur absent du match** : rien n'empêche de parier sur un joueur
-  qui n'appartient à aucune des deux équipes (« Brunson +15 pts » posé sur
-  LAL–GSW). La structuration laisse alors `structured_player_id` vide et
-  `resolveCalculableBets()` ne retient que les paris qui l'ont, donc le
-  pari n'est jamais examiné et aucune alerte ne remonte ;
-  (b) **joueur qui ne joue pas** (blessure, repos, DNP) : aucune ligne
-  `stats_box_scores`, et le resolver refuse par principe de trancher sur
-  une absence de donnée (`lib/ai/resolveMatchBets.ts`), donc le pari reste
-  en attente indéfiniment (« Tatum +30 pts », Tatum blessé dans le vrai
-  match emprunté `0022500320`). Il faut une règle (annulation ou perte),
-  appliquée automatiquement une fois les stats du match importées. Ce sera
-  fréquent sur la vraie Cup.
+- **Pari sur un joueur absent du match (p3-14)**, trouvé en préparant la
+  clôture de l'Alpha NBA Cup (04/10/2026) : rien n'empêche de parier sur un
+  joueur qui n'appartient à aucune des deux équipes (« Brunson +15 pts »
+  posé sur LAL–GSW). La structuration laisse alors `structured_player_id`
+  vide et `resolveCalculableBets()` ne retient que les paris qui l'ont, donc
+  le pari n'est jamais examiné et aucune alerte ne remonte. (Le cas voisin
+  du joueur qui ne joue pas, p3-15, est réglé depuis le 04/10/2026 : pari
+  perdu une fois le box score importé.)
 
 ## Capacité — test de charge
 

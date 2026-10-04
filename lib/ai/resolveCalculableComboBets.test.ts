@@ -57,6 +57,10 @@ class FakeBuilder {
     if (op === "is" && val === null) this.filters.push((r) => r[col] !== null && r[col] !== undefined);
     return this;
   }
+  limit(n: number) {
+    void n; // le fake renvoie toutes les lignes filtrées -- isBoxScoreSynced() ne regarde que "au moins une".
+    return this;
+  }
   single<T = Row>() {
     this.singleMode = "single";
     return this as unknown as PromiseLike<{ data: T | null; error: { message: string } | null }>;
@@ -265,7 +269,8 @@ describe("resolveCalculableComboBets — condition TEAM (resolveNbaTeamId)", () 
 });
 
 describe("resolveCalculableComboBets — données pas encore synchronisées", () => {
-  it("joueur sans ligne stats_box_scores sur l'unique groupe -> SKIPPED, jamais résolu en LOST", async () => {
+  it("box score du match pas encore importé -> SKIPPED, jamais résolu en LOST", async () => {
+    seed("stats_box_scores", []);
     seed("bets", [
       betRow({
         id: "betD",
@@ -278,6 +283,50 @@ describe("resolveCalculableComboBets — données pas encore synchronisées", ()
     expect(summary.resolved).toEqual([]);
     expect(summary.skipped).toEqual([{ betId: "betD", reason: "pas encore de stats synchronisées pour ce combo" }]);
     expect(readRow("bets", "betD")?.status).toBe("VALIDATED"); // inchangé -- jamais tranché à tort.
+  });
+});
+
+describe("resolveCalculableComboBets — joueur qui n'a pas joué (p3-15)", () => {
+  it("box score importé, joueur nommé absent -> condition fausse -> LOST", async () => {
+    seed("bets", [
+      betRow({
+        id: "betDnp",
+        structured_combo: combo([{ kind: "PLAYER", player_ids: [999], stats: ["pts"], threshold: 10, comparison: "UNDER" }]),
+      }),
+    ]);
+
+    const summary = await resolveCalculableComboBets();
+
+    expect(summary.resolved).toEqual([{ betId: "betDnp", outcome: "LOST" }]);
+  });
+
+  it("somme sur 2 joueurs dont un absent -> condition fausse, même si l'autre suffit à dépasser le seuil", async () => {
+    seed("bets", [
+      betRow({
+        id: "betDnpSum",
+        structured_combo: combo([{ kind: "PLAYER", player_ids: [201, 999], stats: ["pts"], threshold: 20, comparison: "OVER" }]),
+      }),
+    ]); // 201 a 28 pts à lui seul.
+
+    const summary = await resolveCalculableComboBets();
+
+    expect(summary.resolved).toEqual([{ betId: "betDnpSum", outcome: "LOST" }]);
+  });
+
+  it("dans un groupe OU, la condition du joueur absent échoue mais l'autre peut gagner", async () => {
+    seed("bets", [
+      betRow({
+        id: "betDnpOr",
+        structured_combo: combo([
+          { kind: "PLAYER", player_ids: [999], stats: ["pts"], threshold: 10, comparison: "OVER" },
+          { kind: "PLAYER", player_ids: [201], stats: ["pts"], threshold: 20, comparison: "OVER" },
+        ]),
+      }),
+    ]);
+
+    const summary = await resolveCalculableComboBets();
+
+    expect(summary.resolved).toEqual([{ betId: "betDnpOr", outcome: "WON" }]);
   });
 });
 

@@ -45,6 +45,10 @@ class FakeBuilder {
     if (op === "is" && val === null) this.filters.push((r) => r[col] !== null && r[col] !== undefined);
     return this;
   }
+  limit(n: number) {
+    void n; // le fake renvoie toutes les lignes filtrées -- isBoxScoreSynced() ne regarde que "au moins une".
+    return this;
+  }
   single<T = Row>() {
     this.singleMode = "single";
     return this as unknown as PromiseLike<{ data: T | null; error: { message: string } | null }>;
@@ -174,13 +178,30 @@ describe("resolveCalculableBets — données incomplètes, jamais tranché à to
     expect(summary.skipped).toEqual([{ betId: "bet3", reason: "player_id ou stat manquant" }]);
   });
 
-  it("aucune ligne stats_box_scores pour ce joueur -> SKIPPED, pas résolu en LOST", async () => {
-    seed("bets", [betRow({ id: "bet4", structured_player_id: 999 })]); // pas de ligne stats_box_scores pour 999.
+  it("box score du match pas encore importé -> SKIPPED, pas résolu en LOST", async () => {
+    seed("stats_box_scores", []); // aucune ligne pour ce match, tout joueur confondu.
+    seed("bets", [betRow({ id: "bet4" })]);
 
     const summary = await resolveCalculableBets();
 
     expect(summary.skipped).toEqual([{ betId: "bet4", reason: "pas de ligne stats_box_scores pour ce joueur/match" }]);
     expect(readRow("bets", "bet4")?.status).toBe("VALIDATED");
+  });
+
+  it("box score importé mais joueur absent (DNP, p3-15) -> LOST, même en UNDER", async () => {
+    seed("bets", [
+      betRow({ id: "bet4b", structured_player_id: 999 }), // 999 n'a pas de ligne, 201 en a une.
+      betRow({ id: "bet4c", structured_player_id: 999, structured_comparison: "UNDER" }),
+    ]);
+
+    const summary = await resolveCalculableBets();
+
+    expect(summary.resolved).toEqual([
+      { betId: "bet4b", outcome: "LOST" },
+      { betId: "bet4c", outcome: "LOST" },
+    ]);
+    expect(readRow("bets", "bet4b")?.resolution_reason).toBe("Résolu automatiquement : le joueur visé n'a pas joué ce match (blessure, repos ou choix du coach), un pari sur un joueur absent est perdu.");
+    expect(readRow("bets", "bet4b")?.points_awarded).toBe(0);
   });
 
   it("seuil ou comparaison manquant -> SKIPPED (computeOutcome renvoie null)", async () => {

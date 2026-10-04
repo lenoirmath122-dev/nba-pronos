@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId, isBoxScoreSynced, DNP_RESOLUTION_REASON } from "./resolveBetsShared";
 
 type EligibleBetRow = {
   id: string;
@@ -78,20 +78,17 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
       .eq("game_id", gameId)
       .eq("player_id", bet.structured_player_id)
       .maybeSingle<BoxScoreRow>();
-    if (!box) {
-      // Pas encore synchronisé (ou joueur réellement absent du match) --
-      // on ne tranche jamais un pari sur une absence de donnée, on
-      // réessaiera à la prochaine passe quotidienne.
+    // Pas de ligne : soit le box score du match n'est pas encore importé
+    // (on réessaiera à la prochaine passe quotidienne), soit il l'est et le
+    // joueur n'a pas joué -> LOST (p3-15, cf. isBoxScoreSynced()).
+    if (!box && !(await isBoxScoreSynced(supabase, gameId))) {
       summary.skipped.push({ betId: bet.id, reason: "pas de ligne stats_box_scores pour ce joueur/match" });
       continue;
     }
 
-    const won = computeOutcome(
-      bet.structured_stat as StatCode,
-      bet.structured_threshold,
-      bet.structured_comparison,
-      box
-    );
+    const won = box
+      ? computeOutcome(bet.structured_stat as StatCode, bet.structured_threshold, bet.structured_comparison, box)
+      : false;
     if (won === null) {
       summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
       continue;
@@ -102,7 +99,7 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
       .from("bets")
       .update({
         status: outcome,
-        resolution_reason: "Résolu automatiquement via les statistiques officielles du match.",
+        resolution_reason: box ? "Résolu automatiquement via les statistiques officielles du match." : DNP_RESOLUTION_REASON,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null, // signal "résolu par le système", pas un humain -- même convention que validated_by_admin_id
       })

@@ -79,6 +79,10 @@ export default async function ReglesPage() {
             pari après coup. Le pari « série » se verrouille au 1ᵉʳ match de la série, chaque pari
             « match » au coup d&apos;envoi du match visé.
           </p>
+          <p className={styles.body}>
+            Si un joueur visé par ton pari ne joue pas le match (blessure, repos, choix du coach), le pari
+            est perdu. Vérifie le rapport de blessures avant de parier.
+          </p>
           <p className={styles.baremeLabel}>Barème par difficulté</p>
           <BetDifficulteGrid />
         </section>

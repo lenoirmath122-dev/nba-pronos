@@ -41,6 +41,10 @@ class FakeBuilder {
     if (op === "is" && val === null) this.filters.push((r) => r[col] !== null && r[col] !== undefined);
     return this;
   }
+  limit(n: number) {
+    void n; // le fake renvoie toutes les lignes filtrées -- isBoxScoreSynced() ne regarde que "au moins une".
+    return this;
+  }
   single<T = Row>() {
     this.singleMode = "single";
     return this as unknown as PromiseLike<{ data: T | null; error: { message: string } | null }>;
@@ -157,7 +161,7 @@ describe("resolveCalculablePeriodBets — forme JOUEUR (stats_box_scores_by_peri
     expect(readRow("bets", "bet1")?.points_awarded).toBe(15);
   });
 
-  it("aucune ligne stats_box_scores_by_period -> SKIPPED", async () => {
+  it("aucune ligne stats_box_scores_by_period, box score du match pas encore importé -> SKIPPED", async () => {
     seed("bets", [
       betRow({
         id: "bet2", structured_stat: "pts", structured_threshold: 20, structured_comparison: "OVER",
@@ -168,6 +172,50 @@ describe("resolveCalculablePeriodBets — forme JOUEUR (stats_box_scores_by_peri
     const summary = await resolveCalculablePeriodBets();
 
     expect(summary.skipped).toEqual([{ betId: "bet2", reason: "pas encore de stats par période synchronisées pour ce joueur" }]);
+  });
+
+  it("box score importé, joueur absent du match entier (DNP, p3-15) -> LOST", async () => {
+    seed("stats_box_scores", [{ game_id: GAME_ID, player_id: 201, minutes: "30:00", pts: 20 }]);
+    seed("bets", [
+      betRow({
+        id: "bet2b", structured_stat: "pts", structured_threshold: 5, structured_comparison: "UNDER",
+        structured_period: structuredPeriod({ player_id: 999, period: "Q1" }),
+      }),
+    ]);
+
+    const summary = await resolveCalculablePeriodBets();
+
+    expect(summary.resolved).toEqual([{ betId: "bet2b", outcome: "LOST" }]);
+    expect(readRow("bets", "bet2b")?.resolution_reason).toBe("Résolu automatiquement : le joueur visé n'a pas joué ce match (blessure, repos ou choix du coach), un pari sur un joueur absent est perdu.");
+  });
+
+  it("a joué le match mais pas ce quart-temps -> stats à 0 sur la période, résolu normalement", async () => {
+    seed("stats_box_scores", [{ game_id: GAME_ID, player_id: 201, minutes: "20:00", pts: 12 }]);
+    seed("stats_box_scores_by_period", [periodBoxRow({ player_id: 201, period: 2, pts: 12 })]); // rien en Q1.
+    seed("bets", [
+      betRow({
+        id: "bet2c", structured_stat: "pts", structured_threshold: 5, structured_comparison: "UNDER",
+        structured_period: structuredPeriod({ player_id: 201, period: "Q1" }),
+      }),
+    ]); // 0 < 5.
+
+    const summary = await resolveCalculablePeriodBets();
+
+    expect(summary.resolved).toEqual([{ betId: "bet2c", outcome: "WON" }]);
+  });
+
+  it("a joué le match, stats par période pas encore importées -> SKIPPED", async () => {
+    seed("stats_box_scores", [{ game_id: GAME_ID, player_id: 201, minutes: "20:00", pts: 12 }]);
+    seed("bets", [
+      betRow({
+        id: "bet2d", structured_stat: "pts", structured_threshold: 5, structured_comparison: "UNDER",
+        structured_period: structuredPeriod({ player_id: 201, period: "Q1" }),
+      }),
+    ]);
+
+    const summary = await resolveCalculablePeriodBets();
+
+    expect(summary.skipped).toEqual([{ betId: "bet2d", reason: "pas encore de stats par période synchronisées pour ce joueur" }]);
   });
 
   it("stat ou période manquante -> SKIPPED", async () => {

@@ -37,6 +37,10 @@ class FakeBuilder {
     if (op === "is" && val === null) this.filters.push((r) => r[col] !== null && r[col] !== undefined);
     return this;
   }
+  limit(n: number) {
+    void n; // le fake renvoie toutes les lignes filtrées -- isBoxScoreSynced() ne regarde que "au moins une".
+    return this;
+  }
   single<T = Row>() {
     this.singleMode = "single";
     return this as unknown as PromiseLike<{ data: T | null; error: { message: string } | null }>;
@@ -246,7 +250,8 @@ describe("resolveCalculableComparisonBets — opérandes TEAM et 'min'", () => {
 });
 
 describe("resolveCalculableComparisonBets — données manquantes et garde-fous", () => {
-  it("un opérande sans donnée synchronisée -> SKIPPED, jamais tranché à tort", async () => {
+  it("box score du match pas encore importé -> SKIPPED, jamais tranché à tort", async () => {
+    seed("stats_box_scores", []);
     seed("bets", [
       betRow({
         id: "bet9",
@@ -257,6 +262,34 @@ describe("resolveCalculableComparisonBets — données manquantes et garde-fous"
     const summary = await resolveCalculableComparisonBets();
 
     expect(summary.skipped).toEqual([{ betId: "bet9", reason: "pas encore de stats synchronisées pour ce duel" }]);
+  });
+
+  it("box score importé, joueur d'un côté absent (p3-15) -> LOST en GT", async () => {
+    seed("bets", [
+      betRow({
+        id: "bet9b",
+        structured_duel: duel({ kind: "PLAYER", player_ids: [202], stat: "pts" }, { kind: "PLAYER", player_ids: [999], stat: "pts" }, "GT"),
+      }),
+    ]);
+
+    const summary = await resolveCalculableComparisonBets();
+
+    expect(summary.resolved).toEqual([{ betId: "bet9b", outcome: "LOST" }]);
+    expect(readRow("bets", "bet9b")?.resolution_reason).toBe("Résolu automatiquement : le joueur visé n'a pas joué ce match (blessure, repos ou choix du coach), un pari sur un joueur absent est perdu.");
+  });
+
+  it("relation OU : le côté du joueur absent échoue, l'autre côté peut encore gagner", async () => {
+    seed("bets", [
+      betRow({
+        id: "bet9c",
+        structured_threshold: 1,
+        structured_duel: duel({ kind: "PLAYER", player_ids: [999], stat: "pts" }, { kind: "PLAYER", player_ids: [202], stat: "pts" }, "OR"),
+      }),
+    ]);
+
+    const summary = await resolveCalculableComparisonBets();
+
+    expect(summary.resolved).toEqual([{ betId: "bet9c", outcome: "WON" }]);
   });
 
   it("match pas encore terminé -> SKIPPED", async () => {

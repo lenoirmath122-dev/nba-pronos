@@ -274,3 +274,21 @@ export const ZERO_BOX_ROW: BoxScoreRow = {
   minutes: null, pts: 0, reb: 0, ast: 0, fg3m: 0, stl: 0, blk: 0,
   ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0, technical_fouls: 0, tov: 0,
 };
+
+/** p3-15 (04/10/2026) -- règle du joueur qui ne joue pas (blessure, repos,
+ *  DNP) : stats_box_scores ne contient QUE des lignes "a joué" (cf.
+ *  ZERO_BOX_ROW ci-dessus), donc une fois le box score du match importé,
+ *  l'absence de ligne pour un joueur nommé prouve qu'il n'a pas joué. Avant
+ *  ce correctif, chaque resolver traitait ce cas comme "pas encore
+ *  synchronisé" et le pari restait VALIDATED pour toujours (Tatum blessé,
+ *  Alpha NBA Cup). Règle tranchée avec l'utilisateur : un pari (ou une
+ *  condition) qui nomme un joueur absent est PERDU, quel que soit le sens
+ *  du pari (OVER comme UNDER). "Importé ?" = au moins une ligne pour ce
+ *  match, tout joueur confondu -- même test que resolveRosterCountBets. */
+export async function isBoxScoreSynced(supabase: SupabaseServiceClient, gameId: string): Promise<boolean> {
+  const { data } = await supabase.from("stats_box_scores").select("player_id").eq("game_id", gameId).limit(1);
+  return (data?.length ?? 0) > 0;
+}
+
+export const DNP_RESOLUTION_REASON =
+  "Résolu automatiquement : le joueur visé n'a pas joué ce match (blessure, repos ou choix du coach), un pari sur un joueur absent est perdu.";
