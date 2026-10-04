@@ -148,8 +148,10 @@ Tailwind brut).
 
 ### 4.2 Pronostics de match, Bracket Playoffs, NBA Cup
 Écran **Matchs** (pronostic vainqueur + écart), écran **Bracket personnel**
-(remplissage, rendu en arbre visuel connecté — mode principal partout depuis
-le 17/08/2026), vue **Bracket globale** de consultation (`/bracket`,
+(remplissage, rendu uniquement en arbre visuel connecté — l'ancienne vue
+en cartes par tour a été retirée ; « Quitter » ramène à l'onglet Jouer, dont
+l'entrée Bracket porte une pastille du nombre d'actions en attente, même
+décompte que celui de l'onglet), vue **Bracket globale** de consultation (`/bracket`,
 distincte du remplissage). Deux formats de compétition : Playoffs NBA
 (best-of-7, score de série) et NBA Cup (élimination directe, barème dédié).
 Live : statut/score de série poussé en Realtime (publication
@@ -181,7 +183,8 @@ présence au roster.
 
 ### 4.4 Classement, ligues, badges, superlatifs
 Classement global avec tri par en-têtes cliquables, tendance de rang, top 3
-mis en avant. Ligues privées (création, code d'invitation, appartenance).
+mis en avant, indication au-dessus du tableau (toucher une ligne pour le
+détail ; en portrait, tourner le téléphone pour toutes les colonnes). Ligues privées (création, code d'invitation, appartenance).
 Badges permanents à paliers (Bronze/Argent/Or/Platine/Diamant), catalogue de
 base complet sur trois familles (pronostics de match, bracket personnel,
 paris perso) + badges de volume/participation ; jusqu'à 3 badges épinglables
@@ -428,7 +431,8 @@ lib/
 components/   — un dossier par domaine d'écran (admin, auth, bets, bracket,
   bracket-fill, chat, feedback, home, leaderboard, my-bets, nav, play,
   profile, regles) ; ui/ — primitives partagées transversalement
-  (ModalDialog.tsx, etc.).
+  (ModalDialog.tsx, FocusTrap.tsx, Backdrop.tsx — fond de popup qui ferme
+  au toucher, utilisé par toutes les popups de l'app, etc.).
 
 supabase/migrations/ — 69 migrations SQL versionnées, voir §3.
 

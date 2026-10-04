@@ -28,13 +28,19 @@
   animations de validation (bracket, pronos, paris, paris série).
 - **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
   plus tard), débrief des matchs de la veille via un média.
+- **Petites corrections (p3-4)** : code livré (fermeture des popups au
+  toucher du fond, bracket réduit à l'arbre, indication au Classement,
+  pastille sur l'entrée Bracket — voir journal 04/10/2026). Reste à
+  vérifier sur téléphone après merge.
 - **Pastilles** : messages de chat non lus (aucun état de lecture
-  aujourd'hui) ; entrée Bracket dans l'onglet Jouer.
-- **Écrans** : bandeau récap « BOS +3 » plus « arena » ; Bracket réduit à
-  l'arbre (retirer la vue cartes) ; indication rotation/toucher une ligne
-  au Classement ; Résultats : paris des autres derrière un seul bouton, et
-  détail (% et points possibles) des paris réussis.
-- **Popups** : fermeture par clic sur le fond (absent de `ModalDialog`).
+  aujourd'hui).
+- **Écrans** : bandeau récap « BOS +3 » plus « arena » ; Résultats : paris
+  des autres derrière un seul bouton, et détail (% et points possibles) des
+  paris réussis.
+- **Bracket global `/bracket`** : garde sa vue résumé par tour (cartes)
+  derrière « Quitter » de l'arbre. Le retour de l'alpha visait le
+  remplissage ; à trancher si on retire aussi ce résumé (il porte le filtre
+  par ligue et les liens de pari série).
 - **Déjà dans la feuille de route mais reportés, redemandés par les
   testeurs** : popup de badge gagné + design des badges (p6-18/p6-20/
   p6-21), photo de profil/avatars (p6-22), landing page (p5-2).

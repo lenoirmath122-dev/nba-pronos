@@ -4,14 +4,14 @@ import { useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import { resetBracket } from "@/lib/actions/bracket-fill";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./ResetBracketButton.module.css";
 
 // Remise à zéro du bracket personnel (17/08/2026, demandé par l'utilisateur)
-// — partagé entre les 2 rendus de l'écran /play/bracket (BracketFillBoard,
-// mobile portrait ; FillPosterView, poster desktop/paysage), même patron de
+// — rendu dans l'arbre de /play/bracket (FillPosterView ; l'ancienne vue en
+// cartes BracketFillBoard a été retirée le 04/10/2026), même patron de
 // dialogue de confirmation que DeleteMatchButton.tsx. Portalé vers
-// document.body comme les dialogues de validation des 2 parents : ce sont
-// leurs propres contextes d'empilement (.photo-page) qui l'exigent.
+// document.body comme le dialogue de validation du parent.
 
 type ResetBracketButtonProps = {
   onError: (message: string | null) => void;
@@ -43,7 +43,7 @@ export function ResetBracketButton({ onError }: ResetBracketButtonProps) {
 
       {showConfirm &&
         createPortal(
-          <div className={styles.backdrop} role="presentation">
+          <Backdrop className={styles.backdrop} onClose={() => setShowConfirm(false)}>
             <FocusTrap
               className={styles.dialog}
               role="alertdialog"
@@ -72,7 +72,7 @@ export function ResetBracketButton({ onError }: ResetBracketButtonProps) {
                 </button>
               </div>
             </FocusTrap>
-          </div>,
+          </Backdrop>,
           document.body
         )}
     </>

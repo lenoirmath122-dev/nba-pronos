@@ -10,9 +10,9 @@ import { useState } from "react";
 // d'invitation à tourner (RotateInvite, supprimé) : juste un état
 // visible/masqué avec un point de sortie explicite (« Quitter »).
 //
-// Partagé entre components/bracket/TreeView.tsx (consultation) et
-// components/bracket-fill/BracketFillView.tsx (remplissage), qui adoptent
-// la même règle. Le ROUTING (quelle URL viser en sortant, le cas échéant)
+// Utilisé par components/bracket/TreeView.tsx (consultation). Le
+// remplissage (BracketFillView.tsx) ne s'en sert plus depuis le 04/10/2026 :
+// la vue en cartes y a été retirée (p3-4), l'arbre est son seul rendu. Le ROUTING (quelle URL viser en sortant, le cas échéant)
 // reste du ressort de l'appelant via `onExit` — `/bracket` a un flux
 // "résumé" de repli avec sa propre URL, `/play/bracket` n'en a pas.
 

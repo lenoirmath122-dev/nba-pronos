@@ -45,9 +45,22 @@ export async function BracketEntry() {
     lines.push(`${remainingSeriesBets.length} pari${remainingSeriesBets.length > 1 ? "s" : ""} série`);
   }
 
+  // Pastille (04/10/2026, p3-4 — retour de l'alpha) : même décompte que la
+  // part bracket du compteur de l'onglet Jouer (getNavBadgeData,
+  // lib/queries/home.ts) — séries non remplies avant la deadline + paris
+  // série disponibles — pour que les deux chiffres ne se contredisent jamais.
+  // aria-hidden : le détail lu à voix haute reste `.meta` (« 3/7 · 2 paris
+  // série »), la pastille n'en est que le résumé visuel.
+  const pendingCount = (isActionable ? data.totalCount - data.filledCount : 0) + remainingSeriesBets.length;
+
   return (
     <Link href="/play/bracket" className={styles.entry}>
       <span className={styles.label}>Bracket</span>
+      {pendingCount > 0 && (
+        <span className={styles.badgeCount} aria-hidden="true">
+          {pendingCount > 9 ? "9+" : pendingCount}
+        </span>
+      )}
       {lines.length > 0 && <span className={styles.meta}>{lines.join(" · ")}</span>}
       <span className={styles.chevron} aria-hidden="true">
         ›

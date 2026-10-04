@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { validateAllCompleteMatchPredictions } from "@/lib/actions/matches";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./ValidateAllBanner.module.css";
 
 // Bandeau « Tout valider » (§9) — feuille client n°3/3 : porte le dialogue de
@@ -39,7 +40,7 @@ export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
       </button>
 
       {isConfirmOpen && (
-        <div className={styles.backdrop} role="presentation">
+        <Backdrop className={styles.backdrop} onClose={() => setIsConfirmOpen(false)}>
           <FocusTrap
             className={styles.dialog}
             role="alertdialog"
@@ -73,7 +74,7 @@ export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
               </button>
             </div>
           </FocusTrap>
-        </div>
+        </Backdrop>
       )}
     </div>
   );

@@ -7,12 +7,12 @@ import styles from "./page.module.css";
 // Écran Bracket personnel — remplissage (SPEC_ECRAN_BRACKET_PERSONNEL_V0_1
 // §1/§2). Composant SERVEUR : cadrage (séries, cascade des candidats, pick du
 // joueur) lu par lib/queries/bracket-fill.ts, passé en props à
-// BracketFillView.tsx (orchestrateur client — bascule flux normal/poster,
-// 16/08/2026, chantier « remplissage en poster interactif »).
+// BracketFillView.tsx (enveloppe client de l'arbre — seul rendu depuis le
+// 04/10/2026, p3-4).
 //
 // searchParams est une Promise en Next.js 16 (AGENTS.md) — attendue avant
-// lecture. `round` sélectionne le tour affiché du flux normal (§6, sans effet
-// sur le poster, qui affiche tous les tours et guide automatiquement).
+// lecture. `round` n'a plus d'effet sur l'arbre (qui affiche tous les tours
+// et guide automatiquement), seulement sur la redirection après deadline.
 type SearchParams = { round?: string };
 
 export default async function BracketFillPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
@@ -62,8 +62,5 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
     redirect(sp.round ? `/bracket#round-${sp.round}` : "/bracket");
   }
 
-  const activeRoundKey =
-    sp.round && data.rounds.some((round) => round.key === sp.round) ? sp.round : data.rounds[0]?.key;
-
-  return <BracketFillView data={data} activeRoundKey={activeRoundKey} />;
+  return <BracketFillView data={data} />;
 }

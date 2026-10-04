@@ -11,6 +11,7 @@ import { BracketBaremeContent } from "@/components/regles/BracketBaremeContent";
 import { FillSeriesCard } from "./FillSeriesCard";
 import { ResetBracketButton } from "./ResetBracketButton";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./FillPosterView.module.css";
 
 // Mode principal du remplissage, TOUJOURS l'écran d'arrivée depuis le
@@ -20,8 +21,8 @@ import styles from "./FillPosterView.module.css";
 // déjà généralisés (components/bracket/posterColumns.ts,
 // TreeConnectors.tsx), mais avec des cartes INTERACTIVES (FillSeriesCard.tsx,
 // formulaire de pick) plutôt que de simple lecture (NodeCard.tsx). Rendu par
-// BracketFillView.tsx, qui porte la bascule poster/flux normal
-// (usePosterToggle) — ce composant ne s'occupe QUE du poster lui-même.
+// BracketFillView.tsx — seul rendu du remplissage depuis le 04/10/2026 (p3-4,
+// vue en cartes retirée) ; « Quitter » ramène à l'onglet Jouer.
 //
 // Guidage automatique (choisi par l'utilisateur parmi 3 options — « poster
 // comme mode principal, guidage conservé ») : scrolle vers la 1ère série
@@ -172,7 +173,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
 
       {showConfirm &&
         createPortal(
-          <div className={styles.backdrop} role="presentation">
+          <Backdrop className={styles.backdrop} onClose={() => setShowConfirm(false)}>
             <FocusTrap
               className={styles.dialog}
               role="alertdialog"
@@ -201,7 +202,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
                 </button>
               </div>
             </FocusTrap>
-          </div>,
+          </Backdrop>,
           document.body
         )}
     </div>

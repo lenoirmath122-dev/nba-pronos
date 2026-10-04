@@ -8,6 +8,7 @@ import type { BetSlotIndicator, UpcomingMatchRow as UpcomingMatchRowData } from 
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { InlineBetForm, type InlineBetOwned } from "@/components/bets/InlineBetForm";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import { MarginStepper } from "./MarginStepper";
 import { ParticipationTrigger } from "./ParticipationTrigger";
 import { ViewBetTrigger } from "./ViewBetTrigger";
@@ -358,7 +359,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
           même raison/fix que ModalDialog. */}
       {showValidateConfirm &&
         createPortal(
-          <div className={styles.backdrop} role="presentation">
+          <Backdrop className={styles.backdrop} onClose={() => setShowValidateConfirm(false)}>
             <FocusTrap
               className={styles.dialog}
               role="alertdialog"
@@ -429,7 +430,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
                 </>
               )}
             </FocusTrap>
-          </div>,
+          </Backdrop>,
           document.body
         )}
     </div>
