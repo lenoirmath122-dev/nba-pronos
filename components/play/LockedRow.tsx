@@ -6,9 +6,8 @@ import type { LockedMatchRow as LockedMatchRowData } from "@/lib/queries/play";
 import { clickableRowProps } from "@/lib/hooks/clickableRow";
 import { LiveBadgeAndScore } from "./LiveSubscriber";
 import { PredictionSummary } from "./PredictionSummary";
-import { RevealPanelLocked } from "./RevealPanelLocked";
 import { BetBlock } from "./BetBlock";
-import { OtherBetsModal } from "./OtherBetsModal";
+import { OthersOnMatch } from "./OthersOnMatch";
 import { CorrectionRequestForm } from "./CorrectionRequestForm";
 import styles from "./LockedRow.module.css";
 
@@ -107,8 +106,6 @@ export function LockedRow({
             />
           )}
 
-          <OtherBetsModal bets={row.otherBets} />
-
           <CorrectionRequestForm
             matchId={row.matchId}
             home={row.home}
@@ -119,7 +116,7 @@ export function LockedRow({
             error={predictionCorrectionError}
           />
 
-          <RevealPanelLocked others={row.others} absenteeCount={row.absenteeCount} />
+          <OthersOnMatch others={row.others} absenteeCount={row.absenteeCount} bets={row.otherBets} />
         </div>
       )}
     </div>

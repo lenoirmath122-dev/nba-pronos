@@ -1,0 +1,126 @@
+.trigger {
+  cursor: pointer;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  min-height: var(--tap-target-min);
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--color-border-hair);
+  padding: var(--space-2) 0 0;
+  text-align: left;
+}
+
+.trigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.content {
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.empty {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.pseudo {
+  color: var(--color-text-primary);
+  flex: 1;
+}
+
+.predictionItem {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.pick {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
+
+.predictionPoints {
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+}
+
+.correctedBadge {
+  flex-basis: 100%;
+  font-size: var(--font-size-xs);
+  color: var(--color-trend);
+}
+
+.betItem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+}
+
+.betHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.betDescription {
+  margin: 0;
+  color: var(--color-text-primary);
+}
+
+.betDescriptionCancelled {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+  opacity: var(--opacity-cancelled);
+}
+
+.betMeta {
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-3);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.betPointsWon {
+  font-variant-numeric: tabular-nums;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-win);
+}

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { PlayAssociatedBet } from "@/lib/queries/play";
-import { BET_CATEGORY_OPTIONS } from "@/lib/labels/bets";
+import { BET_CATEGORY_OPTIONS, BET_DIFFICULTY_POINTS } from "@/lib/labels/bets";
 import { requestBetCorrectionFormAction } from "@/lib/actions/bet-corrections";
 import styles from "./BetBlock.module.css";
 
@@ -36,7 +36,25 @@ const STATUS_CLASS: Record<PlayAssociatedBet["status"], string> = {
   CANCELLED: styles.statusCancelled,
 };
 
-const CATEGORY_LABEL = Object.fromEntries(BET_CATEGORY_OPTIONS.map((o) => [o.value, o.label])) as Record<
+/** Pastille de statut seule — réutilisée par la popup des autres joueurs
+ *  (OthersOnMatch.tsx, p3-6) pour garder exactement le même code couleur. */
+export function BetStatusPill({ status }: { status: PlayAssociatedBet["status"] }) {
+  return <span className={`${styles.status} ${STATUS_CLASS[status]}`}>{STATUS_LABEL[status]}</span>;
+}
+
+/** « 15 pts en jeu » / « valait 15 pts » — p3-6 : ce que le pari rapporte
+ *  (ou aurait rapporté), absent jusqu'ici tant qu'il n'était pas gagné.
+ *  null quand il n'y a rien à dire (gagné : les points réels suffisent ;
+ *  refusé/neutralisé/brouillon : rien n'est en jeu). */
+export function possiblePointsLabel(status: PlayAssociatedBet["status"], difficulty: number): string | null {
+  const points = BET_DIFFICULTY_POINTS[difficulty];
+  if (points === undefined) return null;
+  if (status === "SUBMITTED" || status === "VALIDATED") return `${points} pts en jeu`;
+  if (status === "LOST") return `valait ${points} pts`;
+  return null;
+}
+
+const CATEGORY_LABEL =Object.fromEntries(BET_CATEGORY_OPTIONS.map((o) => [o.value, o.label])) as Record<
   PlayAssociatedBet["category"],
   string
 >;
@@ -53,6 +71,7 @@ type BetBlockProps = {
 
 export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctionError }: BetBlockProps) {
   const isCancelled = bet.status === "CANCELLED";
+  const possiblePoints = possiblePointsLabel(bet.status, bet.difficulty);
 
   return (
     <div className={styles.card}>
@@ -63,8 +82,9 @@ export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctio
         {CATEGORY_LABEL[bet.category]} · difficulté {bet.difficulty}
         {!bet.isDifficultyValidated && " (proposée)"}
       </span>
-      <span className={`${styles.status} ${STATUS_CLASS[bet.status]}`}>{STATUS_LABEL[bet.status]}</span>
+      <BetStatusPill status={bet.status} />
       {bet.pointsAwarded !== null && <span className={styles.points}>{bet.pointsAwarded} pts</span>}
+      {possiblePoints && <span className={styles.meta}>{possiblePoints}</span>}
       {bet.isCalculable && bet.status !== "DRAFT" && bet.status !== "SUBMITTED" && bet.calculatedProba !== null && (
         <span className={styles.aiProba}>
           Proba calculée : {Math.round(bet.calculatedProba * 100)}% (palier {bet.suggestedDifficulty})
