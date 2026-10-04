@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { getAllTeams } from "@/lib/queries/teams";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { getRemainingMatchBets } from "@/lib/queries/match-bets";
+import { getRecentChatActivity, type ChatActivity } from "@/lib/queries/chat";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDateKey } from "@/lib/dates/paris";
 import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
@@ -663,17 +664,26 @@ export type NavBadgeData = {
    *  (client) la compare à son propre repère localStorage — aucun état
    *  « vu » n'existe côté serveur (même choix que CollapsibleCard). */
   latestFeedAt: string | null;
+  /** Messages récents des autres joueurs (p3-7), comptés comme non lus par la
+   *  TabBar selon son repère localStorage (lib/nav/chatSeen.ts). Indépendant
+   *  de la compétition : le chat vit aussi sans compétition active. */
+  chatActivity: ChatActivity[];
 };
 
-const EMPTY_NAV_BADGE_DATA: NavBadgeData = { playPendingCount: 0, latestFeedAt: null };
-
 export async function getNavBadgeData(): Promise<NavBadgeData> {
+  const [competitionBadges, chatActivity] = await Promise.all([getCompetitionNavBadges(), getRecentChatActivity()]);
+  return { ...competitionBadges, chatActivity };
+}
+
+const EMPTY_COMPETITION_NAV_BADGES = { playPendingCount: 0, latestFeedAt: null };
+
+async function getCompetitionNavBadges(): Promise<Omit<NavBadgeData, "chatActivity">> {
   const supabase = await getServerClient();
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return EMPTY_NAV_BADGE_DATA;
+  if (!user) return EMPTY_COMPETITION_NAV_BADGES;
 
   const { data: competition } = await supabase
     .from("competitions")
@@ -681,7 +691,7 @@ export async function getNavBadgeData(): Promise<NavBadgeData> {
     .eq("status", "ACTIVE")
     .maybeSingle<CompetitionRow>();
 
-  if (!competition) return EMPTY_NAV_BADGE_DATA;
+  if (!competition) return EMPTY_COMPETITION_NAV_BADGES;
 
   const [bracketItem, matchesItem, betsItem, seriesBets, matchBets, feed] = await Promise.all([
     getBracketTodo(supabase, competition, user.id),

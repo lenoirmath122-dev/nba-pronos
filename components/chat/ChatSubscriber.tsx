@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
+import { markChatChannelSeen } from "@/lib/nav/chatSeen";
 import type { ChatMessage, ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
 import { ChatMessageRow } from "./ChatMessageRow";
 import { ChatComposer } from "./ChatComposer";
@@ -95,6 +96,13 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
     // au-dessus).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopeKey]);
+
+  // Conversation ouverte = lue jusqu'au dernier message affiché, y compris
+  // ceux reçus en direct pendant qu'elle reste à l'écran (pastilles p3-7).
+  const latestAt = messages.at(-1)?.createdAt;
+  useEffect(() => {
+    if (latestAt) markChatChannelSeen(scope.type === "LEAGUE" ? scope.leagueId : "general", latestAt);
+  }, [scope, latestAt]);
 
   function handleDeleted(messageId: string) {
     setMessages((prev) => prev.filter((m) => m.id !== messageId));

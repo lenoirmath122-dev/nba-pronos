@@ -21,8 +21,6 @@
 
 - **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
   plus tard), débrief des matchs de la veille via un média.
-- **Pastilles** : messages de chat non lus (aucun état de lecture
-  aujourd'hui).
 - **Écrans** : bandeau récap « BOS +3 » plus « arena ».
 - **Déjà dans la feuille de route mais reportés, redemandés par les
   testeurs** : popup de badge gagné + design des badges (p6-18/p6-20/

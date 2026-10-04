@@ -46,3 +46,31 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+
+/* Pastille de messages non lus (p3-7), même rendu que le compteur de la
+   TabBar (TabBar.module.css, .badgeCount), poussée en bout de lien. */
+.unread {
+  margin-left: auto;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 20px;
+  text-align: center;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

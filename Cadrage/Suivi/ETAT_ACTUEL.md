@@ -223,7 +223,14 @@ calculés une fois à la clôture d'une compétition.
 ### 4.5 Chat
 Canal général + un canal par ligue, liste de canaux avec notifications par
 canal (mute possible), signalement d'un message (`chat_message_reports`,
-distinct du panneau `/admin/bug-reports`).
+distinct du panneau `/admin/bug-reports`). Messages non lus (p3-7) : nombre
+sur l'onglet Chat et sur chaque canal de la liste. Le serveur fournit la date
+des messages des autres joueurs des 14 derniers jours
+(`getRecentChatActivity()`, lu avec les pastilles de la TabBar) ; l'état
+« lu » reste sur l'appareil (`lib/nav/chatSeen.ts`, clé localStorage
+`chat-seen-at`, dernier message vu par canal, posé à l'ouverture d'une
+conversation). Pas de mise à jour en direct de la pastille hors du chat :
+recalculée au rechargement ou après une action serveur, comme les autres.
 
 ### 4.6 Notifications et rappels
 Web Push (VAPID) pour les rappels ciblés (deadlines de pronostic/bracket

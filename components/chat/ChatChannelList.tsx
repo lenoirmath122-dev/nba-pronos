@@ -1,7 +1,8 @@
 import Link from "next/link";
 import type { MyLeague } from "@/lib/queries/leagues";
-import type { MutedChannels } from "@/lib/queries/chat";
+import type { ChatActivity, MutedChannels } from "@/lib/queries/chat";
 import { ChatNotificationToggle } from "./ChatNotificationToggle";
+import { ChatUnreadBadge } from "./ChatUnreadBadge";
 import styles from "./ChatChannelList.module.css";
 
 // Liste de canaux (addendum SPEC_CHAT_V0_1.md, 27/08/2026 -- demande
@@ -15,14 +16,17 @@ import styles from "./ChatChannelList.module.css";
 type ChatChannelListProps = {
   myLeagues: MyLeague[];
   muted: MutedChannels;
+  /** Messages récents des autres joueurs, pour les pastilles de non-lus (p3-7). */
+  activity: ChatActivity[];
 };
 
-export function ChatChannelList({ myLeagues, muted }: ChatChannelListProps) {
+export function ChatChannelList({ myLeagues, muted, activity }: ChatChannelListProps) {
   return (
     <div className={styles.list}>
       <div className={`${styles.row} glass-card`}>
         <Link href="/chat?canal=general" className={styles.rowLink}>
           Général
+          <ChatUnreadBadge channel="general" activity={activity} />
         </Link>
         <ChatNotificationToggle scope={{ type: "GLOBAL" }} initialEnabled={!muted.generalMuted} />
       </div>
@@ -30,6 +34,7 @@ export function ChatChannelList({ myLeagues, muted }: ChatChannelListProps) {
         <div key={league.id} className={`${styles.row} glass-card`}>
           <Link href={`/chat?canal=${league.id}`} className={styles.rowLink}>
             {league.name}
+            <ChatUnreadBadge channel={league.id} activity={activity} />
           </Link>
           <ChatNotificationToggle
             scope={{ type: "LEAGUE", leagueId: league.id }}
