@@ -4,6 +4,8 @@
    étroite (13rem, SeriesDrillDown.module.css::treeColumn). */
 
 .card {
+  /* Ancre de la coche « Enregistré » (SuccessFlash.module.css .badge). */
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);

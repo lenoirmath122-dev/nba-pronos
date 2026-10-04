@@ -12,6 +12,8 @@ import { FillSeriesCard } from "./FillSeriesCard";
 import { ResetBracketButton } from "./ResetBracketButton";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
+import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 import styles from "./FillPosterView.module.css";
 
 // Mode principal du remplissage, TOUJOURS l'écran d'arrivée depuis le
@@ -56,6 +58,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const showToast = useToast();
 
   const hasConferences = data.rounds.some((round) => round.series.some((s) => s.conference !== null));
   const columns: PosterColumn<BracketFillSeries>[] = hasConferences
@@ -98,7 +101,8 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
     startTransition(async () => {
       const result = await validateBracket();
       setShowConfirm(false);
-      if (!result.success) setError(result.error);
+      if (result.success) showToast("Bracket validé");
+      else setError(result.error);
     });
   }
 
@@ -198,7 +202,14 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
                   Annuler
                 </button>
                 <button type="button" className={styles.dialogConfirm} onClick={handleValidate} disabled={isPending}>
-                  Valider
+                  {isPending ? (
+                    <span className={styles.pendingLabel}>
+                      <Spinner size="sm" />
+                      Validation…
+                    </span>
+                  ) : (
+                    "Valider"
+                  )}
                 </button>
               </div>
             </FocusTrap>

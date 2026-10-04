@@ -334,3 +334,11 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
+
+/* Spinner + libellé dans un bouton en attente (p3-5). */
+.pendingLabel {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}

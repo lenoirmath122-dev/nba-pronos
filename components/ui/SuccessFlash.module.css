@@ -1,0 +1,90 @@
+/* Éclat de validation (lib/hooks/useSuccessFlash.ts, p3-5) : halo vert qui
+   s'éteint + léger rebond. Partagé par les cartes (prono, pick de bracket)
+   et les boutons déclencheurs (icône pari) — classe posée par l'appelant
+   tant que `flashing` est vrai.
+   Durée alignée sur FLASH_DURATION_MS (1100 ms) du hook. */
+.flash {
+  animation: success-flash 1100ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Variante sans rebond : pour les cartes de l'arbre du bracket, dont
+   TreeConnectors.tsx mesure les positions (getBoundingClientRect) — un
+   scale() en cours d'animation fausserait les traits de connexion. */
+.glow {
+  animation: success-glow 1100ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+/* Coche « Enregistré » posée en surimpression dans un coin de carte — pour
+   les enregistrements silencieux (pick de bracket, un tap = un appel) où un
+   toast à chaque tap serait du bruit. Le parent doit être positionné. */
+.badge {
+  position: absolute;
+  top: var(--space-1);
+  right: var(--space-1);
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 1px var(--space-2);
+  border-radius: var(--radius-pill);
+  background: var(--color-win);
+  color: var(--color-surface-base);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  pointer-events: none;
+  animation: success-badge 1100ms ease-out forwards;
+}
+
+@keyframes success-flash {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-win) 70%, transparent);
+    transform: scale(1);
+  }
+  25% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-win) 45%, transparent);
+    transform: scale(1.025);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+    transform: scale(1);
+  }
+}
+
+@keyframes success-glow {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--color-win) 70%, transparent);
+  }
+  25% {
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-win) 45%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 12px transparent;
+  }
+}
+
+@keyframes success-badge {
+  0% {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.85);
+  }
+  15%,
+  75% {
+    opacity: 1;
+    transform: none;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flash,
+  .glow {
+    animation: none;
+    outline: 2px solid var(--color-win);
+    outline-offset: 2px;
+  }
+
+  .badge {
+    animation: none;
+  }
+}

@@ -4,6 +4,7 @@ import { useId, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { Spinner } from "@/components/ui/Spinner";
+import { useToast } from "@/components/ui/Toast";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
 import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
@@ -70,6 +71,9 @@ export function BetForm(props: BetFormProps) {
   );
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  // Toast posé AVANT router.back() (p3-5) : il vit dans la coquille de la
+  // zone joueur, qui survit à la fermeture de cette popup.
+  const showToast = useToast();
   // Panneau de saisie replié par défaut derrière une barre compacte, dépliée
   // seulement au tap (demandé par l'utilisateur 04/08/2026 : le panneau
   // complet, une fois affiché, prenait trop de place et cachait le
@@ -134,8 +138,12 @@ export function BetForm(props: BetFormProps) {
     setError(null);
     startTransition(async () => {
       const result = await saveDraftBet(targetPayload());
-      if (result.success) router.back();
-      else setError(result.error);
+      if (result.success) {
+        showToast("Brouillon enregistré");
+        router.back();
+      } else {
+        setError(result.error);
+      }
     });
   }
 
@@ -143,8 +151,12 @@ export function BetForm(props: BetFormProps) {
     setError(null);
     startTransition(async () => {
       const result = await submitBet(targetPayload());
-      if (result.success) router.back();
-      else setError(result.error);
+      if (result.success) {
+        showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
+        router.back();
+      } else {
+        setError(result.error);
+      }
     });
   }
 
@@ -153,8 +165,12 @@ export function BetForm(props: BetFormProps) {
     setError(null);
     startTransition(async () => {
       const result = await withdrawBet(props.bet.betId);
-      if (result.success) router.back();
-      else setError(result.error);
+      if (result.success) {
+        showToast("Pari repassé en brouillon");
+        router.back();
+      } else {
+        setError(result.error);
+      }
     });
   }
 
@@ -348,7 +364,7 @@ export function BetForm(props: BetFormProps) {
               {isPending ? (
                 <span className={styles.primaryPending}>
                   <Spinner size="sm" />
-                  Envoi…
+                  Analyse du pari…
                 </span>
               ) : isSubmittedBet ? (
                 "Soumettre les modifications"

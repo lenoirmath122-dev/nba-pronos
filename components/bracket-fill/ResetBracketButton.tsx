@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { resetBracket } from "@/lib/actions/bracket-fill";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
+import { useToast } from "@/components/ui/Toast";
 import styles from "./ResetBracketButton.module.css";
 
 // Remise à zéro du bracket personnel (17/08/2026, demandé par l'utilisateur)
@@ -20,13 +21,15 @@ type ResetBracketButtonProps = {
 export function ResetBracketButton({ onError }: ResetBracketButtonProps) {
   const [showConfirm, setShowConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const showToast = useToast();
 
   function handleConfirm() {
     onError(null);
     startTransition(async () => {
       const result = await resetBracket();
       setShowConfirm(false);
-      if (!result.success) onError(result.error);
+      if (result.success) showToast("Bracket remis à zéro");
+      else onError(result.error);
     });
   }
 

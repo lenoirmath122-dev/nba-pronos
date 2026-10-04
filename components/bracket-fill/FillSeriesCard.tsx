@@ -5,6 +5,8 @@ import { TeamLogo } from "@/components/ui/TeamLogo";
 import { saveBracketPick } from "@/lib/actions/bracket-fill";
 import type { BetSeriesFormat, BracketFillSeries } from "@/lib/queries/bracket-fill";
 import { InlineBetForm } from "@/components/bets/InlineBetForm";
+import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
+import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import styles from "./FillSeriesCard.module.css";
 
 // Carte de remplissage adaptée à une colonne de poster (16/08/2026,
@@ -77,6 +79,10 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError, sid
   // 1er tap (vainqueur seul) pourrait écraser le score du 2e tap si les
   // réponses arrivent dans le désordre.
   const saveChainRef = useRef<Promise<void>>(Promise.resolve());
+  // Confirmation de chaque pick (p3-5) : halo + coche « Enregistré » sur la
+  // carte, une fois la réponse serveur reçue — pas de toast ici, un tap = un
+  // enregistrement, un toast à chaque tap serait du bruit.
+  const [flashing, flash] = useSuccessFlash();
 
   if (!series.isSelectable) {
     return (
@@ -96,14 +102,22 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError, sid
         winnerTeamId: nextWinnerTeamId,
         scoreFormat: nextScoreFormat,
       });
-      if (!result.success) onError(result.error);
+      if (result.success) flash();
+      else onError(result.error);
     });
   }
 
-  const cardClassName = [styles.card, "glass-card", isTarget && styles.cardTarget].filter(Boolean).join(" ");
+  const cardClassName = [styles.card, "glass-card", isTarget && styles.cardTarget, flashing && flashStyles.glow]
+    .filter(Boolean)
+    .join(" ");
 
   return (
     <div id={`series-${series.seriesId}`} ref={cardRef} className={cardClassName}>
+      {flashing && (
+        <span className={flashStyles.badge} aria-hidden="true">
+          ✓ Enregistré
+        </span>
+      )}
       <div className={styles.teams}>
         {[series.teamA, series.teamB].map((team) => {
           if (!team) return null;
