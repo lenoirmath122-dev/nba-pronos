@@ -307,7 +307,7 @@ code — à confirmer manuellement si besoin.
   (anti-pause), `sync-teams.yml`/`sync-schedule.yml`/`sync-results.yml`
   (synchro NBA via Highlightly), `reminder-bracket.yml`/
   `reminder-matches.yml`, `snapshot-leaderboard.yml`,
-  `refresh-stats-supabase.yml`, `nba-cup-alpha-reveal.yml`.
+  `refresh-stats-supabase.yml`.
 - Limite connue et assumée : aucun test de composant React, et la
   génération de schéma IA elle-même (appels réels à Claude) reste testée à
   la main plutôt qu'automatisée — seule la résolution déterministe en aval
@@ -338,19 +338,17 @@ explicite de l'utilisateur.
 
 ## 9. État des compétitions
 
-Aucune compétition réelle active au 06/09/2026 — pause intentionnelle entre
-la phase alpha et la vraie NBA Cup (le trafic réel reprendra à ce
-moment-là ; certaines décisions mesurables, ex. persistance d'usage IA, sont
-explicitement reportées jusque-là plutôt que devinées). La compétition
-**NBA Cup alpha** est entièrement préparée (quarts de finale déjà créés à
-partir de vrais matchs NBA déjà joués, effectifs générés,
-`NBA_CUP_ALPHA_EFFECTIFS.md`) et calendrée pour la seconde moitié de
-septembre 2026. Les étapes 1 à 3 de son runbook de révélation
-(révélation automatique d'un tour terminé, résolution des paris chaînée,
-création automatique du match du tour suivant) sont automatisées côté
-Next.js (`lib/nbaCupAlpha/*`, workflow `nba-cup-alpha-reveal.yml`, cron 30
-min) et mergées sur `main` — plus besoin d'intervention manuelle le jour J
-pour ces étapes.
+Aucune compétition active au 04/10/2026. L'**Alpha NBA Cup** (cercle
+d'amis, quarts → finale à partir de vrais matchs NBA déjà joués, effectifs
+générés `NBA_CUP_ALPHA_EFFECTIFS.md`) s'est jouée du 20 au 23/09/2026 et a
+été clôturée le 04/10/2026, après que les 4 paris restés `VALIDATED` ont
+été tranchés à la main en admin (classement final : Leopoldinho 110,
+Rillettes-31 109, Nico 36, Rillettes-49 25). Son automatisation propre
+(révélation des matchs fictifs, création du tour suivant, cron 30 min) a
+été retirée le même jour ; les scripts manuels `scripts/nba-cup-*.mjs`
+restent dans le repo. Pause intentionnelle jusqu'à la vraie NBA Cup
+(~décembre), qui passera par la synchro Highlightly normale. Retours de
+l'alpha : `RETOURS_ALPHA_NBA_CUP.md`, Phase 3 de la feuille de route.
 
 ---
 
@@ -419,7 +417,7 @@ app/
   (app)/      — espace joueur connecté : home, play (hub Jouer), chat, profile.
   (admin)/    — panneau d'administration complet (voir §4.7).
   api/        — routes système : sync/*, reminders/*, snapshots/*, heartbeat,
-                health, resolve-bets, account/export, nba-cup-alpha/auto-reveal.
+                health, resolve-bets, account/export.
   bracket/, leaderboard/, players/, regles/ — vues de consultation partagées
     visiteur/connecté (nav choisie par ScreenShell.tsx, hors du groupe (app)).
   cgu/, confidentialite/, mentions-legales/ — pages légales.
@@ -431,7 +429,7 @@ lib/
   scoring/    — moteur pur (engine.ts) + orchestration (recompute.ts) +
                 avancement de bracket + superlatifs.
   sync/       — intégration Highlightly (calendrier, scores, équipes).
-  auth/, badges/, dates/, hooks/, labels/, nba/, nbaCupAlpha/, push/,
+  auth/, badges/, dates/, hooks/, labels/, nba/, push/,
   reminders/, snapshots/, supabase/ — modules dédiés par domaine.
 
 components/   — un dossier par domaine d'écran (admin, auth, bets, bracket,
