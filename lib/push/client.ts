@@ -11,6 +11,23 @@ export function pushSupported(): boolean {
   return typeof window !== "undefined" && "serviceWorker" in navigator && "PushManager" in window;
 }
 
+/** iPhone/iPad ouvert dans le navigateur plutôt que depuis l'app installée
+ *  à l'écran d'accueil (p3-13) : Apple n'expose le Push web QU'aux apps
+ *  installées (cf. app/manifest.ts) — dans un onglet Safari, PushManager
+ *  est simplement absent et aucun bouton "Activer" ne peut marcher ; il
+ *  faut d'abord proposer l'installation. iPadOS se présente comme un Mac
+ *  ("MacIntel") mais avec un écran tactile, d'où le 2e test. */
+export function iosNeedsInstall(): boolean {
+  if (typeof window === "undefined") return false;
+  const ua = navigator.userAgent;
+  const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (!isIos) return false;
+  const standalone =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  return !standalone;
+}
+
 // PushManager.subscribe() exige un Uint8Array adossé à un vrai ArrayBuffer
 // (BufferSource), la clé VAPID publique est distribuée en base64 URL-safe —
 // conversion standard, aucune lib dédiée.
@@ -58,8 +75,20 @@ export async function ensurePushSubscribed(): Promise<EnsurePushResult> {
   }
 
   const permission = await Notification.requestPermission();
+  // "denied" est définitif côté navigateur : requestPermission() ne
+  // réaffichera plus jamais la demande, seul un réglage manuel du
+  // téléphone/navigateur la débloque (p3-13) — à dire explicitement au
+  // joueur plutôt qu'un simple "refusé" qui laisse croire qu'il suffit de
+  // recliquer. "default" = demande fermée sans choix, elle reviendra.
+  if (permission === "denied") {
+    return {
+      ok: false,
+      error:
+        "Notifications bloquées pour Panier Ballon. Réactive-les dans les réglages de ton téléphone (ou de ton navigateur), puis réessaie.",
+    };
+  }
   if (permission !== "granted") {
-    return { ok: false, error: "Permission refusée par le navigateur." };
+    return { ok: false, error: "Autorisation non accordée, réessaie." };
   }
 
   const registration = await navigator.serviceWorker.register("/sw.js");

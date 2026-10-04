@@ -19,14 +19,11 @@
 > `RETOURS_ALPHA_NBA_CUP.md`. Priorisés le 03/10/2026 dans la Phase 3 de
 > la feuille de route (p3-3 à p3-12, dans l'ordre de traitement).
 
-- **Notifications activées dès l'inscription (p3-13)** : l'urgence push est
-  corrigée et vérifiée (p3-3, PR #99 — Android app fermée OK, voir journal).
-  Reste le vrai trou : seuls 3 des 9 joueurs de l'alpha avaient activé le
-  push (6 en `NONE`). À faire : proposer l'autorisation à la création de
-  compte et abonner l'appareil automatiquement si accepté. Gérer aussi le cas
-  « préférence PUSH sur le compte mais aucun abonnement sur CE téléphone »
-  (changement d'appareil : constaté au test, l'abonnement Apple de l'ancien
-  iPhone restait seul en base et Apple l'acceptait sans rien afficher).
+- **Notifications à l'arrivée dans l'app (p3-13)** : code livré (carte
+  d'activation en haut de l'Accueil, voir journal 04/10/2026). Reste à
+  vérifier sur de vrais téléphones après merge : Android (activation
+  du compte), iPhone dans Safari (consigne d'installation), iPhone depuis
+  l'écran d'accueil (cas « compte en push mais pas cet appareil »).
 - **Feedback des actions** : confirmation explicite d'un pari enregistré,
   animations de validation (bracket, pronos, paris, paris série).
 - **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
