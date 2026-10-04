@@ -21,6 +21,7 @@ export * from "./resolveGameEventBets";
 export * from "./resolveTechnicalFoulsCountBets";
 export * from "./resolveLastBasketBets";
 export * from "./resolveBlockOnPlayerBets";
+export * from "./resolveNotInMatchBets";
 
 import { resolveCalculableBets } from "./resolveMatchBets";
 import { resolveCalculableSeriesBets } from "./resolveSeriesBets";
@@ -36,9 +37,10 @@ import { resolveCalculableGameEventBets } from "./resolveGameEventBets";
 import { resolveCalculableTechnicalFoulsCountBets } from "./resolveTechnicalFoulsCountBets";
 import { resolveCalculableLastBasketBets } from "./resolveLastBasketBets";
 import { resolveCalculableBlockOnPlayerBets } from "./resolveBlockOnPlayerBets";
+import { resolveCalculableNotInMatchBets } from "./resolveNotInMatchBets";
 import type { ResolveBetsSummary } from "./resolveBetsShared";
 
-/** Agrège les 14 resolvers ci-dessus en un seul résumé -- extrait de
+/** Agrège les 15 resolvers ci-dessus en un seul résumé -- extrait de
  *  /api/resolve-bets (22-26/08/2026) pour être réutilisable ailleurs sans
  *  dupliquer la liste (l'auto-révélation de l'Alpha NBA Cup s'en servait
  *  aussi, retirée le 04/10/2026 après la clôture de l'alpha). */
@@ -58,6 +60,7 @@ export async function resolveAllCalculableBets(): Promise<ResolveBetsSummary> {
     resolveCalculableTechnicalFoulsCountBets(),
     resolveCalculableLastBasketBets(),
     resolveCalculableBlockOnPlayerBets(),
+    resolveCalculableNotInMatchBets(),
   ]);
   return {
     resolved: summaries.flatMap((s) => s.resolved),

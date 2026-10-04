@@ -17,9 +17,10 @@ import { PERCENTAGE_STATS, type StatCode } from "./statCodes";
 // ci-dessous. resolveCalculableSeriesBets() (pièce (e), 23/08/2026, paris
 // SÉRIE) l'étend au scope SERIES en cherchant TOUS les vrais matchs déjà
 // joués de la série, cf. plus bas. Dans les 2 cas : seulement les paris déjà
-// VALIDATED avec structured_player_id connu (Phase 6 bloc 1) -- un pari sans
-// player_id (structuré avant ce correctif, ou joueur hors match/série forcé
-// à 0%) reste manuel pour l'instant.
+// VALIDATED avec structured_player_id connu (Phase 6 bloc 1) -- un pari
+// JOUEUR simple de scope MATCH sans player_id (joueur hors match forcé à 0 %)
+// est repris par resolveNotInMatchBets.ts (p3-14), qui cherche le joueur par
+// son nom ; les autres cas sans player_id restent manuels.
 //
 // Architecture : un SEUL Supabase héberge à la fois les tables de l'appli
 // (bets/matches/teams/entity_mappings) ET celles du projet Data NBA

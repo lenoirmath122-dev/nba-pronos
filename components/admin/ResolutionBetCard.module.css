@@ -13,6 +13,7 @@
 .header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: var(--space-2);
 }
 
@@ -28,6 +29,18 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-loss);
   border: 1px solid var(--color-loss);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-2);
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+
+/* p3-14 : pari calculable sans joueur identifié, jamais tranché automatiquement. */
+.unidentifiedBadge {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
   border-radius: var(--radius-pill);
   padding: 0 var(--space-2);
   line-height: 1.6;

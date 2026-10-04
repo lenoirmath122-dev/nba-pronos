@@ -26,6 +26,7 @@ export function ResolutionBetCard({ bet, error }: ResolutionBetCardProps) {
           <PlayerLink userId={bet.playerUserId} pseudo={bet.playerPseudo} />
         </p>
         {bet.isContested && <span className={styles.contestedBadge}>Contesté</span>}
+        {bet.unidentifiedPlayer && <span className={styles.unidentifiedBadge}>Joueur non identifié</span>}
       </div>
       <p className={styles.target}>{bet.targetLabel}</p>
       <p className={styles.description}>{bet.description}</p>

@@ -31,6 +31,10 @@ export type PendingResolutionBet = {
   validatedDifficulty: BetDifficulty;
   pointsAtStake: number;
   isContested: boolean; // requête de correction PENDING déjà déposée sur ce pari
+  /** p3-14 : pari calculable dont le joueur nommé n'a jamais été identifié
+   *  (structured_player_id vide) -- la résolution automatique ne le
+   *  tranchera pas (ou pas encore), l'admin doit le faire. */
+  unidentifiedPlayer: boolean;
 };
 
 function matchLabel(gameNumber: number, scheduledAt: string | null): string {
@@ -56,7 +60,19 @@ type BetRow = {
   description: string;
   validated_category: BetCategory | null;
   validated_difficulty: BetDifficulty | null;
+  is_calculable: boolean | null;
+  structured_player_id: number | null;
+  structured_player_name: string | null;
 };
+
+/** p3-14 : partagé avec le compteur du tableau de bord (admin-dashboard.ts). */
+export function isUnidentifiedPlayerBet(b: {
+  is_calculable: boolean | null;
+  structured_player_id: number | null;
+  structured_player_name: string | null;
+}): boolean {
+  return b.is_calculable === true && b.structured_player_name !== null && b.structured_player_id === null;
+}
 
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null };
 type MatchRow = { id: string; game_number: number; scheduled_at: string | null };
@@ -120,6 +136,7 @@ async function hydrateResolutionBets(
       validatedDifficulty,
       pointsAtStake: BET_DIFFICULTY_POINTS[validatedDifficulty],
       isContested: contestedBetIds.has(b.id),
+      unidentifiedPlayer: isUnidentifiedPlayerBet(b),
     };
   });
 }
@@ -136,10 +153,13 @@ export async function getResolutionQueues(): Promise<ResolutionQueues> {
 
   const { data: betsData } = await supabase
     .from("bets")
-    .select("id, user_id, scope, series_id, match_id, description, validated_category, validated_difficulty")
+    .select(
+      "id, user_id, scope, series_id, match_id, description, validated_category, validated_difficulty, " +
+        "is_calculable, structured_player_id, structured_player_name"
+    )
     .eq("competition_id", competition.id)
     .eq("status", "VALIDATED");
-  const bets = (betsData ?? []) as BetRow[];
+  const bets = (betsData ?? []) as unknown as BetRow[];
   if (bets.length === 0) return { due: [], orphan: [] };
 
   const deadlines = await computeBetDeadlines(
