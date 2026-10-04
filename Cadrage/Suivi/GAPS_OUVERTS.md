@@ -35,6 +35,32 @@
   p6-21), photo de profil/avatars (p6-22), landing page (p5-2).
 - **Couverture des types de paris** : choisir sa difficulté n'est pas
   intuitif. Couvrir plus de types (modèles ML) et aider au choix.
+- **Paris restés `VALIDATED` pour toujours (p3-14, p3-15)**, trouvés en
+  préparant la clôture de l'Alpha NBA Cup (04/10/2026). Ce n'est pas une
+  panne du resolver, il s'arrête volontairement. Deux trous :
+  (a) **joueur absent du match** : rien n'empêche de parier sur un joueur
+  qui n'appartient à aucune des deux équipes (« Brunson +15 pts » posé sur
+  LAL–GSW). La structuration laisse alors `structured_player_id` vide et
+  `resolveCalculableBets()` ne retient que les paris qui l'ont, donc le
+  pari n'est jamais examiné et aucune alerte ne remonte ;
+  (b) **joueur qui ne joue pas** (blessure, repos, DNP) : aucune ligne
+  `stats_box_scores`, et le resolver refuse par principe de trancher sur
+  une absence de donnée (`lib/ai/resolveMatchBets.ts`), donc le pari reste
+  en attente indéfiniment (« Tatum +30 pts », Tatum blessé dans le vrai
+  match emprunté `0022500320`). Il faut une règle (annulation ou perte),
+  appliquée automatiquement une fois les stats du match importées. Ce sera
+  fréquent sur la vraie Cup.
+- **Clôture de l'Alpha NBA Cup pas encore faite** : bracket terminé (7/7
+  séries), mais 4 paris à trancher à la main avant de clôturer, puisque la
+  clôture fige le classement. Stats réelles vérifiées le 04/10/2026 : Tatum
+  `CANCELLED` ou `LOST` (DNP), Brunson `CANCELLED` (pas dans le match),
+  « trois joueurs en double-double » `LOST` (2 seulement : Tatum, LeBron),
+  « Milwaukee ne gagne que le 1er quart-temps » `LOST` (MIL gagne aussi le
+  Q4, 32–28). Aucun de ces choix ne change la tête du classement
+  (Leopoldinho 110, Rillettes-31 109). Ensuite : clôture admin
+  (`/admin/competitions`), puis PR de retrait de l'automatisation alpha
+  (`nba-cup-alpha-reveal.yml`, cron 30 min encore actif,
+  `app/api/nba-cup-alpha/`, `lib/nbaCupAlpha/`).
 
 ## Capacité — test de charge
 
