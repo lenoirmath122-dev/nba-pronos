@@ -162,7 +162,11 @@ la TabBar sur l'écran Jouer. Retour visuel des actions : spinner sur le
 bouton en attente, toast de confirmation (prono validé, brouillon
 enregistré, pari envoyé à validation, bracket validé…), éclat vert sur la
 carte du prono validé, coche « Enregistré » sur la carte de chaque pick du
-bracket (sans toast, un tap = un enregistrement).
+bracket (sans toast, un tap = un enregistrement). Popup « Prono validé » /
+« Pari validé » (coche, rappel de ce qui a été validé, bouton « OK ») à la
+validation d'un prono, sur « Tout valider », quand l'IA auto-valide un pari
+perso, et au chargement suivant quand un admin a validé un pari du joueur
+(dernière validation vue gardée en localStorage, rien en base).
 
 ### 4.3 Paris personnalisés structurés par IA
 Fonctionnalité différenciante du produit (~4000 lignes,
@@ -438,7 +442,8 @@ components/   — un dossier par domaine d'écran (admin, auth, bets, bracket,
   (ModalDialog.tsx, FocusTrap.tsx, Backdrop.tsx — fond de popup qui ferme
   au toucher, utilisé par toutes les popups de l'app ; Toast.tsx — toast de
   confirmation des actions réussies, monté par la coquille de la zone
-  joueur ; SuccessFlash.module.css + lib/hooks/useSuccessFlash.ts — éclat
+  joueur ; ValidatedDialog.tsx — popup « Pari validé », montée au même
+  endroit ; SuccessFlash.module.css + lib/hooks/useSuccessFlash.ts — éclat
   vert de validation sur la carte concernée, etc.).
 
 supabase/migrations/ — 69 migrations SQL versionnées, voir §3.

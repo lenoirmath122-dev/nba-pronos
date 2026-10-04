@@ -10,6 +10,7 @@ import { BeyondWindowSection } from "@/components/play/BeyondWindowSection";
 import { LockedRow } from "@/components/play/LockedRow";
 import { LiveSubscriber } from "@/components/play/LiveSubscriber";
 import { LiveTicker } from "@/components/play/LiveTicker";
+import { formatPronoRecap } from "@/lib/labels/pronos";
 import styles from "./page.module.css";
 
 // Onglet "Mes pronos" (à suivre) — SPEC_REFONTE_ONGLET_JOUER_V0_1 §3.
@@ -52,6 +53,11 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
     .map((match) => ({
       matchId: match.matchId,
       label: `${match.homeTeam.abbreviation} – ${match.awayTeam.abbreviation}`,
+      // "READY" garantit vainqueur et écart déjà enregistrés.
+      recap:
+        match.myWinnerTeamId === match.homeTeam.id
+          ? formatPronoRecap(match.homeTeam.abbreviation, match.awayTeam.abbreviation, match.myMargin ?? 0)
+          : formatPronoRecap(match.awayTeam.abbreviation, match.homeTeam.abbreviation, match.myMargin ?? 0),
     }));
 
   return (

@@ -1,0 +1,139 @@
+/* Popup « Pari validé » (ValidatedDialog.tsx). z-index 35 : au-dessus des
+   dialogues (30) dont elle peut prendre le relais, sous le toast (40). */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 35;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-4);
+  animation: validated-fade-in 200ms ease-out;
+}
+
+.dialog {
+  width: 100%;
+  max-width: 22rem;
+  max-height: 85vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6) var(--space-5) var(--space-5);
+  background: var(--color-surface-raised);
+  border: 1px solid color-mix(in srgb, var(--color-win) 45%, transparent);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-arena);
+  text-align: center;
+  animation: validated-pop 320ms cubic-bezier(0.2, 0, 0, 1.2);
+}
+
+.check {
+  flex-shrink: 0;
+}
+
+.checkCircle {
+  fill: var(--color-win);
+}
+
+.checkMark {
+  fill: none;
+  stroke: var(--color-surface-raised);
+  stroke-width: 4.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: validated-check-draw 380ms ease-out 180ms forwards;
+}
+
+.title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--color-text-primary);
+}
+
+.items {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.item {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--color-win) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-win) 25%, transparent);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.note {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
+  color: var(--color-text-muted);
+}
+
+.ok {
+  width: 100%;
+  min-height: var(--tap-target-min);
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.ok:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+@keyframes validated-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes validated-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+}
+
+@keyframes validated-check-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .dialog {
+    animation: none;
+  }
+
+  .checkMark {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+}

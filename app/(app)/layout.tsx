@@ -1,10 +1,13 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { getNavBadgeData } from "@/lib/queries/home";
+import { getRecentAdminValidatedBets } from "@/lib/queries/bets";
 import { TabBar } from "@/components/nav/TabBar";
 import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
 import { ToastProvider } from "@/components/ui/Toast";
+import { ValidatedDialogProvider } from "@/components/ui/ValidatedDialog";
+import { ValidatedBetsWatcher } from "@/components/bets/ValidatedBetsWatcher";
 import styles from "./layout.module.css";
 
 // Zone joueur connecté (T6a §3.1) : garde de session + nav 4 onglets.
@@ -29,15 +32,20 @@ export default async function AppLayout({
   // sœurs) — rafraîchies au rechargement complet et après toute action
   // serveur qui revalide "/home" ou "/play" (déjà le cas des mutations de
   // paris/pronos/bracket).
-  const navBadges = await getNavBadgeData();
+  // Même lecture unique pour les paris validés par un admin depuis la
+  // dernière visite (popup « Pari validé », ValidatedBetsWatcher).
+  const [navBadges, adminValidatedBets] = await Promise.all([getNavBadgeData(), getRecentAdminValidatedBets()]);
 
   return (
     <div className={styles.shell}>
       <UnsavedGuardProvider>
         <ToastProvider>
-          <main className={styles.content}>{children}</main>
-          <BugReportButton />
-          <TabBar navBadges={navBadges} />
+          <ValidatedDialogProvider>
+            <main className={styles.content}>{children}</main>
+            <BugReportButton />
+            <TabBar navBadges={navBadges} />
+            <ValidatedBetsWatcher bets={adminValidatedBets} />
+          </ValidatedDialogProvider>
         </ToastProvider>
       </UnsavedGuardProvider>
     </div>

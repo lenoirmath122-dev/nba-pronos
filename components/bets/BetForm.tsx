@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
 import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
@@ -74,6 +75,7 @@ export function BetForm(props: BetFormProps) {
   // Toast posé AVANT router.back() (p3-5) : il vit dans la coquille de la
   // zone joueur, qui survit à la fermeture de cette popup.
   const showToast = useToast();
+  const showValidated = useValidatedDialog();
   // Panneau de saisie replié par défaut derrière une barre compacte, dépliée
   // seulement au tap (demandé par l'utilisateur 04/08/2026 : le panneau
   // complet, une fois affiché, prenait trop de place et cachait le
@@ -150,9 +152,13 @@ export function BetForm(props: BetFormProps) {
   function handleSubmit() {
     setError(null);
     startTransition(async () => {
-      const result = await submitBet(targetPayload());
+      const payload = targetPayload();
+      const result = await submitBet(payload);
       if (result.success) {
-        showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
+        // Auto-validé par l'IA (file admin sautée) : popup « Pari validé »
+        // (04/10/2026) ; sinon il attend l'admin, le toast suffit.
+        if (result.autoValidated) showValidated({ title: "Pari validé", items: [payload.description] });
+        else showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
         router.back();
       } else {
         setError(result.error);

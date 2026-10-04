@@ -50,7 +50,12 @@ test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }, 
   await expect(dialog).toContainText("Valider ce prono ?");
   await dialog.getByRole("button", { name: "Valider définitivement" }).click();
 
-  await expect(dialog).not.toBeVisible();
+  // Popup « Prono validé » (04/10/2026) : rappelle le prono figé, reste
+  // affichée jusqu'au « OK ».
+  const validatedDialog = page.getByRole("alertdialog", { name: "Prono validé" });
+  await expect(validatedDialog).toContainText(new RegExp(`${match2.homeTeamAbbreviation} bat \\S+ de 3 pts`));
+  await validatedDialog.getByRole("button", { name: "OK" }).click();
+  await expect(page.getByRole("alertdialog")).toHaveCount(0);
   // La ligne se replie après validation -- récap compact dans le bouton
   // "Détails du match" ("✓ E2H +3", abréviation qui varie par project
   // depuis que match2 est distinct -- voir seed.ts), pas le texte "Ton

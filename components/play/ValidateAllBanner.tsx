@@ -5,7 +5,7 @@ import { validateAllCompleteMatchPredictions } from "@/lib/actions/matches";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
 import { Spinner } from "@/components/ui/Spinner";
-import { useToast } from "@/components/ui/Toast";
+import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import styles from "./ValidateAllBanner.module.css";
 
 // Bandeau « Tout valider » (§9) — feuille client n°3/3 : porte le dialogue de
@@ -15,23 +15,28 @@ import styles from "./ValidateAllBanner.module.css";
 // déjà validés. La confirmation liste les matchs concernés et rappelle
 // l'irréversibilité, affichée AVANT l'appel (l'action elle-même ne confirme
 // rien, T6b §3.1).
-type ReadyMatch = { matchId: string; label: string };
+type ReadyMatch = { matchId: string; label: string; recap: string };
 
 type ValidateAllBannerProps = { readyMatches: ReadyMatch[] };
 
 export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [isPending, startTransition] = useTransition();
-  const showToast = useToast();
+  const showValidated = useValidatedDialog();
 
-  // Confirmation (p3-5) : ce bandeau disparaît avec le dernier prono validé
-  // (plus aucun "prêt"), le toast vit dans la coquille et lui survit.
+  // Confirmation (p3-5, popup depuis le 04/10/2026) : ce bandeau disparaît
+  // avec le dernier prono validé (plus aucun "prêt"), la popup vit dans la
+  // coquille et lui survit. Ne liste que les matchs réellement validés.
   function handleConfirm() {
     startTransition(async () => {
       const { validatedMatchIds } = await validateAllCompleteMatchPredictions();
       setIsConfirmOpen(false);
       const n = validatedMatchIds.length;
-      if (n > 0) showToast(n > 1 ? `${n} pronos validés` : "Prono validé");
+      if (n === 0) return;
+      showValidated({
+        title: n > 1 ? `${n} pronos validés` : "Prono validé",
+        items: readyMatches.filter((m) => validatedMatchIds.includes(m.matchId)).map((m) => m.recap),
+      });
     });
   }
 

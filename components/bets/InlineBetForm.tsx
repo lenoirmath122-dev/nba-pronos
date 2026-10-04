@@ -13,6 +13,7 @@ import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { ModalDialog } from "@/components/ui/ModalDialog";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
 import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { BetsIcon } from "@/components/icons/home-icons";
@@ -96,6 +97,7 @@ export function InlineBetForm({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const showToast = useToast();
+  const showValidated = useValidatedDialog();
   // Éclat sur le bouton déclencheur une fois la popup refermée après une
   // soumission (p3-5) : ramène l'œil sur la carte où le pari vit désormais.
   const [triggerFlashing, flashTrigger] = useSuccessFlash();
@@ -207,7 +209,8 @@ export function InlineBetForm({
   function handleSubmit() {
     setError(null);
     startTransition(async () => {
-      const result = await submitBet(targetPayload());
+      const payload = targetPayload();
+      const result = await submitBet(payload);
       if (result.success) {
         clearDirty();
         // Repli automatique demandé par l'utilisateur le 21/08/2026 (libérer
@@ -216,7 +219,10 @@ export function InlineBetForm({
         // succès (ModalDialog ne fait que porter le bouton de fermeture
         // manuelle, onClose).
         setIsOpen(false);
-        showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
+        // Auto-validé par l'IA (file admin sautée) : popup « Pari validé »
+        // (04/10/2026) ; sinon il attend l'admin, le toast suffit.
+        if (result.autoValidated) showValidated({ title: "Pari validé", items: [payload.description] });
+        else showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
         flashTrigger();
       } else {
         setError(result.error);
