@@ -6,6 +6,7 @@ import { Feed } from "@/components/home/Feed";
 import { EmptyState } from "@/components/home/EmptyState";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
 import { MarkFeedSeen } from "@/components/home/MarkFeedSeen";
+import { PushPrompt } from "@/components/home/PushPrompt";
 import { WipDisclaimer } from "@/components/ui/WipDisclaimer";
 import styles from "./page.module.css";
 
@@ -17,7 +18,8 @@ import styles from "./page.module.css";
 // Aucun fetch client, aucune logique métier ici — tout est déjà calculé par
 // lib/queries/home.ts.
 export default async function HomePage() {
-  const { competitionId, header, todo, adminTodo, seriesBets, matchBets, feed } = await getHomeData();
+  const { competitionId, header, todo, adminTodo, seriesBets, matchBets, feed, notificationPreference } =
+    await getHomeData();
 
   if (competitionId === null || header === null) {
     return (
@@ -25,6 +27,7 @@ export default async function HomePage() {
         <div className={`${styles.header} glass-card`}>
           <p className={styles.title}>Accueil</p>
         </div>
+        <PushPrompt preference={notificationPreference} />
         <WipDisclaimer />
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
@@ -35,6 +38,9 @@ export default async function HomePage() {
     <div className={`${styles.page} photo-page`}>
       <MarkFeedSeen latestAt={feed[0]?.occurredAt ?? null} />
       <HomeHeader header={header} />
+      {/* Activation des notifications (p3-13) — ne rend rien une fois
+          l'appareil abonné, voir PushPrompt.tsx. */}
+      <PushPrompt preference={notificationPreference} />
 
       <WipDisclaimer />
 

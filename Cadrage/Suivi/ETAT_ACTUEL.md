@@ -199,7 +199,14 @@ Web Push (VAPID) pour les rappels ciblés (deadlines de pronostic/bracket
 proches), notifications de chat par canal. Rappels automatisés côté serveur
 via workflows GitHub Actions programmés (`reminder-bracket.yml`,
 `reminder-matches.yml`). Tous les push partent en urgence `high` avec un TTL
-calé sur l'échéance du rappel (`lib/push/send.ts`).
+calé sur l'échéance du rappel (`lib/push/send.ts`). Activation proposée
+en haut de l'Accueil par une carte dédiée (`components/home/PushPrompt.tsx`)
+tant que l'appareil n'est pas abonné : activation du compte, activation de
+CET appareil quand le compte est déjà en push (changement de téléphone),
+ou consigne d'ajout à l'écran d'accueil sur iPhone/iPad ouvert dans
+Safari (seul contexte où Apple autorise le push web). « Plus tard » la
+masque 7 jours sur l'appareil (localStorage). Le réglage complet reste
+dans le Profil.
 
 ### 4.7 Panneau d'administration
 Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des

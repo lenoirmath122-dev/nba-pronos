@@ -77,7 +77,14 @@ export type HomeData = {
   seriesBets: BetTodoItem[];
   matchBets: BetTodoItem[];
   feed: FeedItem[];
+  /** Préférence de notification du COMPTE (p3-13) — lue même sans
+   *  compétition active, la carte d'activation des notifications
+   *  (components/home/PushPrompt.tsx) doit apparaître aussi pendant une
+   *  pause entre deux compétitions. */
+  notificationPreference: NotificationPreference;
 };
+
+export type NotificationPreference = "NONE" | "PUSH" | "EMAIL";
 
 /** Fenêtre et taille du feed « Ça vient de tomber » (spec §6) — ajustables ici uniquement. */
 export const FEED_WINDOW_HOURS = 48;
@@ -91,6 +98,7 @@ const EMPTY_HOME_DATA: HomeData = {
   seriesBets: [],
   matchBets: [],
   feed: [],
+  notificationPreference: "NONE",
 };
 
 type CompetitionRow = {
@@ -113,14 +121,22 @@ export async function getHomeData(): Promise<HomeData> {
 
   // Une seule compétition ACTIVE à la fois (contrainte d'unicité en base) —
   // aucune active → état vide global (§2).
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, name, type, bracket_deadline")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const [{ data: competition }, { data: prefRow }] = await Promise.all([
+    supabase
+      .from("competitions")
+      .select("id, name, type, bracket_deadline")
+      .eq("status", "ACTIVE")
+      .maybeSingle<CompetitionRow>(),
+    supabase
+      .from("users")
+      .select("notification_preference")
+      .eq("id", user.id)
+      .maybeSingle<{ notification_preference: NotificationPreference }>(),
+  ]);
+  const notificationPreference = prefRow?.notification_preference ?? "NONE";
 
   if (!competition) {
-    return EMPTY_HOME_DATA;
+    return { ...EMPTY_HOME_DATA, notificationPreference };
   }
 
   const [header, todo, adminTodo, seriesBets, matchBets, feed] = await Promise.all([
@@ -132,7 +148,7 @@ export async function getHomeData(): Promise<HomeData> {
     getFeed(supabase, competition.id, user.id),
   ]);
 
-  return { competitionId: competition.id, header, todo, adminTodo, seriesBets, matchBets, feed };
+  return { competitionId: competition.id, header, todo, adminTodo, seriesBets, matchBets, feed, notificationPreference };
 }
 
 // ============================================================================
