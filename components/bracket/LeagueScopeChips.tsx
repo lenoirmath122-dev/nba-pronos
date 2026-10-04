@@ -6,8 +6,8 @@ import styles from "./LeagueScopeChips.module.css";
 // Bracket montrait toujours TOUS les joueurs) — même patron que
 // components/leaderboard/LeagueScopeChips.tsx (Classement) : pas d'état
 // client, paramètre d'URL `?ligue=`. N'apparaît que pour un joueur membre
-// d'au moins une ligue. Ne préserve plus `?arbre=` (17/08/2026, retiré : la
-// Vue B est désormais toujours l'écran d'arrivée, cf. TreeView.tsx).
+// d'au moins une ligue. Ne préserve plus `?arbre=` (17/08/2026, retiré :
+// l'arbre est le seul rendu, cf. BracketSummary.tsx).
 type LeagueScopeChipsProps = {
   myLeagues: MyLeague[];
   activeLeagueId: string | null;

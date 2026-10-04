@@ -37,10 +37,8 @@
 - **Écrans** : bandeau récap « BOS +3 » plus « arena » ; Résultats : paris
   des autres derrière un seul bouton, et détail (% et points possibles) des
   paris réussis.
-- **Bracket global `/bracket`** : garde sa vue résumé par tour (cartes)
-  derrière « Quitter » de l'arbre. Le retour de l'alpha visait le
-  remplissage ; à trancher si on retire aussi ce résumé (il porte le filtre
-  par ligue et les liens de pari série).
+- **Bracket global `/bracket` en arbre seul** : code livré (voir journal
+  04/10/2026, suite de p3-4). Reste à vérifier sur téléphone après merge.
 - **Déjà dans la feuille de route mais reportés, redemandés par les
   testeurs** : popup de badge gagné + design des badges (p6-18/p6-20/
   p6-21), photo de profil/avatars (p6-22), landing page (p5-2).

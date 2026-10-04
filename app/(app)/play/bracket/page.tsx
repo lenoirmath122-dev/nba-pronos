@@ -9,14 +9,8 @@ import styles from "./page.module.css";
 // joueur) lu par lib/queries/bracket-fill.ts, passé en props à
 // BracketFillView.tsx (enveloppe client de l'arbre — seul rendu depuis le
 // 04/10/2026, p3-4).
-//
-// searchParams est une Promise en Next.js 16 (AGENTS.md) — attendue avant
-// lecture. `round` n'a plus d'effet sur l'arbre (qui affiche tous les tours
-// et guide automatiquement), seulement sur la redirection après deadline.
-type SearchParams = { round?: string };
 
-export default async function BracketFillPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const sp = await searchParams;
+export default async function BracketFillPage() {
   const data = await getBracketFillData();
 
   if (data.competitionId === null) {
@@ -51,15 +45,10 @@ export default async function BracketFillPage({ searchParams }: { searchParams: 
   // inerte avec un lien à part — on atterrit directement sur le Bracket
   // global, qui porte déjà (via getBracket()) la mise en avant des paris du
   // joueur sur chaque série, très voyante (NodeCard.tsx).
-  //
-  // `?round=` reporté en ancre (16/08/2026, bug d'audit corrigé) : un lien/
-  // favori vers `/play/bracket?round=X` rebondissait vers `/bracket` en
-  // perdant X silencieusement. `/bracket` (vue globale) n'a pas d'onglet par
-  // tour comme cet écran — toutes les séries y sont déjà visibles — mais
-  // `#round-X` (id posé sur chaque section, SeriesDrillDown.tsx) fait au
-  // moins défiler jusqu'au bon tour au lieu d'atterrir en haut de page.
+  // (`?round=` n'est plus reporté en ancre `#round-X` depuis le 04/10/2026 :
+  // l'arbre, seul rendu de /bracket, affiche tous les tours côte à côte.)
   if (data.isDeadlinePassed) {
-    redirect(sp.round ? `/bracket#round-${sp.round}` : "/bracket");
+    redirect("/bracket");
   }
 
   return <BracketFillView data={data} />;

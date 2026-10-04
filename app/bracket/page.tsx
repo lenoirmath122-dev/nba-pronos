@@ -11,8 +11,8 @@ import styles from "./page.module.css";
 // /leaderboard : cette enveloppe fine choisit sa nav selon la session, lit
 // `?ligue=` pour le filtre par ligue (30/07/2026, demandé par
 // l'utilisateur), puis compose le module de lecture partagé + le composant
-// de rendu partagé. Plus de `?arbre=` (17/08/2026, retiré : la Vue B est
-// désormais toujours l'écran d'arrivée, cf. TreeView.tsx).
+// de rendu partagé. Plus de `?arbre=` (17/08/2026) : l'arbre est le seul
+// rendu depuis le 04/10/2026, cf. BracketSummary.tsx.
 type BracketPageProps = {
   searchParams: Promise<{ ligue?: string | string[] }>;
 };
