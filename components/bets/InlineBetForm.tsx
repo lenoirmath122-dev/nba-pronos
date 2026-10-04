@@ -21,6 +21,7 @@ import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
 import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
 import { DeleteBetButton } from "./DeleteBetButton";
+import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
 import styles from "./InlineBetForm.module.css";
 
 // Saisie de pari partagée, générique sur le scope (MATCH ou SERIES) —
@@ -95,6 +96,11 @@ export function InlineBetForm({
   const [category, setCategory] = useState<BetCategory>(myBet?.category ?? DEFAULT_BET_CATEGORY);
   const [difficulty, setDifficulty] = useState<BetDifficulty>(myBet?.difficulty ?? DEFAULT_BET_DIFFICULTY);
   const [error, setError] = useState<string | null>(null);
+  // p3-14 : joueur absent du match selon l'IA, pari repassé en brouillon en
+  // attente de confirmation. `draftBetId` sert aux envois suivants même si
+  // `myBet` n'a pas encore été rafraîchi (sinon un 2e pari serait créé).
+  const [notInMatch, setNotInMatch] = useState<string | null>(null);
+  const [draftBetId, setDraftBetId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const showToast = useToast();
   const showValidated = useValidatedDialog();
@@ -183,7 +189,7 @@ export function InlineBetForm({
 
   function targetPayload() {
     return {
-      betId: myBet?.betId,
+      betId: myBet?.betId ?? draftBetId ?? undefined,
       scope,
       seriesId,
       matchId,
@@ -206,11 +212,18 @@ export function InlineBetForm({
     });
   }
 
-  function handleSubmit() {
+  function handleSubmit(confirmPlayerNotInMatch = false) {
     setError(null);
     startTransition(async () => {
       const payload = targetPayload();
-      const result = await submitBet(payload);
+      const result = await submitBet({ ...payload, confirmPlayerNotInMatch });
+      if (result.success && "playerNotInMatch" in result) {
+        clearDirty();
+        setDraftBetId(result.betId);
+        setNotInMatch(result.playerNotInMatch);
+        return;
+      }
+      setNotInMatch(null);
       if (result.success) {
         clearDirty();
         // Repli automatique demandé par l'utilisateur le 21/08/2026 (libérer
@@ -295,45 +308,57 @@ export function InlineBetForm({
         </p>
       )}
 
-      <div className={styles.actions}>
-        {!isSubmittedBet && (
-          <button type="button" className={styles.secondary} onClick={handleSaveDraft} disabled={isPending}>
-            Enregistrer le brouillon
-          </button>
-        )}
-        {!hideSubmit && (
-          <button
-            type="button"
-            className={styles.primary}
-            onClick={handleSubmit}
-            disabled={isPending || descriptionEmpty}
-          >
-            {isPending ? (
-              <span className={styles.primaryPending}>
-                <Spinner size="sm" />
-                Analyse du pari…
-              </span>
-            ) : isSubmittedBet ? (
-              "Soumettre les modifications"
-            ) : (
-              "Soumettre à validation"
-            )}
-          </button>
-        )}
-        {isSubmittedBet && (
-          <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>
-            Revenir en brouillon
-          </button>
-        )}
-        {/* Suppression (18/08/2026) : vivait UNIQUEMENT sur l'ex-écran "Mes
-            paris" (DeleteBetButton via MyBetRow), disparu avec la fusion
-            (SPEC_REFONTE_ONGLET_JOUER_V0_1) — reconduite ici pour ne pas
-            perdre la fonctionnalité, et étendue au passage aux paris SÉRIE du
-            Bracket (2e appelant de ce composant), qui n'en avaient jamais
-            bénéficié. Même garde-fou DRAFT/SUBMITTED que delete_bet
-            (migration 20260818090000), déjà assuré par myBet !== null ici. */}
-        {myBet && <DeleteBetButton betId={myBet.betId} />}
-      </div>
+      {notInMatch ? (
+        <PlayerNotInMatchConfirm
+          playerName={notInMatch}
+          isPending={isPending}
+          onEdit={() => {
+            setNotInMatch(null);
+            document.getElementById(descriptionId)?.focus();
+          }}
+          onConfirm={() => handleSubmit(true)}
+        />
+      ) : (
+        <div className={styles.actions}>
+          {!isSubmittedBet && (
+            <button type="button" className={styles.secondary} onClick={handleSaveDraft} disabled={isPending}>
+              Enregistrer le brouillon
+            </button>
+          )}
+          {!hideSubmit && (
+            <button
+              type="button"
+              className={styles.primary}
+              onClick={() => handleSubmit()}
+              disabled={isPending || descriptionEmpty}
+            >
+              {isPending ? (
+                <span className={styles.primaryPending}>
+                  <Spinner size="sm" />
+                  Analyse du pari…
+                </span>
+              ) : isSubmittedBet ? (
+                "Soumettre les modifications"
+              ) : (
+                "Soumettre à validation"
+              )}
+            </button>
+          )}
+          {isSubmittedBet && (
+            <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>
+              Revenir en brouillon
+            </button>
+          )}
+          {/* Suppression (18/08/2026) : vivait UNIQUEMENT sur l'ex-écran "Mes
+              paris" (DeleteBetButton via MyBetRow), disparu avec la fusion
+              (SPEC_REFONTE_ONGLET_JOUER_V0_1) — reconduite ici pour ne pas
+              perdre la fonctionnalité, et étendue au passage aux paris SÉRIE du
+              Bracket (2e appelant de ce composant), qui n'en avaient jamais
+              bénéficié. Même garde-fou DRAFT/SUBMITTED que delete_bet
+              (migration 20260818090000), déjà assuré par myBet !== null ici. */}
+          {myBet && <DeleteBetButton betId={myBet.betId} />}
+        </div>
+      )}
     </>
   );
 

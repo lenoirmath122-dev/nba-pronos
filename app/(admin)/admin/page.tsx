@@ -90,6 +90,20 @@ export default async function AdminDashboardPage() {
         ))}
       </ul>
 
+      {/* p3-14 : paris calculables dont le joueur n'a jamais été identifié --
+          parmi les paris à résoudre, mis en avant parce que la résolution
+          automatique peut ne jamais les trancher. */}
+      {data.unidentifiedPlayerCount > 0 && (
+        <Link href="/admin/resolution" className={styles.alert}>
+          {data.unidentifiedPlayerCount > 1
+            ? `${data.unidentifiedPlayerCount} paris à résoudre visent un joueur non identifié`
+            : "1 pari à résoudre vise un joueur non identifié"}
+          <span className={styles.chevron} aria-hidden="true">
+            ›
+          </span>
+        </Link>
+      )}
+
       <ul className={styles.linkList}>
         <li>
           <Link href="/admin/competitions" className={styles.linkEntryActive}>

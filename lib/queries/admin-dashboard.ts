@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { computeBetDeadlinesPassed } from "@/lib/scoring/bet-deadline";
+import { isUnidentifiedPlayerBet } from "@/lib/queries/admin-resolution";
 
 // Lecture du tableau de bord admin (composants serveur uniquement),
 // SPEC_ECRAN_ADMIN_DASHBOARD_V0_1 §6. Un seul module, appelé avec
@@ -13,6 +14,8 @@ export type AdminDashboardData = {
   competitionName: string | null;
   pendingValidationCount: number;
   pendingResolutionCount: number;
+  /** p3-14 : parmi les paris à résoudre, ceux dont le joueur n'a jamais été identifié. */
+  unidentifiedPlayerCount: number;
   pendingRequestsCount: number;
   totalPlayers: number;
   leagues: LeagueOverview[];
@@ -23,6 +26,7 @@ export type LeagueOverview = { id: string; name: string; memberCount: number };
 const EMPTY_COUNTS = {
   pendingValidationCount: 0,
   pendingResolutionCount: 0,
+  unidentifiedPlayerCount: 0,
   pendingRequestsCount: 0,
 };
 
@@ -46,7 +50,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     return { competitionId: null, competitionName: null, ...EMPTY_COUNTS, totalPlayers, leagues };
   }
 
-  const [pendingValidationCount, pendingResolutionCount, pendingRequestsCount] =
+  const [pendingValidationCount, { pendingResolutionCount, unidentifiedPlayerCount }, pendingRequestsCount] =
     await Promise.all([
       getPendingValidationCount(supabase, competition.id),
       getPendingResolutionCount(supabase, competition.id),
@@ -58,6 +62,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     competitionName: competition.name,
     pendingValidationCount,
     pendingResolutionCount,
+    unidentifiedPlayerCount,
     pendingRequestsCount,
     totalPlayers,
     leagues,
@@ -116,6 +121,9 @@ type ValidatedBetRow = {
   scope: "MATCH" | "SERIES";
   series_id: string;
   match_id: string | null;
+  is_calculable: boolean | null;
+  structured_player_id: number | null;
+  structured_player_name: string | null;
 };
 
 // File de résolution (§3.2) : paris VALIDÉS dont l'échéance est PASSÉE
@@ -123,20 +131,23 @@ type ValidatedBetRow = {
 async function getPendingResolutionCount(
   supabase: SupabaseServerClient,
   competitionId: string
-): Promise<number> {
+): Promise<{ pendingResolutionCount: number; unidentifiedPlayerCount: number }> {
   const { data } = await supabase
     .from("bets")
-    .select("id, scope, series_id, match_id")
+    .select("id, scope, series_id, match_id, is_calculable, structured_player_id, structured_player_name")
     .eq("competition_id", competitionId)
     .eq("status", "VALIDATED");
   const bets = (data ?? []) as ValidatedBetRow[];
-  if (bets.length === 0) return 0;
+  if (bets.length === 0) return { pendingResolutionCount: 0, unidentifiedPlayerCount: 0 };
 
   const passedIds = await computeBetDeadlinesPassed(
     supabase,
     bets.map((bet) => ({ id: bet.id, scope: bet.scope, seriesId: bet.series_id, matchId: bet.match_id }))
   );
-  return passedIds.size;
+  return {
+    pendingResolutionCount: passedIds.size,
+    unidentifiedPlayerCount: bets.filter((bet) => passedIds.has(bet.id) && isUnidentifiedPlayerBet(bet)).length,
+  };
 }
 
 // File des requêtes (§3.3) : correction_requests EN_ATTENTE, TOUTES

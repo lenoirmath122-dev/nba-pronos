@@ -183,7 +183,16 @@ résolue automatiquement — un admin traite alors le pari à la main. Un
 pari (ou une condition de combo/duel) qui nomme un joueur absent du match
 (blessure, repos, DNP) est perdu dès que le box score du match est importé
 (`isBoxScoreSynced()`, `lib/ai/resolveBetsShared.ts`), règle affichée sur
-`/regles` ; en relation « OU », seul le côté du joueur absent échoue. Chaque
+`/regles` ; en relation « OU », seul le côté du joueur absent échoue. Un
+pari sur un joueur qui ne joue pour aucune des deux équipes (jugement de
+l'IA, `not_in_match`) n'est plus auto-validé en silence : il repasse en
+brouillon et le joueur choisit « Corriger le pari » ou « Envoyer quand
+même » (`PlayerNotInMatchConfirm`, dans `InlineBetForm` et `BetForm`). Envoyé
+quand même, il est validé à 0 % puis résolu par
+`lib/ai/resolveNotInMatchBets.ts`, qui cherche le joueur par son nom sur la
+feuille du match : absent → perdu, présent → résolu sur ses vraies stats,
+nom de famille seul → laissé à l'admin (paris JOUEUR simples de scope MATCH
+uniquement). Chaque
 pari jugé calculable par l'IA est validé directement, sans geste admin ;
 l'admin garde un droit de correction après coup. Le pipeline de probabilités
 pré-match (utilisé pour informer/valider certains paris) s'appuie sur le
@@ -231,7 +240,11 @@ pronostics/paris, résolution des paris non calculables automatiquement,
 requêtes de correction, gestion des joueurs, gestion des compétitions
 (création, résultats, clôture/archivage), vue "qui manque à l'appel",
 historique des logs, file des signalements de bug (`/admin/bug-reports`),
-file des signalements de messages de chat (`/admin/chat-reports`).
+file des signalements de messages de chat (`/admin/chat-reports`). Les
+paris à résoudre qui visent un joueur jamais identifié
+(`structured_player_id` vide) portent un badge « Joueur non identifié » dans
+la file de résolution, et le tableau de bord affiche une alerte quand il y en
+a.
 
 ### 4.8 RGPD — self-service compte
 Suppression de compte en self-service (`lib/actions/account.ts`,

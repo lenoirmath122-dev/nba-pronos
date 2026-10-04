@@ -19,6 +19,10 @@ import { checkRateLimit } from "@/lib/actions/rateLimit";
 export type ActionResult = { success: true; betId: string } | { success: false; error: string };
 export type SubmitBetResult =
   | { success: true; betId: string; autoValidated: boolean }
+  // p3-14 : l'IA juge que le joueur visé ne joue pas ce match -- le pari est
+  // repassé en brouillon, le client demande confirmation avant de renvoyer
+  // avec `confirmPlayerNotInMatch`.
+  | { success: true; betId: string; playerNotInMatch: string }
   | { success: false; error: string };
 export type SimpleActionResult = { success: true } | { success: false; error: string };
 
@@ -33,6 +37,11 @@ type SaveBetInput = {
   description: string;
   category: BetCategory;
   difficulty: BetDifficulty;
+};
+
+type SubmitBetInput = SaveBetInput & {
+  /** Le joueur a vu l'avertissement « joueur absent du match » et envoie quand même (p3-14). */
+  confirmPlayerNotInMatch?: boolean;
 };
 
 async function callSaveBet(input: SaveBetInput, submit: boolean): Promise<ActionResult> {
@@ -92,11 +101,30 @@ export async function saveDraftBet(input: SaveBetInput): Promise<ActionResult> {
  *  échouer la soumission elle-même (voir structureAndScoreBet.ts).
  *  revalidatePath rappelé APRÈS (pas seulement dans callSaveBet) --
  *  l'auto-validation change le statut du pari après le 1er appel. */
-export async function submitBet(input: SaveBetInput): Promise<SubmitBetResult> {
-  const result = await callSaveBet(input, true);
+export async function submitBet(input: SubmitBetInput): Promise<SubmitBetResult> {
+  const { confirmPlayerNotInMatch, ...saveInput } = input;
+  const result = await callSaveBet(saveInput, true);
   if (!result.success) return result;
 
-  await structureAndScoreBet(result.betId, input.description, input.seriesId, input.scope, input.matchId);
+  const outcome = await structureAndScoreBet(result.betId, input.description, input.seriesId, input.scope, input.matchId, {
+    confirmPlayerNotInMatch,
+  });
+  const supabase = await getServerClient();
+
+  // p3-14 (04/10/2026) : joueur absent des 2 équipes selon l'IA et pas
+  // encore confirmé -- retour en brouillon (SUBMITTED → DRAFT, withdraw_bet)
+  // plutôt qu'une auto-validation à 0 % que le joueur ne pourrait plus
+  // supprimer. Si ce retour échoue, le pari reste soumis non structuré et
+  // part dans la file admin, comme toute autre panne de structuration.
+  if (outcome.playerNotInMatch) {
+    const { error } = await supabase.rpc("withdraw_bet", { p_bet_id: result.betId });
+    revalidatePath("/play");
+    revalidatePath("/play/results");
+    revalidatePath("/home");
+    if (!error) return { success: true, betId: result.betId, playerNotInMatch: outcome.playerNotInMatch };
+    return { success: true, betId: result.betId, autoValidated: false };
+  }
+
   revalidatePath("/play");
   revalidatePath("/play/results");
   revalidatePath("/home");
@@ -105,7 +133,6 @@ export async function submitBet(input: SaveBetInput): Promise<SubmitBetResult> {
   // popup « Pari validé » si l'IA a fait sauter la file admin, sinon le
   // simple toast « envoyé à validation ». Une lecture ratée retombe sur ce
   // second cas, jamais sur un échec de la soumission elle-même.
-  const supabase = await getServerClient();
   const { data: bet } = await supabase.from("bets").select("status").eq("id", result.betId).maybeSingle();
   return { success: true, betId: result.betId, autoValidated: bet?.status === "VALIDATED" };
 }

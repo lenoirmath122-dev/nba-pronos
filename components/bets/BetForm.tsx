@@ -19,6 +19,7 @@ import {
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { BetFormBootstrap, EditableBet, MatchOption, NewBetContext, SeriesOption } from "@/lib/queries/bets";
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
+import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
 import styles from "./BetForm.module.css";
 
 // SEULE feuille "use client" de l'écran Nouveau pari (§1.1) : porte la saisie
@@ -71,6 +72,11 @@ export function BetForm(props: BetFormProps) {
     isEdit ? props.bet.proposedDifficulty : DEFAULT_BET_DIFFICULTY
   );
   const [error, setError] = useState<string | null>(null);
+  // p3-14 : joueur absent du match selon l'IA, pari repassé en brouillon en
+  // attente de confirmation -- `draftBetId` évite de recréer un pari aux
+  // envois suivants.
+  const [notInMatch, setNotInMatch] = useState<string | null>(null);
+  const [draftBetId, setDraftBetId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   // Toast posé AVANT router.back() (p3-5) : il vit dans la coquille de la
   // zone joueur, qui survit à la fermeture de cette popup.
@@ -104,25 +110,28 @@ export function BetForm(props: BetFormProps) {
     scope === "MATCH" && !isCup && selectedSeries !== null && selectedSeries.matchSlotsUsed >= MATCH_SLOT_CAP;
 
   function handleScopeChange(next: "SERIES" | "MATCH") {
+    setNotInMatch(null);
     setScope(next);
     setMatchId(null);
     setIsExpanded(false);
   }
 
   function handleSeriesSelect(series: SeriesOption) {
+    setNotInMatch(null);
     setSeriesId(series.seriesId);
     setMatchId(null);
     setIsExpanded(false);
   }
 
   function handleMatchSelect(match: MatchOption) {
+    setNotInMatch(null);
     setMatchId(match.matchId);
     setIsExpanded(false);
   }
 
   function targetPayload() {
     return {
-      betId: isEdit ? props.bet.betId : undefined,
+      betId: isEdit ? props.bet.betId : (draftBetId ?? undefined),
       scope,
       seriesId: seriesId as string,
       matchId: scope === "MATCH" ? matchId : null,
@@ -149,11 +158,17 @@ export function BetForm(props: BetFormProps) {
     });
   }
 
-  function handleSubmit() {
+  function handleSubmit(confirmPlayerNotInMatch = false) {
     setError(null);
     startTransition(async () => {
       const payload = targetPayload();
-      const result = await submitBet(payload);
+      const result = await submitBet({ ...payload, confirmPlayerNotInMatch });
+      if (result.success && "playerNotInMatch" in result) {
+        setDraftBetId(result.betId);
+        setNotInMatch(result.playerNotInMatch);
+        return;
+      }
+      setNotInMatch(null);
       if (result.success) {
         // Auto-validé par l'IA (file admin sautée) : popup « Pari validé »
         // (04/10/2026) ; sinon il attend l'admin, le toast suffit.
@@ -355,35 +370,47 @@ export function BetForm(props: BetFormProps) {
             </p>
           )}
 
-          <div className={styles.actions}>
-            {!isSubmittedBet && (
-              <button type="button" className={styles.secondary} onClick={handleSaveDraft} disabled={isPending}>
-                Enregistrer le brouillon
-              </button>
-            )}
-            <button
-              type="button"
-              className={styles.primary}
-              onClick={handleSubmit}
-              disabled={isPending || descriptionEmpty}
-            >
-              {isPending ? (
-                <span className={styles.primaryPending}>
-                  <Spinner size="sm" />
-                  Analyse du pari…
-                </span>
-              ) : isSubmittedBet ? (
-                "Soumettre les modifications"
-              ) : (
-                "Soumettre à validation"
+          {notInMatch ? (
+            <PlayerNotInMatchConfirm
+              playerName={notInMatch}
+              isPending={isPending}
+              onEdit={() => {
+                setNotInMatch(null);
+                document.getElementById(descriptionId)?.focus();
+              }}
+              onConfirm={() => handleSubmit(true)}
+            />
+          ) : (
+            <div className={styles.actions}>
+              {!isSubmittedBet && (
+                <button type="button" className={styles.secondary} onClick={handleSaveDraft} disabled={isPending}>
+                  Enregistrer le brouillon
+                </button>
               )}
-            </button>
-            {isSubmittedBet && (
-              <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>
-                Revenir en brouillon
+              <button
+                type="button"
+                className={styles.primary}
+                onClick={() => handleSubmit()}
+                disabled={isPending || descriptionEmpty}
+              >
+                {isPending ? (
+                  <span className={styles.primaryPending}>
+                    <Spinner size="sm" />
+                    Analyse du pari…
+                  </span>
+                ) : isSubmittedBet ? (
+                  "Soumettre les modifications"
+                ) : (
+                  "Soumettre à validation"
+                )}
               </button>
-            )}
-          </div>
+              {isSubmittedBet && (
+                <button type="button" className={styles.withdraw} onClick={handleWithdraw} disabled={isPending}>
+                  Revenir en brouillon
+                </button>
+              )}
+            </div>
+          )}
         </div>
       )}
     </div>

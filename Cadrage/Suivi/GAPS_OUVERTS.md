@@ -31,14 +31,15 @@
   p6-21), photo de profil/avatars (p6-22), landing page (p5-2).
 - **Couverture des types de paris** : choisir sa difficulté n'est pas
   intuitif. Couvrir plus de types (modèles ML) et aider au choix.
-- **Pari sur un joueur absent du match (p3-14)**, trouvé en préparant la
-  clôture de l'Alpha NBA Cup (04/10/2026) : rien n'empêche de parier sur un
-  joueur qui n'appartient à aucune des deux équipes (« Brunson +15 pts »
-  posé sur LAL–GSW). La structuration laisse alors `structured_player_id`
-  vide et `resolveCalculableBets()` ne retient que les paris qui l'ont, donc
-  le pari n'est jamais examiné et aucune alerte ne remonte. (Le cas voisin
-  du joueur qui ne joue pas, p3-15, est réglé depuis le 04/10/2026 : pari
-  perdu une fois le box score importé.)
+- **Paris sans joueur identifié hors du cas simple (suite de p3-14,
+  04/10/2026)** : la résolution par nom (`resolveNotInMatchBets.ts`) ne
+  couvre que les paris JOUEUR simples de scope MATCH. Un pari SÉRIE sur un
+  joueur hors série, ou un pari période/superlatif/dernier panier dont le
+  micro-service n'a pas renvoyé d'id, reste à résoudre à la main ; il est
+  signalé à l'admin (badge « Joueur non identifié » + alerte sur le tableau
+  de bord). L'alerte compte dès l'échéance passée, donc un pari « envoyé
+  quand même » y apparaît aussi le temps que le box score soit importé
+  (en général le lendemain).
 
 ## Capacité — test de charge
 

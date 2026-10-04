@@ -322,13 +322,22 @@ async function resolveMatchTeams(
     : null;
 }
 
+/** p3-14 (04/10/2026) : `playerNotInMatch` non nul = l'IA juge que le
+ *  joueur visé ne joue pour aucune des 2 équipes et le joueur n'a pas encore
+ *  confirmé -- RIEN n'a été écrit, submitBet() repasse le pari en brouillon
+ *  et le client demande confirmation. */
+export type StructureAndScoreOutcome = { playerNotInMatch: string | null };
+
+const NOTHING_TO_CONFIRM: StructureAndScoreOutcome = { playerNotInMatch: null };
+
 export async function structureAndScoreBet(
   betId: string,
   description: string,
   seriesId: string,
   scope: "MATCH" | "SERIES" = "MATCH",
   matchId: string | null = null,
-): Promise<void> {
+  options: { confirmPlayerNotInMatch?: boolean } = {},
+): Promise<StructureAndScoreOutcome> {
   const supabase = await getServerClient();
 
   /** Écrit is_calculable=false explicitement (jamais laissé NULL) -- bug
@@ -1187,7 +1196,7 @@ export async function structureAndScoreBet(
     if ((await getTodaySpendUsd()) >= DAILY_COST_CAP_USD) {
       console.warn(`structureAndScoreBet : plafond de dépense IA quotidien atteint (${DAILY_COST_CAP_USD}$), pari ${betId} non structuré.`);
       await markNotCalculable();
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     const teamNames = await resolveMatchTeamNames(supabase, seriesId);
@@ -1225,41 +1234,41 @@ export async function structureAndScoreBet(
     const routing = routeBetDescription(description);
     if (routing === "PERIOD") {
       await handlePeriodBet(teamNames, rosters);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     if (routing === "ROSTER_COUNT") {
       await handleRosterCountBet(teamNames);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     if (routing === "ROSTER_SPLIT") {
       await handleRosterSplitBet(teamNames);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     if (routing === "SUPERLATIVE") {
       await handleSuperlativeBet(teamNames);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     if (routing === "TECHNICAL_FOULS_COUNT") {
       await handleTechnicalFoulsCountBet(teamNames);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     if (routing === "LAST_BASKET") {
       await handleLastBasketBet(teamNames);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     if (routing === "BLOCK_ON_PLAYER") {
       await handleBlockOnPlayerBet(teamNames);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     if (routing === "COMBO_NESTED_OR") {
       await handleComboNestedBet(teamNames);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     const structuration = await structureBet(description, teamNames, undefined, rosters);
     if (!structuration || !structuration.calculable || !structuration.bet_subject) {
       await markNotCalculable();
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     // Pari MATCH_TOTAL (pièce (a) du chantier, GAPS_OUVERTS.md) -- 1er pari
@@ -1272,12 +1281,12 @@ export async function structureAndScoreBet(
       const matchTotal = structuration.match_total;
       if (scope !== "MATCH" || !matchId || !matchTotal) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!matchTeams) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
       // went_to_ot n'a ni seuil ni comparaison (probabilité directe, même
       // principe que dd/td côté joueur, ligne ~490 plus bas) -- garde
@@ -1285,7 +1294,7 @@ export async function structureAndScoreBet(
       // GAPS_OUVERTS.md).
       if (!NO_THRESHOLD_MATCH_STATS.has(matchTotal.stat as MatchStatCode) && (matchTotal.threshold === null || !matchTotal.comparison)) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
       // as_of_date = date RÉELLE du match visé (pas "aujourd'hui" comme pour
       // un pari série) -- un match précis a une vraie date connue, plus
@@ -1324,7 +1333,7 @@ export async function structureAndScoreBet(
                     );
       if (!prediction) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
       // Bug réel trouvé en testant en conditions réelles (25/08/2026,
       // GAPS_OUVERTS.md) : le pari réel du corpus "Aucun panier marqué au
@@ -1364,7 +1373,7 @@ export async function structureAndScoreBet(
             : "SCORE_TOTAL"
         ) satisfies BetCategory,
       });
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     // Pari TEAM_STAT (pièce (a) suite, GAPS_OUVERTS.md) -- stat d'UNE
@@ -1374,13 +1383,13 @@ export async function structureAndScoreBet(
       const teamStat = structuration.team_stat;
       if (scope !== "MATCH" || !matchId || !teamStat) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
       const teamName = teamStat.team === "team1" ? teamNames?.[0] : teamNames?.[1];
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!teamName || !matchTeams || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
       const isHome = teamName === matchTeams.homeTeamName;
       const opponentName = isHome ? matchTeams.awayTeamName : matchTeams.homeTeamName;
@@ -1396,7 +1405,7 @@ export async function structureAndScoreBet(
       );
       if (!prediction) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
       await supabase.rpc("update_bet_structuration", {
         p_bet_id: betId,
@@ -1421,7 +1430,7 @@ export async function structureAndScoreBet(
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
         p_category: "TEAM_PROP" satisfies BetCategory,
       });
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     // Pari COMPARISON (24/08/2026, GAPS_OUVERTS.md, chantier comparaison/
@@ -1432,13 +1441,13 @@ export async function structureAndScoreBet(
       const comparisonBet = structuration.comparison_bet;
       if (scope !== "MATCH" || !matchId || !comparisonBet) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
 
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!matchTeams) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
 
       // "team1"/"team2" -> "domicile"/"exterieur" (contrat statsService.ts,
@@ -1466,7 +1475,7 @@ export async function structureAndScoreBet(
       const right = buildOperand(comparisonBet.right);
       if (!left || !right) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
 
       const multiplier = comparisonBet.multiplier ?? 1;
@@ -1474,7 +1483,7 @@ export async function structureAndScoreBet(
       const relationThreshold = needsThreshold ? comparisonBet.threshold : null;
       if (needsThreshold && relationThreshold === null) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
 
       const prediction = await predictComparison(
@@ -1489,7 +1498,7 @@ export async function structureAndScoreBet(
       );
       if (!prediction) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
 
       // Persiste les ids REELS (joueurs resolus cote service, equipe deja
@@ -1534,7 +1543,7 @@ export async function structureAndScoreBet(
         p_suggested_difficulty: probaToDifficulty(prediction.proba),
         p_category: "HEAD_TO_HEAD" satisfies BetCategory,
       });
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     // Pari COMBO (24/08/2026, GAPS_OUVERTS.md, chantier combo) -- ET de N
@@ -1553,13 +1562,13 @@ export async function structureAndScoreBet(
       const comboBet = structuration.combo_bet;
       if (scope !== "MATCH" || !matchId || !comboBet || comboBet.conditions.length === 0) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
 
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!matchTeams) {
         await markNotCalculable();
-        return;
+        return NOTHING_TO_CONFIRM;
       }
 
       const groups: ComboCondition[][] = [];
@@ -1568,21 +1577,21 @@ export async function structureAndScoreBet(
         const validated = validateComboCondition(c, teamNames, matchTeams);
         if (!validated) {
           await markNotCalculable();
-          return;
+          return NOTHING_TO_CONFIRM;
         }
         groups.push([validated]);
         rawThresholds.push([{ threshold: c.threshold, comparison: c.comparison }]);
       }
 
       await writeComboResult(groups, rawThresholds, matchTeams);
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     // bet_subject === "PLAYER" à partir d'ici (comportement inchangé).
     const player = structuration.player;
     if (!player) {
       await markNotCalculable();
-      return;
+      return NOTHING_TO_CONFIRM;
     }
     // comparison est légitimement null pour dd/td (NO_THRESHOLD_STATS,
     // probabilité directe) -- ne l'exiger que pour les stats à seuil. Bug
@@ -1592,7 +1601,7 @@ export async function structureAndScoreBet(
     const stat = player.stat as StatCode;
     if (!NO_THRESHOLD_STATS.has(stat) && (player.threshold === null || !player.comparison)) {
       await markNotCalculable();
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     // Joueur identifié mais absent des 2 équipes du match (bug réel trouvé
@@ -1605,13 +1614,17 @@ export async function structureAndScoreBet(
     // l'utilisateur pour ne jamais bloquer une soumission (même principe
     // que decisions_0.2.4 §4).
     if (player.not_in_match) {
+      // p3-14 (04/10/2026) : plus d'auto-validation silencieuse -- le
+      // joueur doit d'abord confirmer (« Envoyer quand même »). Rien n'est
+      // écrit tant qu'il ne l'a pas fait, submitBet() repasse le pari en
+      // brouillon. Faux positif de l'IA possible (transfert récent, roster
+      // incomplet), d'où une confirmation plutôt qu'un refus.
+      if (!options.confirmPlayerNotInMatch) return { playerNotInMatch: player.name };
       // p_structured_player_id: null -- le micro-service n'est jamais appelé
       // dans ce cas précis (voir plus bas), donc jamais de vrai player_id
-      // résolu ici. Sans conséquence pour la résolution automatique (Phase
-      // 6) : ce pari perd de toute façon à coup sûr (joueur absent du
-      // match), pas besoin de retrouver sa vraie stat pour le savoir --
-      // reste néanmoins non résolu automatiquement pour l'instant, noté
-      // dans GAPS_OUVERTS.md comme amélioration possible.
+      // résolu ici. Résolu automatiquement par
+      // resolveNotInMatchBets.ts (p3-14), qui cherche le joueur par son NOM
+      // sur la feuille du match.
       await supabase.rpc("update_bet_structuration", {
         p_bet_id: betId,
         p_structured_player_name: player.name,
@@ -1635,7 +1648,7 @@ export async function structureAndScoreBet(
         p_suggested_difficulty: probaToDifficulty(0),
         p_category: "PLAYER_PROP" satisfies BetCategory,
       });
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     // Pari SERIE (brique (d) du chantier, GAPS_OUVERTS.md) : proba "au moins
@@ -1668,7 +1681,7 @@ export async function structureAndScoreBet(
     }
     if (!prediction) {
       await markNotCalculable();
-      return;
+      return NOTHING_TO_CONFIRM;
     }
 
     const suggestedDifficulty = probaToDifficulty(prediction.proba);
@@ -1703,4 +1716,5 @@ export async function structureAndScoreBet(
     // on n'a alors même pas de réponse IA à enregistrer, is_calculable
     // reste NULL dans ce cas précis (panne, pas une décision).
   }
+  return NOTHING_TO_CONFIRM;
 }
