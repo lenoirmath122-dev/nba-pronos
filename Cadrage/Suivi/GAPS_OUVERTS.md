@@ -50,17 +50,6 @@
   match emprunté `0022500320`). Il faut une règle (annulation ou perte),
   appliquée automatiquement une fois les stats du match importées. Ce sera
   fréquent sur la vraie Cup.
-- **Clôture de l'Alpha NBA Cup pas encore faite** : bracket terminé (7/7
-  séries), mais 4 paris à trancher à la main avant de clôturer, puisque la
-  clôture fige le classement. Stats réelles vérifiées le 04/10/2026 : Tatum
-  `CANCELLED` ou `LOST` (DNP), Brunson `CANCELLED` (pas dans le match),
-  « trois joueurs en double-double » `LOST` (2 seulement : Tatum, LeBron),
-  « Milwaukee ne gagne que le 1er quart-temps » `LOST` (MIL gagne aussi le
-  Q4, 32–28). Aucun de ces choix ne change la tête du classement
-  (Leopoldinho 110, Rillettes-31 109). Ensuite : clôture admin
-  (`/admin/competitions`), puis PR de retrait de l'automatisation alpha
-  (`nba-cup-alpha-reveal.yml`, cron 30 min encore actif,
-  `app/api/nba-cup-alpha/`, `lib/nbaCupAlpha/`).
 
 ## Capacité — test de charge
 

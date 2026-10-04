@@ -3,9 +3,9 @@
 // en un fichier par catégorie de pari (lib/ai/resolve*Bets.ts, même
 // découpage que lib/ai/structure*Bet.ts côté structuration) après avoir
 // dépassé 2589 lignes dans un seul fichier. Ce fichier ne fait plus que
-// ré-exporter -- les 3 importeurs réels (app/api/resolve-bets/route.ts,
-// lib/nbaCupAlpha/autoReveal.ts, et les 15 fichiers de test co-localisés
-// dans lib/ai/) continuent de fonctionner sans changement d'import.
+// ré-exporter -- les importeurs réels (app/api/resolve-bets/route.ts et les
+// 15 fichiers de test co-localisés dans lib/ai/) continuent de fonctionner
+// sans changement d'import.
 export * from "./resolveBetsShared";
 export * from "./resolveMatchBets";
 export * from "./resolveSeriesBets";
@@ -40,11 +40,8 @@ import type { ResolveBetsSummary } from "./resolveBetsShared";
 
 /** Agrège les 14 resolvers ci-dessus en un seul résumé -- extrait de
  *  /api/resolve-bets (22-26/08/2026) pour être réutilisable ailleurs sans
- *  dupliquer la liste, notamment par l'auto-révélation NBA Cup alpha
- *  (lib/nbaCupAlpha/autoReveal.ts, 02/09/2026) qui veut résoudre les paris
- *  tout de suite après avoir révélé un match plutôt que d'attendre le cron
- *  quotidien (les stats empruntées à l'alpha sont déjà en base, contrairement
- *  au scénario normal qui attend le rafraîchissement Data NBA de la veille). */
+ *  dupliquer la liste (l'auto-révélation de l'Alpha NBA Cup s'en servait
+ *  aussi, retirée le 04/10/2026 après la clôture de l'alpha). */
 export async function resolveAllCalculableBets(): Promise<ResolveBetsSummary> {
   const summaries = await Promise.all([
     resolveCalculableBets(),
