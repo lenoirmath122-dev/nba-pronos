@@ -12,6 +12,7 @@ import {
 } from "@/components/icons/nav-icons";
 import { useGuardedNavigation } from "@/lib/hooks/useUnsavedGuard";
 import { HOME_FEED_SEEN_STORAGE_KEY } from "@/lib/nav/feedSeen";
+import { useUnreadChatCounts } from "@/lib/nav/chatSeen";
 import type { NavBadgeData } from "@/lib/queries/home";
 import styles from "./TabBar.module.css";
 
@@ -63,11 +64,17 @@ export function TabBar({ navBadges }: TabBarProps) {
     navBadges.latestFeedAt !== null &&
     (lastFeedSeenAt === null || Date.parse(navBadges.latestFeedAt) > Date.parse(lastFeedSeenAt));
 
+  // Messages de chat non lus (p3-7) : somme de tous les canaux, se met à
+  // jour dès qu'un canal est ouvert (abonnement dans lib/nav/chatSeen.ts).
+  const unreadChat = useUnreadChatCounts(navBadges.chatActivity);
+  let chatUnreadCount = 0;
+  for (const count of unreadChat?.values() ?? []) chatUnreadCount += count;
+
   return (
     <nav className={styles.bar} aria-label="Navigation principale">
       {TABS.map(({ href, label, Icon }) => {
         const active = pathname === href || pathname.startsWith(`${href}/`);
-        const count = href === "/play" ? navBadges.playPendingCount : 0;
+        const count = href === "/play" ? navBadges.playPendingCount : href === "/chat" ? chatUnreadCount : 0;
         const dot = href === "/home" && hasNewFeed;
         return (
           <Link
@@ -90,7 +97,11 @@ export function TabBar({ navBadges }: TabBarProps) {
               {label}
               {(count > 0 || dot) && (
                 <span className={styles.srOnly}>
-                  {count > 0 ? ` (${count} action${count > 1 ? "s" : ""} à faire)` : " (nouveau)"}
+                  {count > 0
+                    ? href === "/chat"
+                      ? ` (${count} message${count > 1 ? "s" : ""} non lu${count > 1 ? "s" : ""})`
+                      : ` (${count} action${count > 1 ? "s" : ""} à faire)`
+                    : " (nouveau)"}
                 </span>
               )}
             </span>

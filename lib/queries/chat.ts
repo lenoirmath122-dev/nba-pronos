@@ -56,6 +56,42 @@ export async function getMutedChannels(): Promise<MutedChannels> {
   };
 }
 
+/** Message récent d'un autre joueur, réduit à ce qu'il faut pour compter les
+ *  non-lus côté client (lib/nav/chatSeen.ts). `channel` = "general" ou l'id
+ *  de la ligue, même valeur que le paramètre `?canal=` de /chat. */
+export type ChatActivity = { channel: string; createdAt: string };
+
+// Au-delà, un message n'est plus compté comme non lu : évite qu'un appareil
+// sans repère (nouveau téléphone, joueur qui n'a jamais ouvert le chat)
+// affiche tout l'historique comme nouveau.
+const CHAT_UNREAD_WINDOW_DAYS = 14;
+const CHAT_UNREAD_LIMIT = 500;
+
+/** Messages des autres joueurs sur les 14 derniers jours, tous canaux visibles
+ *  confondus — RLS chat_messages_select restreint déjà aux canaux du joueur
+ *  (Général + ses ligues). Ses propres messages ne comptent jamais. */
+export async function getRecentChatActivity(): Promise<ChatActivity[]> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const since = new Date(Date.now() - CHAT_UNREAD_WINDOW_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("chat_messages")
+    .select("scope_type, league_id, created_at")
+    .neq("user_id", user.id)
+    .gte("created_at", since)
+    .order("created_at", { ascending: false })
+    .limit(CHAT_UNREAD_LIMIT);
+
+  return ((data ?? []) as { scope_type: string; league_id: string | null; created_at: string }[]).map((row) => ({
+    channel: row.scope_type === "LEAGUE" ? (row.league_id as string) : "general",
+    createdAt: row.created_at,
+  }));
+}
+
 export async function getChatMessages(scope: ChatScope): Promise<ChatMessage[]> {
   const supabase = await getServerClient();
 

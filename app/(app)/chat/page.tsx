@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerClient } from "@/lib/supabase/server";
-import { getChatMessages, getChatRoster, getMutedChannels, type ChatScope } from "@/lib/queries/chat";
+import { getChatMessages, getChatRoster, getMutedChannels, getRecentChatActivity, type ChatScope } from "@/lib/queries/chat";
 import { getMyLeagues, resolveLeagueScope } from "@/lib/queries/leagues";
 import { ChatChannelList } from "@/components/chat/ChatChannelList";
 import { ChatSubscriber } from "@/components/chat/ChatSubscriber";
@@ -31,12 +31,15 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   const [myLeagues, roster, muted] = await Promise.all([getMyLeagues(), getChatRoster(), getMutedChannels()]);
 
   if (!canal) {
+    // Relue ici plutôt que reprise du layout : celui-ci n'est pas relu à
+    // chaque navigation, la liste doit montrer les messages arrivés depuis.
+    const activity = await getRecentChatActivity();
     return (
       <div className={`${styles.page} photo-page`}>
         <div className={`${styles.header} glass-card`}>
           <h1 className={styles.title}>Chat</h1>
         </div>
-        <ChatChannelList myLeagues={myLeagues} muted={muted} />
+        <ChatChannelList myLeagues={myLeagues} muted={muted} activity={activity} />
       </div>
     );
   }
