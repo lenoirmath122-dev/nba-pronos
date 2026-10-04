@@ -152,7 +152,9 @@ Tailwind brut).
 en cartes par tour a été retirée ; « Quitter » ramène à l'onglet Jouer, dont
 l'entrée Bracket porte une pastille du nombre d'actions en attente, même
 décompte que celui de l'onglet), vue **Bracket globale** de consultation (`/bracket`,
-distincte du remplissage). Deux formats de compétition : Playoffs NBA
+distincte du remplissage, elle aussi uniquement en arbre plein écran : filtre
+par ligue, progression et compte à rebours dans l'en-tête ; « Quitter » mène
+à l'onglet Jouer, ou au Classement pour un visiteur). Deux formats de compétition : Playoffs NBA
 (best-of-7, score de série) et NBA Cup (élimination directe, barème dédié).
 Live : statut/score de série poussé en Realtime (publication
 `supabase_realtime` sur `matches`), bandeau LiveTicker épinglé au-dessus de

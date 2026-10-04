@@ -1,4 +1,4 @@
-/* Overlay/en-tête : même patron que components/bracket/TreeView.module.css
+/* Overlay/en-tête : même patron que components/bracket/BracketSummary.module.css
    (16/08/2026, chantier poster interactif). */
 .overlay {
   position: fixed;
