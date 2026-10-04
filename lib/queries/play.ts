@@ -77,7 +77,20 @@ export type MyPrediction = {
 };
 
 /** Pari MATCH public d'un AUTRE joueur (0.2.4 §9), reconduit tel quel. */
-export type OtherBet = { userId: string; userName: string; description: string };
+/** Pari d'un autre joueur sur un match verrouillé (p3-6, feuille de route
+ *  Phase 3) -- statut, points et proba exposés pour le détail des paris
+ *  réussis demandé à l'alpha, pas seulement la description. */
+export type OtherBet = {
+  userId: string;
+  userName: string;
+  description: string;
+  status: BetStatusValue;
+  difficulty: BetDifficulty;
+  pointsAwarded: number | null;
+  /** null hors pari calculable (même règle d'affichage que
+   *  PlayAssociatedBet.calculatedProba). */
+  calculatedProba: number | null;
+};
 
 export type BetStatusValue = "DRAFT" | "SUBMITTED" | "VALIDATED" | "REJECTED" | "WON" | "LOST" | "CANCELLED";
 
@@ -858,7 +871,15 @@ async function fetchLockedRows(
     if (b.user_id === userId || !b.match_id) continue;
     if (scope && !scope.memberUserIds.has(b.user_id)) continue;
     const list = otherBetsByMatch.get(b.match_id) ?? [];
-    list.push({ userId: b.user_id, userName: pseudoById.get(b.user_id) ?? "", description: b.description });
+    list.push({
+      userId: b.user_id,
+      userName: pseudoById.get(b.user_id) ?? "",
+      description: b.description,
+      status: b.status,
+      difficulty: b.validated_difficulty ?? b.proposed_difficulty,
+      pointsAwarded: b.points_awarded,
+      calculatedProba: b.is_calculable ? b.calculated_proba : null,
+    });
     otherBetsByMatch.set(b.match_id, list);
   }
   for (const list of otherBetsByMatch.values()) list.sort((a, b) => a.userName.localeCompare(b.userName));

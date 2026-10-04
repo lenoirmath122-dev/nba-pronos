@@ -166,7 +166,12 @@ bracket (sans toast, un tap = un enregistrement). Popup « Prono validé » /
 « Pari validé » (coche, rappel de ce qui a été validé, bouton « OK ») à la
 validation d'un prono, sur « Tout valider », quand l'IA auto-valide un pari
 perso, et au chargement suivant quand un admin a validé un pari du joueur
-(dernière validation vue gardée en localStorage, rien en base).
+(dernière validation vue gardée en localStorage, rien en base). Onglet
+Résultats : sur chaque match terminé, un seul bouton « Pronos et paris des
+autres » ouvre une popup avec les pronos des autres (et le nombre
+d'absents) puis leurs paris, chacun avec son statut, ses points gagnés ou
+en jeu et sa proba calculée ; le pari du joueur affiche aussi les points en
+jeu (« 15 pts en jeu », « valait 15 pts » s'il est perdu).
 
 ### 4.3 Paris personnalisés structurés par IA
 Fonctionnalité différenciante du produit (~4000 lignes,
