@@ -56,57 +56,67 @@ function Caret({ direction }: { direction: SortDirection }) {
 
 export function LeaderboardTable({ rows, sortKey, sortDirection, leagueId }: LeaderboardTableProps) {
   return (
-    <div className={styles.table} role="table" aria-label="Classement">
-      <div className={styles.headerRow} role="row">
-        <span className={styles.colRank} role="columnheader">
-          Rang
-        </span>
-        <span className={styles.colPlayer} role="columnheader">
-          Joueur
-        </span>
-        <Link
-          href={sortHref("total", nextDirection("total", sortKey, sortDirection), leagueId)}
-          role="columnheader"
-          aria-sort={sortKey === "total" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
-          className={sortKey === "total" ? `${styles.colTotal} ${styles.totalBand} ${styles.sortLink}` : `${styles.colTotal} ${styles.sortLink}`}
-        >
-          Total
-          {sortKey === "total" && <Caret direction={sortDirection} />}
-        </Link>
+    <>
+      {/* Indication (04/10/2026, p3-4 — retour de l'alpha : personne ne
+          devinait qu'une ligne s'ouvre, ni que les colonnes masquées en
+          portrait réapparaissent en paysage). La 2e moitié n'existe qu'en
+          dessous de 768px, là où .colDetail masque les colonnes. */}
+      <p className={styles.hint}>
+        Touche une ligne pour voir le détail
+        <span className={styles.hintRotate}> · tourne ton téléphone pour voir toutes les colonnes</span>
+      </p>
+      <div className={styles.table} role="table" aria-label="Classement">
+        <div className={styles.headerRow} role="row">
+          <span className={styles.colRank} role="columnheader">
+            Rang
+          </span>
+          <span className={styles.colPlayer} role="columnheader">
+            Joueur
+          </span>
+          <Link
+            href={sortHref("total", nextDirection("total", sortKey, sortDirection), leagueId)}
+            role="columnheader"
+            aria-sort={sortKey === "total" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+            className={sortKey === "total" ? `${styles.colTotal} ${styles.totalBand} ${styles.sortLink}` : `${styles.colTotal} ${styles.sortLink}`}
+          >
+            Total
+            {sortKey === "total" && <Caret direction={sortDirection} />}
+          </Link>
 
-        {/* Desktop : les 4 en-têtes de détail sont chacun un lien de tri.
-            Mobile : masqués sauf l'actif (règle existante), et remplacés par
-            MobileSortSelect (ci-dessous) pour rester changeables malgré ça. */}
-        <div className={styles.detailHeaders}>
-          {DETAIL_COLUMNS.map((col) => {
-            const isActive = col.key === sortKey;
-            return (
-              <Link
-                key={col.key}
-                href={sortHref(col.key, nextDirection(col.key, sortKey, sortDirection), leagueId)}
-                role="columnheader"
-                aria-sort={isActive ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
-                className={isActive ? `${styles.colDetail} ${styles.colActive} ${styles.sortLink}` : `${styles.colDetail} ${styles.sortLink}`}
-              >
-                {col.label}
-                {isActive && <Caret direction={sortDirection} />}
-              </Link>
-            );
-          })}
+          {/* Desktop : les 4 en-têtes de détail sont chacun un lien de tri.
+              Mobile : masqués sauf l'actif (règle existante), et remplacés par
+              MobileSortSelect (ci-dessous) pour rester changeables malgré ça. */}
+          <div className={styles.detailHeaders}>
+            {DETAIL_COLUMNS.map((col) => {
+              const isActive = col.key === sortKey;
+              return (
+                <Link
+                  key={col.key}
+                  href={sortHref(col.key, nextDirection(col.key, sortKey, sortDirection), leagueId)}
+                  role="columnheader"
+                  aria-sort={isActive ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
+                  className={isActive ? `${styles.colDetail} ${styles.colActive} ${styles.sortLink}` : `${styles.colDetail} ${styles.sortLink}`}
+                >
+                  {col.label}
+                  {isActive && <Caret direction={sortDirection} />}
+                </Link>
+              );
+            })}
+          </div>
+
+          <div className={styles.mobileSortSlot}>
+            <MobileSortSelect active={sortKey} direction={sortDirection} leagueId={leagueId} />
+          </div>
+
+          {/* Espace réservé, largeur = .chevron de LeaderboardRow (1rem) : sans
+              lui, .colPlayer (flex:1) calcule une largeur différente entre la
+              rangée d'en-tête et les rangées de données (bug réel trouvé le
+              14/08/2026, cf. .chevron). */}
+          <span className={styles.chevronSpace} aria-hidden="true" />
         </div>
 
-        <div className={styles.mobileSortSlot}>
-          <MobileSortSelect active={sortKey} direction={sortDirection} leagueId={leagueId} />
-        </div>
-
-        {/* Espace réservé, largeur = .chevron de LeaderboardRow (1rem) : sans
-            lui, .colPlayer (flex:1) calcule une largeur différente entre la
-            rangée d'en-tête et les rangées de données (bug réel trouvé le
-            14/08/2026, cf. .chevron). */}
-        <span className={styles.chevronSpace} aria-hidden="true" />
+        <LeaderboardRowList rows={rows} sortKey={sortKey} />
       </div>
-
-      <LeaderboardRowList rows={rows} sortKey={sortKey} />
-    </div>
+    </>
   );
 }

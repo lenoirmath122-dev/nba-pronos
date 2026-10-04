@@ -12,6 +12,18 @@
   flex-direction: column;
 }
 
+.hint {
+  margin: 0;
+  padding: 0 var(--space-4);
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
+}
+
+.hintRotate {
+  display: none;
+}
+
 .headerRow {
   display: flex;
   align-items: center;
@@ -131,6 +143,10 @@
    sélecteur MobileSortSelect — sans lui, la seule colonne visible resterait
    figée (rien pour la changer une fois les 3 autres en-têtes masqués). */
 @media (max-width: 767px) {
+  .hintRotate {
+    display: inline;
+  }
+
   .colDetail:not(.colActive) {
     display: none;
   }

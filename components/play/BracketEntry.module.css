@@ -29,3 +29,19 @@
 .chevron {
   color: var(--color-text-secondary);
 }
+
+/* Pastille « action à faire » (04/10/2026, p3-4) — même apparence que celle
+   de l'onglet Jouer (TabBar.module.css .badgeCount), mais dans le flux, à
+   côté du libellé, plutôt qu'en surimpression d'une icône. */
+.badgeCount {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--font-weight-semibold);
+  line-height: 18px;
+  text-align: center;
+}

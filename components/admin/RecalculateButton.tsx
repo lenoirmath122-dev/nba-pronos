@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { recalculateCompetition } from "@/lib/actions/admin";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./RecalculateButton.module.css";
 
 // SEULE feuille "use client" du tableau de bord (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1
@@ -47,7 +48,7 @@ export function RecalculateButton({ disabled }: RecalculateButtonProps) {
       )}
 
       {showConfirm && (
-        <div className={styles.backdrop} role="presentation">
+        <Backdrop className={styles.backdrop} onClose={() => setShowConfirm(false)}>
           <FocusTrap
             className={styles.dialog}
             role="alertdialog"
@@ -77,7 +78,7 @@ export function RecalculateButton({ disabled }: RecalculateButtonProps) {
               </button>
             </div>
           </FocusTrap>
-        </div>
+        </Backdrop>
       )}
     </div>
   );

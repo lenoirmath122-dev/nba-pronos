@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { deleteMatch } from "@/lib/actions/admin-results";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./DeleteMatchButton.module.css";
 
 // Suppression d'un match (17/08/2026, demandé par l'utilisateur — matchs
@@ -44,7 +45,7 @@ export function DeleteMatchButton({ matchId, matchLabel }: DeleteMatchButtonProp
       )}
 
       {showConfirm && (
-        <div className={styles.backdrop} role="presentation">
+        <Backdrop className={styles.backdrop} onClose={() => setShowConfirm(false)}>
           <FocusTrap
             className={styles.dialog}
             role="alertdialog"
@@ -72,7 +73,7 @@ export function DeleteMatchButton({ matchId, matchLabel }: DeleteMatchButtonProp
               </button>
             </div>
           </FocusTrap>
-        </div>
+        </Backdrop>
       )}
     </div>
   );

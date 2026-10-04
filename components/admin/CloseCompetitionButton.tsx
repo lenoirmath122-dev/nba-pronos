@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { closeCompetition } from "@/lib/actions/admin-competitions";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./CloseCompetitionButton.module.css";
 
 // Clôture et archivage (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1 §9, lot 3/3) —
@@ -41,7 +42,7 @@ export function CloseCompetitionButton({ competitionId }: CloseCompetitionButton
       )}
 
       {showConfirm && (
-        <div className={styles.backdrop} role="presentation">
+        <Backdrop className={styles.backdrop} onClose={() => setShowConfirm(false)}>
           <FocusTrap
             className={styles.dialog}
             role="alertdialog"
@@ -70,7 +71,7 @@ export function CloseCompetitionButton({ competitionId }: CloseCompetitionButton
               </button>
             </div>
           </FocusTrap>
-        </div>
+        </Backdrop>
       )}
     </div>
   );

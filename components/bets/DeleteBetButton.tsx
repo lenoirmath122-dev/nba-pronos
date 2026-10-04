@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { deleteBet } from "@/lib/actions/bets";
 import { FocusTrap } from "@/components/ui/FocusTrap";
+import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./DeleteBetButton.module.css";
 
 // Suppression d'un pari encore modifiable (18/08/2026, demandé par
@@ -44,7 +45,7 @@ export function DeleteBetButton({ betId }: DeleteBetButtonProps) {
       )}
 
       {showConfirm && (
-        <div className={styles.backdrop} role="presentation">
+        <Backdrop className={styles.backdrop} onClose={() => setShowConfirm(false)}>
           <FocusTrap
             className={styles.dialog}
             role="alertdialog"
@@ -72,7 +73,7 @@ export function DeleteBetButton({ betId }: DeleteBetButtonProps) {
               </button>
             </div>
           </FocusTrap>
-        </div>
+        </Backdrop>
       )}
     </div>
   );
