@@ -355,3 +355,38 @@ function matchLabel(gameNumber: number, scheduledAt: string | null): string {
   if (!scheduledAt) return `Match ${gameNumber} — date à confirmer`;
   return `Match ${gameNumber} — ${parisDateTimeLabel(scheduledAt)}`;
 }
+
+// Paris du joueur validés par un admin (04/10/2026) — alimente la popup
+// « Pari validé » montrée au chargement suivant (ValidatedBetsWatcher.tsx),
+// lue une fois par la coquille joueur comme les pastilles TabBar. Les paris
+// auto-validés par l'IA sont exclus (validated_by_admin_id NULL) : le joueur
+// a déjà vu leur popup au moment de la soumission. Fenêtre de 14 jours : au
+// delà, un pari validé a toutes les chances d'être déjà résolu.
+export type AdminValidatedBet = { betId: string; description: string; validatedAt: string };
+
+const ADMIN_VALIDATED_WINDOW_MS = 14 * 24 * 60 * 60 * 1000;
+
+export async function getRecentAdminValidatedBets(): Promise<AdminValidatedBet[]> {
+  const supabase = await getServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data } = await supabase
+    .from("bets")
+    .select("id, description, validated_at")
+    .eq("user_id", user.id)
+    .eq("status", "VALIDATED")
+    .not("validated_by_admin_id", "is", null)
+    .gte("validated_at", new Date(Date.now() - ADMIN_VALIDATED_WINDOW_MS).toISOString())
+    .order("validated_at", { ascending: true })
+    .limit(20);
+
+  return (data ?? []).map((row) => ({
+    betId: row.id as string,
+    description: row.description as string,
+    validatedAt: row.validated_at as string,
+  }));
+}

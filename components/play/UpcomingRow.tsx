@@ -11,6 +11,8 @@ import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
+import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
+import { formatPronoRecap } from "@/lib/labels/pronos";
 import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
 import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { MarginStepper } from "./MarginStepper";
@@ -126,6 +128,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
   // seul (p3-5) — `isPending` ne dit pas lequel a été touché.
   const [pendingAction, setPendingAction] = useState<"draft" | "validate" | null>(null);
   const showToast = useToast();
+  const showValidated = useValidatedDialog();
   const [flashing, flash] = useSuccessFlash();
 
   // Vainqueur ET écart : la carte n'ayant plus d'état ouvert/fermé, ces deux
@@ -173,6 +176,18 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
   const readOnlyBet = match.bet && !myBet ? match.bet : null;
   const recap = match.viewStatus === "VALIDATED" ? winnerAbbreviation(match) : null;
 
+  // Popup « Prono validé » (04/10/2026) à la place du toast : elle rappelle
+  // le prono qui vient d'être figé, pas seulement le fait qu'il l'a été.
+  function showValidatedProno() {
+    const isHomeWinner = winner === match.homeTeam.id;
+    const winnerTeam = isHomeWinner ? match.homeTeam : match.awayTeam;
+    const loserTeam = isHomeWinner ? match.awayTeam : match.homeTeam;
+    showValidated({
+      title: "Prono validé",
+      items: margin === null ? [] : [formatPronoRecap(winnerTeam.abbreviation, loserTeam.abbreviation, margin)],
+    });
+  }
+
   function handleSaveDraft() {
     setError(null);
     setPendingAction("draft");
@@ -203,7 +218,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
         return;
       }
       clearDirty();
-      showToast("Prono validé");
+      showValidatedProno();
       flash();
     });
   }
@@ -228,7 +243,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
         return;
       }
       clearDirty();
-      showToast("Prono validé");
+      showValidatedProno();
       flash();
     });
   }

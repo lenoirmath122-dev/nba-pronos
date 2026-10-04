@@ -17,6 +17,9 @@ import { checkRateLimit } from "@/lib/actions/rateLimit";
 // (getServerClient, jamais service_role).
 
 export type ActionResult = { success: true; betId: string } | { success: false; error: string };
+export type SubmitBetResult =
+  | { success: true; betId: string; autoValidated: boolean }
+  | { success: false; error: string };
 export type SimpleActionResult = { success: true } | { success: false; error: string };
 
 const MAX_DESCRIPTION_LENGTH = 2000;
@@ -89,15 +92,22 @@ export async function saveDraftBet(input: SaveBetInput): Promise<ActionResult> {
  *  échouer la soumission elle-même (voir structureAndScoreBet.ts).
  *  revalidatePath rappelé APRÈS (pas seulement dans callSaveBet) --
  *  l'auto-validation change le statut du pari après le 1er appel. */
-export async function submitBet(input: SaveBetInput): Promise<ActionResult> {
+export async function submitBet(input: SaveBetInput): Promise<SubmitBetResult> {
   const result = await callSaveBet(input, true);
-  if (result.success) {
-    await structureAndScoreBet(result.betId, input.description, input.seriesId, input.scope, input.matchId);
-    revalidatePath("/play");
-    revalidatePath("/play/results");
-    revalidatePath("/home");
-  }
-  return result;
+  if (!result.success) return result;
+
+  await structureAndScoreBet(result.betId, input.description, input.seriesId, input.scope, input.matchId);
+  revalidatePath("/play");
+  revalidatePath("/play/results");
+  revalidatePath("/home");
+
+  // Statut relu APRÈS la structuration (04/10/2026) : le client affiche la
+  // popup « Pari validé » si l'IA a fait sauter la file admin, sinon le
+  // simple toast « envoyé à validation ». Une lecture ratée retombe sur ce
+  // second cas, jamais sur un échec de la soumission elle-même.
+  const supabase = await getServerClient();
+  const { data: bet } = await supabase.from("bets").select("status").eq("id", result.betId).maybeSingle();
+  return { success: true, betId: result.betId, autoValidated: bet?.status === "VALIDATED" };
 }
 
 /** « Revenir en brouillon » (§9, geste « retirer ») : SUBMITTED → DRAFT, aucun champ touché. */
