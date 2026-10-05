@@ -28,18 +28,10 @@
 }
 
 .brandLogo {
-  height: 80px;
+  height: 48px;
   width: auto;
   margin-bottom: var(--space-1);
   filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
-}
-
-.brandName {
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
 .brandTagline {

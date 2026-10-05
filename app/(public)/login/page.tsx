@@ -11,8 +11,7 @@ export default function LoginPage() {
   return (
     <main className={`${styles.page} photo-page force-photo`}>
       <div className={styles.brand}>
-        <Image src="/brand/logo.svg" alt="" width={73} height={80} unoptimized className={styles.brandLogo} />
-        <p className={styles.brandName}>Panier Ballon</p>
+        <Image src="/brand/logo-horizontal.svg" alt="Panier Ballon" width={256} height={48} unoptimized className={styles.brandLogo} />
         <p className={styles.brandTagline}>{TAGLINE}</p>
       </div>
       <WipDisclaimer />
