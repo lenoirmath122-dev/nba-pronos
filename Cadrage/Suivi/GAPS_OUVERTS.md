@@ -32,15 +32,14 @@
   plan, puisqu'ils changent avec la synchro et non avec un geste.
 - **Couverture des types de paris** : choisir sa difficulté n'est pas
   intuitif. Couvrir plus de types (modèles ML) et aider au choix.
-- **Paris sans joueur identifié hors du cas simple (suite de p3-14,
-  04/10/2026)** : la résolution par nom (`resolveNotInMatchBets.ts`) ne
-  couvre que les paris JOUEUR simples de scope MATCH. Un pari SÉRIE sur un
-  joueur hors série, ou un pari période/superlatif/dernier panier dont le
-  micro-service n'a pas renvoyé d'id, reste à résoudre à la main ; il est
-  signalé à l'admin (badge « Joueur non identifié » + alerte sur le tableau
-  de bord). L'alerte compte dès l'échéance passée, donc un pari « envoyé
-  quand même » y apparaît aussi le temps que le box score soit importé
-  (en général le lendemain).
+- **Paris sans joueur identifié, cas restants (suite de p3-14, 05/10/2026)** :
+  `resolveNotInMatchBets.ts` couvre désormais les paris JOUEUR simples
+  (MATCH et SÉRIE), période joueur et superlatif. Restent à l'admin : un nom
+  ambigu sur la feuille (nom de famille seul), et les formes à plusieurs
+  joueurs (duel, combo) dont l'id manquerait. L'alerte « Joueur non
+  identifié » compte dès l'échéance passée, donc un pari « envoyé quand
+  même » y apparaît le temps que le box score soit importé (en général le
+  lendemain) -- et, pour un pari SÉRIE, jusqu'à la fin de la série.
 
 ## Capacité — test de charge
 
