@@ -21,6 +21,7 @@ import { BadgesSection } from "@/components/profile/BadgesSection";
 import { PinnedBadges } from "@/components/profile/PinnedBadges";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { PlayerLink } from "@/components/ui/PlayerLink";
+import { BadgeCheckOnMount } from "@/components/badges/BadgeCheckOnMount";
 import styles from "./page.module.css";
 
 // Écran Profil (SPEC_ECRAN_PROFIL_V0_1, CLOSE) — 4ème onglet de la nav.
@@ -451,6 +452,7 @@ export default async function ProfilePage({
               <span className={styles.leagueCode}>{sp.newLeagueCode}</span>
             </p>
           )}
+          {(sp.leagueJoined || sp.newLeagueName) && <BadgeCheckOnMount />}
 
           {leagues.length > 0 && (
             <div className={styles.leagueList}>

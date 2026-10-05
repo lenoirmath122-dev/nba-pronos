@@ -21,6 +21,7 @@ import type { BetFormBootstrap, EditableBet, MatchOption, NewBetContext, SeriesO
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
 import styles from "./BetForm.module.css";
+import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 
 // SEULE feuille "use client" de l'écran Nouveau pari (§1.1) : porte la saisie
 // et appelle les server actions. Les sélecteurs série/match restent internes
@@ -170,6 +171,7 @@ export function BetForm(props: BetFormProps) {
       }
       setNotInMatch(null);
       if (result.success) {
+        requestBadgeCheck();
         // Auto-validé par l'IA (file admin sautée) : popup « Pari validé »
         // (04/10/2026) ; sinon il attend l'admin, le toast suffit.
         if (result.autoValidated) showValidated({ title: "Pari validé", items: [payload.description] });
