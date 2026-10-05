@@ -23,6 +23,9 @@ import styles from "./NewBadgesWatcher.module.css";
 // (PWA rouverte), au plus toutes les 5 minutes.
 
 const SEEN_STORAGE_PREFIX = "badges-seen:";
+// Coupe-circuit posé par les tests e2e (e2e/fixtures.ts) : la popup s'ouvre à
+// un instant non déterministe et son fond avalait des clics en plein scénario.
+const DISABLED_STORAGE_KEY = "badges-popup:disabled";
 const INITIAL_DELAY_MS = 800;
 const RECHECK_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_DOTS = 8;
@@ -35,6 +38,14 @@ function readSeen(userId: string): SeenBadges {
     return value && typeof value === "object" ? (value as SeenBadges) : {};
   } catch {
     return {};
+  }
+}
+
+function isDisabled(): boolean {
+  try {
+    return window.localStorage.getItem(DISABLED_STORAGE_KEY) === "1";
+  } catch {
+    return false;
   }
 }
 
@@ -61,7 +72,7 @@ export function NewBadgesWatcher() {
   const lastCheckRef = useRef(0);
 
   const check = useCallback(async () => {
-    if (openRef.current) return;
+    if (openRef.current || isDisabled()) return;
     lastCheckRef.current = Date.now();
     let result;
     try {
