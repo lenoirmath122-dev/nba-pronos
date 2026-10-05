@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Pin } from "lucide-react";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
-import { BADGE_ICONS } from "@/lib/badges/icons";
+import { BadgeEmblem, TierPips } from "@/components/badges/BadgeEmblem";
+import { TIER_LABELS, isBadgeUnlocked } from "@/lib/badges/display";
 import type { BadgeDisplay } from "@/lib/queries/badges";
-import type { BadgeTier } from "@/lib/badges/thresholds";
 import { togglePinnedBadgeFormAction } from "@/lib/actions/profile";
 import styles from "./BadgeCard.module.css";
 
@@ -22,18 +22,10 @@ import styles from "./BadgeCard.module.css";
 // HTML valide, donc la carte n'est plus elle-même le bouton racine, mais un
 // wrapper contenant les deux boutons en frères. Formulaire natif (marche
 // sans JS malgré "use client", même patron que lib/actions/profile.ts).
-
-const TIER_LABELS: Record<BadgeTier, string> = {
-  BRONZE: "Bronze",
-  ARGENT: "Argent",
-  OR: "Or",
-  PLATINE: "Platine",
-  DIAMANT: "Diamant",
-};
-
-function isUnlocked(badge: BadgeDisplay): boolean {
-  return badge.kind === "tiered" ? badge.tier !== null : badge.unlocked;
-}
+//
+// Écusson (05/10/2026, p3-9) : l'icône en tête de carte devient l'écusson
+// du badge (components/badges/BadgeEmblem.tsx), centré, avec ses points de
+// palier — même visuel que la popup « nouveau badge ».
 
 function FrontFace({ badge }: { badge: BadgeDisplay }) {
   if (badge.kind === "binary") {
@@ -57,10 +49,9 @@ function FrontFace({ badge }: { badge: BadgeDisplay }) {
 
 export function BadgeCard({ badge }: { badge: BadgeDisplay }) {
   const [flipped, setFlipped] = useState(false);
-  const unlocked = isUnlocked(badge);
+  const unlocked = isBadgeUnlocked(badge);
   const tierAttr = badge.kind === "tiered" ? (badge.tier ?? undefined) : undefined;
   const faceClass = `${styles.face} ${styles.card} ${unlocked ? styles.unlocked : styles.locked}`;
-  const Icon = BADGE_ICONS[badge.id];
 
   return (
     <div className={styles.cardWrapper}>
@@ -87,17 +78,13 @@ export function BadgeCard({ badge }: { badge: BadgeDisplay }) {
       >
         <div className={`${styles.flipInner} ${flipped ? styles.flipped : ""}`}>
           <div className={`${faceClass} ${styles.front}`} data-tier={tierAttr} aria-hidden={flipped}>
-            <div className={styles.header}>
-              <span className={styles.label}>{badge.label}</span>
-              <Icon className={styles.icon} aria-hidden="true" />
-            </div>
+            <BadgeEmblem badge={badge} />
+            <TierPips badge={badge} />
+            <span className={styles.label}>{badge.label}</span>
             <FrontFace badge={badge} />
           </div>
           <div className={`${faceClass} ${styles.back}`} data-tier={tierAttr} aria-hidden={!flipped}>
-            <div className={styles.header}>
-              <span className={styles.label}>{badge.label}</span>
-              <Icon className={styles.icon} aria-hidden="true" />
-            </div>
+            <span className={styles.label}>{badge.label}</span>
             <span className={styles.description}>{badge.description}</span>
           </div>
         </div>

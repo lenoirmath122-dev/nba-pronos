@@ -223,7 +223,13 @@ détail ; en portrait, tourner le téléphone pour toutes les colonnes). Ligues 
 Badges permanents à paliers (Bronze/Argent/Or/Platine/Diamant), catalogue de
 base complet sur trois familles (pronostics de match, bracket personnel,
 paris perso) + badges de volume/participation ; jusqu'à 3 badges épinglables
-dans le bandeau de profil. Superlatifs de fin de compétition (Nostradamus,
+dans le bandeau de profil. Chaque badge s'affiche en écusson biseauté au métal
+du palier (`components/badges/BadgeEmblem.tsx`), icônes calées sur
+`Cadrage/DA/BADGES.pdf` et centres sur-mesure (« 0.0 » du buzzer, « 0:03 »,
+« 4-2 », record de Métronome/Fidèle). Popup « nouveau badge / nouveau palier »
+à l'ouverture de l'app (`NewBadgesWatcher`) : badges déjà montrés retenus par
+appareil et par compte (localStorage `badges-seen:<userId>`), tout l'existant
+défile au premier passage sur un appareil. Superlatifs de fin de compétition (Nostradamus,
 Sniper, Meilleur bracket, Meilleur 1ᵉʳ tour, Plus grosse remontée),
 calculés une fois à la clôture d'une compétition.
 

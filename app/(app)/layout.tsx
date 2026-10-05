@@ -8,6 +8,7 @@ import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ValidatedDialogProvider } from "@/components/ui/ValidatedDialog";
 import { ValidatedBetsWatcher } from "@/components/bets/ValidatedBetsWatcher";
+import { NewBadgesWatcher } from "@/components/badges/NewBadgesWatcher";
 import styles from "./layout.module.css";
 
 // Zone joueur connecté (T6a §3.1) : garde de session + nav 4 onglets.
@@ -45,6 +46,9 @@ export default async function AppLayout({
             <BugReportButton />
             <TabBar navBadges={navBadges} />
             <ValidatedBetsWatcher bets={adminValidatedBets} />
+            {/* Popup « nouveau badge » (p3-9) : charge ses données elle-même
+                après l'affichage, pour ne pas ralentir la coquille. */}
+            <NewBadgesWatcher />
           </ValidatedDialogProvider>
         </ToastProvider>
       </UnsavedGuardProvider>

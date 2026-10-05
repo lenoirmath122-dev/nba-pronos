@@ -21,10 +21,13 @@
 
 - **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
   plus tard), débrief des matchs de la veille via un média.
-- **Écrans** : bandeau récap « BOS +3 » plus « arena ».
 - **Déjà dans la feuille de route mais reportés, redemandés par les
-  testeurs** : popup de badge gagné + design des badges (p6-18/p6-20/
-  p6-21), photo de profil/avatars (p6-22), landing page (p5-2).
+  testeurs** : photo de profil/avatars (p6-22), landing page (p5-2).
+- **Badges, suite de p3-9 (05/10/2026)** : popup et écusson livrés, mais les
+  icônes restent celles de la bibliothèque lucide ; les visuels dessinés du
+  PDF (vieille dame, chien en laisse, coupe + formulaire, joker...) restent
+  à faire (p6-20). La popup est vérifiée à l'ouverture et au retour au
+  premier plan seulement, pas juste après une action qui débloque un badge.
 - **Couverture des types de paris** : choisir sa difficulté n'est pas
   intuitif. Couvrir plus de types (modèles ML) et aider au choix.
 - **Paris sans joueur identifié hors du cas simple (suite de p3-14,
