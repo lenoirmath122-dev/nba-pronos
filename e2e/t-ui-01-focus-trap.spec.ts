@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 import { SEED_FILE, type E2ESeed } from "./seed";
 import { gotoAndWaitReady, matchRow, clickUntilVisible } from "./helpers";
 
