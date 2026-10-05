@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { updateNotificationPreference, deletePushSubscription } from "@/lib/actions/notifications";
+import { updateNotificationPreference, updateRecapPreference, deletePushSubscription } from "@/lib/actions/notifications";
 import { ensurePushSubscribed, pushSupported } from "@/lib/push/client";
 import styles from "./NotificationSettings.module.css";
 
@@ -22,10 +22,12 @@ type Preference = "NONE" | "PUSH" | "EMAIL";
 
 type NotificationSettingsProps = {
   initialPreference: Preference;
+  initialRecapEnabled: boolean;
 };
 
-export function NotificationSettings({ initialPreference }: NotificationSettingsProps) {
+export function NotificationSettings({ initialPreference, initialRecapEnabled }: NotificationSettingsProps) {
   const [preference, setPreference] = useState<Preference>(initialPreference);
+  const [recapEnabled, setRecapEnabled] = useState(initialRecapEnabled);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // La préférence est liée au COMPTE, pas à l'appareil : un joueur connecté
@@ -116,6 +118,24 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
     }
   }
 
+  async function toggleRecaps(next: boolean) {
+    setPending(true);
+    setError(null);
+    setRecapEnabled(next);
+    try {
+      const result = await updateRecapPreference(next);
+      if (!result.success) {
+        setRecapEnabled(!next);
+        setError(result.error);
+      }
+    } catch (err) {
+      setRecapEnabled(!next);
+      setError(err instanceof Error ? err.message : "Erreur inattendue, réessaie.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   function handleChange(next: Preference) {
     if (pending || next === preference) return;
     if (next === "PUSH") void enablePush();
@@ -163,6 +183,21 @@ export function NotificationSettings({ initialPreference }: NotificationSettings
             Activer sur cet appareil
           </button>
         </div>
+      )}
+
+      {/* Récaps du matin (p3-10) : n'ont de sens qu'avec le push actif. */}
+      {preference === "PUSH" && (
+        <label className={styles.option}>
+          <input
+            type="checkbox"
+            checked={recapEnabled}
+            disabled={pending}
+            onChange={(event) => void toggleRecaps(event.target.checked)}
+          />
+          <span>
+            Récap du matin <span className={styles.soon}>(10h, ta semaine le lundi)</span>
+          </span>
+        </label>
       )}
 
       {error && (

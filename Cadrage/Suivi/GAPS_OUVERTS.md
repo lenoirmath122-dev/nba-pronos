@@ -19,8 +19,15 @@
 > `RETOURS_ALPHA_NBA_CUP.md`. Priorisés le 03/10/2026 dans la Phase 3 de
 > la feuille de route (p3-3 à p3-12, dans l'ordre de traitement).
 
-- **Récaps** : journalier (payant plus tard), hebdo (gratuit, ligue payante
-  plus tard), débrief des matchs de la veille via un média.
+- **Récaps, suite de p3-10/p3-11 (05/10/2026)** : journalier et hebdo
+  livrés (push à 10h + bloc en tête de « Ça vient de tomber »), mais jamais
+  vus avec de vraies données : aucune compétition active depuis la clôture
+  de l'alpha, et pas de session de test en local. À vérifier à la prochaine
+  compétition (y compris un lundi pour le hebdo). Restent : la version « par
+  ligue » du hebdo (payante plus tard, Phase 7, à brancher dans
+  `canReceiveRecap()`) ; le rapprochement des articles TrashTalk se fait
+  par surnom d'équipe dans le titre, heuristique jamais éprouvée en saison
+  régulière (en présaison, le flux ne contenait aucun article de résultats).
 - **Déjà dans la feuille de route mais reportés, redemandés par les
   testeurs** : photo de profil/avatars (p6-22), landing page (p5-2).
 - **Badges, suite de p3-9 (05/10/2026)** : popup et écusson livrés, mais les

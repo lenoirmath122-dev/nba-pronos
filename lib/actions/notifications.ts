@@ -34,6 +34,23 @@ export async function updateNotificationPreference(
   return { success: true };
 }
 
+/** Interrupteur « Récaps du matin » (p3-10), indépendant du canal : couper
+ *  les récaps garde les rappels de match. */
+export async function updateRecapPreference(enabled: boolean): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Session expirée." };
+
+  const { error } = await supabase.from("users").update({ recap_enabled: enabled }).eq("id", user.id);
+
+  if (error) return { success: false, error: toClientError("updateRecapPreference", error) };
+
+  revalidatePath("/profile");
+  return { success: true };
+}
+
 type PushSubscriptionInput = {
   endpoint: string;
   keys: { p256dh: string; auth: string };

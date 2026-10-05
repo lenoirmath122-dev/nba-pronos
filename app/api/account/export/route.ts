@@ -38,7 +38,7 @@ export async function GET(): Promise<Response> {
     await Promise.all([
       supabase
         .from("users")
-        .select("pseudo, bio, favorite_team_id, theme_preference, background_theme, notification_preference, age_confirmed_at, created_at")
+        .select("pseudo, bio, favorite_team_id, theme_preference, background_theme, notification_preference, recap_enabled, age_confirmed_at, created_at")
         .eq("id", user.id)
         .single(),
       supabase.from("bets").select("*").eq("user_id", user.id),

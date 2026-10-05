@@ -22,6 +22,9 @@ type CollapsibleCardProps = {
    *  "jamais ouverte" est désactivé pour ces cartes : leur contenu est déjà
    *  visible au chargement, rien à signaler. */
   defaultOpen?: boolean;
+  /** Ouverte d'office quand l'URL porte cette ancre (p3-10 : le push des
+   *  récaps ouvre /home#recap, la carte doit déjà être dépliée). */
+  openOnHash?: string;
   children: React.ReactNode;
 };
 
@@ -33,6 +36,11 @@ function noopSubscribe() {
 
 function getServerSnapshot() {
   return false;
+}
+
+function subscribeHash(onChange: () => void) {
+  window.addEventListener("hashchange", onChange);
+  return () => window.removeEventListener("hashchange", onChange);
 }
 
 // Carte dépliable de l'Accueil (18/08/2026, demandé par l'utilisateur) :
@@ -48,8 +56,17 @@ function getServerSnapshot() {
 // synchrone dans un effet, et localStorage EST un store externe — son cas
 // d'usage exact. Snapshot serveur toujours `false` (jamais de point tant
 // que l'hydratation n'a pas eu lieu, aucun flash de contenu différent).
-export function CollapsibleCard({ id, title, count, defaultOpen = false, children }: CollapsibleCardProps) {
-  const [open, setOpen] = useState(defaultOpen);
+export function CollapsibleCard({ id, title, count, defaultOpen = false, openOnHash, children }: CollapsibleCardProps) {
+  // null = l'utilisateur n'a pas encore touché la carte : l'état initial suit
+  // `defaultOpen` et l'ancre de l'URL (lue après hydratation, jamais au rendu
+  // serveur, même raison que `neverSeen` ci-dessous).
+  const [toggled, setToggled] = useState<boolean | null>(null);
+  const hashMatches = useSyncExternalStore(
+    subscribeHash,
+    () => openOnHash !== undefined && window.location.hash === `#${openOnHash}`,
+    getServerSnapshot
+  );
+  const open = toggled ?? (defaultOpen || hashMatches);
   // Initialisé à `defaultOpen` : une carte déjà ouverte au chargement n'a
   // rien de "jamais consulté" à signaler, pas besoin d'attendre un clic pour
   // faire taire le point d'alerte.
@@ -62,7 +79,7 @@ export function CollapsibleCard({ id, title, count, defaultOpen = false, childre
   const unseen = neverSeen && !dismissed;
 
   function toggle() {
-    setOpen((current) => !current);
+    setToggled(!open);
     if (unseen) {
       window.localStorage.setItem(`${STORAGE_PREFIX}${id}`, "1");
       setDismissed(true);

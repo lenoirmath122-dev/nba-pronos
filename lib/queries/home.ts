@@ -6,6 +6,7 @@ import { getRecentChatActivity, type ChatActivity } from "@/lib/queries/chat";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDateKey } from "@/lib/dates/paris";
 import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
+import { getHomeRecap, type HomeRecap } from "@/lib/recaps/home";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
 // §7. Un seul module, appelé avec getServerClient() : les requêtes passent par
@@ -78,6 +79,9 @@ export type HomeData = {
   seriesBets: BetTodoItem[];
   matchBets: BetTodoItem[];
   feed: FeedItem[];
+  /** Récaps « Ta nuit » / « Ta semaine » (p3-10), en tête de « Ça vient de
+   *  tomber ». Null sans compétition active. */
+  recap: HomeRecap | null;
   /** Préférence de notification du COMPTE (p3-13) — lue même sans
    *  compétition active, la carte d'activation des notifications
    *  (components/home/PushPrompt.tsx) doit apparaître aussi pendant une
@@ -99,6 +103,7 @@ const EMPTY_HOME_DATA: HomeData = {
   seriesBets: [],
   matchBets: [],
   feed: [],
+  recap: null,
   notificationPreference: "NONE",
 };
 
@@ -140,16 +145,27 @@ export async function getHomeData(): Promise<HomeData> {
     return { ...EMPTY_HOME_DATA, notificationPreference };
   }
 
-  const [header, todo, adminTodo, seriesBets, matchBets, feed] = await Promise.all([
+  const [header, todo, adminTodo, seriesBets, matchBets, feed, recap] = await Promise.all([
     getHeader(supabase, competition, user.id),
     getTodo(supabase, competition, user.id),
     getAdminTodo(supabase, competition.id),
     getSeriesBetsTodo(supabase, user.id, competition),
     getMatchBetsTodo(supabase, user.id, competition),
     getFeed(supabase, competition.id, user.id),
+    getHomeRecap(supabase, competition.id, user.id),
   ]);
 
-  return { competitionId: competition.id, header, todo, adminTodo, seriesBets, matchBets, feed, notificationPreference };
+  return {
+    competitionId: competition.id,
+    header,
+    todo,
+    adminTodo,
+    seriesBets,
+    matchBets,
+    feed,
+    recap,
+    notificationPreference,
+  };
 }
 
 // ============================================================================
