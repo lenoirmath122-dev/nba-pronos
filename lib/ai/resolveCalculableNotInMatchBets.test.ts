@@ -1,6 +1,7 @@
 // Test de resolveCalculableNotInMatchBets() (p3-14, 04/10/2026) : pari
 // JOUEUR simple resté sans structured_player_id (joueur jugé absent du
-// match par l'IA). Même faux Supabase en mémoire que
+// match par l'IA), étendu le 05/10/2026 aux paris SÉRIE, période et
+// superlatif sans id. Même faux Supabase en mémoire que
 // resolveCalculableSeriesBets.test.ts, avec `.is()` en plus.
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
@@ -91,7 +92,13 @@ vi.mock("@/lib/supabase/service", () => ({
   getServiceClient: () => fake,
 }));
 
-const { resolveCalculableNotInMatchBets, matchPlayerByName, normalizePlayerName, NOT_IN_MATCH_RESOLUTION_REASON } =
+const {
+  resolveCalculableNotInMatchBets,
+  matchPlayerByName,
+  normalizePlayerName,
+  NOT_IN_MATCH_RESOLUTION_REASON,
+  NOT_IN_SERIES_RESOLUTION_REASON,
+} =
   await import("./resolveCalculableBets");
 
 function seed(table: string, rows: Row[]) {
@@ -232,15 +239,121 @@ describe("resolveCalculableNotInMatchBets", () => {
     expect(summary.skipped).toEqual([{ betId: "bet5", reason: "match pas encore terminé" }]);
   });
 
-  it("ignore les autres formes (période, superlatif...) et les paris qui ont déjà un id", async () => {
+  it("ignore les formes hors joueur nommé (duel, combo...) et les paris qui ont déjà un id", async () => {
     seedFinishedMatch();
     seed("bets", [
-      betRow({ id: "bet6", structured_period: { period: "Q1" } }),
+      betRow({ id: "bet6", structured_combo: { conditions: [] } }),
       betRow({ id: "bet7", structured_player_id: 1628973 }),
     ]);
 
     const summary = await resolveCalculableNotInMatchBets();
 
     expect(summary).toEqual({ resolved: [], skipped: [] });
+  });
+});
+
+describe("resolveCalculableNotInMatchBets -- période et superlatif sans id", () => {
+  const period = { period: "Q1", outcome_kind: null, team_id: null, player_id: null, exact_count: null };
+
+  it("période : joueur absent de la feuille -> LOST", async () => {
+    seedFinishedMatch();
+    seed("bets", [betRow({ id: "p1", structured_period: period })]);
+
+    const summary = await resolveCalculableNotInMatchBets();
+
+    expect(summary.resolved).toEqual([{ betId: "p1", outcome: "LOST" }]);
+    expect(readRow("bets", "p1")?.resolution_reason).toBe(NOT_IN_MATCH_RESOLUTION_REASON);
+  });
+
+  it("période : joueur trouvé -> id renseigné aussi dans structured_period, pari laissé au resolver période", async () => {
+    seedFinishedMatch();
+    seed("bets", [betRow({ id: "p2", structured_player_name: "Stephen Curry", structured_period: period })]);
+
+    const summary = await resolveCalculableNotInMatchBets();
+
+    expect(summary.resolved).toEqual([]);
+    expect(readRow("bets", "p2")?.status).toBe("VALIDATED");
+    expect(readRow("bets", "p2")?.structured_player_id).toBe(201939);
+    expect((readRow("bets", "p2")?.structured_period as Row).player_id).toBe(201939);
+    expect((readRow("bets", "p2")?.structured_period as Row).period).toBe("Q1");
+  });
+
+  it("superlatif : joueur absent -> LOST, trouvé -> id renseigné", async () => {
+    seedFinishedMatch();
+    seed("bets", [
+      betRow({ id: "s1", structured_stat: null, structured_threshold: null, structured_comparison: null, structured_superlative: { stat: "pts" } }),
+      betRow({
+        id: "s2",
+        structured_player_name: "LeBron James",
+        structured_stat: null,
+        structured_threshold: null,
+        structured_comparison: null,
+        structured_superlative: { stat: "pts" },
+      }),
+    ]);
+
+    const summary = await resolveCalculableNotInMatchBets();
+
+    expect(summary.resolved).toEqual([{ betId: "s1", outcome: "LOST" }]);
+    expect(readRow("bets", "s2")?.status).toBe("VALIDATED");
+    expect(readRow("bets", "s2")?.structured_player_id).toBe(2544);
+  });
+});
+
+describe("resolveCalculableNotInMatchBets -- pari SÉRIE sans id", () => {
+  function seedSeries(officialStatus: string) {
+    seedFinishedMatch();
+    seed("series", [{ id: "sr1", official_status: officialStatus }]);
+    seed("matches", [
+      { id: "m1", series_id: "sr1", status: "FINISHED" },
+      { id: "m2", series_id: "sr1", status: officialStatus === "FINISHED" ? "FINISHED" : "SCHEDULED" },
+    ]);
+    seed("entity_mappings", [
+      { entity_type: "MATCH", source_type: "NBA_API", internal_id: "m1", source_ref: "G1" },
+      { entity_type: "MATCH", source_type: "NBA_API", internal_id: "m2", source_ref: "G2" },
+    ]);
+    fake.db.stats_box_scores.push(boxScoreRow({ game_id: "G2", player_id: 2544, pts: 20 }));
+  }
+  const seriesBet = (overrides: Row) => betRow({ scope: "SERIES", match_id: null, series_id: "sr1", ...overrides });
+
+  it("série terminée, joueur absent de toutes les feuilles -> LOST avec le motif série", async () => {
+    seedSeries("FINISHED");
+    seed("bets", [seriesBet({ id: "sb1" })]);
+
+    const summary = await resolveCalculableNotInMatchBets();
+
+    expect(summary.resolved).toEqual([{ betId: "sb1", outcome: "LOST" }]);
+    expect(readRow("bets", "sb1")?.resolution_reason).toBe(NOT_IN_SERIES_RESOLUTION_REASON);
+  });
+
+  it("série en cours, joueur absent pour l'instant -> attend la fin de la série", async () => {
+    seedSeries("IN_PROGRESS");
+    seed("bets", [seriesBet({ id: "sb2" })]);
+
+    const summary = await resolveCalculableNotInMatchBets();
+
+    expect(summary.resolved).toEqual([]);
+    expect(readRow("bets", "sb2")?.status).toBe("VALIDATED");
+  });
+
+  it("joueur trouvé sur un match -> id renseigné, laissé au resolver série", async () => {
+    seedSeries("IN_PROGRESS");
+    seed("bets", [seriesBet({ id: "sb3", structured_player_name: "Stephen Curry" })]);
+
+    const summary = await resolveCalculableNotInMatchBets();
+
+    expect(summary.resolved).toEqual([]);
+    expect(readRow("bets", "sb3")?.structured_player_id).toBe(201939);
+  });
+
+  it("série terminée mais une feuille pas encore importée -> jamais LOST à tort", async () => {
+    seedSeries("FINISHED");
+    fake.db.stats_box_scores = fake.db.stats_box_scores.filter((r) => r.game_id !== "G2");
+    seed("bets", [seriesBet({ id: "sb4" })]);
+
+    const summary = await resolveCalculableNotInMatchBets();
+
+    expect(summary.resolved).toEqual([]);
+    expect(readRow("bets", "sb4")?.status).toBe("VALIDATED");
   });
 });

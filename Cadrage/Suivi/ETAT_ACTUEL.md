@@ -203,8 +203,10 @@ même » (`PlayerNotInMatchConfirm`, dans `InlineBetForm` et `BetForm`). Envoyé
 quand même, il est validé à 0 % puis résolu par
 `lib/ai/resolveNotInMatchBets.ts`, qui cherche le joueur par son nom sur la
 feuille du match : absent → perdu, présent → résolu sur ses vraies stats,
-nom de famille seul → laissé à l'admin (paris JOUEUR simples de scope MATCH
-uniquement). Chaque
+nom de famille seul → laissé à l'admin. Même recherche pour un pari SÉRIE
+(sur chaque match terminé ; absent de toute une série terminée → perdu) et
+pour un pari période joueur ou superlatif resté sans id (trouvé → id
+renseigné, le resolver de la famille tranche ; absent → perdu). Chaque
 pari jugé calculable par l'IA est validé directement, sans geste admin ;
 l'admin garde un droit de correction après coup. Le pipeline de probabilités
 pré-match (utilisé pour informer/valider certains paris) s'appuie sur le

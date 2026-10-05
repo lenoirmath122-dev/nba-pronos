@@ -2,7 +2,14 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId, isBoxScoreSynced } from "./resolveBetsShared";
+import {
+  type ResolveBetsSummary,
+  type BoxScoreRow,
+  type SupabaseServiceClient,
+  computeOutcome,
+  resolveNbaGameId,
+  isBoxScoreSynced,
+} from "./resolveBetsShared";
 
 // p3-14 (04/10/2026) -- pari JOUEUR simple (scope MATCH) resté sans
 // structured_player_id : surtout le joueur que l'IA juge absent des 2
@@ -19,10 +26,24 @@ import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGa
 // - nom de famille seul trouvé : ambigu (orthographe du prénom), laissé à
 //   l'admin plutôt que de risquer un LOST à tort ;
 // - absent : LOST, même règle que le joueur qui ne joue pas (p3-15).
+//
+// Suite de p3-14 (05/10/2026) -- mêmes règles étendues aux autres formes
+// qui nomment un joueur sans id :
+// - pari SÉRIE simple (not_in_match sur une série) : cherché sur chaque
+//   match terminé de la série ; trouvé -> id renseigné, absent de tous les
+//   matchs d'une série terminée -> LOST ;
+// - pari période joueur / superlatif dont le micro-service n'a pas renvoyé
+//   d'id : trouvé -> id renseigné, absent -> LOST.
+// Quand le joueur est trouvé hors du cas simple, ce resolver se contente de
+// renseigner l'id : le resolver de la famille (série, période, superlatif)
+// tranche à sa prochaine passe, avec ses propres règles. Le dernier panier
+// n'est pas concerné (predictLastBasket() renvoie toujours un id).
 
 type EligibleBetRow = {
   id: string;
+  scope: "MATCH" | "SERIES";
   match_id: string | null;
+  series_id: string;
   structured_player_name: string | null;
   structured_stat: string | null;
   structured_threshold: number | null;
@@ -30,7 +51,7 @@ type EligibleBetRow = {
   structured_team_id: string | null;
   structured_duel: unknown;
   structured_combo: unknown;
-  structured_period: unknown;
+  structured_period: Record<string, unknown> | null;
   structured_roster_split: unknown;
   structured_roster_count: unknown;
   structured_superlative: unknown;
@@ -74,24 +95,222 @@ export function matchPlayerByName(betName: string, players: PlayerNameRow[]): Na
   return sameFamily ? { kind: "AMBIGUOUS" } : { kind: "ABSENT" };
 }
 
-/** Pari JOUEUR simple : aucune autre forme structurée renseignée. */
-function isSinglePlayerShape(bet: EligibleBetRow): boolean {
-  return (
-    bet.structured_team_id === null &&
-    bet.structured_duel === null &&
-    bet.structured_combo === null &&
-    bet.structured_period === null &&
-    bet.structured_roster_split === null &&
-    bet.structured_roster_count === null &&
-    bet.structured_superlative === null &&
-    bet.structured_technical_fouls_count === null &&
-    bet.structured_last_basket === null &&
-    bet.structured_block_on_player === null
-  );
+type BetShape = "SINGLE" | "PERIOD" | "SUPERLATIVE";
+
+/** Forme du pari parmi celles qui nomment UN joueur : JOUEUR simple (aucune
+ *  autre forme structurée), période joueur ou superlatif. `null` pour tout
+ *  le reste (duel, combo...), jamais traité ici. */
+function namedPlayerShape(bet: EligibleBetRow): BetShape | null {
+  const others = [
+    bet.structured_team_id,
+    bet.structured_duel,
+    bet.structured_combo,
+    bet.structured_roster_split,
+    bet.structured_roster_count,
+    bet.structured_technical_fouls_count,
+    bet.structured_last_basket,
+    bet.structured_block_on_player,
+  ];
+  if (others.some((value) => value !== null)) return null;
+  if (bet.structured_period === null && bet.structured_superlative === null) return "SINGLE";
+  if (bet.scope !== "MATCH") return null;
+  if (bet.structured_period !== null && bet.structured_superlative === null) return "PERIOD";
+  if (bet.structured_period === null && bet.structured_superlative !== null) return "SUPERLATIVE";
+  return null;
 }
 
 export const NOT_IN_MATCH_RESOLUTION_REASON =
   "Résolu automatiquement : le joueur visé ne figure pas sur la feuille de ce match (il ne joue pour aucune des deux équipes, ou n'a pas joué), un pari sur un joueur absent est perdu.";
+
+export const NOT_IN_SERIES_RESOLUTION_REASON =
+  "Résolu automatiquement : série terminée, le joueur visé ne figure sur la feuille d'aucun de ses matchs, un pari sur un joueur absent est perdu.";
+
+const PLAYER_IDENTIFIED_REASON = "joueur identifié sur la feuille de match, tranché par le resolver de sa famille à la prochaine passe";
+
+/** Box score + noms des joueurs d'un match NBA déjà importé. */
+async function loadMatchSheet(
+  supabase: SupabaseServiceClient,
+  gameId: string
+): Promise<{ boxRows: NamedBoxRow[]; players: PlayerNameRow[] }> {
+  const { data: boxData } = await supabase
+    .from("stats_box_scores")
+    .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
+    .eq("game_id", gameId);
+  const boxRows = (boxData ?? []) as NamedBoxRow[];
+  const { data: namesData } = await supabase
+    .from("stats_joueurs")
+    .select("player_id, first_name, family_name")
+    .in(
+      "player_id",
+      boxRows.map((r) => r.player_id)
+    );
+  return { boxRows, players: (namesData ?? []) as PlayerNameRow[] };
+}
+
+/** Renseigne l'id du joueur retrouvé sur la feuille, pour que le resolver
+ *  de la famille prenne le relais (une période le lit dans
+ *  structured_period.player_id, pas dans structured_player_id). */
+async function fillPlayerId(supabase: SupabaseServiceClient, bet: EligibleBetRow, playerId: number): Promise<boolean> {
+  const { data: updated } = await supabase
+    .from("bets")
+    .update({
+      structured_player_id: playerId,
+      ...(bet.structured_period ? { structured_period: { ...bet.structured_period, player_id: playerId } } : {}),
+    })
+    .eq("id", bet.id)
+    .eq("status", "VALIDATED")
+    .is("structured_player_id", null)
+    .select("id")
+    .maybeSingle();
+  return Boolean(updated);
+}
+
+async function settle(
+  supabase: SupabaseServiceClient,
+  summary: ResolveBetsSummary,
+  betId: string,
+  outcome: "WON" | "LOST",
+  reason: string,
+  playerId: number | null
+): Promise<void> {
+  const { data: updated } = await supabase
+    .from("bets")
+    .update({
+      status: outcome,
+      ...(playerId !== null ? { structured_player_id: playerId } : {}),
+      resolution_reason: reason,
+      resolved_at: new Date().toISOString(),
+      resolved_by_admin_id: null,
+    })
+    .eq("id", betId)
+    .eq("status", "VALIDATED")
+    .select("id")
+    .maybeSingle();
+  if (!updated) {
+    summary.skipped.push({ betId, reason: "déjà résolu entre-temps (concurrence)" });
+    return;
+  }
+  await recomputeBet(betId);
+  summary.resolved.push({ betId, outcome });
+}
+
+async function resolveMatchScopeBet(
+  supabase: SupabaseServiceClient,
+  summary: ResolveBetsSummary,
+  bet: EligibleBetRow,
+  shape: BetShape,
+  finishedMatchIds: Set<string>
+): Promise<void> {
+  if (!bet.match_id || !finishedMatchIds.has(bet.match_id)) {
+    summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
+    return;
+  }
+  if (!bet.structured_player_name || (shape !== "SUPERLATIVE" && !bet.structured_stat)) {
+    summary.skipped.push({ betId: bet.id, reason: "nom du joueur ou stat manquant" });
+    return;
+  }
+
+  const gameId = await resolveNbaGameId(supabase, bet.match_id);
+  if (!gameId) {
+    summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
+    return;
+  }
+  if (!(await isBoxScoreSynced(supabase, gameId))) {
+    summary.skipped.push({ betId: bet.id, reason: "box score du match pas encore importé" });
+    return;
+  }
+
+  const { boxRows, players } = await loadMatchSheet(supabase, gameId);
+  const nameMatch = matchPlayerByName(bet.structured_player_name, players);
+
+  if (nameMatch.kind === "AMBIGUOUS") {
+    summary.skipped.push({ betId: bet.id, reason: "nom du joueur ambigu sur la feuille de match, à trancher par l'admin" });
+    return;
+  }
+  if (nameMatch.kind === "ABSENT") {
+    await settle(supabase, summary, bet.id, "LOST", NOT_IN_MATCH_RESOLUTION_REASON, null);
+    return;
+  }
+
+  if (shape !== "SINGLE") {
+    const filled = await fillPlayerId(supabase, bet, nameMatch.playerId);
+    summary.skipped.push({
+      betId: bet.id,
+      reason: filled ? PLAYER_IDENTIFIED_REASON : "déjà résolu entre-temps (concurrence)",
+    });
+    return;
+  }
+
+  const box = boxRows.find((r) => r.player_id === nameMatch.playerId) ?? null;
+  const won = box
+    ? computeOutcome(bet.structured_stat as StatCode, bet.structured_threshold, bet.structured_comparison, box)
+    : false;
+  if (won === null) {
+    summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
+    return;
+  }
+  await settle(
+    supabase,
+    summary,
+    bet.id,
+    won ? "WON" : "LOST",
+    "Résolu automatiquement via les statistiques officielles du match.",
+    nameMatch.playerId
+  );
+}
+
+/** Pari SÉRIE : le joueur est cherché sur chaque match terminé. Trouvé sur
+ *  un seul -> id renseigné, resolveCalculableSeriesBets() tranche (« au
+ *  moins une fois sur la série », DNP sur un match = pas de hit). Absent
+ *  partout -> LOST, mais seulement série terminée et toutes ses feuilles
+ *  importées (même prudence que resolveCalculableSeriesBets()). */
+async function resolveSeriesScopeBet(
+  supabase: SupabaseServiceClient,
+  summary: ResolveBetsSummary,
+  bet: EligibleBetRow,
+  seriesOver: boolean,
+  finishedMatchIds: string[]
+): Promise<void> {
+  if (!bet.structured_player_name || !bet.structured_stat) {
+    summary.skipped.push({ betId: bet.id, reason: "nom du joueur ou stat manquant" });
+    return;
+  }
+
+  let ambiguous = false;
+  let dataMissing = false;
+  for (const matchId of finishedMatchIds) {
+    const gameId = await resolveNbaGameId(supabase, matchId);
+    if (!gameId || !(await isBoxScoreSynced(supabase, gameId))) {
+      dataMissing = true;
+      continue;
+    }
+    const { players } = await loadMatchSheet(supabase, gameId);
+    const nameMatch = matchPlayerByName(bet.structured_player_name, players);
+    if (nameMatch.kind === "FOUND") {
+      const filled = await fillPlayerId(supabase, bet, nameMatch.playerId);
+      summary.skipped.push({
+        betId: bet.id,
+        reason: filled ? PLAYER_IDENTIFIED_REASON : "déjà résolu entre-temps (concurrence)",
+      });
+      return;
+    }
+    if (nameMatch.kind === "AMBIGUOUS") ambiguous = true;
+  }
+
+  if (ambiguous) {
+    summary.skipped.push({ betId: bet.id, reason: "nom du joueur ambigu sur une feuille de match, à trancher par l'admin" });
+    return;
+  }
+  if (!seriesOver) {
+    summary.skipped.push({ betId: bet.id, reason: "série pas encore terminée, joueur pas encore trouvé" });
+    return;
+  }
+  if (dataMissing || finishedMatchIds.length === 0) {
+    summary.skipped.push({ betId: bet.id, reason: "données manquantes pour au moins un match de la série" });
+    return;
+  }
+  await settle(supabase, summary, bet.id, "LOST", NOT_IN_SERIES_RESOLUTION_REASON, null);
+}
 
 export async function resolveCalculableNotInMatchBets(): Promise<ResolveBetsSummary> {
   const supabase = getServiceClient();
@@ -100,23 +319,41 @@ export async function resolveCalculableNotInMatchBets(): Promise<ResolveBetsSumm
   const { data: betsData } = await supabase
     .from("bets")
     .select(
-      "id, match_id, structured_player_id, structured_player_name, structured_stat, structured_threshold, structured_comparison, " +
+      "id, scope, match_id, series_id, structured_player_id, structured_player_name, structured_stat, structured_threshold, structured_comparison, " +
         "structured_team_id, structured_duel, structured_combo, structured_period, structured_roster_split, structured_roster_count, " +
         "structured_superlative, structured_technical_fouls_count, structured_last_basket, structured_block_on_player"
     )
-    .eq("scope", "MATCH")
     .eq("is_calculable", true)
     .eq("status", "VALIDATED")
     .is("structured_player_id", null)
     .not("structured_player_name", "is", null);
-  const bets = ((betsData ?? []) as unknown as EligibleBetRow[]).filter(isSinglePlayerShape);
+  const bets = ((betsData ?? []) as unknown as EligibleBetRow[])
+    .map((bet) => ({ bet, shape: namedPlayerShape(bet) }))
+    .filter((entry): entry is { bet: EligibleBetRow; shape: BetShape } => entry.shape !== null);
   if (bets.length === 0) return summary;
 
-  const matchIds = [...new Set(bets.map((b) => b.match_id).filter((id): id is string => id !== null))];
-  const { data: matchesData } = await supabase.from("matches").select("id, status").in("id", matchIds);
+  const matchIds = [...new Set(bets.map(({ bet }) => bet.match_id).filter((id): id is string => id !== null))];
+  const seriesIds = [...new Set(bets.filter(({ bet }) => bet.scope === "SERIES").map(({ bet }) => bet.series_id))];
+
+  const { data: matchesData } = matchIds.length > 0
+    ? await supabase.from("matches").select("id, status").in("id", matchIds)
+    : { data: [] };
   const finishedMatchIds = new Set(
     (matchesData ?? []).filter((m) => m.status === "FINISHED").map((m) => m.id as string)
   );
+
+  const seriesStatusById = new Map<string, string>();
+  const finishedMatchIdsBySeries = new Map<string, string[]>();
+  if (seriesIds.length > 0) {
+    const { data: seriesData } = await supabase.from("series").select("id, official_status").in("id", seriesIds);
+    for (const s of seriesData ?? []) seriesStatusById.set(s.id as string, s.official_status as string);
+    const { data: seriesMatches } = await supabase.from("matches").select("id, series_id, status").in("series_id", seriesIds);
+    for (const m of seriesMatches ?? []) {
+      if (m.status !== "FINISHED") continue;
+      const seriesId = m.series_id as string;
+      finishedMatchIdsBySeries.set(seriesId, [...(finishedMatchIdsBySeries.get(seriesId) ?? []), m.id as string]);
+    }
+  }
 
   // Même garde que resolveCalculableBets() : un pari contesté reste à l'admin.
   const { data: pendingCorrections } = await supabase
@@ -125,85 +362,26 @@ export async function resolveCalculableNotInMatchBets(): Promise<ResolveBetsSumm
     .eq("status", "PENDING")
     .in(
       "target_bet_id",
-      bets.map((b) => b.id)
+      bets.map(({ bet }) => bet.id)
     );
   const contestedBetIds = new Set((pendingCorrections ?? []).map((r) => r.target_bet_id as string));
 
-  for (const bet of bets) {
-    if (!bet.match_id || !finishedMatchIds.has(bet.match_id)) {
-      summary.skipped.push({ betId: bet.id, reason: "match pas encore terminé" });
-      continue;
-    }
+  for (const { bet, shape } of bets) {
     if (contestedBetIds.has(bet.id)) {
       summary.skipped.push({ betId: bet.id, reason: "requête de correction en attente" });
       continue;
     }
-    if (!bet.structured_player_name || !bet.structured_stat) {
-      summary.skipped.push({ betId: bet.id, reason: "nom du joueur ou stat manquant" });
-      continue;
-    }
-
-    const gameId = await resolveNbaGameId(supabase, bet.match_id);
-    if (!gameId) {
-      summary.skipped.push({ betId: bet.id, reason: "match NBA correspondant introuvable" });
-      continue;
-    }
-    if (!(await isBoxScoreSynced(supabase, gameId))) {
-      summary.skipped.push({ betId: bet.id, reason: "box score du match pas encore importé" });
-      continue;
-    }
-
-    const { data: boxData } = await supabase
-      .from("stats_box_scores")
-      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
-      .eq("game_id", gameId);
-    const boxRows = (boxData ?? []) as NamedBoxRow[];
-    const { data: namesData } = await supabase
-      .from("stats_joueurs")
-      .select("player_id, first_name, family_name")
-      .in(
-        "player_id",
-        boxRows.map((r) => r.player_id)
+    if (bet.scope === "SERIES") {
+      await resolveSeriesScopeBet(
+        supabase,
+        summary,
+        bet,
+        seriesStatusById.get(bet.series_id) === "FINISHED",
+        finishedMatchIdsBySeries.get(bet.series_id) ?? []
       );
-    const nameMatch = matchPlayerByName(bet.structured_player_name, (namesData ?? []) as PlayerNameRow[]);
-
-    if (nameMatch.kind === "AMBIGUOUS") {
-      summary.skipped.push({ betId: bet.id, reason: "nom du joueur ambigu sur la feuille de match, à trancher par l'admin" });
-      continue;
+    } else {
+      await resolveMatchScopeBet(supabase, summary, bet, shape, finishedMatchIds);
     }
-
-    const box = nameMatch.kind === "FOUND" ? boxRows.find((r) => r.player_id === nameMatch.playerId) ?? null : null;
-    const won = box
-      ? computeOutcome(bet.structured_stat as StatCode, bet.structured_threshold, bet.structured_comparison, box)
-      : false;
-    if (won === null) {
-      summary.skipped.push({ betId: bet.id, reason: "seuil/comparaison manquant" });
-      continue;
-    }
-
-    const outcome: "WON" | "LOST" = won ? "WON" : "LOST";
-    const { data: updated } = await supabase
-      .from("bets")
-      .update({
-        status: outcome,
-        ...(nameMatch.kind === "FOUND" ? { structured_player_id: nameMatch.playerId } : {}),
-        resolution_reason: box
-          ? "Résolu automatiquement via les statistiques officielles du match."
-          : NOT_IN_MATCH_RESOLUTION_REASON,
-        resolved_at: new Date().toISOString(),
-        resolved_by_admin_id: null,
-      })
-      .eq("id", bet.id)
-      .eq("status", "VALIDATED")
-      .select("id")
-      .maybeSingle();
-    if (!updated) {
-      summary.skipped.push({ betId: bet.id, reason: "déjà résolu entre-temps (concurrence)" });
-      continue;
-    }
-
-    await recomputeBet(bet.id);
-    summary.resolved.push({ betId: bet.id, outcome });
   }
 
   return summary;
