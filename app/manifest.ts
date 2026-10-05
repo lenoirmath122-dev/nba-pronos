@@ -5,8 +5,8 @@ import { DEFAULT_DESCRIPTION } from "@/lib/seo";
 // (backlog "Rappels ciblés", canal Push, §2.46 ETAT_ACTUEL.md) : sur iOS, les
 // notifications web ne fonctionnent QUE depuis une app installée à l'écran
 // d'accueil (restriction Apple, jamais dans un onglet Safari/Chrome classique).
-// Icônes (27/08/2026) : vrai logo (public/brand/logo.svg), plus le monogramme
-// "NP" placeholder d'origine -- voir public/brand/README.md.
+// Icônes (27/08/2026) : nouveau logo final (public/brand/logo-carre.svg, 05/10/2026), centré sur
+// fond #0B0E14 -- voir public/brand/README.md.
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Panier Ballon",

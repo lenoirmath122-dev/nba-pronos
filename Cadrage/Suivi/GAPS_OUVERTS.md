@@ -71,8 +71,9 @@
   `/leaderboard` et `/bracket` rendent bien en visiteur anonyme ; (2) après
   déploiement, contrôler `/robots.txt` et `/sitemap.xml` puis soumettre le
   sitemap dans Search Console (action manuelle) ; (3) image d'aperçu
-  1200×630 quand le nouveau logo sera prêt (changer `OG_IMAGE` et
-  `TWITTER_CARD` dans `lib/seo.ts`) ; (4) `lastModified` du sitemap figé au
+  1200×630 : le logo final est prêt (intégré le 05/10/2026), reste à
+  composer l'image (changer `OG_IMAGE` et `TWITTER_CARD` dans `lib/seo.ts`,
+  qui pointent encore sur `icon-512.png`) ; (4) `lastModified` du sitemap figé au
   05/10/2026, à mettre à jour quand les pages publiques changent. La landing
   page soignée reste en p5-2 : la version actuelle est minimale, on la
   retravaillera plus tard (décision du 05/10).
@@ -206,8 +207,9 @@
   tel quel pour la bêta fermée gratuite actuelle, à revoir obligatoirement
   avant toute ouverture publique/commerciale (2027, 2 options déjà
   identifiées : licence ou remplacement des visuels).
-- **Nom de marque "Panier Ballon" et logo** — directions de travail
-  réévaluables, pas des choix figés (voir le cadrage business).
+- **Nom de marque "Panier Ballon"** — direction de travail réévaluable,
+  pas un choix figé (voir le cadrage business). Le logo, lui, est final
+  depuis le 05/10/2026 (wordmark `public/brand/logo-*.svg`).
 
 ## Gaps techniques du prototype
 

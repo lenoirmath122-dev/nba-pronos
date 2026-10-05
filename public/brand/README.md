@@ -1,14 +1,12 @@
-# Assets de marque
-
-`logo.svg` — logo NBA Pronos (badge panier + ballon), source vectorielle
-maîtresse. Vectorisé le 27/08/2026 à partir de `Cadrage/DA/Logo.jpg` (fond
-4 couleurs d'origine retiré par seuillage sur le contour, badge tracé par
-couche de couleur — navy/orange base/orange ballon/blanc/noir — puis
-optimisé SVGO). Sert de source pour `app/favicon.ico`, `app/apple-icon.png`
-et `public/icons/icon-{192,512}.png` (générés à sa résolution, plus besoin
-de repartir du JPEG). Réutilisable directement dans l'UI (nav visiteur,
-écrans de connexion) si besoin, même logique que les blasons d'équipe
-(`public/logos/teams/*.svg`).
+`logo-horizontal.svg` / `logo-carre.svg` — logo final « Panier Ballon »
+(wordmark, 3 couleurs : #1A2230 / #F25F16 / #F7F2E7), sources vectorielles
+maîtresses, copiées le 05/10/2026 depuis `Cadrage/DA/Logo final/` (dossier
+ignoré par git). Horizontal (1399×262) : nav visiteur, écrans de connexion,
+accueil publique. « Carré » (749×460, wordmark empilé) : source de
+`app/favicon.ico`, `app/apple-icon.png` et `public/icons/icon-{192,512}.png`,
+générés avec sharp (logo à 80 % de la largeur, centré sur fond #0B0E14 =
+`theme_color` du manifest ; favicon 16/32/48 à 92 %). Remplace l'ancien badge
+panier + ballon (`logo.svg`, supprimé).
 
 `hero-parquet.jpg` — bandeau de section « parquet » (§15.7), câblé par le token
 unique `--hero-image` (`app/tokens.css`). Déposé le 29/07/2026 (format réel

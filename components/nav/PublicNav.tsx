@@ -18,8 +18,7 @@ export function PublicNav() {
     <>
       <nav className={styles.bar} aria-label="Navigation">
         <span className={styles.brand}>
-          <Image src="/brand/logo.svg" alt="" width={28} height={31} unoptimized className={styles.brandLogo} />
-          Panier Ballon
+          <Image src="/brand/logo-horizontal.svg" alt="Panier Ballon" width={128} height={24} unoptimized className={styles.brandLogo} />
         </span>
         <div className={styles.links}>
           <Link href="/leaderboard" className={styles.link}>

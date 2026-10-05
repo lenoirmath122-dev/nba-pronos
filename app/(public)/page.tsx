@@ -40,7 +40,7 @@ export default function LandingPage() {
   return (
     <main className={`${styles.page} photo-page force-photo`}>
       <section className={styles.hero}>
-        <Image src="/brand/logo.svg" alt="" width={73} height={80} unoptimized className={styles.logo} />
+        <Image src="/brand/logo-horizontal.svg" alt="Panier Ballon" width={299} height={56} unoptimized className={styles.logo} />
         <h1 className={styles.title}>{TAGLINE.replace(/\.$/, "")}</h1>
         <p className={styles.lead}>
           Pronostique les matchs, lance tes paris perso, remplis ton bracket et grimpe au classement face à ta bande. NBA Cup, playoffs :
