@@ -12,7 +12,9 @@ import { createServerClient } from "@supabase/ssr";
 
 const APP_ZONE_PREFIXES = ["/home", "/play", "/profile"];
 const ADMIN_ZONE_PREFIX = "/admin";
-const AUTH_PAGES = ["/login", "/signup"];
+// Pages réservées aux visiteurs : un connecté est renvoyé vers /home. "/" est
+// la page d'accueil publique (socle SEO, 05/10/2026).
+const AUTH_PAGES = ["/", "/login", "/signup"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
@@ -84,6 +86,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };

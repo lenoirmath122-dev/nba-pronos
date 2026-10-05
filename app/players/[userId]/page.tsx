@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/home/EmptyState";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { PinnedBadges } from "@/components/profile/PinnedBadges";
 import styles from "./page.module.css";
+import type { Metadata } from "next";
 
 // Page "profil joueur" (BACKLOG discuté le 30/07/2026 — voir
 // JOURNAL_SESSIONS.md) : route physique dédiée, hors des groupes
@@ -22,6 +23,9 @@ const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+// Profils de joueurs : jamais indexés (pseudos), mais les liens sont suivis.
+export const metadata: Metadata = { robots: { index: false, follow: true } };
 
 export default async function PlayerProfilePage({ params }: { params: Promise<{ userId: string }> }) {
   const { userId } = await params;

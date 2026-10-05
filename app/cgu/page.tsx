@@ -1,12 +1,19 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import styles from "./page.module.css";
+import { pageMetadata } from "@/lib/seo";
 
 // CGU — route physique unique, hors des route groups (public)/(app), même
 // patron que /regles (T6a §3.2/§8.1) : visiteur ou joueur connecté, contenu
 // identique. Contenu sourcé sur le cadrage juridique complet
 // (Cadrage/Juridique/conseils_juridiques_deploiement_application.md §2.5,
 // §2.10, §2.11 + Cadrage/Juridique/cgu.md, chantier RGPD du 02-03/09/2026).
+export const metadata = pageMetadata({
+  title: "Conditions générales d'utilisation",
+  path: "/cgu",
+  description: "Conditions générales d'utilisation de Panier Ballon.",
+});
+
 export default async function CguPage() {
   const supabase = await getServerClient();
   const {

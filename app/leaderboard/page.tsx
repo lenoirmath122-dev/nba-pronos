@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/home/EmptyState";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { RankingTiebreakList } from "@/components/regles/RankingTiebreakList";
 import styles from "./page.module.css";
+import { pageMetadata } from "@/lib/seo";
 
 // Classement — route physique UNIQUE, hors des route groups (public)/(app)
 // (T6a §3.2/§8.1) : cette enveloppe fine choisit elle-même sa nav (réduite
@@ -36,6 +37,12 @@ function parseLeagueId(value: string | string[] | undefined): string | null {
   if (typeof value !== "string" || value.length === 0) return null;
   return value;
 }
+
+export const metadata = pageMetadata({
+  title: "Classement",
+  path: "/leaderboard",
+  description: "Le classement général des joueurs Panier Ballon.",
+});
 
 export default async function LeaderboardPage({ searchParams }: LeaderboardPageProps) {
   const { tri, ligue, ordre } = await searchParams;

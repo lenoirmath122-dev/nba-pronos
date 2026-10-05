@@ -291,6 +291,16 @@ contexte capturé automatiquement) — capture ce qui se perdrait sinon en DM
 pendant l'alpha/bêta, distinct de `correction_requests` (qui conteste un
 score déjà calculé).
 
+### 4.10 SEO et page d'accueil publique (branche `feat/seo-socle`, 05/10/2026)
+`/` est une page publique (`app/(public)/page.tsx`, sans requête Supabase) ;
+un connecté qui l'ouvre est renvoyé vers `/home` par `proxy.ts`. Métadonnées
+centralisées dans `lib/seo.ts` (`pageMetadata()` : titre via le template du
+layout, canonique, Open Graph/Twitter ; `noindex` sur reset-password,
+verify-email, email-confirmed, `/players` et profils). `app/robots.ts` et
+`app/sitemap.ts` (9 pages). Le mot « paris » est voulu (référencement) dans les métadonnées et sur
+la page `/` (test `lib/seo.test.ts`) ; il reste dans l'UI interne et le corps
+de `/regles` et `/confidentialite`. Image d'aperçu : icône carrée provisoire.
+
 ---
 
 ## 5. Micro-service Python de calcul de probabilités

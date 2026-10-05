@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import styles from "./page.module.css";
+import { pageMetadata } from "@/lib/seo";
 
 // Mentions légales — route physique unique, hors des route groups
 // (public)/(app), même patron que /regles (T6a §3.2/§8.1) : visiteur ou
@@ -8,6 +9,12 @@ import styles from "./page.module.css";
 // juridique complet (Cadrage/Juridique/conseils_juridiques_deploiement_
 // application.md + Cadrage/Juridique/mentions_legales.md, chantier RGPD du
 // 02-03/09/2026) — pas improvisé ici.
+export const metadata = pageMetadata({
+  title: "Mentions légales",
+  path: "/mentions-legales",
+  description: "Mentions légales de Panier Ballon.",
+});
+
 export default async function MentionsLegalesPage() {
   const supabase = await getServerClient();
   const {

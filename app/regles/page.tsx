@@ -5,6 +5,7 @@ import { MatchBaremeGrid } from "@/components/regles/MatchBaremeGrid";
 import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
 import { RankingTiebreakList } from "@/components/regles/RankingTiebreakList";
 import styles from "./page.module.css";
+import { pageMetadata } from "@/lib/seo";
 
 // Règles — route physique UNIQUE, hors des route groups (public)/(app),
 // même patron que /leaderboard et /bracket (T6a §3.2/§8.1) : visiteur ou
@@ -13,6 +14,12 @@ import styles from "./page.module.css";
 // (SPEC_TECHNIQUE_SCORING_V0_1.md T5, figé ; decisions_0.2.x ; lib/queries,
 // lib/labels), pas sur les 1ers documents de cadrage (beaucoup de "à
 // préciser plus tard" dans le résumé initial, depuis tranchés autrement).
+export const metadata = pageMetadata({
+  title: "Règles du jeu",
+  path: "/regles",
+  description: "Bracket, pronostics de matchs et paris perso entre amis : comment marquer des points sur Panier Ballon, sans argent réel.",
+});
+
 export default async function ReglesPage() {
   const supabase = await getServerClient();
   const {

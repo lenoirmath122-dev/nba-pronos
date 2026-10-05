@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import styles from "./page.module.css";
+import { pageMetadata } from "@/lib/seo";
 
 // Politique de confidentialité — route physique unique, hors des route
 // groups (public)/(app), même patron que /regles (T6a §3.2/§8.1) : visiteur
@@ -8,6 +9,12 @@ import styles from "./page.module.css";
 // juridique complet (Cadrage/Juridique/conseils_juridiques_deploiement_
 // application.md §9 registre des traitements + Cadrage/Juridique/
 // politique_confidentialite.md, chantier RGPD du 02-03/09/2026).
+export const metadata = pageMetadata({
+  title: "Politique de confidentialité",
+  path: "/confidentialite",
+  description: "Comment Panier Ballon traite tes données personnelles.",
+});
+
 export default async function ConfidentialitePage() {
   const supabase = await getServerClient();
   const {
@@ -45,7 +52,9 @@ export default async function ConfidentialitePage() {
             <li className={styles.listItem}>
               <span>
                 <strong>Pseudo et e-mail</strong> — pour créer votre compte et vous authentifier (exécution du
-                contrat), conservés tant que votre compte est actif.
+                contrat), conservés tant que votre compte est actif. Votre pseudo, vos points et votre rang
+                apparaissent dans le classement et le bracket, consultables sans compte et pouvant être
+                référencés par les moteurs de recherche ; votre e-mail n&apos;est jamais affiché.
               </span>
             </li>
             <li className={styles.listItem}>
