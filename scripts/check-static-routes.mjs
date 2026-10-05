@@ -27,6 +27,8 @@ const ALLOWED_STATIC_ROUTES = new Set([
   "/apple-icon.png",
   "/favicon.ico",
   "/manifest.webmanifest",
+  "/robots.txt", // socle SEO (05/10/2026) : contenu fixe, sans donnée de session.
+  "/sitemap.xml", // idem : liste fixe de pages publiques.
 ]);
 
 async function main() {
