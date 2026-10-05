@@ -1,0 +1,126 @@
+/* Écusson de badge (BadgeEmblem.tsx). --t = métal du palier ; reflet (--tl)
+   et ombre (--td) en sont dérivés. Primitives fixes plutôt que les tokens
+   --color-tier-* : le cœur de l'écusson reste sombre en thème clair aussi. */
+.emblem {
+  --t: var(--c-navy-500);
+  --tl: color-mix(in srgb, var(--t) 45%, white);
+  --td: color-mix(in srgb, var(--t) 50%, black);
+  --w: 4.25rem;
+  --rim: 4px;
+  display: inline-flex;
+  flex-shrink: 0;
+  width: var(--w);
+  height: calc(var(--w) * 1.15);
+}
+
+.emblem[data-tier="BRONZE"] { --t: var(--c-bronze-500); }
+.emblem[data-tier="ARGENT"] { --t: var(--c-slate-100); }
+.emblem[data-tier="OR"] { --t: var(--c-gold-500); }
+.emblem[data-tier="PLATINE"] { --t: var(--c-platinum-500); }
+.emblem[data-tier="DIAMANT"] { --t: var(--c-blue-300); }
+/* Badge débloqué sans palier (binaire, échelle de difficulté) : l'accent. */
+.emblem[data-tier="UNLOCKED"] { --t: var(--c-orange-500); }
+
+.emblem[data-size="sm"] {
+  --w: 1.2rem;
+  --rim: 2px;
+}
+
+.emblem[data-size="lg"] {
+  --w: 8.5rem;
+  --rim: 8px;
+}
+
+/* Halo sur le wrapper : un filter posé sur l'élément découpé serait rogné
+   par son propre clip-path. */
+.emblem[data-glow] {
+  filter: drop-shadow(0 0 1.5rem color-mix(in srgb, var(--t) 45%, transparent));
+}
+
+.shield,
+.inner {
+  clip-path: polygon(50% 0, 100% 13%, 100% 60%, 50% 100%, 0 60%, 0 13%);
+}
+
+.shield {
+  width: 100%;
+  height: 100%;
+  padding: var(--rim);
+  box-sizing: border-box;
+  background: linear-gradient(155deg, var(--tl), var(--t) 40%, var(--td));
+}
+
+.inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding-bottom: 14%;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, var(--c-navy-700), var(--c-navy-950));
+  color: var(--t);
+}
+
+.emblem[data-tier="LOCKED"] .inner {
+  color: var(--c-slate-400);
+}
+
+.icon {
+  width: 46%;
+  height: auto;
+}
+
+.led,
+.counter {
+  font-family: var(--font-display);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Afficheur de buzzer : chiffres lumineux. Taille relative à l'écusson. */
+.led {
+  font-size: calc(var(--w) * 0.3);
+  letter-spacing: 0.02em;
+  text-shadow: 0 0 calc(var(--w) * 0.1) var(--t);
+}
+
+.counter {
+  font-size: calc(var(--w) * 0.4);
+}
+
+.pips {
+  --t: var(--c-navy-500);
+  display: inline-flex;
+  gap: 4px;
+}
+
+/* Points sous l'écusson, posés sur la carte : tokens de palier (adaptés au
+   thème), contrairement à l'écusson lui-même. */
+.pips[data-tier="BRONZE"] { --t: var(--color-tier-bronze); }
+.pips[data-tier="ARGENT"] { --t: var(--color-tier-argent); }
+.pips[data-tier="OR"] { --t: var(--color-tier-or); }
+.pips[data-tier="PLATINE"] { --t: var(--color-tier-platine); }
+.pips[data-tier="DIAMANT"] { --t: var(--color-tier-diamant); }
+
+.pip,
+.pipOn {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.pips[data-large] .pip,
+.pips[data-large] .pipOn {
+  width: 8px;
+  height: 8px;
+}
+
+.pip {
+  background: var(--color-border-subtle);
+}
+
+.pipOn {
+  background: var(--t);
+}

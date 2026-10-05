@@ -1,4 +1,4 @@
-import { BADGE_ICONS } from "@/lib/badges/icons";
+import { BadgeEmblem } from "@/components/badges/BadgeEmblem";
 import type { BadgeDisplay } from "@/lib/queries/badges";
 import styles from "./PinnedBadges.module.css";
 
@@ -7,22 +7,18 @@ import styles from "./PinnedBadges.module.css";
 // BadgeCard.module.css (10/08/2026, "cohérent avec un futur affichage
 // compact dans le bandeau de profil"). Composant serveur, données déjà
 // résolues et ordonnées par lib/queries/badges.ts::getProfileBadges
-// (pinnedBadges).
+// (pinnedBadges). Écusson en petit depuis le 05/10/2026 (p3-9).
 
 export function PinnedBadges({ badges }: { badges: BadgeDisplay[] }) {
   if (badges.length === 0) return null;
 
   return (
     <span className={styles.row}>
-      {badges.map((badge) => {
-        const Icon = BADGE_ICONS[badge.id];
-        const tier = badge.kind === "tiered" ? (badge.tier ?? undefined) : undefined;
-        return (
-          <span key={badge.id} className={styles.iconWrap} data-tier={tier} title={badge.label} role="img" aria-label={badge.label}>
-            <Icon className={styles.icon} aria-hidden="true" />
-          </span>
-        );
-      })}
+      {badges.map((badge) => (
+        <span key={badge.id} className={styles.iconWrap} title={badge.label} role="img" aria-label={badge.label}>
+          <BadgeEmblem badge={badge} size="sm" />
+        </span>
+      ))}
     </span>
   );
 }
