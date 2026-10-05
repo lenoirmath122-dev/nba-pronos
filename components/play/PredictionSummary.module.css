@@ -4,12 +4,6 @@
   gap: var(--space-1);
 }
 
-.detail {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-}
-
 .adminCorrection {
   margin: 0;
   font-size: var(--font-size-xs);
