@@ -5,10 +5,13 @@
 // donnée compétition/utilisateur, un fichier statique évite une migration
 // pour de la donnée qui ne change jamais en cours de saison.
 //
-// Sert UNIQUEMENT à la personnalisation du bandeau Profil par équipe
-// favorite (04/08/2026, spec validée par maquettes) — cf.
-// app/(app)/profile/page.tsx. Périmètre volontairement limité à cet écran
-// (essai précédent du 30/07/2026 sur Profil entier, abandonné) : ne pas
+// Sert à 2 endroits, chacun validé explicitement par l'utilisateur :
+// - le bandeau Profil par équipe favorite (04/08/2026, spec validée par
+//   maquettes) — cf. app/(app)/profile/page.tsx ;
+// - le bandeau « télé » du prono sur les cartes de match verrouillées
+//   (05/10/2026, p3-8, maquettes validées) — cf. broadcastBandColor() et
+//   components/play/PredictionSummary.tsx.
+// Essai précédent du 30/07/2026 sur Profil entier abandonné : ne pas
 // réutiliser ailleurs sans le redemander explicitement à l'utilisateur.
 
 export type TeamColors = { primary: string; secondary: string };
@@ -45,3 +48,23 @@ export const TEAM_COLORS: Record<string, TeamColors> = {
   UTA: { primary: "#002B5C", secondary: "#F9A01B" },
   WAS: { primary: "#002B5C", secondary: "#E31837" },
 };
+
+function luminance(hex: string): number {
+  const n = parseInt(hex.slice(1), 16);
+  const channel = (c: number) => {
+    const v = c / 255;
+    return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
+  };
+  return 0.2126 * channel((n >> 16) & 0xff) + 0.7152 * channel((n >> 8) & 0xff) + 0.0722 * channel(n & 0xff);
+}
+
+/** Couleur de la bande « écart » du bandeau du prono (p3-8), texte blanc
+ *  posé dessus. Primaire de l'équipe, sauf primaire trop claire pour du
+ *  blanc (SAS, argent) → secondaire. null si l'équipe est inconnue (repli
+ *  sur l'accent côté CSS). Les primaires quasi noires (BKN) restent telles
+ *  quelles : le dégradé CSS s'éclaircit vers la droite. */
+export function broadcastBandColor(abbreviation: string): string | null {
+  const colors = TEAM_COLORS[abbreviation];
+  if (!colors) return null;
+  return luminance(colors.primary) > 0.35 ? colors.secondary : colors.primary;
+}

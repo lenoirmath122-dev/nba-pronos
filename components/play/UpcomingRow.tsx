@@ -16,6 +16,7 @@ import { formatPronoRecap } from "@/lib/labels/pronos";
 import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
 import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { MarginStepper } from "./MarginStepper";
+import { PronoBug } from "./PronoBug";
 import { ParticipationTrigger } from "./ParticipationTrigger";
 import { ViewBetTrigger } from "./ViewBetTrigger";
 import styles from "./UpcomingRow.module.css";
@@ -372,18 +373,21 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
             <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
             <span className={styles.lock}>{lockLabel}</span>
           </span>
-          <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
-            {/* "+" pas "−" (22/08/2026, signalé par l'utilisateur --
-                "CHI −4" se lisait comme un ecart negatif alors que
-                myMargin est toujours l'ecart de victoire du vainqueur
-                choisi). Mention du pari verrouillé ajoutée le 15/09/2026
-                (demandé par l'utilisateur) : évite d'avoir à regarder la
-                colonne icônes pour savoir si un pari perso existe encore sur
-                un match dont le prono est déjà validé. */}
-            {recap !== null
-              ? `✓ ${recap} +${match.myMargin}pts d'écart${readOnlyBet ? " et 1 pari perso verrouillé" : ""}`
-              : STATUS_LABEL[match.viewStatus]}
-          </span>
+{recap !== null && match.myMargin !== null ? (
+            // Prono validé : bandeau télé partagé avec les cartes verrouillées
+            // (05/10/2026, p3-8), à la place de la pilule « ✓ BOS +3pts
+            // d'écart ». Mention du pari verrouillé (15/09/2026, demandé par
+            // l'utilisateur) gardée dessous : évite d'avoir à regarder la
+            // colonne icônes pour savoir si un pari perso existe encore.
+            <span className={styles.validated}>
+              <PronoBug pick={{ abbreviation: recap, margin: match.myMargin }} />
+              {readOnlyBet && <span className={styles.validatedNote}>1 pari perso verrouillé</span>}
+            </span>
+          ) : (
+            <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
+              {STATUS_LABEL[match.viewStatus]}
+            </span>
+          )}
         </div>
       </div>
 

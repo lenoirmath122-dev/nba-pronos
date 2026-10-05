@@ -56,12 +56,12 @@ test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }, 
   await expect(validatedDialog).toContainText(new RegExp(`${match2.homeTeamAbbreviation} bat \\S+ de 3 pts`));
   await validatedDialog.getByRole("button", { name: "OK" }).click();
   await expect(page.getByRole("alertdialog")).toHaveCount(0);
-  // La ligne se replie après validation -- récap compact dans le bouton
-  // "Détails du match" ("✓ E2H +3", abréviation qui varie par project
-  // depuis que match2 est distinct -- voir seed.ts), pas le texte "Ton
-  // prono : ..." de la vue dépliée (UpcomingRowForm, jamais réaffichée ici).
-  const recapRegex = new RegExp(`✓\\s*${match2.homeTeamAbbreviation}\\s*\\+3`);
-  await expect(page.getByText(recapRegex)).toBeVisible();
+  // Après validation, la carte affiche le bandeau du prono (PronoBug,
+  // 05/10/2026, p3-8 -- remplace la pilule « ✓ E2H +3 ») ; abréviation qui
+  // varie par project depuis que match2 est distinct -- voir seed.ts.
+  await expect(
+    page.getByRole("group", { name: `Mon prono : ${match2.homeTeamAbbreviation} +3` }),
+  ).toBeVisible();
 
   await gotoAndWaitReady(page, "/profile");
   await page.getByRole("button", { name: "Déconnexion" }).click();
