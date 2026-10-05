@@ -171,7 +171,14 @@ Résultats : sur chaque match terminé, un seul bouton « Pronos et paris des
 autres » ouvre une popup avec les pronos des autres (et le nombre
 d'absents) puis leurs paris, chacun avec son statut, ses points gagnés ou
 en jeu et sa proba calculée ; le pari du joueur affiche aussi les points en
-jeu (« 15 pts en jeu », « valait 15 pts » s'il est perdu).
+jeu (« 15 pts en jeu », « valait 15 pts » s'il est perdu). Le prono
+du joueur s'affiche en bandeau façon incrustation télé (`PronoBug` : bloc
+sombre équipe + logo, écart en biseau sur une bande à la couleur de
+l'équipe pronostiquée, bloc de points à droite), sur les cartes
+verrouillées (Mes pronos en cours, Résultats) et sur un prono validé avant
+le coup d'envoi ; blocs sombres sur les deux thèmes (tokens
+`--color-broadcast-*`). Les couleurs d'équipe (`lib/labels/teamColors.ts`)
+ne servent qu'à ce bandeau et au bandeau Profil.
 
 ### 4.3 Paris personnalisés structurés par IA
 Fonctionnalité différenciante du produit (~4000 lignes,

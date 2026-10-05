@@ -1,0 +1,101 @@
+/* Bandeau façon incrustation télé (05/10/2026, p3-8) : blocs à coins vifs,
+   coupés en biseau, sombres sur les deux thèmes (--color-broadcast-*). */
+.bug {
+  display: flex;
+  height: 34px;
+  font-family: var(--font-display);
+  color: var(--color-broadcast-text);
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.22));
+}
+
+.team {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 20px 0 var(--space-2);
+  background: var(--color-broadcast-ink);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 11px) 100%, 0 100%);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.05em;
+}
+
+/* Bande de l'écart : couleur de l'équipe pronostiquée (--team-color, posé
+   par le composant), accent de l'app en repli. Reflet en haut + filet clair
+   en bas, comme un bandeau d'info. */
+.margin {
+  --band: var(--team-color, var(--color-accent-pressed));
+  flex: none;
+  display: flex;
+  align-items: center;
+  margin-left: -11px;
+  padding: 0 22px 0 20px;
+  clip-path: polygon(11px 0, 100% 0, calc(100% - 11px) 100%, 0 100%);
+  border-bottom: 2px solid var(--color-broadcast-text);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0) 55%),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--band) 70%, black),
+      color-mix(in srgb, var(--band) 88%, white)
+    );
+}
+
+.slant {
+  display: inline-block;
+  transform: skewX(-9deg);
+  font-size: 21px;
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.3);
+}
+
+/* Prono figé sans vainqueur / brouillon incomplet / pas de prono. Pas de
+   rouge (T7/R-COL) : un rappel neutre, pas un résultat négatif. */
+.neutral {
+  flex: none;
+  display: flex;
+  align-items: center;
+  padding: 0 22px 0 var(--space-3);
+  background: var(--color-broadcast-neutral);
+  clip-path: polygon(0 0, 100% 0, calc(100% - 11px) 100%, 0 100%);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.points {
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 var(--space-3) 0 22px;
+  background: var(--color-broadcast-ink-2);
+  clip-path: polygon(11px 0, 100% 0, 100% 100%, 0 100%);
+  font-variant-numeric: tabular-nums;
+}
+
+.points b {
+  font-size: 19px;
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+}
+
+.points small {
+  font-size: 11px;
+  font-weight: var(--font-weight-medium);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-broadcast-text-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bug {
+    filter: none;
+  }
+}
