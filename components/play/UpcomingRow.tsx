@@ -20,6 +20,7 @@ import { PronoBug } from "./PronoBug";
 import { ParticipationTrigger } from "./ParticipationTrigger";
 import { ViewBetTrigger } from "./ViewBetTrigger";
 import styles from "./UpcomingRow.module.css";
+import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 
 // Ligne de match pas encore verrouillé — ex-components/matches/MatchRow.tsx,
 // puis fusionné le 19/08/2026 avec l'ex-TeamPicker (sélection du vainqueur
@@ -222,6 +223,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
       clearDirty();
       showValidatedProno();
       flash();
+      requestBadgeCheck();
     });
   }
 
@@ -247,6 +249,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
       clearDirty();
       showValidatedProno();
       flash();
+      requestBadgeCheck();
     });
   }
 

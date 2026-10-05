@@ -23,6 +23,7 @@ import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
 import { DeleteBetButton } from "./DeleteBetButton";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
 import styles from "./InlineBetForm.module.css";
+import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 
 // Saisie de pari partagée, générique sur le scope (MATCH ou SERIES) —
 // GÉNÉRALISÉ le 28/07/2026 depuis components/matches/InlineBetForm.tsx
@@ -226,6 +227,7 @@ export function InlineBetForm({
       setNotInMatch(null);
       if (result.success) {
         clearDirty();
+        requestBadgeCheck();
         // Repli automatique demandé par l'utilisateur le 21/08/2026 (libérer
         // la vue après soumission) -- dans les deux présentations : en modal
         // aussi, rien d'autre ne referme la pop-up toute seule après un

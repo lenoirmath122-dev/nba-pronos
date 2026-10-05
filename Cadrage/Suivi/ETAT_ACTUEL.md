@@ -229,9 +229,12 @@ dans le bandeau de profil. Chaque badge s'affiche en écusson biseauté au méta
 du palier (`components/badges/BadgeEmblem.tsx`), icônes calées sur
 `Cadrage/DA/BADGES.pdf` et centres sur-mesure (« 0.0 » du buzzer, « 0:03 »,
 « 4-2 », record de Métronome/Fidèle). Popup « nouveau badge / nouveau palier »
-à l'ouverture de l'app (`NewBadgesWatcher`) : badges déjà montrés retenus par
-appareil et par compte (localStorage `badges-seen:<userId>`), tout l'existant
-défile au premier passage sur un appareil. Superlatifs de fin de compétition (Nostradamus,
+à l'ouverture de l'app (`NewBadgesWatcher`) et juste après un geste qui peut
+en débloquer un (prono ou pari envoyé, bracket validé, ligue rejointe ou
+créée : `requestBadgeCheck()`, `lib/badges/checkRequest.ts`), en attendant la
+fermeture de la popup « Pari validé » le cas échéant : badges déjà montrés
+retenus par appareil et par compte (localStorage `badges-seen:<userId>`),
+tout l'existant défile au premier passage sur un appareil. Superlatifs de fin de compétition (Nostradamus,
 Sniper, Meilleur bracket, Meilleur 1ᵉʳ tour, Plus grosse remontée),
 calculés une fois à la clôture d'une compétition.
 

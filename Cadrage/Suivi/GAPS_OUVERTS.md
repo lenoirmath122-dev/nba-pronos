@@ -26,8 +26,10 @@
 - **Badges, suite de p3-9 (05/10/2026)** : popup et écusson livrés, mais les
   icônes restent celles de la bibliothèque lucide ; les visuels dessinés du
   PDF (vieille dame, chien en laisse, coupe + formulaire, joker...) restent
-  à faire (p6-20). La popup est vérifiée à l'ouverture et au retour au
-  premier plan seulement, pas juste après une action qui débloque un badge.
+  à faire (p6-20). La popup est vérifiée aussi juste après un geste du
+  joueur depuis le 05/10/2026 ; les badges liés aux résultats (points, bons
+  vainqueurs...) restent découverts à l'ouverture ou au retour au premier
+  plan, puisqu'ils changent avec la synchro et non avec un geste.
 - **Couverture des types de paris** : choisir sa difficulté n'est pas
   intuitif. Couvrir plus de types (modèles ML) et aider au choix.
 - **Paris sans joueur identifié, cas restants (suite de p3-14, 05/10/2026)** :

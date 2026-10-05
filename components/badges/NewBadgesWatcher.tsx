@@ -6,7 +6,9 @@ import Link from "next/link";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
 import { BadgeEmblem, TierPips } from "./BadgeEmblem";
+import { useIsValidatedDialogOpen } from "@/components/ui/ValidatedDialog";
 import { getUnlockedBadges } from "@/lib/actions/badges";
+import { onBadgeCheckRequest } from "@/lib/badges/checkRequest";
 import { TIER_LABELS, seenSnapshot, tierRank, unseenBadges, type SeenBadges } from "@/lib/badges/display";
 import type { BadgeDisplay } from "@/lib/queries/badges";
 import styles from "./NewBadgesWatcher.module.css";
@@ -19,14 +21,19 @@ import styles from "./NewBadgesWatcher.module.css";
 //
 // Premier passage sur un appareil : TOUS les badges déjà gagnés défilent
 // (choix de l'utilisateur, 05/10/2026), avec « Tout passer » pour couper
-// court. Vérifié au montage de la coquille puis au retour au premier plan
-// (PWA rouverte), au plus toutes les 5 minutes.
+// court. Vérifié au montage de la coquille, au retour au premier plan (PWA
+// rouverte, au plus toutes les 5 minutes) et juste après un geste qui peut
+// débloquer un badge (requestBadgeCheck, lib/badges/checkRequest.ts). Attend
+// la fermeture de la popup « Pari validé » s'il y en a une, plutôt que de
+// s'empiler par-dessus.
 
 const SEEN_STORAGE_PREFIX = "badges-seen:";
 // Coupe-circuit posé par les tests e2e (e2e/fixtures.ts) : la popup s'ouvre à
 // un instant non déterministe et son fond avalait des clics en plein scénario.
 const DISABLED_STORAGE_KEY = "badges-popup:disabled";
 const INITIAL_DELAY_MS = 800;
+// Après un geste : laisse d'abord passer le toast ou la popup « validé ».
+const AFTER_ACTION_DELAY_MS = 600;
 const RECHECK_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_DOTS = 8;
 const BADGES_HREF = "/profile?tab=stats#stats-badges";
@@ -68,23 +75,42 @@ function progressNote(badge: BadgeDisplay): string | null {
 
 export function NewBadgesWatcher() {
   const [pending, setPending] = useState<Pending | null>(null);
+  const validatedDialogOpen = useIsValidatedDialogOpen();
   const openRef = useRef(false);
   const lastCheckRef = useRef(0);
+  const inFlightRef = useRef(false);
+  const rerunRef = useRef(false);
 
   const check = useCallback(async () => {
     if (openRef.current || isDisabled()) return;
-    lastCheckRef.current = Date.now();
-    let result;
-    try {
-      result = await getUnlockedBadges();
-    } catch {
+    // Une demande pendant une lecture en cours peut concerner un geste que
+    // cette lecture n'a pas vu : on relit une fois de plus à la fin.
+    if (inFlightRef.current) {
+      rerunRef.current = true;
       return;
     }
-    if (!result || openRef.current) return;
-    const queue = unseenBadges(result.badges, readSeen(result.userId));
-    if (queue.length === 0) return;
-    openRef.current = true;
-    setPending({ userId: result.userId, unlocked: result.badges, queue, index: 0 });
+    inFlightRef.current = true;
+    try {
+      do {
+        rerunRef.current = false;
+        lastCheckRef.current = Date.now();
+        let result;
+        try {
+          result = await getUnlockedBadges();
+        } catch {
+          return;
+        }
+        if (!result || openRef.current) return;
+        const queue = unseenBadges(result.badges, readSeen(result.userId));
+        if (queue.length > 0) {
+          openRef.current = true;
+          setPending({ userId: result.userId, unlocked: result.badges, queue, index: 0 });
+          return;
+        }
+      } while (rerunRef.current);
+    } finally {
+      inFlightRef.current = false;
+    }
   }, []);
 
   useEffect(() => {
@@ -96,9 +122,16 @@ export function NewBadgesWatcher() {
       }
     }
     document.addEventListener("visibilitychange", handleVisibility);
+    let afterAction: number | undefined;
+    const unsubscribe = onBadgeCheckRequest(() => {
+      window.clearTimeout(afterAction);
+      afterAction = window.setTimeout(() => void check(), AFTER_ACTION_DELAY_MS);
+    });
     return () => {
       window.clearTimeout(initial);
+      window.clearTimeout(afterAction);
       document.removeEventListener("visibilitychange", handleVisibility);
+      unsubscribe();
     };
   }, [check]);
 
@@ -119,7 +152,7 @@ export function NewBadgesWatcher() {
     setPending({ ...pending, index: pending.index + 1 });
   }, [pending, finish]);
 
-  if (!pending) return null;
+  if (!pending || validatedDialogOpen) return null;
 
   const badge = pending.queue[pending.index];
   const total = pending.queue.length;
