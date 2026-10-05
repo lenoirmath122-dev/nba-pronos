@@ -38,6 +38,23 @@ export function PredictionSummary({ prediction, betPoints }: PredictionSummaryPr
   const hasPredictionPoints = prediction.points !== null;
   const totalPoints = hasPredictionPoints || betPoints !== null ? (prediction.points ?? 0) + (betPoints ?? 0) : null;
   const winner = prediction.state === "FROZEN" ? prediction.predictedWinner : null;
+  // Détail demandé par l'utilisateur (18/08/2026) : vainqueur/écart toujours
+  // les 2 ensemble (même passe de scoring que `points`), y compris à 0 — ce
+  // n'est pas "non scoré", juste une composante nulle d'un total qui, lui,
+  // est bien acquis. "pari" ajouté (22/08/2026) UNIQUEMENT une fois résolu --
+  // betPoints à 0 se distingue ainsi d'un pari pas encore joué (absent du
+  // détail). hasPredictionPoints ajouté (25/08/2026, même bug que ci-dessus)
+  // -- sans prono du tout, winnerPoints/marginPoints sont null, les afficher
+  // littéralement aurait affiché "null pronostic, null écart".
+  const detail =
+    totalPoints !== null
+      ? [
+          ...(hasPredictionPoints ? [`${prediction.winnerPoints} pronostic`, `${prediction.marginPoints} écart`] : []),
+          ...(betPoints !== null ? [`${betPoints} pari`] : []),
+        ].join(" · ")
+      : winner
+        ? "En attente du résultat"
+        : undefined;
   return (
     <div className={styles.summary}>
       <PronoBug
@@ -47,6 +64,7 @@ export function PredictionSummary({ prediction, betPoints }: PredictionSummaryPr
             : null
         }
         neutralLabel={STATE_LABEL[prediction.state]}
+        detail={detail}
         points={
           // "—" tant que non scoré, jamais "0"
           totalPoints === null ? (
@@ -65,28 +83,6 @@ export function PredictionSummary({ prediction, betPoints }: PredictionSummaryPr
           Saisi par {prediction.adminCorrection.adminName} à ta demande
           {prediction.adminCorrection.reason ? ` — ${prediction.adminCorrection.reason}` : ""}
         </p>
-      )}
-
-      {/* Détail demandé par l'utilisateur (18/08/2026) : vainqueur/écart
-          toujours les 2 ensemble (même passe de scoring que `points`), y
-          compris à 0 — ce n'est pas "non scoré", juste une composante nulle
-          d'un total qui, lui, est bien acquis. "pari" ajouté (22/08/2026)
-          UNIQUEMENT une fois résolu -- betPoints à 0 se distingue ainsi d'un
-          pari pas encore joué (absent du détail). hasPredictionPoints ajouté
-          (25/08/2026, même bug que ci-dessus) -- sans prono du tout,
-          winnerPoints/marginPoints sont null, les afficher littéralement
-          aurait affiché "null pronostic, null écart". */}
-      {totalPoints !== null ? (
-        <p className={styles.detail}>
-          {[
-            ...(hasPredictionPoints
-              ? [`${prediction.winnerPoints} pronostic`, `${prediction.marginPoints} écart`]
-              : []),
-            ...(betPoints !== null ? [`${betPoints} pari`] : []),
-          ].join(" · ")}
-        </p>
-      ) : (
-        winner && <p className={styles.detail}>En attente du résultat</p>
       )}
     </div>
   );

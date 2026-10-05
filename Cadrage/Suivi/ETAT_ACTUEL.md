@@ -172,11 +172,11 @@ autres » ouvre une popup avec les pronos des autres (et le nombre
 d'absents) puis leurs paris, chacun avec son statut, ses points gagnés ou
 en jeu et sa proba calculée ; le pari du joueur affiche aussi les points en
 jeu (« 15 pts en jeu », « valait 15 pts » s'il est perdu). Le prono
-du joueur s'affiche en bandeau façon incrustation télé (`PronoBug` : bloc
-sombre équipe + logo, écart en biseau sur une bande à la couleur de
-l'équipe pronostiquée, bloc de points à droite), sur les cartes
-verrouillées (Mes pronos en cours, Résultats) et sur un prono validé avant
-le coup d'envoi ; blocs sombres sur les deux thèmes (tokens
+du joueur s'affiche en bandeau façon bandeau d'info télé (`PronoBug` :
+bloc sombre « Mon prono », coupe en biseau, bande « BOS +3 » à la couleur
+de l'équipe pronostiquée, sous-bandeau avec le détail et le total des
+points), sur les cartes verrouillées (Mes pronos en cours, Résultats) et
+sur un prono validé avant le coup d'envoi ; blocs sombres sur les deux thèmes (tokens
 `--color-broadcast-*`). Les couleurs d'équipe (`lib/labels/teamColors.ts`)
 ne servent qu'à ce bandeau et au bandeau Profil.
 

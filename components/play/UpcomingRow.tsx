@@ -176,6 +176,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
   const myBet = toInlineBetOwned(match.bet);
   const readOnlyBet = match.bet && !myBet ? match.bet : null;
   const recap = match.viewStatus === "VALIDATED" ? winnerAbbreviation(match) : null;
+  const validatedPick = recap !== null && match.myMargin !== null ? { abbreviation: recap, margin: match.myMargin } : null;
 
   // Popup « Prono validé » (04/10/2026) à la place du toast : elle rappelle
   // le prono qui vient d'être figé, pas seulement le fait qu'il l'a été.
@@ -368,22 +369,22 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
           </div>
         )}
 
+        {/* Prono validé : bandeau télé pleine largeur partagé avec les cartes
+            verrouillées (05/10/2026, p3-8), à la place de la pilule « ✓ BOS
+            +3pts d'écart » de la rangée méta. Mention du pari verrouillé
+            (15/09/2026, demandé par l'utilisateur) gardée dans le
+            sous-bandeau : évite d'avoir à regarder la colonne icônes pour
+            savoir si un pari perso existe encore. */}
+        {validatedPick && (
+          <PronoBug pick={validatedPick} detail={readOnlyBet ? "1 pari perso verrouillé" : undefined} />
+        )}
+
         <div className={styles.metaRow}>
           <span className={styles.meta}>
             <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
             <span className={styles.lock}>{lockLabel}</span>
           </span>
-{recap !== null && match.myMargin !== null ? (
-            // Prono validé : bandeau télé partagé avec les cartes verrouillées
-            // (05/10/2026, p3-8), à la place de la pilule « ✓ BOS +3pts
-            // d'écart ». Mention du pari verrouillé (15/09/2026, demandé par
-            // l'utilisateur) gardée dessous : évite d'avoir à regarder la
-            // colonne icônes pour savoir si un pari perso existe encore.
-            <span className={styles.validated}>
-              <PronoBug pick={{ abbreviation: recap, margin: match.myMargin }} />
-              {readOnlyBet && <span className={styles.validatedNote}>1 pari perso verrouillé</span>}
-            </span>
-          ) : (
+          {!validatedPick && (
             <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
               {STATUS_LABEL[match.viewStatus]}
             </span>

@@ -239,22 +239,6 @@
   background: var(--color-accent);
 }
 
-/* Prono validé : bandeau télé (PronoBug, 05/10/2026, p3-8) + mention du
-   pari verrouillé dessous, alignés à droite comme la pilule qu'ils
-   remplacent. */
-.validated {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 2px;
-  flex-shrink: 0;
-}
-
-.validatedNote {
-  font-size: var(--font-size-xs);
-  color: var(--color-text-secondary);
-}
-
 /* --- Dialogue de validation (distinct du dialogue C2) --- */
 .backdrop {
   position: fixed;
