@@ -236,7 +236,10 @@ export default async function ProfilePage({
 
           <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Rappels</h2>
-            <NotificationSettings initialPreference={profile.notificationPreference} />
+            <NotificationSettings
+              initialPreference={profile.notificationPreference}
+              initialRecapEnabled={profile.recapEnabled}
+            />
           </section>
 
           <section className={`${styles.section} glass-card`}>

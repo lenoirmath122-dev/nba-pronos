@@ -119,7 +119,8 @@ l'audit du 03/09/2026). Domaines couverts :
   `league_secrets`, `leaderboard_snapshots`.
 - **Chat** : `chat_messages`, `chat_muted_channels`, `chat_message_reports`.
 - **Signalements & exploitation** : `bug_reports`, `sync_logs`,
-  `audit_logs`, `reminder_log`, `rate_limit_events`, `push_subscriptions`.
+  `audit_logs`, `reminder_log`, `recap_log`, `rate_limit_events`,
+  `push_subscriptions`.
 - **Données statistiques NBA** (alimentées par le micro-service Python, voir
   §5) : `stats_matchs`, `stats_equipes`, `stats_joueurs`,
   `stats_box_scores`, `stats_box_scores_by_period`, `stats_block_events`.
@@ -264,6 +265,24 @@ Safari (seul contexte où Apple autorise le push web). « Plus tard » la
 masque 7 jours sur l'appareil (localStorage). Le réglage complet reste
 dans le Profil.
 
+**Récaps du matin** (`lib/recaps/`) : bloc « Ta nuit » (et « Ta semaine »
+du lundi 10h au mardi 10h) en tête de la carte « Ça vient de tomber » de
+l'Accueil : points gagnés et détail (bons vainqueurs, écarts exacts, paris),
+rang et évolution, joueurs dépassés ; meilleure nuit et plus gros pari
+réussi ; en hebdo classement de la semaine (top 3 + ta place), plus grosse
+remontée, sniper, pari de la semaine et « plus loufoque perdu » ; scores de
+la nuit avec lien de débrief TrashTalk (article rapproché par surnom
+d'équipe depuis le flux RSS public, repli sur la page d'accueil du site).
+Points gagnés = total actuel moins le dernier snapshot quotidien du
+classement avant la fenêtre (`scored_at` n'est pas fiable, le moteur de
+barème le réécrit à chaque recalcul). Push à 10h Paris (`recaps.yml`, 8h et
+9h UTC, la route ne fait rien avant 10h et `recap_log` dédoublonne),
+journalier ou hebdo le lundi, jamais vide, ouvre `/home#recap` (carte
+dépliée d'office). Interrupteur « Récap du matin » dans le Profil
+(`users.recap_enabled`, activé par défaut). Tout est gratuit ; l'accès
+passe par `canReceiveRecap()` (`lib/recaps/access.ts`), seul point à
+brancher à la bascule payante.
+
 ### 4.7 Panneau d'administration
 Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des
 pronostics/paris, résolution des paris non calculables automatiquement,
@@ -357,7 +376,7 @@ code — à confirmer manuellement si besoin.
   `npm audit` intégré. Autres workflows programmés : `heartbeat.yml`
   (anti-pause), `sync-teams.yml`/`sync-schedule.yml`/`sync-results.yml`
   (synchro NBA via Highlightly), `reminder-bracket.yml`/
-  `reminder-matches.yml`, `snapshot-leaderboard.yml`,
+  `reminder-matches.yml`, `recaps.yml`, `snapshot-leaderboard.yml`,
   `refresh-stats-supabase.yml`.
 - Limite connue et assumée : aucun test de composant React, et la
   génération de schéma IA elle-même (appels réels à Claude) reste testée à
@@ -467,7 +486,7 @@ app/
   (public)/   — login, signup, reset-password, verify-email, email-confirmed.
   (app)/      — espace joueur connecté : home, play (hub Jouer), chat, profile.
   (admin)/    — panneau d'administration complet (voir §4.7).
-  api/        — routes système : sync/*, reminders/*, snapshots/*, heartbeat,
+  api/        — routes système : sync/*, reminders/*, recaps, snapshots/*, heartbeat,
                 health, resolve-bets, account/export.
   bracket/, leaderboard/, players/, regles/ — vues de consultation partagées
     visiteur/connecté (nav choisie par ScreenShell.tsx, hors du groupe (app)).
@@ -480,7 +499,7 @@ lib/
   scoring/    — moteur pur (engine.ts) + orchestration (recompute.ts) +
                 avancement de bracket + superlatifs.
   sync/       — intégration Highlightly (calendrier, scores, équipes).
-  auth/, badges/, dates/, hooks/, labels/, nba/, push/,
+  auth/, badges/, dates/, hooks/, labels/, nba/, push/, recaps/,
   reminders/, snapshots/, supabase/ — modules dédiés par domaine.
 
 components/   — un dossier par domaine d'écran (admin, auth, bets, bracket,

@@ -1,0 +1,217 @@
+/* Récap « Ta nuit » / « Ta semaine » (p3-10) — en tête de « Ça vient de
+   tomber », au-dessus de la liste des évènements. */
+
+.block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  border-top: 1px solid var(--color-border-hair);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.title {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-rest);
+}
+
+.pill {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-full);
+  padding: 0 var(--space-2);
+}
+
+.me {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.headline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+}
+
+.points {
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.rank {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-secondary);
+}
+
+/* Évolution de rang : teinte de tendance, jamais vert/rouge (R-COL7). */
+.delta {
+  margin-left: var(--space-1);
+  font-size: var(--font-size-sm);
+  color: var(--color-trend);
+}
+
+.detail {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.muted {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionTitle {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.rankingRow {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.rankingRowMe {
+  composes: rankingRow;
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-rest);
+}
+
+.rankingPlace {
+  width: 2.5em;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.rankingName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rankingPoints {
+  font-variant-numeric: tabular-nums;
+}
+
+.distinctions {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.distinctions:empty {
+  display: none;
+}
+
+.distinction {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.distinctionIcon {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-rest);
+}
+
+.distinctionText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.distinctionTitle {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.distinctionBody {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.scores {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.scoreRow {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.link,
+.debrief {
+  color: var(--color-accent-rest);
+  text-decoration: none;
+  font-size: var(--font-size-sm);
+}
+
+.link:focus-visible,
+.debrief:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.debrief {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  align-self: flex-start;
+}

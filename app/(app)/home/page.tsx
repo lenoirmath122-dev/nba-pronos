@@ -3,6 +3,7 @@ import { HomeHeader } from "@/components/home/HomeHeader";
 import { TodoList } from "@/components/home/TodoList";
 import { BetsAccordionList } from "@/components/home/BetsAccordionList";
 import { Feed } from "@/components/home/Feed";
+import { RecapBlock } from "@/components/home/RecapBlock";
 import { EmptyState } from "@/components/home/EmptyState";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
 import { MarkFeedSeen } from "@/components/home/MarkFeedSeen";
@@ -18,7 +19,7 @@ import styles from "./page.module.css";
 // Aucun fetch client, aucune logique métier ici — tout est déjà calculé par
 // lib/queries/home.ts.
 export default async function HomePage() {
-  const { competitionId, header, todo, adminTodo, seriesBets, matchBets, feed, notificationPreference } =
+  const { competitionId, header, todo, adminTodo, seriesBets, matchBets, feed, recap, notificationPreference } =
     await getHomeData();
 
   if (competitionId === null || header === null) {
@@ -73,15 +74,23 @@ export default async function HomePage() {
         </section>
       )}
 
-      <section className={`${styles.section} glass-card`} aria-label="Ça vient de tomber">
-        <CollapsibleCard id="feed" title="Ça vient de tomber" count={feed.length}>
+      {/* id="recap" : cible du push des récaps (p3-10, /home#recap). Les
+          récaps « Ta semaine » / « Ta nuit » passent avant la liste des
+          évènements, fusion choisie par l'utilisateur (05/10/2026). */}
+      <section id="recap" className={`${styles.section} glass-card`} aria-label="Ça vient de tomber">
+        <CollapsibleCard id="feed" title="Ça vient de tomber" count={feed.length} openOnHash="recap">
+          {recap?.weekly && <RecapBlock view={recap.weekly} />}
+          {recap?.daily && <RecapBlock view={recap.daily} />}
           {feed.length > 0 ? (
             <Feed items={feed} />
           ) : (
-            <EmptyState
-              title="Rien de neuf depuis 2 jours"
-              subtitle="Les résultats s'afficheront ici."
-            />
+            !recap?.weekly &&
+            !recap?.daily && (
+              <EmptyState
+                title="Rien de neuf depuis 2 jours"
+                subtitle="Les résultats s'afficheront ici."
+              />
+            )
           )}
         </CollapsibleCard>
       </section>
