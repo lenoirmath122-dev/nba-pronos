@@ -5,12 +5,15 @@ import { ScreenShell } from "@/components/nav/ScreenShell";
 import { EmptyState } from "@/components/home/EmptyState";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import styles from "./page.module.css";
+import { pageMetadata } from "@/lib/seo";
 
 // Index de `/players/[userId]` (BACKLOG, "Phase 0" — la route dynamique
 // existait sans page d'index, tomber dessus directement donnait un 404).
 // Même patron que /leaderboard : route physique hors des route groups,
 // visiteur ou joueur connecté voient la même liste (RLS `users_select using
 // (true)` seule autorité).
+export const metadata = pageMetadata({ title: "Joueurs", path: "/players", noindex: true });
+
 export default async function PlayersDirectoryPage() {
   const supabase = await getServerClient();
   const {

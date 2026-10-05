@@ -48,6 +48,45 @@
   même » y apparaît le temps que le box score soit importé (en général le
   lendemain) -- et, pour un pari SÉRIE, jusqu'à la fin de la série.
 
+## Plan de communication — suite du projet (05/10/2026)
+
+> Plan source : `Cadrage/Business/panier_ballon_cadrage_business_communication.md`
+> et `panier_ballon_elargissement_octobre.md`, écrits avant l'alpha. Quatre
+> étapes décidées le 05/10/2026, à traiter dans cet ordre, une par
+> conversation (voir `README.md`, méthode de travail).
+
+- [x] **A. Recaler le plan sur la réalité** — fait le 05/10/2026, voir
+  `Cadrage/Business/panier_ballon_plan_recale_octobre_decembre.md`. Décisions :
+  bêta sur la phase finale de la Cup (4→11/12), pas la phase de groupes
+  (l'app est centrée sur les séries, 4-6 jours de travail) ; canaux en
+  parallèle dans 2-5 h/semaine ; contenu de la pause = retours de l'alpha,
+  nouveautés produit, compte à rebours. Reste ouvert : que jouent les inscrits
+  avant le 4/12 (§5 du plan recalé).
+- [~] **C. Socle SEO et vocabulaire** — code écrit le 05/10/2026 sur la
+  branche `feat/seo-socle` (PR à ouvrir/merger) : le mot « paris » est
+  conservé volontairement dans les métadonnées et sur `/` (décision du
+  05/10 : trouvable en tapant « pari », toujours avec « sans argent réel »),
+  page publique minimale à `/`, `sitemap.ts`, `robots.ts`,
+  canoniques. Reste à faire : (1) vérifier visuellement `/` et que
+  `/leaderboard` et `/bracket` rendent bien en visiteur anonyme ; (2) après
+  déploiement, contrôler `/robots.txt` et `/sitemap.xml` puis soumettre le
+  sitemap dans Search Console (action manuelle) ; (3) image d'aperçu
+  1200×630 quand le nouveau logo sera prêt (changer `OG_IMAGE` et
+  `TWITTER_CARD` dans `lib/seo.ts`) ; (4) `lastModified` du sitemap figé au
+  05/10/2026, à mettre à jour quand les pages publiques changent. La landing
+  page soignée reste en p5-2 : la version actuelle est minimale, on la
+  retravaillera plus tard (décision du 05/10).
+- [ ] **B. Contenu Instagram pendant la pause** — post 5 « Bilan de l'alpha »
+  fait et publié le 05/10/2026 (6 slides + légende dans `Cadrage/DA/instagram/Posts/Post 5/`).
+  Restent : la suite du calendrier (reel démo, post
+  « nouveautés », sondage Story), et le motion design de présentation
+  générale de l'app + motions par fonctionnalité (décidé le 05/10, plus
+  tard ; à ne produire qu'après un cadrage très précis : script, durée,
+  fonctionnalités couvertes, format). Récaps du matin : ne pas les mettre en avant avant de les avoir vus
+  avec de vraies données.
+- [ ] **D. Recrutement** — mails comparatifs (pronor.fr, zikof.com),
+  créateurs/groupes Facebook, serveur Discord, relance du réseau perso.
+
 ## Capacité — test de charge
 
 - **Test de charge réel jamais fait** (11/09/2026) — cible théorique connue

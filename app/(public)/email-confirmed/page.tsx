@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 
 // Destination du lien de confirmation reçu par email (`emailRedirectTo` du
 // signUp(), lib/auth/actions.ts) — Supabase a déjà marqué le compte confirmé
 // côté serveur avant cette redirection, cette page n'a rien à vérifier.
+export const metadata = pageMetadata({ title: "E-mail confirmé", path: "/email-confirmed", noindex: true });
+
 export default function EmailConfirmedPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">

@@ -1,4 +1,5 @@
 import type { MetadataRoute } from "next";
+import { DEFAULT_DESCRIPTION } from "@/lib/seo";
 
 // Manifest PWA — nécessaire pour l'installation sur écran d'accueil iOS/Android
 // (backlog "Rappels ciblés", canal Push, §2.46 ETAT_ACTUEL.md) : sur iOS, les
@@ -10,7 +11,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Panier Ballon",
     short_name: "Panier Ballon",
-    description: "Pronostics et paris entre amis sur les playoffs NBA.",
+    description: DEFAULT_DESCRIPTION,
     start_url: "/home",
     display: "standalone",
     background_color: "#0B0E14",

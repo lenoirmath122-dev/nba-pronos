@@ -5,6 +5,7 @@ import { ScreenShell } from "@/components/nav/ScreenShell";
 import { EmptyState } from "@/components/home/EmptyState";
 import { BracketSummary } from "@/components/bracket/BracketSummary";
 import styles from "./page.module.css";
+import { pageMetadata } from "@/lib/seo";
 
 // Bracket (vue globale de consultation) — route physique UNIQUE, hors des
 // route groups (public)/(app) (T6a §3.2/§8.1), même mécanisme que
@@ -20,6 +21,12 @@ type BracketPageProps = {
 function firstValue(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
+
+export const metadata = pageMetadata({
+  title: "Bracket",
+  path: "/bracket",
+  description: "Le bracket des playoffs NBA pronostiqué par les joueurs Panier Ballon.",
+});
 
 export default async function BracketPage({ searchParams }: BracketPageProps) {
   const { ligue } = await searchParams;

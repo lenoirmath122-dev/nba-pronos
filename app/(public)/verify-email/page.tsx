@@ -1,8 +1,11 @@
 import Link from "next/link";
+import { pageMetadata } from "@/lib/seo";
 
 // Destination après un signup() réussi mais en attente de confirmation
 // (lib/auth/actions.ts) — distinct du cas "compte déjà existant" (identities
 // vides), qui reste géré comme une erreur sur le formulaire d'inscription.
+export const metadata = pageMetadata({ title: "Vérifie ton e-mail", path: "/verify-email", noindex: true });
+
 export default function VerifyEmailPage() {
   return (
     <main className="flex flex-1 flex-col items-center justify-center gap-6 p-6 text-center">

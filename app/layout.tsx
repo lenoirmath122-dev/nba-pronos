@@ -2,6 +2,14 @@ import type { Metadata } from "next";
 import { Sora, Oswald } from "next/font/google";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getServerClient } from "@/lib/supabase/server";
+import {
+  DEFAULT_DESCRIPTION,
+  HOME_TITLE,
+  OG_IMAGE,
+  SITE_NAME,
+  SITE_URL,
+  TWITTER_CARD,
+} from "@/lib/seo";
 import "./globals.css";
 
 // Police unique pour tout le texte de lecture (--font-ui), auto-hébergée par
@@ -18,32 +26,30 @@ const oswald = Oswald({
   subsets: ["latin"],
 });
 
-// Open Graph / Twitter Card (p2-10, feuille de route Phase 2) : sans ça, un
-// lien Panier Ballon partagé (Instagram, SMS...) s'affichait nu, sans
-// logo/titre/description. Référencement Google volontairement PAS traité ici
-// (app en alpha fermée sur invitation, rien à indexer d'utile pour l'instant)
-// -- prévu plus tard, à l'ouverture réelle (p5-1/p5-2). `icon-512.png`
-// (déjà utilisé par app/manifest.ts) réemployé comme image d'aperçu -- carré,
-// donc carte "summary" plutôt que "summary_large_image" (pensée pour une
-// image panoramique ~2:1, qui recadrerait mal un carré).
+// Métadonnées par défaut (Open Graph / Twitter Card p2-10, socle SEO étape C
+// du 05/10/2026). Les pages publiques surchargent via `pageMetadata()`
+// (lib/seo.ts) -- fusion superficielle côté Next, voir ce fichier. Pas de
+// `alternates.canonical` ni d'`openGraph.url` ici : ils seraient hérités par
+// TOUTES les pages et les déclareraient canoniques de la racine. Vocabulaire :
+// le mot « paris » est voulu pour le référencement (décision du 05/10/2026),
+// toujours avec « sans argent réel » (test lib/seo.test.ts).
 export const metadata: Metadata = {
-  metadataBase: new URL("https://panierballon.fr"),
-  title: "Panier Ballon",
-  description: "Pronostics et paris entre amis sur les playoffs NBA.",
+  metadataBase: new URL(SITE_URL),
+  title: { default: HOME_TITLE, template: `%s · ${SITE_NAME}` },
+  description: DEFAULT_DESCRIPTION,
   openGraph: {
-    title: "Panier Ballon",
-    description: "Pronostics et paris entre amis sur les playoffs NBA.",
-    siteName: "Panier Ballon",
-    url: "https://panierballon.fr",
+    title: HOME_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    siteName: SITE_NAME,
     locale: "fr_FR",
     type: "website",
-    images: [{ url: "/icons/icon-512.png", width: 512, height: 512 }],
+    images: [OG_IMAGE],
   },
   twitter: {
-    card: "summary",
-    title: "Panier Ballon",
-    description: "Pronostics et paris entre amis sur les playoffs NBA.",
-    images: ["/icons/icon-512.png"],
+    card: TWITTER_CARD,
+    title: HOME_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    images: [OG_IMAGE.url],
   },
 };
 
