@@ -7,6 +7,7 @@ import { Backdrop } from "@/components/ui/Backdrop";
 import { Spinner } from "@/components/ui/Spinner";
 import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import styles from "./ValidateAllBanner.module.css";
+import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 
 // Bandeau « Tout valider » (§9) — feuille client n°3/3 : porte le dialogue de
 // confirmation (état local, la page qui l'appelle reste serveur). N'apparaît
@@ -33,6 +34,7 @@ export function ValidateAllBanner({ readyMatches }: ValidateAllBannerProps) {
       setIsConfirmOpen(false);
       const n = validatedMatchIds.length;
       if (n === 0) return;
+      requestBadgeCheck();
       showValidated({
         title: n > 1 ? `${n} pronos validés` : "Prono validé",
         items: readyMatches.filter((m) => validatedMatchIds.includes(m.matchId)).map((m) => m.recap),

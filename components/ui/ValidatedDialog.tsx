@@ -30,11 +30,18 @@ export type ValidatedDialogContent = {
 type ShowValidatedDialog = (content: ValidatedDialogContent) => void;
 
 const ValidatedDialogContext = createContext<ShowValidatedDialog | null>(null);
+// Ouverte ou non : la popup « nouveau badge » (NewBadgesWatcher) attend sa
+// fermeture plutôt que de s'empiler par-dessus.
+const ValidatedDialogOpenContext = createContext(false);
 
 const noop: ShowValidatedDialog = () => {};
 
 export function useValidatedDialog(): ShowValidatedDialog {
   return useContext(ValidatedDialogContext) ?? noop;
+}
+
+export function useIsValidatedDialogOpen(): boolean {
+  return useContext(ValidatedDialogOpenContext);
 }
 
 export function ValidatedDialogProvider({ children }: { children: React.ReactNode }) {
@@ -50,7 +57,7 @@ export function ValidatedDialogProvider({ children }: { children: React.ReactNod
 
   return (
     <ValidatedDialogContext.Provider value={show}>
-      {children}
+      <ValidatedDialogOpenContext.Provider value={current !== undefined}>{children}</ValidatedDialogOpenContext.Provider>
       {current &&
         createPortal(
           <Backdrop className={styles.backdrop} onClose={close}>

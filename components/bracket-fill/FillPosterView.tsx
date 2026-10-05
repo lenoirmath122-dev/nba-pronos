@@ -15,6 +15,7 @@ import { Backdrop } from "@/components/ui/Backdrop";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import styles from "./FillPosterView.module.css";
+import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 
 // Mode principal du remplissage, TOUJOURS l'écran d'arrivée depuis le
 // 17/08/2026 (16/08/2026 : demandé par l'utilisateur — « plus raccord avec
@@ -101,8 +102,12 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
     startTransition(async () => {
       const result = await validateBracket();
       setShowConfirm(false);
-      if (result.success) showToast("Bracket validé");
-      else setError(result.error);
+      if (result.success) {
+        showToast("Bracket validé");
+        requestBadgeCheck();
+      } else {
+        setError(result.error);
+      }
     });
   }
 
