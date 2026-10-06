@@ -12,6 +12,25 @@
   color: var(--color-text-primary);
 }
 
+/* Match du jour : jour NY + heure Paris en tête de carte. */
+.dailyKickoff {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.dailyTitle {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+.dailyNight {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
 /* Rangée équipes + colonne icônes pari/participation (14/09/2026, remplace
    la colonne qui vivait en bas de la carte dépliée — plus de dépliage). */
 .topRow {

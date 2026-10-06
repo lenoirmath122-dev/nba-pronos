@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
+import { hasBracket } from "@/lib/competitions/types";
 import styles from "./BracketEntry.module.css";
 
 // Point d'entrée permanent vers le Bracket (décision 2, §4
@@ -32,6 +33,8 @@ export async function BracketEntry() {
   const [data, remainingSeriesBets] = await Promise.all([getBracketFillData(), getRemainingSeriesBets()]);
 
   if (data.competitionId === null) return null;
+  // Match du jour : pas de bracket, pas de point d'entrée (cadrage §4-5).
+  if (!hasBracket(data.competitionType)) return null;
 
   const isActionable = data.isStructureKnown && !data.isDeadlinePassed;
   const isNearDeadline = computeIsNearDeadline(isActionable, data.deadline);

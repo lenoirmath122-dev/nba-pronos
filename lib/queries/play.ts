@@ -3,6 +3,9 @@ import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getAllTeams } from "@/lib/queries/teams";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDayBoundsUtc, parisDateKey } from "@/lib/dates/paris";
+import { nyDateString } from "@/lib/dates/newyork";
+import { dailyKickoffLabel, type DailyKickoffLabel } from "@/lib/labels/dailyMatch";
+import { betDifficultyPoints } from "@/lib/scoring/engine";
 import type { TeamRef } from "@/lib/queries/matches";
 import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
@@ -92,6 +95,8 @@ export type OtherBet = {
   /** null hors pari calculable (même règle d'affichage que
    *  PlayAssociatedBet.calculatedProba). */
   calculatedProba: number | null;
+  /** Points en jeu selon le barème de la compétition (Match du jour : ×0,6). */
+  pointsAtStake: number | null;
 };
 
 export type BetStatusValue = "DRAFT" | "SUBMITTED" | "VALIDATED" | "REJECTED" | "WON" | "LOST" | "CANCELLED";
@@ -135,6 +140,8 @@ export type PlayAssociatedBet = {
   isCalculable: boolean;
   calculatedProba: number | null;
   suggestedDifficulty: BetDifficulty | null;
+  /** Points en jeu selon le barème de la compétition (Match du jour : ×0,6). */
+  pointsAtStake: number | null;
 };
 
 /** Match PAS ENCORE verrouillé (scheduled_at > now()) — saisie possible. */
@@ -143,6 +150,8 @@ export type UpcomingMatchRow = {
   matchId: string;
   seriesId: string;
   scheduledAt: string;
+  /** Jour NY + heure Paris, seulement en Match du jour. */
+  daily: DailyKickoffLabel | null;
   homeTeam: TeamRef;
   awayTeam: TeamRef;
   myWinnerTeamId: string | null;
@@ -167,6 +176,8 @@ export type LockedMatchRow = {
   seriesId: string;
   gameNumber: number;
   scheduledAt: string;
+  /** Jour NY + heure Paris, seulement en Match du jour. */
+  daily: DailyKickoffLabel | null;
   home: TeamRef;
   away: TeamRef;
   homeScore: number | null;
@@ -205,6 +216,7 @@ export type PlayUpcomingData = {
 
 export type PlayResultsData = {
   competitionId: string;
+  competitionType: CompetitionType;
   rows: LockedMatchRow[];
   hasMore: boolean;
   availableDates: string[];
@@ -281,14 +293,16 @@ function toPlayAssociatedBet(
   b: BetSourceRow,
   targetFinished: boolean,
   deadlineOpen: boolean,
-  correctionRequestByBetId: Map<string, BetCorrectionRequestRow>
+  correctionRequestByBetId: Map<string, BetCorrectionRequestRow>,
+  competitionType: CompetitionType
 ): PlayAssociatedBet {
   const cr = correctionRequestByBetId.get(b.id);
+  const difficulty = b.validated_difficulty ?? b.proposed_difficulty;
   return {
     betId: b.id,
     description: b.description,
     category: b.validated_category ?? b.proposed_category,
-    difficulty: b.validated_difficulty ?? b.proposed_difficulty,
+    difficulty,
     isDifficultyValidated: b.validated_difficulty !== null,
     status: b.status,
     isAdminCorrected: b.is_admin_corrected,
@@ -301,6 +315,7 @@ function toPlayAssociatedBet(
     isCalculable: b.is_calculable ?? false,
     calculatedProba: b.calculated_proba,
     suggestedDifficulty: b.suggested_difficulty,
+    pointsAtStake: betDifficultyPoints(competitionType)[difficulty] ?? null,
   };
 }
 
@@ -350,7 +365,7 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   // restaient bloqués indéfiniment dans Mes pronos sinon).
   const [{ days, daysBeyondWindow, readyCount }, recentLocked, quotas] = await Promise.all([
     fetchUpcomingWindow(supabase, user.id, competition, nowIso, windowEndMs, nowMs),
-    fetchLockedRows(supabase, user.id, competition.id, { finished: false }, null),
+    fetchLockedRows(supabase, user.id, competition, { finished: false }, null),
     getQuotas(supabase, user.id, competition),
   ]);
 
@@ -455,6 +470,7 @@ async function fetchUpcomingWindow(
     }
   }
 
+  const isDailyMatch = competition.type === "DAILY_MATCH";
   const cards: UpcomingMatchRow[] = [];
   for (const match of matches) {
     const own = ownPredictionByMatch.get(match.id);
@@ -488,6 +504,7 @@ async function fetchUpcomingWindow(
       matchId: match.id,
       seriesId: match.series_id,
       scheduledAt: match.scheduled_at,
+      daily: isDailyMatch ? dailyKickoffLabel(match.scheduled_at) : null,
       homeTeam,
       awayTeam,
       myWinnerTeamId: own?.predicted_winner_team_id ?? null,
@@ -512,16 +529,16 @@ async function fetchUpcomingWindow(
       // que BetBlock en lecture seule sur l'ancien pari. Sans effet sur les
       // lignes VERROUILLÉES (ci-dessous, l.837) : la fenêtre de pari y est
       // de toute façon fermée, l'historique reste affiché tel quel.
-      bet: ownBet && !RELEASED_BET_STATUSES.has(ownBet.status) ? toPlayAssociatedBet(ownBet, false, true, new Map()) : null,
+      bet: ownBet && !RELEASED_BET_STATUSES.has(ownBet.status) ? toPlayAssociatedBet(ownBet, false, true, new Map(), competition.type) : null,
     });
   }
 
   const nearCards = cards.filter((c) => Date.parse(c.scheduledAt) <= windowEndMs);
   const farCards = cards.filter((c) => Date.parse(c.scheduledAt) > windowEndMs);
-  const days = groupByDay(nearCards, nowMs);
+  const days = groupByDay(nearCards, nowMs, isDailyMatch);
   // daysBeyondWindow volontairement exclu du décompte "prêt" : le bandeau
   // "Tout valider" ne doit agir que sur ce qui est déjà visible sans dépli.
-  const daysBeyondWindow = groupByDay(farCards, nowMs);
+  const daysBeyondWindow = groupByDay(farCards, nowMs, isDailyMatch);
   const readyCount = nearCards.filter((c) => c.viewStatus === "READY").length;
   return { days, daysBeyondWindow, readyCount };
 }
@@ -590,17 +607,20 @@ async function getRevealedContent(
   return { others, absentees };
 }
 
-function groupByDay(cards: UpcomingMatchRow[], nowMs: number): MatchDay[] {
+function groupByDay(cards: UpcomingMatchRow[], nowMs: number, byNyDay = false): MatchDay[] {
   const todayKey = parisDateKey(nowMs);
   const tomorrowKey = parisDateKey(nowMs + DAY_MS);
 
   const groups = new Map<string, MatchDay>();
   for (const card of cards) {
     const cardMs = Date.parse(card.scheduledAt);
-    const key = parisDateKey(cardMs);
+    // Match du jour : un match du 20/10 NY se joue le 21/10 à Paris. Regrouper
+    // par jour de Paris l'afficherait sous « Demain » alors que la carte dit
+    // « Match du 20/10 » : on regroupe par jour NY, sous le même titre.
+    const key = byNyDay ? nyDateString(new Date(cardMs)) : parisDateKey(cardMs);
     let group = groups.get(key);
     if (!group) {
-      group = { key, label: dayLabel(key, todayKey, tomorrowKey, cardMs), matches: [] };
+      group = { key, label: byNyDay ? `Match du ${key.slice(8)}/${key.slice(5, 7)}` : dayLabel(key, todayKey, tomorrowKey, cardMs), matches: [] };
       groups.set(key, group);
     }
     group.matches.push(card);
@@ -757,7 +777,7 @@ type LeagueScope = { id: string; name: string; memberUserIds: Set<string> };
 async function fetchLockedRows(
   supabase: SupabaseServerClient,
   userId: string,
-  competitionId: string,
+  competition: CompetitionRow,
   criteria: { finished: boolean; dateRange?: { gte: string; lt?: string } },
   scope: LeagueScope | null,
   limit?: number
@@ -765,7 +785,7 @@ async function fetchLockedRows(
   let query = supabase
     .from("matches")
     .select("id, series_id, game_number, scheduled_at, home_team_id, away_team_id, status, home_score, away_score")
-    .eq("competition_id", competitionId)
+    .eq("competition_id", competition.id)
     .not("scheduled_at", "is", null)
     .order("scheduled_at", { ascending: false });
 
@@ -803,7 +823,7 @@ async function fetchLockedRows(
       .select(
         "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, is_calculable, calculated_proba, suggested_difficulty"
       )
-      .eq("competition_id", competitionId)
+      .eq("competition_id", competition.id)
       .eq("scope", "MATCH")
       .in("match_id", matchIds),
     supabase.from("users").select("id, pseudo").eq("status", "ACTIVE"),
@@ -883,6 +903,7 @@ async function fetchLockedRows(
       difficulty: b.validated_difficulty ?? b.proposed_difficulty,
       pointsAwarded: b.points_awarded,
       calculatedProba: b.is_calculable ? b.calculated_proba : null,
+      pointsAtStake: betDifficultyPoints(competition.type)[b.validated_difficulty ?? b.proposed_difficulty] ?? null,
     });
     otherBetsByMatch.set(b.match_id, list);
   }
@@ -915,6 +936,7 @@ async function fetchLockedRows(
       seriesId: match.series_id,
       gameNumber: match.game_number,
       scheduledAt: match.scheduled_at,
+      daily: competition.type === "DAILY_MATCH" ? dailyKickoffLabel(match.scheduled_at) : null,
       home: homeTeam,
       away: awayTeam,
       homeScore: match.home_score,
@@ -927,7 +949,7 @@ async function fetchLockedRows(
       // targetFinished=match.status==="FINISHED", deadlineOpen=false : une
       // ligne verrouillée a toujours scheduled_at <= now(), donc
       // bet_deadline_open() est toujours fermée (§3.3, vérif §13.3).
-      bet: ownBet ? toPlayAssociatedBet(ownBet, match.status === "FINISHED", false, correctionRequestByBetId) : null,
+      bet: ownBet ? toPlayAssociatedBet(ownBet, match.status === "FINISHED", false, correctionRequestByBetId, competition.type) : null,
       others,
       absenteeCount,
       otherBets: otherBetsByMatch.get(match.id) ?? [],
@@ -961,9 +983,9 @@ export async function getPlayResults(params: {
 
   const { data: competition } = await supabase
     .from("competitions")
-    .select("id")
+    .select("id, type")
     .eq("status", "ACTIVE")
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<CompetitionRow>();
   if (!competition) return null;
 
   const scopeResolved = await resolveLeagueScope(supabase, params.leagueId);
@@ -983,7 +1005,7 @@ export async function getPlayResults(params: {
   const { rows, hasMore } = await fetchLockedRowsFiltered(
     supabase,
     user.id,
-    competition.id,
+    competition,
     dateRange,
     params.seriesId ?? null,
     scope,
@@ -992,6 +1014,7 @@ export async function getPlayResults(params: {
 
   return {
     competitionId: competition.id,
+    competitionType: competition.type,
     rows,
     hasMore,
     availableDates,
@@ -1005,19 +1028,19 @@ export async function getPlayResults(params: {
 async function fetchLockedRowsFiltered(
   supabase: SupabaseServerClient,
   userId: string,
-  competitionId: string,
+  competition: CompetitionRow,
   dateRange: { gte: string; lt?: string } | undefined,
   seriesId: string | null,
   scope: LeagueScope | null,
   limit: number
 ): Promise<{ rows: LockedMatchRow[]; hasMore: boolean }> {
-  if (!seriesId) return fetchLockedRows(supabase, userId, competitionId, { finished: true, dateRange }, scope, limit);
+  if (!seriesId) return fetchLockedRows(supabase, userId, competition, { finished: true, dateRange }, scope, limit);
 
   // Filtre série : on repasse par fetchLockedRows (sans limite) puis on
   // filtre en mémoire (une série ne compte jamais plus de 7 matchs, coût
   // négligeable) plutôt que de dupliquer toute la requête pour une clause
   // .eq() de plus.
-  const { rows: allRows } = await fetchLockedRows(supabase, userId, competitionId, { finished: true, dateRange }, scope);
+  const { rows: allRows } = await fetchLockedRows(supabase, userId, competition, { finished: true, dateRange }, scope);
   const filtered = allRows.filter((r) => r.seriesId === seriesId);
   const hasMore = filtered.length > limit;
   return { rows: hasMore ? filtered.slice(0, limit) : filtered, hasMore };

@@ -22,9 +22,19 @@ export const metadata = pageMetadata({
 
 export default async function ReglesPage() {
   const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const [
+    {
+      data: { user },
+    },
+    { data: activeCompetition },
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    // competitions_select est ouverte aux visiteurs (RLS using true) : la
+    // section « Match du jour » ne s'affiche que quand cette compétition est
+    // active (cadrage §8.1), les autres sections décrivent le jeu en général.
+    supabase.from("competitions").select("type").eq("status", "ACTIVE").maybeSingle<{ type: string }>(),
+  ]);
+  const isDailyMatch = activeCompetition?.type === "DAILY_MATCH";
 
   return (
     <ScreenShell authenticated={user !== null}>
@@ -35,6 +45,34 @@ export default async function ReglesPage() {
             Playoffs NBA entre amis : 3 façons de marquer des points, réunies dans un seul classement.
           </p>
         </div>
+
+        {isDailyMatch && (
+          <section id="match-du-jour" className={`${styles.section} glass-card`} aria-label="Match du jour">
+            <h2 className={styles.sectionTitle}>Match du jour</h2>
+            <p className={styles.body}>
+              Chaque jour de saison régulière, un vrai match NBA est tiré au hasard : c&apos;est le seul
+              sur lequel tu joues ce jour-là. Les points s&apos;additionnent dans un classement cumulé
+              jusqu&apos;à la fin de la compétition.
+            </p>
+            <p className={styles.body}>
+              Le match du jour est publié à 10h, heure de Paris, le jour du match : tu ne vois jamais les
+              matchs des jours suivants à l&apos;avance.
+            </p>
+            <p className={styles.body}>
+              Les matchs NBA sont rattachés à leur jour à New York, mais joués à l&apos;heure de Paris.
+              Exemple : le match du 20/10 démarre à 19h30 à New York, soit 01h30 à Paris — dans la nuit du 20
+              au 21. La carte du match l&apos;indique : « Match du 20/10 », puis l&apos;heure de Paris.
+            </p>
+            <p className={styles.body}>
+              Le pronostic (vainqueur et écart) fonctionne comme d&apos;habitude et se verrouille au coup
+              d&apos;envoi. Il n&apos;y a ni bracket ni pari sur une série. Tu peux proposer un seul pari
+              perso par match, dont le barème est réduit : cette règle remplace celle des Paris
+              personnalisés plus bas.
+            </p>
+            <p className={styles.baremeLabel}>Barème des paris, Match du jour</p>
+            <BetDifficulteGrid competitionType="DAILY_MATCH" />
+          </section>
+        )}
 
         <section className={`${styles.section} glass-card`} aria-label="Bracket">
           <h2 className={styles.sectionTitle}>Bracket</h2>

@@ -259,6 +259,17 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
       className={`${styles.row} glass-card${flashing ? ` ${flashStyles.flash}` : ""}`}
     >
       <div className={styles.header}>
+        {match.daily && (
+          // Match du jour : jour NY (celui du tirage) + heure de Paris, avec
+          // « dans la nuit du … au … » quand le coup d'envoi passe minuit à
+          // Paris — cas quasi systématique, l'heure seule serait trompeuse.
+          <time dateTime={match.scheduledAt} className={styles.dailyKickoff}>
+            <span className={styles.dailyTitle}>
+              {match.daily.dayLabel} · {match.daily.time}
+            </span>
+            {match.daily.nightLabel && <span className={styles.dailyNight}>{match.daily.nightLabel}</span>}
+          </time>
+        )}
         <div className={styles.topRow}>
           {/* Grille à 2 colonnes (équipe / équipe) — 16/09/2026, remplace la
               grille à 3 colonnes (équipe / zone stepper partagée / équipe) qui
@@ -310,6 +321,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
             ) : (
               <InlineBetForm
                 scope="MATCH"
+                competitionType={match.daily ? "DAILY_MATCH" : undefined}
                 matchId={match.matchId}
                 seriesId={match.seriesId}
                 hasBet={match.bet !== null}
@@ -384,7 +396,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
 
         <div className={styles.metaRow}>
           <span className={styles.meta}>
-            <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>
+            {!match.daily && <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>}
             <span className={styles.lock}>{lockLabel}</span>
           </span>
           {!validatedPick && (

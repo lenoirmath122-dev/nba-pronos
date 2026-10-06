@@ -95,9 +95,12 @@
   cadrage, 06/10/2026) : paris ×0,6, publication 10h Paris avec push, tirage
   aléatoire, tirage par lots. Correctif « veille NY » livré (PR #126), PR 1/4
   (base, moteur, types) mergée (#127) et migrations poussées, PR 2/4 (synchro,
-  admin, script de tirage, masquage JS) en cours de revue le 07/10/2026.
-  Reste : PR 3/4 (UI joueur : carte avec jour NY + heure Paris, règles),
-  PR 4/4 (push de 10h groupé avec le récap), puis créer la compétition
+  admin, script de tirage, masquage JS) mergée (#128),
+  PR 3/4 (UI joueur : carte jour NY + heure Paris, règles, bracket masqué)
+  livrée le 07/10/2026. Reste : PR 4/4 (push de 10h groupé avec le récap), **PR 5 (décidée le 07/10/2026 :
+  tirage automatique par cron, qui remplace le lancement manuel du script ;
+  sert aussi de test de la récupération automatique du calendrier avant la
+  Cup et les Playoffs, sans couvrir le mapping A7 de la Cup)**, puis créer la compétition
   DAILY_MATCH en admin et lancer le 1er lot de tirage
   (`node --conditions=react-server --env-file=.env.local scripts/daily-match-draw.mjs --from=... --to=... --dry-run`)
   avant le 20/10. Calendrier Highlightly

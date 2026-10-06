@@ -24,6 +24,7 @@ import { DeleteBetButton } from "./DeleteBetButton";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
 import styles from "./InlineBetForm.module.css";
 import { requestBadgeCheck } from "@/lib/badges/checkRequest";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Saisie de pari partagée, générique sur le scope (MATCH ou SERIES) —
 // GÉNÉRALISÉ le 28/07/2026 depuis components/matches/InlineBetForm.tsx
@@ -40,6 +41,8 @@ export type InlineBetOwned = InlineBetFields & { betId: string; status: "DRAFT" 
 
 type InlineBetFormProps = {
   scope: "MATCH" | "SERIES";
+  /** Barème affiché dans l'aide (défaut : Playoffs). */
+  competitionType?: CompetitionType;
   matchId: string | null; // null si scope === "SERIES"
   seriesId: string;
   /** Un pari (tout statut confondu) occupe déjà le slot pour cette cible. */
@@ -76,6 +79,7 @@ type InlineBetFormProps = {
 
 export function InlineBetForm({
   scope,
+  competitionType,
   matchId,
   seriesId,
   hasBet,
@@ -265,7 +269,7 @@ export function InlineBetForm({
           <RuleHelpButton title="Bien rédiger un pari" label="Aide pour rédiger un pari">
             <BetWritingTips />
             <p className={styles.helpSubLabel}>Barème par difficulté</p>
-            <BetDifficulteGrid />
+            <BetDifficulteGrid competitionType={competitionType} />
           </RuleHelpButton>
         </div>
         <textarea

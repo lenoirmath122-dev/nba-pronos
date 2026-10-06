@@ -323,7 +323,7 @@ export function BetForm(props: BetFormProps) {
               <RuleHelpButton title="Bien rédiger un pari" label="Aide pour rédiger un pari">
                 <BetWritingTips />
                 <p className={styles.helpSubLabel}>Barème par difficulté</p>
-                <BetDifficulteGrid />
+                <BetDifficulteGrid competitionType={props.bootstrap.competition.kind} />
               </RuleHelpButton>
             </div>
             <textarea
