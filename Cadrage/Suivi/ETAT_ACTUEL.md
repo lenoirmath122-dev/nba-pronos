@@ -318,7 +318,7 @@ layout, canonique, Open Graph/Twitter ; `noindex` sur reset-password,
 verify-email, email-confirmed, `/players` et profils). `app/robots.ts` et
 `app/sitemap.ts` (9 pages). Le mot « paris » est voulu (référencement) dans les métadonnées et sur
 la page `/` (test `lib/seo.test.ts`) ; il reste dans l'UI interne et le corps
-de `/regles` et `/confidentialite`. Image d'aperçu : `public/og-image.png` (1200×630, carte Twitter `summary_large_image`).
+de `/regles` et `/confidentialite`. Image d'aperçu : `public/og-image.png` (1200×630, carte Twitter `summary_large_image`), aperçu de lien vérifié en prod. Dans tout message/légende, écrire `https://panierballon.fr` avec le schéma (un domaine nu ne produit pas de carte d'aperçu).
 
 ---
 
