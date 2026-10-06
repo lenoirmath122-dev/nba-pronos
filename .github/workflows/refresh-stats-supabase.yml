@@ -14,7 +14,15 @@ name: Data NBA — rafraîchissement quotidien Supabase
 on:
   schedule:
     - cron: "0 10 * * *"
-  workflow_dispatch: {}
+  # Lancement manuel : `season_types` permet d'inclure la présaison
+  # ("Pre Season") pour tester la résolution automatique sur un match de
+  # présaison -- le cron quotidien, lui, garde toujours les 3 types par défaut.
+  workflow_dispatch:
+    inputs:
+      season_types:
+        description: 'Types de saison séparés par des virgules (ex. "Pre Season" ou "Pre Season,Regular Season,Playoffs,PlayIn")'
+        required: false
+        default: "Regular Season,Playoffs,PlayIn"
 
 jobs:
   refresh:
@@ -33,7 +41,13 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: python Cadrage/Stats/service/refresh_daily.py
+          # Passé par l'environnement, jamais interpolé dans le script (pas
+          # d'injection de commande via l'entrée manuelle). Vide sur le cron
+          # -> valeur par défaut identique à DEFAULT_SEASON_TYPES du script.
+          SEASON_TYPES: ${{ inputs.season_types || 'Regular Season,Playoffs,PlayIn' }}
+        run: |
+          IFS=',' read -ra TYPES <<< "$SEASON_TYPES"
+          python Cadrage/Stats/service/refresh_daily.py --season-types "${TYPES[@]}"
       - name: Résoudre automatiquement les paris IA calculables (Phase 6, 22/08/2026)
         # Chaîné APRÈS le rafraîchissement ci-dessus, jamais avant : la
         # résolution a besoin des VRAIES stats de la veille tout juste
