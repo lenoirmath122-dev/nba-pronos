@@ -318,7 +318,7 @@ layout, canonique, Open Graph/Twitter ; `noindex` sur reset-password,
 verify-email, email-confirmed, `/players` et profils). `app/robots.ts` et
 `app/sitemap.ts` (9 pages). Le mot « paris » est voulu (référencement) dans les métadonnées et sur
 la page `/` (test `lib/seo.test.ts`) ; il reste dans l'UI interne et le corps
-de `/regles` et `/confidentialite`. Image d'aperçu : icône carrée provisoire.
+de `/regles` et `/confidentialite`. Image d'aperçu : `public/og-image.png` (1200×630, carte Twitter `summary_large_image`).
 
 ---
 

@@ -67,14 +67,14 @@
   conservé volontairement dans les métadonnées et sur `/` (décision du
   05/10 : trouvable en tapant « pari », toujours avec « sans argent réel »),
   page publique minimale à `/`, `sitemap.ts`, `robots.ts`,
-  canoniques. Reste à faire : (1) vérifier visuellement `/` et que
-  `/leaderboard` et `/bracket` rendent bien en visiteur anonyme ; (2) après
-  déploiement, contrôler `/robots.txt` et `/sitemap.xml` puis soumettre le
-  sitemap dans Search Console (action manuelle) ; (3) image d'aperçu
-  1200×630 : le logo final est prêt (intégré le 05/10/2026), reste à
-  composer l'image (changer `OG_IMAGE` et `TWITTER_CARD` dans `lib/seo.ts`,
-  qui pointent encore sur `icon-512.png`) ; (4) `lastModified` du sitemap figé au
-  05/10/2026, à mettre à jour quand les pages publiques changent. La landing
+  canoniques. Mergé et déployé ; vérification visuelle faite, et
+  `/robots.txt` + `/sitemap.xml` contrôlés en prod le 06/10/2026 (9 URL,
+  toutes en 200). Sitemap soumis dans Search Console le 06/10/2026
+  (propriété « Domaine » `panierballon.fr`, URL complète exigée). Image d'aperçu
+  1200×630 faite le 06/10/2026 (`public/og-image.png`, `lib/seo.ts` passé en
+  `summary_large_image`) ; reste à la vérifier en prod une fois mergée
+  (aperçu de lien). `lastModified` du sitemap désormais par page (06/10/2026,
+  à mettre à jour à la main quand la page change). La landing
   page soignée reste en p5-2 : la version actuelle est minimale, on la
   retravaillera plus tard (décision du 05/10).
 - [ ] **B. Contenu Instagram pendant la pause** — post 5 « Bilan de l'alpha »
