@@ -186,6 +186,40 @@ describe("textes", () => {
     expect(dailyPushText(null, { matchesToPredict: 0, firstKickoffIso: null })).toBeNull();
   });
 
+  it("push journalier avec le match du jour : annonce en premier, titre dédié", () => {
+    const recap = buildCompetitionRecap(input());
+    const dailyMatch = { label: "BOS - NYK", kickoffIso: "2026-10-21T00:00:00.000Z" };
+    expect(dailyPushText(null, { matchesToPredict: 1, firstKickoffIso: dailyMatch.kickoffIso, dailyMatch })).toEqual({
+      title: "Match du jour",
+      body: "Match du jour : BOS - NYK, coup d'envoi à 2h.",
+    });
+    expect(
+      dailyPushText(personalRecap(recap, "C"), { matchesToPredict: 1, firstKickoffIso: dailyMatch.kickoffIso, dailyMatch })?.body
+    ).toBe("Match du jour : BOS - NYK, coup d'envoi à 2h. Cette nuit : +30 pts, tu passes 1er (▲2).");
+  });
+
+  it("dailyMatch à null : push inchangé", () => {
+    const recap = buildCompetitionRecap(input());
+    const todo = { matchesToPredict: 3, firstKickoffIso: "2026-10-06T23:00:00.000Z" };
+    expect(dailyPushText(personalRecap(recap, "C"), { ...todo, dailyMatch: null })).toEqual(
+      dailyPushText(personalRecap(recap, "C"), todo)
+    );
+  });
+
+  it("push hebdo du lundi : annonce du match du jour, seule si la semaine est vide", () => {
+    const dailyMatch = { label: "BOS - NYK", kickoffIso: "2026-10-26T00:00:00.000Z" };
+    const recap = buildCompetitionRecap(input({ period: weeklyPeriod("2026-10-12") }));
+    expect(weeklyPushText(recap, null, "Z", dailyMatch)?.body).toBe(
+      "Match du jour : BOS - NYK, coup d'envoi à 1h. Chloé remporte la semaine (+30 pts). À toi de jouer cette semaine !"
+    );
+    const empty = { ...recap, hasActivity: false };
+    expect(weeklyPushText(empty, null, "Z")).toBeNull();
+    expect(weeklyPushText(empty, null, "Z", dailyMatch)).toEqual({
+      title: "Match du jour",
+      body: "Match du jour : BOS - NYK, coup d'envoi à 1h.",
+    });
+  });
+
   it("heure de coup d'envoi lisible", () => {
     expect(kickoffHour("2026-10-06T23:00:00.000Z")).toBe("1h");
     expect(kickoffHour("2026-10-07T00:30:00.000Z")).toBe("2h30");

@@ -97,10 +97,10 @@
   (base, moteur, types) mergée (#127) et migrations poussées, PR 2/4 (synchro,
   admin, script de tirage, masquage JS) mergée (#128),
   PR 3/4 (UI joueur : carte jour NY + heure Paris, règles, bracket masqué)
-  livrée le 07/10/2026. Reste : PR 4/4 (push de 10h groupé avec le récap), **PR 5 (décidée le 07/10/2026 :
+  livrée le 07/10/2026, PR 4/4 (annonce du match du jour dans le push de 10h, groupée avec le récap) livrée le 07/10/2026 (joueur en push avec « Récap du matin » désactivé : pas d'annonce, à confirmer). Reste : **PR 5 (décidée le 07/10/2026 :
   tirage automatique par cron, qui remplace le lancement manuel du script ;
   sert aussi de test de la récupération automatique du calendrier avant la
-  Cup et les Playoffs, sans couvrir le mapping A7 de la Cup)**, puis créer la compétition
+  Cup et les Playoffs, sans couvrir le mapping A7 de la Cup)** -- **orientation validée le 07/10/2026** : workflow avec cron + `workflow_dispatch` ; le cron ne fait rien avant le 20/10 (date vérifiée dans le code, pas dans l'expression cron) ; le lancement manuel passe outre cette date et prend un paramètre qui limite le push au seul compte de l'utilisateur ; test du 07/10 au soir sur une compétition DAILY_MATCH de test à part (matchs de présaison), à clôturer ensuite pour ne pas gêner celle du 20/10 (à explorer : comment l'isoler), puis créer la compétition
   DAILY_MATCH en admin et lancer le 1er lot de tirage
   (`node --conditions=react-server --env-file=.env.local scripts/daily-match-draw.mjs --from=... --to=... --dry-run`)
   avant le 20/10. Calendrier Highlightly

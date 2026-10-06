@@ -56,7 +56,8 @@ export default async function ReglesPage() {
             </p>
             <p className={styles.body}>
               Le match du jour est publié à 10h, heure de Paris, le jour du match : tu ne vois jamais les
-              matchs des jours suivants à l&apos;avance.
+              matchs des jours suivants à l&apos;avance. Si tu as activé les notifications push, tu es
+              prévenu à 10h, dans le même message que ton récap du matin.
             </p>
             <p className={styles.body}>
               Les matchs NBA sont rattachés à leur jour à New York, mais joués à l&apos;heure de Paris.
