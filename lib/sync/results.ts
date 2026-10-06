@@ -20,10 +20,15 @@ export type SkippedResultMatch = { highlightlyMatchId: number; reason: string };
 // ignoré silencieusement.
 export type UnrecognizedStatus = { highlightlyMatchId: number; description: string };
 
+// Date NY dont l'appel Highlightly a échoué alors qu'une autre date a abouti
+// (voir syncResults) : remontée plutôt que d'interrompre tout le sync.
+export type FailedResultDate = { date: string; message: string };
+
 export type SyncResultsResult = {
   changed: number;
   unchanged: number;
   skipped: SkippedResultMatch[];
+  failedDates: FailedResultDate[];
   unrecognizedStatuses: UnrecognizedStatus[];
   requestsRemaining: number | null;
 };
@@ -46,6 +51,7 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
     changed: 0,
     unchanged: 0,
     skipped: [],
+    failedDates: [],
     unrecognizedStatuses: [],
     requestsRemaining: null,
   };
@@ -53,11 +59,21 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
   // Veille NY incluse pendant les premières heures du jour NY : un match fini
   // après minuit ET n'est plus renvoyé sous le jour courant (nyResultDates).
   const rawMatchById = new Map<number, RawMatch>();
-  for (const date of nyResultDates(referenceDate)) {
-    const { data, requestsRemaining } = await getMatchesByDate(date);
-    result.requestsRemaining = requestsRemaining;
-    for (const m of data) rawMatchById.set(m.id, m);
+  // Une date en échec n'empêche pas de traiter l'autre ; si TOUTES échouent,
+  // on relance l'erreur (la route la journalise en échec comme avant).
+  const dates = nyResultDates(referenceDate);
+  let firstError: unknown = null;
+  for (const date of dates) {
+    try {
+      const { data, requestsRemaining } = await getMatchesByDate(date);
+      result.requestsRemaining = requestsRemaining;
+      for (const m of data) rawMatchById.set(m.id, m);
+    } catch (error) {
+      firstError ??= error;
+      result.failedDates.push({ date, message: error instanceof Error ? error.message : "Erreur inconnue." });
+    }
   }
+  if (result.failedDates.length === dates.length) throw firstError;
   const rawMatches = [...rawMatchById.values()];
   if (rawMatches.length === 0) return result;
 

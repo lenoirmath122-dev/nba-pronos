@@ -26,3 +26,17 @@ describe("nyResultDates — veille NY pendant les premières heures", () => {
     expect(nyResultDates(new Date("2026-03-08T05:30:00Z"))).toEqual(["2026-03-07", "2026-03-08"]);
   });
 });
+
+describe("nyResultDates — frontières", () => {
+  it("minuit pile NY -> veille + jour", () => {
+    expect(nyResultDates(new Date("2026-10-07T04:00:00Z"))).toEqual(["2026-10-06", "2026-10-07"]);
+  });
+
+  it("23h59 NY -> jour seul", () => {
+    expect(nyResultDates(new Date("2026-10-07T03:59:00Z"))).toEqual(["2026-10-06"]);
+  });
+
+  it("06h00 NY un jour de bascule DST (01/11/2026, EST) -> jour seul", () => {
+    expect(nyResultDates(new Date("2026-11-01T11:00:00Z"))).toEqual(["2026-11-01"]);
+  });
+});

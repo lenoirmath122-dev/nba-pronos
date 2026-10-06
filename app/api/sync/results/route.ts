@@ -29,6 +29,9 @@ async function handle(request: Request): Promise<Response> {
       (result.skipped.length > 0
         ? ` Ignorés : ${result.skipped.map((s) => `#${s.highlightlyMatchId} (${s.reason})`).join("; ")}.`
         : "") +
+      (result.failedDates.length > 0
+        ? ` Dates en échec : ${result.failedDates.map((f) => `${f.date} (${f.message})`).join("; ")}.`
+        : "") +
       (result.unrecognizedStatuses.length > 0
         ? ` Statuts Highlightly non reconnus (retombés sur IN_PROGRESS) : ${result.unrecognizedStatuses
             .map((s) => `#${s.highlightlyMatchId} ("${s.description}")`)
