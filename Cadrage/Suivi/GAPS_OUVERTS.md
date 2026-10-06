@@ -271,7 +271,8 @@
 - **Photo de profil** — validée comme principe côté DA mais explicitement
   "non tranché, à reprendre avant de coder" par le document source : bucket
   Supabase Storage à créer, format/taille, recadrage auto vs. manuel.
-- **Ticker "en direct"** (`LiveTicker.tsx`, Jouer/Mes pronos) posé à
+- **Ticker "en direct"** (`LiveTicker.tsx`, Jouer/Mes pronos, ne montre plus
+  que les matchs IN_PROGRESS depuis le 06/10/2026) posé à
   l'essai, pas un chantier figé — décision garder/retirer jamais prise.
 - **Composant `Button` partagé** jamais factorisé (19+ déclarations quasi
   identiques) — refactor identifié, pas pressant.

@@ -195,6 +195,14 @@ export type QuotaSummary =
   | { kind: "PLAYOFFS"; seriesId: string; seriesLabel: string; seriesSlotUsed: boolean; matchSlotsUsed: number }
   | { kind: "NBA_CUP"; matchId: string; matchLabel: string; matchSlotUsed: boolean };
 
+export type LiveScore = {
+  matchId: string;
+  home: string;
+  away: string;
+  homeScore: number | null;
+  awayScore: number | null;
+};
+
 export type PlayUpcomingData = {
   competitionId: string;
   competitionType: CompetitionType;
@@ -207,9 +215,9 @@ export type PlayUpcomingData = {
    *  amont (bug réel signalé par l'utilisateur le 28/08/2026 : ces matchs
    *  restaient invisibles jusqu'à J-3, aucune trace qu'ils existent). */
   daysBeyondWindow: MatchDay[];
-  /** Verrouillés il y a moins de 3 jours, EN DIRECT en tête puis
-   *  anti-chronologique — ex-segment "Récent" de Mes pronos. */
-  recentLocked: LockedMatchRow[];
+  /** Scores des matchs EN DIRECT — alimente uniquement le ticker. Les
+   *  lignes verrouillées elles-mêmes vivent dans Résultats. */
+  liveScores: LiveScore[];
   readyCount: number;
   quotas: QuotaSummary[];
 };
@@ -356,16 +364,12 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   const nowIso = new Date(nowMs).toISOString();
   const windowEndMs = nowMs + FORWARD_WINDOW_DAYS * DAY_MS;
 
-  // "Verrouillé mais pas encore réglé (FINISHED/CANCELLED)" — plus de
-  // fenêtre de 3 jours ici (18/08/2026, revenu sur la décision 4 de la
-  // spec à la demande explicite de l'utilisateur : « tout ce qui est
-  // finished doit être dans Résultats et pas dans Mes pronos », quel que
-  // soit son âge). §3.1 corrigée. CANCELLED traité comme FINISHED depuis
-  // le 27/08/2026 (matchs annulés jamais reliés à un vrai match externe,
-  // restaient bloqués indéfiniment dans Mes pronos sinon).
-  const [{ days, daysBeyondWindow, readyCount }, recentLocked, quotas] = await Promise.all([
+  // Mes pronos = `scheduled_at > now()` uniquement. Tout match commencé
+  // (réglé ou non) vit dans Résultats ; seul le ticker garde un oeil sur les
+  // matchs EN DIRECT, via une requête légère.
+  const [{ days, daysBeyondWindow, readyCount }, liveScores, quotas] = await Promise.all([
     fetchUpcomingWindow(supabase, user.id, competition, nowIso, windowEndMs, nowMs),
-    fetchLockedRows(supabase, user.id, competition, { finished: false }, null),
+    fetchLiveScores(supabase, competition.id),
     getQuotas(supabase, user.id, competition),
   ]);
 
@@ -374,10 +378,37 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
     competitionType: competition.type,
     days,
     daysBeyondWindow,
-    recentLocked: recentLocked.rows,
+    liveScores,
     readyCount,
     quotas,
   };
+}
+
+async function fetchLiveScores(supabase: SupabaseServerClient, competitionId: string): Promise<LiveScore[]> {
+  const { data } = await supabase
+    .from("matches")
+    .select("id, home_team_id, away_team_id, home_score, away_score")
+    .eq("competition_id", competitionId)
+    .eq("status", "IN_PROGRESS")
+    .not("scheduled_at", "is", null)
+    .order("scheduled_at", { ascending: false });
+  const rows = (data ?? []) as {
+    id: string;
+    home_team_id: string;
+    away_team_id: string;
+    home_score: number | null;
+    away_score: number | null;
+  }[];
+  if (rows.length === 0) return [];
+
+  const abbrevById = new Map(((await getAllTeams()) as TeamRow[]).map((t) => [t.id, t.abbreviation]));
+  return rows.map((r) => ({
+    matchId: r.id,
+    home: abbrevById.get(r.home_team_id) ?? "?",
+    away: abbrevById.get(r.away_team_id) ?? "?",
+    homeScore: r.home_score,
+    awayScore: r.away_score,
+  }));
 }
 
 async function fetchUpcomingWindow(
@@ -645,8 +676,7 @@ function dayLabel(key: string, todayKey: string, tomorrowKey: string, ms: number
 }
 
 // ============================================================================
-// Lignes VERROUILLÉES — partagées entre "Mes pronos" (recentLocked) et
-// "Résultats" (rows). Fusion de la logique de lib/queries/my-predictions.ts.
+// Lignes VERROUILLÉES — de l'onglet "Résultats" (rows). Fusion de la logique de lib/queries/my-predictions.ts.
 // ============================================================================
 
 type LockedMatchDbRow = {
@@ -762,23 +792,15 @@ function toRevealedPrediction(p: PredictionRow, teams: Map<string, TeamRef>, pse
 
 type LeagueScope = { id: string; name: string; memberUserIds: Set<string> };
 
-/** Récupère des lignes verrouillées, réparties par STATUT (18/08/2026,
- *  décision 4 de la spec inversée à la demande de l'utilisateur — plus par
- *  fenêtre de temps) : `finished: false` = "Mes pronos" (verrouillé, pas
- *  encore réglé — inclut IN_PROGRESS et le cas STARTED où le
- *  planificateur, 30-60 min, n'est pas encore passé dessus) ; `finished:
- *  true` = "Résultats" (FINISHED ou CANCELLED, quel que soit son âge), avec
- *  `dateRange` optionnel pour le filtre `?date=`. Partagé par les deux
- *  onglets ; scope de ligue résolu par l'appelant (null sur Mes pronos, cf.
- *  spec). CANCELLED regroupé avec FINISHED depuis le 27/08/2026 — un match
- *  annulé (ex. donnée de test jamais reliée à un vrai match) est tout aussi
- *  définitivement réglé qu'un match terminé, ne doit pas rester coincé dans
- *  Mes pronos indéfiniment. */
+/** Récupère les lignes verrouillées (`scheduled_at <= now`, terminées ou
+ *  non : STARTED, LIVE, POSTPONED, FINISHED, CANCELLED) pour l'onglet
+ *  "Résultats", avec `dateRange` optionnel pour le filtre `?date=`. Le
+ *  partage avec "Mes pronos" se fait sur l'heure, jamais sur matches.status. */
 async function fetchLockedRows(
   supabase: SupabaseServerClient,
   userId: string,
   competition: CompetitionRow,
-  criteria: { finished: boolean; dateRange?: { gte: string; lt?: string } },
+  criteria: { dateRange?: { gte: string; lt?: string }; seriesId?: string },
   scope: LeagueScope | null,
   limit?: number
 ): Promise<{ rows: LockedMatchRow[]; hasMore: boolean }> {
@@ -789,9 +811,10 @@ async function fetchLockedRows(
     .not("scheduled_at", "is", null)
     .order("scheduled_at", { ascending: false });
 
-  query = criteria.finished
-    ? query.in("status", ["FINISHED", "CANCELLED"])
-    : query.lte("scheduled_at", new Date().toISOString()).neq("status", "FINISHED").neq("status", "CANCELLED");
+  // Miroir exact de fetchUpcomingWindow (`scheduled_at > now`) : aucun match
+  // dans les deux onglets, aucun filtre sur matches.status.
+  query = query.lte("scheduled_at", new Date().toISOString());
+  if (criteria.seriesId) query = query.eq("series_id", criteria.seriesId);
   if (criteria.dateRange) {
     query = query.gte("scheduled_at", criteria.dateRange.gte);
     if (criteria.dateRange.lt) query = query.lt("scheduled_at", criteria.dateRange.lt);
@@ -958,8 +981,7 @@ async function fetchLockedRows(
 
   // EN DIRECT en tête, puis anti-chronologique (§5.2 SPEC_ECRAN_MES_PRONOS).
   // `matches` est déjà trié anti-chronologiquement (requête) ; tri stable, ne
-  // fait que faire remonter les LIVE — sans effet sur "Résultats" (aucune
-  // ligne n'y est jamais LIVE, la fenêtre y est strictement < J-3).
+  // fait que faire remonter les LIVE.
   rows.sort((a, b) => Number(b.liveState === "LIVE") - Number(a.liveState === "LIVE"));
 
   return { rows, hasMore };
@@ -1024,7 +1046,7 @@ export async function getPlayResults(params: {
   };
 }
 
-/** fetchLockedRows(finished: true) + filtre optionnel par série. */
+/** fetchLockedRows + filtre optionnel par série. */
 async function fetchLockedRowsFiltered(
   supabase: SupabaseServerClient,
   userId: string,
@@ -1034,23 +1056,13 @@ async function fetchLockedRowsFiltered(
   scope: LeagueScope | null,
   limit: number
 ): Promise<{ rows: LockedMatchRow[]; hasMore: boolean }> {
-  if (!seriesId) return fetchLockedRows(supabase, userId, competition, { finished: true, dateRange }, scope, limit);
-
-  // Filtre série : on repasse par fetchLockedRows (sans limite) puis on
-  // filtre en mémoire (une série ne compte jamais plus de 7 matchs, coût
-  // négligeable) plutôt que de dupliquer toute la requête pour une clause
-  // .eq() de plus.
-  const { rows: allRows } = await fetchLockedRows(supabase, userId, competition, { finished: true, dateRange }, scope);
-  const filtered = allRows.filter((r) => r.seriesId === seriesId);
-  const hasMore = filtered.length > limit;
-  return { rows: hasMore ? filtered.slice(0, limit) : filtered, hasMore };
+  return fetchLockedRows(supabase, userId, competition, { dateRange, seriesId: seriesId ?? undefined }, scope, limit);
 }
 
 /** Valeurs proposables par les filtres date/série (§4.2 SPEC_ECRAN_MES_PRONOS)
- *  — dérivées des matchs FINISHED/CANCELLED (18/08/2026 : plus d'un cutoff
- *  temporel, cf. fetchLockedRows ; CANCELLED ajouté le 27/08/2026, même
- *  raison) : le filtre ne doit proposer que des dates/séries qui peuvent
- *  réellement renvoyer un résultat ici. */
+ *  — dérivées des matchs verrouillés (`scheduled_at <= now`, cf.
+ *  fetchLockedRows) : le filtre ne doit proposer que des dates/séries qui
+ *  peuvent réellement renvoyer un résultat ici. */
 async function getAvailableFilters(
   supabase: SupabaseServerClient,
   competitionId: string
@@ -1060,7 +1072,7 @@ async function getAvailableFilters(
     .select("series_id, scheduled_at")
     .eq("competition_id", competitionId)
     .not("scheduled_at", "is", null)
-    .in("status", ["FINISHED", "CANCELLED"]);
+    .lte("scheduled_at", new Date().toISOString());
 
   const locked = (lockedData ?? []) as { series_id: string; scheduled_at: string }[];
   if (locked.length === 0) return { availableDates: [], availableSeries: [] };

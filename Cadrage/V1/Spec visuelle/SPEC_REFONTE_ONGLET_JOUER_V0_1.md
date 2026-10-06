@@ -659,3 +659,15 @@ similaire déjà noté en §3.1 pour l'ancienne règle).
 plus aucune notion de fenêtre temporelle sur ce partage). `tsc`/`eslint`/
 `vitest` (37/37)/`next build` (34 routes) propres — détail complet
 `ETAT_ACTUEL.md` §2.80.
+
+---
+
+## 15. Amendement du 06/10/2026 — partage strictement par l'heure
+
+Remplace la règle du §14 : **Mes pronos = `scheduled_at > now()`**,
+**Résultats = `scheduled_at <= now()`**, quel que soit `matches.status`.
+Les matchs commencés mais pas encore réglés (« En attente du résultat »,
+EN DIRECT, reportés) sont donc dans Résultats, plus dans Mes pronos. Les
+§5.1, §5.3 et §11 (état vide de Mes pronos) sont à lire avec cette règle ;
+`SPEC_ECRAN_MES_PRONOS` §5.2 (ligne verrouillée compacte) s'applique
+désormais à Résultats. Le ticker ne montre plus que les matchs en direct.
