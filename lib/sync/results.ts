@@ -1,6 +1,6 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { getMatchesByDate, normalizeMatchStatus, sumQuarters, wentToOvertime, type RawMatch } from "@/lib/nba/client";
-import { nyDateString } from "@/lib/dates/newyork";
+import { nyResultDates } from "@/lib/dates/newyork";
 import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
 
@@ -50,8 +50,15 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
     requestsRemaining: null,
   };
 
-  const { data: rawMatches, requestsRemaining } = await getMatchesByDate(nyDateString(referenceDate));
-  result.requestsRemaining = requestsRemaining;
+  // Veille NY incluse pendant les premières heures du jour NY : un match fini
+  // après minuit ET n'est plus renvoyé sous le jour courant (nyResultDates).
+  const rawMatchById = new Map<number, RawMatch>();
+  for (const date of nyResultDates(referenceDate)) {
+    const { data, requestsRemaining } = await getMatchesByDate(date);
+    result.requestsRemaining = requestsRemaining;
+    for (const m of data) rawMatchById.set(m.id, m);
+  }
+  const rawMatches = [...rawMatchById.values()];
   if (rawMatches.length === 0) return result;
 
   const sourceRefs = rawMatches.map((m) => String(m.id));
