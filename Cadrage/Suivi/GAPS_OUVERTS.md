@@ -103,7 +103,15 @@
   Cup et les Playoffs, sans couvrir le mapping A7 de la Cup)**, puis créer la compétition
   DAILY_MATCH en admin et lancer le 1er lot de tirage
   (`node --conditions=react-server --env-file=.env.local scripts/daily-match-draw.mjs --from=... --to=... --dry-run`)
-  avant le 20/10. Calendrier Highlightly
+  avant le 20/10. Restes de la PR 3, non traités : la bande de dates de
+  Résultats reste en jour de Paris (un « Match du 20/10 » joué à 01h30
+  apparaît sous le 21/10) ; les libellés « Game 1 » restent sur l'Accueil
+  (`TodoRow`, `lib/queries/match-bets.ts`) ; `lib/queries/admin-resolution.ts`
+  calcule `pointsAtStake` avec le barème Playoffs. **À faire après la PR 5
+  (décidé le 07/10/2026) : mettre à jour la feuille de route** (tracker
+  artifact) pour y refléter le chantier Match du jour (PR 1 à 5, création de la
+  compétition, tirages) ; contenu exact de la modification à préciser à ce
+  moment-là. Calendrier Highlightly
   2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : tirage par lots.
 
 ## Capacité — test de charge
