@@ -97,14 +97,8 @@
   (base, moteur, types) mergée (#127) et migrations poussées, PR 2/4 (synchro,
   admin, script de tirage, masquage JS) mergée (#128),
   PR 3/4 (UI joueur : carte jour NY + heure Paris, règles, bracket masqué)
-  livrée le 07/10/2026, PR 4/4 (annonce du match du jour dans le push de 10h, groupée avec le récap) livrée le 07/10/2026 (joueur en push avec « Récap du matin » désactivé : pas d'annonce, à confirmer). Reste : **PR 5 (décidée le 07/10/2026 :
-  tirage automatique par cron, qui remplace le lancement manuel du script ;
-  sert aussi de test de la récupération automatique du calendrier avant la
-  Cup et les Playoffs, sans couvrir le mapping A7 de la Cup)** -- **orientation validée le 07/10/2026** : workflow avec cron + `workflow_dispatch` ; le cron ne fait rien avant le 20/10 (date vérifiée dans le code, pas dans l'expression cron) ; le lancement manuel passe outre cette date et prend un paramètre qui limite le push au seul compte de l'utilisateur ; test du 07/10 au soir sur une compétition DAILY_MATCH de test à part (matchs de présaison), à clôturer ensuite pour ne pas gêner celle du 20/10 (à explorer : comment l'isoler), puis créer la compétition
-  DAILY_MATCH en admin et lancer le 1er lot de tirage
-  (`node --conditions=react-server --env-file=.env.local scripts/daily-match-draw.mjs --from=... --to=... --dry-run`)
-  avant le 20/10. Calendrier Highlightly
-  2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : tirage par lots.
+  livrée le 07/10/2026, PR 4/4 (annonce du match du jour dans le push de 10h, groupée avec le récap) livrée le 07/10/2026 (joueur en push avec « Récap du matin » désactivé : pas d'annonce, à confirmer). PR 5 (tirage automatique par cron, 07/10/2026) codée : workflow `daily-match-draw.yml` (5h et 7h UTC) + route `/api/daily-match/draw`, le cron tire dès le 18/10 les jours >= 20/10 (fenêtre de 3 jours) ; sert aussi de test de la récupération automatique du calendrier avant la Cup et les Playoffs, sans couvrir le mapping A7 de la Cup. **3 points à faire par l'utilisateur le soir du 07/10/2026, dans l'ordre** : (1) créer la variable Vercel `OWNER_USER_ID` (id de son compte) puis redéployer après le merge de la PR 5 ; (2) lancer le test (compétition de test seule ACTIVE, workflow manuel `from=to=2026-10-07` + `override`, `dry_run` puis réel avec `push_only_me`) ; (3) **archiver la compétition de test avant 08:00Z le 08/10**. Détail : créer la variable Vercel `OWNER_USER_ID` ; **test du 07/10 au soir** sur une compétition DAILY_MATCH de test (seule ACTIVE, matchs de présaison) via le workflow en manuel (`from=to=2026-10-07`, `override`, d'abord `dry_run`, puis `push_only_me`), puis **archiver cette compétition avant 08:00Z le 08/10** (sinon `recaps.yml` pousse à tous les comptes) ; créer ensuite la vraie compétition DAILY_MATCH en admin avant le 18/10. Tests `onlyUserId` (runRecaps) et tests de route non écrits. Calendrier Highlightly
+  2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : la route renvoie 500 (issue d'alerte) si le match d'aujourd'hui ou de demain manque.
 
 ## Capacité — test de charge
 

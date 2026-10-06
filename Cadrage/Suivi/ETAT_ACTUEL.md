@@ -389,7 +389,10 @@ code — à confirmer manuellement si besoin.
   (anti-pause), `sync-teams.yml`/`sync-schedule.yml`/`sync-results.yml`
   (synchro NBA via Highlightly), `reminder-bracket.yml`/
   `reminder-matches.yml`, `recaps.yml`, `snapshot-leaderboard.yml`,
-  `refresh-stats-supabase.yml`.
+  `refresh-stats-supabase.yml`, `daily-match-draw.yml` (tirage automatique
+  du Match du jour, 5h et 7h UTC, route `/api/daily-match/draw`, commence le
+  18/10/2026 ; `workflow_dispatch` pour un lot manuel et un push limité au
+  compte `OWNER_USER_ID`).
 - Limite connue et assumée : aucun test de composant React, et la
   génération de schéma IA elle-même (appels réels à Claude) reste testée à
   la main plutôt qu'automatisée — seule la résolution déterministe en aval
