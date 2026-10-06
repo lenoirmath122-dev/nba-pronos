@@ -45,24 +45,35 @@ export function kickoffHour(iso: string): string {
 
 export type PushText = { title: string; body: string };
 
+/** Match du jour (DAILY_MATCH) publié ce matin, annoncé dans le push du récap
+ *  pour ne jamais envoyer deux notifications à 10h (PR 4/4). */
+export type DailyMatchAnnounce = { label: string; kickoffIso: string };
+
+function dailyMatchSentence(announce: DailyMatchAnnounce): string {
+  return `Match du jour : ${announce.label}, coup d'envoi à ${kickoffHour(announce.kickoffIso)}.`;
+}
+
 /** Push journalier, ou null s'il n'y a rien à dire à ce joueur (règle
  *  cadrée avec l'utilisateur : jamais de push vide). */
 export function dailyPushText(
   me: PersonalRecap | null,
-  todo: { matchesToPredict: number; firstKickoffIso: string | null }
+  todo: { matchesToPredict: number; firstKickoffIso: string | null; dailyMatch?: DailyMatchAnnounce | null }
 ): PushText | null {
   const parts: string[] = [];
+  // L'annonce remplace la phrase « N match à pronostiquer » : en DAILY_MATCH
+  // c'est le même match, en plus précis, et elle passe en premier.
+  if (todo.dailyMatch) parts.push(dailyMatchSentence(todo.dailyMatch));
   if (me?.played) {
     const rank = rankSentence(me);
     parts.push(`Cette nuit : ${me.pointsGained > 0 ? `+${pointsLabel(me.pointsGained)}` : "0 pt"}${rank ? `, ${rank}` : ""}.`);
   }
-  if (todo.matchesToPredict > 0) {
+  if (!todo.dailyMatch && todo.matchesToPredict > 0) {
     const count = todo.matchesToPredict;
     const kickoff = todo.firstKickoffIso ? `, premier coup d'envoi à ${kickoffHour(todo.firstKickoffIso)}` : "";
     parts.push(`${count} match${count > 1 ? "s" : ""} à pronostiquer${kickoff}.`);
   }
   if (parts.length === 0) return null;
-  return { title: "Ton récap du matin", body: parts.join(" ") };
+  return { title: todo.dailyMatch ? "Match du jour" : "Ton récap du matin", body: parts.join(" ") };
 }
 
 function winnersSentence(top: RecapPlayer[], userId: string): string | null {
@@ -79,9 +90,19 @@ function winnersSentence(top: RecapPlayer[], userId: string): string | null {
 
 /** Push hebdo : envoyé à tous les joueurs en push, y compris ceux qui n'ont
  *  pas joué de la semaine (relance). Null si la semaine est restée vide. */
-export function weeklyPushText(recap: CompetitionRecap, me: PersonalRecap | null, userId: string): PushText | null {
-  if (!recap.hasActivity) return null;
+export function weeklyPushText(
+  recap: CompetitionRecap,
+  me: PersonalRecap | null,
+  userId: string,
+  dailyMatch: DailyMatchAnnounce | null = null
+): PushText | null {
+  // Le lundi, le push hebdo porte aussi l'annonce du match du jour. Sans
+  // activité dans la semaine, l'annonce part seule plutôt que rien.
+  if (!recap.hasActivity) {
+    return dailyMatch ? { title: "Match du jour", body: dailyMatchSentence(dailyMatch) } : null;
+  }
   const parts: string[] = [];
+  if (dailyMatch) parts.push(dailyMatchSentence(dailyMatch));
   if (me?.played) {
     const rank = rankSentence(me);
     parts.push(`${me.pointsGained > 0 ? `+${pointsLabel(me.pointsGained)}` : "0 pt"} cette semaine${rank ? `, ${rank}` : ""}.`);

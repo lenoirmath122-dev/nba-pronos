@@ -279,7 +279,9 @@ barème le réécrit à chaque recalcul). Push à 10h Paris (`recaps.yml`, 8h et
 9h UTC, la route ne fait rien avant 10h et `recap_log` dédoublonne),
 journalier ou hebdo le lundi, jamais vide, ouvre `/home#recap` (carte
 dépliée d'office). Interrupteur « Récap du matin » dans le Profil
-(`users.recap_enabled`, activé par défaut). Tout est gratuit ; l'accès
+(`users.recap_enabled`, activé par défaut). En compétition « Match du
+jour » (DAILY_MATCH), le même push annonce le match publié à 10h (titre « Match du jour », lien `/play`) ; rien n'est
+envoyé avant 10h, même forcé. Tout est gratuit ; l'accès
 passe par `canReceiveRecap()` (`lib/recaps/access.ts`), seul point à
 brancher à la bascule payante.
 

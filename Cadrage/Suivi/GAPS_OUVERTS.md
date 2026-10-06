@@ -97,7 +97,7 @@
   (base, moteur, types) mergée (#127) et migrations poussées, PR 2/4 (synchro,
   admin, script de tirage, masquage JS) mergée (#128),
   PR 3/4 (UI joueur : carte jour NY + heure Paris, règles, bracket masqué)
-  livrée le 07/10/2026. Reste : PR 4/4 (push de 10h groupé avec le récap), **PR 5 (décidée le 07/10/2026 :
+  livrée le 07/10/2026, PR 4/4 (annonce du match du jour dans le push de 10h, groupée avec le récap) livrée le 07/10/2026 (joueur en push avec « Récap du matin » désactivé : pas d'annonce, à confirmer). Reste : **PR 5 (décidée le 07/10/2026 :
   tirage automatique par cron, qui remplace le lancement manuel du script ;
   sert aussi de test de la récupération automatique du calendrier avant la
   Cup et les Playoffs, sans couvrir le mapping A7 de la Cup)**, puis créer la compétition

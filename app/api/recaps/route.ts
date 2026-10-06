@@ -6,7 +6,9 @@ import { runRecaps } from "@/lib/recaps/sendRecaps";
 // d'authentification que /api/reminders/* (Bearer SYNC_SECRET, service_role)
 // — déclenché par un planificateur GitHub Actions. `?force=1` ignore la
 // fenêtre 10h-13h (Paris), pour un déclenchement manuel ; la déduplication
-// (recap_log) s'applique toujours.
+// (recap_log) s'applique toujours. Exception : en compétition « Match du
+// jour », rien n'est envoyé avant 10h même avec force (le match du jour n'est
+// pas encore publié, voir runRecaps).
 export const runtime = "nodejs";
 
 async function handle(request: Request): Promise<Response> {
