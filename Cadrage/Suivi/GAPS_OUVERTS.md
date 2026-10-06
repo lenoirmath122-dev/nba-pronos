@@ -62,21 +62,13 @@
   parallèle dans 2-5 h/semaine ; contenu de la pause = retours de l'alpha,
   nouveautés produit, compte à rebours. Reste ouvert : que jouent les inscrits
   avant le 4/12 (§5 du plan recalé).
-- [~] **C. Socle SEO et vocabulaire** — code écrit le 05/10/2026 sur la
-  branche `feat/seo-socle` (PR à ouvrir/merger) : le mot « paris » est
-  conservé volontairement dans les métadonnées et sur `/` (décision du
-  05/10 : trouvable en tapant « pari », toujours avec « sans argent réel »),
-  page publique minimale à `/`, `sitemap.ts`, `robots.ts`,
-  canoniques. Mergé et déployé ; vérification visuelle faite, et
-  `/robots.txt` + `/sitemap.xml` contrôlés en prod le 06/10/2026 (9 URL,
-  toutes en 200). Sitemap soumis dans Search Console le 06/10/2026
-  (propriété « Domaine » `panierballon.fr`, URL complète exigée). Image d'aperçu
-  1200×630 faite le 06/10/2026 (`public/og-image.png`, `lib/seo.ts` passé en
-  `summary_large_image`) ; reste à la vérifier en prod une fois mergée
-  (aperçu de lien). `lastModified` du sitemap désormais par page (06/10/2026,
-  à mettre à jour à la main quand la page change). La landing
-  page soignée reste en p5-2 : la version actuelle est minimale, on la
-  retravaillera plus tard (décision du 05/10).
+- [x] **C. Socle SEO et vocabulaire** — clos le 06/10/2026 (PR #119 et #121,
+  voir `JOURNAL_SESSIONS.md`). Le mot « paris » est conservé volontairement
+  dans les métadonnées et sur `/` (toujours avec « sans argent réel »).
+  Reste hors de ce point : la landing page soignée (p5-2, version actuelle
+  minimale), et `lastModified` du sitemap à mettre à jour à la main quand
+  une page change. Toujours écrire `https://panierballon.fr` (avec schéma)
+  dans les messages et légendes, sinon pas d'aperçu de lien.
 - [ ] **B. Contenu Instagram pendant la pause** — post 5 « Bilan de l'alpha »
   fait et publié le 05/10/2026 (6 slides + légende dans `Cadrage/DA/instagram/Posts/Post 5/`).
   Restent : la suite du calendrier (reel démo, post
