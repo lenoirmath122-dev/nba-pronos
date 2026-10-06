@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 
@@ -66,10 +67,12 @@ async function getMatchesCard(
 
   // Même fenêtre que l'écran Matchs (scheduled_at uniquement, jamais status —
   // SPEC_ECRAN_MATCHS_V0_1 §2/§18.2).
+  const hiddenSeries = await hiddenSeriesFilter(supabase);
   const { data: matchesData } = await supabase
     .from("matches")
     .select("id, scheduled_at, home_team_id, away_team_id")
     .eq("competition_id", competitionId)
+    .not("series_id", "in", hiddenSeries) // Match du jour : jours non publiés masqués
     .not("scheduled_at", "is", null)
     .gt("scheduled_at", nowIso)
     .lte("scheduled_at", windowEndIso)

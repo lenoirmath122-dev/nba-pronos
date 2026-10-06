@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import { MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { PrefetchedCompetitionContext } from "@/lib/queries/series-bets";
@@ -68,10 +69,12 @@ export async function getRemainingMatchBets(prefetched?: PrefetchedCompetitionCo
   }
 
   const nowIso = new Date().toISOString();
+  const hiddenSeries = await hiddenSeriesFilter(supabase);
   const { data: matchesData } = await supabase
     .from("matches")
     .select("id, series_id, game_number, scheduled_at, home_team_id, away_team_id")
     .eq("competition_id", competition.id)
+    .not("series_id", "in", hiddenSeries) // Match du jour : jours non publiés masqués
     .not("scheduled_at", "is", null)
     .gt("scheduled_at", nowIso)
     .order("scheduled_at", { ascending: true });

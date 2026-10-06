@@ -9,6 +9,7 @@ import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
 import { parisLocalToUtcIso } from "@/lib/dates/paris";
 import { toClientError } from "@/lib/actions/errors";
+import { hasBracket, type CompetitionType } from "@/lib/competitions/types";
 
 // Écriture de l'écran Saisie des résultats (SPEC_ECRAN_ADMIN_RESULTATS_V0_1
 // §3). AUCUNE policy RLS d'INSERT n'existe sur `matches` (même trouvaille
@@ -119,6 +120,15 @@ async function recomputeBracketDeadline(
   service: ReturnType<typeof getServiceClient>,
   competitionId: string
 ): Promise<void> {
+  // Match du jour : pas de bracket, la deadline doit rester NULL (sinon le
+  // rappel de bracket notifierait tout le monde pour un bracket inexistant).
+  const { data: competition } = await service
+    .from("competitions")
+    .select("type")
+    .eq("id", competitionId)
+    .maybeSingle<{ type: CompetitionType }>();
+  if (competition && !hasBracket(competition.type)) return;
+
   const { data: earliest } = await service
     .from("matches")
     .select("scheduled_at")

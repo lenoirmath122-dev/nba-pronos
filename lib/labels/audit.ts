@@ -8,6 +8,7 @@ export const ADMIN_ACTION_LABELS: Record<string, string> = {
   REJECT_BET: "Pari refusé",
   SET_PLAYER_ROLE: "Rôle modifié",
   SET_PLAYER_STATUS: "Statut modifié",
+  DAILY_MATCH_DRAW: "Match du jour tiré",
 };
 
 export function adminActionLabel(action: string): string {

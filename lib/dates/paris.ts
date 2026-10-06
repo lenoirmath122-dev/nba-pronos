@@ -54,6 +54,35 @@ export function parisDateTimeLabel(iso: string): string {
   return `${datePart} ${timePart}`;
 }
 
+// --- Match du jour (DAILY_MATCH) : publication à 10h Paris le jour NY du match.
+// Le jour de référence est `series.slot_index` (YYYYMMDD, jour NY figé au
+// tirage), pas `scheduled_at` qui peut bouger. Ici pour rester sans import
+// relatif : importable tel quel par scripts/*.mjs.
+
+export const DAILY_PUBLISH_HOUR_PARIS = 10;
+
+/** "2026-10-20" -> 20261020 (valeur de `series.slot_index` d'une série DAILY). */
+export function nyDayToSlot(nyDay: string): number {
+  return Number(nyDay.replaceAll("-", ""));
+}
+
+/** 20261020 -> "2026-10-20". */
+export function slotToNyDay(slot: number): string {
+  const s = String(slot);
+  return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
+}
+
+/** Instant UTC (ISO) de publication d'un jour NY : ce jour-là à 10:00, heure
+ *  murale de Paris (donc 08:00Z ou 09:00Z selon la saison). */
+export function dailyPublishAt(nyDay: string): string {
+  return parisLocalToUtcIso(`${nyDay}T${String(DAILY_PUBLISH_HOUR_PARIS).padStart(2, "0")}:00`);
+}
+
+/** Vrai si le match tiré pour ce jour NY est visible des joueurs à `nowMs`. */
+export function isDailyDayPublished(nyDay: string, nowMs: number): boolean {
+  return nowMs >= Date.parse(dailyPublishAt(nyDay));
+}
+
 function parisOffsetMinutesAt(atMs: number): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: DAY_TIMEZONE,

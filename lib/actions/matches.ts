@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { isMatchHiddenByPublication } from "@/lib/queries/dailyVisibility";
 import { getServerClient } from "@/lib/supabase/server";
 
 // Server actions de l'écran Matchs (T6b §3.1, correctif post-validation
@@ -38,10 +39,14 @@ export async function saveMatchPredictionDraft(input: {
 
   const { data: match } = await supabase
     .from("matches")
-    .select("id, competition_id, home_team_id, away_team_id, scheduled_at")
+    .select("id, series_id, competition_id, home_team_id, away_team_id, scheduled_at")
     .eq("id", input.matchId)
     .maybeSingle();
   if (!match) return { success: false, error: "Match introuvable." };
+  // Match du jour pas encore publié : introuvable pour le joueur (cf. lib/queries/dailyVisibility.ts).
+  if (await isMatchHiddenByPublication(supabase, match.series_id as string)) {
+    return { success: false, error: "Match introuvable." };
+  }
 
   // Redondant avec la RLS (match_is_locked), message clair en plus (T6b §3.1).
   if (match.scheduled_at && Date.parse(match.scheduled_at) <= Date.now()) {
@@ -105,6 +110,11 @@ export async function validateMatchPrediction(matchId: string): Promise<ActionRe
   const supabase = await getServerClient();
   const user = await requireUser(supabase);
   if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { data: matchRow } = await supabase.from("matches").select("series_id").eq("id", matchId).maybeSingle();
+  if (matchRow && (await isMatchHiddenByPublication(supabase, matchRow.series_id as string))) {
+    return { success: false, error: "Match introuvable." };
+  }
 
   const { data: existing } = await supabase
     .from("match_predictions")

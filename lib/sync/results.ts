@@ -3,6 +3,7 @@ import { getMatchesByDate, normalizeMatchStatus, sumQuarters, wentToOvertime, ty
 import { nyResultDates } from "@/lib/dates/newyork";
 import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Writer de /api/sync/results (SPEC_TECHNIQUE_SYNCHRO_V0.1 §6/§8). Scope
 // volontairement restreint aux matchs DÉJÀ mappés (entity_mappings, posés par
@@ -28,6 +29,8 @@ export type SyncResultsResult = {
   changed: number;
   unchanged: number;
   skipped: SkippedResultMatch[];
+  /** DAILY_MATCH : matchs du jour non tirés (jamais mappés par construction), comptés au lieu d'être listés. */
+  notDrawn: number;
   failedDates: FailedResultDate[];
   unrecognizedStatuses: UnrecognizedStatus[];
   requestsRemaining: number | null;
@@ -51,6 +54,7 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
     changed: 0,
     unchanged: 0,
     skipped: [],
+    notDrawn: 0,
     failedDates: [],
     unrecognizedStatuses: [],
     requestsRemaining: null,
@@ -98,8 +102,17 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
       : { data: [] as MatchRow[] };
   const matchRowById = new Map<string, MatchRow>((matchRowsData ?? []).map((r) => [r.id as string, r as MatchRow]));
 
+  // En DAILY_MATCH, un seul match par jour est mappé : les autres ne sont pas
+  // une anomalie (30 min x 5 à 15 matchs de bruit dans sync_logs sinon).
+  const { data: activeCompetition } = await supabase
+    .from("competitions")
+    .select("type")
+    .eq("status", "ACTIVE")
+    .maybeSingle<{ type: CompetitionType }>();
+  const isDaily = activeCompetition?.type === "DAILY_MATCH";
+
   for (const rawMatch of rawMatches) {
-    await processOneMatch(supabase, rawMatch, internalIdBySourceRef, matchRowById, result);
+    await processOneMatch(supabase, rawMatch, internalIdBySourceRef, matchRowById, result, isDaily);
   }
 
   return result;
@@ -110,9 +123,14 @@ async function processOneMatch(
   rawMatch: RawMatch,
   internalIdBySourceRef: Map<string, string>,
   matchRowById: Map<string, MatchRow>,
-  result: SyncResultsResult
+  result: SyncResultsResult,
+  isDaily: boolean
 ): Promise<void> {
   const internalId = internalIdBySourceRef.get(String(rawMatch.id));
+  if (!internalId && isDaily) {
+    result.notDrawn++;
+    return;
+  }
   if (!internalId) {
     result.skipped.push({ highlightlyMatchId: rawMatch.id, reason: "match non mappé (schedule ne l'a pas encore attaché)" });
     return;

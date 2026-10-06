@@ -93,9 +93,14 @@
   `Cadrage/Fonctionnel/nba_pronos_cadrage_competition_match_du_jour.md`.
   Les 6 points ouverts du cadrage sont tranchés (voir §8 du
   cadrage, 06/10/2026) : paris ×0,6, publication 10h Paris avec push, tirage
-  aléatoire, tirage par lots. Reste : (1) PR de correctif « veille NY » dans
-  `syncResults` (bug latent, touche aussi les Playoffs), (2) implémenter
-  (4,5-5,5 jours, une conversation dédiée, branche dédiée). Calendrier Highlightly
+  aléatoire, tirage par lots. Correctif « veille NY » livré (PR #126), PR 1/4
+  (base, moteur, types) mergée (#127) et migrations poussées, PR 2/4 (synchro,
+  admin, script de tirage, masquage JS) en cours de revue le 07/10/2026.
+  Reste : PR 3/4 (UI joueur : carte avec jour NY + heure Paris, règles),
+  PR 4/4 (push de 10h groupé avec le récap), puis créer la compétition
+  DAILY_MATCH en admin et lancer le 1er lot de tirage
+  (`node --conditions=react-server --env-file=.env.local scripts/daily-match-draw.mjs --from=... --to=... --dry-run`)
+  avant le 20/10. Calendrier Highlightly
   2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : tirage par lots.
 
 ## Capacité — test de charge

@@ -1,6 +1,7 @@
 import type { AdminSeriesNode } from "@/lib/queries/admin-results";
 import { createMatchFormAction, saveMatchResultFormAction } from "@/lib/actions/admin-results";
 import { DeleteMatchButton } from "./DeleteMatchButton";
+import { parisDateTimeLabel, slotToNyDay } from "@/lib/dates/paris";
 import styles from "./SeriesResultsCard.module.css";
 
 // Une série de l'écran Saisie des résultats (SPEC_ECRAN_ADMIN_RESULTATS_V0_1
@@ -24,6 +25,17 @@ const MATCH_STATUS_OPTIONS: { value: AdminSeriesNode["matches"][number]["status"
   { value: "CANCELLED", label: "Annulé" },
 ];
 
+// Playoffs : best-of-7 ; Cup et Match du jour : une « série » = un seul match.
+const PLAYOFFS_ROUND_KEYS = new Set(["ROUND_1", "CONF_SEMIS", "CONF_FINALS", "NBA_FINALS"]);
+function maxMatchesFor(round: string): number {
+  return PLAYOFFS_ROUND_KEYS.has(round) ? 7 : 1;
+}
+
+function dailyDayLabel(slotIndex: number): string {
+  const [, month, day] = slotToNyDay(slotIndex).split("-");
+  return `${day}/${month}`;
+}
+
 type SeriesResultsCardProps = {
   node: AdminSeriesNode;
   errorMatchId?: string;
@@ -37,12 +49,13 @@ export function SeriesResultsCard({ node, errorMatchId, errorSeriesId, errorMess
     node.team2 !== null &&
     node.officialStatus !== "FINISHED" &&
     node.officialStatus !== "CANCELLED" &&
-    node.matches.length < 7;
+    node.matches.length < maxMatchesFor(node.round);
 
   return (
     <div className={styles.card}>
       <div className={styles.header}>
         <p className={styles.matchup}>
+          {node.round === "DAILY" && `${dailyDayLabel(node.slotIndex)} · `}
           {node.team1 ? node.team1.abbreviation : "Équipe à venir"}
           {" — "}
           {node.team2 ? node.team2.abbreviation : "Équipe à venir"}
@@ -51,6 +64,9 @@ export function SeriesResultsCard({ node, errorMatchId, errorSeriesId, errorMess
           {SERIES_STATUS_LABEL[node.officialStatus]}
         </span>
       </div>
+      {node.hiddenUntil && (
+        <p className={styles.winner}>Masqué aux joueurs jusqu&apos;au {parisDateTimeLabel(node.hiddenUntil)} (heure de Paris).</p>
+      )}
       {node.officialStatus === "FINISHED" && node.officialWinner && (
         <p className={styles.winner}>Vainqueur : {node.officialWinner.abbreviation}</p>
       )}

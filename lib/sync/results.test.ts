@@ -9,12 +9,14 @@ vi.mock("@/lib/scoring/recompute", () => ({ recomputeMatch: vi.fn() }));
 vi.mock("@/lib/scoring/advancement", () => ({ advanceWinnerIfDecided: vi.fn() }));
 
 const updates: unknown[] = [];
+let competitionType = "PLAYOFFS";
 vi.mock("@/lib/supabase/service", () => ({
   getServiceClient: () => ({
     from: (table: string) => {
       const chain = {
         select: () => chain,
         eq: () => chain,
+        maybeSingle: () => Promise.resolve({ data: { type: competitionType } }),
         in: () =>
           Promise.resolve({
             data:
@@ -49,6 +51,7 @@ describe("syncResults — veille NY", () => {
   beforeEach(() => {
     getMatchesByDate.mockReset();
     updates.length = 0;
+    competitionType = "PLAYOFFS";
   });
 
   it("interroge veille puis jour dans la fenêtre de nuit", async () => {
@@ -85,5 +88,21 @@ describe("syncResults — veille NY", () => {
   it("relance l'erreur si toutes les dates échouent", async () => {
     getMatchesByDate.mockRejectedValue(new Error("down"));
     await expect(syncResults(NIGHT)).rejects.toThrow("down");
+  });
+
+  it("DAILY_MATCH : les matchs non mappés sont comptés, pas listés dans skipped", async () => {
+    competitionType = "DAILY_MATCH";
+    getMatchesByDate.mockResolvedValue({ data: [raw(1), raw(2), raw(3)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(r.notDrawn).toBe(2);
+    expect(r.skipped).toEqual([]);
+    expect(r.changed).toBe(1);
+  });
+
+  it("Playoffs : un match non mappé reste listé dans skipped (inchangé)", async () => {
+    getMatchesByDate.mockResolvedValue({ data: [raw(1), raw(2)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(r.notDrawn).toBe(0);
+    expect(r.skipped).toHaveLength(1);
   });
 });

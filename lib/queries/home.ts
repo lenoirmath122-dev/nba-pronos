@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getAllTeams } from "@/lib/queries/teams";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { getRemainingMatchBets } from "@/lib/queries/match-bets";
@@ -364,10 +365,12 @@ async function getMatchesTodo(
 ): Promise<TodoItem | null> {
   const nowIso = new Date().toISOString();
 
+  const hiddenSeries = await hiddenSeriesFilter(supabase);
   const { data: matches } = await supabase
     .from("matches")
     .select("id, scheduled_at, game_number, home_team_id, away_team_id")
     .eq("competition_id", competitionId)
+    .not("series_id", "in", hiddenSeries) // Match du jour : jours non publiés masqués
     .eq("status", "SCHEDULED")
     .not("scheduled_at", "is", null)
     .gt("scheduled_at", nowIso)

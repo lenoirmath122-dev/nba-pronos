@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import type { TeamRef } from "@/lib/queries/matches";
 import type { CompetitionType } from "@/lib/competitions/types";
+import { dailyPublishAt, isDailyDayPublished, slotToNyDay } from "@/lib/dates/paris";
 
 // Lecture de l'écran Saisie des résultats (SPEC_ECRAN_ADMIN_RESULTATS_V0_1
 // §1/§2). Session admin (getServerClient) — series_select/matches_select
@@ -30,6 +31,8 @@ export type AdminSeriesNode = {
   officialStatus: "SCHEDULED" | "IN_PROGRESS" | "FINISHED" | "POSTPONED" | "CANCELLED";
   officialWinner: TeamRef | null;
   matches: AdminMatchRow[];
+  /** Match du jour : ISO de publication aux joueurs tant que le jour n'est pas publié, sinon null. */
+  hiddenUntil: string | null;
 };
 
 export type AdminResultsRound = { key: string; label: string; nodes: AdminSeriesNode[] };
@@ -41,6 +44,7 @@ export type AdminResultsData = {
 
 const PLAYOFFS_ROUNDS = ["ROUND_1", "CONF_SEMIS", "CONF_FINALS", "NBA_FINALS"] as const;
 const CUP_ROUNDS = ["CUP_QUARTERS", "CUP_SEMIS", "CUP_FINAL"] as const;
+const DAILY_ROUNDS = ["DAILY"] as const;
 const CONFERENCE_RANK: Record<string, number> = { EAST: 0, WEST: 1 };
 
 type CompetitionRow = { id: string; type: CompetitionType };
@@ -138,9 +142,14 @@ export async function getAdminResultsData(): Promise<AdminResultsData> {
     officialStatus: s.official_status,
     officialWinner: s.official_winner_team_id ? (teamsById.get(s.official_winner_team_id) ?? null) : null,
     matches: matchesBySeriesId.get(s.id) ?? [],
+    hiddenUntil:
+      s.round === "DAILY" && !isDailyDayPublished(slotToNyDay(s.slot_index), Date.now())
+        ? dailyPublishAt(slotToNyDay(s.slot_index))
+        : null,
   }));
 
-  const roundOrder = competition.type === "PLAYOFFS" ? PLAYOFFS_ROUNDS : CUP_ROUNDS;
+  const roundOrder =
+    competition.type === "PLAYOFFS" ? PLAYOFFS_ROUNDS : competition.type === "DAILY_MATCH" ? DAILY_ROUNDS : CUP_ROUNDS;
   const rounds: AdminResultsRound[] = roundOrder
     .map((roundKey) => ({
       key: roundKey,
