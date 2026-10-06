@@ -1,5 +1,6 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { sendPushToSubscriptions, ttlUntil, type PushSubscriptionRow } from "@/lib/push/send";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Rappel "la deadline du bracket approche" (backlog "Rappels ciblés",
 // PRIORITÉ). Fenêtre de déclenchement (choix d'implémentation, non fixé par
@@ -10,7 +11,7 @@ const WINDOW_HOURS = 24;
 
 type CompetitionRow = {
   id: string;
-  type: "PLAYOFFS" | "NBA_CUP";
+  type: CompetitionType;
   bracket_deadline: string;
 };
 

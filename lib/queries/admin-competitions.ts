@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §1/§2). Lecture seule, session admin (getServerClient) — aucune donnée
@@ -8,7 +9,7 @@ import { getServerClient } from "@/lib/supabase/server";
 export type ActiveCompetitionSummary = {
   id: string;
   name: string;
-  type: "PLAYOFFS" | "NBA_CUP";
+  type: CompetitionType;
   joinCode: string;
 };
 
@@ -26,7 +27,7 @@ export async function getActiveCompetitionSummary(): Promise<ActiveCompetitionSu
     .from("competitions")
     .select("id, name, type")
     .eq("status", "ACTIVE")
-    .maybeSingle<{ id: string; name: string; type: "PLAYOFFS" | "NBA_CUP" }>();
+    .maybeSingle<{ id: string; name: string; type: CompetitionType }>();
   if (!competition) return null;
 
   const { data: secret } = await supabase

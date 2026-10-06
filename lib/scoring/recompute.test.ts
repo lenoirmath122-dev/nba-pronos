@@ -493,3 +493,51 @@ describe("recomputeSeries — idempotence directe (cas 28, variante)", () => {
     expectNoNegative(after1, ["winner_points", "exact_score_points", "matchup_points"]);
   });
 });
+
+// ── Match du jour (DAILY_MATCH) ──────────────────────────────────────────
+
+describe("recomputeBet — Match du jour : paris pondérés ×0,6", () => {
+  it("pari WON niveau 5 → 15 points (au lieu de 25)", async () => {
+    seed("competitions", [{ id: "cd", type: "DAILY_MATCH" }]);
+    seed("bets", [{ id: "betD", competition_id: "cd", status: "WON", validated_difficulty: 5 }]);
+    await recomputeBet("betD");
+    expect(readRow("bets", "betD")?.points_awarded).toBe(15);
+  });
+});
+
+describe("recomputeMatch — Match du jour : la série technique se ferme au premier match fini", () => {
+  it("un seul match FINISHED → série FINISHED avec vainqueur, sans format", async () => {
+    seed("competitions", [{ id: "cd", type: "DAILY_MATCH" }]);
+    seed("series", [
+      {
+        id: "sd",
+        round: "DAILY",
+        competition_id: "cd",
+        official_status: "SCHEDULED",
+        official_winner_team_id: null,
+        official_score_format: null,
+        team1_id: "A",
+        team2_id: "B",
+      },
+    ]);
+    seed("matches", [
+      {
+        id: "md",
+        series_id: "sd",
+        competition_id: "cd",
+        status: "FINISHED",
+        home_team_id: "A",
+        away_team_id: "B",
+        home_score: 100,
+        away_score: 90,
+      },
+    ]);
+    seed("match_predictions", []);
+    await recomputeMatch("md");
+    expect(readRow("series", "sd")).toMatchObject({
+      official_status: "FINISHED",
+      official_winner_team_id: "A",
+      official_score_format: null,
+    });
+  });
+});

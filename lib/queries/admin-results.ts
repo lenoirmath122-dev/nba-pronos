@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import type { TeamRef } from "@/lib/queries/matches";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran Saisie des résultats (SPEC_ECRAN_ADMIN_RESULTATS_V0_1
 // §1/§2). Session admin (getServerClient) — series_select/matches_select
@@ -42,7 +43,7 @@ const PLAYOFFS_ROUNDS = ["ROUND_1", "CONF_SEMIS", "CONF_FINALS", "NBA_FINALS"] a
 const CUP_ROUNDS = ["CUP_QUARTERS", "CUP_SEMIS", "CUP_FINAL"] as const;
 const CONFERENCE_RANK: Record<string, number> = { EAST: 0, WEST: 1 };
 
-type CompetitionRow = { id: string; type: "PLAYOFFS" | "NBA_CUP" };
+type CompetitionRow = { id: string; type: CompetitionType };
 
 type SeriesRow = {
   id: string;

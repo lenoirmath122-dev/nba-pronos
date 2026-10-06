@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran Bracket personnel (remplissage), composants serveur
 // uniquement — SPEC_ECRAN_BRACKET_PERSONNEL_V0_1 §7. Module DISTINCT de
@@ -73,7 +74,7 @@ export type BracketFillRound = { key: string; label: string; series: BracketFill
 
 export type BracketFillData = {
   competitionId: string | null; // null = aucune compétition active
-  competitionType: "PLAYOFFS" | "NBA_CUP";
+  competitionType: CompetitionType;
   isStructureKnown: boolean; // false = 1er tour/8 qualifiés Cup pas encore connus
   deadline: string | null; // ISO
   isDeadlinePassed: boolean;
@@ -105,7 +106,7 @@ const CONFERENCE_RANK: Record<string, number> = { EAST: 0, WEST: 1 };
 
 // Tour "racine" : ses 2 équipes sont OFFICIELLES (team1_id/team2_id), pas
 // dérivées d'un pick. Tous les tours suivants dérivent de la cascade (§3).
-function isRootRound(round: string, competitionType: "PLAYOFFS" | "NBA_CUP"): boolean {
+function isRootRound(round: string, competitionType: CompetitionType): boolean {
   return competitionType === "PLAYOFFS" ? round === "ROUND_1" : round === "CUP_QUARTERS";
 }
 
@@ -124,7 +125,7 @@ export type CascadeSeriesRow = {
 export function computeCandidateTeamIds(
   series: CascadeSeriesRow[],
   myWinnerBySeriesId: Map<string, string | null>,
-  competitionType: "PLAYOFFS" | "NBA_CUP"
+  competitionType: CompetitionType
 ): Map<string, { teamAId: string | null; teamBId: string | null }> {
   const feedersByNextSeriesId = new Map<string, CascadeSeriesRow[]>();
   for (const s of series) {
@@ -152,7 +153,7 @@ export function computeCandidateTeamIds(
   return result;
 }
 
-type CompetitionRow = { id: string; type: "PLAYOFFS" | "NBA_CUP"; bracket_deadline: string | null };
+type CompetitionRow = { id: string; type: CompetitionType; bracket_deadline: string | null };
 
 type SeriesRow = CascadeSeriesRow & { conference: "EAST" | "WEST" | null; slot_index: number };
 

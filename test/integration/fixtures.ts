@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { LOCAL_SUPABASE } from "./env";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Helpers communs aux suites d'intégration (RLS, lib/queries/*) -- extrait de
 // test/integration/rls.test.ts (seule suite existante avant celle-ci) pour
@@ -63,7 +64,7 @@ export async function createSignedInTestUser(
  *  dans vitest.integration.config.ts garantit qu'aucune ne se chevauche. */
 export async function createActiveCompetition(params: {
   runId: string;
-  type?: "PLAYOFFS" | "NBA_CUP";
+  type?: CompetitionType;
   bracketDeadline?: string | null;
 }): Promise<string> {
   const { data, error } = await serviceClient

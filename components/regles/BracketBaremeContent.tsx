@@ -1,5 +1,6 @@
 import { BaremeTable } from "./BaremeTable";
 import styles from "./RuleContent.module.css";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Barème du bracket (Playoffs + NBA Cup) — extrait de app/regles/page.tsx
 // (28/08/2026) pour être réutilisé dans le pop-up d'aide de l'écran Bracket
@@ -9,7 +10,7 @@ import styles from "./RuleContent.module.css";
 // un seul des 2 s'affiche, sans le comparatif "même principe" qui n'a de
 // sens que vu depuis /regles.
 type BracketBaremeContentProps = {
-  competitionType?: "PLAYOFFS" | "NBA_CUP";
+  competitionType?: CompetitionType;
 };
 
 export function BracketBaremeContent({ competitionType }: BracketBaremeContentProps) {

@@ -8,6 +8,7 @@ import { InlineBetForm } from "@/components/bets/InlineBetForm";
 import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
 import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import styles from "./FillSeriesCard.module.css";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Carte de remplissage adaptée à une colonne de poster (16/08/2026,
 // chantier « remplissage en poster interactif ») — extraite de
@@ -37,7 +38,7 @@ function canOfferSeriesBet(series: BracketFillSeries): boolean {
 
 type FillSeriesCardProps = {
   series: BracketFillSeries;
-  competitionType: "PLAYOFFS" | "NBA_CUP";
+  competitionType: CompetitionType;
   isTarget: boolean;
   onError: (message: string | null) => void;
   /** Côté de colonne dans le poster (posterColumns.ts) — décide de quel

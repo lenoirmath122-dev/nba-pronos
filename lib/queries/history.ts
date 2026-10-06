@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de la section "Historique" (Profil, BACKLOG_V1.md « Fun / esprit
 // ligue entre potes »). Composant serveur, RLS seule autorité — competitions
@@ -26,7 +27,7 @@ export type SuperlativeEntry = {
 export type CompetitionHistoryEntry = {
   competitionId: string;
   name: string;
-  type: "PLAYOFFS" | "NBA_CUP";
+  type: CompetitionType;
   archivedAt: string | null;
   superlatives: SuperlativeEntry[];
 };
@@ -34,7 +35,7 @@ export type CompetitionHistoryEntry = {
 type CompetitionRow = {
   id: string;
   name: string;
-  type: "PLAYOFFS" | "NBA_CUP";
+  type: CompetitionType;
   archived_at: string | null;
   created_at: string;
 };
