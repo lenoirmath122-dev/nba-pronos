@@ -513,6 +513,8 @@ défendre au classement.
 → La bêta ouvre en octobre, inscris-toi dans #liste-attente
 ```
 
+> **Périmé depuis le 06/10/2026** : la bêta se joue du 4 au 11/12, pas « en octobre ». Version recalée : `panier_ballon_plan_recrutement_octobre_decembre.md` (annexe, M7 pour Discord, M8 pour Facebook et créateurs).
+
 **Règles (#règles) :**
 ```
 1. Respect entre membres, comme dans n'importe quel groupe de potes élargi.
@@ -608,6 +610,8 @@ fierté à défendre au classement.
 La bêta ouvre en octobre si ça intéresse quelqu'un ici — je suis preneur
 de retours, bons ou mauvais.
 ```
+
+> **Périmé depuis le 06/10/2026** : la bêta se joue du 4 au 11/12, pas « en octobre ». Version recalée : `panier_ballon_plan_recrutement_octobre_decembre.md` (annexe, M7 pour Discord, M8 pour Facebook et créateurs).
 
 **TrashTalk / créateur NBA francophone — premier contact (février) :**
 ```

@@ -77,8 +77,16 @@
   tard ; à ne produire qu'après un cadrage très précis : script, durée,
   fonctionnalités couvertes, format). Récaps du matin : ne pas les mettre en avant avant de les avoir vus
   avec de vraies données.
-- [ ] **D. Recrutement** — mails comparatifs (pronor.fr, zikof.com),
-  créateurs/groupes Facebook, serveur Discord, relance du réseau perso.
+- [ ] **D. Recrutement** — plan écrit le 06/10/2026 dans
+  `Cadrage/Business/panier_ballon_plan_recrutement_octobre_decembre.md`
+  (structure, calendrier, entonnoir, messages-types recalés). Décisions :
+  quelques vrais matchs avant le 4/12 ; le commissaire crée sa ligue ; statut
+  « fondateur » symbolique pour les ambassadeurs (n'existe pas dans l'app,
+  faisabilité à confirmer, ne pas le promettre avant). Reste à faire : cadrer le
+  dispositif « vrais matchs » (faisabilité produit non sondée), écrire le mode
+  d'emploi d'inscription avec captures, créer le tableau de suivi (hors
+  dépôt), envoyer le message aux ambassadeurs le 11/10, puis exécuter le
+  calendrier. Les anciens messages « bêta ouverte en octobre » sont périmés.
 
 ## Capacité — test de charge
 

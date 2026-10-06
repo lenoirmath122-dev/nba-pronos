@@ -296,6 +296,8 @@ bêta. Le message pour les groupes Facebook, en revanche, est déjà écrit pour
 octobre (*« La bêta ouvre en octobre si ça intéresse quelqu'un »*) — celui-là peut
 être repris tel quel du cadrage, pas besoin de le réécrire ici.
 
+> **Mis à jour le 06/10/2026** : le message Facebook ne peut plus être repris tel quel (« la bêta ouvre en octobre » est périmé), et la version créateurs ci-dessous dit « bêta ouverte depuis octobre ». Les deux sont recalés sur la phase finale du 4 au 11/12 dans `panier_ballon_plan_recrutement_octobre_decembre.md` (annexe, M8).
+
 **Version adaptée — micro-créateurs / BasketSession / TrashTalk, contact octobre :**
 
 ```

@@ -87,3 +87,8 @@ créateurs/comparatifs.
 Voir `GAPS_OUVERTS.md`, section « Plan de communication » : C (socle SEO et
 vocabulaire, code), B (contenu Instagram), D (recrutement), chacune dans sa
 propre conversation.
+
+Mise à jour du 06/10/2026 : l'étape D est rédigée dans
+`panier_ballon_plan_recrutement_octobre_decembre.md`, qui tranche le point
+ouvert n°1 du §5 (quelques vrais matchs, dispositif à cadrer) et dont les
+messages-types remplacent ceux du cadrage et de l'élargissement.
