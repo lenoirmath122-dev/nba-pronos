@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { hasBracket } from "@/lib/competitions/types";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { EmptyState } from "@/components/home/EmptyState";
 import { BracketFillView } from "@/components/bracket-fill/BracketFillView";
@@ -23,6 +24,9 @@ export default async function BracketFillPage() {
       </div>
     );
   }
+
+  // Match du jour : pas de bracket (cadrage §5), retour direct sur Jouer.
+  if (!hasBracket(data.competitionType)) redirect("/play");
 
   if (!data.isStructureKnown) {
     const isCup = data.competitionType === "NBA_CUP";

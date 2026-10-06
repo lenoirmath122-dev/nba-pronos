@@ -72,7 +72,11 @@ export default async function PlayResultsPage({ searchParams }: { searchParams: 
         limit={limit}
       />
       <DateStrip dates={data.availableDates} activeDate={filter.date} seriesId={filter.seriesId} leagueId={data.scopeLeagueId} />
-      <FilterBar availableSeries={data.availableSeries} seriesId={filter.seriesId} date={filter.date} leagueId={data.scopeLeagueId} />
+      {/* Match du jour : une série technique par jour, aucun libellé ne doit
+          parler de série (cadrage §5) : pas de filtre Série. */}
+      {data.competitionType !== "DAILY_MATCH" && (
+        <FilterBar availableSeries={data.availableSeries} seriesId={filter.seriesId} date={filter.date} leagueId={data.scopeLeagueId} />
+      )}
 
       {data.rows.length === 0 ? (
         <EmptyState

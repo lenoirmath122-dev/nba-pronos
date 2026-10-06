@@ -4,6 +4,7 @@ import { getMyLeagues } from "@/lib/queries/leagues";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import { EmptyState } from "@/components/home/EmptyState";
 import { BracketSummary } from "@/components/bracket/BracketSummary";
+import { hasBracket } from "@/lib/competitions/types";
 import styles from "./page.module.css";
 import { pageMetadata } from "@/lib/seo";
 
@@ -48,6 +49,13 @@ export default async function BracketPage({ searchParams }: BracketPageProps) {
             <p className={styles.title}>Bracket</p>
           </div>
           <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
+        </>
+      ) : !hasBracket(data.competitionType) ? (
+        <>
+          <div className={`${styles.header} hero-banner`}>
+            <p className={styles.title}>Bracket</p>
+          </div>
+          <EmptyState title="Pas de bracket pour cette compétition" subtitle="Le Match du jour se joue match par match." />
         </>
       ) : !data.isStructureKnown ? (
         <>

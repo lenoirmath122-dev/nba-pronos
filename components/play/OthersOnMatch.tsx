@@ -91,7 +91,7 @@ export function OthersOnMatch({ others, absenteeCount, bets }: OthersOnMatchProp
 }
 
 function OtherBetItem({ bet }: { bet: OtherBet }) {
-  const possiblePoints = possiblePointsLabel(bet.status, bet.difficulty);
+  const possiblePoints = possiblePointsLabel(bet.status, bet.pointsAtStake);
   const isCancelled = bet.status === "CANCELLED";
   const wonPoints = bet.status === "WON" ? bet.pointsAwarded : null;
 

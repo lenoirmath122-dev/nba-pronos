@@ -6,6 +6,7 @@ import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { PlayAssociatedBet, BetStatusValue } from "@/lib/queries/play";
 import type { CompetitionType } from "@/lib/competitions/types";
+import { betDifficultyPoints } from "@/lib/scoring/engine";
 
 // Lecture de l'écran Bracket (vue globale de consultation), composants
 // serveur uniquement — SPEC_ECRAN_CLASSEMENT_BRACKET §15.2. Un seul module,
@@ -438,6 +439,8 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
             refusalReason: activeBet.refusal_reason,
             resolutionReason: activeBet.resolution_reason,
             pointsAwarded: activeBet.points_awarded,
+            pointsAtStake:
+              betDifficultyPoints(competition.type)[activeBet.validated_difficulty ?? activeBet.proposed_difficulty] ?? null,
             // "Pari oublié" (même principe que lib/queries/play.ts) : VALIDATED
             // + série déjà décidée pour de vrai (official_status FINISHED) =
             // aurait dû être résolu (WON/LOST) mais ne l'est pas encore.

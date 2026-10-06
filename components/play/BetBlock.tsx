@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { PlayAssociatedBet } from "@/lib/queries/play";
-import { BET_CATEGORY_OPTIONS, BET_DIFFICULTY_POINTS } from "@/lib/labels/bets";
+import { BET_CATEGORY_OPTIONS } from "@/lib/labels/bets";
 import { requestBetCorrectionFormAction } from "@/lib/actions/bet-corrections";
 import styles from "./BetBlock.module.css";
 
@@ -46,9 +46,8 @@ export function BetStatusPill({ status }: { status: PlayAssociatedBet["status"] 
  *  (ou aurait rapporté), absent jusqu'ici tant qu'il n'était pas gagné.
  *  null quand il n'y a rien à dire (gagné : les points réels suffisent ;
  *  refusé/neutralisé/brouillon : rien n'est en jeu). */
-export function possiblePointsLabel(status: PlayAssociatedBet["status"], difficulty: number): string | null {
-  const points = BET_DIFFICULTY_POINTS[difficulty];
-  if (points === undefined) return null;
+export function possiblePointsLabel(status: PlayAssociatedBet["status"], points: number | null): string | null {
+  if (points === null) return null;
   if (status === "SUBMITTED" || status === "VALIDATED") return `${points} pts en jeu`;
   if (status === "LOST") return `valait ${points} pts`;
   return null;
@@ -71,7 +70,7 @@ type BetBlockProps = {
 
 export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctionError }: BetBlockProps) {
   const isCancelled = bet.status === "CANCELLED";
-  const possiblePoints = possiblePointsLabel(bet.status, bet.difficulty);
+  const possiblePoints = possiblePointsLabel(bet.status, bet.pointsAtStake);
 
   return (
     <div className={styles.card}>

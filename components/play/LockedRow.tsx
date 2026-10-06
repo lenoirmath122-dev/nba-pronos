@@ -69,12 +69,12 @@ export function LockedRow({
             {row.home.abbreviation} – {row.away.abbreviation}
             <TeamLogo abbreviation={row.away.abbreviation} alt={row.away.name} size={24} />
           </span>
-          <span className={styles.gameNumber}>Match {row.gameNumber}</span>
+          <span className={styles.gameNumber}>{row.daily ? row.daily.dayLabel : `Match ${row.gameNumber}`}</span>
           <span className={styles.headerRight}>
             <LiveBadgeAndScore
               matchId={row.matchId}
               fallback={{ liveState: row.liveState, homeScore: row.homeScore, awayScore: row.awayScore }}
-              scheduledAtLabel={formatKickoff(row.scheduledAt)}
+              scheduledAtLabel={row.daily ? row.daily.shortLabel : formatKickoff(row.scheduledAt)}
             />
             <span className={isOpen ? styles.chevronOpen : styles.chevron} aria-hidden="true">
               ▾
