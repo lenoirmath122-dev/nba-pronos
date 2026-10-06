@@ -5,8 +5,8 @@ import { getBrowserClient } from "@/lib/supabase/browser";
 import type { MatchLiveState } from "@/lib/queries/play";
 import styles from "./LiveSubscriber.module.css";
 
-// SEUL composant client portant le live des lignes verrouillées (Mes pronos/
-// recentLocked ET Résultats) : une souscription Realtime UNIQUE sur `matches`,
+// SEUL composant client portant le live des lignes verrouillées (onglet
+// Résultats) : une souscription Realtime UNIQUE sur `matches`,
 // restreinte EN MÉMOIRE aux matchId réellement présents sur la page. Met à
 // jour le CONTENU d'une ligne (statut, score) — JAMAIS l'ordre ni la
 // composition de la liste, qui restent figés au chargement. Ex-

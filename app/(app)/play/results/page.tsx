@@ -8,14 +8,16 @@ import { DateStrip } from "@/components/play/DateStrip";
 import { FilterBar } from "@/components/play/FilterBar";
 import { LeagueScopeChips } from "@/components/play/LeagueScopeChips";
 import { LockedRow } from "@/components/play/LockedRow";
+import { LiveSubscriber } from "@/components/play/LiveSubscriber";
 import { buildResultsPath } from "@/components/play/urls";
 import styles from "./page.module.css";
 
 // Onglet "Résultats" — SPEC_REFONTE_ONGLET_JOUER_V0_1 §5. Remplace le segment
 // "Historique" de l'ex-écran Mes pronos ET le segment "Terminés" de l'ex-
 // écran Mes paris (qui devient une conséquence de la segmentation par match,
-// §5.3 : un pari WON/LOST/REJECTED/CANCELLED sur un match récent reste dans
-// Mes pronos, pas ici). Composant SERVEUR, aucun fetch client.
+// §5.3). Contient tout match commencé (`scheduled_at <= now`), réglé ou en
+// attente du résultat ; Mes pronos ne garde que les matchs à venir.
+// Composant SERVEUR, aucun fetch client.
 //
 // searchParams est une Promise en Next.js 16 — attendue avant lecture.
 type SearchParams = {
@@ -84,19 +86,30 @@ export default async function PlayResultsPage({ searchParams }: { searchParams: 
           subtitle={hasFilter ? "Retire le filtre pour voir tout l'historique." : "Tes pronos apparaîtront ici après le coup d'envoi."}
         />
       ) : (
-        <div className={styles.list}>
-          {data.rows.map((row) => (
-            <LockedRow
-              key={row.matchId}
-              row={row}
-              returnTo={returnTo}
-              forceOpenPredictionCorrection={sp.correctionMatchId === row.matchId}
-              predictionCorrectionError={sp.correctionMatchId === row.matchId ? sp.correctionError : undefined}
-              forceOpenBetCorrection={Boolean(row.bet && sp.betId === row.bet.betId)}
-              betCorrectionError={row.bet && sp.betId === row.bet.betId ? sp.betError : undefined}
-            />
-          ))}
-        </div>
+        <LiveSubscriber
+          seed={data.rows
+            .filter((row) => row.liveState !== "FINISHED" && row.liveState !== "CANCELLED")
+            .map((row) => ({
+              matchId: row.matchId,
+              liveState: row.liveState,
+              homeScore: row.homeScore,
+              awayScore: row.awayScore,
+            }))}
+        >
+          <div className={styles.list}>
+            {data.rows.map((row) => (
+              <LockedRow
+                key={row.matchId}
+                row={row}
+                returnTo={returnTo}
+                forceOpenPredictionCorrection={sp.correctionMatchId === row.matchId}
+                predictionCorrectionError={sp.correctionMatchId === row.matchId ? sp.correctionError : undefined}
+                forceOpenBetCorrection={Boolean(row.bet && sp.betId === row.bet.betId)}
+                betCorrectionError={row.bet && sp.betId === row.bet.betId ? sp.betError : undefined}
+              />
+            ))}
+          </div>
+        </LiveSubscriber>
       )}
 
       {data.hasMore && (

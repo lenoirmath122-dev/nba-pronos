@@ -11,8 +11,8 @@ import { OthersOnMatch } from "./OthersOnMatch";
 import { CorrectionRequestForm } from "./CorrectionRequestForm";
 import styles from "./LockedRow.module.css";
 
-// Ligne d'un match verrouillé — utilisée à la fois par l'onglet Mes pronos
-// (recentLocked, verrouillé < 3j) et l'onglet Résultats. Aucune saisie de
+// Ligne d'un match verrouillé — utilisée par l'onglet Résultats
+// (matchs commencés, réglés ou non). Aucune saisie de
 // prono NI de pari (§3.3 SPEC_REFONTE_ONGLET_JOUER_V0_1 : les deux deadlines
 // coïncident au verrouillage) — cet écran consulte, il ne rouvre rien.
 // Ex-components/my-predictions/MatchRowStatic.tsx.

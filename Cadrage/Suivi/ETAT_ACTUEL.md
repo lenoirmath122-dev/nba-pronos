@@ -176,7 +176,7 @@ jeu (« 15 pts en jeu », « valait 15 pts » s'il est perdu). Le prono
 du joueur s'affiche en bandeau façon bandeau d'info télé (`PronoBug` :
 bloc sombre « Mon prono », coupe en biseau, bande « BOS +3 » à la couleur
 de l'équipe pronostiquée, sous-bandeau avec le détail et le total des
-points), sur les cartes verrouillées (Mes pronos en cours, Résultats) et
+points), sur les cartes verrouillées (onglet Résultats, qui contient tout match commencé) et
 sur un prono validé avant le coup d'envoi ; blocs sombres sur les deux thèmes (tokens
 `--color-broadcast-*`). Les couleurs d'équipe (`lib/labels/teamColors.ts`)
 ne servent qu'à ce bandeau et au bandeau Profil.

@@ -1,12 +1,11 @@
-import type { LockedMatchRow, MatchDay } from "@/lib/queries/play";
+import type { LiveScore, MatchDay } from "@/lib/queries/play";
 import styles from "./LiveTicker.module.css";
 
 // Ticker "en direct" de Jouer/Mes pronos — chantier À L'ESSAI, réversible
 // (AJUSTEMENTS_VISUELS_20_08_2026 §16) : testé en conditions réelles plutôt
 // que débattu plus longtemps (Bracket = lecture pure, Jouer = surtout de
 // l'action ; les deux arguments cohérence/distraction se valaient à la
-// discussion). AUCUNE donnée nouvelle : recompose seulement ce qui est déjà
-// affiché sur cette page (scores des matchs récemment verrouillés + prochain
+// discussion). Recompose ce qui est affiché sur cette page ou dans Résultats (scores des matchs en direct + prochain
 // match encore à pronostiquer) — composant serveur, pas de fetch propre.
 //
 // Réversibilité : rien ailleurs dans le code ne dépend de ce composant.
@@ -26,21 +25,19 @@ const TIME_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 });
 
 type LiveTickerProps = {
-  recentLocked: LockedMatchRow[];
+  liveScores: LiveScore[];
   days: MatchDay[];
 };
 
-export function LiveTicker({ recentLocked, days }: LiveTickerProps) {
-  const scoreItems: TickerItem[] = recentLocked
-    .filter((row) => row.liveState === "LIVE" || row.liveState === "FINISHED")
-    .map((row) => ({
-      kind: "score",
-      key: row.matchId,
-      live: row.liveState === "LIVE",
-      home: row.home.abbreviation,
-      away: row.away.abbreviation,
-      score: row.homeScore !== null && row.awayScore !== null ? `${row.homeScore}–${row.awayScore}` : "—",
-    }));
+export function LiveTicker({ liveScores, days }: LiveTickerProps) {
+  const scoreItems: TickerItem[] = liveScores.map((row) => ({
+    kind: "score",
+    key: row.matchId,
+    live: true,
+    home: row.home,
+    away: row.away,
+    score: row.homeScore !== null && row.awayScore !== null ? `${row.homeScore}–${row.awayScore}` : "—",
+  }));
 
   // "À pronostiquer" = pas encore VALIDATED (TODO/INCOMPLETE/READY comptent
   // toujours comme une action restante) — même sens que "Reste à faire" sur
@@ -86,7 +83,7 @@ export function LiveTicker({ recentLocked, days }: LiveTickerProps) {
 
   return (
     // Restitue uniquement du contenu déjà accessible ailleurs sur cette page
-    // (LockedRow pour les scores, MatchDayGroup pour le prochain match) —
+    // (Résultats pour les scores, MatchDayGroup pour le prochain match) —
     // décoratif, pas de 2e annonce pour les lecteurs d'écran.
     <div className={styles.ticker} aria-hidden="true">
       <div className={styles.track}>

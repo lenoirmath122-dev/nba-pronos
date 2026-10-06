@@ -49,9 +49,8 @@ export async function requestPredictionCorrection(input: {
     return { success: false, error: error.message };
   }
 
-  // Une correction peut viser un match des DEUX onglets (Mes pronos/
-  // recentLocked OU Résultats, SPEC_REFONTE_ONGLET_JOUER_V0_1 §2.1) — les
-  // deux chemins sont invalidés, pas un seul comme avant la fusion.
+  // Une correction peut viser un match verrouillé, désormais toujours dans
+  // Résultats ; /play reste invalidé par prudence.
   revalidatePath("/play");
   revalidatePath("/play/results");
   revalidatePath("/home"); // une requête en attente peut alimenter l'Accueil
@@ -70,7 +69,7 @@ export async function requestPredictionCorrectionFormAction(formData: FormData):
   const justification = String(formData.get("justification") ?? "");
   const proposedWinnerTeamIdRaw = formData.get("proposedWinnerTeamId");
   const proposedMarginRaw = formData.get("proposedMargin");
-  const returnTo = String(formData.get("returnTo") ?? "/play");
+  const returnTo = String(formData.get("returnTo") ?? "/play/results");
 
   const result = await requestPredictionCorrection({
     matchId,

@@ -41,9 +41,8 @@ export async function requestBetCorrection(input: { betId: string; justification
     return { success: false, error: error.message };
   }
 
-  // Le cas "pari oublié" peut se produire sur un match encore dans Mes
-  // pronos (recentLocked, < 3j) OU déjà dans Résultats — les deux chemins
-  // sont invalidés, comme requestPredictionCorrection (corrections.ts).
+  // Le cas "pari oublié" peut se produire sur un match verrouillé (dans Résultats) ;
+  // les deux chemins restent invalidés, comme requestPredictionCorrection.
   revalidatePath("/play");
   revalidatePath("/play/results");
   return { success: true };
@@ -60,7 +59,7 @@ export async function requestBetCorrection(input: { betId: string; justification
 export async function requestBetCorrectionFormAction(formData: FormData): Promise<void> {
   const betId = String(formData.get("betId") ?? "");
   const justification = String(formData.get("justification") ?? "");
-  const returnTo = String(formData.get("returnTo") ?? "/play");
+  const returnTo = String(formData.get("returnTo") ?? "/play/results");
 
   const result = await requestBetCorrection({ betId, justification });
 

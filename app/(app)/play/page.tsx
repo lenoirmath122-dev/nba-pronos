@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { getPlayUpcoming } from "@/lib/queries/play";
 import { EmptyState } from "@/components/home/EmptyState";
 import { PlayTabs } from "@/components/play/PlayTabs";
@@ -7,8 +8,6 @@ import { MatchBaremeGrid } from "@/components/regles/MatchBaremeGrid";
 import { ValidateAllBanner } from "@/components/play/ValidateAllBanner";
 import { MatchDayGroup } from "@/components/play/MatchDayGroup";
 import { BeyondWindowSection } from "@/components/play/BeyondWindowSection";
-import { LockedRow } from "@/components/play/LockedRow";
-import { LiveSubscriber } from "@/components/play/LiveSubscriber";
 import { LiveTicker } from "@/components/play/LiveTicker";
 import { formatPronoRecap } from "@/lib/labels/pronos";
 import styles from "./page.module.css";
@@ -19,16 +18,9 @@ import styles from "./page.module.css";
 // le tri et la dérivation d'état sont déjà calculés par
 // lib/queries/play.ts::getPlayUpcoming ; cette page ne fait que composer.
 //
-// searchParams est une Promise en Next.js 16 — attendue avant lecture.
-type SearchParams = {
-  correctionMatchId?: string;
-  correctionError?: string;
-  betId?: string;
-  betError?: string;
-};
+// Les matchs commencés (réglés ou non) vivent dans l'onglet Résultats.
 
-export default async function PlayUpcomingPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const sp = await searchParams;
+export default async function PlayUpcomingPage() {
   const data = await getPlayUpcoming();
 
   if (!data) {
@@ -43,9 +35,8 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
   }
 
   const hasUpcoming = data.days.length > 0;
-  const hasRecentLocked = data.recentLocked.length > 0;
   const hasBeyondWindow = data.daysBeyondWindow.length > 0;
-  const isEmpty = !hasUpcoming && !hasRecentLocked && !hasBeyondWindow;
+  const isEmpty = !hasUpcoming && !hasBeyondWindow;
 
   const readyMatches = data.days
     .flatMap((day) => day.matches)
@@ -75,8 +66,9 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
 
       {isEmpty ? (
         <EmptyState
-          title="Aucun match à pronostiquer ni à suivre pour l'instant"
+          title="Aucun match à pronostiquer pour l'instant"
           subtitle="Les prochaines affiches s'afficheront ici dès qu'elles seront connues."
+          action={<Link href="/play/results">Voir les résultats</Link>}
         />
       ) : (
         <>
@@ -86,36 +78,11 @@ export default async function PlayUpcomingPage({ searchParams }: { searchParams:
             <MatchDayGroup key={day.key} day={day} />
           ))}
 
-          {hasRecentLocked && (
-            <LiveSubscriber
-              seed={data.recentLocked.map((row) => ({
-                matchId: row.matchId,
-                liveState: row.liveState,
-                homeScore: row.homeScore,
-                awayScore: row.awayScore,
-              }))}
-            >
-              <div className={styles.list}>
-                {data.recentLocked.map((row) => (
-                  <LockedRow
-                    key={row.matchId}
-                    row={row}
-                    returnTo="/play"
-                    forceOpenPredictionCorrection={sp.correctionMatchId === row.matchId}
-                    predictionCorrectionError={sp.correctionMatchId === row.matchId ? sp.correctionError : undefined}
-                    forceOpenBetCorrection={Boolean(row.bet && sp.betId === row.bet.betId)}
-                    betCorrectionError={row.bet && sp.betId === row.bet.betId ? sp.betError : undefined}
-                  />
-                ))}
-              </div>
-            </LiveSubscriber>
-          )}
-
           {hasBeyondWindow && <BeyondWindowSection days={data.daysBeyondWindow} />}
         </>
       )}
 
-      <LiveTicker recentLocked={data.recentLocked} days={data.days} />
+      <LiveTicker liveScores={data.liveScores} days={data.days} />
     </div>
   );
 }
