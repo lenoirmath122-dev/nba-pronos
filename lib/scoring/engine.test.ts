@@ -11,6 +11,8 @@ import {
   scoreMatchPrediction,
   scoreBracketPick,
   scoreBet,
+  BET_DIFFICULTY_POINTS,
+  DAILY_MATCH_BET_DIFFICULTY_POINTS,
   type OfficialMatch,
 } from "./engine";
 
@@ -59,6 +61,33 @@ describe("deriveSeriesOutcome (§4)", () => {
       "NBA_CUP"
     );
     expect(outcome).toEqual({ status: "FINISHED", winnerTeamId: "A", scoreFormat: null });
+  });
+});
+
+describe("deriveSeriesOutcome — Match du jour", () => {
+  it("un match FINISHED → série FINISHED avec vainqueur (pas de logique best-of-7)", () => {
+    const outcome = deriveSeriesOutcome(
+      [match({ id: "m1", homeTeamId: "A", awayTeamId: "B", homeScore: 90, awayScore: 99 })],
+      "DAILY_MATCH"
+    );
+    expect(outcome).toEqual({ status: "FINISHED", winnerTeamId: "B", scoreFormat: null });
+  });
+
+  it("SCHEDULED et CANCELLED sont repris tels quels, sans vainqueur", () => {
+    expect(deriveSeriesOutcome([match({ id: "m1", status: "SCHEDULED" })], "DAILY_MATCH")).toEqual({
+      status: "SCHEDULED",
+      winnerTeamId: null,
+      scoreFormat: null,
+    });
+    expect(deriveSeriesOutcome([match({ id: "m1", status: "CANCELLED" })], "DAILY_MATCH")).toEqual({
+      status: "CANCELLED",
+      winnerTeamId: null,
+      scoreFormat: null,
+    });
+  });
+
+  it("aucun match → SCHEDULED", () => {
+    expect(deriveSeriesOutcome([], "DAILY_MATCH")).toEqual({ status: "SCHEDULED", winnerTeamId: null, scoreFormat: null });
   });
 });
 
@@ -276,6 +305,34 @@ describe("scoreBet (§8)", () => {
     expect(scoreBet({ status: "WON", validatedDifficulty: null })).toEqual({ pointsAwarded: null });
     expect(errorSpy).toHaveBeenCalled();
     errorSpy.mockRestore();
+  });
+});
+
+describe("scoreBet — Match du jour (×0,6)", () => {
+  it("WON niveaux 1 à 5 → 3, 6, 9, 12, 15", () => {
+    const points = [1, 2, 3, 4, 5].map(
+      (d) => scoreBet({ status: "WON", validatedDifficulty: d }, "DAILY_MATCH").pointsAwarded
+    );
+    expect(points).toEqual([3, 6, 9, 12, 15]);
+  });
+
+  it("table littérale = barème standard ×0,6, toujours entier", () => {
+    for (const d of [1, 2, 3, 4, 5]) {
+      expect(DAILY_MATCH_BET_DIFFICULTY_POINTS[d]).toBe(BET_DIFFICULTY_POINTS[d] * 0.6);
+      expect(Number.isInteger(DAILY_MATCH_BET_DIFFICULTY_POINTS[d])).toBe(true);
+    }
+  });
+
+  it("LOST → 0, WON sans difficulté → NULL (anomalie)", () => {
+    expect(scoreBet({ status: "LOST", validatedDifficulty: null }, "DAILY_MATCH")).toEqual({ pointsAwarded: 0 });
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(scoreBet({ status: "WON", validatedDifficulty: null }, "DAILY_MATCH")).toEqual({ pointsAwarded: null });
+    errorSpy.mockRestore();
+  });
+
+  it("sans second argument ou en NBA Cup : barème inchangé", () => {
+    expect(scoreBet({ status: "WON", validatedDifficulty: 5 })).toEqual({ pointsAwarded: 25 });
+    expect(scoreBet({ status: "WON", validatedDifficulty: 5 }, "NBA_CUP")).toEqual({ pointsAwarded: 25 });
   });
 });
 

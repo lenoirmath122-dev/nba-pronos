@@ -12,4 +12,5 @@ export const ROUND_LABELS: Record<string, string> = {
   CUP_QUARTERS: "Quarts de finale",
   CUP_SEMIS: "Demi-finales",
   CUP_FINAL: "Finale",
+  DAILY: "Match du jour",
 };

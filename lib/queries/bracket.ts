@@ -5,6 +5,7 @@ import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { PlayAssociatedBet, BetStatusValue } from "@/lib/queries/play";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran Bracket (vue globale de consultation), composants
 // serveur uniquement — SPEC_ECRAN_CLASSEMENT_BRACKET §15.2. Un seul module,
@@ -114,7 +115,7 @@ export type BracketRound = { key: string; label: string; nodes: BracketNode[] };
 
 export type BracketData = {
   competitionId: string | null;
-  competitionType: "PLAYOFFS" | "NBA_CUP";
+  competitionType: CompetitionType;
   deadline: string | null; // ISO
   isDeadlinePassed: boolean; // pilote §13 (tendances + noms)
   isStructureKnown: boolean; // false = Cup avant qualification des 8
@@ -152,7 +153,7 @@ const CONFERENCE_RANK: Record<string, number> = { EAST: 0, WEST: 1 };
 
 type CompetitionRow = {
   id: string;
-  type: "PLAYOFFS" | "NBA_CUP";
+  type: CompetitionType;
   bracket_deadline: string | null;
 };
 
@@ -533,7 +534,7 @@ type BracketPickRow = {
 async function getFilledPicksAndGroups(
   supabase: SupabaseServerClient,
   competitionId: string,
-  competitionType: "PLAYOFFS" | "NBA_CUP",
+  competitionType: CompetitionType,
   teams: Map<string, { name: string; abbreviation: string }>,
   scopeMemberUserIds: Set<string> | null,
   currentUserId: string | null

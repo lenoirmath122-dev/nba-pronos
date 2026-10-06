@@ -7,6 +7,8 @@
 // L'orchestration (lecture/écriture DB, transactions, déclencheurs) vit
 // dans lib/scoring/recompute.ts — jamais ici.
 
+import { isSingleMatchSeries, type CompetitionType } from "../competitions/types";
+
 // ── Types d'entrée (§3) ──────────────────────────────────────────────────
 
 export type MatchStatusValue = "SCHEDULED" | "IN_PROGRESS" | "FINISHED" | "POSTPONED" | "CANCELLED";
@@ -19,8 +21,9 @@ export type PlayoffRoundValue =
   | "NBA_FINALS"
   | "CUP_QUARTERS"
   | "CUP_SEMIS"
-  | "CUP_FINAL";
-export type CompetitionTypeValue = "PLAYOFFS" | "NBA_CUP";
+  | "CUP_FINAL"
+  | "DAILY";
+export type CompetitionTypeValue = CompetitionType;
 export type BetStatusValue = "DRAFT" | "SUBMITTED" | "VALIDATED" | "REJECTED" | "WON" | "LOST" | "CANCELLED";
 
 /** Résultat officiel figé d'un match (scores DÉJÀ sommés par C-1, T5 §1 A6). */
@@ -76,7 +79,7 @@ export function deriveSeriesOutcome(
   matches: OfficialMatch[],
   competitionType: CompetitionTypeValue
 ): SeriesOutcome {
-  if (competitionType === "NBA_CUP") {
+  if (isSingleMatchSeries(competitionType)) {
     const match = matches[0];
     if (!match) return { status: "SCHEDULED", winnerTeamId: null, scoreFormat: null };
     const winnerTeamId = match.status === "FINISHED" ? matchWinnerTeamId(match) : null;
@@ -300,7 +303,18 @@ export function scoreBracketPick(
 
 export const BET_DIFFICULTY_POINTS: Record<number, number> = { 1: 5, 2: 10, 3: 15, 4: 20, 5: 25 };
 
-export function scoreBet(bet: { status: BetStatusValue; validatedDifficulty: number | null }): BetScore {
+// Match du jour : paris pondérés ×0,6 pour que le prono reste le cœur du jeu
+// (décision du 06/10/2026). Table littérale : pas d'arrondi à calculer.
+export const DAILY_MATCH_BET_DIFFICULTY_POINTS: Record<number, number> = { 1: 3, 2: 6, 3: 9, 4: 12, 5: 15 };
+
+export function betDifficultyPoints(competitionType: CompetitionTypeValue): Record<number, number> {
+  return competitionType === "DAILY_MATCH" ? DAILY_MATCH_BET_DIFFICULTY_POINTS : BET_DIFFICULTY_POINTS;
+}
+
+export function scoreBet(
+  bet: { status: BetStatusValue; validatedDifficulty: number | null },
+  competitionType: CompetitionTypeValue = "PLAYOFFS"
+): BetScore {
   switch (bet.status) {
     case "WON": {
       if (bet.validatedDifficulty === null) {
@@ -309,7 +323,7 @@ export function scoreBet(bet: { status: BetStatusValue; validatedDifficulty: num
         console.error("scoring: pari WON sans validated_difficulty — anomalie, non scoré");
         return { pointsAwarded: null };
       }
-      return { pointsAwarded: BET_DIFFICULTY_POINTS[bet.validatedDifficulty] ?? null };
+      return { pointsAwarded: betDifficultyPoints(competitionType)[bet.validatedDifficulty] ?? null };
     }
     case "LOST":
     case "CANCELLED":

@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import { MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { PrefetchedCompetitionContext } from "@/lib/queries/series-bets";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture DÉDIÉE aux paris MATCH pour l'Accueil — miroir de
 // lib/queries/series-bets.ts::getRemainingSeriesBets() pour le scope MATCH.
@@ -18,7 +19,7 @@ export type RemainingMatchBet = {
   label: string; // « BOS vs MIA · Game 3 · 25/07 21:00 » (Europe/Paris)
 };
 
-type CompetitionRow = { id: string; type: "PLAYOFFS" | "NBA_CUP" };
+type CompetitionRow = { id: string; type: CompetitionType };
 type MatchRow = {
   id: string;
   series_id: string;

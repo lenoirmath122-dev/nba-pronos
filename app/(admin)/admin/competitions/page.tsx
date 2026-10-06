@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getActiveCompetitionSummary } from "@/lib/queries/admin-competitions";
 import { CloseCompetitionButton } from "@/components/admin/CloseCompetitionButton";
 import styles from "./page.module.css";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1, VALIDÉ) —
 // lots 1/3 (création) et 3/3 (clôture/archivage, §9). Lien vers
@@ -10,7 +11,7 @@ import styles from "./page.module.css";
 // "use client" de l'écran (dialogue de confirmation, même patron que
 // RecalculateButton sur le tableau de bord admin).
 
-const TYPE_LABEL: Record<"PLAYOFFS" | "NBA_CUP", string> = { PLAYOFFS: "Playoffs", NBA_CUP: "NBA Cup" };
+const TYPE_LABEL: Record<CompetitionType, string> = { PLAYOFFS: "Playoffs", NBA_CUP: "NBA Cup", DAILY_MATCH: "Match du jour" };
 
 export default async function AdminCompetitionsPage() {
   const competition = await getActiveCompetitionSummary();

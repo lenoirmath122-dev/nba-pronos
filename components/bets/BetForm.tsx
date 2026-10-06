@@ -21,6 +21,7 @@ import type { BetFormBootstrap, EditableBet, MatchOption, NewBetContext, SeriesO
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
 import styles from "./BetForm.module.css";
+import { allowsSeriesBets } from "@/lib/competitions/types";
 import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 
 // SEULE feuille "use client" de l'écran Nouveau pari (§1.1) : porte la saisie
@@ -61,7 +62,7 @@ function isSeriesSelectable(series: SeriesOption, scope: "SERIES" | "MATCH"): bo
 export function BetForm(props: BetFormProps) {
   const router = useRouter();
   const isEdit = props.mode === "EDIT";
-  const isCup = props.bootstrap.competition.kind === "NBA_CUP";
+  const isCup = !allowsSeriesBets(props.bootstrap.competition.kind);
   const initial = useMemo(() => resolveInitialTarget(props), [props]);
 
   const [scope, setScope] = useState<"SERIES" | "MATCH">(isCup ? "MATCH" : initial.scope);

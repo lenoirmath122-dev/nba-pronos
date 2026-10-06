@@ -4,6 +4,7 @@ import { BET_CATEGORY_OPTIONS, MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/l
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { TeamRef } from "@/lib/queries/matches";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran "Nouveau pari" (composants serveur uniquement),
 // SPEC_ECRAN_NOUVEAU_PARI_V0_1 §10. Un seul module, appelé avec
@@ -45,7 +46,7 @@ export type SeriesOption = {
 };
 
 export type BetFormBootstrap = {
-  competition: { id: string; kind: "PLAYOFFS" | "NBA_CUP" };
+  competition: { id: string; kind: CompetitionType };
   categories: { value: BetCategory; label: string }[];
   seriesOptions: SeriesOption[];
 };
@@ -83,7 +84,7 @@ export { MATCH_SLOT_CAP };
 
 type SupabaseServerClient = Awaited<ReturnType<typeof getServerClient>>;
 
-type CompetitionRow = { id: string; type: "PLAYOFFS" | "NBA_CUP" };
+type CompetitionRow = { id: string; type: CompetitionType };
 
 type SeriesRow = {
   id: string;

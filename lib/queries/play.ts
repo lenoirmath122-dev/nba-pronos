@@ -7,6 +7,7 @@ import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorr
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES, MATCH_SLOT_CAP } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture des 2 onglets de "Jouer" (SPEC_REFONTE_ONGLET_JOUER_V0_1) — fusionne
 // l'ancien lib/queries/matches.ts (matchs à venir) + lib/queries/my-predictions.ts
@@ -184,7 +185,7 @@ export type QuotaSummary =
 
 export type PlayUpcomingData = {
   competitionId: string;
-  competitionType: "PLAYOFFS" | "NBA_CUP";
+  competitionType: CompetitionType;
   /** Pas encore verrouillés, groupés par jour — ex-écran Matchs. */
   days: MatchDay[];
   /** Au-delà de la fenêtre de 3 jours (repli replié, jamais compté dans
@@ -220,7 +221,7 @@ export const DEFAULT_RESULTS_LIMIT = 40;
 const DAY_TIMEZONE = "Europe/Paris";
 
 type SupabaseServerClient = Awaited<ReturnType<typeof getServerClient>>;
-type CompetitionRow = { id: string; type: "PLAYOFFS" | "NBA_CUP" };
+type CompetitionRow = { id: string; type: CompetitionType };
 type TeamRow = { id: string; name: string; abbreviation: string };
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null };
 type ActiveUserRow = { id: string; pseudo: string };
@@ -470,14 +471,14 @@ async function fetchUpcomingWindow(
     const ownBet = ownBetByMatch.get(match.id);
     const hasBetOnThisMatch = Boolean(ownBet && !RELEASED_BET_STATUSES.has(ownBet.status));
     const betSlot: BetSlotIndicator =
-      competition.type === "NBA_CUP"
-        ? { mode: "BINARY", hasBetOnThisMatch }
-        : {
+      competition.type === "PLAYOFFS"
+        ? {
             mode: "SERIES_QUOTA",
             hasBetOnThisMatch,
             usedSlots: usedSlotsBySeries.get(match.series_id) ?? 0,
             totalSlots: MATCH_SLOT_CAP as 3,
-          };
+          }
+        : { mode: "BINARY", hasBetOnThisMatch };
 
     cards.push({
       isLocked: false,
@@ -1082,6 +1083,9 @@ async function getQuotas(supabase: SupabaseServerClient, userId: string, competi
   const bets = (betsData ?? []) as QuotaBetRow[];
   const activeBets = bets.filter((b) => !RELEASED_BET_STATUSES.has(b.status));
   if (activeBets.length === 0) return [];
+
+  // Match du jour : pas de quota à afficher (un pari par match, aucun pari série).
+  if (competition.type === "DAILY_MATCH") return [];
 
   if (competition.type === "NBA_CUP") {
     const matchIds = [...new Set(activeBets.map((b) => b.match_id).filter((id): id is string => id !== null))];

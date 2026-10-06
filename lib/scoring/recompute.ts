@@ -275,7 +275,7 @@ export async function recomputeSeries(seriesId: string): Promise<void> {
 
 // ── recomputeBet ─────────────────────────────────────────────────────────
 
-type BetRow = { id: string; status: string; validated_difficulty: number | null };
+type BetRow = { id: string; status: string; validated_difficulty: number | null; competition_id: string };
 
 /** §10.1 : un pari résolu par l'admin (chemin B, §2) — mapping pur
  *  statut+difficulté → points, aucune dépendance série/match. */
@@ -284,15 +284,29 @@ export async function recomputeBet(betId: string): Promise<void> {
 
   const { data: betRow, error } = await supabase
     .from("bets")
-    .select("id, status, validated_difficulty")
+    .select("id, status, validated_difficulty, competition_id")
     .eq("id", betId)
     .single<BetRow>();
   if (error || !betRow) throw new Error(`recomputeBet : pari ${betId} introuvable (${error?.message})`);
 
-  const score = scoreBet({
-    status: betRow.status as Parameters<typeof scoreBet>[0]["status"],
-    validatedDifficulty: betRow.validated_difficulty,
-  });
+  // Une ERREUR de lecture lève (pas de repli silencieux sur PLAYOFFS : un mauvais
+  // barème serait écrit sans alerte). Ligne absente impossible en prod (FK NOT NULL).
+  const { data: competitionRow, error: competitionErr } = await supabase
+    .from("competitions")
+    .select("type")
+    .eq("id", betRow.competition_id)
+    .maybeSingle<{ type: CompetitionTypeValue }>();
+  if (competitionErr) {
+    throw new Error(`recomputeBet : lecture de la compétition ${betRow.competition_id} impossible (${competitionErr.message})`);
+  }
+
+  const score = scoreBet(
+    {
+      status: betRow.status as Parameters<typeof scoreBet>[0]["status"],
+      validatedDifficulty: betRow.validated_difficulty,
+    },
+    competitionRow?.type ?? "PLAYOFFS"
+  );
 
   await supabase
     .from("bets")

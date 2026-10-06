@@ -9,6 +9,7 @@ import { logAdminAction } from "@/lib/actions/audit";
 import { assignRanks } from "@/lib/scoring/ranking";
 import { computeSuperlatives } from "@/lib/scoring/superlatives";
 import { toClientError } from "@/lib/actions/errors";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -37,7 +38,7 @@ const CUP_QUARTER_SLOTS = ["q1", "q2", "q3", "q4"] as const;
 
 export async function createCompetition(input: {
   name: string;
-  type: "PLAYOFFS" | "NBA_CUP";
+  type: CompetitionType;
   round1Matchups?: [string, string][]; // 8 paires, ordre ROUND1_SLOTS — Playoffs uniquement
   cupQuarterMatchups?: [string, string][]; // 4 paires, ordre CUP_QUARTER_SLOTS — NBA Cup uniquement
 }): Promise<ActionResult> {
@@ -233,7 +234,7 @@ async function createCupBracket(competitionId: string, matchups: [string, string
  */
 export async function createCompetitionFormAction(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "");
-  const type = String(formData.get("type") ?? "") as "PLAYOFFS" | "NBA_CUP";
+  const type = String(formData.get("type") ?? "") as CompetitionType;
 
   let round1Matchups: [string, string][] | undefined;
   if (type === "PLAYOFFS") {

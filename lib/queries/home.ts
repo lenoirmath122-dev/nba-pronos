@@ -7,6 +7,7 @@ import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDateKey } from "@/lib/dates/paris";
 import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
 import { getHomeRecap, type HomeRecap } from "@/lib/recaps/home";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
 // §7. Un seul module, appelé avec getServerClient() : les requêtes passent par
@@ -110,7 +111,7 @@ const EMPTY_HOME_DATA: HomeData = {
 type CompetitionRow = {
   id: string;
   name: string;
-  type: "PLAYOFFS" | "NBA_CUP";
+  type: CompetitionType;
   bracket_deadline: string | null;
 };
 

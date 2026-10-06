@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture DÉDIÉE aux paris SÉRIES pour l'Accueil et le hub Jouer — DISTINCT de
 // lib/queries/bracket-fill.ts::computeCandidateTeamIds, qui dérive les
@@ -24,7 +25,7 @@ export type RemainingSeriesBet = {
   teamB: { abbreviation: string };
 };
 
-type CompetitionRow = { id: string; type: "PLAYOFFS" | "NBA_CUP" };
+type CompetitionRow = { id: string; type: CompetitionType };
 type SeriesRow = { id: string; round: string; team1_id: string | null; team2_id: string | null };
 type TeamRow = { id: string; abbreviation: string };
 type SeriesBetRow = { series_id: string; status: string };
