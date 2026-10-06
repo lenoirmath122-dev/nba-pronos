@@ -91,8 +91,11 @@
   (un match tiré par jour, 20/10 ou repli 01/11 → ~27/11, barème dédié avec
   paris pondérés, un pari perso par match), voir
   `Cadrage/Fonctionnel/nba_pronos_cadrage_competition_match_du_jour.md`.
-  Reste : implémenter (4-5 jours, une conversation dédiée, branche dédiée),
-  après avoir tranché les 6 points du §8 du cadrage. Calendrier Highlightly
+  Les 6 points ouverts du cadrage sont tranchés (voir §8 du
+  cadrage, 06/10/2026) : paris ×0,6, publication 10h Paris avec push, tirage
+  aléatoire, tirage par lots. Reste : (1) PR de correctif « veille NY » dans
+  `syncResults` (bug latent, touche aussi les Playoffs), (2) implémenter
+  (4,5-5,5 jours, une conversation dédiée, branche dédiée). Calendrier Highlightly
   2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : tirage par lots.
 
 ## Capacité — test de charge

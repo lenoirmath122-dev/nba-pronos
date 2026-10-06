@@ -96,12 +96,40 @@ DB 0,5 j · moteur et sync 0,5 j · script de tirage 1 j · UI et règles 1,5 j 
 admin 0,5 j · tests d'intégration 0,5-1 j (Docker : demander à l'utilisateur
 avant, voir sa règle).
 
-## 8. Points encore à cadrer (prochaine conversation, avant de coder)
+## 8. Points tranchés le 06/10/2026 (seconde session)
 
-1. Coefficient exact de pondération des paris et page de règles dédiée.
-2. Heure de publication du match du jour (matchs US la nuit côté France) et
-   règle si un seul match tombe tôt dans la journée.
-3. Tirage purement aléatoire, ou garde-fou (veto admin, pondération par intérêt).
-4. Message aux joueurs sur le décalage New York / Paris.
-5. Vérifier le risque « match fini après minuit ET » (§6).
-6. Quota API : séquencer les lots de tirage.
+1. **Pondération des paris : ×0,6** (3 / 6 / 9 / 12 / 15 pts, entiers, un pari
+   max = un prono max). Section dédiée « Match du jour » dans `/regles`,
+   affichée seulement quand ce type de compétition est actif.
+2. **Publication à 10h Paris le jour NY du match, avec notification push.**
+   Tous les matchs NBA démarrent vers 18h Paris au plus tôt : la fenêtre est
+   toujours d'au moins 8h, aucune règle spéciale pour un match tôt. Les matchs
+   tirés pour des jours futurs doivent être **masqués côté joueur** (filtre de
+   date : la RLS les laisserait visibles). Le push réutilise l'infrastructure
+   des récaps (`lib/push/send.ts`, workflow à 10h Paris). À trancher à
+   l'implémentation : un push séparé du récap, ou un seul push groupé, pour ne
+   pas envoyer deux notifications à la même heure.
+3. **Tirage aléatoire pur**, retirage admin possible avant publication
+   (`--dry-run`, graine journalisée). Pas de pondération par intérêt.
+4. **Décalage New York / Paris** : la carte affiche « Match du JJ/MM » (jour
+   NY) et l'heure Paris ; si le coup d'envoi passe minuit à Paris, un
+   sous-titre ajoute « dans la nuit du JJ au JJ+1 ». Une phrase d'explication
+   dans les règles.
+5. **Match fini après minuit ET : risque confirmé** (`lib/sync/results.ts:53`
+   n'interroge que la date NY du jour, cron toutes les 30 min). Correctif
+   retenu : interroger **aussi la veille NY** pendant les premières heures NY
+   (~12 requêtes/jour de plus). Touche aussi les Playoffs : **PR séparée,
+   avant le Match du jour**.
+6. **Quota API : tirage par lots de 7 à 10 jours**, lancés un soir où les
+   crons consomment peu. Premier lot avant le 20/10 (calendrier publié
+   jusqu'au 07/11 au moins), second quand Highlightly charge la suite.
+
+Effort : +0,5 j pour la notification (total estimé 4,5 à 5,5 jours) et une
+petite PR distincte pour le correctif du point 5.
+
+## 9. Suite
+
+1. PR de correctif « veille NY » (point 5), indépendante.
+2. Implémentation du type `DAILY_MATCH` (§5), conversation et branche dédiées.
+3. Premier lot de tirage avant le 20/10, repli au 01/11 si l'implémentation
+   n'est pas prête.
