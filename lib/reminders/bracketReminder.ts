@@ -1,6 +1,6 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { sendPushToSubscriptions, ttlUntil, type PushSubscriptionRow } from "@/lib/push/send";
-import type { CompetitionType } from "@/lib/competitions/types";
+import { hasBracket, type CompetitionType } from "@/lib/competitions/types";
 
 // Rappel "la deadline du bracket approche" (backlog "Rappels ciblés",
 // PRIORITÉ). Fenêtre de déclenchement (choix d'implémentation, non fixé par
@@ -28,7 +28,8 @@ export async function runBracketReminder(): Promise<{ notified: number }> {
     .gt("bracket_deadline", new Date(now).toISOString())
     .lte("bracket_deadline", windowEnd);
 
-  const competitions = (competitionsData ?? []) as CompetitionRow[];
+  // Le Match du jour n'a pas de bracket : jamais de rappel de bracket.
+  const competitions = ((competitionsData ?? []) as CompetitionRow[]).filter((c) => hasBracket(c.type));
   if (competitions.length === 0) return { notified: 0 };
 
   const { data: activeUsersData } = await supabase

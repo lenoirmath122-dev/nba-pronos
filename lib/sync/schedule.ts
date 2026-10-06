@@ -1,6 +1,8 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { getMatchesByDate, normalizeMatchStatus, type RawMatch } from "@/lib/nba/client";
 import { nyDateString } from "@/lib/dates/newyork";
+import { nyDayToSlot } from "@/lib/dates/paris";
+import type { CompetitionType } from "@/lib/competitions/types";
 
 // Writer de /api/sync/schedule (SPEC_TECHNIQUE_SYNCHRO_V0.1 §5/§6, correctif
 // post-validation §5.2/§12 — voir la discussion tenue avec l'utilisateur le
@@ -19,6 +21,10 @@ import { nyDateString } from "@/lib/dates/newyork";
 //   internal_id est NOT NULL, un match jamais vu n'a justement AUCUNE ligne
 //   interne à pointer ; aucun écran de ce type n'a jamais été spécifié, voir
 //   GAPS_OUVERTS.md).
+// - compétition DAILY_MATCH : seul le match TIRÉ (script daily-match-draw,
+//   mappé d'emblée) existe. Le chemin « match jamais vu » est entièrement
+//   court-circuité : les 5 à 15 autres matchs du jour ne sont ni créés, ni
+//   rattachés à une série technique, ni journalisés un par un (compteur).
 
 const SYNC_HORIZON_DAYS = 4; // §12.5 : fenêtre 3 j de pronos + 1 j de marge.
 const LOCKED_SERIES_STATUSES = new Set(["FINISHED", "CANCELLED"]);
@@ -29,6 +35,7 @@ type SeriesRow = {
   team1_id: string | null;
   team2_id: string | null;
   official_status: string;
+  slot_index: number | null;
 };
 
 export type SkippedMatch = { highlightlyMatchId: number; reason: string };
@@ -40,9 +47,17 @@ export type SkippedMatch = { highlightlyMatchId: number; reason: string };
 // sans trace. Désormais collecté et remonté dans sync_logs (voir la route).
 export type UnrecognizedStatus = { highlightlyMatchId: number; description: string };
 
+// DAILY_MATCH : un match mappé dont le jour NY ne correspond plus au jour
+// tiré de sa série (report). Seulement journalisé : la publication reste
+// calée sur le jour du tirage, l'admin décide quoi faire.
+export type DayMovedMatch = { highlightlyMatchId: number; slotDay: string; newNyDay: string };
+
 export type SyncScheduleResult = {
   updated: number;
   created: number;
+  /** DAILY_MATCH : matchs du calendrier non tirés, ignorés (jamais créés). */
+  ignoredNotDrawn: number;
+  dayMoved: DayMovedMatch[];
   skipped: SkippedMatch[];
   unrecognizedStatuses: UnrecognizedStatus[];
   requestsRemaining: number | null;
@@ -76,6 +91,8 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
   const result: SyncScheduleResult = {
     updated: 0,
     created: 0,
+    ignoredNotDrawn: 0,
+    dayMoved: [],
     skipped: [],
     unrecognizedStatuses: [],
     requestsRemaining: null,
@@ -83,10 +100,11 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
 
   const { data: activeCompetition } = await supabase
     .from("competitions")
-    .select("id")
+    .select("id, type")
     .eq("status", "ACTIVE")
-    .maybeSingle<{ id: string }>();
+    .maybeSingle<{ id: string; type: CompetitionType }>();
   if (!activeCompetition) return result; // rien à attacher sans compétition active.
+  const isDaily = activeCompetition.type === "DAILY_MATCH";
 
   const allMatches: RawMatch[] = [];
   for (const date of horizonDates(referenceDate, SYNC_HORIZON_DAYS)) {
@@ -98,7 +116,7 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
   const [{ data: teamMapData }, { data: matchMapData }, { data: seriesData }] = await Promise.all([
     supabase.from("entity_mappings").select("internal_id, source_ref").eq("entity_type", "TEAM").eq("source_type", "HIGHLIGHTLY"),
     supabase.from("entity_mappings").select("internal_id, source_ref").eq("entity_type", "MATCH").eq("source_type", "HIGHLIGHTLY"),
-    supabase.from("series").select("id, competition_id, team1_id, team2_id, official_status").eq("competition_id", activeCompetition.id),
+    supabase.from("series").select("id, competition_id, team1_id, team2_id, official_status, slot_index").eq("competition_id", activeCompetition.id),
   ]);
 
   const teamInternalIdBySourceRef = new Map<string, string>(
@@ -111,13 +129,16 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
 
   const { data: matchCountData } = await supabase
     .from("matches")
-    .select("series_id")
+    .select("id, series_id")
     .in("series_id", allSeries.map((s) => s.id));
   const matchCountBySeries = new Map<string, number>();
+  const seriesIdByMatchId = new Map<string, string>();
   for (const row of matchCountData ?? []) {
     const seriesId = row.series_id as string;
     matchCountBySeries.set(seriesId, (matchCountBySeries.get(seriesId) ?? 0) + 1);
+    seriesIdByMatchId.set(row.id as string, seriesId);
   }
+  const slotBySeriesId = new Map<string, number | null>(allSeries.map((s) => [s.id, s.slot_index]));
 
   for (const match of allMatches) {
     const sourceRef = String(match.id);
@@ -133,6 +154,18 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
         .update({ scheduled_at: match.date, status })
         .eq("id", existingInternalId);
       if (!error) result.updated++;
+      if (isDaily) {
+        const slot = slotBySeriesId.get(seriesIdByMatchId.get(existingInternalId) ?? "");
+        const newNyDay = nyDateString(new Date(match.date));
+        if (slot != null && nyDayToSlot(newNyDay) !== slot) {
+          result.dayMoved.push({ highlightlyMatchId: match.id, slotDay: String(slot), newNyDay });
+        }
+      }
+      continue;
+    }
+
+    if (isDaily) {
+      result.ignoredNotDrawn++;
       continue;
     }
 

@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getAllTeams } from "@/lib/queries/teams";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDayBoundsUtc, parisDateKey } from "@/lib/dates/paris";
@@ -384,10 +385,12 @@ async function fetchUpcomingWindow(
   // Cup alpha) n'apparaissait NULLE PART avant J-3, pas même dans un repli.
   // Sans effet en saison réelle (l'horizon de synchro s'arrête à 4 jours,
   // ce select ne ramenait déjà quasiment jamais rien au-delà de la fenêtre).
+  const hiddenSeries = await hiddenSeriesFilter(supabase);
   const { data: matchesData } = await supabase
     .from("matches")
     .select("id, series_id, scheduled_at, home_team_id, away_team_id")
     .eq("competition_id", competition.id)
+    .not("series_id", "in", hiddenSeries) // Match du jour : jours non publiés masqués
     .not("scheduled_at", "is", null)
     .gt("scheduled_at", nowIso)
     .order("scheduled_at", { ascending: true });

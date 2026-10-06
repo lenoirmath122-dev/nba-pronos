@@ -64,6 +64,12 @@ export default async function NewCompetitionPage({
           <label className={styles.radioLabel}>
             <input type="radio" name="type" value="NBA_CUP" /> NBA Cup
           </label>
+          <label className={styles.radioLabel}>
+            <input type="radio" name="type" value="DAILY_MATCH" /> Match du jour
+          </label>
+          <p className={styles.sectionNote}>
+            « Match du jour » : aucune affiche à saisir, les matchs sont tirés par scripts/daily-match-draw.mjs.
+          </p>
         </fieldset>
 
         <div className={styles.playoffsSection}>

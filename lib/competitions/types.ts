@@ -18,3 +18,8 @@ export function allowsSeriesBets(type: CompetitionType): boolean {
 export function isSingleMatchSeries(type: CompetitionType): boolean {
   return type !== "PLAYOFFS";
 }
+
+/** Liste blanche pour une valeur venue d'un FormData (jamais de `as` direct). */
+export function isCompetitionType(value: unknown): value is CompetitionType {
+  return value === "PLAYOFFS" || value === "NBA_CUP" || value === "DAILY_MATCH";
+}

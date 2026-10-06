@@ -9,7 +9,7 @@ import { logAdminAction } from "@/lib/actions/audit";
 import { assignRanks } from "@/lib/scoring/ranking";
 import { computeSuperlatives } from "@/lib/scoring/superlatives";
 import { toClientError } from "@/lib/actions/errors";
-import type { CompetitionType } from "@/lib/competitions/types";
+import { isCompetitionType, type CompetitionType } from "@/lib/competitions/types";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -234,7 +234,11 @@ async function createCupBracket(competitionId: string, matchups: [string, string
  */
 export async function createCompetitionFormAction(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "");
-  const type = String(formData.get("type") ?? "") as CompetitionType;
+  const rawType = formData.get("type");
+  if (!isCompetitionType(rawType)) {
+    redirect(`/admin/competitions/new?competitionError=${encodeURIComponent("Type de compétition invalide.")}`);
+  }
+  const type: CompetitionType = rawType;
 
   let round1Matchups: [string, string][] | undefined;
   if (type === "PLAYOFFS") {

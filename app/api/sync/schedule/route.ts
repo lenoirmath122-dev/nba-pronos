@@ -29,6 +29,12 @@ async function handle(request: Request): Promise<Response> {
       (result.skipped.length > 0
         ? ` Ignorés : ${result.skipped.map((s) => `#${s.highlightlyMatchId} (${s.reason})`).join("; ")}.`
         : "") +
+      (result.ignoredNotDrawn > 0 ? ` ${result.ignoredNotDrawn} match(s) non tiré(s) ignoré(s) (Match du jour).` : "") +
+      (result.dayMoved.length > 0
+        ? ` Match du jour déplacé de jour NY : ${result.dayMoved
+            .map((d) => `#${d.highlightlyMatchId} (tiré ${d.slotDay}, désormais ${d.newNyDay})`)
+            .join("; ")}.`
+        : "") +
       (result.unrecognizedStatuses.length > 0
         ? ` Statuts Highlightly non reconnus (retombés sur IN_PROGRESS) : ${result.unrecognizedStatuses
             .map((s) => `#${s.highlightlyMatchId} ("${s.description}")`)

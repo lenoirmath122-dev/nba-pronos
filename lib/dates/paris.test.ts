@@ -7,7 +7,7 @@
 // 25/10/2026 (dernier dimanche d'octobre, CEST +2 -> CET +1).
 
 import { describe, it, expect } from "vitest";
-import { parisDayBoundsUtc, parisLocalToUtcIso, parisDateKey, parisDateTimeLabel } from "./paris";
+import { parisDayBoundsUtc, parisLocalToUtcIso, parisDateKey, parisDateTimeLabel, nyDayToSlot, slotToNyDay, dailyPublishAt, isDailyDayPublished } from "./paris";
 
 describe("parisDayBoundsUtc — offset dynamique autour de la bascule DST", () => {
   it("veille du passage à l'heure d'été (28/03/2026) -> encore CET (+1h)", () => {
@@ -55,5 +55,33 @@ describe("parisDateKey / parisDateTimeLabel — sanité de part et d'autre de la
 
   it("parisDateTimeLabel formate en JJ/MM HH:mm heure locale Paris (été)", () => {
     expect(parisDateTimeLabel("2026-07-15T12:00:00.000Z")).toBe("15/07 14:00");
+  });
+});
+
+describe("publication du Match du jour (10h Paris, jour NY)", () => {
+  it("convertit jour NY <-> slot_index", () => {
+    expect(nyDayToSlot("2026-10-20")).toBe(20261020);
+    expect(slotToNyDay(20261020)).toBe("2026-10-20");
+  });
+
+  it("été (CEST) : 10h Paris = 08:00Z", () => {
+    expect(dailyPublishAt("2026-10-24")).toBe("2026-10-24T08:00:00.000Z");
+  });
+
+  it("jour du retour à l'heure d'hiver Paris (25/10) : 10h CET = 09:00Z", () => {
+    expect(dailyPublishAt("2026-10-25")).toBe("2026-10-25T09:00:00.000Z");
+    expect(dailyPublishAt("2026-11-02")).toBe("2026-11-02T09:00:00.000Z");
+  });
+
+  it("borne exacte à 10:00:00 Paris", () => {
+    const at = Date.parse("2026-10-24T08:00:00.000Z");
+    expect(isDailyDayPublished("2026-10-24", at - 1)).toBe(false);
+    expect(isDailyDayPublished("2026-10-24", at)).toBe(true);
+  });
+
+  it("un jour NY futur n'est pas publié, un jour passé l'est", () => {
+    const now = Date.parse("2026-10-24T12:00:00.000Z");
+    expect(isDailyDayPublished("2026-10-25", now)).toBe(false);
+    expect(isDailyDayPublished("2026-10-23", now)).toBe(true);
   });
 });
