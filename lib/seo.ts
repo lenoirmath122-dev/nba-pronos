@@ -10,11 +10,14 @@ export const HOME_TITLE = `${SITE_NAME} — Pronostics et paris NBA entre amis`;
 // Image d'aperçu unique, partagée par le layout racine et pageMetadata() :
 // Next fusionne les métadonnées de façon SUPERFICIELLE (un `openGraph` défini
 // par une page remplace tout celui du layout, `images` compris), donc chaque
-// page doit les reporter. Carré -> carte "summary". Quand le nouveau logo et
-// une image 1200x630 existeront, ne changer que ces constantes (et passer
-// TWITTER_CARD à "summary_large_image").
-export const OG_IMAGE = { url: "/icons/icon-512.png", width: 512, height: 512 };
-export const TWITTER_CARD = "summary" as const;
+// page doit les reporter. Image 1200x630 -> carte "summary_large_image".
+export const OG_IMAGE = {
+  url: "/og-image.png",
+  width: 1200,
+  height: 630,
+  alt: "Panier Ballon",
+};
+export const TWITTER_CARD = "summary_large_image" as const;
 
 type PageMetadataInput = {
   title: string;
