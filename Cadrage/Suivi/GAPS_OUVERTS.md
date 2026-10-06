@@ -109,9 +109,10 @@
   (`TodoRow`, `lib/queries/match-bets.ts`) ; `lib/queries/admin-resolution.ts`
   calcule `pointsAtStake` avec le barème Playoffs. **À faire après la PR 5
   (décidé le 07/10/2026) : mettre à jour la feuille de route** (tracker
-  artifact) pour y refléter le chantier Match du jour (PR 1 à 5, création de la
-  compétition, tirages) ; contenu exact de la modification à préciser à ce
-  moment-là. Calendrier Highlightly
+  artifact) : (1) y faire apparaître tout le chantier Match du jour (PR 1 à 5,
+  création de la compétition, tirages) ; (2) y intégrer cette nouvelle
+  « compétition » de pré-Cup (DAILY_MATCH, ~20/10 → ~27/11) comme étape à part
+  entière entre l'alpha et la vraie NBA Cup. Calendrier Highlightly
   2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : tirage par lots.
 
 ## Capacité — test de charge
