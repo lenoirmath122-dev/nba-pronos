@@ -1,0 +1,101 @@
+name: Tirage du match du jour
+
+# Appelle /api/daily-match/draw (PR 5) : tire à l'avance les prochains matchs du
+# jour (DAILY_MATCH). Deux passages (5h et 7h UTC), tous deux avant la
+# publication de 10h Paris été comme hiver et avant recaps.yml (8h/9h UTC) ; le
+# second rattrape un échec du premier, l'idempotence évite tout double tirage.
+# La route ne fait rien avant le 18/10/2026 (date vérifiée dans le code, pas ici).
+# Le cron n'envoie jamais de push : c'est recaps.yml.
+#
+# Lancement manuel : lot from/to, `override` pour ignorer les bornes de la
+# compétition et le contrôle « jour déjà publié » (test), `push_only_me` pour
+# envoyer ensuite le récap au seul compte du propriétaire (OWNER_USER_ID).
+on:
+  schedule:
+    - cron: "0 5,7 * * *"
+  workflow_dispatch:
+    inputs:
+      from:
+        description: "Premier jour NY à tirer (YYYY-MM-DD). Vide = mode cron."
+        required: false
+        type: string
+      to:
+        description: "Dernier jour NY à tirer (YYYY-MM-DD)"
+        required: false
+        type: string
+      override:
+        description: "Ignorer les bornes de la compétition et le contrôle « publié » (à cocher pour le test sur un jour courant)"
+        type: boolean
+        default: false
+      dry_run:
+        description: "Simulation, aucune écriture"
+        type: boolean
+        default: false
+      push_only_me:
+        description: "Envoyer ensuite le récap au seul compte du propriétaire"
+        type: boolean
+        default: false
+
+concurrency:
+  group: daily-match-draw
+  cancel-in-progress: false
+
+jobs:
+  call:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+    steps:
+      - name: Appeler /api/daily-match/draw
+        env:
+          INPUT_FROM: ${{ inputs.from }}
+          INPUT_TO: ${{ inputs.to }}
+          INPUT_OVERRIDE: ${{ inputs.override }}
+          INPUT_DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          query=""
+          if [ -n "$INPUT_FROM" ] || [ -n "$INPUT_TO" ]; then
+            date_re='^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+            if ! [[ "$INPUT_FROM" =~ $date_re && "$INPUT_TO" =~ $date_re ]]; then
+              echo "from et to doivent être au format YYYY-MM-DD." >&2
+              exit 1
+            fi
+            query="?from=${INPUT_FROM}&to=${INPUT_TO}"
+            if [ "$INPUT_OVERRIDE" = "true" ]; then query="${query}&override=1"; fi
+            if [ "$INPUT_DRY_RUN" = "true" ]; then query="${query}&dry_run=1"; fi
+          fi
+          curl --fail-with-body --show-error --silent --max-time 120 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/daily-match/draw${query}"
+
+      - name: Récap au seul propriétaire
+        if: ${{ inputs.push_only_me }}
+        run: |
+          curl --fail-with-body --show-error --silent --max-time 60 \
+            -X POST \
+            -H "Authorization: Bearer ${{ secrets.SYNC_SECRET }}" \
+            "https://nba-pronos.vercel.app/api/recaps?force=1&only_owner=1"
+
+      # Même alerte minimale que recaps.yml : une issue GitHub dédupliquée par
+      # titre. Seulement pour les exécutions planifiées.
+      - name: Alerter en cas d'échec
+        if: failure() && github.event_name == 'schedule'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = "Échec planifié : Tirage du match du jour";
+            const { data: existing } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "cron-failure",
+            });
+            if (existing.some((issue) => issue.title === title)) return;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title,
+              labels: ["cron-failure"],
+              body: `Le workflow planifié a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            });

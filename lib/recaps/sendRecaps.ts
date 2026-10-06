@@ -23,9 +23,15 @@ export type RecapRunResult = {
   kind?: string;
   notified: number;
   candidates: number;
+  onlyUser?: boolean;
 };
 
-export async function runRecaps(nowMs: number = Date.now(), options: { force?: boolean } = {}): Promise<RecapRunResult> {
+// `onlyUserId` restreint l'envoi à un seul compte (test manuel) : il ne fait
+// que RÉDUIRE l'audience, tous les autres filtres et la déduplication restent.
+export async function runRecaps(
+  nowMs: number = Date.now(),
+  options: { force?: boolean; onlyUserId?: string } = {}
+): Promise<RecapRunResult> {
   const recapDate = parisDateKey(nowMs);
   const boundaryMs = Date.parse(recapBoundaryIso(recapDate));
   if (!options.force) {
@@ -49,12 +55,14 @@ export async function runRecaps(nowMs: number = Date.now(), options: { force?: b
 
   const kind = recapKindFor(recapDate);
 
-  const { data: usersData } = await supabase
+  let usersQuery = supabase
     .from("users")
     .select("id")
     .eq("status", "ACTIVE")
     .eq("notification_preference", "PUSH")
     .eq("recap_enabled", true);
+  if (options.onlyUserId) usersQuery = usersQuery.eq("id", options.onlyUserId);
+  const { data: usersData } = await usersQuery;
   const { data: alreadySent } = await supabase
     .from("recap_log")
     .select("user_id")
@@ -64,7 +72,8 @@ export async function runRecaps(nowMs: number = Date.now(), options: { force?: b
   const candidates = ((usersData ?? []) as { id: string }[])
     .map((row) => row.id)
     .filter((userId) => !sent.has(userId) && canReceiveRecap(userId, kind));
-  if (candidates.length === 0) return { kind, notified: 0, candidates: 0 };
+  const onlyUser = options.onlyUserId ? { onlyUser: true } : {};
+  if (candidates.length === 0) return { kind, notified: 0, candidates: 0, ...onlyUser };
 
   const period = kind === "WEEKLY" ? weeklyPeriod(recapDate) : { ...dailyPeriod(nowMs), endIso: new Date(boundaryMs).toISOString(), inProgress: false };
   const [recap, upcoming, teams, { data: subscriptionsData }] = await Promise.all([
@@ -131,5 +140,5 @@ export async function runRecaps(nowMs: number = Date.now(), options: { force?: b
     await supabase.from("push_subscriptions").delete().in("id", [...deadSubscriptionIds]);
   }
 
-  return { kind, notified, candidates: candidates.length };
+  return { kind, notified, candidates: candidates.length, ...onlyUser };
 }
