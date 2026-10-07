@@ -1,28 +1,34 @@
 name: Data NBA — rafraîchissement quotidien Supabase
 
+# PLAN B MANUEL. Depuis le 07/10/2026 l'import quotidien tourne sur la VM
+# Compute Engine `nba-refresh` (Cadrage/Stats/vm/DEPLOIEMENT_VM.md) : stats.nba.com
+# bloque les IP de GitHub Actions (ReadTimeout), d'où le retrait du cron. Ce
+# workflow reste disponible en lancement manuel, au cas où ce blocage serait
+# levé ou pour un rattrapage ponctuel.
+# NE PAS LANCER pendant un run de la VM (12h et 16h Paris) : le verrou
+# d'exécution est local à la VM, deux imports simultanés se marchent dessus sur
+# stats_block_events (delete + insert). `concurrency` ci-dessous ne protège que
+# des autres workflows GitHub, pas du timer de la VM.
+#
 # Fetch incrémental nba_api -> upsert direct dans Supabase (stats_equipes/
 # stats_joueurs/stats_matchs/stats_box_scores), Phase 4 du chantier Data NBA
 # séparé de l'app V1 (Cadrage/Stats/projet-data-nba.md §25). N'appelle PAS le
 # micro-service Cloud Run (architecture "sans état", §23) -- ce job écrit
 # directement dans Supabase, le service ne fait qu'y LIRE au moment d'un
-# /predict. Une exécution par jour suffit : les stats servent à un calcul de
-# proba fait bien avant un match, pas un besoin temps réel. GitHub Actions
-# n'exécute qu'en UTC (10:00 UTC = 11:00 ou 12:00 heure de Paris selon
-# l'heure d'été, p1-27 feuille de route Phase 1, vérifié) : le dérapage d'1h
-# entre CET/CEST est sans conséquence, le job tourne largement avant les
-# matchs du soir dans les deux cas.
+# /predict.
 on:
-  schedule:
-    - cron: "0 10 * * *"
-  # Lancement manuel : `season_types` permet d'inclure la présaison
-  # ("Pre Season") pour tester la résolution automatique sur un match de
-  # présaison -- le cron quotidien, lui, garde toujours les 3 types par défaut.
+  # `season_types` permet d'inclure la présaison ("Pre Season") pour tester la
+  # résolution automatique sur un match de présaison.
   workflow_dispatch:
     inputs:
       season_types:
         description: 'Types de saison séparés par des virgules (ex. "Pre Season" ou "Pre Season,Regular Season,Playoffs,PlayIn")'
         required: false
         default: "Regular Season,Playoffs,PlayIn"
+
+concurrency:
+  group: nba-refresh-vm
+  cancel-in-progress: false
 
 jobs:
   refresh:
@@ -42,22 +48,13 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           # Passé par l'environnement, jamais interpolé dans le script (pas
-          # d'injection de commande via l'entrée manuelle). Vide sur le cron
-          # -> valeur par défaut identique à DEFAULT_SEASON_TYPES du script.
+          # d'injection de commande via l'entrée manuelle).
           SEASON_TYPES: ${{ inputs.season_types || 'Regular Season,Playoffs,PlayIn' }}
-          # Lancement manuel = mode strict (retries complets sur
-          # leaguegamefinder, job rouge si l'import est incomplet, donc
-          # /api/resolve-bets non lancé). Basé sur le type d'événement, pas
-          # sur inputs.season_types (qui a une valeur par défaut, donc ne
-          # distingue pas un choix manuel). Le cron garde le mode rapide.
-          EVENT_NAME: ${{ github.event_name }}
+        # Mode strict : retries complets sur leaguegamefinder, job rouge si
+        # l'import est incomplet, donc /api/resolve-bets non lancé.
         run: |
           IFS=',' read -ra TYPES <<< "$SEASON_TYPES"
-          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
-            python Cadrage/Stats/service/refresh_daily.py --season-types "${TYPES[@]}" --strict --trigger manuel
-          else
-            python Cadrage/Stats/service/refresh_daily.py --season-types "${TYPES[@]}" --trigger cron
-          fi
+          python Cadrage/Stats/service/refresh_daily.py --season-types "${TYPES[@]}" --strict --trigger manuel
       - name: Résoudre automatiquement les paris IA calculables (Phase 6, 22/08/2026)
         # Chaîné APRÈS le rafraîchissement ci-dessus, jamais avant : la
         # résolution a besoin des VRAIES stats de la veille tout juste
@@ -79,8 +76,7 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const kind = context.eventName === "workflow_dispatch" ? "manuel" : "planifié";
-            const title = `Échec ${kind} : Data NBA — rafraîchissement quotidien Supabase`;
+            const title = "Échec manuel : Data NBA — rafraîchissement quotidien Supabase";
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -93,5 +89,5 @@ jobs:
               repo: context.repo.repo,
               title,
               labels: ["cron-failure"],
-              body: `Le workflow ${kind} a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              body: `Le workflow manuel a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             });

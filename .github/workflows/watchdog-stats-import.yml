@@ -1,0 +1,104 @@
+name: Watchdog — import des box scores
+
+# Surveille l'import quotidien de la VM (Cadrage/Stats/vm/DEPLOIEMENT_VM.md).
+# Lit la dernière ligne sync_logs STATS_IMPORT (écrite à chaque exécution,
+# succès ou échec) et ouvre UNE issue si :
+#   - la dernière exécution a échoué (success = false), ou
+#   - elle date de plus de 26 h (timer arrêté, VM éteinte, panne avant toute
+#     écriture : pip, Secret Manager...), ou
+#   - aucune ligne n'existe (import jamais tracé), ou la lecture échoue.
+# « Rien de nouveau » (hors saison, pas de match) est un SUCCÈS : pas de faux
+# positif. Quand tout redevient vert, l'issue reçoit un commentaire et se ferme.
+# Pire délai de détection d'une panne silencieuse : 26 h + 4 h (cadence du cron).
+# Les crons GitHub sont suspendus après 60 jours sans activité sur le dépôt.
+on:
+  schedule:
+    - cron: "37 */4 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Contrôler le dernier import
+        uses: actions/github-script@v7
+        env:
+          # Lus par process.env, jamais interpolés dans le script.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        with:
+          script: |
+            const MAX_AGE_HOURS = 26;
+            const title = "Watchdog : import des box scores (VM) en échec ou en retard";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const base = process.env.SUPABASE_URL.replace(/\/+$/, "");
+            const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+            let problem = null;
+            let okSummary = "";
+            try {
+              const res = await fetch(
+                `${base}/rest/v1/sync_logs?select=success,summary,created_at&sync_type=eq.STATS_IMPORT&order=created_at.desc&limit=1`,
+                { headers: { apikey: key } },
+              );
+              if (!res.ok) {
+                problem = `lecture de sync_logs impossible (HTTP ${res.status})`;
+              } else {
+                const rows = await res.json();
+                if (rows.length === 0) {
+                  problem = "aucun import tracé dans sync_logs (STATS_IMPORT)";
+                } else {
+                  const last = rows[0];
+                  const ageH = (Date.now() - Date.parse(last.created_at)) / 3600e3;
+                  if (!last.success) {
+                    problem = `le dernier import a échoué (${last.created_at}) : ${last.summary}`;
+                  } else if (ageH > MAX_AGE_HOURS) {
+                    problem = `le dernier import réussi date de ${ageH.toFixed(1)} h (${last.created_at}), seuil ${MAX_AGE_HOURS} h`;
+                  } else {
+                    okSummary = `${last.created_at} : ${last.summary}`;
+                  }
+                }
+              }
+            } catch (err) {
+              problem = `lecture de sync_logs impossible (${err.message})`;
+            }
+
+            const { data: open } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "stats-import",
+            });
+            const issue = open.find((i) => i.title === title);
+
+            if (problem) {
+              core.error(problem);
+              // Issue déjà ouverte : pas de nouvelle alerte et run vert, pour éviter
+              // un e-mail d'échec toutes les 4 h tant que le problème dure.
+              if (!issue) {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title,
+                  labels: ["cron-failure", "stats-import"],
+                  body: `${problem}\n\nÀ vérifier : \`/admin/sync-logs\`, puis \`journalctl -u 'nba-refresh@*'\` sur la VM \`nba-refresh\` (DEPLOIEMENT_VM.md). Relance possible via le workflow « Import des box scores — lancer sur la VM ».\n\nRun du watchdog : ${runUrl}`,
+                });
+                core.setFailed(problem);
+              }
+            } else if (issue) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Revenu au vert : ${okSummary}\n\nRun : ${runUrl}`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: "closed",
+              });
+            }

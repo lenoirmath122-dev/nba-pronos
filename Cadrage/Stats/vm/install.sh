@@ -49,6 +49,34 @@ chmod 755 "$VMDIR/run.sh"
 systemctl daemon-reload
 systemctl enable --now nba-refresh.timer
 
+echo "== Déclencheur GitHub (wrapper root + sudoers restreint)"
+# Copié HORS du dépôt : /opt/nba-pronos est modifiable par git pull (voir trigger.sh).
+install -m 755 -o root -g root "$VMDIR/trigger.sh" /usr/local/sbin/nba-refresh-trigger
+# Utilisateur OS Login du compte de service GitHub (sa_<uniqueId>), lu dans
+# /etc/nba-refresh/trigger_user ou demandé une fois. Vide = on saute (idempotent).
+if [ ! -f /etc/nba-refresh/trigger_user ]; then
+  # Sans terminal (ssh --command), read échoue : on ignore plutôt que d'interrompre.
+  read -r -p "Utilisateur OS Login du déclencheur GitHub (sa_<uniqueId>, vide = ignorer) : " TRIGGER_USER || TRIGGER_USER=""
+  if [ -n "$TRIGGER_USER" ]; then printf '%s\n' "$TRIGGER_USER" > /etc/nba-refresh/trigger_user; fi
+fi
+if [ -s /etc/nba-refresh/trigger_user ]; then
+  TRIGGER_USER="$(tr -d '[:space:]' < /etc/nba-refresh/trigger_user)"
+  if ! printf '%s' "$TRIGGER_USER" | grep -Eq '^sa_[0-9]+$'; then
+    echo "trigger_user invalide : '$TRIGGER_USER' (attendu : sa_ puis des chiffres)" >&2; exit 1
+  fi
+  SUDOERS_TMP="$(mktemp)"
+  printf '%s ALL=(root) NOPASSWD: /usr/local/sbin/nba-refresh-trigger manuel, /usr/local/sbin/nba-refresh-trigger presaison\n' \
+    "$TRIGGER_USER" > "$SUDOERS_TMP"
+  # Validation avant installation : un sudoers cassé verrouille sudo pour tout le monde.
+  visudo -cf "$SUDOERS_TMP" >/dev/null
+  install -m 440 -o root -g root "$SUDOERS_TMP" /etc/sudoers.d/nba-refresh-trigger
+  rm -f "$SUDOERS_TMP"
+  echo "   sudo autorisé pour $TRIGGER_USER : nba-refresh-trigger manuel|presaison"
+else
+  rm -f /etc/sudoers.d/nba-refresh-trigger   # trigger_user retiré : plus de droit sudo
+  echo "   ignoré (aucun trigger_user), sudoers du déclencheur supprimé"
+fi
+
 echo
 echo "Installé. Prochaines exécutions :"
 systemctl list-timers 'nba-refresh*' --no-pager

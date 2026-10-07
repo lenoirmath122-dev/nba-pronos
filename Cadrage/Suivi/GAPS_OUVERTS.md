@@ -159,15 +159,16 @@
      `Cadrage/Stats/vm/` (timer à 12h et 16h Paris, `run.sh`, `install.sh`,
      `DEPLOIEMENT_VM.md`, `refresh-local.ps1`), `requirements-refresh.txt`,
      tests pytest + job CI `python-import`, et correctif du bug ci-dessous.
-     Reste : (a) l'utilisateur crée compte de service, secrets, VM
-     `nba-refresh` (étapes 1 à 5 du runbook, budget d'alerte à 1 €, IP
-     éphémère, dépôt public donc clone https) ; (b) PR 2 : workflow GitHub
-     « Run workflow » qui déclenche la VM depuis le téléphone, watchdog
-     (`sync_logs` STATS_IMPORT, issue `cron-failure` si dernier import raté ou
-     > 26 h), retrait du cron de `refresh-stats-supabase.yml`, commentaire de
-     `resolve-bets/route.ts` ; (c) supprimer la VM de test `nba-ping-vm` ;
-     (d) après un run réel : épingler les versions, observer une semaine, et
-     à confirmer : facturation de l'IPv4 externe. Un match sans play-by-play
+     **VM `nba-refresh` créée et testée le 07/10/2026** (étapes 1 à 5 faites,
+     budget 1 € fait). **PR 2 codée** (branche `feat/stats-vm-trigger-watchdog`) :
+     bouton « Run workflow », watchdog, cron retiré, versions épinglées.
+     Reste : (a) après merge de la PR 2, l'utilisateur fait l'étape 7 de
+     `DEPLOIEMENT_VM.md` (compte `github-vm-trigger`, secret GitHub
+     `GCP_VM_TRIGGER_SERVICE_ACCOUNT`, `trigger_user` + `install.sh` sur la VM)
+     puis teste le bouton et le watchdog ; (b) supprimer la VM de test
+     `nba-ping-vm` et d'éventuels jobs Cloud Run de test ; (c) observer la VM
+     une semaine (premier vrai import de box scores à la reprise de la saison)
+     et vérifier à ~48 h la facturation de l'IPv4 externe. Un match sans play-by-play
      n'est plus enregistré (réessayé aux passages de 12h/16h, ses paris restent
      en attente, l'admin résout à la main si le play-by-play n'arrive jamais).
      Plan B si la VM se fait bloquer : un script local qui enchaîne import +

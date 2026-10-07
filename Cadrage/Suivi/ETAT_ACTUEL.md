@@ -346,15 +346,23 @@ connue : stats.nba.com expire depuis les runners GitHub ET depuis Cloud Run
 (import réussi en local le 07/10, et en 0,2 s depuis Cloud Shell). Highlightly
 (testé) ne remplace pas nba_api : box score match entier seulement, play-by-play
 sans id joueur. Seule une VM Compute Engine (e2-micro, us-central1) a répondu
-(5,1 s). Code prêt (PR 1, 07/10/2026, pas encore déployé) : `refresh_job.py`
+(5,1 s). VM `nba-refresh` EN SERVICE depuis le 07/10/2026 (PR #137 + création
+par l'utilisateur ; premier test `[vm-manuel]` OK : `resolve-bets` HTTP 200).
+Code (PR 1, #137) : `refresh_job.py`
 (import strict puis `/api/resolve-bets`), `Cadrage/Stats/vm/` (timer à 12h et
 16h Paris, runbook `DEPLOIEMENT_VM.md`), tests pytest et job CI
 `python-import`. Un match n'est enregistré que complet (box score,
-play-by-play, 4 quarts-temps), sinon réessayé au passage suivant. Reste :
-créer la VM (utilisateur), puis PR 2 (déclenchement depuis le téléphone,
-watchdog, retrait du cron GitHub) ; voir `GAPS_OUVERTS.md`. Le workflow
-`refresh-stats-supabase.yml` tourne encore et échoue tant que la VM n'est pas
-en service.
+play-by-play, 4 quarts-temps), sinon réessayé au passage suivant. PR 2
+(branche `feat/stats-vm-trigger-watchdog`) : workflow « Import des box scores
+— lancer sur la VM » (`run-stats-import-vm.yml`, bouton Run workflow, SSH via
+IAP avec un compte de service dédié `github-vm-trigger` et un wrapper root
+`nba-refresh-trigger` limité à `manuel|presaison`), watchdog
+(`watchdog-stats-import.yml`, toutes les 4 h : issue `cron-failure` +
+`stats-import` si dernier `STATS_IMPORT` en échec, absent ou > 26 h, fermée
+automatiquement au retour au vert), cron retiré de `refresh-stats-supabase.yml`
+(désormais plan B manuel), versions Python épinglées. Mise en place du
+déclencheur : `DEPLOIEMENT_VM.md` étape 7 (actions de l'utilisateur après
+merge). Voir `GAPS_OUVERTS.md`.
 
 ---
 
