@@ -162,11 +162,9 @@
      **VM `nba-refresh` créée et testée le 07/10/2026** (étapes 1 à 5 faites,
      budget 1 € fait). **PR 2 codée** (branche `feat/stats-vm-trigger-watchdog`) :
      bouton « Run workflow », watchdog, cron retiré, versions épinglées.
-     Reste : (a) après merge de la PR 2, l'utilisateur fait l'étape 7 de
-     `DEPLOIEMENT_VM.md` (compte `github-vm-trigger`, secret GitHub
-     `GCP_VM_TRIGGER_SERVICE_ACCOUNT`, `trigger_user` + `install.sh` sur la VM)
-     puis teste le bouton et le watchdog ; (b) supprimer la VM de test
-     `nba-ping-vm` et d'éventuels jobs Cloud Run de test ; (c) observer la VM
+     **PR 2 mergée (#138), étape 7 faite le 07/10/2026** : bouton « Run workflow »
+     (mode `manuel`) vert, watchdog vert. Reste : (a) supprimer la VM de test
+     `nba-ping-vm` et d'éventuels jobs Cloud Run de test ; (b) observer la VM
      une semaine (premier vrai import de box scores à la reprise de la saison)
      et vérifier à ~48 h la facturation de l'IPv4 externe. Un match sans play-by-play
      n'est plus enregistré (réessayé aux passages de 12h/16h, ses paris restent
