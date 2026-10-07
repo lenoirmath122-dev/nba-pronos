@@ -41,18 +41,18 @@ concurrency:
 
 jobs:
   run:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Pire cas : 2 h d'attente du verrou (flock -w 7200 si le timer tourne) +
     # 3 h de service (TimeoutStartSec) = 5 h.
     timeout-minutes: 300
     steps:
       - name: Authentification GCP (Workload Identity Federation)
-        uses: google-github-actions/auth@v2
+        uses: google-github-actions/auth@v3
         with:
           workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GCP_VM_TRIGGER_SERVICE_ACCOUNT }}
 
-      - uses: google-github-actions/setup-gcloud@v2
+      - uses: google-github-actions/setup-gcloud@v3
 
       - name: Lancer l'import sur la VM
         env:
