@@ -8,6 +8,10 @@ Type=oneshot
 User=nbarefresh
 # SUPABASE_URL et APP_URL (non secrets) ; les secrets sont lus par run.sh.
 EnvironmentFile=/etc/nba-refresh/env
+# nbarefresh n'a pas de répertoire personnel : sans ces deux lignes gcloud (config
+# dans ~/.config) plante, et pip/git n'ont nulle part où écrire leur cache.
+Environment=HOME=/var/lib/nba-refresh
+Environment=CLOUDSDK_CONFIG=/var/lib/nba-refresh/gcloud
 StateDirectory=nba-refresh
 # Met le code à jour avant chaque run ; le "-" laisse tourner la version actuelle
 # si le pull échoue (réseau, conflit).

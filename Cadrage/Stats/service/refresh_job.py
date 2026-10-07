@@ -4,7 +4,9 @@ box scores manquants (refresh_daily.run, mode strict) PUIS déclenche la
 résolution des paris (POST /api/resolve-bets), comme le faisait le workflow
 GitHub refresh-stats-supabase.yml avant que stats.nba.com ne bloque ses IP.
 
-La résolution est lancée MÊME si l'import est incomplet : un pari ne se résout
+La résolution est lancée MÊME si l'import est incomplet (match sauté, SystemExit) --
+mais PAS si l'import plante sur une exception (état inconnu, rien n'est résolu à
+l'aveugle ; les paris attendent le passage suivant) : un pari ne se résout
 que si son match est dans stats_matchs (resolveNbaGameId), et collect_game()
 n'y écrit un match que s'il est complet -- un match sauté laisse donc ses paris
 en attente, il ne les perd pas. Sans cela, un seul match en échec (équipes

@@ -124,6 +124,10 @@ gcloud run jobs list --region=europe-west1    # supprimer d'éventuels jobs de t
 - **Premier run réussi** : épingler les versions (`pip freeze` dans le venv
   `/var/lib/nba-refresh/venv`) dans `requirements-refresh.txt`.
 
+- **Diagnostic en root** : `/opt/nba-pronos` appartient à `nbarefresh`. Un `git`
+  lancé en root y répondra « dubious ownership » : utiliser
+  `sudo -u nbarefresh git -C /opt/nba-pronos ...`.
+
 ## Si l'IP de la VM est bloquée
 
 1. `gcloud compute instances stop nba-refresh --zone=us-central1-a`, puis `start` :
