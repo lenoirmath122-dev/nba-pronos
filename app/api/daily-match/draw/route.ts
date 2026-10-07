@@ -49,7 +49,7 @@ async function handle(request: Request): Promise<Response> {
       if (errors.length > 0) return NextResponse.json({ error: errors.join(" ") }, { status: 400 });
       days = daysBetween(from, to);
     } else {
-      days = cronDrawDays(todayParis, (day) => isDailyDayPublished(day, nowMs));
+      days = cronDrawDays(todayParis);
       if (days.length === 0) return NextResponse.json({ skipped: "hors période du Match du jour ou rien à tirer" });
     }
 
@@ -75,7 +75,10 @@ async function handle(request: Request): Promise<Response> {
     );
 
     // Mode cron : le match d'aujourd'hui et de demain (s'ils sont dans la
-    // fenêtre tirée) doivent exister, sinon l'alerte doit être visible.
+    // fenêtre tirée) doivent exister, sinon l'alerte doit être visible. Pas
+    // d'alerte plus tôt : un jour tiré en retard reste jouable tant qu'il n'a
+    // pas commencé, et un jour sans match connu (Thanksgiving) alerterait
+    // chaque run pendant toute la durée de sa fenêtre.
     if (!manual) {
       const done = new Set([...result.drawn, ...result.skipped]);
       const tomorrow = parisDateKey(nowMs + 24 * 60 * 60 * 1000);

@@ -2,7 +2,8 @@ import type { getServerClient } from "@/lib/supabase/server";
 import { isDailyDayPublished, slotToNyDay } from "@/lib/dates/paris";
 
 // Masquage côté joueur des matchs du « Match du jour » dont le jour NY n'est
-// pas encore publié (10h Paris le jour du match, cadrage §8.2). La RLS laisse
+// pas encore publié (fenêtre glissante : 10h Paris le D-6, voir
+// lib/dates/paris.ts::dailyPublishAt). La RLS laisse
 // tout visible (décision du 07/10/2026 : filtre JS, pas de migration RLS) :
 // ce filtre ne protège donc que les écrans qui l'appliquent — la seule
 // conséquence d'une fuite (temps réel, REST) est de lire un match avant 10h.

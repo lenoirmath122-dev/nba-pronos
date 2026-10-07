@@ -7,7 +7,7 @@
 // 25/10/2026 (dernier dimanche d'octobre, CEST +2 -> CET +1).
 
 import { describe, it, expect } from "vitest";
-import { parisDayBoundsUtc, parisLocalToUtcIso, parisDateKey, parisDateTimeLabel, nyDayToSlot, slotToNyDay, dailyPublishAt, isDailyDayPublished } from "./paris";
+import { parisDayBoundsUtc, parisLocalToUtcIso, parisDateKey, parisDateTimeLabel, nyDayToSlot, slotToNyDay, dailyPublishAt, dailyPublishDay, isDailyDayPublished } from "./paris";
 
 describe("parisDayBoundsUtc — offset dynamique autour de la bascule DST", () => {
   it("veille du passage à l'heure d'été (28/03/2026) -> encore CET (+1h)", () => {
@@ -58,30 +58,54 @@ describe("parisDateKey / parisDateTimeLabel — sanité de part et d'autre de la
   });
 });
 
-describe("publication du Match du jour (10h Paris, jour NY)", () => {
+describe("publication du Match du jour (fenêtre glissante de 7 jours, 10h Paris)", () => {
   it("convertit jour NY <-> slot_index", () => {
     expect(nyDayToSlot("2026-10-20")).toBe(20261020);
     expect(slotToNyDay(20261020)).toBe("2026-10-20");
   });
 
-  it("été (CEST) : 10h Paris = 08:00Z", () => {
-    expect(dailyPublishAt("2026-10-24")).toBe("2026-10-24T08:00:00.000Z");
+  it("le match du jour D sort à 10h Paris le D-6", () => {
+    expect(dailyPublishDay("2026-10-26")).toBe("2026-10-20");
+    expect(dailyPublishDay("2026-11-15")).toBe("2026-11-09");
   });
 
-  it("jour du retour à l'heure d'hiver Paris (25/10) : 10h CET = 09:00Z", () => {
-    expect(dailyPublishAt("2026-10-25")).toBe("2026-10-25T09:00:00.000Z");
-    expect(dailyPublishAt("2026-11-02")).toBe("2026-11-02T09:00:00.000Z");
+  it("lancement : les jours 20 à 25/10 sortent tous le 19/10", () => {
+    for (const day of ["2026-10-20", "2026-10-22", "2026-10-25"]) {
+      expect(dailyPublishDay(day)).toBe("2026-10-19");
+    }
+    expect(dailyPublishDay("2026-10-26")).toBe("2026-10-20");
+  });
+
+  it("jours antérieurs au lancement (tests avec override) : publiés le jour même", () => {
+    expect(dailyPublishDay("2026-10-07")).toBe("2026-10-07");
+    expect(dailyPublishDay("2026-10-19")).toBe("2026-10-19");
+  });
+
+  it("été (CEST) : 10h Paris = 08:00Z", () => {
+    expect(dailyPublishAt("2026-10-24")).toBe("2026-10-19T08:00:00.000Z");
+    expect(dailyPublishAt("2026-10-26")).toBe("2026-10-20T08:00:00.000Z");
+    expect(dailyPublishAt("2026-10-07")).toBe("2026-10-07T08:00:00.000Z");
+  });
+
+  it("après le retour à l'heure d'hiver Paris (25/10) : 10h CET = 09:00Z", () => {
+    expect(dailyPublishAt("2026-10-31")).toBe("2026-10-25T09:00:00.000Z");
+    expect(dailyPublishAt("2026-11-08")).toBe("2026-11-02T09:00:00.000Z");
   });
 
   it("borne exacte à 10:00:00 Paris", () => {
-    const at = Date.parse("2026-10-24T08:00:00.000Z");
-    expect(isDailyDayPublished("2026-10-24", at - 1)).toBe(false);
-    expect(isDailyDayPublished("2026-10-24", at)).toBe(true);
+    const at = Date.parse("2026-10-20T08:00:00.000Z");
+    expect(isDailyDayPublished("2026-10-26", at - 1)).toBe(false);
+    expect(isDailyDayPublished("2026-10-26", at)).toBe(true);
   });
 
-  it("un jour NY futur n'est pas publié, un jour passé l'est", () => {
+  it("7 jours de match visibles à un instant donné (J à J+6)", () => {
     const now = Date.parse("2026-10-24T12:00:00.000Z");
-    expect(isDailyDayPublished("2026-10-25", now)).toBe(false);
-    expect(isDailyDayPublished("2026-10-23", now)).toBe(true);
+    expect(isDailyDayPublished("2026-10-24", now)).toBe(true);
+    expect(isDailyDayPublished("2026-10-30", now)).toBe(true);
+    expect(isDailyDayPublished("2026-10-31", now)).toBe(false);
+  });
+
+  it("un jour passé reste publié", () => {
+    expect(isDailyDayPublished("2026-10-23", Date.parse("2026-10-24T12:00:00.000Z"))).toBe(true);
   });
 });

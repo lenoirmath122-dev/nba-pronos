@@ -12,10 +12,14 @@
 export const DAILY_MATCH_FIRST_DAY = "2026-10-20";
 export const DAILY_MATCH_LAST_DAY = "2026-11-27";
 export const MAX_DRAW_DAYS = 10;
-// Le cron commence à tirer 2 jours avant le premier jour (décision 07/10/2026) :
-// il tire alors les jours >= FIRST_DAY de sa fenêtre, sans toucher aux autres.
-export const DAILY_MATCH_CRON_START = "2026-10-18";
-export const DRAW_AHEAD_DAYS = 3;
+// Fenêtre glissante de 7 jours (décision 07/10/2026) : le match du jour D est
+// publié à 10h Paris le D-6, donc il doit être tiré au plus tard ce matin-là.
+// Le cron tire 9 jours à partir d'aujourd'hui (J..J+8) : 2 jours de marge pour
+// rattraper un calendrier Highlightly pas encore chargé. Il commence le 16/10
+// pour que les jours 20 à 25/10, publiés ensemble le 19/10, aient 3 passages.
+// Il tire les jours >= FIRST_DAY de sa fenêtre, sans toucher aux autres.
+export const DAILY_MATCH_CRON_START = "2026-10-16";
+export const DRAW_AHEAD_DAYS = 9;
 export const CRON_MIN_REMAINING = 50;
 
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -143,13 +147,15 @@ export function validateManualRange(
   return n > MAX_DRAW_DAYS ? [`${n} jours demandés, maximum ${MAX_DRAW_DAYS} par lot (quota API).`] : [];
 }
 
-/** Jours à tirer par le cron, d'après la DATE PARIS du moment (le jour NY D est
- *  publié à 10h Paris le D : la date NY du moment, encore D-1 tôt le matin, ne
- *  convient pas). Rien avant DAILY_MATCH_CRON_START ni après LAST_DAY. */
-export function cronDrawDays(todayParis: string, isPublished: (day: string) => boolean): string[] {
+/** Jours à tirer par le cron, d'après la DATE PARIS du moment (la date NY du
+ *  moment, encore D-1 tôt le matin, ne convient pas). Rien avant
+ *  DAILY_MATCH_CRON_START ni après LAST_DAY. Les jours déjà publiés mais encore
+ *  sans match (calendrier vide au tirage précédent) restent tirables ; un jour
+ *  déjà tiré est sauté par runDailyDraw, sans appel API. */
+export function cronDrawDays(todayParis: string): string[] {
   if (todayParis < DAILY_MATCH_CRON_START || todayParis > DAILY_MATCH_LAST_DAY) return [];
   return daysBetween(todayParis, addDays(todayParis, DRAW_AHEAD_DAYS - 1)).filter(
-    (day) => day >= DAILY_MATCH_FIRST_DAY && day <= DAILY_MATCH_LAST_DAY && !isPublished(day)
+    (day) => day >= DAILY_MATCH_FIRST_DAY && day <= DAILY_MATCH_LAST_DAY
   );
 }
 

@@ -97,24 +97,32 @@ describe("validateRange", () => {
 });
 
 describe("cronDrawDays", () => {
-  const none = () => false;
-  it("rien avant le début du cron (18/10)", () => {
-    expect(DAILY_MATCH_CRON_START).toBe("2026-10-18");
-    expect(cronDrawDays("2026-10-17", none)).toEqual([]);
+  it("rien avant le début du cron (16/10)", () => {
+    expect(DAILY_MATCH_CRON_START).toBe("2026-10-16");
+    expect(cronDrawDays("2026-10-15")).toEqual([]);
   });
-  it("le 18/10 ne tire que les jours >= premier jour", () => {
-    expect(cronDrawDays("2026-10-18", none)).toEqual(["2026-10-20"]);
-    expect(cronDrawDays("2026-10-19", none)).toEqual(["2026-10-20", "2026-10-21"]);
+  it("le 16/10 ne tire que les jours >= premier jour", () => {
+    expect(cronDrawDays("2026-10-16")).toEqual(["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24"]);
   });
-  it("fenêtre de 3 jours en régime normal", () => {
-    expect(cronDrawDays("2026-10-20", none)).toEqual(["2026-10-20", "2026-10-21", "2026-10-22"]);
+  it("le 19/10 (publication des jours 20 à 25) les jours 20 à 25 sont dans la fenêtre", () => {
+    const days = cronDrawDays("2026-10-19");
+    for (const d of ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"]) {
+      expect(days).toContain(d);
+    }
+  });
+  it("fenêtre de 9 jours en régime normal : J+6 (publié ce matin) et 2 jours de marge", () => {
+    const days = cronDrawDays("2026-10-27");
+    expect(days).toHaveLength(9);
+    expect(days[0]).toBe("2026-10-27");
+    expect(days).toContain("2026-11-02");
+    expect(days[8]).toBe("2026-11-04");
+  });
+  it("garde les jours déjà publiés : un jour publié encore sans match reste tirable", () => {
+    expect(cronDrawDays("2026-10-27")).toContain("2026-10-27");
   });
   it("borné au dernier jour, rien après", () => {
-    expect(cronDrawDays("2026-11-26", none)).toEqual(["2026-11-26", "2026-11-27"]);
-    expect(cronDrawDays("2026-11-28", none)).toEqual([]);
-  });
-  it("retire les jours déjà publiés", () => {
-    expect(cronDrawDays("2026-10-21", (d) => d === "2026-10-21")).toEqual(["2026-10-22", "2026-10-23"]);
+    expect(cronDrawDays("2026-11-26")).toEqual(["2026-11-26", "2026-11-27"]);
+    expect(cronDrawDays("2026-11-28")).toEqual([]);
   });
 });
 

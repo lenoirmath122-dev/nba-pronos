@@ -55,9 +55,11 @@ export default async function ReglesPage() {
               jusqu&apos;à la fin de la compétition.
             </p>
             <p className={styles.body}>
-              Le match du jour est publié à 10h, heure de Paris, le jour du match : tu ne vois jamais les
-              matchs des jours suivants à l&apos;avance. Si tu as activé les notifications push, tu es
-              prévenu à 10h, dans le même message que ton récap du matin.
+              Tu vois toujours les matchs des 7 prochains jours : chaque matin à 10h, heure de Paris, le
+              match de la semaine suivante apparaît. Rien ne t&apos;oblige à venir tous les jours : tu
+              peux pronostiquer plusieurs matchs d&apos;un coup, quand ça t&apos;arrange, tant que leur
+              coup d&apos;envoi n&apos;est pas passé. Si tu as activé les notifications push, tu es
+              prévenu dans le même message que ton récap du matin.
             </p>
             <p className={styles.body}>
               Les matchs NBA sont rattachés à leur jour à New York, mais joués à l&apos;heure de Paris.
