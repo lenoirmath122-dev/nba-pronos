@@ -71,6 +71,10 @@
   dans les messages et légendes, sinon pas d'aperçu de lien.
 - [ ] **B. Contenu Instagram pendant la pause** — post 5 « Bilan de l'alpha »
   fait et publié le 05/10/2026 (6 slides + légende dans `Cadrage/DA/instagram/Posts/Post 5/`).
+  **Plan Instagram oct.-nov. écrit le 06/10/2026** dans `Cadrage/Business/panier_ballon_instagram_octobre_novembre.md`
+  (audit, rôle d'Instagram dans le recrutement, calendrier 6/10 → 15/11, textes, cadrage des visuels).
+  **Reel R1 v3 prêt le 06/10/2026** (`Réels/panier-ballon-nba-cup-reel-v3.mp4`, fin « Préparation dès le 20/10 ») :
+  à publier en S1 une fois le profil remis à neuf ; légende R1 à aligner (sans « Match du jour ») ; refaire la fin si le 20/10 glisse.
   Restent : la suite du calendrier (reel démo, post
   « nouveautés », sondage Story), et le motion design de présentation
   générale de l'app + motions par fonctionnalité (décidé le 05/10, plus
@@ -99,6 +103,49 @@
   PR 3/4 (UI joueur : carte jour NY + heure Paris, règles, bracket masqué)
   livrée le 07/10/2026, PR 4/4 (annonce du match du jour dans le push de 10h, groupée avec le récap) livrée le 07/10/2026 (joueur en push avec « Récap du matin » désactivé : pas d'annonce, à confirmer). PR 5 (tirage automatique par cron, 07/10/2026) codée : workflow `daily-match-draw.yml` (5h et 7h UTC) + route `/api/daily-match/draw`, le cron tire dès le 18/10 les jours >= 20/10 (fenêtre de 3 jours) ; sert aussi de test de la récupération automatique du calendrier avant la Cup et les Playoffs, sans couvrir le mapping A7 de la Cup. **3 points à faire par l'utilisateur le soir du 07/10/2026, dans l'ordre** : (1) créer la variable Vercel `OWNER_USER_ID` (id de son compte) puis redéployer après le merge de la PR 5 ; (2) lancer le test (compétition de test seule ACTIVE, workflow manuel `from=to=2026-10-07` + `override`, `dry_run` puis réel avec `push_only_me`) ; (3) **archiver la compétition de test avant 08:00Z le 08/10**. Détail : créer la variable Vercel `OWNER_USER_ID` ; **test du 07/10 au soir** sur une compétition DAILY_MATCH de test (seule ACTIVE, matchs de présaison) via le workflow en manuel (`from=to=2026-10-07`, `override`, d'abord `dry_run`, puis `push_only_me`), puis **archiver cette compétition avant 08:00Z le 08/10** (sinon `recaps.yml` pousse à tous les comptes) ; créer ensuite la vraie compétition DAILY_MATCH en admin avant le 18/10. Tests `onlyUserId` (runRecaps) et tests de route non écrits. Calendrier Highlightly
   2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : la route renvoie 500 (issue d'alerte) si le match d'aujourd'hui ou de demain manque.
+
+- **Match du jour : résultats et récap trop dépendants du planificateur GitHub
+  (06/10/2026)** — test PR 5 fait le 06/10 (tirage + push au propriétaire OK).
+  Constat : `sync-results.yml` est réglé à 30 min mais GitHub l'espace de
+  plusieurs heures (runs à 07:10Z puis 14:21Z le 06/10), donc un résultat de
+  match de nuit peut arriver tard côté joueur. À faire : une automatisation
+  plus fiable des résultats pour le Match du jour (déclenchement serré autour
+  du coup d'envoi/de la fin du match, ou planificateur plus ponctuel que le
+  cron GitHub), pas tranché. À vérifier en même temps : les quotas de
+  l'API Highlightly (100 req/jour, doc maître §2 A6) avec le Match du jour
+  + `sync-results` + `daily-match-draw` actifs ensemble.
+
+- **Import des box scores NBA : stats.nba.com expire depuis GitHub Actions, et
+  Highlightly à vérifier comme source de secours (07/10/2026)** — test de
+  résolution automatique fait le 07/10 : la chaîne import → `/api/resolve-bets`
+  fonctionne (pari « Shai marque plus de 15 points » résolu `LOST`, Shai
+  n'ayant pas joué le match de présaison OKC–NOP), MAIS `leaguegamefinder`
+  (stats.nba.com) a expiré 5 fois de suite depuis les runners GitHub (dont
+  3 × 60 s en mode strict) alors que le même import marche depuis la machine
+  de l'utilisateur. Le cron quotidien a donc probablement pu échouer
+  silencieusement avant la PR #134 (aucune trace n'existait). À faire :
+  1. **Prochaine étape : trouver un moyen de vérifier que Highlightly fournit
+     bien le play-by-play** (fautes techniques, contres, retours en zone,
+     buzzer beaters, derniers paniers — aujourd'hui tirés du play-by-play
+     stats.nba.com). La page marketing highlightly.net/nba-api annonce des
+     box scores par joueur ; NON vérifié : nom de l'endpoint, ids joueur
+     (vs `player_id` stats.nba.com), découpe par quart-temps, play-by-play,
+     coût en quota (100 req/jour partagé avec les synchros). Vérification =
+     doc + appel de test avec la clé (consomme du quota). Si pas de
+     play-by-play : « on se débrouillera autrement » (décision de
+     l'utilisateur), à trancher à ce moment-là.
+  2. ~~Déployer la migration `20261008090000_sync_type_stats_import.sql`~~ --
+     faite le 07/10/2026 via l'outil MCP Supabase (CLI absente de la machine),
+     version de l'historique réalignée à la main sur celle du fichier
+     (`20261008090000`) ; `STATS_IMPORT` présent dans l'enum `sync_type`.
+     Aucune ligne `STATS_IMPORT` encore écrite (pas de rafraîchissement depuis).
+  3. Bruit attendu : le cron hors-saison écrira des lignes `success=false` dans
+     `sync_logs` tant que `leaguegamefinder` expire (timeout 15 s, voulu).
+     Le mode strict (lancements manuels) reste rouge tant qu'un match est
+     « équipes ambiguës ».
+  4. Point non investigué : `/api/resolve-bets` a listé le pari de test à la
+     fois résolu et « équipe manquante » dans la même réponse (résultat final
+     en base correct).
 
 ## Capacité — test de charge
 
@@ -156,6 +203,20 @@
 
 ## Chantier "paris personnalisés IA" — types encore non calculables
 
+- **Paris « le joueur joue seulement N quarts-temps »** (ex. « Shai joue
+  seulement 3 quart temps », constaté le 06/10/2026, pari `7db72374…`
+  resté `is_calculable=false`, en validation manuelle). Cause vérifiée :
+  `PERIOD_KEYWORD_REGEX` (`lib/ai/structureAndScoreBet.ts`) matche « quart
+  temps » et route vers `handlePeriodBet`, qui attend une stat joueur
+  limitée à une période (ou un résultat de période), pas un temps de jeu :
+  `markNotCalculable()`, sans repli. Besoin décidé par l'utilisateur : en
+  faire un type de pari avec son propre modèle à entraîner, pris en compte
+  dans le calcul. Pas commencé. Pistes à instruire : définir « a joué un
+  quart » (minutes > 0 par période ?), vérifier que
+  `stats_box_scores_by_period` permet de le dériver, nouveau routage avant
+  le filtre période, nouveau modèle dans `stats-service`, résolution
+  automatique WON/LOST. En attendant, une formulation en minutes
+  (« joue moins de N minutes ») est déjà calculable.
 - **+/- joueur par période** mal résolu : `plus_minus` est exclue des 10
   modèles `train_player_period_model.py` et absente de
   `stats_box_scores_by_period` — un pari "+/- en 1ère mi-temps" reste

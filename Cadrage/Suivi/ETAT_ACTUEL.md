@@ -338,6 +338,12 @@ vérifié robuste de bout en bout (repli `null`/non-calculable systématique,
 jamais d'exception propagée). Alimente aussi une partie des tables
 `stats_*` de Supabase via des scripts de backfill/synchro quotidienne
 (`refresh_daily.py`, workflow `refresh-stats-supabase.yml`).
+Depuis la PR #134 (07/10/2026) : chaque exécution de `refresh_daily.py` écrit
+une ligne `sync_logs` (`sync_type='STATS_IMPORT'`, nécessite la migration
+`20261008090000`), et les lancements manuels du workflow passent en mode
+`--strict` (retries complets, job rouge si l'import est incomplet). Limite
+connue : stats.nba.com expire depuis les runners GitHub (import réussi en
+local le 07/10) ; piste Highlightly à vérifier, voir `GAPS_OUVERTS.md`.
 
 ---
 
@@ -392,7 +398,10 @@ code — à confirmer manuellement si besoin.
   `refresh-stats-supabase.yml`, `daily-match-draw.yml` (tirage automatique
   du Match du jour, 5h et 7h UTC, route `/api/daily-match/draw`, commence le
   18/10/2026 ; `workflow_dispatch` pour un lot manuel et un push limité au
-  compte `OWNER_USER_ID`).
+  compte `OWNER_USER_ID`, variable créée en Production le 06/10/2026 ;
+  tirage et push propriétaire testés avec succès le 06/10/2026). Limite
+  connue : `sync-results.yml` (30 min) est espacé de plusieurs heures par
+  GitHub, voir `GAPS_OUVERTS.md`.
 - Limite connue et assumée : aucun test de composant React, et la
   génération de schéma IA elle-même (appels réels à Claude) reste testée à
   la main plutôt qu'automatisée — seule la résolution déterministe en aval
