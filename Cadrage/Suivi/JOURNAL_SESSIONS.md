@@ -360,6 +360,8 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 
 - Import des box scores : étape 7 faite, bouton et watchdog verts (07/10/2026) -- PR #138 mergée. Compte `github-vm-trigger` + liaisons IAM créés dans Cloud Shell, secret `GCP_VM_TRIGGER_SERVICE_ACCOUNT` posé via `gh`, `trigger_user` + `install.sh` sur la VM. Premier lancement du bouton en 403 `getAccessToken` : le dépôt utilise le `sub` OIDC « immutable » (`repo:lenoirmath122-dev@289689910/nba-pronos@1304699712:ref:refs/heads/main`), la liaison WIF du runbook visait l'ancien format ; corrigée (runbook aussi), puis run `manuel` OK (code 0) et watchdog OK sans issue. Reste : suppression de `nba-ping-vm`, observation d'une semaine, IPv4 à ~48 h.
 
+- Import des box scores : nettoyage GCP (07/10/2026) -- Suppression, après confirmation, de la VM de test `nba-ping-vm` et du job Cloud Run `nba-api-ping3` (projet `nba-pronos-stats-2026`) ; restent `nba-refresh` et le service `nba-pronos-stats`. Reste du chantier VM : observer une semaine (premier vrai import à la reprise de la saison) et vérifier à ~48 h la facturation de l'IPv4 externe.
+
 ## Référence
 
 Détail complet de chaque session (contexte, échanges avec l'utilisateur,
