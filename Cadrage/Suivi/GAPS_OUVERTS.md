@@ -137,22 +137,28 @@
      continue de tourner chaque jour (gratuit) pour calendrier/scores ;
      l'import nba_api (box scores, par période, play-by-play) est conservé,
      mais doit tourner depuis une IP qui n'est pas celle de GitHub.
-  1bis. **Piste retenue : Cloud Run Job + Cloud Scheduler.** Test Cloud Shell
-     du 07/10/2026 (IP Google, projet `nba-pronos-stats-2026`) :
-     `leaguegamefinder` répond en 0,2 s (24 lignes de présaison = 12 matchs)
-     alors qu'il expire à 60 s depuis GitHub. Réserve : Cloud Shell n'est
-     pas Cloud Run, à confirmer au premier run réel. À construire : job qui
-     exécute `refresh_daily.py` (secrets dans Secret Manager), Scheduler
-     quotidien, appel de `/api/resolve-bets` ensuite, déclenchement manuel
-     possible depuis l'appli GCP, puis retrait de l'import du workflow
-     `refresh-stats-supabase.yml`. Coût non chiffré (quota gratuit
-     probable). `refresh_daily.py` est incrémental (compare la saison
-     complète aux `game_id` connus) : un lancement à J+1/J+2 rattrape les
-     jours manqués ; non vérifié : que `/api/resolve-bets` résolve bien un
-     match terminé depuis plusieurs jours. **Plan B** si Cloud Run échoue :
-     script local (import + résolution en une commande, secrets dans un
-     fichier hors dépôt) lancé à la main depuis le PC. nba_api reste de toute
-     façon un garde-fou manuel en cas de gros bug.
+  1bis. **Cloud Run testé le 07/10/2026 : BLOQUÉ.** Test Cloud Shell (VM
+     Compute Engine, projet `nba-pronos-stats-2026`) : `leaguegamefinder`
+     répond en 0,2 s (24 lignes de présaison = 12 matchs). Même appel depuis
+     un Cloud Run Job (europe-west1) : `ReadTimeout` à 30 s, confirmé sur 2
+     jobs distincts. Cloud Run est donc écarté, comme GitHub Actions ; le plan
+     d'un Cloud Run Job + Scheduler (image dédiée, `refresh_job.py`, alerte
+     watchdog, ~0 €/mois) n'a pas été codé. `refresh_daily.py` est
+     incrémental (compare la saison complète aux `game_id` connus) : un
+     lancement à J+1/J+2 rattrape les jours manqués, et les resolvers prennent
+     tous les paris `VALIDATED` dont le match est terminé, sans fenêtre de
+     date. **Pistes restantes** : (1) petite VM Compute Engine e2-micro avec
+     cron quotidien (même famille d'IP que Cloud Shell, gratuite en région US
+     selon le quota « toujours gratuit », à valider par un appel depuis la VM
+     avant de construire) ; (2) plan B local : un script qui enchaîne import +
+     `/api/resolve-bets` (secrets dans un fichier hors dépôt) lancé à la main
+     depuis le PC. nba_api reste de toute façon un garde-fou manuel en cas de
+     gros bug. **Bug indépendant à corriger** (trouvé par l'architect) : dans
+     `refresh_daily._run`, un quart-temps ou un play-by-play en échec
+     n'empêche pas d'enregistrer le match, qui n'est alors jamais réessayé
+     (pari joueur+période résolu avec le quart compté à 0, paris
+     temps morts/buzzer/dernier panier bloqués) ; correctif : traiter le match
+     comme sauté s'il manque une pièce.
   2. ~~Déployer la migration `20261008090000_sync_type_stats_import.sql`~~ --
      faite le 07/10/2026 via l'outil MCP Supabase (CLI absente de la machine),
      version de l'historique réalignée à la main sur celle du fichier
