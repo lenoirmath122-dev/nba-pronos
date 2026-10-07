@@ -124,16 +124,35 @@
   3 × 60 s en mode strict) alors que le même import marche depuis la machine
   de l'utilisateur. Le cron quotidien a donc probablement pu échouer
   silencieusement avant la PR #134 (aucune trace n'existait). À faire :
-  1. **Prochaine étape : trouver un moyen de vérifier que Highlightly fournit
-     bien le play-by-play** (fautes techniques, contres, retours en zone,
-     buzzer beaters, derniers paniers — aujourd'hui tirés du play-by-play
-     stats.nba.com). La page marketing highlightly.net/nba-api annonce des
-     box scores par joueur ; NON vérifié : nom de l'endpoint, ids joueur
-     (vs `player_id` stats.nba.com), découpe par quart-temps, play-by-play,
-     coût en quota (100 req/jour partagé avec les synchros). Vérification =
-     doc + appel de test avec la clé (consomme du quota). Si pas de
-     play-by-play : « on se débrouillera autrement » (décision de
-     l'utilisateur), à trancher à ce moment-là.
+  1. **Highlightly testé le 07/10/2026 (5 requêtes) : insuffisant seul, et
+     aucune API concurrente abordable.** `/box-score/{id}` : par joueur, match
+     entier uniquement (pas de quart-temps), ids Highlightly (pas ceux de
+     stats.nba.com). `/matches/{id}` : champ `events` (période, horloge,
+     description, isScoringPlay) mais SANS id joueur (noms en texte libre) ni
+     valeur de panier ; fautes techniques et retours en zone non vérifiés.
+     Alternatives (doc seulement, rien d'appelé) : BALLDONTLIE a des ids
+     joueur et `score_value` dans son play-by-play mais seulement au plan
+     39,99 $/mois (refusé : trop cher), SportsDataIO 99-149 $/mois, Big Balls
+     Data n'a pas de play-by-play. **Décision de l'utilisateur** : Highlightly
+     continue de tourner chaque jour (gratuit) pour calendrier/scores ;
+     l'import nba_api (box scores, par période, play-by-play) est conservé,
+     mais doit tourner depuis une IP qui n'est pas celle de GitHub.
+  1bis. **Piste retenue : Cloud Run Job + Cloud Scheduler.** Test Cloud Shell
+     du 07/10/2026 (IP Google, projet `nba-pronos-stats-2026`) :
+     `leaguegamefinder` répond en 0,2 s (24 lignes de présaison = 12 matchs)
+     alors qu'il expire à 60 s depuis GitHub. Réserve : Cloud Shell n'est
+     pas Cloud Run, à confirmer au premier run réel. À construire : job qui
+     exécute `refresh_daily.py` (secrets dans Secret Manager), Scheduler
+     quotidien, appel de `/api/resolve-bets` ensuite, déclenchement manuel
+     possible depuis l'appli GCP, puis retrait de l'import du workflow
+     `refresh-stats-supabase.yml`. Coût non chiffré (quota gratuit
+     probable). `refresh_daily.py` est incrémental (compare la saison
+     complète aux `game_id` connus) : un lancement à J+1/J+2 rattrape les
+     jours manqués ; non vérifié : que `/api/resolve-bets` résolve bien un
+     match terminé depuis plusieurs jours. **Plan B** si Cloud Run échoue :
+     script local (import + résolution en une commande, secrets dans un
+     fichier hors dépôt) lancé à la main depuis le PC. nba_api reste de toute
+     façon un garde-fou manuel en cas de gros bug.
   2. ~~Déployer la migration `20261008090000_sync_type_stats_import.sql`~~ --
      faite le 07/10/2026 via l'outil MCP Supabase (CLI absente de la machine),
      version de l'historique réalignée à la main sur celle du fichier

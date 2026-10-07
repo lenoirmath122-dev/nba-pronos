@@ -343,7 +343,10 @@ une ligne `sync_logs` (`sync_type='STATS_IMPORT'`, nécessite la migration
 `20261008090000`), et les lancements manuels du workflow passent en mode
 `--strict` (retries complets, job rouge si l'import est incomplet). Limite
 connue : stats.nba.com expire depuis les runners GitHub (import réussi en
-local le 07/10) ; piste Highlightly à vérifier, voir `GAPS_OUVERTS.md`.
+local le 07/10, et en 0,2 s depuis une IP Google dans Cloud Shell). Highlightly
+(testé) ne remplace pas nba_api : box score match entier seulement, play-by-play
+sans id joueur. Piste retenue : un Cloud Run Job quotidien à la place du cron
+GitHub, voir `GAPS_OUVERTS.md`.
 
 ---
 
