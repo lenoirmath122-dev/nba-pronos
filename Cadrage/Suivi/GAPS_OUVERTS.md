@@ -134,10 +134,11 @@
      doc + appel de test avec la clé (consomme du quota). Si pas de
      play-by-play : « on se débrouillera autrement » (décision de
      l'utilisateur), à trancher à ce moment-là.
-  2. Après merge de la PR #134 : `supabase migration list` puis push de la
-     migration `20261008090000_sync_type_stats_import.sql` (sans elle,
-     `refresh_daily.py` n'écrit pas sa trace `STATS_IMPORT` dans `sync_logs`,
-     en silence — best-effort).
+  2. ~~Déployer la migration `20261008090000_sync_type_stats_import.sql`~~ --
+     faite le 07/10/2026 via l'outil MCP Supabase (CLI absente de la machine),
+     version de l'historique réalignée à la main sur celle du fichier
+     (`20261008090000`) ; `STATS_IMPORT` présent dans l'enum `sync_type`.
+     Aucune ligne `STATS_IMPORT` encore écrite (pas de rafraîchissement depuis).
   3. Bruit attendu : le cron hors-saison écrira des lignes `success=false` dans
      `sync_logs` tant que `leaguegamefinder` expire (timeout 15 s, voulu).
      Le mode strict (lancements manuels) reste rouge tant qu'un match est
