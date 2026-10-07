@@ -722,12 +722,12 @@ async function getCompetitionNavBadges(): Promise<Omit<NavBadgeData, "chatActivi
     getFeed(supabase, competition.id, user.id),
   ]);
 
+  // Match du jour (7 matchs visibles d'un coup) : on ne compte que les pronos,
+  // pas les paris joueur encore possibles (décision du 07/10/2026 : le badge
+  // ne doit pas faire monter la pression, jusqu'à 14 d'un coup sinon).
+  const availableBets = competition.type === "DAILY_MATCH" ? 0 : seriesBets.length + matchBets.length;
   const playPendingCount =
-    (bracketItem?.count ?? 0) +
-    (matchesItem?.count ?? 0) +
-    (betsItem?.count ?? 0) +
-    seriesBets.length +
-    matchBets.length;
+    (bracketItem?.count ?? 0) + (matchesItem?.count ?? 0) + (betsItem?.count ?? 0) + availableBets;
 
   return { playPendingCount, latestFeedAt: feed[0]?.occurredAt ?? null };
 }

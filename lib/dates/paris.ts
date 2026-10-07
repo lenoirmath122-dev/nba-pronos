@@ -54,12 +54,27 @@ export function parisDateTimeLabel(iso: string): string {
   return `${datePart} ${timePart}`;
 }
 
-// --- Match du jour (DAILY_MATCH) : publication à 10h Paris le jour NY du match.
+// --- Match du jour (DAILY_MATCH) : fenêtre glissante de 7 jours. Le match du
+// jour NY D est publié à 10h Paris le jour D-6 (donc chaque jour à 10h le match
+// de J+6 apparaît, et 7 matchs sont visibles en permanence), sans jamais passer
+// avant DAILY_FIRST_PUBLISH_DAY : au lancement, les premiers jours sortent
+// ensemble ce jour-là (décision du 07/10/2026 : ne pas forcer à venir parier
+// tous les jours).
 // Le jour de référence est `series.slot_index` (YYYYMMDD, jour NY figé au
 // tirage), pas `scheduled_at` qui peut bouger. Ici pour rester sans import
 // relatif : importable tel quel par scripts/*.mjs.
 
 export const DAILY_PUBLISH_HOUR_PARIS = 10;
+/** Nombre de jours de match visibles en même temps (jour J compris). */
+export const DAILY_WINDOW_DAYS = 7;
+/** Premier jour de publication : les jours qui tomberaient avant sortent ce jour-là. */
+export const DAILY_FIRST_PUBLISH_DAY = "2026-10-19";
+
+function shiftDay(day: string, n: number): string {
+  const d = new Date(`${day}T12:00:00.000Z`);
+  d.setUTCDate(d.getUTCDate() + n);
+  return d.toISOString().slice(0, 10);
+}
 
 /** "2026-10-20" -> 20261020 (valeur de `series.slot_index` d'une série DAILY). */
 export function nyDayToSlot(nyDay: string): number {
@@ -72,10 +87,19 @@ export function slotToNyDay(slot: number): string {
   return `${s.slice(0, 4)}-${s.slice(4, 6)}-${s.slice(6, 8)}`;
 }
 
-/** Instant UTC (ISO) de publication d'un jour NY : ce jour-là à 10:00, heure
- *  murale de Paris (donc 08:00Z ou 09:00Z selon la saison). */
+/** Jour (date Paris, YYYY-MM-DD) où le match du jour NY donné devient visible :
+ *  6 jours avant, mais pas avant DAILY_FIRST_PUBLISH_DAY. Les jours qui
+ *  précèdent la compétition (tests avec `override`) restent publiés le jour même. */
+export function dailyPublishDay(nyDay: string): string {
+  if (nyDay <= DAILY_FIRST_PUBLISH_DAY) return nyDay;
+  const day = shiftDay(nyDay, -(DAILY_WINDOW_DAYS - 1));
+  return day < DAILY_FIRST_PUBLISH_DAY ? DAILY_FIRST_PUBLISH_DAY : day;
+}
+
+/** Instant UTC (ISO) de publication d'un jour NY : 10:00, heure murale de
+ *  Paris, le jour de `dailyPublishDay` (donc 08:00Z ou 09:00Z selon la saison). */
 export function dailyPublishAt(nyDay: string): string {
-  return parisLocalToUtcIso(`${nyDay}T${String(DAILY_PUBLISH_HOUR_PARIS).padStart(2, "0")}:00`);
+  return parisLocalToUtcIso(`${dailyPublishDay(nyDay)}T${String(DAILY_PUBLISH_HOUR_PARIS).padStart(2, "0")}:00`);
 }
 
 /** Vrai si le match tiré pour ce jour NY est visible des joueurs à `nowMs`. */

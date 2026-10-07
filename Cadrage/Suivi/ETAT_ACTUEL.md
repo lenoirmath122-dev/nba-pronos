@@ -280,8 +280,11 @@ barème le réécrit à chaque recalcul). Push à 10h Paris (`recaps.yml`, 8h et
 journalier ou hebdo le lundi, jamais vide, ouvre `/home#recap` (carte
 dépliée d'office). Interrupteur « Récap du matin » dans le Profil
 (`users.recap_enabled`, activé par défaut). En compétition « Match du
-jour » (DAILY_MATCH), le même push annonce le match publié à 10h (titre « Match du jour », lien `/play`) ; rien n'est
-envoyé avant 10h, même forcé. Tout est gratuit ; l'accès
+jour » (DAILY_MATCH), le même push annonce le prochain match non pronostiqué
+des 24 h (titre « Match du jour », lien `/play`) ; rien n'est
+envoyé avant 10h, même forcé. Publication en fenêtre glissante de 7 jours (07/10/2026) :
+le match du jour NY D sort à 10h Paris le D-6, jamais avant le 19/10 (les
+jours 20 à 25/10 sortent ensemble le 19/10) ; voir `lib/dates/paris.ts::dailyPublishAt`. Tout est gratuit ; l'accès
 passe par `canReceiveRecap()` (`lib/recaps/access.ts`), seul point à
 brancher à la bascule payante.
 
@@ -416,7 +419,7 @@ code — à confirmer manuellement si besoin.
   `reminder-matches.yml`, `recaps.yml`, `snapshot-leaderboard.yml`,
   `refresh-stats-supabase.yml`, `daily-match-draw.yml` (tirage automatique
   du Match du jour, 5h et 7h UTC, route `/api/daily-match/draw`, commence le
-  18/10/2026 ; `workflow_dispatch` pour un lot manuel et un push limité au
+  16/10/2026 et tire 9 jours à partir d'aujourd'hui ; `workflow_dispatch` pour un lot manuel et un push limité au
   compte `OWNER_USER_ID`, variable créée en Production le 06/10/2026 ;
   tirage et push propriétaire testés avec succès le 06/10/2026). Limite
   connue : `sync-results.yml` (30 min) est espacé de plusieurs heures par

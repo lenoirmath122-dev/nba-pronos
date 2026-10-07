@@ -21,7 +21,8 @@
 // - --dry-run : aucune écriture, mais consomme le même quota API.
 // - Un lot = 10 jours max (quota API). S'arrête si le quota restant passe sous
 //   --min-remaining.
-// - Publication aux joueurs : 10h Paris le jour NY du match, filtrée côté
+// - Publication aux joueurs : 10h Paris le D-6 du jour NY du match (fenêtre
+//   glissante de 7 jours, jamais avant le 19/10), filtrée côté
 //   serveur (lib/dates/paris.ts::isDailyDayPublished) — rien à faire ici.
 // ============================================================================
 

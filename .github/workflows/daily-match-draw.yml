@@ -4,7 +4,7 @@ name: Tirage du match du jour
 # jour (DAILY_MATCH). Deux passages (5h et 7h UTC), tous deux avant la
 # publication de 10h Paris été comme hiver et avant recaps.yml (8h/9h UTC) ; le
 # second rattrape un échec du premier, l'idempotence évite tout double tirage.
-# La route ne fait rien avant le 18/10/2026 (date vérifiée dans le code, pas ici).
+# La route ne fait rien avant le 16/10/2026 (date vérifiée dans le code, pas ici).
 # Le cron n'envoie jamais de push : c'est recaps.yml.
 #
 # Lancement manuel : lot from/to, `override` pour ignorer les bornes de la

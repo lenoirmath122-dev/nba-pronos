@@ -2,7 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getAllTeams } from "@/lib/queries/teams";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
-import { parisDayBoundsUtc, parisDateKey } from "@/lib/dates/paris";
+import { DAILY_WINDOW_DAYS, parisDayBoundsUtc, parisDateKey } from "@/lib/dates/paris";
 import { nyDateString } from "@/lib/dates/newyork";
 import { dailyKickoffLabel, type DailyKickoffLabel } from "@/lib/labels/dailyMatch";
 import { betDifficultyPoints } from "@/lib/scoring/engine";
@@ -362,7 +362,11 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
 
   const nowMs = Date.now();
   const nowIso = new Date(nowMs).toISOString();
-  const windowEndMs = nowMs + FORWARD_WINDOW_DAYS * DAY_MS;
+  // Match du jour : fenêtre glissante de 7 jours, tous les matchs publiés sont
+  // dépliés (et couverts par « Tout valider ») ; +1 jour pour couvrir un coup
+  // d'envoi après minuit NY du dernier jour publié.
+  const windowDays = competition.type === "DAILY_MATCH" ? DAILY_WINDOW_DAYS + 1 : FORWARD_WINDOW_DAYS;
+  const windowEndMs = nowMs + windowDays * DAY_MS;
 
   // Mes pronos = `scheduled_at > now()` uniquement. Tout match commencé
   // (réglé ou non) vit dans Résultats ; seul le ticker garde un oeil sur les
