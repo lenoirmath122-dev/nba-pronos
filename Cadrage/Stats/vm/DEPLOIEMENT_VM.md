@@ -172,6 +172,32 @@ Le nom `sa_<id>` doit être exact (sinon `sudo` demande un mot de passe et
   lancé en root y répondra « dubious ownership » : utiliser
   `sudo -u nbarefresh git -C /opt/nba-pronos ...`.
 
+## Observation de la première semaine (à partir du 07/10/2026)
+
+À faire une fois par jour pendant ~7 jours, jusqu'au premier vrai import de box
+scores à la reprise de la saison.
+
+1. **Les imports tournent** : dans `/admin/sync-logs`, deux lignes `STATS_IMPORT`
+   par jour (12h et 16h Paris). Hors saison, des `success=false` sont du bruit
+   attendu (calendrier vide, `leaguegamefinder` qui expire, timeout 15 s voulu).
+   Dès qu'il y a des matchs réels : matchs importés, puis paris joueur passés de
+   `VALIDATED` à `WON`/`LOST` via `/api/resolve-bets`.
+2. **Le watchdog reste silencieux** : pas d'issue `cron-failure` + `stats-import`
+   ouverte. Une issue se ferme seule au premier passage vert ; une issue ouverte
+   depuis plus d'une journée est le vrai signal d'alerte.
+3. **L'IP n'est pas bloquée par la NBA** (risque principal) : symptôme = timeouts
+   en continu alors qu'il y a des matchs. Test rapide : bouton « Run workflow »,
+   mode `manuel`. Remède : voir « Si l'IP de la VM est bloquée » ci-dessous.
+4. **Facturation à ~48 h** (vers le 09/10) : console GCP > Facturation, projet
+   `nba-pronos-stats-2026` ; vérifier le coût de l'IPv4 externe et que le budget
+   de 1 € n'a pas déclenché d'alerte.
+5. **Après la première semaine**, retour au contrôle mensuel (section « Au
+   quotidien »).
+
+Pas des anomalies : un match sans play-by-play (non enregistré, réessayé à 12h et
+16h, paris en attente) et un match reporté (« match NBA correspondant
+introuvable », à résoudre en admin).
+
 ## Si l'IP de la VM est bloquée
 
 1. `gcloud compute instances stop nba-refresh --zone=us-central1-a`, puis `start` :
