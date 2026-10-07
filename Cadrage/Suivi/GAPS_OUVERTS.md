@@ -39,6 +39,105 @@
   plan, puisqu'ils changent avec la synchro et non avec un geste.
 - **Couverture des types de paris** : choisir sa difficulté n'est pas
   intuitif. Couvrir plus de types (modèles ML) et aider au choix.
+  **Cadré le 07/10/2026** : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md`
+  (12 décisions, catalogue, lots). Étapes à traiter, une par conversation :
+  1. re-mesurer la couverture réelle (l'audit du 24/08 est périmé) ET
+     découvrir les types inconnus, avec un coût IA minimal (décision du
+     07/10/2026 : limiter les appels IA ; seule la structuration par Claude
+     coûte, le routage regex est gratuit). Sous-étapes : **A** stocker à chaque
+     `is_calculable=false` un motif (codes fermés), le texte brut et une
+     empreinte de type, dans une colonne dédiée (recommandé, `refusal_reason`
+     sert déjà au refus admin ; migration + RPC `update_bet_structuration`) ;
+     **B-lite** passer le corpus (`Cadrage/Stats/types_de_paris_playoffs_2026.md`,
+     429 paris) dans `routeBetDescription()` et classer par lecture des ~30
+     branches `markNotCalculable` (`lib/ai/structureAndScoreBet.ts`), sans IA ;
+     **C1** analyser en lecture seule les paris réels de l'alpha/présaison
+     déjà en base ; **C2** catalogues externes (props des bookmakers, fantasy)
+     + 1 seul appel de génération de 150-200 textes variés, triés par regex
+     (ceux qui retombent dans `GENERAL` = candidats nouveaux types),
+     structuration IA seulement sur un petit échantillon et sur accord.
+     **C3** (vue admin de regroupement des non calculables, motif
+     `UNKNOWN_TYPE`) = étape à part. Pas de rejeu complet sans accord.
+     **Avancement (07/10/2026, à compléter)** : périmètre retenu pour cette
+     étape = **A + B-lite**. **B-lite faite : PR #143** (à merger) --
+     empreinte de type `lib/ai/betFingerprint.ts`, parseur du catalogue
+     `lib/ai/corpusCatalog.ts`, rapport `scripts/corpus-routing-report.test.ts`
+     (`$env:CORPUS_REPORT=1; npx vitest run scripts/corpus-routing-report.test.ts`).
+     Constats : le « corpus de 429 paris » est en fait un **catalogue** (12
+     catégories, 105 sous-types avec effectif, 167 exemples), pas 429 textes ;
+     le routage regex ne dit pas si un pari est calculable (cela dépend de la
+     sortie de l'IA) : 76 % des exemples pondérés vont dans `GENERAL`, 14 % dans
+     `PERIOD`, le reste est marginal ; `markNotCalculable*` est appelée **67
+     fois** (pas ~30), dont environ les deux tiers dépendent de la sortie de
+     l'IA. Piste à vérifier : « prolongation » est routée vers `GENERAL`.
+     **A faite (PR 2, 07/10/2026)** : chaque `is_calculable=false` écrit
+     `bets.calculability_diagnosis` (13 codes fermés dans
+     `lib/ai/notCalculableReason.ts`, route regex, texte brut, squelette,
+     empreinte, `ai_reasoning` <= 500 caractères). Migration
+     `20261009090000` appliquée en production le 07/10/2026 (MCP Supabase) ;
+     version de l historique réalignée sur `20261009090000` le 07/10/2026.
+     Les paris antérieurs n'ont pas de diagnostic. **Mesure** (lecture seule,
+     une fois des paris soumis) :
+     `select calculability_diagnosis->>'reason', calculability_diagnosis->>'route', count(*) from bets where is_calculable = false group by 1,2 order by 3 desc;`
+     puis les empreintes les plus fréquentes pour `UNKNOWN_TYPE` :
+     `select calculability_diagnosis->>'fingerprint', min(calculability_diagnosis->>'skeleton'), count(*) from bets where calculability_diagnosis->>'reason' = 'UNKNOWN_TYPE' group by 1 order by 3 desc;`.
+     Exclure le groupe `OPERATIONAL` de la mesure de couverture. Reste : C1
+     (paris réels en base, lecture seule) ;
+  2. comprendre pourquoi 7 paris joueur + seuil de l'alpha
+     (`is_calculable=true`) ont été résolus à la main ;
+  3. **Plan retenu le 07/10/2026 : scénario A (meilleur rapport
+     effort/résultat), validé par l'utilisateur** après arbitrage de
+     l'`architect` (S1 à L8). Règle : composition de modèles existants
+     d'abord, nouveau modèle seulement si la composition est fausse au
+     backtest (jamais fait, à faire). Ordre des lots :
+     - **Lot 0** : analyse C1 des paris réels, étape 2 ci-dessus, lecture de
+       la mémoire Cloud Run (`gcloud run services describe`, absente du
+       dépôt), cache LRU borné en octets des modèles (aucun cache aujourd'hui,
+       61 joblib, ~920 Mo, chargés 2 à 3 fois par requête via
+       `_compute_with_consistency_check`) ou allègement des modèles
+       (compression, HistGradientBoosting) -- choix à trancher ;
+     - **Lot 1** (avant la bêta Cup du 04/12) : S2 (corrélation entre stats
+       dans la somme + coefficients pour le fantasy, aujourd'hui `var = Σσ²`
+       dans `supabase_context.py::_resolve_weighted_operand`), S1 (`pf` à
+       backfiller depuis le SQLite local, `dreb` = reb - oreb, fgm/ftm/fta par
+       composition ; un seul vrai modèle, `pf`), S4 en condition générique du
+       combo (règle aussi le combo période + match entier), S3 (écart final,
+       recalé sur `home_win`), S8 (titulaire/remplaçant), « exactement N » hors
+       période, égalité exacte (L2), score exact du match ;
+     - **Lot 2** : S6 (« joue seulement N quarts » ; vérifier d'abord si un
+       quart non joué donne une ligne à 0 ou aucune ligne dans
+       `stats_box_scores_by_period`) + L8 (alias de noms) ;
+     - **Lot 3** (déc.-janv., après une semaine d'observation de la VM) :
+       agrégats play-by-play + backfill local, puis P1 (premier marqueur),
+       P2 (course à X), P3 (avance max / avance perdue) ; archive brute dans une
+       PR séparée ;
+     - **Lot 4** (fév.-mars, avant les playoffs d'avril 2027) : R3 (score exact
+       de série, balayage, remontée 3-1 via `simulate_series`), puis R1 côté
+       équipe/total.
+     Estimation : ~30 à 35 jours, 6 à 10 nouveaux modèles, ~+3 à 4 points de
+     couverture sur le corpus des playoffs (estimation, à confirmer par la
+     re-mesure). Nouveaux modèles : entraînés sur les saisons déjà en local.
+     **Volontairement NON codés dans le scénario A** (ils restent non
+     calculables : refus propre avec message clair, ou estimation IA
+     « approximative » + résolution admin via `markNotCalculableWithEstimate`) :
+     S7 (+/- par période, ~10 000 appels API), S9 et S10 (raquette, hustle,
+     tracking), A1 (saison/awards, demande un nouveau `bet_scope`, chantier
+     produit), A2, L6 (statut « pari annulé » inexistant) ; faisables plus
+     tard à bas coût mais non planifiés : S5 (pair/impair, quart le plus
+     prolifique), P4 (changements de leader), P5 (dunks, premier 3 pts -- le
+     plus candidat si l'analyse C1 le montre), P6, P7, R2 (cumul sur la
+     série), R1 hors équipe/total, L1 en arbre complet (seule la condition
+     générique est prévue), L3, L4, L5, L7. Messages de refus à rédiger pour
+     S7, S9, S10, A2, L6. À valider avant le Lot 1 : accepter des probas
+     approximatives par composition sous réserve de backtest ; décaler le Lot 3
+     et S6 après l'observation de la VM `nba-refresh` ; périmètre refusé et
+     forme du cache.
+  4. **Après le plan A : faciliter la vie des admins qui vérifient les paris
+     non calculables / non vérifiables** (demande de l'utilisateur,
+     07/10/2026). Pas cadré. Pistes : vue admin de regroupement par motif
+     (`bets.calculability_diagnosis`, étape C3 ci-dessus), estimation IA
+     « approximative » pré-remplie, résolution assistée. À instruire dans une
+     conversation dédiée.
 - **Paris sans joueur identifié, cas restants (suite de p3-14, 05/10/2026)** :
   `resolveNotInMatchBets.ts` couvre désormais les paris JOUEUR simples
   (MATCH et SÉRIE), période joueur et superlatif. Restent à l'admin : un nom
