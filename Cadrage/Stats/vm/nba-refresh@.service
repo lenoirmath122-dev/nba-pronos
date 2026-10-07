@@ -1,0 +1,17 @@
+[Unit]
+Description=Import des box scores NBA et résolution des paris (mode %i)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=nbarefresh
+# SUPABASE_URL et APP_URL (non secrets) ; les secrets sont lus par run.sh.
+EnvironmentFile=/etc/nba-refresh/env
+StateDirectory=nba-refresh
+# Met le code à jour avant chaque run ; le "-" laisse tourner la version actuelle
+# si le pull échoue (réseau, conflit).
+ExecStartPre=-/usr/bin/git -C /opt/nba-pronos pull --ff-only
+ExecStart=/opt/nba-pronos/Cadrage/Stats/vm/run.sh %i
+# Un gros rattrapage (une semaine de matchs) prend 1 à 2 h sur une e2-micro.
+TimeoutStartSec=3h

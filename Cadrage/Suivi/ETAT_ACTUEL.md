@@ -345,8 +345,16 @@ une ligne `sync_logs` (`sync_type='STATS_IMPORT'`, nécessite la migration
 connue : stats.nba.com expire depuis les runners GitHub ET depuis Cloud Run
 (import réussi en local le 07/10, et en 0,2 s depuis Cloud Shell). Highlightly
 (testé) ne remplace pas nba_api : box score match entier seulement, play-by-play
-sans id joueur. Pistes restantes (VM Compute Engine avec cron, ou script local
-lancé à la main avec rattrapage J+N) : voir `GAPS_OUVERTS.md`.
+sans id joueur. Seule une VM Compute Engine (e2-micro, us-central1) a répondu
+(5,1 s). Code prêt (PR 1, 07/10/2026, pas encore déployé) : `refresh_job.py`
+(import strict puis `/api/resolve-bets`), `Cadrage/Stats/vm/` (timer à 12h et
+16h Paris, runbook `DEPLOIEMENT_VM.md`), tests pytest et job CI
+`python-import`. Un match n'est enregistré que complet (box score,
+play-by-play, 4 quarts-temps), sinon réessayé au passage suivant. Reste :
+créer la VM (utilisateur), puis PR 2 (déclenchement depuis le téléphone,
+watchdog, retrait du cron GitHub) ; voir `GAPS_OUVERTS.md`. Le workflow
+`refresh-stats-supabase.yml` tourne encore et échoue tant que la VM n'est pas
+en service.
 
 ---
 

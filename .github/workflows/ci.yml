@@ -49,6 +49,19 @@ jobs:
         run: npm audit --omit=dev
         continue-on-error: true
 
+  python-import:
+    # Tests unitaires de l'import quotidien des box scores (refresh_daily.py /
+    # refresh_job.py, sans réseau ni secret) : un match incomplet ne doit jamais
+    # être enregistré. Dépendances allégées, les mêmes que sur la VM d'import.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r Cadrage/Stats/service/requirements-refresh.txt pytest
+      - run: pytest Cadrage/Stats/service/tests -q
+
   e2e:
     # Job séparé (pas une étape de `checks`) : nécessite Docker (Supabase
     # local) + navigateur Chromium, sensiblement plus lent -- ne doit pas

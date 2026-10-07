@@ -1,0 +1,2 @@
+# Scripts exécutés sur la VM Linux d'import des stats : toujours LF, jamais CRLF.
+Cadrage/Stats/vm/* text eol=lf

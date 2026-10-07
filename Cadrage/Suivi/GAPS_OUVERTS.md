@@ -153,16 +153,39 @@
      prouvée. VM de test `nba-ping-vm` laissée en place pour la suite (à
      supprimer si on renonce). Décision de l'utilisateur : construire l'import
      quotidien sur cette VM (timer + rattrapage + `/api/resolve-bets`, secrets
-     via Secret Manager, swap, IP statique, watchdog), plan à cadrer avec
-     l'`architect`. Plan B si la VM se fait bloquer : un script local qui enchaîne import +
+     via Secret Manager, swap, watchdog). **PR 1 codée le 07/10/2026**
+     (branche `feat/stats-import-vm`) : `refresh_job.py` (import strict puis
+     `/api/resolve-bets`, même si l'import est incomplet), dossier
+     `Cadrage/Stats/vm/` (timer à 12h et 16h Paris, `run.sh`, `install.sh`,
+     `DEPLOIEMENT_VM.md`, `refresh-local.ps1`), `requirements-refresh.txt`,
+     tests pytest + job CI `python-import`, et correctif du bug ci-dessous.
+     Reste : (a) l'utilisateur crée compte de service, secrets, VM
+     `nba-refresh` (étapes 1 à 5 du runbook, budget d'alerte à 1 €, IP
+     éphémère, dépôt public donc clone https) ; (b) PR 2 : workflow GitHub
+     « Run workflow » qui déclenche la VM depuis le téléphone, watchdog
+     (`sync_logs` STATS_IMPORT, issue `cron-failure` si dernier import raté ou
+     > 26 h), retrait du cron de `refresh-stats-supabase.yml`, commentaire de
+     `resolve-bets/route.ts` ; (c) supprimer la VM de test `nba-ping-vm` ;
+     (d) après un run réel : épingler les versions, observer une semaine, et
+     à confirmer : facturation de l'IPv4 externe. Un match sans play-by-play
+     n'est plus enregistré (réessayé aux passages de 12h/16h, ses paris restent
+     en attente, l'admin résout à la main si le play-by-play n'arrive jamais).
+     Plan B si la VM se fait bloquer : un script local qui enchaîne import +
      `/api/resolve-bets` (secrets dans un fichier hors dépôt) lancé à la main
      depuis le PC. nba_api reste de toute façon un garde-fou manuel en cas de
-     gros bug. **Bug indépendant à corriger** (trouvé par l'architect) : dans
+     gros bug. **Bug corrigé dans la PR 1** (trouvé par l'architect) : dans
      `refresh_daily._run`, un quart-temps ou un play-by-play en échec
-     n'empêche pas d'enregistrer le match, qui n'est alors jamais réessayé
+     n'empêchait pas d'enregistrer le match, qui n'était alors jamais réessayé
      (pari joueur+période résolu avec le quart compté à 0, paris
-     temps morts/buzzer/dernier panier bloqués) ; correctif : traiter le match
-     comme sauté s'il manque une pièce.
+     temps morts/buzzer/dernier panier bloqués). Désormais `collect_game()`
+     ne renvoie le match que s'il est complet, et `stats_matchs` est écrit en
+     dernier (contres en delete puis insert, rejouables sans doublon). Reste
+     non corrigé, assumé : un match sauté décale `games_played_season_avant`
+     des matchs suivants ; un match reporté (`scheduled_at` change de jour)
+     reste « match NBA correspondant introuvable » jusqu'à résolution admin ;
+     la correspondance `teams.abbreviation` (Highlightly) ↔ `stats_equipes.tricode`
+     n'est vérifiée que pour OKC/NOP (comparer en SQL : GS/GSW, NY/NYK, SA/SAS,
+     UTA...).
   2. ~~Déployer la migration `20261008090000_sync_type_stats_import.sql`~~ --
      faite le 07/10/2026 via l'outil MCP Supabase (CLI absente de la machine),
      version de l'historique réalignée à la main sur celle du fichier
