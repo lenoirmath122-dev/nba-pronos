@@ -123,7 +123,7 @@ P=nba-pronos-stats-2026
 PN=$(gcloud projects describe $P --format='value(projectNumber)')
 GT=github-vm-trigger@$P.iam.gserviceaccount.com
 gcloud iam service-accounts create github-vm-trigger --display-name="Déclencheur import VM (GitHub)"
-gcloud iam service-accounts add-iam-policy-binding $GT --role=roles/iam.workloadIdentityUser   --member="principal://iam.googleapis.com/projects/$PN/locations/global/workloadIdentityPools/github-pool/subject/repo:lenoirmath122-dev/nba-pronos:ref:refs/heads/main"
+gcloud iam service-accounts add-iam-policy-binding $GT --role=roles/iam.workloadIdentityUser   --member="principal://iam.googleapis.com/projects/$PN/locations/global/workloadIdentityPools/github-pool/subject/repo:lenoirmath122-dev@289689910/nba-pronos@1304699712:ref:refs/heads/main"
 gcloud compute instances add-iam-policy-binding nba-refresh --zone=us-central1-a --role=roles/compute.osLogin --member="serviceAccount:$GT"
 gcloud projects add-iam-policy-binding $P --role=roles/iap.tunnelResourceAccessor --member="serviceAccount:$GT"
 gcloud projects add-iam-policy-binding $P --role=roles/compute.viewer --member="serviceAccount:$GT"

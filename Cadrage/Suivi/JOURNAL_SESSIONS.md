@@ -358,6 +358,8 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 
 - Import des box scores : VM en service, PR 2 déclencheur GitHub et watchdog (07/10/2026) -- Branche `feat/stats-vm-trigger-watchdog`, plans de l'`explorer` puis de l'`architect`. Création de la VM `nba-refresh` (étapes 1 à 5 de `DEPLOIEMENT_VM.md`, lancées depuis le PC par Claude via `gcloud` + SSH IAP, secrets saisis par l'utilisateur dans Cloud Shell). Premier test : `resolve-bets` en HTTP 400 car `SYNC_SECRET` mal collée dans Secret Manager (228 caractères, caractères invalides) ; corrigée (version 2, 64 caractères) puis test OK, HTTP 200. PR 2 : `run-stats-import-vm.yml`, `watchdog-stats-import.yml`, `Cadrage/Stats/vm/trigger.sh` (installé hors dépôt par `install.sh` avec sudoers restreint), cron retiré de `refresh-stats-supabase.yml`, `requirements-refresh.txt` épinglé (pip freeze de la VM). Reste : étape 7 du runbook (utilisateur), suppression de `nba-ping-vm`, observation d'une semaine.
 
+- Import des box scores : étape 7 faite, bouton et watchdog verts (07/10/2026) -- PR #138 mergée. Compte `github-vm-trigger` + liaisons IAM créés dans Cloud Shell, secret `GCP_VM_TRIGGER_SERVICE_ACCOUNT` posé via `gh`, `trigger_user` + `install.sh` sur la VM. Premier lancement du bouton en 403 `getAccessToken` : le dépôt utilise le `sub` OIDC « immutable » (`repo:lenoirmath122-dev@289689910/nba-pronos@1304699712:ref:refs/heads/main`), la liaison WIF du runbook visait l'ancien format ; corrigée (runbook aussi), puis run `manuel` OK (code 0) et watchdog OK sans issue. Reste : suppression de `nba-ping-vm`, observation d'une semaine, IPv4 à ~48 h.
+
 ## Référence
 
 Détail complet de chaque session (contexte, échanges avec l'utilisateur,
