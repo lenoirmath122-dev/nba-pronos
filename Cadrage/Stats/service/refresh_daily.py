@@ -147,22 +147,35 @@ def season_player_game_counts(client, season: str) -> Counter:
     return Counter(r["player_id"] for r in rows)
 
 
-def fetch_season_games(season: str, season_types: list) -> dict:
-    """game_id -> {game_date, season, season_type, teams: {team_id: matchup}}
-    -- une entrée dans `teams` par équipe présente dans ce match (2
-    normalement). Construit à partir de leaguegamefinder SEUL, sans
-    play-by-play (le champ MATCHUP suffit à déduire domicile/extérieur)."""
+def fetch_season_games(season: str, season_types: list, strict: bool = False) -> tuple:
+    """(games, failed_types) -- games : game_id -> {game_date, season,
+    season_type, teams: {team_id: matchup}}, une entrée dans `teams` par
+    équipe présente dans ce match (2 normalement). Construit à partir de
+    leaguegamefinder SEUL, sans play-by-play (le champ MATCHUP suffit à
+    déduire domicile/extérieur). failed_types : season_types dont l'appel a
+    ÉCHOUÉ (fetch_with_retries renvoie None) -- à distinguer d'un
+    DataFrame vide (aucun match, pas une erreur).
+
+    strict (lancement manuel) : timeout/tentatives complets au lieu du
+    mode "hors-saison" réduit (SEASON_INDEX_*), pour ne pas abandonner sur
+    un simple timeout passager de stats.nba.com."""
     games: dict = {}
+    failed_types: list = []
+    timeout = REQUEST_TIMEOUT if strict else SEASON_INDEX_TIMEOUT
+    retries = MAX_RETRIES if strict else SEASON_INDEX_RETRIES
     for season_type in season_types:
         def call(_season_type=season_type):
             return leaguegamefinder.LeagueGameFinder(
                 season_nullable=season, season_type_nullable=_season_type,
-                league_id_nullable="00", timeout=SEASON_INDEX_TIMEOUT,
+                league_id_nullable="00", timeout=timeout,
             ).get_data_frames()[0]
 
-        df = fetch_with_retries(call, f"leaguegamefinder {season} {season_type}", SEASON_INDEX_RETRIES)
+        df = fetch_with_retries(call, f"leaguegamefinder {season} {season_type}", retries)
         sleep_between_requests(DELAY_MIN, DELAY_MAX)
-        if df is None or df.empty:
+        if df is None:
+            failed_types.append(season_type)
+            continue
+        if df.empty:
             continue
         for _, row in df.iterrows():
             gid = row["GAME_ID"]
@@ -171,7 +184,7 @@ def fetch_season_games(season: str, season_types: list) -> dict:
                 "season_type": season_type, "teams": {},
             })
             g["teams"][int(row["TEAM_ID"])] = row["MATCHUP"]
-    return games
+    return games, failed_types
 
 
 def home_away_opponent(teams: dict) -> tuple:
@@ -351,23 +364,68 @@ def upsert_records(client, table: str, df: pd.DataFrame, on_conflict: str):
         client.table(table).upsert(records[i:i + PAGE_SIZE], on_conflict=on_conflict).execute()
 
 
-def run(season: str, season_types: list):
-    client = get_supabase_client()
+def write_sync_log(client, success: bool, summary: str):
+    """Trace chaque exécution dans sync_logs (sync_type='STATS_IMPORT',
+    migration 20261008090000) -- succès OU échec, pour savoir quand les box
+    scores ont réellement été importés (07/10/2026 : timeout stats.nba.com,
+    job vert, aucune trace). Best-effort, même principe que
+    lib/sync/logging.ts::writeSyncLog : un échec d'écriture ne doit jamais
+    faire échouer le rafraîchissement lui-même (et tant que la migration
+    n'est pas déployée, l'insert échoue sur l'enum -- sans conséquence)."""
+    try:
+        client.table("sync_logs").insert({
+            "sync_type": "STATS_IMPORT", "endpoint": "nba_api", "success": success, "summary": summary,
+        }).execute()
+    except Exception as exc:  # noqa: BLE001 -- best-effort volontaire
+        print(f"write_sync_log a échoué : {exc}")
 
-    print(f"Saison ciblée : {season} ({', '.join(season_types)})")
+
+def run(season: str, season_types: list, strict: bool = False, trigger: str = "cron"):
+    """strict (lancement manuel du workflow) : timeout/tentatives complets pour
+    leaguegamefinder, et sortie en code 1 (job rouge, donc /api/resolve-bets
+    non lancé) si l'import est incomplet -- au lieu d'un job vert silencieux
+    qui résoudrait les paris sans box scores. Le cron (non strict) garde le
+    comportement hors-saison rapide et ne fait que tracer l'échec."""
+    client = get_supabase_client()
+    try:
+        ok, summary = _run(client, season, season_types, strict)
+    except Exception as exc:
+        write_sync_log(client, False, f"[{trigger}] {season} ({', '.join(season_types)}) : exception {exc!r}")
+        raise
+    write_sync_log(client, ok, f"[{trigger}] {summary}")
+    if strict and not ok:
+        raise SystemExit(1)
+
+
+def _run(client, season: str, season_types: list, strict: bool) -> tuple:
+    """(ok, résumé) -- ok=False si un appel leaguegamefinder a échoué ou si
+    au moins un match a été sauté (box score non récupéré, équipes ambiguës)."""
+    head = f"{season} ({', '.join(season_types)})"
+    print(f"Saison ciblée : {head}")
     known = known_game_ids(client, season)
     print(f"Matchs déjà connus en base pour cette saison : {len(known)}")
 
-    season_games = fetch_season_games(season, season_types)
+    season_games, failed_types = fetch_season_games(season, season_types, strict)
     new_game_ids = sorted(
         (gid for gid in season_games if gid not in known),
         key=lambda gid: season_games[gid]["game_date"],
     )
     print(f"Matchs trouvés côté NBA pour cette saison : {len(season_games)} -- nouveaux : {len(new_game_ids)}")
 
+    if failed_types:
+        print(f"ÉCHEC leaguegamefinder pour : {', '.join(failed_types)}")
+    if failed_types and strict:
+        # Index partiel/absent : on s'arrête avant tout traitement plutôt que
+        # d'importer (puis de résoudre des paris) sur des données incomplètes.
+        return False, f"{head} : leaguegamefinder en échec ({', '.join(failed_types)}), import abandonné."
+
+    failed_note = f" Index en échec : {', '.join(failed_types)}." if failed_types else ""
+
     if not new_game_ids:
         print("Rien de nouveau -- terminé.")
-        return
+        return not failed_types, f"{head} : {len(season_games)} match(s) NBA trouvé(s), rien de nouveau.{failed_note}"
+
+    skipped_games: list = []
 
     player_game_count = season_player_game_counts(client, season)
 
@@ -380,11 +438,13 @@ def run(season: str, season_types: list):
         home_id, away_id, opponent_of = home_away_opponent(meta["teams"])
         if home_id is None:
             print(f"  [{i}/{len(new_game_ids)}] {game_id} : équipes ambiguës (!= 2), match ignoré cette fois.")
+            skipped_games.append(game_id)
             continue
 
         trad_df, adv_df = fetch_box_scores(game_id)
         if trad_df is None or adv_df is None:
             print(f"  [{i}/{len(new_game_ids)}] {game_id} : échec de récupération, réessayé au prochain lancement.")
+            skipped_games.append(game_id)
             continue
         # dédoublonnage par joueur -- même précaution que load_to_sqlite.py
         # sur ces mêmes réponses API.
@@ -518,19 +578,28 @@ def run(season: str, season_types: list):
         for i in range(0, len(records), PAGE_SIZE):
             client.table("stats_block_events").insert(records[i:i + PAGE_SIZE]).execute()
 
-    print(
-        f"\nTerminé : {len(matchs_rows)} matchs, {nb_box_rows} lignes box_scores, {len(box_period_rows)} lignes "
+    done = (
+        f"{len(matchs_rows)} matchs, {nb_box_rows} lignes box_scores, {len(box_period_rows)} lignes "
         f"box_scores_by_period, {len(block_rows)} lignes block_events ajoutés."
     )
+    print(f"\nTerminé : {done}")
+    skipped_note = f" {len(skipped_games)} match(s) sauté(s) : {', '.join(skipped_games)}." if skipped_games else ""
+    summary = f"{head} : {done}{skipped_note}{failed_note}"
+    return not skipped_games and not failed_types, summary
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--season", default=None, help='ex: 2026-27 (défaut : saison déduite de la date du jour)')
     parser.add_argument("--season-types", nargs="+", default=DEFAULT_SEASON_TYPES)
+    parser.add_argument(
+        "--strict", action="store_true",
+        help="lancement manuel : timeout/tentatives complets pour leaguegamefinder et code de sortie 1 si l'import est incomplet",
+    )
+    parser.add_argument("--trigger", default="cron", help="origine du lancement, juste tracée dans sync_logs (cron|manuel)")
     args = parser.parse_args()
     season = args.season or current_season_label(dt.date.today())
-    run(season, args.season_types)
+    run(season, args.season_types, strict=args.strict, trigger=args.trigger)
 
 
 if __name__ == "__main__":

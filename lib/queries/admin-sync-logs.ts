@@ -9,13 +9,14 @@ import { getServerClient } from "@/lib/supabase/server";
 
 const LOG_LIMIT = 100;
 
-export type SyncType = "TEAMS" | "SCHEDULE" | "RESULTS" | "HEARTBEAT";
+export type SyncType = "TEAMS" | "SCHEDULE" | "RESULTS" | "HEARTBEAT" | "STATS_IMPORT";
 
 export const SYNC_TYPE_LABELS: Record<SyncType, string> = {
   TEAMS: "Équipes",
   SCHEDULE: "Calendrier",
   RESULTS: "Résultats",
   HEARTBEAT: "Heartbeat",
+  STATS_IMPORT: "Import stats NBA",
 };
 
 export type SyncLogRow = {

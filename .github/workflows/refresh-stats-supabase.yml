@@ -45,9 +45,19 @@ jobs:
           # d'injection de commande via l'entrée manuelle). Vide sur le cron
           # -> valeur par défaut identique à DEFAULT_SEASON_TYPES du script.
           SEASON_TYPES: ${{ inputs.season_types || 'Regular Season,Playoffs,PlayIn' }}
+          # Lancement manuel = mode strict (retries complets sur
+          # leaguegamefinder, job rouge si l'import est incomplet, donc
+          # /api/resolve-bets non lancé). Basé sur le type d'événement, pas
+          # sur inputs.season_types (qui a une valeur par défaut, donc ne
+          # distingue pas un choix manuel). Le cron garde le mode rapide.
+          EVENT_NAME: ${{ github.event_name }}
         run: |
           IFS=',' read -ra TYPES <<< "$SEASON_TYPES"
-          python Cadrage/Stats/service/refresh_daily.py --season-types "${TYPES[@]}"
+          if [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            python Cadrage/Stats/service/refresh_daily.py --season-types "${TYPES[@]}" --strict --trigger manuel
+          else
+            python Cadrage/Stats/service/refresh_daily.py --season-types "${TYPES[@]}" --trigger cron
+          fi
       - name: Résoudre automatiquement les paris IA calculables (Phase 6, 22/08/2026)
         # Chaîné APRÈS le rafraîchissement ci-dessus, jamais avant : la
         # résolution a besoin des VRAIES stats de la veille tout juste
@@ -69,7 +79,8 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const title = "Échec planifié : Data NBA — rafraîchissement quotidien Supabase";
+            const kind = context.eventName === "workflow_dispatch" ? "manuel" : "planifié";
+            const title = `Échec ${kind} : Data NBA — rafraîchissement quotidien Supabase`;
             const { data: existing } = await github.rest.issues.listForRepo({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -82,5 +93,5 @@ jobs:
               repo: context.repo.repo,
               title,
               labels: ["cron-failure"],
-              body: `Le workflow planifié a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+              body: `Le workflow ${kind} a échoué. Détails : ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
             });

@@ -15,7 +15,7 @@ export const LOW_QUOTA_THRESHOLD = 10;
 export async function writeSyncLog(
   supabase: ReturnType<typeof getServiceClient>,
   input: {
-    syncType: "TEAMS" | "SCHEDULE" | "RESULTS" | "HEARTBEAT";
+    syncType: "TEAMS" | "SCHEDULE" | "RESULTS" | "HEARTBEAT" | "STATS_IMPORT";
     endpoint: string | null;
     success: boolean;
     summary: string;
