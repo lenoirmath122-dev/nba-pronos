@@ -8,8 +8,9 @@ import { resolveAllCalculableBets } from "@/lib/ai/resolveCalculableBets";
 // malgré son nom de dossier). Runtime Node comme les autres routes sync
 // (service_role, ne tourne jamais côté edge).
 //
-// Appelée en BOUT DE CHAÎNE du rafraîchissement quotidien Data NBA
-// (.github/workflows/refresh-stats-supabase.yml) -- jamais sur le sync
+// Appelée en BOUT DE CHAÎNE du rafraîchissement quotidien Data NBA (VM
+// Compute Engine, Cadrage/Stats/service/refresh_job.py ; plan B manuel :
+// .github/workflows/refresh-stats-supabase.yml) -- jamais sur le sync
 // /api/sync/results (toutes les 30 min), qui ne fait que détecter qu'un
 // match est FINISHED, sans les vraies stats de boîte à statistiques
 // (stats_box_scores, rafraîchi une fois par jour seulement).

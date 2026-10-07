@@ -108,6 +108,42 @@ gcloud compute instances delete nba-ping-vm --zone=us-central1-a
 gcloud run jobs list --region=europe-west1    # supprimer d'éventuels jobs de test : gcloud run jobs delete <nom> --region=europe-west1
 ```
 
+### 7. Déclencheur GitHub (bouton « Run workflow »)
+
+Compte de service dédié, avec le minimum de droits. Il ouvre un vrai shell SSH
+(OS Login) ; `sudo` est limité à `nba-refresh-trigger manuel|presaison` (wrapper
+root installé hors du dépôt), mais ce shell peut lire le serveur de métadonnées
+de la VM, donc les secrets de son compte de service. C'est pourquoi le compte
+n'est utilisable **que depuis la branche `main`** (liaison WIF sur le `sub` du
+jeton `...:ref:refs/heads/main`, pas sur tout le dépôt : une branche ne peut
+pas modifier le workflow pour s'en servir). Dans Cloud Shell :
+
+```bash
+P=nba-pronos-stats-2026
+PN=$(gcloud projects describe $P --format='value(projectNumber)')
+GT=github-vm-trigger@$P.iam.gserviceaccount.com
+gcloud iam service-accounts create github-vm-trigger --display-name="Déclencheur import VM (GitHub)"
+gcloud iam service-accounts add-iam-policy-binding $GT --role=roles/iam.workloadIdentityUser   --member="principal://iam.googleapis.com/projects/$PN/locations/global/workloadIdentityPools/github-pool/subject/repo:lenoirmath122-dev/nba-pronos:ref:refs/heads/main"
+gcloud compute instances add-iam-policy-binding nba-refresh --zone=us-central1-a --role=roles/compute.osLogin --member="serviceAccount:$GT"
+gcloud projects add-iam-policy-binding $P --role=roles/iap.tunnelResourceAccessor --member="serviceAccount:$GT"
+gcloud projects add-iam-policy-binding $P --role=roles/compute.viewer --member="serviceAccount:$GT"
+gcloud iam service-accounts add-iam-policy-binding nba-refresh-vm@$P.iam.gserviceaccount.com --role=roles/iam.serviceAccountUser --member="serviceAccount:$GT"
+gcloud iam service-accounts describe $GT --format='value(uniqueId)'   # -> <id>
+```
+
+Puis le secret GitHub `GCP_VM_TRIGGER_SERVICE_ACCOUNT` = `$GT` (Settings >
+Secrets and variables > Actions ; le provider WIF et les secrets Supabase
+existent déjà). Enfin, **après le merge**, sur la VM :
+
+```bash
+echo sa_<id> | sudo tee /etc/nba-refresh/trigger_user
+sudo -u nbarefresh git -C /opt/nba-pronos pull
+sudo bash /opt/nba-pronos/Cadrage/Stats/vm/install.sh
+```
+
+Le nom `sa_<id>` doit être exact (sinon `sudo` demande un mot de passe et
+échoue). Tester : bouton en mode `manuel`, puis « Watchdog » en lancement manuel.
+
 ## Au quotidien
 
 - **Mise à jour du code** : automatique (`git pull` avant chaque run). Tout merge
@@ -118,11 +154,19 @@ gcloud run jobs list --region=europe-west1    # supprimer d'éventuels jobs de t
 - **Contrôle mensuel** : `systemctl list-timers 'nba-refresh*'`, espace disque
   (`df -h /`), `journalctl --disk-usage`.
 - **Déclencher à la main** : `gcloud compute ssh nba-refresh --zone=us-central1-a --tunnel-through-iap --command "sudo systemctl start nba-refresh@manuel.service"`
-  (Cloud Shell, aussi depuis le téléphone). Un bouton « Run workflow » GitHub
-  est prévu dans une PR suivante, avec un watchdog qui ouvre une issue si le
-  dernier import a échoué ou date de plus de 26 h.
-- **Premier run réussi** : épingler les versions (`pip freeze` dans le venv
-  `/var/lib/nba-refresh/venv`) dans `requirements-refresh.txt`.
+  (Cloud Shell, aussi depuis le téléphone).
+- **Bouton GitHub** (après l'étape 7) : Actions > « Import des box scores —
+  lancer sur la VM » > Run workflow, mode `manuel` (ou `presaison` pour un test).
+  Le run attend la fin et affiche le journal ; rouge si l'import échoue.
+- **Watchdog** (`watchdog-stats-import.yml`, toutes les 4 h) : ouvre une issue
+  (labels `cron-failure`, `stats-import`) si le dernier `STATS_IMPORT` a échoué,
+  s'il date de plus de 26 h, ou s'il n'y en a aucun ; la referme avec un
+  commentaire dès que c'est revenu au vert. Un test `presaison` raté ouvre donc
+  une issue, qui se ferme au prochain passage vert du timer.
+- **Versions Python** : épinglées dans `requirements-refresh.txt` (pip freeze du
+  07/10/2026). Les mettre à jour à la main ; le venv se réinstalle au run suivant.
+- Le workflow `refresh-stats-supabase.yml` n'a plus de cron : c'est un plan B
+  manuel, à ne pas lancer pendant un run de la VM.
 
 - **Diagnostic en root** : `/opt/nba-pronos` appartient à `nbarefresh`. Un `git`
   lancé en root y répondra « dubious ownership » : utiliser

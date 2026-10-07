@@ -1,0 +1,75 @@
+name: Import des box scores — lancer sur la VM
+
+# Bouton « Run workflow » (utilisable depuis le téléphone, appli GitHub) qui
+# déclenche l'import sur la VM Compute Engine `nba-refresh`
+# (Cadrage/Stats/vm/DEPLOIEMENT_VM.md), en plus du timer de 12h et 16h Paris.
+# Attend la fin du service et fait échouer le run s'il échoue ; les 120
+# dernières lignes du journal de la VM s'affichent dans le run.
+#
+# Chemin : GitHub (OIDC / Workload Identity Federation, aucune clé stockée)
+# -> compte de service dédié github-vm-trigger -> SSH via tunnel IAP -> sudo sur
+# UN seul wrapper (/usr/local/sbin/nba-refresh-trigger, modes manuel|presaison).
+# ATTENTION : ce compte ouvre un vrai shell SSH, qui peut lire les secrets du
+# compte de service de la VM (serveur de métadonnées). Sa liaison WIF est donc
+# limitée à la branche `main` (sub = repo:...:ref:refs/heads/main) : lancer ce
+# workflow depuis une autre branche échoue à l'authentification. Mise en place
+# unique : DEPLOIEMENT_VM.md, section « 7. Déclencheur GitHub ».
+#
+# `presaison` : à n'utiliser qu'à la main pour tester sur des matchs de
+# présaison (elle partage le label de saison avec la saison régulière).
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "manuel = saison régulière/playoffs ; presaison = ajoute la présaison (test)"
+        type: choice
+        options:
+          - manuel
+          - presaison
+        default: manuel
+
+permissions:
+  id-token: write # échange OIDC -> jeton GCP
+  contents: read
+
+# Un seul déclenchement à la fois. Ne sérialise que les runs GitHub : le verrou
+# du timer est local à la VM (flock dans run.sh), qui fait attendre le second.
+concurrency:
+  group: nba-refresh-vm
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    # Pire cas : 2 h d'attente du verrou (flock -w 7200 si le timer tourne) +
+    # 3 h de service (TimeoutStartSec) = 5 h.
+    timeout-minutes: 300
+    steps:
+      - name: Authentification GCP (Workload Identity Federation)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_VM_TRIGGER_SERVICE_ACCOUNT }}
+
+      - uses: google-github-actions/setup-gcloud@v2
+
+      - name: Lancer l'import sur la VM
+        env:
+          # Passé par l'environnement, jamais interpolé dans le script, et
+          # revalidé ci-dessous (liste fermée) avant d'atteindre la commande.
+          MODE: ${{ inputs.mode }}
+        run: |
+          case "$MODE" in
+            manuel|presaison) ;;
+            *) echo "Mode invalide : $MODE" >&2; exit 1 ;;
+          esac
+          gcloud compute ssh nba-refresh \
+            --project nba-pronos-stats-2026 \
+            --zone us-central1-a \
+            --tunnel-through-iap \
+            --quiet \
+            --ssh-key-expire-after=6h \
+            --strict-host-key-checking=no \
+            --ssh-flag="-o ServerAliveInterval=30" \
+            --command "sudo /usr/local/sbin/nba-refresh-trigger $MODE"
