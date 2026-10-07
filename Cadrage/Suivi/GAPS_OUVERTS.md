@@ -150,8 +150,7 @@
      date. **VM Compute Engine testée le 07/10/2026 : ÇA PASSE** (e2-micro,
      us-central1-a, debian-12, projet `nba-pronos-stats-2026`) : `RESULT OK 24
      5.1` (5,1 s, mêmes 24 lignes qu'en local). Un seul test, stabilité non
-     prouvée. VM de test `nba-ping-vm` laissée en place pour la suite (à
-     supprimer si on renonce). Décision de l'utilisateur : construire l'import
+     prouvée. VM de test `nba-ping-vm` supprimée le 07/10/2026. Décision de l'utilisateur : construire l'import
      quotidien sur cette VM (timer + rattrapage + `/api/resolve-bets`, secrets
      via Secret Manager, swap, watchdog). **PR 1 codée le 07/10/2026**
      (branche `feat/stats-import-vm`) : `refresh_job.py` (import strict puis
@@ -163,8 +162,8 @@
      budget 1 € fait). **PR 2 codée** (branche `feat/stats-vm-trigger-watchdog`) :
      bouton « Run workflow », watchdog, cron retiré, versions épinglées.
      **PR 2 mergée (#138), étape 7 faite le 07/10/2026** : bouton « Run workflow »
-     (mode `manuel`) vert, watchdog vert. Reste : (a) supprimer la VM de test
-     `nba-ping-vm` et d'éventuels jobs Cloud Run de test ; (b) observer la VM
+     (mode `manuel`) vert, watchdog vert. `nba-ping-vm` et le job Cloud Run de test `nba-api-ping3` supprimés le
+     07/10/2026. Reste : observer la VM
      une semaine (premier vrai import de box scores à la reprise de la saison)
      et vérifier à ~48 h la facturation de l'IPv4 externe. Un match sans play-by-play
      n'est plus enregistré (réessayé aux passages de 12h/16h, ses paris restent
