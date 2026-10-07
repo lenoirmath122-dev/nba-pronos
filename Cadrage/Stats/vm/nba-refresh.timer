@@ -1,0 +1,16 @@
+[Unit]
+Description=Import quotidien des box scores NBA (12h et 16h, heure de Paris)
+
+[Timer]
+# 12h : les derniers matchs de la côte Ouest finissent vers 7h (Paris), le
+# play-by-play est en général publié à cette heure. 16h : rattrapage si l'un
+# d'eux ne l'était pas encore (un match sans play-by-play n'est pas enregistré
+# et est réessayé au passage suivant).
+OnCalendar=*-*-* 12:00:00 Europe/Paris
+OnCalendar=*-*-* 16:00:00 Europe/Paris
+Persistent=true
+RandomizedDelaySec=5min
+Unit=nba-refresh@timer.service
+
+[Install]
+WantedBy=timers.target

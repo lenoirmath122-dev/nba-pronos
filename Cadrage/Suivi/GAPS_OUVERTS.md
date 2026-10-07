@@ -124,16 +124,68 @@
   3 × 60 s en mode strict) alors que le même import marche depuis la machine
   de l'utilisateur. Le cron quotidien a donc probablement pu échouer
   silencieusement avant la PR #134 (aucune trace n'existait). À faire :
-  1. **Prochaine étape : trouver un moyen de vérifier que Highlightly fournit
-     bien le play-by-play** (fautes techniques, contres, retours en zone,
-     buzzer beaters, derniers paniers — aujourd'hui tirés du play-by-play
-     stats.nba.com). La page marketing highlightly.net/nba-api annonce des
-     box scores par joueur ; NON vérifié : nom de l'endpoint, ids joueur
-     (vs `player_id` stats.nba.com), découpe par quart-temps, play-by-play,
-     coût en quota (100 req/jour partagé avec les synchros). Vérification =
-     doc + appel de test avec la clé (consomme du quota). Si pas de
-     play-by-play : « on se débrouillera autrement » (décision de
-     l'utilisateur), à trancher à ce moment-là.
+  1. **Highlightly testé le 07/10/2026 (5 requêtes) : insuffisant seul, et
+     aucune API concurrente abordable.** `/box-score/{id}` : par joueur, match
+     entier uniquement (pas de quart-temps), ids Highlightly (pas ceux de
+     stats.nba.com). `/matches/{id}` : champ `events` (période, horloge,
+     description, isScoringPlay) mais SANS id joueur (noms en texte libre) ni
+     valeur de panier ; fautes techniques et retours en zone non vérifiés.
+     Alternatives (doc seulement, rien d'appelé) : BALLDONTLIE a des ids
+     joueur et `score_value` dans son play-by-play mais seulement au plan
+     39,99 $/mois (refusé : trop cher), SportsDataIO 99-149 $/mois, Big Balls
+     Data n'a pas de play-by-play. **Décision de l'utilisateur** : Highlightly
+     continue de tourner chaque jour (gratuit) pour calendrier/scores ;
+     l'import nba_api (box scores, par période, play-by-play) est conservé,
+     mais doit tourner depuis une IP qui n'est pas celle de GitHub.
+  1bis. **Cloud Run testé le 07/10/2026 : BLOQUÉ.** Test Cloud Shell (VM
+     Compute Engine, projet `nba-pronos-stats-2026`) : `leaguegamefinder`
+     répond en 0,2 s (24 lignes de présaison = 12 matchs). Même appel depuis
+     un Cloud Run Job (europe-west1) : `ReadTimeout` à 30 s, confirmé sur 2
+     jobs distincts. Cloud Run est donc écarté, comme GitHub Actions ; le plan
+     d'un Cloud Run Job + Scheduler (image dédiée, `refresh_job.py`, alerte
+     watchdog, ~0 €/mois) n'a pas été codé. `refresh_daily.py` est
+     incrémental (compare la saison complète aux `game_id` connus) : un
+     lancement à J+1/J+2 rattrape les jours manqués, et les resolvers prennent
+     tous les paris `VALIDATED` dont le match est terminé, sans fenêtre de
+     date. **VM Compute Engine testée le 07/10/2026 : ÇA PASSE** (e2-micro,
+     us-central1-a, debian-12, projet `nba-pronos-stats-2026`) : `RESULT OK 24
+     5.1` (5,1 s, mêmes 24 lignes qu'en local). Un seul test, stabilité non
+     prouvée. VM de test `nba-ping-vm` laissée en place pour la suite (à
+     supprimer si on renonce). Décision de l'utilisateur : construire l'import
+     quotidien sur cette VM (timer + rattrapage + `/api/resolve-bets`, secrets
+     via Secret Manager, swap, watchdog). **PR 1 codée le 07/10/2026**
+     (branche `feat/stats-import-vm`) : `refresh_job.py` (import strict puis
+     `/api/resolve-bets`, même si l'import est incomplet), dossier
+     `Cadrage/Stats/vm/` (timer à 12h et 16h Paris, `run.sh`, `install.sh`,
+     `DEPLOIEMENT_VM.md`, `refresh-local.ps1`), `requirements-refresh.txt`,
+     tests pytest + job CI `python-import`, et correctif du bug ci-dessous.
+     Reste : (a) l'utilisateur crée compte de service, secrets, VM
+     `nba-refresh` (étapes 1 à 5 du runbook, budget d'alerte à 1 €, IP
+     éphémère, dépôt public donc clone https) ; (b) PR 2 : workflow GitHub
+     « Run workflow » qui déclenche la VM depuis le téléphone, watchdog
+     (`sync_logs` STATS_IMPORT, issue `cron-failure` si dernier import raté ou
+     > 26 h), retrait du cron de `refresh-stats-supabase.yml`, commentaire de
+     `resolve-bets/route.ts` ; (c) supprimer la VM de test `nba-ping-vm` ;
+     (d) après un run réel : épingler les versions, observer une semaine, et
+     à confirmer : facturation de l'IPv4 externe. Un match sans play-by-play
+     n'est plus enregistré (réessayé aux passages de 12h/16h, ses paris restent
+     en attente, l'admin résout à la main si le play-by-play n'arrive jamais).
+     Plan B si la VM se fait bloquer : un script local qui enchaîne import +
+     `/api/resolve-bets` (secrets dans un fichier hors dépôt) lancé à la main
+     depuis le PC. nba_api reste de toute façon un garde-fou manuel en cas de
+     gros bug. **Bug corrigé dans la PR 1** (trouvé par l'architect) : dans
+     `refresh_daily._run`, un quart-temps ou un play-by-play en échec
+     n'empêchait pas d'enregistrer le match, qui n'était alors jamais réessayé
+     (pari joueur+période résolu avec le quart compté à 0, paris
+     temps morts/buzzer/dernier panier bloqués). Désormais `collect_game()`
+     ne renvoie le match que s'il est complet, et `stats_matchs` est écrit en
+     dernier (contres en delete puis insert, rejouables sans doublon). Reste
+     non corrigé, assumé : un match sauté décale `games_played_season_avant`
+     des matchs suivants ; un match reporté (`scheduled_at` change de jour)
+     reste « match NBA correspondant introuvable » jusqu'à résolution admin ;
+     la correspondance `teams.abbreviation` (Highlightly) ↔ `stats_equipes.tricode`
+     n'est vérifiée que pour OKC/NOP (comparer en SQL : GS/GSW, NY/NYK, SA/SAS,
+     UTA...).
   2. ~~Déployer la migration `20261008090000_sync_type_stats_import.sql`~~ --
      faite le 07/10/2026 via l'outil MCP Supabase (CLI absente de la machine),
      version de l'historique réalignée à la main sur celle du fichier

@@ -4,8 +4,9 @@ stats_matchs/stats_box_scores) -- Phase 4, architecture "sans état"
 (projet-data-nba.md §23-25). Remplace le stub `/refresh` du service : écrit
 DIRECTEMENT dans Supabase, sans jamais appeler le service déployé.
 
-Conçu pour tourner sur un runner GitHub Actions éphémère (aucun état local
-entre 2 exécutions) : à chaque lancement, il redemande à Supabase quels
+Conçu pour tourner sans état local entre 2 exécutions (VM d'import, voir
+Cadrage/Stats/vm/ ; stats.nba.com bloque les IP de GitHub Actions et de
+Cloud Run) : à chaque lancement, il redemande à Supabase quels
 matchs de la saison en cours sont déjà connus (table stats_matchs, légère),
 compare à la liste réelle des matchs de la saison (nba_api leaguegamefinder),
 et ne va chercher via l'API que les matchs manquants -- fetch incrémental,
@@ -46,7 +47,19 @@ from fetch_nba_data import (  # noqa: E402
     sleep_between_requests,
 )
 from load_to_sqlite import ADVANCED_COLUMNS, TRADITIONAL_COLUMNS  # noqa: E402
-from tester_modele import minutes_to_float  # noqa: E402
+
+def minutes_to_float(m) -> float:
+    """"MM:SS" (ou "MM") -> minutes décimales. Copie de tester_modele.minutes_to_float
+    (8 lignes) : importer tester_modele chargerait joblib/scipy au démarrage, inutile
+    ici et lourd sur la petite VM d'import (1 Go de RAM)."""
+    if pd.isna(m) or m in ("", "0"):
+        return 0.0
+    m = str(m)
+    if ":" in m:
+        mins, secs = m.split(":")
+        return float(mins) + float(secs) / 60
+    return float(m)
+
 
 DEFAULT_SEASON_TYPES = ["Regular Season", "Playoffs", "PlayIn"]
 DELAY_MIN, DELAY_MAX = 0.6, 1.2
@@ -380,6 +393,116 @@ def write_sync_log(client, success: bool, summary: str):
         print(f"write_sync_log a échoué : {exc}")
 
 
+BLOCK_DELETE_BATCH = 50  # game_id par requête delete().in_() -- reste sous la limite d'URL de PostgREST
+
+
+def collect_game(game_id: str, meta: dict, season: str, home_id: int, away_id: int, opponent_of: dict, player_game_count) -> tuple:
+    """(rows, manquant) -- construit EN LOCAL toutes les lignes d'un match,
+    sans rien écrire en base. rows=None (et `manquant` nomme la pièce) si une
+    pièce indispensable manque : box score traditionnel/avancé, play-by-play,
+    ou l'un des 4 quarts-temps. Le match n'est alors PAS enregistré, donc
+    réessayé au prochain lancement (known_game_ids() ne le voit pas).
+
+    Avant le 07/10/2026, un quart-temps ou un play-by-play en échec laissait
+    quand même le match s'enregistrer : il n'était alors jamais réessayé, un
+    pari joueur+période se résolvait avec le quart manquant compté à 0, et les
+    paris temps morts/buzzer/dernier panier restaient bloqués pour toujours
+    ("pas encore synchronisés")."""
+    trad_df, adv_df = fetch_box_scores(game_id)
+    if trad_df is None or adv_df is None:
+        return None, "box score"
+    # dédoublonnage par joueur -- même précaution que load_to_sqlite.py
+    # sur ces mêmes réponses API.
+    trad_df = trad_df.drop_duplicates(subset=["personId"])
+    adv_df = adv_df.drop_duplicates(subset=["personId"])
+
+    # Chantier "evenements de match" (etape 5, GAPS_OUVERTS.md) -- 1 appel
+    # supplementaire par match (play-by-play complet).
+    pbp_df = fetch_play_by_play(game_id)
+    if pbp_df is None or pbp_df.empty:
+        return None, "play-by-play"
+
+    # Chantier "paris joueur+periode" (24/08/2026, GAPS_OUVERTS.md) -- 4
+    # appels supplementaires par match (voir fetch_period_box_scores).
+    period_dfs = fetch_period_box_scores(game_id)
+    for period in (1, 2, 3, 4):
+        pdf = period_dfs.get(period)
+        if pdf is None or pdf.empty:
+            return None, f"quart-temps {period}"
+
+    rows: dict = {"equipes": [], "joueurs": [], "box": [], "adv": [], "period": [], "blocks": [], "played_pids": []}
+
+    team_name_by_id = {}
+    for _, row in trad_df.drop_duplicates("teamId").iterrows():
+        rows["equipes"].append({
+            "team_id": int(row["teamId"]), "tricode": row["teamTricode"],
+            "city": row["teamCity"], "name": row["teamName"],
+        })
+        team_name_by_id[int(row["teamId"])] = row["teamName"]
+    for _, row in trad_df.drop_duplicates("personId").iterrows():
+        if not row["personId"]:
+            continue
+        rows["joueurs"].append({
+            "player_id": int(row["personId"]), "first_name": row["firstName"], "family_name": row["familyName"],
+        })
+
+    player_events = technical_fouls_and_backcourt_by_player(pbp_df)
+    if home_id in team_name_by_id and away_id in team_name_by_id:
+        home_timeouts, away_timeouts = timeouts_by_team(pbp_df, team_name_by_id[home_id], team_name_by_id[away_id])
+    else:
+        home_timeouts, away_timeouts = None, None
+    # Chantier "evenements granulaires" (etape 6, GAPS_OUVERTS.md) -- meme
+    # pbp_df deja recupere ci-dessus, aucun appel supplementaire.
+    had_buzzer_beater, last_basket_player_id = buzzer_beater_and_last_basket(pbp_df)
+    for event in block_events(pbp_df):
+        rows["blocks"].append({"game_id": game_id, **event})
+
+    rows["match"] = {
+        "game_id": game_id, "game_date": meta["game_date"], "season": season,
+        "season_type": meta["season_type"], "home_team_id": home_id, "away_team_id": away_id,
+        "home_timeouts": home_timeouts, "away_timeouts": away_timeouts,
+        "had_buzzer_beater": had_buzzer_beater, "last_basket_player_id": last_basket_player_id,
+    }
+
+    # même filtre DNP/DND que load_to_sqlite.py -- une ligne sans minutes
+    # jouées n'est pas une vraie apparition. Attention : contrairement à
+    # load_to_sqlite.py (qui relit un CSV -- une case vide y redevient un
+    # vrai NaN), la réponse nba_api EN DIRECT garde "" (chaîne vide) pour
+    # un DNP -- notna() seul ne l'attrape pas (bug réel trouvé en
+    # testant le 21/08/2026, 18 lignes DNP passées avec pts=0).
+    trad_played = trad_df[trad_df["minutes"].notna() & (trad_df["minutes"] != "")].rename(columns=TRADITIONAL_COLUMNS)
+    adv_played = adv_df[adv_df["minutes"].notna() & (adv_df["minutes"] != "")].rename(columns=ADVANCED_COLUMNS)
+
+    for _, row in trad_played.iterrows():
+        pid = int(row["player_id"])
+        events = player_events.get(pid, {"technical_fouls": 0, "backcourt_turnovers": 0})
+        rows["box"].append({
+            **{col: row[col] for col in STATS_BOX_SCORE_TRAD_COLUMNS},
+            "opponent_team_id": opponent_of.get(int(row["team_id"])),
+            "game_date": meta["game_date"], "season": season,
+            "games_played_season_avant": player_game_count[pid],
+            "technical_fouls": events["technical_fouls"],
+            "backcourt_turnovers": events["backcourt_turnovers"],
+        })
+    for _, row in adv_played.iterrows():
+        rows["adv"].append({
+            col: row[col]
+            for col in ("game_id", "player_id", "ts_pct", "usg_pct", "off_rating", "def_rating", "net_rating", "pace")
+        })
+    rows["played_pids"] = [int(pid) for pid in trad_played["player_id"]]
+
+    for period in (1, 2, 3, 4):
+        pdf = period_dfs[period].drop_duplicates(subset=["personId"])
+        pdf_played = pdf[pdf["minutes"].notna() & (pdf["minutes"] != "")].rename(columns=TRADITIONAL_COLUMNS)
+        for _, row in pdf_played.iterrows():
+            rows["period"].append({
+                **{col: row[col] for col in STATS_BOX_SCORE_PERIOD_COLUMNS},
+                "period": period,
+                "minutes": minutes_to_float(row["minutes"]),
+            })
+    return rows, None
+
+
 def run(season: str, season_types: list, strict: bool = False, trigger: str = "cron"):
     """strict (lancement manuel du workflow) : timeout/tentatives complets pour
     leaguegamefinder, et sortie en code 1 (job rouge, donc /api/resolve-bets
@@ -426,6 +549,7 @@ def _run(client, season: str, season_types: list, strict: bool) -> tuple:
         return not failed_types, f"{head} : {len(season_games)} match(s) NBA trouvé(s), rien de nouveau.{failed_note}"
 
     skipped_games: list = []
+    complete_game_ids: list = []
 
     player_game_count = season_player_game_counts(client, season)
 
@@ -441,114 +565,37 @@ def _run(client, season: str, season_types: list, strict: bool) -> tuple:
             skipped_games.append(game_id)
             continue
 
-        trad_df, adv_df = fetch_box_scores(game_id)
-        if trad_df is None or adv_df is None:
-            print(f"  [{i}/{len(new_game_ids)}] {game_id} : échec de récupération, réessayé au prochain lancement.")
+        rows, missing = collect_game(game_id, meta, season, home_id, away_id, opponent_of, player_game_count)
+        if rows is None:
+            print(f"  [{i}/{len(new_game_ids)}] {game_id} : {missing} indisponible, match non enregistré, réessayé au prochain lancement.")
             skipped_games.append(game_id)
             continue
-        # dédoublonnage par joueur -- même précaution que load_to_sqlite.py
-        # sur ces mêmes réponses API.
-        trad_df = trad_df.drop_duplicates(subset=["personId"])
-        adv_df = adv_df.drop_duplicates(subset=["personId"])
 
-        team_name_by_id = {}
-        for _, row in trad_df.drop_duplicates("teamId").iterrows():
-            equipes_rows.append({
-                "team_id": int(row["teamId"]), "tricode": row["teamTricode"],
-                "city": row["teamCity"], "name": row["teamName"],
-            })
-            team_name_by_id[int(row["teamId"])] = row["teamName"]
-        for _, row in trad_df.drop_duplicates("personId").iterrows():
-            if not row["personId"]:
-                continue
-            joueurs_rows.append({
-                "player_id": int(row["personId"]), "first_name": row["firstName"], "family_name": row["familyName"],
-            })
-
-        # Chantier "evenements de match" (etape 5, GAPS_OUVERTS.md) -- 1
-        # appel supplementaire par match (play-by-play complet). Panne
-        # tolerante : home_timeouts/away_timeouts/technical_fouls/
-        # backcourt_turnovers restent absents (NULL) pour ce match si
-        # l'appel echoue, jamais bloquant pour le reste de la synchro
-        # (meme philosophie que fetch_box_scores plus haut -- match
-        # reessaye au prochain lancement uniquement si LUI echoue, pas
-        # celui-ci).
-        pbp_df = fetch_play_by_play(game_id)
-        player_events = technical_fouls_and_backcourt_by_player(pbp_df) if pbp_df is not None else {}
-        if pbp_df is not None and home_id in team_name_by_id and away_id in team_name_by_id:
-            home_timeouts, away_timeouts = timeouts_by_team(pbp_df, team_name_by_id[home_id], team_name_by_id[away_id])
-        else:
-            home_timeouts, away_timeouts = None, None
-        # Chantier "evenements granulaires" (etape 6, GAPS_OUVERTS.md) --
-        # meme pbp_df deja recupere ci-dessus, aucun appel supplementaire.
-        if pbp_df is not None:
-            had_buzzer_beater, last_basket_player_id = buzzer_beater_and_last_basket(pbp_df)
-            for event in block_events(pbp_df):
-                block_rows.append({"game_id": game_id, **event})
-        else:
-            had_buzzer_beater, last_basket_player_id = None, None
-
-        matchs_rows.append({
-            "game_id": game_id, "game_date": meta["game_date"], "season": season,
-            "season_type": meta["season_type"], "home_team_id": home_id, "away_team_id": away_id,
-            "home_timeouts": home_timeouts, "away_timeouts": away_timeouts,
-            "had_buzzer_beater": had_buzzer_beater, "last_basket_player_id": last_basket_player_id,
-        })
-
-        # même filtre DNP/DND que load_to_sqlite.py -- une ligne sans minutes
-        # jouées n'est pas une vraie apparition. Attention : contrairement à
-        # load_to_sqlite.py (qui relit un CSV -- une case vide y redevient un
-        # vrai NaN), la réponse nba_api EN DIRECT garde "" (chaîne vide) pour
-        # un DNP -- notna() seul ne l'attrape pas (bug réel trouvé en
-        # testant le 21/08/2026, 18 lignes DNP passées avec pts=0).
-        trad_played = trad_df[trad_df["minutes"].notna() & (trad_df["minutes"] != "")].rename(columns=TRADITIONAL_COLUMNS)
-        adv_played = adv_df[adv_df["minutes"].notna() & (adv_df["minutes"] != "")].rename(columns=ADVANCED_COLUMNS)
-
-        for _, row in trad_played.iterrows():
-            pid = int(row["player_id"])
-            events = player_events.get(pid, {"technical_fouls": 0, "backcourt_turnovers": 0})
-            box_rows.append({
-                **{col: row[col] for col in STATS_BOX_SCORE_TRAD_COLUMNS},
-                "opponent_team_id": opponent_of.get(int(row["team_id"])),
-                "game_date": meta["game_date"], "season": season,
-                "games_played_season_avant": player_game_count[pid],
-                "technical_fouls": events["technical_fouls"],
-                "backcourt_turnovers": events["backcourt_turnovers"],
-            })
-        for _, row in adv_played.iterrows():
-            box_adv_rows.append({
-                col: row[col]
-                for col in ("game_id", "player_id", "ts_pct", "usg_pct", "off_rating", "def_rating", "net_rating", "pace")
-            })
-
-        for pid in trad_played["player_id"].astype(int):
+        equipes_rows.extend(rows["equipes"])
+        joueurs_rows.extend(rows["joueurs"])
+        matchs_rows.append(rows["match"])
+        box_rows.extend(rows["box"])
+        box_adv_rows.extend(rows["adv"])
+        box_period_rows.extend(rows["period"])
+        block_rows.extend(rows["blocks"])
+        # Compteur avancé SEULEMENT pour un match complet (sinon un match
+        # sauté puis réimporté plus tard compterait deux fois).
+        for pid in rows["played_pids"]:
             player_game_count[pid] += 1
-
-        # Chantier "paris joueur+periode" (24/08/2026, GAPS_OUVERTS.md) -- 4
-        # appels supplementaires par match (voir fetch_period_box_scores).
-        period_dfs = fetch_period_box_scores(game_id)
-        for period, pdf in period_dfs.items():
-            if pdf is None:
-                continue
-            pdf = pdf.drop_duplicates(subset=["personId"])
-            pdf_played = pdf[pdf["minutes"].notna() & (pdf["minutes"] != "")].rename(columns=TRADITIONAL_COLUMNS)
-            for _, row in pdf_played.iterrows():
-                box_period_rows.append({
-                    **{col: row[col] for col in STATS_BOX_SCORE_PERIOD_COLUMNS},
-                    "period": period,
-                    "minutes": minutes_to_float(row["minutes"]),
-                })
+        complete_game_ids.append(game_id)
 
         if i % 10 == 0 or i == len(new_game_ids):
             print(f"  [{i}/{len(new_game_ids)}] traité jusqu'à {game_id}")
 
-    # Ordre important pour la robustesse (bug réel trouvé en testant le
-    # 21/08/2026) : stats_box_scores AVANT stats_matchs. known_game_ids()
-    # ne regarde QUE stats_matchs -- si le script est interrompu (panne
-    # réseau, quota API) entre les deux, on veut qu'un match reste détecté
-    # comme "pas encore connu" tant que ses stats ne sont pas confirmées
-    # écrites, pas l'inverse (sinon il resterait incomplet pour toujours,
-    # silencieusement, le prochain lancement le croyant déjà traité).
+    # Ordre important pour la robustesse : stats_matchs EN DERNIER.
+    # known_game_ids() ne regarde QUE stats_matchs -- si le script est
+    # interrompu (panne réseau, quota API) avant, le match reste détecté
+    # comme "pas encore connu" et sera réessayé en entier, au lieu d'être
+    # considéré traité avec des tables filles incomplètes pour toujours
+    # (bug réel trouvé en testant le 21/08/2026 ; étendu à stats_block_events
+    # le 07/10/2026). Les tables filles sont rejouables sans doublon : upsert
+    # pour les 3 premières, delete puis insert pour stats_block_events (table
+    # d'événements sans clé unique).
     if equipes_rows:
         upsert_records(client, "stats_equipes", pd.DataFrame(equipes_rows).drop_duplicates("team_id"), "team_id")
     if joueurs_rows:
@@ -566,17 +613,16 @@ def _run(client, season: str, season_types: list, strict: bool) -> tuple:
     if box_period_rows:
         upsert_records(client, "stats_box_scores_by_period", pd.DataFrame(box_period_rows), "game_id,player_id,period")
 
-    if matchs_rows:
-        upsert_records(client, "stats_matchs", pd.DataFrame(matchs_rows), "game_id")
-
-    # stats_block_events : table d'evenements (pas "1 ligne courante par
-    # cle" comme les autres) -- insert simple, jamais d'upsert (un match
-    # neuf ne peut jamais entrer en conflit avec une ligne existante).
+    for k in range(0, len(complete_game_ids), BLOCK_DELETE_BATCH):
+        client.table("stats_block_events").delete().in_("game_id", complete_game_ids[k:k + BLOCK_DELETE_BATCH]).execute()
     if block_rows:
         block_df = pd.DataFrame(block_rows)
         records = [{col: to_json_safe(val) for col, val in row.items()} for row in block_df.to_dict(orient="records")]
-        for i in range(0, len(records), PAGE_SIZE):
-            client.table("stats_block_events").insert(records[i:i + PAGE_SIZE]).execute()
+        for k in range(0, len(records), PAGE_SIZE):
+            client.table("stats_block_events").insert(records[k:k + PAGE_SIZE]).execute()
+
+    if matchs_rows:
+        upsert_records(client, "stats_matchs", pd.DataFrame(matchs_rows), "game_id")
 
     done = (
         f"{len(matchs_rows)} matchs, {nb_box_rows} lignes box_scores, {len(box_period_rows)} lignes "

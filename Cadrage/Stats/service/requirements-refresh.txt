@@ -1,0 +1,11 @@
+# Dépendances de l'import quotidien (refresh_job.py / refresh_daily.py) sur la
+# petite VM (1 Go de RAM) et en CI -- volontairement sans scipy, scikit-learn,
+# joblib ni fpdf2 (réservés à l'entraînement et au service de prédiction, voir
+# Cadrage/Stats/scripts/requirements.txt). A épingler (pip freeze) une fois le
+# premier run réel réussi, pour qu'une mise à jour de nba_api ne casse pas
+# l'import un matin sans prévenir.
+nba_api
+pandas
+numpy
+requests
+supabase
