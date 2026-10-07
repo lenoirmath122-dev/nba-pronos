@@ -147,10 +147,14 @@
      incrémental (compare la saison complète aux `game_id` connus) : un
      lancement à J+1/J+2 rattrape les jours manqués, et les resolvers prennent
      tous les paris `VALIDATED` dont le match est terminé, sans fenêtre de
-     date. **Pistes restantes** : (1) petite VM Compute Engine e2-micro avec
-     cron quotidien (même famille d'IP que Cloud Shell, gratuite en région US
-     selon le quota « toujours gratuit », à valider par un appel depuis la VM
-     avant de construire) ; (2) plan B local : un script qui enchaîne import +
+     date. **VM Compute Engine testée le 07/10/2026 : ÇA PASSE** (e2-micro,
+     us-central1-a, debian-12, projet `nba-pronos-stats-2026`) : `RESULT OK 24
+     5.1` (5,1 s, mêmes 24 lignes qu'en local). Un seul test, stabilité non
+     prouvée. VM de test `nba-ping-vm` laissée en place pour la suite (à
+     supprimer si on renonce). Décision de l'utilisateur : construire l'import
+     quotidien sur cette VM (timer + rattrapage + `/api/resolve-bets`, secrets
+     via Secret Manager, swap, IP statique, watchdog), plan à cadrer avec
+     l'`architect`. Plan B si la VM se fait bloquer : un script local qui enchaîne import +
      `/api/resolve-bets` (secrets dans un fichier hors dépôt) lancé à la main
      depuis le PC. nba_api reste de toute façon un garde-fou manuel en cas de
      gros bug. **Bug indépendant à corriger** (trouvé par l'architect) : dans
