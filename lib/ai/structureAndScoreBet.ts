@@ -47,6 +47,7 @@ import type { BetCategory } from "@/lib/labels/bets";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 import { resolveKnownRosters, type KnownRosters } from "./roster";
 import { DAILY_COST_CAP_USD, getTodaySpendUsd } from "./usageTracking";
+import { buildCalculabilityDiagnosis, type AiTrace, type NotCalculableReason } from "./notCalculableReason";
 
 // Orchestre la structuration IA + le calcul de proba pour UN pari, à la
 // soumission (SPEC_TECHNIQUE_PROBA_PARIS_PERSOS_V0_1.md §3/§6, décidé le
@@ -340,58 +341,42 @@ export async function structureAndScoreBet(
 ): Promise<StructureAndScoreOutcome> {
   const supabase = await getServerClient();
 
+  /** Motif quand l'IA n'a pas produit une structuration exploitable pour la
+   *  famille `expected` (null = schéma général, qui accepte tout bet_subject).
+   *  Un paramètre unique ne suffit pas : le motif se calcule dans la branche. */
+  function aiFailureReason(
+    s: { calculable: boolean; bet_subject: string | null } | null,
+    expected: string | null,
+  ): NotCalculableReason {
+    if (!s) return "AI_UNAVAILABLE";
+    if (!s.calculable) return "UNKNOWN_TYPE";
+    if (expected !== null && s.bet_subject !== expected) return "ROUTE_MISMATCH";
+    return "AI_INCOMPLETE"; // joueur absent, conditions vides, bet_subject null...
+  }
+
+  /** Motif d'un `scope !== "MATCH" || !matchId || !payload`. */
+  function scopeFailureReason(): NotCalculableReason {
+    if (scope !== "MATCH") return "SERIES_SCOPE_UNSUPPORTED";
+    if (!matchId) return "MATCH_ID_MISSING";
+    return "AI_INCOMPLETE"; // payload absent
+  }
+
   /** Écrit is_calculable=false explicitement (jamais laissé NULL) -- bug
    *  réel trouvé le 21/08/2026 : le code s'arrêtait sans rien écrire dès
    *  que l'IA répondait "non calculable", rendant indistinguable "l'IA a
    *  tranché non" de "l'IA n'a jamais tourné" (panne, clé absente...).
-   *  Fonctionnellement inoffensif (is_calculable ?? false partout en
-   *  lecture) mais rendait tout diagnostic impossible. */
-  async function markNotCalculable(): Promise<void> {
+   *  Depuis l'étape 1-A de GAPS_OUVERTS.md (couverture des types de paris),
+   *  écrit aussi le motif (code fermé), le texte brut et l'empreinte de type
+   *  dans bets.calculability_diagnosis. `proba` non nul = estimation
+   *  INFORMATIVE seulement (taux de base historique, periodStatCodes.ts::
+   *  GENERIC_LEADS_PERIOD_RESULT_RATES, pas un calcul par match) : le pari
+   *  reste non calculable, dans la file de validation admin, JAMAIS
+   *  auto-validé/auto-résolu sur cette estimation (06/09/2026, "formulation
+   *  période sans le mot 'temps'" ; branche `else` de la RPC étendue par
+   *  la migration 20260906110000). */
+  async function writeNotCalculable(reason: NotCalculableReason, proba: number | null, ai?: AiTrace): Promise<void> {
     try {
-      await supabase.rpc("update_bet_structuration", {
-        p_bet_id: betId,
-        p_structured_player_name: null,
-        p_structured_player_id: null,
-        p_structured_team_id: null,
-        p_structured_duel: null,
-        p_structured_combo: null,
-        p_structured_period: null,
-        p_structured_roster_split: null,
-        p_structured_roster_count: null,
-        p_structured_superlative: null,
-        p_structured_technical_fouls_count: null,
-        p_structured_last_basket: null,
-        p_structured_block_on_player: null,
-        p_structured_negation: false,
-        p_stat: null,
-        p_threshold: null,
-        p_comparison: null,
-        p_is_calculable: false,
-        p_calculated_proba: null,
-        p_suggested_difficulty: null,
-      });
-    } catch {
-      // Best-effort, comme le reste de cette fonction.
-    }
-  }
-
-  /** Même effet que markNotCalculable() (is_calculable=false, reste dans
-   *  la file de validation admin pour validation ET résolution manuelles)
-   *  SAUF que calculated_proba/suggested_difficulty portent une estimation
-   *  -- taux de base HISTORIQUE (periodStatCodes.ts::
-   *  GENERIC_LEADS_PERIOD_RESULT_RATES), pas un calcul par match. Ajouté
-   *  le 06/09/2026 (GAPS_OUVERTS.md, "formulation période sans le mot
-   *  'temps'") pour "mène après un quart hors mi-temps puis résultat" --
-   *  aucun modèle dédié pour ces périodes (le seul modèle,
-   *  period_leads_half_result.joblib, est entraîné DIRECTEMENT sur la
-   *  mi-temps, pas généralisable sans nouvel entraînement). Usage
-   *  INFORMATIF SEULEMENT (aide l'admin à fixer un barème cohérent) --
-   *  JAMAIS auto-validé/auto-résolu sur cette estimation, jugée trop
-   *  grossière pour ça. Nécessite la branche `else` de
-   *  update_bet_structuration étendue (migration 20260906110000). */
-  async function markNotCalculableWithEstimate(proba: number): Promise<void> {
-    try {
-      await supabase.rpc("update_bet_structuration", {
+      const params = {
         p_bet_id: betId,
         p_structured_player_name: null,
         p_structured_player_id: null,
@@ -411,11 +396,41 @@ export async function structureAndScoreBet(
         p_comparison: null,
         p_is_calculable: false,
         p_calculated_proba: proba,
-        p_suggested_difficulty: probaToDifficulty(proba),
+        p_suggested_difficulty: proba === null ? null : probaToDifficulty(proba),
+      };
+      const diagnosis = buildCalculabilityDiagnosis({
+        reason,
+        rawText: description,
+        route: routeBetDescription(description),
+        ai,
       });
+      const first = await supabase.rpc("update_bet_structuration", { ...params, p_calculability_diagnosis: diagnosis });
+      let error = first?.error ?? null;
+      // Repli de compatibilité : migration 20261009090000 pas encore poussée
+      // (fonction à 22 paramètres introuvable). is_calculable=false doit
+      // quand même être écrit. À retirer une fois la migration déployée.
+      if (error?.code === "PGRST202") {
+        const second = await supabase.rpc("update_bet_structuration", params);
+        error = second?.error ?? null;
+      }
+      if (error) {
+        // Jamais le texte du pari dans les logs : id + code seulement.
+        console.warn(`structureAndScoreBet : écriture du non-calcul échouée, pari ${betId}, motif ${reason} (${error.code ?? "?"}).`);
+      }
     } catch {
       // Best-effort, comme le reste de cette fonction.
     }
+  }
+
+  async function markNotCalculable(reason: NotCalculableReason, ai?: AiTrace): Promise<void> {
+    await writeNotCalculable(reason, null, ai);
+  }
+
+  /** Non calculable AVEC estimation informative : LEADS_HALF_RESULT hors
+   *  H1/Q2, aucun modèle dédié (period_leads_half_result.joblib est
+   *  entraîné sur la mi-temps). */
+  async function markNotCalculableWithEstimate(proba: number, ai?: AiTrace): Promise<void> {
+    await writeNotCalculable("NO_MODEL_FOR_PERIOD", proba, ai);
   }
 
   /** Pari PERIOD (24/08/2026, GAPS_OUVERTS.md, chantier "pari période") --
@@ -429,17 +444,17 @@ export async function structureAndScoreBet(
   async function handlePeriodBet(teamNames: [string, string] | null, rosters: KnownRosters | null): Promise<void> {
     const structuration = await structurePeriodBet(description, teamNames, undefined, rosters);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "PERIOD") {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "PERIOD"), structuration);
       return;
     }
     const periodBet = structuration.period_bet;
     if (scope !== "MATCH" || !matchId || !periodBet) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
     const asOfDate = matchTeams.scheduledAt.slice(0, 10);
@@ -448,12 +463,12 @@ export async function structureAndScoreBet(
     // bet_subject=PLAYER classique (dd/td exceptés via NO_THRESHOLD_STATS).
     if (periodBet.player) {
       if (!periodBet.period || !periodBet.player_stat) {
-        await markNotCalculable();
+        await markNotCalculable("AI_INCOMPLETE", structuration);
         return;
       }
       const stat = periodBet.player_stat as StatCode;
       if (!NO_THRESHOLD_STATS.has(stat) && (periodBet.threshold === null || !periodBet.comparison)) {
-        await markNotCalculable();
+        await markNotCalculable("AI_INCOMPLETE", structuration);
         return;
       }
       const prediction = await predictPlayerPeriodStat(
@@ -467,7 +482,7 @@ export async function structureAndScoreBet(
         asOfDate,
       );
       if (!prediction) {
-        await markNotCalculable();
+        await markNotCalculable("STATS_NO_PREDICTION", structuration);
         return;
       }
       await supabase.rpc("update_bet_structuration", {
@@ -506,7 +521,7 @@ export async function structureAndScoreBet(
     // QUARTERS_WON_COUNT (porte sur le match entier).
     const outcomeKind = periodBet.outcome_kind as PeriodOutcomeKind | null;
     if (!outcomeKind || (outcomeKind !== "QUARTERS_WON_COUNT" && !periodBet.period)) {
-      await markNotCalculable();
+      await markNotCalculable("AI_INCOMPLETE", structuration);
       return;
     }
 
@@ -515,7 +530,7 @@ export async function structureAndScoreBet(
     if (TEAM_TARGETED_PERIOD_OUTCOMES.has(outcomeKind)) {
       const teamName = periodBet.team === "team1" ? teamNames?.[0] : periodBet.team === "team2" ? teamNames?.[1] : null;
       if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
-        await markNotCalculable();
+        await markNotCalculable("TEAM_UNRESOLVED", structuration);
         return;
       }
       equipeVisee = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
@@ -534,7 +549,7 @@ export async function structureAndScoreBet(
     const needsComparison = !NO_THRESHOLD_PERIOD_OUTCOMES.has(outcomeKind);
     const needsThreshold = needsComparison && outcomeKind !== "LEADS_HALF_RESULT";
     if ((needsComparison && !periodBet.comparison) || (needsThreshold && periodBet.threshold === null)) {
-      await markNotCalculable();
+      await markNotCalculable("AI_INCOMPLETE", structuration);
       return;
     }
 
@@ -548,9 +563,9 @@ export async function structureAndScoreBet(
     if (outcomeKind === "LEADS_HALF_RESULT" && periodBet.period !== "H1" && periodBet.period !== "Q2") {
       const estimate = estimateLeadsPeriodResultProba(periodBet.period as PeriodCode, periodBet.comparison as "OVER" | "UNDER");
       if (estimate !== null) {
-        await markNotCalculableWithEstimate(estimate);
+        await markNotCalculableWithEstimate(estimate, structuration);
       } else {
-        await markNotCalculable();
+        await markNotCalculable("NO_MODEL_FOR_PERIOD", structuration);
       }
       return;
     }
@@ -567,7 +582,7 @@ export async function structureAndScoreBet(
       asOfDate,
     );
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION", structuration);
       return;
     }
 
@@ -612,24 +627,24 @@ export async function structureAndScoreBet(
   async function handleRosterSplitBet(teamNames: [string, string] | null): Promise<void> {
     const structuration = await structureRosterSplitBet(description, teamNames);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "ROSTER_SPLIT") {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "ROSTER_SPLIT"), structuration);
       return;
     }
     const rosterSplitBet = structuration.roster_split_bet;
     if (scope !== "MATCH" || !matchId || !rosterSplitBet) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
     const asOfDate = matchTeams.scheduledAt.slice(0, 10);
 
     const teamName = rosterSplitBet.team === "team1" ? teamNames?.[0] : teamNames?.[1];
     if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
-      await markNotCalculable();
+      await markNotCalculable("TEAM_UNRESOLVED", structuration);
       return;
     }
     const equipeVisee: "domicile" | "exterieur" = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
@@ -646,7 +661,7 @@ export async function structureAndScoreBet(
       asOfDate,
     );
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION", structuration);
       return;
     }
 
@@ -688,24 +703,24 @@ export async function structureAndScoreBet(
   async function handleRosterCountBet(teamNames: [string, string] | null): Promise<void> {
     const structuration = await structureRosterCountBet(description, teamNames);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "ROSTER_COUNT") {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "ROSTER_COUNT"), structuration);
       return;
     }
     const rosterCountBet = structuration.roster_count_bet;
     if (scope !== "MATCH" || !matchId || !rosterCountBet) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
     const asOfDate = matchTeams.scheduledAt.slice(0, 10);
 
     const stat = rosterCountBet.stat as StatCode;
     if (!NO_THRESHOLD_STATS.has(stat) && (rosterCountBet.stat_threshold === null || !rosterCountBet.stat_comparison)) {
-      await markNotCalculable();
+      await markNotCalculable("AI_INCOMPLETE", structuration);
       return;
     }
 
@@ -719,7 +734,7 @@ export async function structureAndScoreBet(
     } else {
       const teamName = rosterCountBet.scope === "team1" ? teamNames?.[0] : teamNames?.[1];
       if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
-        await markNotCalculable();
+        await markNotCalculable("TEAM_UNRESOLVED", structuration);
         return;
       }
       resolvedScope = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
@@ -738,7 +753,7 @@ export async function structureAndScoreBet(
       asOfDate,
     );
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION", structuration);
       return;
     }
 
@@ -789,17 +804,17 @@ export async function structureAndScoreBet(
   async function handleSuperlativeBet(teamNames: [string, string] | null): Promise<void> {
     const structuration = await structureSuperlativeBet(description, teamNames);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "SUPERLATIVE") {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "SUPERLATIVE"), structuration);
       return;
     }
     const superlativeBet = structuration.superlative_bet;
     if (scope !== "MATCH" || !matchId || !superlativeBet) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
     const asOfDate = matchTeams.scheduledAt.slice(0, 10);
@@ -812,7 +827,7 @@ export async function structureAndScoreBet(
       asOfDate,
     );
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION", structuration);
       return;
     }
 
@@ -855,17 +870,17 @@ export async function structureAndScoreBet(
   async function handleTechnicalFoulsCountBet(teamNames: [string, string] | null): Promise<void> {
     const structuration = await structureTechnicalFoulsCountBet(description, teamNames);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "TECHNICAL_FOULS_COUNT") {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "TECHNICAL_FOULS_COUNT"), structuration);
       return;
     }
     const countBet = structuration.technical_fouls_count_bet;
     if (scope !== "MATCH" || !matchId || !countBet) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
     const asOfDate = matchTeams.scheduledAt.slice(0, 10);
@@ -877,7 +892,7 @@ export async function structureAndScoreBet(
     } else {
       const teamName = countBet.scope === "team1" ? teamNames?.[0] : teamNames?.[1];
       if (!teamName || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
-        await markNotCalculable();
+        await markNotCalculable("TEAM_UNRESOLVED", structuration);
         return;
       }
       resolvedScope = teamName === matchTeams.homeTeamName ? "domicile" : "exterieur";
@@ -893,7 +908,7 @@ export async function structureAndScoreBet(
       asOfDate,
     );
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION", structuration);
       return;
     }
 
@@ -929,23 +944,23 @@ export async function structureAndScoreBet(
   async function handleLastBasketBet(teamNames: [string, string] | null): Promise<void> {
     const structuration = await structureLastBasketBet(description, teamNames);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "LAST_BASKET" || !structuration.player) {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "LAST_BASKET"), structuration);
       return;
     }
     if (scope !== "MATCH" || !matchId) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
     const asOfDate = matchTeams.scheduledAt.slice(0, 10);
 
     const prediction = await predictLastBasket(structuration.player, matchTeams.homeTeamName, matchTeams.awayTeamName, asOfDate);
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION", structuration);
       return;
     }
 
@@ -990,16 +1005,16 @@ export async function structureAndScoreBet(
       !structuration.blocker ||
       !structuration.victim
     ) {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "BLOCK_ON_PLAYER"), structuration);
       return;
     }
     if (scope !== "MATCH" || !matchId) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
     const asOfDate = matchTeams.scheduledAt.slice(0, 10);
@@ -1012,7 +1027,7 @@ export async function structureAndScoreBet(
       asOfDate,
     );
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION", structuration);
       return;
     }
 
@@ -1055,8 +1070,8 @@ export async function structureAndScoreBet(
    *  de validité que côté service (une condition "somme" -- 2+ joueurs
    *  et/ou 2+ stats -- est restreinte aux stats comptées ; une condition
    *  "simple" accepte toute STAT_CODES, y compris dd/td) -- vérifié ici
-   *  aussi pour éviter un aller-retour HTTP voué à l'échec. null si
-   *  invalide (appelant doit alors markNotCalculable()). Factorisée le
+   *  aussi pour éviter un aller-retour HTTP voué à l'échec. { ok: false,
+   *  reason } si invalide (appelant doit alors markNotCalculable(reason)). Factorisée le
    *  25/08/2026 (étape 7) -- AVANT cette étape, dupliquée telle quelle
    *  dans la seule branche combo simple ; désormais partagée avec
    *  handleComboNestedBet() ci-dessous. */
@@ -1064,20 +1079,27 @@ export async function structureAndScoreBet(
     c: { kind: "PLAYER" | "team1" | "team2"; players: string[]; stats: string[]; threshold: number | null; comparison: "OVER" | "UNDER" },
     teamNames: [string, string] | null,
     matchTeams: NonNullable<Awaited<ReturnType<typeof resolveMatchTeams>>>,
-  ): ComboCondition | null {
-    if (c.stats.length === 0) return null;
+  ): { ok: true; condition: ComboCondition } | { ok: false; reason: NotCalculableReason } {
+    if (c.stats.length === 0) return { ok: false, reason: "AI_INCOMPLETE" };
     if (c.kind === "PLAYER") {
-      if (c.players.length === 0) return null;
+      if (c.players.length === 0) return { ok: false, reason: "AI_INCOMPLETE" };
       const isSimple = c.players.length === 1 && c.stats.length === 1;
-      if (!isSimple && c.stats.some((s) => !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(s))) return null;
+      if (!isSimple && c.stats.some((s) => !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(s))) {
+        return { ok: false, reason: "UNSUPPORTED_STAT" };
+      }
       const noThreshold = isSimple && NO_THRESHOLD_STATS.has(c.stats[0] as StatCode);
-      if (!noThreshold && c.threshold === null) return null;
-      return { kind: "PLAYER", players: c.players, stats: c.stats, threshold: c.threshold, comparison: c.comparison };
+      if (!noThreshold && c.threshold === null) return { ok: false, reason: "AI_INCOMPLETE" };
+      return {
+        ok: true,
+        condition: { kind: "PLAYER", players: c.players, stats: c.stats, threshold: c.threshold, comparison: c.comparison },
+      };
     }
     const name = c.kind === "team1" ? teamNames?.[0] : teamNames?.[1];
     const side = !name ? null : name === matchTeams.homeTeamName ? "domicile" : name === matchTeams.awayTeamName ? "exterieur" : null;
-    if (!side || c.threshold === null || c.stats.some((s) => !(COMPARISON_TEAM_STAT_CODES as string[]).includes(s))) return null;
-    return { kind: "TEAM", team: side, stats: c.stats, threshold: c.threshold, comparison: c.comparison };
+    if (!side) return { ok: false, reason: "TEAM_UNRESOLVED" };
+    if (c.threshold === null) return { ok: false, reason: "AI_INCOMPLETE" };
+    if (c.stats.some((s) => !(COMPARISON_TEAM_STAT_CODES as string[]).includes(s))) return { ok: false, reason: "UNSUPPORTED_STAT" };
+    return { ok: true, condition: { kind: "TEAM", team: side, stats: c.stats, threshold: c.threshold, comparison: c.comparison } };
   }
 
   /** Appelle predictCombo() sur des GROUPES déjà validés (ComboCondition[][],
@@ -1095,7 +1117,7 @@ export async function structureAndScoreBet(
   ): Promise<void> {
     const prediction = await predictCombo(groups, matchTeams.homeTeamName, matchTeams.awayTeamName, matchTeams.scheduledAt.slice(0, 10));
     if (!prediction || prediction.groupsMeta.length !== groups.length) {
-      await markNotCalculable();
+      await markNotCalculable("STATS_NO_PREDICTION");
       return;
     }
 
@@ -1148,16 +1170,16 @@ export async function structureAndScoreBet(
   async function handleComboNestedBet(teamNames: [string, string] | null): Promise<void> {
     const structuration = await structureComboNestedBet(description, teamNames);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "COMBO" || structuration.conditions.length === 0) {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, "COMBO"), structuration);
       return;
     }
     if (scope !== "MATCH" || !matchId) {
-      await markNotCalculable();
+      await markNotCalculable(scopeFailureReason(), structuration);
       return;
     }
     const matchTeams = await resolveMatchTeams(supabase, matchId);
     if (!matchTeams) {
-      await markNotCalculable();
+      await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
       return;
     }
 
@@ -1165,18 +1187,18 @@ export async function structureAndScoreBet(
     const rawThresholds: { threshold: number | null; comparison: "OVER" | "UNDER" }[][] = [];
     for (const group of structuration.conditions) {
       if (group.or.length === 0) {
-        await markNotCalculable();
+        await markNotCalculable("AI_INCOMPLETE", structuration);
         return;
       }
       const groupConditions: ComboCondition[] = [];
       const groupRaw: { threshold: number | null; comparison: "OVER" | "UNDER" }[] = [];
       for (const c of group.or) {
         const validated = validateComboCondition(c, teamNames, matchTeams);
-        if (!validated) {
-          await markNotCalculable();
+        if (!validated.ok) {
+          await markNotCalculable(validated.reason, structuration);
           return;
         }
-        groupConditions.push(validated);
+        groupConditions.push(validated.condition);
         groupRaw.push({ threshold: c.threshold, comparison: c.comparison });
       }
       groups.push(groupConditions);
@@ -1195,7 +1217,7 @@ export async function structureAndScoreBet(
     // recours (voir markNotCalculable() plus haut).
     if ((await getTodaySpendUsd()) >= DAILY_COST_CAP_USD) {
       console.warn(`structureAndScoreBet : plafond de dépense IA quotidien atteint (${DAILY_COST_CAP_USD}$), pari ${betId} non structuré.`);
-      await markNotCalculable();
+      await markNotCalculable("AI_COST_CAP");
       return NOTHING_TO_CONFIRM;
     }
 
@@ -1267,7 +1289,7 @@ export async function structureAndScoreBet(
 
     const structuration = await structureBet(description, teamNames, undefined, rosters);
     if (!structuration || !structuration.calculable || !structuration.bet_subject) {
-      await markNotCalculable();
+      await markNotCalculable(aiFailureReason(structuration, null), structuration);
       return NOTHING_TO_CONFIRM;
     }
 
@@ -1280,12 +1302,12 @@ export async function structureAndScoreBet(
     if (structuration.bet_subject === "MATCH_TOTAL") {
       const matchTotal = structuration.match_total;
       if (scope !== "MATCH" || !matchId || !matchTotal) {
-        await markNotCalculable();
+        await markNotCalculable(scopeFailureReason(), structuration);
         return NOTHING_TO_CONFIRM;
       }
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!matchTeams) {
-        await markNotCalculable();
+        await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
         return NOTHING_TO_CONFIRM;
       }
       // went_to_ot n'a ni seuil ni comparaison (probabilité directe, même
@@ -1293,7 +1315,7 @@ export async function structureAndScoreBet(
       // symétrique pour MATCH_TOTAL (24/08/2026, chantier "prolongation",
       // GAPS_OUVERTS.md).
       if (!NO_THRESHOLD_MATCH_STATS.has(matchTotal.stat as MatchStatCode) && (matchTotal.threshold === null || !matchTotal.comparison)) {
-        await markNotCalculable();
+        await markNotCalculable("AI_INCOMPLETE", structuration);
         return NOTHING_TO_CONFIRM;
       }
       // as_of_date = date RÉELLE du match visé (pas "aujourd'hui" comme pour
@@ -1332,7 +1354,7 @@ export async function structureAndScoreBet(
                       asOfDate,
                     );
       if (!prediction) {
-        await markNotCalculable();
+        await markNotCalculable("STATS_NO_PREDICTION", structuration);
         return NOTHING_TO_CONFIRM;
       }
       // Bug réel trouvé en testant en conditions réelles (25/08/2026,
@@ -1382,13 +1404,13 @@ export async function structureAndScoreBet(
     if (structuration.bet_subject === "TEAM_STAT") {
       const teamStat = structuration.team_stat;
       if (scope !== "MATCH" || !matchId || !teamStat) {
-        await markNotCalculable();
+        await markNotCalculable(scopeFailureReason(), structuration);
         return NOTHING_TO_CONFIRM;
       }
       const teamName = teamStat.team === "team1" ? teamNames?.[0] : teamNames?.[1];
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!teamName || !matchTeams || (teamName !== matchTeams.homeTeamName && teamName !== matchTeams.awayTeamName)) {
-        await markNotCalculable();
+        await markNotCalculable(!matchTeams ? "MATCH_CONTEXT_MISSING" : "TEAM_UNRESOLVED", structuration);
         return NOTHING_TO_CONFIRM;
       }
       const isHome = teamName === matchTeams.homeTeamName;
@@ -1404,7 +1426,7 @@ export async function structureAndScoreBet(
         matchTeams.scheduledAt.slice(0, 10),
       );
       if (!prediction) {
-        await markNotCalculable();
+        await markNotCalculable("STATS_NO_PREDICTION", structuration);
         return NOTHING_TO_CONFIRM;
       }
       await supabase.rpc("update_bet_structuration", {
@@ -1440,13 +1462,13 @@ export async function structureAndScoreBet(
     if (structuration.bet_subject === "COMPARISON") {
       const comparisonBet = structuration.comparison_bet;
       if (scope !== "MATCH" || !matchId || !comparisonBet) {
-        await markNotCalculable();
+        await markNotCalculable(scopeFailureReason(), structuration);
         return NOTHING_TO_CONFIRM;
       }
 
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!matchTeams) {
-        await markNotCalculable();
+        await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
         return NOTHING_TO_CONFIRM;
       }
 
@@ -1461,28 +1483,40 @@ export async function structureAndScoreBet(
         return null;
       };
 
-      const buildOperand = (side: { kind: "PLAYER" | "team1" | "team2"; players: string[]; stat: string }): DuelOperand | null => {
+      const buildOperand = (side: {
+        kind: "PLAYER" | "team1" | "team2";
+        players: string[];
+        stat: string;
+      }): { ok: true; operand: DuelOperand } | { ok: false; reason: NotCalculableReason } => {
         if (side.kind === "PLAYER") {
-          if (side.players.length === 0 || !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(side.stat)) return null;
-          return { kind: "PLAYER", players: side.players, stat: side.stat };
+          if (side.players.length === 0) return { ok: false, reason: "AI_INCOMPLETE" };
+          if (!(COMPARISON_PLAYER_STAT_CODES as string[]).includes(side.stat)) return { ok: false, reason: "UNSUPPORTED_STAT" };
+          return { ok: true, operand: { kind: "PLAYER", players: side.players, stat: side.stat } };
         }
         const resolvedSide = resolveSide(side.kind);
-        if (!resolvedSide || !(COMPARISON_TEAM_STAT_CODES as string[]).includes(side.stat)) return null;
-        return { kind: "TEAM", team: resolvedSide, stat: side.stat };
+        if (!resolvedSide) return { ok: false, reason: "TEAM_UNRESOLVED" };
+        if (!(COMPARISON_TEAM_STAT_CODES as string[]).includes(side.stat)) return { ok: false, reason: "UNSUPPORTED_STAT" };
+        return { ok: true, operand: { kind: "TEAM", team: resolvedSide, stat: side.stat } };
       };
 
-      const left = buildOperand(comparisonBet.left);
-      const right = buildOperand(comparisonBet.right);
-      if (!left || !right) {
-        await markNotCalculable();
+      const leftResult = buildOperand(comparisonBet.left);
+      if (!leftResult.ok) {
+        await markNotCalculable(leftResult.reason, structuration);
         return NOTHING_TO_CONFIRM;
       }
+      const rightResult = buildOperand(comparisonBet.right);
+      if (!rightResult.ok) {
+        await markNotCalculable(rightResult.reason, structuration);
+        return NOTHING_TO_CONFIRM;
+      }
+      const left = leftResult.operand;
+      const right = rightResult.operand;
 
       const multiplier = comparisonBet.multiplier ?? 1;
       const needsThreshold = comparisonBet.relation === "DIFF_LT" || comparisonBet.relation === "OR";
       const relationThreshold = needsThreshold ? comparisonBet.threshold : null;
       if (needsThreshold && relationThreshold === null) {
-        await markNotCalculable();
+        await markNotCalculable("AI_INCOMPLETE", structuration);
         return NOTHING_TO_CONFIRM;
       }
 
@@ -1497,7 +1531,7 @@ export async function structureAndScoreBet(
         matchTeams.scheduledAt.slice(0, 10),
       );
       if (!prediction) {
-        await markNotCalculable();
+        await markNotCalculable("STATS_NO_PREDICTION", structuration);
         return NOTHING_TO_CONFIRM;
       }
 
@@ -1561,13 +1595,13 @@ export async function structureAndScoreBet(
     if (structuration.bet_subject === "COMBO") {
       const comboBet = structuration.combo_bet;
       if (scope !== "MATCH" || !matchId || !comboBet || comboBet.conditions.length === 0) {
-        await markNotCalculable();
+        await markNotCalculable(scopeFailureReason(), structuration);
         return NOTHING_TO_CONFIRM;
       }
 
       const matchTeams = await resolveMatchTeams(supabase, matchId);
       if (!matchTeams) {
-        await markNotCalculable();
+        await markNotCalculable("MATCH_CONTEXT_MISSING", structuration);
         return NOTHING_TO_CONFIRM;
       }
 
@@ -1575,11 +1609,11 @@ export async function structureAndScoreBet(
       const rawThresholds: { threshold: number | null; comparison: "OVER" | "UNDER" }[][] = [];
       for (const c of comboBet.conditions) {
         const validated = validateComboCondition(c, teamNames, matchTeams);
-        if (!validated) {
-          await markNotCalculable();
+        if (!validated.ok) {
+          await markNotCalculable(validated.reason, structuration);
           return NOTHING_TO_CONFIRM;
         }
-        groups.push([validated]);
+        groups.push([validated.condition]);
         rawThresholds.push([{ threshold: c.threshold, comparison: c.comparison }]);
       }
 
@@ -1590,7 +1624,7 @@ export async function structureAndScoreBet(
     // bet_subject === "PLAYER" à partir d'ici (comportement inchangé).
     const player = structuration.player;
     if (!player) {
-      await markNotCalculable();
+      await markNotCalculable("AI_INCOMPLETE", structuration);
       return NOTHING_TO_CONFIRM;
     }
     // comparison est légitimement null pour dd/td (NO_THRESHOLD_STATS,
@@ -1600,7 +1634,7 @@ export async function structureAndScoreBet(
     // "non calculable" alors qu'ils le sont bel et bien.
     const stat = player.stat as StatCode;
     if (!NO_THRESHOLD_STATS.has(stat) && (player.threshold === null || !player.comparison)) {
-      await markNotCalculable();
+      await markNotCalculable("AI_INCOMPLETE", structuration);
       return NOTHING_TO_CONFIRM;
     }
 
@@ -1659,12 +1693,15 @@ export async function structureAndScoreBet(
     // si l'un des deux manque (série pas encore programmée, ou équipe non
     // résolue), jamais bloquant.
     let prediction: Awaited<ReturnType<typeof predictOverUnder>> = null;
+    let seriesReason: NotCalculableReason = "STATS_NO_PREDICTION";
     if (scope === "SERIES") {
       const homeCourt = await resolveSeriesHomeCourtTeam(supabase, seriesId);
       const playerTeamName =
         player.team === "team1" ? teamNames?.[0]
         : player.team === "team2" ? teamNames?.[1]
         : null;
+      if (!homeCourt) seriesReason = "SERIES_CONTEXT_MISSING";
+      else if (!playerTeamName) seriesReason = "TEAM_UNRESOLVED";
       if (homeCourt && playerTeamName) {
         prediction = await predictSeriesStat(
           player.name,
@@ -1680,7 +1717,7 @@ export async function structureAndScoreBet(
       prediction = await predictOverUnder(player.name, stat, player.threshold, player.comparison);
     }
     if (!prediction) {
-      await markNotCalculable();
+      await markNotCalculable(seriesReason, structuration);
       return NOTHING_TO_CONFIRM;
     }
 
