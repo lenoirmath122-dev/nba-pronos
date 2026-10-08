@@ -8,6 +8,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+import poll_results as pr  # noqa: E402
 import refresh_daily as rd  # noqa: E402
 import refresh_job as job  # noqa: E402
 
@@ -19,7 +20,19 @@ class FakeResponse:
 
 @pytest.fixture
 def wiring(monkeypatch):
-    calls = {"post": [], "logs": []}
+    calls = {"post": [], "logs": [], "backup": [], "order": []}
+    monkeypatch.delenv("RESULTS_POLL_DRYRUN", raising=False)
+
+    # Le secours ne doit JAMAIS faire de réseau dans ces tests (le fetch nba_api ne
+    # passe pas par le mock de requests.post) : pr.run est remplacé.
+    def fake_backup(dates, dry_run):
+        calls["order"].append("backup")
+        calls["backup"].append((dates, dry_run))
+        if isinstance(calls.get("backup_error"), BaseException):
+            raise calls["backup_error"]
+        return True
+
+    monkeypatch.setattr(pr, "run", fake_backup)
     monkeypatch.setenv("SYNC_SECRET", "secret-de-test")
     monkeypatch.setenv("APP_URL", "https://exemple.test")
     monkeypatch.setattr(rd, "get_supabase_client", lambda: object())
@@ -67,3 +80,38 @@ def test_secret_manquant(wiring, monkeypatch):
     monkeypatch.delenv("SYNC_SECRET")
     assert job.main(["--season", "2026-27"]) == 1
     assert wiring["post"] == []
+
+
+def test_secours_lance_avant_l_import_avec_les_trois_derniers_jours_ny(wiring, monkeypatch):
+    monkeypatch.setattr(rd, "run", lambda *a, **k: wiring["order"].append("import"))
+    assert job.main(["--season", "2026-27"]) == 0
+    assert wiring["order"] == ["backup", "import"]
+    (dates, dry_run), = wiring["backup"]
+    assert len(dates) == 3 and dates == sorted(dates)
+    assert dry_run is True  # variable absente -> dryRun
+
+
+def test_secours_respecte_la_variable_dryrun(wiring, monkeypatch):
+    monkeypatch.setattr(rd, "run", lambda *a, **k: None)
+    monkeypatch.setenv("RESULTS_POLL_DRYRUN", "0")
+    job.main(["--season", "2026-27"])
+    assert wiring["backup"][0][1] is False
+
+
+def test_une_exception_du_secours_ne_change_rien(wiring, monkeypatch, capsys):
+    ran = []
+    monkeypatch.setattr(rd, "run", lambda *a, **k: ran.append("import"))
+    wiring["backup_error"] = RuntimeError("secret-de-test dans le message")
+    assert job.main(["--season", "2026-27"]) == 0
+    assert ran == ["import"] and len(wiring["post"]) == 1  # import et résolution ont bien eu lieu
+    out = capsys.readouterr().out
+    assert "RuntimeError" in out and "secret-de-test" not in out
+
+
+def test_le_secours_s_execute_meme_si_l_import_plante(wiring, monkeypatch):
+    def plante(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(rd, "run", plante)
+    assert job.main(["--season", "2026-27"]) == 1
+    assert len(wiring["backup"]) == 1

@@ -12,8 +12,12 @@ n'y écrit un match que s'il est complet -- un match sauté laisse donc ses pari
 en attente, il ne les perd pas. Sans cela, un seul match en échec (équipes
 ambiguës, play-by-play pas encore publié) bloquerait toute la résolution.
 
+Avant l'import, un « secours » (scoreboard_backup) rejoue les scoreboards NBA des
+derniers jours vers /api/sync/results-nba, au cas où le poller des résultats
+(poll_results.py) aurait été arrêté ; il ne change jamais le code de sortie.
+
 Variables d'environnement : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SYNC_SECRET,
-APP_URL (défaut https://nba-pronos.vercel.app).
+APP_URL (défaut https://nba-pronos.vercel.app), RESULTS_POLL_DRYRUN (secours).
 
     python refresh_job.py --trigger vm-timer
     python refresh_job.py --season-types "Pre Season" "Regular Season" --trigger vm-manuel
@@ -29,6 +33,7 @@ import sys
 
 import requests
 
+import poll_results as pr
 import refresh_daily as rd
 
 DEFAULT_APP_URL = "https://nba-pronos.vercel.app"
@@ -71,6 +76,20 @@ def _log_failure(summary: str):
         print(f"Trace sync_logs impossible : {exc!r}")
 
 
+def scoreboard_backup():
+    """Secours du poller des résultats (poll_results.py, toutes les 2 min) : s'il a été
+    arrêté ou bloqué, ce passage de 12h/16h pousse quand même les scoreboards des
+    derniers jours vers /api/sync/results-nba, qui remet les matchs en FINISHED et
+    déclenche la résolution des paris. Idempotent. Lancé AVANT l'import des box scores
+    (qui peut durer des heures ou planter) ; ne modifie JAMAIS le code de sortie et
+    n'écrit rien dans sync_logs. Même variable RESULTS_POLL_DRYRUN que le poller."""
+    try:
+        dry_run = pr.resolve_dry_run(os.environ.get("RESULTS_POLL_DRYRUN"))
+        pr.run(pr.backup_dates(dt.datetime.now(dt.timezone.utc)), dry_run)
+    except Exception as exc:  # noqa: BLE001 -- le secours ne doit rien casser
+        print(f"[secours résultats] échec ignoré ({type(exc).__name__})")
+
+
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--season", default=None, help="ex: 2026-27 (défaut : saison déduite de la date du jour)")
@@ -78,6 +97,8 @@ def main(argv=None) -> int:
     parser.add_argument("--trigger", default="vm-timer", help="origine du lancement, tracée dans sync_logs")
     args = parser.parse_args(argv)
     season = args.season or rd.current_season_label(dt.date.today())
+
+    scoreboard_backup()
 
     import_ok = True
     try:

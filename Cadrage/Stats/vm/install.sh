@@ -31,6 +31,12 @@ if [ ! -f /etc/nba-refresh/env ]; then
   printf 'SUPABASE_URL=%s\nAPP_URL=https://nba-pronos.vercel.app\n' "$SUPABASE_URL" > /etc/nba-refresh/env
   chmod 644 /etc/nba-refresh/env   # aucune valeur secrète dedans
 fi
+# Poller des résultats : dryRun tant que la ligne vaut autre chose que 0/false. Ajoutée
+# seulement si absente, jamais réécrite (le passage en réel est un choix à la main).
+if ! grep -q '^RESULTS_POLL_DRYRUN=' /etc/nba-refresh/env; then
+  [ -z "$(tail -c1 /etc/nba-refresh/env)" ] || echo >> /etc/nba-refresh/env
+  echo 'RESULTS_POLL_DRYRUN=1' >> /etc/nba-refresh/env
+fi
 
 echo "== Mises à jour de sécurité automatiques (redémarrage à 03:30 UTC, hors créneaux d'import)"
 cat > /etc/apt/apt.conf.d/20auto-upgrades <<'EOF'
@@ -45,9 +51,14 @@ EOF
 echo "== Unités systemd"
 install -m 644 "$VMDIR/nba-refresh@.service" /etc/systemd/system/nba-refresh@.service
 install -m 644 "$VMDIR/nba-refresh.timer" /etc/systemd/system/nba-refresh.timer
+install -m 644 "$VMDIR/nba-results-poll.service" /etc/systemd/system/nba-results-poll.service
+install -m 644 "$VMDIR/nba-results-poll.timer" /etc/systemd/system/nba-results-poll.timer
 chmod 755 "$VMDIR/run.sh"
+# Calendrier invalide = on s'arrête avant daemon-reload (les timers actuels restent intacts).
+while IFS= read -r CAL; do systemd-analyze calendar "$CAL" >/dev/null; done < <(sed -n 's/^OnCalendar=//p' "$VMDIR/nba-results-poll.timer")
 systemctl daemon-reload
 systemctl enable --now nba-refresh.timer
+systemctl enable --now nba-results-poll.timer
 
 echo "== Déclencheur GitHub (wrapper root + sudoers restreint)"
 # Copié HORS du dépôt : /opt/nba-pronos est modifiable par git pull (voir trigger.sh).
@@ -79,6 +90,8 @@ fi
 
 echo
 echo "Installé. Prochaines exécutions :"
-systemctl list-timers 'nba-refresh*' --no-pager
+systemctl list-timers 'nba-*' --no-pager
+echo "Poller des résultats : $(grep '^RESULTS_POLL_DRYRUN=' /etc/nba-refresh/env) (1 = dryRun ; 0 = écriture réelle)"
 echo
 echo "Test à la main :  sudo systemctl start nba-refresh@manuel.service"
+echo "Poller         :  sudo systemctl start nba-results-poll.service ; journalctl -u nba-results-poll -n 20 --no-pager"

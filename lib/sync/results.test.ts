@@ -12,6 +12,7 @@ const updates: unknown[] = [];
 let competitionType = "PLAYOFFS";
 let matchStatus = "SCHEDULED";
 let updateData: unknown[] = [{ id: "m1" }];
+let matchExtras: Record<string, unknown> = {};
 vi.mock("@/lib/supabase/service", () => ({
   getServiceClient: () => ({
     from: (table: string) => {
@@ -24,7 +25,7 @@ vi.mock("@/lib/supabase/service", () => ({
             data:
               table === "entity_mappings"
                 ? [{ internal_id: "m1", source_ref: "1" }]
-                : [{ id: "m1", series_id: "s1", status: matchStatus, home_score: null, away_score: null, went_to_ot: null, quarter_scores: null }],
+                : [{ id: "m1", series_id: "s1", status: matchStatus, home_score: null, away_score: null, went_to_ot: null, quarter_scores: null, ...matchExtras }],
           }),
         update: (payload: unknown) => {
           updates.push(payload);
@@ -37,7 +38,7 @@ vi.mock("@/lib/supabase/service", () => ({
   }),
 }));
 
-import { syncResults } from "./results";
+import { diffResultFields, hasResultChanged, syncResults, type MatchResultFields } from "./results";
 
 const raw = (id: number) => ({
   id,
@@ -56,6 +57,7 @@ describe("syncResults — veille NY", () => {
     updates.length = 0;
     competitionType = "PLAYOFFS";
     matchStatus = "SCHEDULED";
+    matchExtras = {};
     updateData = [{ id: "m1" }];
   });
 
@@ -141,5 +143,47 @@ describe("syncResults — veille NY", () => {
     const r = await syncResults(DAY);
     expect(r.notDrawn).toBe(0);
     expect(r.skipped).toHaveLength(1);
+  });
+});
+
+describe("syncResults — pas de réécriture inutile", () => {
+  it("FINISHED identique stocké dans l'ordre jsonb {awayTeam, homeTeam} : unchanged, aucune écriture", async () => {
+    matchStatus = "FINISHED";
+    matchExtras = { home_score: 100, away_score: 80, went_to_ot: false, quarter_scores: { awayTeam: [20, 20, 20, 20], homeTeam: [25, 25, 25, 25] } };
+    updates.length = 0;
+    getMatchesByDate.mockResolvedValue({ data: [raw(1)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(r.unchanged).toBe(1);
+    expect(r.changed).toBe(0);
+    expect(updates).toHaveLength(0);
+  });
+});
+
+describe("diffResultFields / hasResultChanged", () => {
+  const base: MatchResultFields = { status: "FINISHED", home_score: 100, away_score: 80, went_to_ot: false, quarter_scores: { homeTeam: [25, 25, 25, 25], awayTeam: [20, 20, 20, 20] } };
+
+  it("ignore l'ordre des clés de quarter_scores", () => {
+    const reordered = { ...base, quarter_scores: { awayTeam: [20, 20, 20, 20], homeTeam: [25, 25, 25, 25] } };
+    expect(hasResultChanged(base, reordered)).toBe(false);
+    expect(diffResultFields(base, reordered)).toEqual([]);
+  });
+
+  it("détecte un quart différent, une prolongation en plus, ou null contre objet", () => {
+    expect(diffResultFields(base, { ...base, quarter_scores: { homeTeam: [25, 25, 25, 24], awayTeam: [20, 20, 20, 20] } })).toEqual(["quarter_scores"]);
+    expect(diffResultFields(base, { ...base, quarter_scores: { homeTeam: [25, 25, 25, 25, 5], awayTeam: [20, 20, 20, 20, 5] } })).toEqual(["quarter_scores"]);
+    expect(diffResultFields(base, { ...base, quarter_scores: null })).toEqual(["quarter_scores"]);
+    expect(diffResultFields({ ...base, quarter_scores: null }, { ...base, quarter_scores: null })).toEqual([]);
+  });
+
+  it("liste exactement les champs qui diffèrent", () => {
+    expect(diffResultFields(base, { ...base, status: "IN_PROGRESS", home_score: 90, went_to_ot: true })).toEqual(["status", "home_score", "went_to_ot"]);
+  });
+});
+
+describe("diffResultFields — jsonb incomplet", () => {
+  it("quarter_scores sans awayTeam en base : différent, sans exception", () => {
+    const base: MatchResultFields = { status: "FINISHED", home_score: 1, away_score: 0, went_to_ot: false, quarter_scores: { homeTeam: [1], awayTeam: [0] } };
+    const broken = { ...base, quarter_scores: { homeTeam: [1] } as unknown as MatchResultFields["quarter_scores"] };
+    expect(diffResultFields(broken, base)).toEqual(["quarter_scores"]);
   });
 });

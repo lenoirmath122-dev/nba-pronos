@@ -52,7 +52,11 @@ export async function POST(request: Request): Promise<Response> {
     if (result.changed > 0 || result.skipped.length > 0) {
       const summary =
         `${result.dryRun ? "[dryRun] " : ""}${result.changed} changé(s), ${result.unchanged} inchangé(s), ${result.unmapped} non mappé(s).` +
-        (result.skipped.length > 0 ? ` Ignorés : ${result.skipped.map((s) => `${s.gameId} (${s.reason})`).join("; ")}.` : "");
+        (result.skipped.length > 0 ? ` Ignorés : ${result.skipped.map((s) => `${s.gameId} (${s.reason})`).join("; ")}.` : "") +
+        // dryRun : quels champs auraient été écrits, pour juger l'observation en base.
+        (result.dryRunDiffs.length > 0
+          ? ` Écarts : ${result.dryRunDiffs.map((d) => `${d.gameId} ${d.from}>${d.to} [${d.fields.join(",")}]`).join("; ")}.`.slice(0, 1500)
+          : "");
       await writeSyncLog(supabase, { syncType: "RESULTS", endpoint, success: true, summary, requestsRemaining: null });
     }
     if (result.finishedNow.length > 0) {

@@ -1,0 +1,19 @@
+[Unit]
+Description=Poller des résultats NBA (toutes les 2 min la nuit et en soirée, heure de Paris)
+
+[Timer]
+# Les matchs NBA se jouent de ~18h à ~8h (Paris) : toutes les 2 min de 17h à 9h (une
+# résolution des paris moins de 3 min après la fin du match), toutes les 15 min en
+# journée (matchs en Europe, rattrapage). ~512 passages par jour, 1 à 2 requêtes de
+# ~0,2 s chacun.
+OnCalendar=*-*-* 00..08,17..23:00/2:00 Europe/Paris
+OnCalendar=*-*-* 09..16:00/15:00 Europe/Paris
+AccuracySec=15s
+RandomizedDelaySec=20s
+# Pas de rattrapage au démarrage : un passage manqué est remplacé par le suivant (2 min
+# plus tard) ; le secours de refresh_job.py couvre les pannes plus longues.
+Persistent=false
+Unit=nba-results-poll.service
+
+[Install]
+WantedBy=timers.target

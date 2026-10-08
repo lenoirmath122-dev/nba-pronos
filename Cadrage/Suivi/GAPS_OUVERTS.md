@@ -214,6 +214,11 @@
   cron GitHub), pas tranché. À vérifier en même temps : les quotas de
   l'API Highlightly (100 req/jour, doc maître §2 A6) avec le Match du jour
   + `sync-results` + `daily-match-draw` actifs ensemble.
+  **Mise à jour du 08/10/2026** : PR A (#147) mergée (route `/api/sync/results-nba`),
+  PR B en cours (`feat/results-nba-poller`) : poller sur la VM (ScoreboardV3, 2 min le
+  soir) + secours dans `refresh_job.py`, en dryRun d'abord. Reste après son merge :
+  déployer sur la VM, 2 soirs d'observation en dryRun (`DEPLOIEMENT_VM.md`), passage en
+  réel, puis PR C (repli Highlightly + watchdog). cdn.nba.com est inutilisable depuis GCP.
 
 - **Import des box scores NBA : stats.nba.com expire depuis GitHub Actions, et
   Highlightly à vérifier comme source de secours (07/10/2026)** — test de

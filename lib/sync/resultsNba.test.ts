@@ -37,8 +37,10 @@ vi.mock("@/lib/supabase/service", () => ({
   }),
 }));
 
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { syncResultsFromNba } from "./resultsNba";
-import type { NbaLivePayload } from "@/lib/nba/nbaLive";
+import { nbaLiveGameSchema, nbaLivePayloadSchema, normalizeNbaGame, type NbaLivePayload } from "@/lib/nba/nbaLive";
 
 const periods = (scores: number[]) => scores.map((score, i) => ({ period: i + 1, score }));
 const finishedGame = (over: Partial<NbaLivePayload["games"][number]> = {}): NbaLivePayload["games"][number] => ({
@@ -102,7 +104,9 @@ describe("syncResultsFromNba", () => {
     const r = await syncResultsFromNba(payload([finishedGame()], true));
     expect(r.dryRun).toBe(true);
     expect(r.changed).toBe(1);
-    expect(r.dryRunDiffs).toEqual([{ gameId: "0012600001", matchId: "m1", from: "IN_PROGRESS", to: "FINISHED" }]);
+    expect(r.dryRunDiffs).toEqual([
+      { gameId: "0012600001", matchId: "m1", from: "IN_PROGRESS", to: "FINISHED", fields: ["status", "home_score", "away_score", "went_to_ot", "quarter_scores"] },
+    ]);
     expect(updates).toHaveLength(0);
     expect(upserts).toHaveLength(0);
     expect(r.finishedNow).toEqual([]);
@@ -232,5 +236,102 @@ describe("syncResultsFromNba", () => {
     const r = await syncResultsFromNba(payload([start]));
     expect(r.skipped).toEqual([]);
     expect(r.changed).toBe(1);
+  });
+
+  // Régressions constatées sur le premier dryRun réel (08/10/2026) : faux « changed » à chaque passage.
+  it("FINISHED identique, quarter_scores stockées dans l'ordre jsonb {awayTeam, homeTeam} : unchanged", async () => {
+    tables.matches = [
+      appRow({ status: "FINISHED", home_score: 100, away_score: 80, went_to_ot: false, quarter_scores: { awayTeam: [20, 20, 20, 20], homeTeam: [25, 25, 25, 25] } }),
+    ];
+    for (const dryRun of [false, true]) {
+      const r = await syncResultsFromNba(payload([finishedGame()], dryRun));
+      expect(r.unchanged).toBe(1);
+      expect(r.changed).toBe(0);
+    }
+    expect(updates).toHaveLength(0);
+  });
+
+  it("match à venir côté NBA, 0/0/false/{[],[]} côté app : unchanged, rien d'écrit, en réel comme en dryRun", async () => {
+    tables.matches = [appRow({ status: "SCHEDULED", home_score: 0, away_score: 0, went_to_ot: false, quarter_scores: { awayTeam: [], homeTeam: [] } })];
+    const scheduled = finishedGame({
+      gameStatus: 1,
+      gameStatusText: "7:00 pm ET",
+      period: 0,
+      homeTeam: { teamTricode: "LAL", score: 0, periods: [] },
+      awayTeam: { teamTricode: "GSW", score: 0, periods: [] },
+    });
+    for (const dryRun of [false, true]) {
+      const r = await syncResultsFromNba(payload([scheduled], dryRun));
+      expect(r.unchanged).toBe(1);
+      expect(r.changed).toBe(0);
+      expect(r.dryRunDiffs).toEqual([]);
+    }
+    expect(updates).toHaveLength(0);
+  });
+
+  it("SCHEDULED -> POSTPONED reste un vrai changement", async () => {
+    tables.matches = [appRow({ status: "SCHEDULED" })];
+    const ppd = finishedGame({ gameStatus: 1, gameStatusText: "PPD", period: 0, homeTeam: { teamTricode: "LAL", score: 0, periods: [] }, awayTeam: { teamTricode: "GSW", score: 0, periods: [] } });
+    const r = await syncResultsFromNba(payload([ppd]));
+    expect(r.changed).toBe(1);
+    expect(updates).toEqual([expect.objectContaining({ status: "POSTPONED" })]);
+  });
+
+  describe("capture réelle ScoreboardV3 (match 0012600029, IND-MIN, 07/10/2026)", () => {
+    const reduced = () =>
+      JSON.parse(readFileSync(join(process.cwd(), "Cadrage/Stats/service/tests/fixtures/scoreboardv3_reduced.json"), "utf8")) as NbaLivePayload["games"][number];
+    const indMinTables = (homeId: string, awayId: string) => ({
+      competitions: { id: "c1" },
+      entity_mappings: [],
+      teams: [
+        { id: "t-ind", abbreviation: "IND" },
+        { id: "t-min", abbreviation: "MIN" },
+      ],
+      matches: [appRow({ scheduled_at: "2026-10-07T23:00:00+00:00", home_team_id: homeId, away_team_id: awayId })],
+    });
+    const realPayload = (dryRun?: boolean): NbaLivePayload => ({ source: "NBA_STATS_SCOREBOARDV3", games: [reduced()], dryRun });
+
+    it("est acceptée par le schéma zod de la route", () => {
+      expect(nbaLivePayloadSchema.safeParse(realPayload()).success).toBe(true);
+    });
+
+    it("normalise en FINISHED 123-112 sans prolongation", () => {
+      const parsed = nbaLiveGameSchema.parse(reduced());
+      const n = normalizeNbaGame(parsed);
+      expect(n.ok && n.game.result).toEqual({
+        status: "FINISHED",
+        home_score: 123,
+        away_score: 112,
+        went_to_ot: false,
+        quarter_scores: { homeTeam: [32, 29, 38, 24], awayTeam: [27, 38, 26, 21] },
+      });
+    });
+
+    it("s'écrit dans le sens de l'app, y compris quand l'app a les équipes inversées, puis un 2e passage est unchanged", async () => {
+      tables = indMinTables("t-ind", "t-min");
+      expect((await syncResultsFromNba(realPayload())).changed).toBe(1);
+      expect(updates).toEqual([expect.objectContaining({ home_score: 123, away_score: 112, quarter_scores: { homeTeam: [32, 29, 38, 24], awayTeam: [27, 38, 26, 21] } })]);
+
+      updates.length = 0;
+      tables = indMinTables("t-min", "t-ind");
+      await syncResultsFromNba(realPayload());
+      expect(updates).toEqual([expect.objectContaining({ home_score: 112, away_score: 123, quarter_scores: { homeTeam: [27, 38, 26, 21], awayTeam: [32, 29, 38, 24] } })]);
+
+      updates.length = 0;
+      tables = indMinTables("t-ind", "t-min");
+      (tables.matches as Record<string, unknown>[])[0] = appRow({
+        scheduled_at: "2026-10-07T23:00:00+00:00",
+        home_team_id: "t-ind",
+        away_team_id: "t-min",
+        status: "FINISHED",
+        home_score: 123,
+        away_score: 112,
+        went_to_ot: false,
+        quarter_scores: { awayTeam: [27, 38, 26, 21], homeTeam: [32, 29, 38, 24] },
+      });
+      const again = await syncResultsFromNba(realPayload());
+      expect(again.unchanged).toBe(1);
+      expect(updates).toHaveLength(0);
+    });
   });
 });

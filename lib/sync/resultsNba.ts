@@ -1,7 +1,7 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { nyDateString } from "@/lib/dates/newyork";
 import { normalizeNbaGame, orientToApp, type NbaLivePayload } from "@/lib/nba/nbaLive";
-import { applyMatchResult, hasResultChanged, isStatusRegression, type MatchRow } from "@/lib/sync/results";
+import { applyMatchResult, diffResultFields, isStatusRegression, type MatchRow } from "@/lib/sync/results";
 
 // Writer de /api/sync/results-nba : résultats poussés par la VM depuis l'API
 // NBA (scoreboard live). Même écriture que Highlightly (applyMatchResult) ;
@@ -14,7 +14,7 @@ import { applyMatchResult, hasResultChanged, isStatusRegression, type MatchRow }
 
 export type SkippedNbaGame = { gameId: string; reason: string };
 
-export type DryRunDiff = { gameId: string; matchId: string; from: string; to: string };
+export type DryRunDiff = { gameId: string; matchId: string; from: string; to: string; fields: string[] };
 
 export type SyncResultsNbaResult = {
   changed: number;
@@ -174,10 +174,20 @@ export async function syncResultsFromNba(payload: NbaLivePayload): Promise<SyncR
     }
     const next = orientToApp(game, appHomeTricode);
 
+    // La source NBA n'écrit jamais SCHEDULED : un match à venir est posé par
+    // sync-schedule (0/0/false/{[],[]} côté Highlightly, null côté NBA — sans cette
+    // règle les deux sources se réécriraient en boucle), et un retour en SCHEDULED
+    // d'un match commencé est de toute façon refusé.
+    if (next.status === "SCHEDULED") {
+      result.unchanged++;
+      continue;
+    }
+
     if (dryRun) {
-      if (hasResultChanged(row, next) && !isStatusRegression(row.status, next.status)) {
+      const fields = diffResultFields(row, next);
+      if (fields.length > 0 && !isStatusRegression(row.status, next.status)) {
         result.changed++;
-        result.dryRunDiffs.push({ gameId: game.gameId, matchId: row.id, from: row.status, to: next.status });
+        result.dryRunDiffs.push({ gameId: game.gameId, matchId: row.id, from: row.status, to: next.status, fields });
       } else {
         result.unchanged++;
       }
