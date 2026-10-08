@@ -39,6 +39,8 @@ export type SyncResultsResult = {
   /** DAILY_MATCH : matchs du jour non tirés (jamais mappés par construction), comptés au lieu d'être listés. */
   notDrawn: number;
   failedDates: FailedResultDate[];
+  /** Matchs suivis par le poller NBA, laissés à lui (voir highlightlyMayWrite). */
+  deferredToNba: number;
   unrecognizedStatuses: UnrecognizedStatus[];
   requestsRemaining: number | null;
   /** Ids internes des matchs passés à FINISHED pendant ce passage (déclenche la résolution des paris). */
@@ -99,6 +101,17 @@ export function isStatusRegression(from: string, to: string): boolean {
   return false;
 }
 
+/** Arbitrage Highlightly / poller NBA, par match. Un match suivi par le poller NBA
+ *  (mapping NBA_LIVE, posé seulement hors dryRun) reçoit tout son direct de lui
+ *  (scores, quarts, toutes les 2 min) ; Highlightly (3 à 6 h d'écart en pratique) ne
+ *  fait alors qu'AVANCER le statut : début de match, fin de match (repli si le poller est
+ *  muet). Jamais de mise à jour à statut égal, y compris FINISHED -> FINISHED : sinon les
+ *  deux sources, aux tableaux de quarts différents (prolongations), s'écraseraient et
+ *  relanceraient chacune le recalcul. Match non suivi par NBA : comportement d'avant. */
+export function highlightlyMayWrite(beforeStatus: string, nextStatus: string, nbaOwned: boolean): boolean {
+  return !nbaOwned || beforeStatus !== nextStatus;
+}
+
 export type ApplyMatchResultOutcome =
   | { outcome: "changed"; finishedNow: boolean }
   | { outcome: "unchanged" }
@@ -148,6 +161,7 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
     skipped: [],
     notDrawn: 0,
     failedDates: [],
+    deferredToNba: 0,
     unrecognizedStatuses: [],
     requestsRemaining: null,
     finishedNow: [],
@@ -195,6 +209,18 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
       : { data: [] as MatchRow[] };
   const matchRowById = new Map<string, MatchRow>((matchRowsData ?? []).map((r) => [r.id as string, r as MatchRow]));
 
+  // Matchs que le poller NBA suit (mapping NBA_LIVE) : voir highlightlyMayWrite.
+  const { data: nbaMapData } =
+    internalIds.length > 0
+      ? await supabase
+          .from("entity_mappings")
+          .select("internal_id")
+          .eq("entity_type", "MATCH")
+          .eq("source_type", "NBA_LIVE")
+          .in("internal_id", internalIds)
+      : { data: [] as { internal_id: string }[] };
+  const nbaOwnedIds = new Set<string>((nbaMapData ?? []).map((r) => r.internal_id as string));
+
   // En DAILY_MATCH, un seul match par jour est mappé : les autres ne sont pas
   // une anomalie (30 min x 5 à 15 matchs de bruit dans sync_logs sinon).
   const { data: activeCompetition } = await supabase
@@ -205,7 +231,7 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
   const isDaily = activeCompetition?.type === "DAILY_MATCH";
 
   for (const rawMatch of rawMatches) {
-    await processOneMatch(supabase, rawMatch, internalIdBySourceRef, matchRowById, result, isDaily);
+    await processOneMatch(supabase, rawMatch, internalIdBySourceRef, matchRowById, nbaOwnedIds, result, isDaily);
   }
 
   return result;
@@ -216,6 +242,7 @@ async function processOneMatch(
   rawMatch: RawMatch,
   internalIdBySourceRef: Map<string, string>,
   matchRowById: Map<string, MatchRow>,
+  nbaOwnedIds: Set<string>,
   result: SyncResultsResult,
   isDaily: boolean
 ): Promise<void> {
@@ -246,6 +273,11 @@ async function processOneMatch(
   const { status, recognized } = normalizeMatchStatus(rawMatch.state.description);
   if (!recognized) {
     result.unrecognizedStatuses.push({ highlightlyMatchId: rawMatch.id, description: rawMatch.state.description });
+  }
+
+  if (!highlightlyMayWrite(before.status, status, nbaOwnedIds.has(internalId))) {
+    result.deferredToNba++;
+    return;
   }
 
   const applied = await applyMatchResult(supabase, before, {
