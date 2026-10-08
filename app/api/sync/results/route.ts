@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { after, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
 import { writeSyncLog } from "@/lib/sync/logging";
@@ -6,12 +6,15 @@ import { syncResults } from "@/lib/sync/results";
 import { resolveReferenceDate } from "@/lib/sync/devDateOverride";
 import { HighlightlyApiError } from "@/lib/nba/client";
 import { toClientError } from "@/lib/actions/errors";
+import { resolveAllCalculableBets } from "@/lib/ai/resolveCalculableBets";
 
 // SPEC_TECHNIQUE_SYNCHRO_V0.1 §6 : 30-60 min en fenêtre de match en
 // production (config du planificateur externe, pas du code), runtime Node,
 // service_role, Bearer SYNC_SECRET. `?date=YYYY-MM-DD` : override DEV/TEST
 // UNIQUEMENT (lib/sync/devDateOverride.ts).
 export const runtime = "nodejs";
+// after() (résolution des paris) vit dans la durée de la fonction.
+export const maxDuration = 60;
 
 async function handle(request: Request): Promise<Response> {
   if (!isAuthorizedSyncRequest(request)) {
@@ -45,6 +48,18 @@ async function handle(request: Request): Promise<Response> {
       summary,
       requestsRemaining: result.requestsRemaining,
     });
+    // Un match vient de passer FINISHED : on résout tout de suite les paris
+    // calculables (ceux qui lisent les box scores restent ignorés tant que
+    // l'import de la VM n'est pas passé, voir resolveNbaGameId).
+    if (result.finishedNow.length > 0) {
+      after(async () => {
+        try {
+          await resolveAllCalculableBets();
+        } catch (error) {
+          console.error("sync/results : résolution des paris échouée", error);
+        }
+      });
+    }
     return NextResponse.json(result);
   } catch (error) {
     const message =

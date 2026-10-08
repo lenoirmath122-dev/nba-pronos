@@ -1,5 +1,12 @@
 import { getServiceClient } from "@/lib/supabase/service";
-import { getMatchesByDate, normalizeMatchStatus, sumQuarters, wentToOvertime, type RawMatch } from "@/lib/nba/client";
+import {
+  getMatchesByDate,
+  normalizeMatchStatus,
+  sumQuarters,
+  wentToOvertime,
+  type NormalizedMatchStatus,
+  type RawMatch,
+} from "@/lib/nba/client";
 import { nyResultDates } from "@/lib/dates/newyork";
 import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
@@ -34,17 +41,85 @@ export type SyncResultsResult = {
   failedDates: FailedResultDate[];
   unrecognizedStatuses: UnrecognizedStatus[];
   requestsRemaining: number | null;
+  /** Ids internes des matchs passés à FINISHED pendant ce passage (déclenche la résolution des paris). */
+  finishedNow: string[];
 };
 
-type MatchRow = {
-  id: string;
-  series_id: string;
-  status: string;
+export type QuarterScores = { homeTeam: number[]; awayTeam: number[] };
+
+/** Champs de résultat d'un match — partagés par toutes les sources (Highlightly, NBA). */
+export type MatchResultFields = {
+  status: NormalizedMatchStatus;
   home_score: number | null;
   away_score: number | null;
   went_to_ot: boolean | null;
-  quarter_scores: { homeTeam: number[]; awayTeam: number[] } | null;
+  quarter_scores: QuarterScores | null;
 };
+
+export type MatchRow = MatchResultFields & {
+  id: string;
+  series_id: string;
+};
+
+export function hasResultChanged(before: MatchResultFields, next: MatchResultFields): boolean {
+  return (
+    before.status !== next.status ||
+    before.home_score !== next.home_score ||
+    before.away_score !== next.away_score ||
+    before.went_to_ot !== next.went_to_ot ||
+    JSON.stringify(before.quarter_scores) !== JSON.stringify(next.quarter_scores)
+  );
+}
+
+/** Une source automatique ne fait jamais reculer un match : un FINISHED reste
+ *  FINISHED (une correction de score reste permise, mais pas un report ou une
+ *  annulation : seul l'admin peut défaire un match terminé) et un IN_PROGRESS
+ *  ne redevient pas SCHEDULED. Protège notamment d'un statut Highlightly non
+ *  reconnu (retombé sur IN_PROGRESS) écrasant un match déjà terminé. */
+export function isStatusRegression(from: string, to: string): boolean {
+  if (from === "FINISHED") return to !== "FINISHED";
+  if (from === "IN_PROGRESS") return to === "SCHEDULED";
+  return false;
+}
+
+export type ApplyMatchResultOutcome =
+  | { outcome: "changed"; finishedNow: boolean }
+  | { outcome: "unchanged" }
+  | { outcome: "regression" }
+  | { outcome: "concurrent" }
+  | { outcome: "failed"; message: string };
+
+/** Écrit le résultat d'un match puis recalcule le scoring (patron de
+ *  lib/actions/admin-results.ts::saveMatchResult). Idempotent : sans
+ *  changement, aucune écriture. Le `.eq("status", before.status)` détecte une
+ *  écriture concurrente (autre source, admin) entre la lecture et l'update. */
+export async function applyMatchResult(
+  supabase: ReturnType<typeof getServiceClient>,
+  before: MatchRow,
+  next: MatchResultFields
+): Promise<ApplyMatchResultOutcome> {
+  if (!hasResultChanged(before, next)) return { outcome: "unchanged" };
+  if (isStatusRegression(before.status, next.status)) return { outcome: "regression" };
+
+  const { data, error } = await supabase
+    .from("matches")
+    .update({
+      status: next.status,
+      home_score: next.home_score,
+      away_score: next.away_score,
+      went_to_ot: next.went_to_ot,
+      quarter_scores: next.quarter_scores,
+    })
+    .eq("id", before.id)
+    .eq("status", before.status)
+    .select("id");
+  if (error) return { outcome: "failed", message: error.message };
+  if (!data || data.length === 0) return { outcome: "concurrent" };
+
+  await recomputeMatch(before.id);
+  await advanceWinnerIfDecided(before.series_id);
+  return { outcome: "changed", finishedNow: before.status !== "FINISHED" && next.status === "FINISHED" };
+}
 
 /** `referenceDate` : "aujourd'hui" en production — override dev/test, même
  *  convention que lib/sync/schedule.ts. */
@@ -58,6 +133,7 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
     failedDates: [],
     unrecognizedStatuses: [],
     requestsRemaining: null,
+    finishedNow: [],
   };
 
   // Veille NY incluse pendant les premières heures du jour NY : un match fini
@@ -155,27 +231,29 @@ async function processOneMatch(
     result.unrecognizedStatuses.push({ highlightlyMatchId: rawMatch.id, description: rawMatch.state.description });
   }
 
-  const hasChanged =
-    before.status !== status ||
-    before.home_score !== homeScore ||
-    before.away_score !== awayScore ||
-    before.went_to_ot !== wentToOt ||
-    JSON.stringify(before.quarter_scores) !== JSON.stringify(quarterScores);
-  if (!hasChanged) {
-    result.unchanged++;
-    return;
+  const applied = await applyMatchResult(supabase, before, {
+    status,
+    home_score: homeScore,
+    away_score: awayScore,
+    went_to_ot: wentToOt,
+    quarter_scores: quarterScores,
+  });
+  switch (applied.outcome) {
+    case "unchanged":
+      result.unchanged++;
+      return;
+    case "changed":
+      result.changed++;
+      if (applied.finishedNow) result.finishedNow.push(internalId);
+      return;
+    case "regression":
+      result.skipped.push({ highlightlyMatchId: rawMatch.id, reason: `régression de statut refusée (${before.status} -> ${status})` });
+      return;
+    case "concurrent":
+      result.skipped.push({ highlightlyMatchId: rawMatch.id, reason: "écriture concurrente, repris au prochain passage" });
+      return;
+    case "failed":
+      result.skipped.push({ highlightlyMatchId: rawMatch.id, reason: `échec update : ${applied.message}` });
+      return;
   }
-
-  const { error } = await supabase
-    .from("matches")
-    .update({ status, home_score: homeScore, away_score: awayScore, went_to_ot: wentToOt, quarter_scores: quarterScores })
-    .eq("id", internalId);
-  if (error) {
-    result.skipped.push({ highlightlyMatchId: rawMatch.id, reason: `échec update : ${error.message}` });
-    return;
-  }
-
-  await recomputeMatch(internalId);
-  await advanceWinnerIfDecided(before.series_id);
-  result.changed++;
 }
