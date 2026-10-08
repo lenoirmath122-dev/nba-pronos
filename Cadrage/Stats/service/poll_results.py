@@ -61,7 +61,7 @@ FETCH_TIMEOUT_SECONDS = 10
 POST_TIMEOUT_SECONDS = 30
 METADATA_URL = "http://metadata.google.internal/computeMetadata/v1"
 HL_FALLBACK_INTERVAL_SECONDS = 3600
-FALLBACK_TIMEOUT_SECONDS = 60
+FALLBACK_TIMEOUT_SECONDS = 45  # pire passage : 2 fetch de 10 s + secret 10 s + repli 45 s < TimeoutStartSec=150
 DEFAULT_FALLBACK_STAMP = "/var/lib/nba-refresh/hl-fallback.stamp"  # StateDirectory de l'unité, inscriptible
 
 # Statut d'un passage -> code de sortie. 75 (EX_TEMPFAIL) = panne passagère (réseau, 5xx,
@@ -243,18 +243,19 @@ def _worst(current: str, new: str) -> str:
 
 def run_status(dates: list[str], dry_run: bool) -> tuple[str, bool]:
     """Un fetch + un POST par date (aucun POST sans match valide).
-    Renvoie (OK | TRANSIENT | FATAL, un fetch NBA a-t-il échoué). Le pire statut l'emporte.
+    Renvoie (OK | TRANSIENT | FATAL, dates dont le fetch NBA a échoué). Le pire statut l'emporte.
     Jamais d'exception vers l'appelant (le secours de refresh_job ne doit pas échouer)."""
     mode = "dryRun" if dry_run else "réel"
     app_url = os.environ.get("APP_URL", DEFAULT_APP_URL).rstrip("/")
-    status, fetch_failed = OK, False
+    status, failed_dates = OK, []
     secret: str | None = None
     for date in dates:
         try:
             raw_games = fetch_scoreboard(date)
         except Exception as exc:  # noqa: BLE001 -- réseau, JSON, structure inattendue
             print(f"[poll] {date} mode={mode} fetch NBA échoué ({type(exc).__name__})")
-            status, fetch_failed = _worst(status, TRANSIENT), True
+            status = _worst(status, TRANSIENT)
+            failed_dates.append(date)
             continue
         games = [g for g in (reduce_game(r) for r in raw_games) if g is not None]
         invalid = len(raw_games) - len(games)
@@ -285,7 +286,7 @@ def run_status(dates: list[str], dry_run: bool) -> tuple[str, bool]:
             # allow_redirects=False : un 307/308 (changement de domaine) n'est PAS un succès.
             if not 200 <= response.status_code < 300:
                 status = _worst(status, _http_failure_status(response.status_code))
-    return status, fetch_failed
+    return status, failed_dates
 
 
 def run(dates: list[str], dry_run: bool) -> bool:
@@ -339,10 +340,11 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     dry_run = resolve_dry_run(os.environ.get("RESULTS_POLL_DRYRUN"), args.dry_run, args.live)
     dates = args.dates or ny_dates(dt.datetime.now(dt.timezone.utc))
-    status, fetch_failed = run_status(dates, dry_run)
-    # Repli seulement en écriture réelle et hors essai à la main : en dryRun le poller
-    # n'écrit rien, Highlightly reste de toute façon la seule source.
-    if fetch_failed and not dry_run and args.dates is None:
+    status, failed_dates = run_status(dates, dry_run)
+    # Repli seulement si le fetch du jour NY (dernière date) a échoué : un timeout isolé sur
+    # la veille ne brûle ni quota ni créneau. Écriture réelle uniquement et hors essai à la
+    # main : en dryRun le poller n'écrit rien, Highlightly reste la seule source.
+    if dates[-1] in failed_dates and not dry_run and args.dates is None:
         highlightly_fallback()
     return EXIT_CODES[status]
 

@@ -210,7 +210,7 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
   const matchRowById = new Map<string, MatchRow>((matchRowsData ?? []).map((r) => [r.id as string, r as MatchRow]));
 
   // Matchs que le poller NBA suit (mapping NBA_LIVE) : voir highlightlyMayWrite.
-  const { data: nbaMapData } =
+  const { data: nbaMapData, error: nbaMapError } =
     internalIds.length > 0
       ? await supabase
           .from("entity_mappings")
@@ -219,6 +219,8 @@ export async function syncResults(referenceDate: Date = new Date()): Promise<Syn
           .eq("source_type", "NBA_LIVE")
           .in("internal_id", internalIds)
       : { data: [] as { internal_id: string }[] };
+  // Erreur = on retombe sur l'ancien comportement (Highlightly écrit tout) : à voir dans les logs.
+  if (nbaMapError) console.error("sync/results : lecture des mappings NBA_LIVE échouée", nbaMapError.message);
   const nbaOwnedIds = new Set<string>((nbaMapData ?? []).map((r) => r.internal_id as string));
 
   // En DAILY_MATCH, un seul match par jour est mappé : les autres ne sont pas

@@ -26,7 +26,7 @@ ExecStart=/usr/bin/flock -n -E 0 /var/lib/nba-refresh/poll.lock /var/lib/nba-ref
 # silence est repéré par le watchdog (watchdog-results-poll.yml) via sync_logs. Les autres
 # codes non nuls (1 : secret, domaine, schéma) laissent l'unité en `failed`.
 SuccessExitStatus=75
-TimeoutStartSec=90
+TimeoutStartSec=150
 MemoryMax=256M
 NoNewPrivileges=yes
 PrivateTmp=yes

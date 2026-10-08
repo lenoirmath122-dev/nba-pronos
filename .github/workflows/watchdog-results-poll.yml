@@ -15,6 +15,9 @@ name: Watchdog — poller des résultats NBA
 #      reporté dont scheduled_at n'a pas été mis à jour par sync-schedule
 #      peut l'allumer à tort. En dryRun, Highlightly (3 à 6 h) peut l'allumer
 #      aussi : ne merger ce workflow qu'après le passage du poller en réel.
+#      Limites connues : R1 peut sonner pour un coup d'envoi retardé de plus de
+#      30 min (aucune ligne écrite tant que rien ne change) ; R3 reste rouge jusqu'à
+#      1 h après le dernier échec (la route n'écrit pas de succès sans changement).
 #   R3 échecs : les 3 dernières lignes nba:* sont des échecs, la plus récente
 #      date de moins d'une heure (la route renvoie 502 en boucle).
 # Cron horaire : les crons courts sont étranglés par GitHub de toute façon, et
@@ -47,7 +50,7 @@ jobs:
             const R3_FAILURES = 3;
             const title = "Watchdog : poller des résultats NBA muet ou en échec";
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
-            const base = process.env.SUPABASE_URL.replace(/\/+$/, "");
+            const base = (process.env.SUPABASE_URL || "").replace(/\/+$/, "");
             const headers = { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY };
             const now = Date.now();
             const iso = (offsetMs) => new Date(now + offsetMs).toISOString();

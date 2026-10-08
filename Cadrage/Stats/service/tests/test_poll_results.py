@@ -265,7 +265,7 @@ def test_secret_introuvable_code_1(wiring, monkeypatch):
 def test_le_pire_statut_l_emporte(wiring):
     wiring["games"]["2026-10-06"] = TimeoutError("lent")  # passager
     wiring["response"] = FakeResponse(401, {})  # durable, sur la date suivante
-    assert poll.run_status(["2026-10-06", "2026-10-07"], dry_run=True) == (poll.FATAL, True)
+    assert poll.run_status(["2026-10-06", "2026-10-07"], dry_run=True) == (poll.FATAL, ["2026-10-06"])
 
 
 # ----------------------------------------------- repli Highlightly (VM)
@@ -311,6 +311,20 @@ def test_repli_jamais_en_dryrun_ni_avec_dates_ni_si_le_fetch_reussit(fallback, w
     wiring["response"] = FakeResponse(503, {})  # échec du POST NBA, pas du fetch
     poll.main([])
     assert [u for u, _ in wiring["post"]] == ["https://exemple.test/api/sync/results-nba"]
+
+
+def test_repli_pas_declenche_si_seule_la_veille_echoue(fallback, wiring, monkeypatch):
+    monkeypatch.setattr(poll, "ny_dates", lambda now: ["2026-10-06", "2026-10-07"])
+    wiring["games"]["2026-10-06"] = TimeoutError("lent")
+    assert poll.main([]) == 75
+    assert [u for u, _ in wiring["post"]] == ["https://exemple.test/api/sync/results-nba"]
+
+
+def test_repli_stamp_non_inscriptible_ne_leve_pas(fallback, wiring, monkeypatch):
+    wiring["games"]["2026-10-07"] = TimeoutError("lent")
+    monkeypatch.setattr(poll.Path, "touch", lambda self, *a, **k: (_ for _ in ()).throw(PermissionError("ro")))
+    assert poll.main([]) == 75
+    assert wiring["post"] == []
 
 
 def test_repli_en_echec_ne_leve_pas_et_ne_boucle_pas(fallback, wiring):
