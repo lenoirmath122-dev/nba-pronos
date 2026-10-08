@@ -1,0 +1,30 @@
+[Unit]
+Description=Poller des résultats NBA (scoreboard NBA -> /api/sync/results-nba)
+After=network-online.target
+Wants=network-online.target
+# Le venv est créé par le premier run de nba-refresh@ (run.sh) : sans lui, on saute
+# le passage sans bruit plutôt que d'échouer.
+ConditionPathExists=/var/lib/nba-refresh/venv/bin/python
+
+[Service]
+Type=oneshot
+User=nbarefresh
+# APP_URL et RESULTS_POLL_DRYRUN (non secrets). SYNC_SECRET n'est PAS ici : le poller
+# le lit lui-même dans Secret Manager via le serveur de métadonnées (pas de gcloud
+# toutes les 2 minutes, ~2-4 s de CPU sur une e2-micro).
+EnvironmentFile=/etc/nba-refresh/env
+Environment=HOME=/var/lib/nba-refresh
+Environment=PYTHONDONTWRITEBYTECODE=1
+StateDirectory=nba-refresh
+WorkingDirectory=/opt/nba-pronos/Cadrage/Stats/service
+# Pas de git pull ici : il se disputerait l'index git avec nba-refresh@ ; le code est
+# mis à jour par les passages de 12h et 16h (ou à la main, voir DEPLOIEMENT_VM.md).
+# Un lock à part de celui de run.sh (qui peut tenir 2 h) : un import long ne doit pas
+# bloquer les résultats. -n -E 0 : si un passage précédent tourne encore, on saute.
+ExecStart=/usr/bin/flock -n -E 0 /var/lib/nba-refresh/poll.lock /var/lib/nba-refresh/venv/bin/python poll_results.py --trigger vm-poll
+TimeoutStartSec=90
+MemoryMax=256M
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+ProtectSystem=strict

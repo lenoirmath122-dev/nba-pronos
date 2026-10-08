@@ -61,14 +61,31 @@ export type MatchRow = MatchResultFields & {
   series_id: string;
 };
 
+// Défensif : une ligne jsonb sans homeTeam/awayTeam (écriture admin ancienne ?) compte comme différente, sans lever.
+const sameNumbers = (a: number[] | undefined, b: number[] | undefined) =>
+  Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((n, i) => n === b[i]);
+
+/** Comparaison structurelle : jsonb (Postgres) range les clés par longueur puis
+ *  ordre d'octets ({awayTeam, homeTeam}), alors que les sources construisent
+ *  {homeTeam, awayTeam} — un JSON.stringify verrait un changement à chaque passage. */
+function sameQuarterScores(a: QuarterScores | null, b: QuarterScores | null): boolean {
+  if (a === null || b === null) return a === b;
+  return sameNumbers(a.homeTeam, b.homeTeam) && sameNumbers(a.awayTeam, b.awayTeam);
+}
+
+/** Noms des champs de résultat qui diffèrent (vide = rien à écrire). */
+export function diffResultFields(before: MatchResultFields, next: MatchResultFields): string[] {
+  const fields: string[] = [];
+  if (before.status !== next.status) fields.push("status");
+  if (before.home_score !== next.home_score) fields.push("home_score");
+  if (before.away_score !== next.away_score) fields.push("away_score");
+  if (before.went_to_ot !== next.went_to_ot) fields.push("went_to_ot");
+  if (!sameQuarterScores(before.quarter_scores, next.quarter_scores)) fields.push("quarter_scores");
+  return fields;
+}
+
 export function hasResultChanged(before: MatchResultFields, next: MatchResultFields): boolean {
-  return (
-    before.status !== next.status ||
-    before.home_score !== next.home_score ||
-    before.away_score !== next.away_score ||
-    before.went_to_ot !== next.went_to_ot ||
-    JSON.stringify(before.quarter_scores) !== JSON.stringify(next.quarter_scores)
-  );
+  return diffResultFields(before, next).length > 0;
 }
 
 /** Une source automatique ne fait jamais reculer un match : un FINISHED reste

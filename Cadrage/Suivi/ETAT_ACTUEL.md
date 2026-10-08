@@ -423,7 +423,8 @@ code — à confirmer manuellement si besoin.
   compte `OWNER_USER_ID`, variable créée en Production le 06/10/2026 ;
   tirage et push propriétaire testés avec succès le 06/10/2026). Limite
   connue : `sync-results.yml` (30 min) est espacé de plusieurs heures par
-  GitHub, voir `GAPS_OUVERTS.md`.
+  GitHub, voir `GAPS_OUVERTS.md` (poller de résultats NBA sur la VM en cours de
+  déploiement, dryRun, 08/10/2026).
 - Limite connue et assumée : aucun test de composant React, et la
   génération de schéma IA elle-même (appels réels à Claude) reste testée à
   la main plutôt qu'automatisée — seule la résolution déterministe en aval

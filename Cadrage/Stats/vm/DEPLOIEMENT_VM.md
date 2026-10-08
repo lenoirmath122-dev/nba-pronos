@@ -172,6 +172,74 @@ Le nom `sa_<id>` doit être exact (sinon `sudo` demande un mot de passe et
   lancé en root y répondra « dubious ownership » : utiliser
   `sudo -u nbarefresh git -C /opt/nba-pronos ...`.
 
+## Poller des résultats NBA (`nba-results-poll`)
+
+Le cron GitHub `sync-results` (Highlightly) tourne en réalité toutes les 3 à 6 h : un match
+terminé restait `IN_PROGRESS` et ses paris non résolus. Le poller lit le scoreboard NBA
+(**ScoreboardV3 de stats.nba.com via `nba_api`** ; cdn.nba.com refuse les IP GCP, 403 Akamai
+mesuré le 08/10/2026) et le pousse vers `POST /api/sync/results-nba`, qui passe les matchs en
+`IN_PROGRESS` / `FINISHED` et lance la résolution des paris dès qu'un match se termine.
+
+- **Cadence** : toutes les 2 min de 17h à 9h (Paris), toutes les 15 min en journée
+  (`nba-results-poll.timer`). Unité à part, lock à part (`poll.lock`) : un import long de
+  `run.sh` ne bloque jamais les résultats.
+- **Secours** : à chaque passage de 12h et 16h, `refresh_job.py` rejoue les scoreboards des
+  deux jours NY précédents et du jour, **avant** l'import. Il ne change jamais le code de
+  sortie ni `sync_logs`.
+- **Journal** : `journalctl -u nba-results-poll` (une ligne par date et par passage). Rien dans
+  `sync_logs` côté Python ; la route y écrit les changements, les ignorés et les échecs
+  (`endpoint = 'nba:NBA_STATS_SCOREBOARDV3'`, `sync_type = 'RESULTS'`).
+- **dryRun par défaut** : `RESULTS_POLL_DRYRUN` dans `/etc/nba-refresh/env`. Seul `0` ou `false`
+  passe en écriture réelle ; absente, `1` ou une faute de frappe restent en dryRun.
+
+### Déploiement (depuis Cloud Shell)
+
+```bash
+gcloud compute ssh nba-refresh --zone=us-central1-a --tunnel-through-iap --command '
+  sudo -u nbarefresh git -C /opt/nba-pronos pull &&
+  sudo bash /opt/nba-pronos/Cadrage/Stats/vm/install.sh </dev/null &&
+  grep RESULTS_POLL_DRYRUN /etc/nba-refresh/env &&
+  sudo systemctl start nba-results-poll.service; journalctl -u nba-results-poll -n 20 --no-pager'
+```
+
+`install.sh` est relançable sans risque (il réécrit les unités à l'identique, ajoute
+`RESULTS_POLL_DRYRUN=1` seulement si la ligne manque, ne repose pas la question du déclencheur).
+Il valide les deux lignes `OnCalendar` avec `systemd-analyze calendar` avant `daemon-reload`.
+Le venv doit exister : il est créé par le premier `nba-refresh@…` (déjà fait).
+Le poller ne fait pas de `git pull` : le code se met à jour aux passages de 12h/16h, ou à la main
+avec la première commande ci-dessus.
+
+Contrôle du démarrage Python (pandas ne doit jamais être chargé) :
+`/var/lib/nba-refresh/venv/bin/python -X importtime -c "import poll_results" 2>&1 | grep -c pandas`
+depuis `/opt/nba-pronos/Cadrage/Stats/service` doit afficher `0`.
+
+### Observation en dryRun (2 soirs de matchs avant le passage en réel)
+
+1. **Il tourne** : `systemctl list-timers 'nba-results-poll*'`, puis
+   `journalctl -u nba-results-poll --since "today 17:00" | grep -c "HTTP 200"` (environ 30 par heure).
+2. **Aucun échec** : `journalctl -u nba-results-poll --since -12h | grep -E "HTTP [45]|échoué"`
+   doit être vide (un timeout isolé est toléré ; une série est le signal d'un blocage d'IP,
+   voir « Si l'IP de la VM est bloquée »).
+3. **Écarts cohérents** (requête dans le SQL editor Supabase) :
+   ```sql
+   select created_at, success, summary from sync_logs
+   where sync_type = 'RESULTS' and endpoint = 'nba:NBA_STATS_SCOREBOARDV3'
+     and created_at > now() - interval '14 hours' order by created_at;
+   ```
+   Un match ne doit apparaître dans « Écarts » que lorsqu'il change vraiment (début, score en
+   direct, `FINISHED`). **Un match `FINISHED` ou `SCHEDULED` qui reste listé à chaque passage est
+   un bug** (faux changement permanent) : ne pas passer en réel.
+4. **Les valeurs** : comparer un ou deux matchs terminés à `/admin/sync-logs` (Highlightly) et aux
+   scores officiels, en vérifiant le sens domicile/extérieur.
+5. **Le secours** : après 12h, `journalctl -u 'nba-refresh@*' --since today | grep poll` montre ses lignes.
+
+**Passage en réel** (sans PR ni redémarrage, le fichier est relu à chaque passage) :
+`sudo sed -i 's/^RESULTS_POLL_DRYRUN=.*/RESULTS_POLL_DRYRUN=0/' /etc/nba-refresh/env`. Vérifier ensuite
+le premier match passé `FINISHED` et ses paris résolus. Retour en arrière : remettre `=1`.
+
+Pas de limite de débit connue côté stats.nba.com : ~1 000 requêtes par jour en plus de l'import.
+Si des timeouts apparaissent en série, espacer la plage rapide du timer (3 à 5 min).
+
 ## Observation de la première semaine (à partir du 07/10/2026)
 
 À faire une fois par jour pendant ~7 jours, jusqu'au premier vrai import de box
