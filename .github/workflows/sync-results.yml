@@ -6,6 +6,14 @@ name: Sync — résultats des matchs
 # 28/07/2026, SPEC_TECHNIQUE_DEPLOIEMENT_V0.1.md §5) — plus simple à
 # maintenir, le quota de 100 req/jour Highlightly reste large même à cette
 # fréquence (doc maître §2, A6).
+#
+# Rôle depuis le poller NBA de la VM (nba-results-poll, toutes les 2 min) : REPLI et
+# source des matchs que le poller ne suit pas. Pour un match suivi par le poller
+# (mapping NBA_LIVE), la route n'avance que le statut (lib/sync/results.ts,
+# highlightlyMayWrite). Cadence réelle : GitHub espace ce cron de 3 à 6 h, ce n'est
+# donc pas un repli rapide ; le repli rapide est l'appel direct de la VM à
+# /api/sync/results quand le fetch NBA échoue (poll_results.py). Watchdog :
+# watchdog-results-poll.yml.
 on:
   schedule:
     - cron: "*/30 * * * *"

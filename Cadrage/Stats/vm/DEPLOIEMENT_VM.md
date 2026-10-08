@@ -186,9 +186,22 @@ mesuré le 08/10/2026) et le pousse vers `POST /api/sync/results-nba`, qui passe
 - **Secours** : à chaque passage de 12h et 16h, `refresh_job.py` rejoue les scoreboards des
   deux jours NY précédents et du jour, **avant** l'import. Il ne change jamais le code de
   sortie ni `sync_logs`.
-- **Journal** : `journalctl -u nba-results-poll` (une ligne par date et par passage). Rien dans
+- **Journal** : `sudo journalctl -u nba-results-poll` (sans `sudo`, l'utilisateur SSH affiche « No entries ») (une ligne par date et par passage). Rien dans
   `sync_logs` côté Python ; la route y écrit les changements, les ignorés et les échecs
   (`endpoint = 'nba:NBA_STATS_SCOREBOARDV3'`, `sync_type = 'RESULTS'`).
+- **Codes de sortie** : `0` ok (y compris sans match) ; `75` panne passagère (fetch NBA, réseau,
+  HTTP 5xx/408/429) : l'unité déclare `SuccessExitStatus=75`, donc **pas de `failed` toutes les
+  2 minutes** (le silence est vu par le watchdog) ; `1` panne durable (secret illisible, HTTP
+  3xx/400/401/403/413) : l'unité reste `failed`, à traiter.
+- **Repli Highlightly** : en écriture réelle (jamais en dryRun, jamais avec `--dates`), un fetch NBA
+  en échec appelle `/api/sync/results` (Highlightly), au plus une fois par heure (horodatage
+  `/var/lib/nba-refresh/hl-fallback.stamp`, posé avant l'appel ; quota Highlightly de 100/jour).
+  Côté app, pour un match suivi par le poller (mapping `NBA_LIVE`), Highlightly n'avance que le
+  statut (début, fin), jamais de mise à jour à statut égal : plus d'écrasement des quarts entre
+  les deux sources.
+- **Watchdog** : `.github/workflows/watchdog-results-poll.yml` (toutes les heures, issue
+  `results-poll`, fermée au retour au vert) : R1 poller muet pendant un match, R2 match non terminé
+  5 h après le coup d'envoi, R3 trois échecs de suite. À activer (merge) après le passage en réel.
 - **dryRun par défaut** : `RESULTS_POLL_DRYRUN` dans `/etc/nba-refresh/env`. Seul `0` ou `false`
   passe en écriture réelle ; absente, `1` ou une faute de frappe restent en dryRun.
 
@@ -199,12 +212,13 @@ gcloud compute ssh nba-refresh --zone=us-central1-a --tunnel-through-iap --comma
   sudo -u nbarefresh git -C /opt/nba-pronos pull &&
   sudo bash /opt/nba-pronos/Cadrage/Stats/vm/install.sh </dev/null &&
   grep RESULTS_POLL_DRYRUN /etc/nba-refresh/env &&
-  sudo systemctl start nba-results-poll.service; journalctl -u nba-results-poll -n 20 --no-pager'
+  sudo systemctl start nba-results-poll.service; sudo journalctl -u nba-results-poll -n 20 --no-pager'
 ```
 
 `install.sh` est relançable sans risque (il réécrit les unités à l'identique, ajoute
 `RESULTS_POLL_DRYRUN=1` seulement si la ligne manque, ne repose pas la question du déclencheur).
-Il valide les deux lignes `OnCalendar` avec `systemd-analyze calendar` avant `daemon-reload`.
+Il valide les `OnCalendar` des deux timers avec `systemd-analyze calendar` **avant** de copier
+les unités : un calendrier invalide (ou un `sed` en échec) arrête le script sans rien modifier.
 Le venv doit exister : il est créé par le premier `nba-refresh@…` (déjà fait).
 Le poller ne fait pas de `git pull` : le code se met à jour aux passages de 12h/16h, ou à la main
 avec la première commande ci-dessus.
@@ -216,8 +230,8 @@ depuis `/opt/nba-pronos/Cadrage/Stats/service` doit afficher `0`.
 ### Observation en dryRun (2 soirs de matchs avant le passage en réel)
 
 1. **Il tourne** : `systemctl list-timers 'nba-results-poll*'`, puis
-   `journalctl -u nba-results-poll --since "today 17:00" | grep -c "HTTP 200"` (environ 30 par heure).
-2. **Aucun échec** : `journalctl -u nba-results-poll --since -12h | grep -E "HTTP [45]|échoué"`
+   `sudo journalctl -u nba-results-poll --since "today 17:00" | grep -c "HTTP 200"` (environ 30 par heure).
+2. **Aucun échec** : `sudo journalctl -u nba-results-poll --since -12h | grep -E "HTTP [45]|échoué"`
    doit être vide (un timeout isolé est toléré ; une série est le signal d'un blocage d'IP,
    voir « Si l'IP de la VM est bloquée »).
 3. **Écarts cohérents** (requête dans le SQL editor Supabase) :
@@ -231,7 +245,7 @@ depuis `/opt/nba-pronos/Cadrage/Stats/service` doit afficher `0`.
    un bug** (faux changement permanent) : ne pas passer en réel.
 4. **Les valeurs** : comparer un ou deux matchs terminés à `/admin/sync-logs` (Highlightly) et aux
    scores officiels, en vérifiant le sens domicile/extérieur.
-5. **Le secours** : après 12h, `journalctl -u 'nba-refresh@*' --since today | grep poll` montre ses lignes.
+5. **Le secours** : après 12h, `journalctl -u 'nba-refresh@*' --since today | grep poll` montre ses lignes (avec `sudo journalctl`).
 
 **Passage en réel** (sans PR ni redémarrage, le fichier est relu à chaque passage) :
 `sudo sed -i 's/^RESULTS_POLL_DRYRUN=.*/RESULTS_POLL_DRYRUN=0/' /etc/nba-refresh/env`. Vérifier ensuite

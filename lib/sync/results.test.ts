@@ -13,18 +13,25 @@ let competitionType = "PLAYOFFS";
 let matchStatus = "SCHEDULED";
 let updateData: unknown[] = [{ id: "m1" }];
 let matchExtras: Record<string, unknown> = {};
+let nbaTracked = false; // m1 a un mapping NBA_LIVE (suivi par le poller NBA)
 vi.mock("@/lib/supabase/service", () => ({
   getServiceClient: () => ({
     from: (table: string) => {
+      let sourceType = "";
       const chain = {
         select: () => chain,
-        eq: () => chain,
+        eq: (column: string, value: string) => {
+          if (column === "source_type") sourceType = value;
+          return chain;
+        },
         maybeSingle: () => Promise.resolve({ data: { type: competitionType } }),
         in: () =>
           Promise.resolve({
             data:
               table === "entity_mappings"
-                ? [{ internal_id: "m1", source_ref: "1" }]
+                ? sourceType === "NBA_LIVE"
+                  ? nbaTracked ? [{ internal_id: "m1" }] : []
+                  : [{ internal_id: "m1", source_ref: "1" }]
                 : [{ id: "m1", series_id: "s1", status: matchStatus, home_score: null, away_score: null, went_to_ot: null, quarter_scores: null, ...matchExtras }],
           }),
         update: (payload: unknown) => {
@@ -38,7 +45,7 @@ vi.mock("@/lib/supabase/service", () => ({
   }),
 }));
 
-import { diffResultFields, hasResultChanged, syncResults, type MatchResultFields } from "./results";
+import { diffResultFields, hasResultChanged, highlightlyMayWrite, syncResults, type MatchResultFields } from "./results";
 
 const raw = (id: number) => ({
   id,
@@ -59,6 +66,7 @@ describe("syncResults — veille NY", () => {
     matchStatus = "SCHEDULED";
     matchExtras = {};
     updateData = [{ id: "m1" }];
+    nbaTracked = false;
   });
 
   it("signale finishedNow quand un match passe à FINISHED", async () => {
@@ -146,8 +154,59 @@ describe("syncResults — veille NY", () => {
   });
 });
 
+describe("highlightlyMayWrite", () => {
+  it.each([
+    ["suivi NBA, IN_PROGRESS -> IN_PROGRESS (score différent)", "IN_PROGRESS", "IN_PROGRESS", true, false],
+    ["suivi NBA, FINISHED -> FINISHED (quarts différents)", "FINISHED", "FINISHED", true, false],
+    ["suivi NBA, SCHEDULED -> IN_PROGRESS", "SCHEDULED", "IN_PROGRESS", true, true],
+    ["suivi NBA, IN_PROGRESS -> FINISHED (repli)", "IN_PROGRESS", "FINISHED", true, true],
+    ["suivi NBA, SCHEDULED -> FINISHED (repli)", "SCHEDULED", "FINISHED", true, true],
+    ["non suivi, IN_PROGRESS -> IN_PROGRESS", "IN_PROGRESS", "IN_PROGRESS", false, true],
+    ["non suivi, FINISHED -> FINISHED (correction de score)", "FINISHED", "FINISHED", false, true],
+  ])("%s", (_label, before, next, owned, expected) => {
+    expect(highlightlyMayWrite(before, next, owned)).toBe(expected);
+  });
+});
+
+describe("syncResults — match suivi par le poller NBA", () => {
+  beforeEach(() => {
+    getMatchesByDate.mockReset();
+    updates.length = 0;
+    competitionType = "PLAYOFFS";
+    matchExtras = {};
+    updateData = [{ id: "m1" }];
+    nbaTracked = true;
+  });
+
+  it("à statut égal, ne réécrit pas scores ni quarts : compté dans deferredToNba", async () => {
+    matchStatus = "IN_PROGRESS";
+    getMatchesByDate.mockResolvedValue({ data: [{ ...raw(1), state: { description: "In progress", score: { homeTeam: [25, 10], awayTeam: [20, 12] } } }], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(updates).toHaveLength(0);
+    expect(r.deferredToNba).toBe(1);
+    expect(r.changed + r.unchanged + r.skipped.length).toBe(0);
+  });
+
+  it("repli : Highlightly termine le match quand le poller ne l'a pas fait", async () => {
+    matchStatus = "IN_PROGRESS";
+    getMatchesByDate.mockResolvedValue({ data: [raw(1)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(r.finishedNow).toEqual(["m1"]);
+    expect(r.deferredToNba).toBe(0);
+  });
+
+  it("un FINISHED déjà posé n'est plus corrigé par Highlightly", async () => {
+    matchStatus = "FINISHED";
+    getMatchesByDate.mockResolvedValue({ data: [raw(1)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(updates).toHaveLength(0);
+    expect(r.deferredToNba).toBe(1);
+  });
+});
+
 describe("syncResults — pas de réécriture inutile", () => {
   it("FINISHED identique stocké dans l'ordre jsonb {awayTeam, homeTeam} : unchanged, aucune écriture", async () => {
+    nbaTracked = false;
     matchStatus = "FINISHED";
     matchExtras = { home_score: 100, away_score: 80, went_to_ot: false, quarter_scores: { awayTeam: [20, 20, 20, 20], homeTeam: [25, 25, 25, 25] } };
     updates.length = 0;

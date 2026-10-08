@@ -33,6 +33,7 @@ async function handle(request: Request): Promise<Response> {
         ? ` Ignorés : ${result.skipped.map((s) => `#${s.highlightlyMatchId} (${s.reason})`).join("; ")}.`
         : "") +
       (result.notDrawn > 0 ? ` ${result.notDrawn} match(s) non tiré(s) ignoré(s) (Match du jour).` : "") +
+      (result.deferredToNba > 0 ? ` ${result.deferredToNba} match(s) laissé(s) au poller NBA.` : "") +
       (result.failedDates.length > 0
         ? ` Dates en échec : ${result.failedDates.map((f) => `${f.date} (${f.message})`).join("; ")}.`
         : "") +

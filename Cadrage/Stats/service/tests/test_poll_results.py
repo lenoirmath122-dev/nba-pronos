@@ -5,6 +5,7 @@ lib/sync/resultsNba.test.ts (contrat Python <-> zod)."""
 
 import datetime as dt
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -230,6 +231,108 @@ def test_le_journal_resume_la_reponse_de_la_route(wiring, capsys):
     poll.run(["2026-10-07"], dry_run=True)
     out = capsys.readouterr().out
     assert "mode=dryRun" in out and "HTTP 200" in out and "changed=1" in out and "0012600030" in out and "quarter_scores" in out
+
+
+# ------------------------------------------------- codes de sortie (0 / 75 / 1)
+
+
+@pytest.mark.parametrize("status", [500, 502, 503, 408, 429])
+def test_http_passager_code_75(wiring, status):
+    wiring["response"] = FakeResponse(status, {"error": "x"})
+    assert poll.main(["--dates", "2026-10-07"]) == 75
+
+
+@pytest.mark.parametrize("status", [301, 307, 400, 401, 403, 413])
+def test_http_durable_code_1(wiring, status):
+    wiring["response"] = FakeResponse(status, {})
+    assert poll.main(["--dates", "2026-10-07"]) == 1
+
+
+def test_fetch_en_echec_et_erreur_reseau_au_post_code_75(wiring):
+    wiring["games"]["2026-10-07"] = TimeoutError("lent")
+    assert poll.main(["--dates", "2026-10-07"]) == 75
+    wiring["games"]["2026-10-07"] = [RAW]
+    wiring["response"] = poll.requests.ConnectionError("down")
+    assert poll.main(["--dates", "2026-10-07"]) == 75
+
+
+def test_secret_introuvable_code_1(wiring, monkeypatch):
+    monkeypatch.delenv("SYNC_SECRET")
+    monkeypatch.setattr(poll.requests, "get", lambda *a, **k: (_ for _ in ()).throw(poll.requests.ConnectionError("pas de métadonnées")))
+    assert poll.main(["--dates", "2026-10-07"]) == 1
+
+
+def test_le_pire_statut_l_emporte(wiring):
+    wiring["games"]["2026-10-06"] = TimeoutError("lent")  # passager
+    wiring["response"] = FakeResponse(401, {})  # durable, sur la date suivante
+    assert poll.run_status(["2026-10-06", "2026-10-07"], dry_run=True) == (poll.FATAL, ["2026-10-06"])
+
+
+# ----------------------------------------------- repli Highlightly (VM)
+
+
+@pytest.fixture
+def fallback(wiring, monkeypatch, tmp_path):
+    monkeypatch.setenv("RESULTS_FALLBACK_STAMP", str(tmp_path / "hl.stamp"))
+    monkeypatch.setenv("RESULTS_POLL_DRYRUN", "0")
+    monkeypatch.setattr(poll, "ny_dates", lambda now: ["2026-10-07"])
+    return tmp_path / "hl.stamp"
+
+
+def test_repli_appele_quand_le_fetch_nba_echoue_en_reel(fallback, wiring):
+    wiring["games"]["2026-10-07"] = TimeoutError("lent")
+    assert poll.main([]) == 75
+    (url, kw), = wiring["post"]
+    assert url == "https://exemple.test/api/sync/results"
+    assert kw["headers"] == {"Authorization": "Bearer secret-de-test"}
+    assert kw["allow_redirects"] is False
+    assert fallback.exists()
+
+
+def test_repli_au_plus_une_fois_par_heure(fallback, wiring):
+    wiring["games"]["2026-10-07"] = TimeoutError("lent")
+    poll.main([])
+    poll.main([])
+    assert len(wiring["post"]) == 1
+    old = fallback.stat().st_mtime - poll.HL_FALLBACK_INTERVAL_SECONDS - 1
+    os.utime(fallback, (old, old))
+    poll.main([])
+    assert len(wiring["post"]) == 2
+
+
+def test_repli_jamais_en_dryrun_ni_avec_dates_ni_si_le_fetch_reussit(fallback, wiring, monkeypatch):
+    wiring["games"]["2026-10-07"] = TimeoutError("lent")
+    monkeypatch.setenv("RESULTS_POLL_DRYRUN", "1")
+    poll.main([])
+    monkeypatch.setenv("RESULTS_POLL_DRYRUN", "0")
+    poll.main(["--dates", "2026-10-07"])
+    assert wiring["post"] == []
+    wiring["games"]["2026-10-07"] = [RAW]
+    wiring["response"] = FakeResponse(503, {})  # échec du POST NBA, pas du fetch
+    poll.main([])
+    assert [u for u, _ in wiring["post"]] == ["https://exemple.test/api/sync/results-nba"]
+
+
+def test_repli_pas_declenche_si_seule_la_veille_echoue(fallback, wiring, monkeypatch):
+    monkeypatch.setattr(poll, "ny_dates", lambda now: ["2026-10-06", "2026-10-07"])
+    wiring["games"]["2026-10-06"] = TimeoutError("lent")
+    assert poll.main([]) == 75
+    assert [u for u, _ in wiring["post"]] == ["https://exemple.test/api/sync/results-nba"]
+
+
+def test_repli_stamp_non_inscriptible_ne_leve_pas(fallback, wiring, monkeypatch):
+    wiring["games"]["2026-10-07"] = TimeoutError("lent")
+    monkeypatch.setattr(poll.Path, "touch", lambda self, *a, **k: (_ for _ in ()).throw(PermissionError("ro")))
+    assert poll.main([]) == 75
+    assert wiring["post"] == []
+
+
+def test_repli_en_echec_ne_leve_pas_et_ne_boucle_pas(fallback, wiring):
+    wiring["games"]["2026-10-07"] = TimeoutError("lent")
+    wiring["response"] = poll.requests.ConnectionError("down")
+    assert poll.main([]) == 75
+    assert poll.main([]) == 75
+    assert len(wiring["post"]) == 1  # l'horodatage est posé avant l'appel
 
 
 # ---------------------------------------------------------------- load_sync_secret
