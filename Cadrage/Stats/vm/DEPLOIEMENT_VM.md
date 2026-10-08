@@ -189,6 +189,19 @@ mesuré le 08/10/2026) et le pousse vers `POST /api/sync/results-nba`, qui passe
 - **Journal** : `sudo journalctl -u nba-results-poll` (sans `sudo`, l'utilisateur SSH affiche « No entries ») (une ligne par date et par passage). Rien dans
   `sync_logs` côté Python ; la route y écrit les changements, les ignorés et les échecs
   (`endpoint = 'nba:NBA_STATS_SCOREBOARDV3'`, `sync_type = 'RESULTS'`).
+- **Codes de sortie** : `0` ok (y compris sans match) ; `75` panne passagère (fetch NBA, réseau,
+  HTTP 5xx/408/429) : l'unité déclare `SuccessExitStatus=75`, donc **pas de `failed` toutes les
+  2 minutes** (le silence est vu par le watchdog) ; `1` panne durable (secret illisible, HTTP
+  3xx/400/401/403/413) : l'unité reste `failed`, à traiter.
+- **Repli Highlightly** : en écriture réelle (jamais en dryRun, jamais avec `--dates`), un fetch NBA
+  en échec appelle `/api/sync/results` (Highlightly), au plus une fois par heure (horodatage
+  `/var/lib/nba-refresh/hl-fallback.stamp`, posé avant l'appel ; quota Highlightly de 100/jour).
+  Côté app, pour un match suivi par le poller (mapping `NBA_LIVE`), Highlightly n'avance que le
+  statut (début, fin), jamais de mise à jour à statut égal : plus d'écrasement des quarts entre
+  les deux sources.
+- **Watchdog** : `.github/workflows/watchdog-results-poll.yml` (toutes les heures, issue
+  `results-poll`, fermée au retour au vert) : R1 poller muet pendant un match, R2 match non terminé
+  5 h après le coup d'envoi, R3 trois échecs de suite. À activer (merge) après le passage en réel.
 - **dryRun par défaut** : `RESULTS_POLL_DRYRUN` dans `/etc/nba-refresh/env`. Seul `0` ou `false`
   passe en écriture réelle ; absente, `1` ou une faute de frappe restent en dryRun.
 

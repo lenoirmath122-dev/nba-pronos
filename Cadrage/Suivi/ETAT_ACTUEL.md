@@ -366,6 +366,7 @@ automatiquement au retour au vert), cron retiré de `refresh-stats-supabase.yml`
 (désormais plan B manuel), versions Python épinglées. Mise en place du
 déclencheur : `DEPLOIEMENT_VM.md` étape 7 (actions de l'utilisateur après
 merge). Voir `GAPS_OUVERTS.md`.
+**Poller des résultats NBA** (VM, `poll_results.py`, unité `nba-results-poll`, ScoreboardV3 via `nba_api` vers `/api/sync/results-nba`, 2 min la nuit et 15 min le jour) : déployé en dryRun (`RESULTS_POLL_DRYRUN=1`) depuis le 08/10/2026, passage en réel après 2 soirs d'observation. Sur un match suivi par lui (mapping `NBA_LIVE`), Highlightly n'avance que le statut (`highlightlyMayWrite`, `lib/sync/results.ts`). Repli : un fetch NBA en échec appelle `/api/sync/results` depuis la VM (1 fois par heure max). Code de sortie 75 = panne passagère (unité non `failed`). Watchdog `watchdog-results-poll.yml` (R1 muet, R2 match non terminé 5 h après le coup d'envoi, R3 échecs en boucle) : à activer après le passage en réel.
 
 ---
 

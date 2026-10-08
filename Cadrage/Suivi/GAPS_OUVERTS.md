@@ -208,10 +208,10 @@
   (06/10/2026)** — test PR 5 fait le 06/10 (tirage + push au propriétaire OK).
   Constat : `sync-results.yml` est réglé à 30 min mais GitHub l'espace de
   plusieurs heures (runs à 07:10Z puis 14:21Z le 06/10), donc un résultat de
-  match de nuit peut arriver tard côté joueur. À faire : une automatisation
+  match de nuit peut arriver tard côté joueur. **Traité par le poller de la VM** (PR #147/#148, déployé le 08/10 en dryRun ; PR C du 08/10 : repli Highlightly, watchdog, code de sortie 75). Reste à faire par l'utilisateur : merger la PR C, mettre à jour la VM (`git pull` + `install.sh`), observer 2 soirs en dryRun (checklist de `Cadrage/Stats/vm/DEPLOIEMENT_VM.md`), passer en réel (`RESULTS_POLL_DRYRUN=0`), puis seulement activer le watchdog `watchdog-results-poll.yml` (R2 sonnerait à tort en dryRun). Avant : une automatisation
   plus fiable des résultats pour le Match du jour (déclenchement serré autour
   du coup d'envoi/de la fin du match, ou planificateur plus ponctuel que le
-  cron GitHub), pas tranché. À vérifier en même temps : les quotas de
+  cron GitHub). À vérifier en même temps : les quotas de
   l'API Highlightly (100 req/jour, doc maître §2 A6) avec le Match du jour
   + `sync-results` + `daily-match-draw` actifs ensemble.
   **Mise à jour du 08/10/2026** : PR A (#147) mergée (route `/api/sync/results-nba`),
