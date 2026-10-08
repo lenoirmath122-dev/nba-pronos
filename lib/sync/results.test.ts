@@ -10,6 +10,8 @@ vi.mock("@/lib/scoring/advancement", () => ({ advanceWinnerIfDecided: vi.fn() })
 
 const updates: unknown[] = [];
 let competitionType = "PLAYOFFS";
+let matchStatus = "SCHEDULED";
+let updateData: unknown[] = [{ id: "m1" }];
 vi.mock("@/lib/supabase/service", () => ({
   getServiceClient: () => ({
     from: (table: string) => {
@@ -22,11 +24,12 @@ vi.mock("@/lib/supabase/service", () => ({
             data:
               table === "entity_mappings"
                 ? [{ internal_id: "m1", source_ref: "1" }]
-                : [{ id: "m1", series_id: "s1", status: "SCHEDULED", home_score: null, away_score: null, went_to_ot: null, quarter_scores: null }],
+                : [{ id: "m1", series_id: "s1", status: matchStatus, home_score: null, away_score: null, went_to_ot: null, quarter_scores: null }],
           }),
         update: (payload: unknown) => {
           updates.push(payload);
-          return { eq: () => Promise.resolve({ error: null }) };
+          const upd = { eq: () => upd, select: () => Promise.resolve({ data: updateData, error: null }) };
+          return upd;
         },
       };
       return chain;
@@ -52,6 +55,40 @@ describe("syncResults — veille NY", () => {
     getMatchesByDate.mockReset();
     updates.length = 0;
     competitionType = "PLAYOFFS";
+    matchStatus = "SCHEDULED";
+    updateData = [{ id: "m1" }];
+  });
+
+  it("signale finishedNow quand un match passe à FINISHED", async () => {
+    getMatchesByDate.mockResolvedValue({ data: [raw(1)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(r.finishedNow).toEqual(["m1"]);
+  });
+
+  it("ne signale pas finishedNow si le match était déjà FINISHED (score corrigé)", async () => {
+    matchStatus = "FINISHED";
+    getMatchesByDate.mockResolvedValue({ data: [raw(1)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(r.changed).toBe(1);
+    expect(r.finishedNow).toEqual([]);
+  });
+
+  it("refuse la régression d'un match FINISHED vers IN_PROGRESS (statut Highlightly inconnu)", async () => {
+    matchStatus = "FINISHED";
+    const unknown = { ...raw(1), state: { description: "Weird", score: { homeTeam: [25, 25, 25, 25], awayTeam: [20, 20, 20, 20] } } };
+    getMatchesByDate.mockResolvedValue({ data: [unknown], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(updates).toHaveLength(0);
+    expect(r.skipped[0].reason).toContain("régression");
+  });
+
+  it("écriture concurrente : ignoré, pas de finishedNow", async () => {
+    updateData = [];
+    getMatchesByDate.mockResolvedValue({ data: [raw(1)], requestsRemaining: 5 });
+    const r = await syncResults(DAY);
+    expect(r.changed).toBe(0);
+    expect(r.finishedNow).toEqual([]);
+    expect(r.skipped[0].reason).toContain("concurrente");
   });
 
   it("interroge veille puis jour dans la fenêtre de nuit", async () => {
