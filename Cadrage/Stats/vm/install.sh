@@ -49,13 +49,19 @@ Unattended-Upgrade::Automatic-Reboot-Time "03:30";
 EOF
 
 echo "== Unités systemd"
+# Calendrier invalide = on s'arrête AVANT de copier quoi que ce soit : les unités installées
+# restent intactes (sinon le redémarrage de 03:30 rechargerait un timer cassé). La substitution
+# de commande propage l'échec de sed (set -e), contrairement à `done < <(sed ...)`.
+for TIMER in nba-results-poll.timer nba-refresh.timer; do
+  CALS="$(sed -n 's/^OnCalendar=//p' "$VMDIR/$TIMER")"
+  [ -n "$CALS" ] || { echo "Aucun OnCalendar dans $TIMER" >&2; exit 1; }
+  while IFS= read -r CAL; do systemd-analyze calendar "$CAL" >/dev/null; done <<< "$CALS"
+done
 install -m 644 "$VMDIR/nba-refresh@.service" /etc/systemd/system/nba-refresh@.service
 install -m 644 "$VMDIR/nba-refresh.timer" /etc/systemd/system/nba-refresh.timer
 install -m 644 "$VMDIR/nba-results-poll.service" /etc/systemd/system/nba-results-poll.service
 install -m 644 "$VMDIR/nba-results-poll.timer" /etc/systemd/system/nba-results-poll.timer
 chmod 755 "$VMDIR/run.sh"
-# Calendrier invalide = on s'arrête avant daemon-reload (les timers actuels restent intacts).
-while IFS= read -r CAL; do systemd-analyze calendar "$CAL" >/dev/null; done < <(sed -n 's/^OnCalendar=//p' "$VMDIR/nba-results-poll.timer")
 systemctl daemon-reload
 systemctl enable --now nba-refresh.timer
 systemctl enable --now nba-results-poll.timer
@@ -94,4 +100,4 @@ systemctl list-timers 'nba-*' --no-pager
 echo "Poller des résultats : $(grep '^RESULTS_POLL_DRYRUN=' /etc/nba-refresh/env) (1 = dryRun ; 0 = écriture réelle)"
 echo
 echo "Test à la main :  sudo systemctl start nba-refresh@manuel.service"
-echo "Poller         :  sudo systemctl start nba-results-poll.service ; journalctl -u nba-results-poll -n 20 --no-pager"
+echo "Poller         :  sudo systemctl start nba-results-poll.service ; sudo journalctl -u nba-results-poll -n 20 --no-pager"
