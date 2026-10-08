@@ -27,8 +27,13 @@ Journalisation : stdout (journald) seulement, une ligne par date. La route écri
 déjà dans sync_logs (changements, ignorés, échecs) ; rien n'est écrit ici, et
 surtout pas en STATS_IMPORT, que le watchdog lit.
 
-Code de sortie 1 si un appel NBA ou un POST échoue (le timer continue quand même) ;
-0 sinon, y compris quand il n'y a aucun match.
+Code de sortie : 0 si tout a répondu (y compris sans match) ; 75 pour une panne
+passagère (fetch NBA, réseau, HTTP 5xx/408/429) ; 1 pour une panne qui demande une
+intervention (secret illisible, HTTP 3xx/400/401/403/413). Le timer continue dans tous
+les cas.
+
+Repli : en écriture réelle, un fetch NBA en échec déclenche /api/sync/results
+(Highlightly), au plus une fois par heure (voir highlightly_fallback).
 """
 
 import argparse
@@ -37,6 +42,8 @@ import datetime as dt
 import os
 import re
 import sys
+import time
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import requests
@@ -53,6 +60,15 @@ MAX_GAMES_PER_POST = 30  # plafond du schéma de la route
 FETCH_TIMEOUT_SECONDS = 10
 POST_TIMEOUT_SECONDS = 30
 METADATA_URL = "http://metadata.google.internal/computeMetadata/v1"
+HL_FALLBACK_INTERVAL_SECONDS = 3600
+FALLBACK_TIMEOUT_SECONDS = 60
+DEFAULT_FALLBACK_STAMP = "/var/lib/nba-refresh/hl-fallback.stamp"  # StateDirectory de l'unité, inscriptible
+
+# Statut d'un passage -> code de sortie. 75 (EX_TEMPFAIL) = panne passagère (réseau, 5xx,
+# timeout NBA) : l'unité déclare SuccessExitStatus=75, donc pas de `failed` toutes les 2
+# minutes ; le watchdog (sync_logs) voit le silence. 1 = secret, domaine, schéma : `failed`.
+OK, TRANSIENT, FATAL = "ok", "transient", "fatal"
+EXIT_CODES = {OK: 0, TRANSIENT: 75, FATAL: 1}
 
 _GAME_ID = re.compile(r"^\d{10}$")
 _TRICODE = re.compile(r"^[A-Z]{3}$")
@@ -214,19 +230,31 @@ def _summary(response: requests.Response) -> str:
     return " ".join(parts) or response.text[:200]
 
 
-def run(dates: list[str], dry_run: bool) -> bool:
-    """Un fetch + un POST par date (aucun POST sans match valide). True si tout a répondu.
+def _http_failure_status(status_code: int) -> str:
+    """5xx, 408 et 429 passent d'eux-mêmes ; 3xx, 400, 401, 403, 413... demandent une
+    intervention (secret, domaine, schéma) : l'unité doit rester `failed`."""
+    return TRANSIENT if status_code in (408, 429) or status_code >= 500 else FATAL
+
+
+def _worst(current: str, new: str) -> str:
+    order = (OK, TRANSIENT, FATAL)
+    return new if order.index(new) > order.index(current) else current
+
+
+def run_status(dates: list[str], dry_run: bool) -> tuple[str, bool]:
+    """Un fetch + un POST par date (aucun POST sans match valide).
+    Renvoie (OK | TRANSIENT | FATAL, un fetch NBA a-t-il échoué). Le pire statut l'emporte.
     Jamais d'exception vers l'appelant (le secours de refresh_job ne doit pas échouer)."""
     mode = "dryRun" if dry_run else "réel"
     app_url = os.environ.get("APP_URL", DEFAULT_APP_URL).rstrip("/")
-    ok = True
+    status, fetch_failed = OK, False
     secret: str | None = None
     for date in dates:
         try:
             raw_games = fetch_scoreboard(date)
         except Exception as exc:  # noqa: BLE001 -- réseau, JSON, structure inattendue
             print(f"[poll] {date} mode={mode} fetch NBA échoué ({type(exc).__name__})")
-            ok = False
+            status, fetch_failed = _worst(status, TRANSIENT), True
             continue
         games = [g for g in (reduce_game(r) for r in raw_games) if g is not None]
         invalid = len(raw_games) - len(games)
@@ -238,17 +266,67 @@ def run(dates: list[str], dry_run: bool) -> bool:
                 secret = load_sync_secret()
             if not secret:
                 raise RuntimeError("SYNC_SECRET introuvable")
-            responses = post_games(app_url, secret, games, dry_run)
         except Exception as exc:  # noqa: BLE001 -- jamais le secret dans le journal
+            print(f"[poll] {date} mode={mode} secret illisible ({type(exc).__name__})")
+            status = _worst(status, FATAL)
+            continue
+        try:
+            responses = post_games(app_url, secret, games, dry_run)
+        except requests.RequestException as exc:
             print(f"[poll] {date} mode={mode} {len(games)} match(s) POST échoué ({type(exc).__name__})")
-            ok = False
+            status = _worst(status, TRANSIENT)
+            continue
+        except Exception as exc:  # noqa: BLE001
+            print(f"[poll] {date} mode={mode} {len(games)} match(s) POST échoué ({type(exc).__name__})")
+            status = _worst(status, FATAL)
             continue
         for response in responses:
             print(f"[poll] {date} mode={mode} {len(games)} match(s) ({invalid} invalide(s)) -> HTTP {response.status_code} {_summary(response)}")
             # allow_redirects=False : un 307/308 (changement de domaine) n'est PAS un succès.
             if not 200 <= response.status_code < 300:
-                ok = False
-    return ok
+                status = _worst(status, _http_failure_status(response.status_code))
+    return status, fetch_failed
+
+
+def run(dates: list[str], dry_run: bool) -> bool:
+    """True si tout a répondu (voir run_status)."""
+    return run_status(dates, dry_run)[0] == OK
+
+
+def highlightly_fallback(now: float | None = None) -> bool:
+    """Repli quand le fetch NBA échoue (IP bloquée...) : déclenche la synchro Highlightly
+    (/api/sync/results) au lieu d'attendre le cron GitHub, espacé de 3 à 6 h. Au plus une
+    fois par HL_FALLBACK_INTERVAL_SECONDS (quota Highlightly de 100 requêtes/jour) ; la
+    date du dernier essai est posée AVANT l'appel, un échec ne relance donc pas en boucle.
+    Jamais d'exception."""
+    now = time.time() if now is None else now
+    stamp = Path(os.environ.get("RESULTS_FALLBACK_STAMP", DEFAULT_FALLBACK_STAMP))
+    try:
+        if now - stamp.stat().st_mtime < HL_FALLBACK_INTERVAL_SECONDS:
+            print("[poll] repli Highlightly : déjà tenté il y a moins d'une heure")
+            return False
+    except FileNotFoundError:
+        pass
+    except OSError as exc:
+        print(f"[poll] repli Highlightly : horodatage illisible ({type(exc).__name__})")
+        return False
+    try:
+        stamp.touch()
+        secret = load_sync_secret()
+        if not secret:
+            raise RuntimeError("SYNC_SECRET introuvable")
+        app_url = os.environ.get("APP_URL", DEFAULT_APP_URL).rstrip("/")
+        response = requests.post(
+            f"{app_url}/api/sync/results",
+            headers={"Authorization": f"Bearer {secret}"},
+            timeout=FALLBACK_TIMEOUT_SECONDS,
+            allow_redirects=False,
+        )
+    except Exception as exc:  # noqa: BLE001 -- jamais le secret dans le journal
+        print(f"[poll] repli Highlightly échoué ({type(exc).__name__})")
+        return False
+    print(f"[poll] repli Highlightly -> HTTP {response.status_code}")
+    return 200 <= response.status_code < 300
 
 
 def main(argv=None) -> int:
@@ -261,7 +339,12 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     dry_run = resolve_dry_run(os.environ.get("RESULTS_POLL_DRYRUN"), args.dry_run, args.live)
     dates = args.dates or ny_dates(dt.datetime.now(dt.timezone.utc))
-    return 0 if run(dates, dry_run) else 1
+    status, fetch_failed = run_status(dates, dry_run)
+    # Repli seulement en écriture réelle et hors essai à la main : en dryRun le poller
+    # n'écrit rien, Highlightly reste de toute façon la seule source.
+    if fetch_failed and not dry_run and args.dates is None:
+        highlightly_fallback()
+    return EXIT_CODES[status]
 
 
 if __name__ == "__main__":

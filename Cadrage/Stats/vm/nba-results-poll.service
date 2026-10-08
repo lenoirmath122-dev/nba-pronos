@@ -22,6 +22,10 @@ WorkingDirectory=/opt/nba-pronos/Cadrage/Stats/service
 # Un lock à part de celui de run.sh (qui peut tenir 2 h) : un import long ne doit pas
 # bloquer les résultats. -n -E 0 : si un passage précédent tourne encore, on saute.
 ExecStart=/usr/bin/flock -n -E 0 /var/lib/nba-refresh/poll.lock /var/lib/nba-refresh/venv/bin/python poll_results.py --trigger vm-poll
+# 75 = panne passagère (NBA injoignable, 5xx) : pas de `failed` toutes les 2 minutes. Le
+# silence est repéré par le watchdog (watchdog-results-poll.yml) via sync_logs. Les autres
+# codes non nuls (1 : secret, domaine, schéma) laissent l'unité en `failed`.
+SuccessExitStatus=75
 TimeoutStartSec=90
 MemoryMax=256M
 NoNewPrivileges=yes
