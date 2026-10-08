@@ -1,5 +1,6 @@
 import { getServiceClient } from "@/lib/supabase/service";
 import { sendPushToSubscriptions, ttlUntil, type PushSubscriptionRow } from "@/lib/push/send";
+import { unpublishedDailySeriesIds } from "@/lib/queries/dailyVisibility";
 
 // Rappel "match du soir non pronostiqué" (backlog "Rappels ciblés", PRIORITÉ).
 // Fenêtre de déclenchement (choix d'implémentation, non fixé par le backlog —
@@ -16,6 +17,7 @@ type MatchRow = {
   home_team_id: string;
   away_team_id: string;
   scheduled_at: string;
+  series_id: string;
 };
 
 type TeamRow = { id: string; abbreviation: string };
@@ -23,14 +25,41 @@ type TeamRow = { id: string; abbreviation: string };
 export async function runMatchesReminder(): Promise<{ notified: number; matchesChecked: number }> {
   const supabase = getServiceClient();
 
-  const windowEnd = new Date(Date.now() + WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  // Seuls comptent les matchs encore à pronostiquer (SCHEDULED, équipes connues)
+  // d'une compétition ACTIVE : un match reporté/annulé non resynchronisé, ou
+  // d'une compétition archivée (tests), ne doit jamais déclencher de push.
+  const { data: activeCompetitions } = await supabase.from("competitions").select("id").eq("status", "ACTIVE");
+  const competitionIds = (activeCompetitions ?? []).map((c) => c.id as string);
+  if (competitionIds.length === 0) return { notified: 0, matchesChecked: 0 };
+
+  const nowMs = Date.now();
+  const windowEnd = new Date(nowMs + WINDOW_HOURS * 60 * 60 * 1000).toISOString();
   const { data: matchesData } = await supabase
     .from("matches")
-    .select("id, home_team_id, away_team_id, scheduled_at")
-    .gt("scheduled_at", new Date().toISOString())
+    .select("id, home_team_id, away_team_id, scheduled_at, series_id")
+    .in("competition_id", competitionIds)
+    .eq("status", "SCHEDULED")
+    .not("home_team_id", "is", null)
+    .not("away_team_id", "is", null)
+    .gt("scheduled_at", new Date(nowMs).toISOString())
     .lte("scheduled_at", windowEnd);
 
-  const matches = (matchesData ?? []) as MatchRow[];
+  const candidates = (matchesData ?? []) as MatchRow[];
+  if (candidates.length === 0) return { notified: 0, matchesChecked: 0 };
+
+  // Matchs « Match du jour » dont le jour n'est pas encore publié : ce job lit
+  // en service_role, donc sans le filtre des écrans joueur.
+  const seriesIds = [...new Set(candidates.map((m) => m.series_id))];
+  const { data: seriesData } = await supabase.from("series").select("id, round, slot_index").in("id", seriesIds);
+  const hiddenSeries = new Set(
+    unpublishedDailySeriesIds(
+      ((seriesData ?? []) as { id: string; round: string; slot_index: number }[])
+        .filter((s) => s.round === "DAILY")
+        .map((s) => ({ id: s.id, slot_index: s.slot_index })),
+      nowMs
+    )
+  );
+  const matches = candidates.filter((m) => !hiddenSeries.has(m.series_id));
   if (matches.length === 0) return { notified: 0, matchesChecked: 0 };
 
   const matchIds = matches.map((m) => m.id);
