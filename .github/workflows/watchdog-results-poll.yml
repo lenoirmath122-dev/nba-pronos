@@ -1,0 +1,159 @@
+name: Watchdog — poller des résultats NBA
+
+# Surveille le poller des résultats de la VM (Cadrage/Stats/vm/DEPLOIEMENT_VM.md,
+# « Poller des résultats NBA »). Ouvre UNE issue si l'une de ces règles échoue ;
+# elle se ferme toute seule au retour au vert. Rien ne se déclenche sans match
+# attendu dans une compétition ACTIVE (jour creux, hors saison : OK, pas de
+# faux positif).
+#   R1 vivacité : un match ACTIVE (SCHEDULED ou IN_PROGRESS) a débuté il y a
+#      20 min à 3 h => une ligne sync_logs `nba:NBA_STATS_SCOREBOARDV3` de moins
+#      de 30 min doit exister (la route en écrit une à chaque changement ou
+#      échec, donc toutes les ~2 min pendant un match). Sinon : poller muet,
+#      IP bloquée ou rapprochement cassé.
+#   R2 effet : un match ACTIVE encore SCHEDULED / IN_PROGRESS 5 h après son
+#      coup d'envoi (fenêtre de 36 h), quelle que soit la source. Un match
+#      reporté dont scheduled_at n'a pas été mis à jour par sync-schedule
+#      peut l'allumer à tort. En dryRun, Highlightly (3 à 6 h) peut l'allumer
+#      aussi : ne merger ce workflow qu'après le passage du poller en réel.
+#   R3 échecs : les 3 dernières lignes nba:* sont des échecs, la plus récente
+#      date de moins d'une heure (la route renvoie 502 en boucle).
+# Cron horaire : les crons courts sont étranglés par GitHub de toute façon, et
+# R2 est rétrospective. Les crons sont suspendus après 60 jours sans activité.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch: {}
+
+permissions:
+  issues: write
+
+jobs:
+  watchdog:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Contrôler le poller
+        uses: actions/github-script@v7
+        env:
+          # Lus par process.env, jamais interpolés dans le script.
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        with:
+          script: |
+            const NBA_ENDPOINT = "nba:NBA_STATS_SCOREBOARDV3";
+            const R1_LIVE_WINDOW = { fromMin: 20, toMin: 180 }; // débuté il y a 20 min .. 3 h
+            const R1_MAX_SILENCE_MIN = 30;
+            const R2_AFTER_H = 5;
+            const R2_WINDOW_H = 36;
+            const R3_FAILURES = 3;
+            const title = "Watchdog : poller des résultats NBA muet ou en échec";
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const base = process.env.SUPABASE_URL.replace(/\/+$/, "");
+            const headers = { apikey: process.env.SUPABASE_SERVICE_ROLE_KEY };
+            const now = Date.now();
+            const iso = (offsetMs) => new Date(now + offsetMs).toISOString();
+
+            async function rest(path) {
+              const res = await fetch(`${base}/rest/v1/${path}`, { headers });
+              if (!res.ok) throw new Error(`${path.split("?")[0]} : HTTP ${res.status}`);
+              return res.json();
+            }
+
+            const problems = [];
+            let okSummary = "aucune anomalie";
+            try {
+              const competitions = await rest("competitions?select=id&status=eq.ACTIVE");
+              const nbaLogs = await rest(
+                `sync_logs?select=success,summary,created_at&sync_type=eq.RESULTS&endpoint=eq.${encodeURIComponent(NBA_ENDPOINT)}&order=created_at.desc&limit=5`,
+              );
+
+              if (competitions.length > 0) {
+                const ids = competitions.map((c) => c.id).join(",");
+                const open = "status=in.(SCHEDULED,IN_PROGRESS)";
+                const inWindow = (fromMs, toMs) =>
+                  `scheduled_at=gte.${encodeURIComponent(iso(-fromMs))}&scheduled_at=lte.${encodeURIComponent(iso(-toMs))}`;
+
+                // R1 : un match devrait être en cours, le poller doit donc écrire.
+                const live = await rest(
+                  `matches?select=id,scheduled_at&competition_id=in.(${ids})&${open}&${inWindow(R1_LIVE_WINDOW.toMin * 60e3, R1_LIVE_WINDOW.fromMin * 60e3)}`,
+                );
+                if (live.length > 0) {
+                  const last = nbaLogs[0];
+                  const silenceMin = last ? (now - Date.parse(last.created_at)) / 60e3 : Infinity;
+                  if (silenceMin > R1_MAX_SILENCE_MIN) {
+                    problems.push(
+                      `R1 : ${live.length} match(s) devrai(en)t être en cours mais la dernière ligne ${NBA_ENDPOINT} ` +
+                        (last ? `date de ${silenceMin.toFixed(0)} min (${last.created_at})` : "n'existe pas") +
+                        ` (seuil ${R1_MAX_SILENCE_MIN} min)`,
+                    );
+                  }
+                }
+
+                // R2 : un match qui n'est toujours pas terminé bien après son coup d'envoi.
+                const late = await rest(
+                  `matches?select=id,status,scheduled_at&competition_id=in.(${ids})&${open}&${inWindow(R2_WINDOW_H * 3600e3, R2_AFTER_H * 3600e3)}`,
+                );
+                if (late.length > 0) {
+                  problems.push(
+                    `R2 : ${late.length} match(s) non terminé(s) ${R2_AFTER_H} h après le coup d'envoi (` +
+                      late.map((m) => `${m.id} ${m.status} ${m.scheduled_at}`).join("; ") +
+                      ")",
+                  );
+                }
+              }
+
+              // R3 : la route échoue en boucle.
+              let leadingFailures = 0;
+              for (const row of nbaLogs) {
+                if (row.success) break;
+                leadingFailures++;
+              }
+              if (leadingFailures >= R3_FAILURES && now - Date.parse(nbaLogs[0].created_at) < 3600e3) {
+                problems.push(`R3 : les ${leadingFailures} dernières lignes ${NBA_ENDPOINT} sont des échecs (dernière : ${nbaLogs[0].created_at}) : ${nbaLogs[0].summary}`);
+              }
+
+              if (competitions.length === 0) okSummary = "aucune compétition ACTIVE";
+            } catch (err) {
+              problems.push(`lecture de Supabase impossible (${err.message})`);
+            }
+
+            const { data: openIssues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: "open",
+              labels: "results-poll",
+            });
+            const issue = openIssues.find((i) => i.title === title);
+
+            if (problems.length > 0) {
+              const problem = problems.join("\n- ");
+              core.error(problem);
+              // Issue déjà ouverte : pas de nouvelle alerte et run vert, pour éviter un
+              // e-mail d'échec toutes les heures tant que le problème dure.
+              if (!issue) {
+                await github.rest.issues.create({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  title,
+                  labels: ["cron-failure", "results-poll"],
+                  body:
+                    `- ${problem}\n\nÀ vérifier : \`/admin/sync-logs\` (endpoint \`${NBA_ENDPOINT}\`), puis sur la VM \`nba-refresh\` ` +
+                    "`sudo journalctl -u nba-results-poll --since -3h` (DEPLOIEMENT_VM.md : « Poller des résultats NBA » et « Si l'IP de la VM est bloquée »). " +
+                    "Le repli Highlightly (cron GitHub `sync-results`, et appel direct de la VM une fois par heure) termine les matchs en attendant.\n\n" +
+                    `Run du watchdog : ${runUrl}`,
+                });
+                core.setFailed(problems[0]);
+              }
+            } else if (issue) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                body: `Revenu au vert : ${okSummary}\n\nRun : ${runUrl}`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: issue.number,
+                state: "closed",
+              });
+            }
