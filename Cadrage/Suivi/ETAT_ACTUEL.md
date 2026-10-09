@@ -275,8 +275,10 @@ la nuit avec lien de débrief TrashTalk (article rapproché par surnom
 d'équipe depuis le flux RSS public, repli sur la page d'accueil du site).
 Points gagnés = total actuel moins le dernier snapshot quotidien du
 classement avant la fenêtre (`scored_at` n'est pas fiable, le moteur de
-barème le réécrit à chaque recalcul). Push à 10h Paris (`recaps.yml`, 8h et
-9h UTC, la route ne fait rien avant 10h et `recap_log` dédoublonne),
+barème le réécrit à chaque recalcul). Push à 10h Paris (cron Vercel de `vercel.json`, 8h et
+9h UTC, authentifié par `CRON_SECRET` ; `recaps.yml` reste en secours mais GitHub
+le lance avec 4 à 7 h de retard ; la route ne fait rien avant 10h, refuse
+plus de 3 h après, et `recap_log` dédoublonne les deux passages),
 journalier ou hebdo le lundi, jamais vide, ouvre `/home#recap` (carte
 dépliée d'office). Interrupteur « Récap du matin » dans le Profil
 (`users.recap_enabled`, activé par défaut). En compétition « Match du
