@@ -21,7 +21,7 @@ import pandas as pd
 SCRIPTS_DIR = Path(__file__).resolve().parent.parent / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
-import joblib  # noqa: E402
+from model_cache import load_model  # noqa: E402
 from scipy.integrate import quad  # noqa: E402
 from scipy.stats import betabinom, binom, norm, poisson  # noqa: E402
 
@@ -444,7 +444,7 @@ def compute_home_win_proba(client, home_team_id: int, away_team_id: int, as_of_d
     """P(home_team_id gagne CE match, a domicile) -- charge home_win.joblib
     (train_home_win_model.py). season deduite de as_of_date si omise."""
     X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
-    bundle = joblib.load(MODELS_DIR / "home_win.joblib")
+    bundle = load_model(MODELS_DIR / "home_win.joblib")
     proba = float(bundle["model"].predict_proba(X)[:, 1][0])
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "p_home_win": proba}
 
@@ -454,7 +454,7 @@ def _compute_overtime_proba_once(client, home_team_id: int, away_team_id: int, a
     GAPS_OUVERTS.md), calque de compute_home_win_proba() : meme
     _build_match_feature_row()/BASE_FEATURE_COLS, meme classifieur binaire."""
     X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
-    bundle = joblib.load(MODELS_DIR / "overtime.joblib")
+    bundle = load_model(MODELS_DIR / "overtime.joblib")
     proba = float(bundle["model"].predict_proba(X)[:, 1][0])
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "proba": proba}
 
@@ -471,7 +471,7 @@ def _compute_total_timeouts_proba_once(
     (P(total<1) approxime P(total=0), meme principe deja accepte pour le DNP
     roster-wide, etape 3)."""
     X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)
-    bundle = joblib.load(MODELS_DIR / "total_timeouts.joblib")
+    bundle = load_model(MODELS_DIR / "total_timeouts.joblib")
     pred_mean = float(bundle["model"].predict(X)[0])
     scale = max(bundle["resid_std"], 0.5)
     proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
@@ -498,7 +498,7 @@ def _compute_backcourt_turnover_proba_once(client, home_team_id: int, away_team_
     (25/08/2026, GAPS_OUVERTS.md). Calque EXACT de compute_overtime_proba()
     (classifieur binaire, meme BASE_FEATURE_COLS)."""
     X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
-    bundle = joblib.load(MODELS_DIR / "had_backcourt_turnover.joblib")
+    bundle = load_model(MODELS_DIR / "had_backcourt_turnover.joblib")
     proba = float(bundle["model"].predict_proba(X)[:, 1][0])
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "proba": proba}
 
@@ -518,7 +518,7 @@ def _compute_buzzer_beater_proba_once(client, home_team_id: int, away_team_id: i
     build_targets.py::_match_buzzer_beater_from_pbp() (seuil 0.3s calibre
     empiriquement sur les CSV locaux avant d'entrainer)."""
     X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=BASE_FEATURE_COLS)
-    bundle = joblib.load(MODELS_DIR / "had_buzzer_beater.joblib")
+    bundle = load_model(MODELS_DIR / "had_buzzer_beater.joblib")
     proba = float(bundle["model"].predict_proba(X)[:, 1][0])
     return {"home_team_id": home_team_id, "away_team_id": away_team_id, "proba": proba}
 
@@ -550,12 +550,12 @@ def _compute_technical_fouls_count_proba_once(
         raise ValueError(f"count_relation inconnue : {count_relation}")
 
     if scope == "match":
-        bundle = joblib.load(MODELS_DIR / "match_technical_fouls.joblib")
+        bundle = load_model(MODELS_DIR / "match_technical_fouls.joblib")
         X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)[bundle["feature_cols"]]
     elif scope in ("domicile", "exterieur"):
         team_id = home_team_id if scope == "domicile" else away_team_id
         opponent_id = away_team_id if scope == "domicile" else home_team_id
-        bundle = joblib.load(MODELS_DIR / "team_technical_fouls.joblib")
+        bundle = load_model(MODELS_DIR / "team_technical_fouls.joblib")
         row = _own_opp_row(client, team_id, opponent_id, as_of_date, season)
         X = pd.DataFrame([row])[bundle["feature_cols"]]
     else:
@@ -613,7 +613,7 @@ def _compute_total_points_proba_once(
     a l'echelle d'UN SEUL match, pas une agregation sur une serie -- OVER et
     UNDER sont bien complementaires pour un match unique."""
     X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season)
-    bundle = joblib.load(MODELS_DIR / "total_points.joblib")
+    bundle = load_model(MODELS_DIR / "total_points.joblib")
     pred_mean = float(bundle["model"].predict(X)[0])
     scale = max(bundle["resid_std"], 0.5)
     proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
@@ -679,7 +679,7 @@ def _compute_total_team_stat_proba_once(
     total_{stat}.joblib). MEME structure EXACTE que compute_total_points_proba()
     (inversion OVER/UNDER sure ici -- prediction a l'echelle d'UN match)."""
     X = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season, base_cols=_team_stat_base_cols(stat))
-    bundle = joblib.load(MODELS_DIR / f"total_{stat}.joblib")
+    bundle = load_model(MODELS_DIR / f"total_{stat}.joblib")
     pred_mean = float(bundle["model"].predict(X)[0])
     scale = max(bundle["resid_std"], 0.5)
     proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
@@ -728,7 +728,7 @@ def _team_stat_mean_scale(
             "donnees, ou aucune confrontation/continuite calculable)."
         )
 
-    bundle = joblib.load(MODELS_DIR / f"team_{stat}.joblib")
+    bundle = load_model(MODELS_DIR / f"team_{stat}.joblib")
     pred_mean = float(bundle["model"].predict(X)[0])
     scale = max(bundle["resid_std"], 0.5)
     return pred_mean, scale
@@ -786,7 +786,7 @@ def _compute_team_pct_proba_once(
     pas (contexte joueur = un seul dict plat)."""
     if stat not in TEAM_PCT_MAKES_ATTEMPTS:
         raise ValueError(f"stat de pourcentage equipe inconnue : {stat}")
-    bundle = joblib.load(MODELS_DIR / f"team_{stat}_pct.joblib")
+    bundle = load_model(MODELS_DIR / f"team_{stat}_pct.joblib")
     feature_cols = bundle["attempts_feature_cols"]
     makes_col, attempts_col = TEAM_PCT_MAKES_ATTEMPTS[stat]
 
@@ -878,7 +878,7 @@ def _compute_period_proba_once(
     if outcome_kind == "QUARTERS_WON_COUNT":
         if team_id is None or opponent_id is None or seuil is None:
             raise ValueError("team_id/opponent_id/seuil obligatoires pour QUARTERS_WON_COUNT.")
-        bundle = joblib.load(MODELS_DIR / "period_quarters_won_count.joblib")
+        bundle = load_model(MODELS_DIR / "period_quarters_won_count.joblib")
         row = _own_opp_row(client, team_id, opponent_id, as_of_date, season)
         X = pd.DataFrame([row])[bundle["feature_cols"]]
         proba_by_class = dict(zip(bundle["model"].classes_, bundle["model"].predict_proba(X)[0]))
@@ -897,7 +897,7 @@ def _compute_period_proba_once(
     if outcome_kind == "LEADS_HALF_RESULT":
         if team_id is None or opponent_id is None or comparison is None:
             raise ValueError("team_id/opponent_id/comparison obligatoires pour LEADS_HALF_RESULT.")
-        bundle = joblib.load(MODELS_DIR / "period_leads_half_result.joblib")
+        bundle = load_model(MODELS_DIR / "period_leads_half_result.joblib")
         row = _own_opp_row(client, team_id, opponent_id, as_of_date, season)
         X = pd.DataFrame([row])[bundle["feature_cols"]]
         proba_by_class = dict(zip(bundle["model"].classes_, bundle["model"].predict_proba(X)[0]))
@@ -912,7 +912,7 @@ def _compute_period_proba_once(
     if outcome_kind in ("QUARTER_WINNER", "HALF_WINNER"):
         if team_id is None or opponent_id is None or period is None:
             raise ValueError("team_id/opponent_id/period obligatoires pour QUARTER_WINNER/HALF_WINNER.")
-        bundle = joblib.load(MODELS_DIR / "period_quarter_winner.joblib")
+        bundle = load_model(MODELS_DIR / "period_quarter_winner.joblib")
         row = _add_period_one_hot(_own_opp_row(client, team_id, opponent_id, as_of_date, season), period)
         X = pd.DataFrame([row])[bundle["feature_cols"]]
         proba = float(bundle["model"].predict_proba(X)[0][1])
@@ -921,7 +921,7 @@ def _compute_period_proba_once(
     if outcome_kind == "POINT_SHARE_PCT":
         if team_id is None or opponent_id is None or period is None or seuil is None or comparison is None:
             raise ValueError("team_id/opponent_id/period/seuil/comparison obligatoires pour POINT_SHARE_PCT.")
-        bundle = joblib.load(MODELS_DIR / "period_point_share.joblib")
+        bundle = load_model(MODELS_DIR / "period_point_share.joblib")
         row = _add_period_one_hot(_own_opp_row(client, team_id, opponent_id, as_of_date, season), period)
         X = pd.DataFrame([row])[bundle["feature_cols"]]
         pred_mean = float(bundle["model"].predict(X)[0])
@@ -938,7 +938,7 @@ def _compute_period_proba_once(
         if period is None or seuil is None or comparison is None:
             raise ValueError("period/seuil/comparison obligatoires pour MARGIN/TOTAL_POINTS.")
         model_name = "period_margin" if outcome_kind == "MARGIN" else "period_total_points"
-        bundle = joblib.load(MODELS_DIR / f"{model_name}.joblib")
+        bundle = load_model(MODELS_DIR / f"{model_name}.joblib")
         base_row = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season).iloc[0].to_dict()
         row = _add_period_one_hot(base_row, period)
         X = pd.DataFrame([row])[bundle["feature_cols"]]
@@ -1022,7 +1022,7 @@ def _compute_player_period_proba_once(
     for p in _PLAYER_PERIOD_CODES:
         context[f"period_{p}"] = int(p == period)
 
-    bundle = joblib.load(MODELS_DIR / f"period_{stat}.joblib")
+    bundle = load_model(MODELS_DIR / f"period_{stat}.joblib")
     X = pd.DataFrame([context])[bundle["feature_cols"]]
     pred_mean = float(bundle["model"].predict(X)[0])
 
@@ -1059,7 +1059,7 @@ def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is
         raise ValueError(f"seuil obligatoire pour la stat {stat}")
 
     context, ecarttypes, recent = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
-    bundle = joblib.load(MODELS_DIR / f"{model_file}.joblib")
+    bundle = load_model(MODELS_DIR / f"{model_file}.joblib")
 
     if famille == "regression":
         proba, detail = run_regression(bundle, context, ecarttypes, raw_col_key, seuil)
@@ -1112,7 +1112,7 @@ def _player_stat_mean_scale(
         )
     model_file, raw_col_key, _ = REGRESSION_STATS[stat]
     context, ecarttypes, _ = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
-    bundle = joblib.load(MODELS_DIR / f"{model_file}.joblib")
+    bundle = load_model(MODELS_DIR / f"{model_file}.joblib")
     X = pd.DataFrame([context])[bundle["feature_cols"]]
     pred_mean = float(bundle["model"].predict(X)[0])
 
@@ -2110,7 +2110,7 @@ def _player_expected_fgm(client, player_id: int, opponent_id: int, is_home: int,
     joueur = un seul dict plat, differe du contexte equipe combine own_/opp_
     de _compute_team_pct_proba_once() -- meme situation deja documentee
     la-bas)."""
-    bundle = joblib.load(MODELS_DIR / "fg_pct.joblib")
+    bundle = load_model(MODELS_DIR / "fg_pct.joblib")
     context, _, _ = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
     X = pd.DataFrame([context])[bundle["attempts_feature_cols"]]
     n_hat = max(round(float(bundle["attempts_model"].predict(X)[0])), 1)

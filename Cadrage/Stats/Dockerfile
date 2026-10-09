@@ -33,10 +33,11 @@ RUN pip install --no-cache-dir -r ./service/requirements.txt
 
 COPY scripts/tester_modele.py scripts/build_features.py scripts/train_home_win_model.py scripts/series_probability.py scripts/tuning.py ./scripts/
 COPY models/ ./models/
-COPY service/app.py service/supabase_context.py ./service/
+COPY service/app.py service/supabase_context.py service/model_cache.py ./service/
 
 WORKDIR /app/service
 ENV PYTHONUNBUFFERED=1
+ENV MALLOC_ARENA_MAX=2
 EXPOSE 8080
 
 # Forme shell (pas exec []) : necessaire pour que $PORT soit substitue par le
