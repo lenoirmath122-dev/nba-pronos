@@ -323,7 +323,9 @@ function toPlayAssociatedBet(
     isCalculable: b.is_calculable ?? false,
     calculatedProba: b.calculated_proba,
     suggestedDifficulty: b.suggested_difficulty,
-    pointsAtStake: betDifficultyPoints(competitionType)[difficulty] ?? null,
+    // Difficulté validée seulement : la valeur proposée n'est plus choisie par
+    // le joueur (valeur neutre), l'afficher promettrait des points faux.
+    pointsAtStake: b.validated_difficulty !== null ? (betDifficultyPoints(competitionType)[b.validated_difficulty] ?? null) : null,
   };
 }
 
@@ -930,7 +932,7 @@ async function fetchLockedRows(
       difficulty: b.validated_difficulty ?? b.proposed_difficulty,
       pointsAwarded: b.points_awarded,
       calculatedProba: b.is_calculable ? b.calculated_proba : null,
-      pointsAtStake: betDifficultyPoints(competition.type)[b.validated_difficulty ?? b.proposed_difficulty] ?? null,
+      pointsAtStake: b.validated_difficulty !== null ? (betDifficultyPoints(competition.type)[b.validated_difficulty] ?? null) : null,
     });
     otherBetsByMatch.set(b.match_id, list);
   }

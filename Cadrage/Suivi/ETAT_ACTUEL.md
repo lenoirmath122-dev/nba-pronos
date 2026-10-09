@@ -183,8 +183,8 @@ ne servent qu'à ce bandeau et au bandeau Profil.
 
 ### 4.3 Paris personnalisés structurés par IA
 Fonctionnalité différenciante du produit (~4000 lignes,
-`lib/ai/*` + `components/bets/*`). Un joueur rédige un pari en texte libre
-(ex. "Jokic fait un triple-double ET plus de 25 points") ; Claude le
+`lib/ai/*` + `components/bets/*`). Un joueur rédige un pari en texte libre, sans choisir ni catégorie ni difficulté
+(l'IA calcule la difficulté depuis la probabilité, l'admin la fixe sinon ; popup « Pari validé : x % de chance pour x pts à gagner » ; à la résolution, la justification donne la vraie valeur du joueur) (ex. "Jokic fait un triple-double ET plus de 25 points") ; Claude le
 structure en un schéma typé et routé par famille (`lib/ai/structure*.ts` —
 MATCH_TOTAL, TEAM_STAT, PERIOD, ROSTER_SPLIT, ROSTER_COUNT, COMPARISON,
 COMBO, GAME_EVENT, TECHNICAL_FOULS_COUNT, LAST_BASKET, BLOCK_ON_PLAYER,

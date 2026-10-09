@@ -66,7 +66,7 @@ export function ValidationBetCard({ bet, error }: ValidationBetCardProps) {
 
         <label className={styles.field}>
           Difficulté
-          <select name="validatedDifficulty" defaultValue={bet.proposedDifficulty} className={styles.select}>
+          <select name="validatedDifficulty" defaultValue={bet.suggestedDifficulty ?? bet.proposedDifficulty} className={styles.select}>
             {([1, 2, 3, 4, 5] as const).map((level) => (
               <option key={level} value={level}>
                 {level} — {BET_DIFFICULTY_LABELS[level]}

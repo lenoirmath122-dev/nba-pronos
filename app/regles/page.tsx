@@ -120,7 +120,7 @@ export default async function ReglesPage() {
             Tatum marque plus de 30 points »).
           </p>
           <p className={styles.body}>
-            Chaque pari a un niveau de difficulté de 1 à 5 que tu proposes toi-même. Un pari que
+            Chaque pari a un niveau de difficulté de 1 à 5, calculé à partir de sa probabilité (ou fixé par un admin) : tu n&apos;as rien à choisir. Un pari que
             l&apos;IA sait calculer automatiquement est validé directement, sans attendre un admin ;
             un pari qu&apos;elle ne sait pas calculer (blessure, formulation trop vague...) attend
             la validation d&apos;un admin. Dans tous les cas, un admin garde la main pour corriger un

@@ -8,18 +8,11 @@ import { useToast } from "@/components/ui/Toast";
 import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
-import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
-import {
-  BET_CATEGORY_OPTIONS,
-  BET_DIFFICULTY_LABELS,
-  DEFAULT_BET_CATEGORY,
-  DEFAULT_BET_DIFFICULTY,
-  MATCH_SLOT_CAP,
-} from "@/lib/labels/bets";
-import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import { MATCH_SLOT_CAP } from "@/lib/labels/bets";
 import type { BetFormBootstrap, EditableBet, MatchOption, NewBetContext, SeriesOption } from "@/lib/queries/bets";
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
+import { validatedBetDialog, PENDING_ADMIN_TOAST } from "./validatedBetDialog";
 import styles from "./BetForm.module.css";
 import { allowsSeriesBets } from "@/lib/competitions/types";
 import { requestBadgeCheck } from "@/lib/badges/checkRequest";
@@ -69,10 +62,6 @@ export function BetForm(props: BetFormProps) {
   const [seriesId, setSeriesId] = useState<string | null>(initial.seriesId);
   const [matchId, setMatchId] = useState<string | null>(initial.matchId);
   const [description, setDescription] = useState(isEdit ? props.bet.description : "");
-  const [category, setCategory] = useState<BetCategory>(isEdit ? props.bet.proposedCategory : DEFAULT_BET_CATEGORY);
-  const [difficulty, setDifficulty] = useState<BetDifficulty>(
-    isEdit ? props.bet.proposedDifficulty : DEFAULT_BET_DIFFICULTY
-  );
   const [error, setError] = useState<string | null>(null);
   // p3-14 : joueur absent du match selon l'IA, pari repassé en brouillon en
   // attente de confirmation -- `draftBetId` évite de recréer un pari aux
@@ -138,8 +127,6 @@ export function BetForm(props: BetFormProps) {
       seriesId: seriesId as string,
       matchId: scope === "MATCH" ? matchId : null,
       description,
-      category,
-      difficulty,
     };
   }
 
@@ -173,10 +160,10 @@ export function BetForm(props: BetFormProps) {
       setNotInMatch(null);
       if (result.success) {
         requestBadgeCheck();
-        // Auto-validé par l'IA (file admin sautée) : popup « Pari validé »
-        // (04/10/2026) ; sinon il attend l'admin, le toast suffit.
-        if (result.autoValidated) showValidated({ title: "Pari validé", items: [payload.description] });
-        else showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
+        // Validé par l'IA (file admin sautée) : popup « Pari validé : x % de
+        // chance pour x pts à gagner » ; sinon un admin le traite, le toast suffit.
+        if (result.outcome === "VALIDATED") showValidated(validatedBetDialog(payload.description, result.probaPct, result.points));
+        else showToast(PENDING_ADMIN_TOAST);
         router.back();
       } else {
         setError(result.error);
@@ -322,8 +309,6 @@ export function BetForm(props: BetFormProps) {
               </label>
               <RuleHelpButton title="Bien rédiger un pari" label="Aide pour rédiger un pari">
                 <BetWritingTips />
-                <p className={styles.helpSubLabel}>Barème par difficulté</p>
-                <BetDifficulteGrid competitionType={props.bootstrap.competition.kind} />
               </RuleHelpButton>
             </div>
             <textarea
@@ -337,40 +322,20 @@ export function BetForm(props: BetFormProps) {
             />
           </div>
 
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Catégorie</span>
-            <select
-              className={styles.select}
-              value={category}
-              onChange={(e) => setCategory(e.target.value as BetCategory)}
-            >
-              {BET_CATEGORY_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className={styles.field}>
-            <span className={styles.fieldLabel}>Difficulté</span>
-            <select
-              className={styles.select}
-              value={difficulty}
-              onChange={(e) => setDifficulty(Number(e.target.value) as BetDifficulty)}
-            >
-              {([1, 2, 3, 4, 5] as BetDifficulty[]).map((level) => (
-                <option key={level} value={level}>
-                  {level} — {BET_DIFFICULTY_LABELS[level]}
-                </option>
-              ))}
-            </select>
-          </label>
-
           {error && (
             <p className={styles.error} role="alert">
               {error}
             </p>
+          )}
+
+          {isPending && (
+          <div className={styles.analyzing} role="status" aria-live="polite">
+            <Spinner size="md" />
+            <div>
+              <p className={styles.analyzingTitle}>Analyse de ton pari en cours…</p>
+              <p className={styles.analyzingHint}>Calcul de ta probabilité de gagner, quelques secondes.</p>
+            </div>
+          </div>
           )}
 
           {notInMatch ? (

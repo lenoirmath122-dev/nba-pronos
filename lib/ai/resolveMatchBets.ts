@@ -2,12 +2,13 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, resolveNbaGameId, isBoxScoreSynced, DNP_RESOLUTION_REASON } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, computeOutcome, formatActualStatReason, resolveNbaGameId, isBoxScoreSynced, DNP_RESOLUTION_REASON } from "./resolveBetsShared";
 
 type EligibleBetRow = {
   id: string;
   match_id: string | null;
   structured_player_id: number | null;
+  structured_player_name: string | null;
   structured_stat: string | null;
   structured_threshold: number | null;
   structured_comparison: "OVER" | "UNDER" | null;
@@ -23,7 +24,7 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
 
   const { data: betsData } = await supabase
     .from("bets")
-    .select("id, match_id, structured_player_id, structured_stat, structured_threshold, structured_comparison")
+    .select("id, match_id, structured_player_id, structured_player_name, structured_stat, structured_threshold, structured_comparison")
     .eq("scope", "MATCH")
     .eq("is_calculable", true)
     .eq("status", "VALIDATED")
@@ -99,7 +100,7 @@ export async function resolveCalculableBets(): Promise<ResolveBetsSummary> {
       .from("bets")
       .update({
         status: outcome,
-        resolution_reason: box ? "Résolu automatiquement via les statistiques officielles du match." : DNP_RESOLUTION_REASON,
+        resolution_reason: box ? formatActualStatReason(bet.structured_player_name, bet.structured_stat as StatCode, box) : DNP_RESOLUTION_REASON,
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null, // signal "résolu par le système", pas un humain -- même convention que validated_by_admin_id
       })
