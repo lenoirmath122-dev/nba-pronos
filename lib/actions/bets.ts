@@ -2,7 +2,8 @@
 
 import { revalidatePath } from "next/cache";
 import { getServerClient } from "@/lib/supabase/server";
-import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
+import { DEFAULT_BET_CATEGORY, DEFAULT_BET_DIFFICULTY } from "@/lib/labels/bets";
+import { betDifficultyPoints } from "@/lib/scoring/engine";
 import { structureAndScoreBet } from "@/lib/ai/structureAndScoreBet";
 import { boundedText } from "@/lib/actions/validation";
 import { checkRateLimit } from "@/lib/actions/rateLimit";
@@ -18,7 +19,12 @@ import { checkRateLimit } from "@/lib/actions/rateLimit";
 
 export type ActionResult = { success: true; betId: string } | { success: false; error: string };
 export type SubmitBetResult =
-  | { success: true; betId: string; autoValidated: boolean }
+  // Validé tout de suite par l'IA : proba (en %) et points à gagner, pour la
+  // popup « Pari validé : x % de chance pour x pts à gagner ».
+  | { success: true; betId: string; outcome: "VALIDATED"; probaPct: number | null; points: number | null }
+  // Non calculable automatiquement (ou structuration en panne) : un admin
+  // fixe la difficulté, le joueur n'a rien à faire.
+  | { success: true; betId: string; outcome: "PENDING_ADMIN" }
   // p3-14 : l'IA juge que le joueur visé ne joue pas ce match -- le pari est
   // repassé en brouillon, le client demande confirmation avant de renvoyer
   // avec `confirmPlayerNotInMatch`.
@@ -35,8 +41,6 @@ type SaveBetInput = {
   seriesId: string;
   matchId: string | null;
   description: string;
-  category: BetCategory;
-  difficulty: BetDifficulty;
 };
 
 type SubmitBetInput = SaveBetInput & {
@@ -70,8 +74,11 @@ async function callSaveBet(input: SaveBetInput, submit: boolean): Promise<Action
     p_series_id: input.seriesId,
     p_match_id: input.matchId,
     p_description: input.description,
-    p_category: input.category,
-    p_difficulty: input.difficulty,
+    // Le joueur ne choisit plus ni catégorie ni difficulté (retours alpha) :
+    // valeurs neutres exigées par save_bet, écrasées par la structuration IA
+    // (pari calculable) ou fixées par l'admin (non calculable).
+    p_category: DEFAULT_BET_CATEGORY,
+    p_difficulty: DEFAULT_BET_DIFFICULTY,
     p_submit: submit,
   });
 
@@ -122,19 +129,40 @@ export async function submitBet(input: SubmitBetInput): Promise<SubmitBetResult>
     revalidatePath("/play/results");
     revalidatePath("/home");
     if (!error) return { success: true, betId: result.betId, playerNotInMatch: outcome.playerNotInMatch };
-    return { success: true, betId: result.betId, autoValidated: false };
+    return { success: true, betId: result.betId, outcome: "PENDING_ADMIN" };
   }
 
   revalidatePath("/play");
   revalidatePath("/play/results");
   revalidatePath("/home");
 
-  // Statut relu APRÈS la structuration (04/10/2026) : le client affiche la
-  // popup « Pari validé » si l'IA a fait sauter la file admin, sinon le
-  // simple toast « envoyé à validation ». Une lecture ratée retombe sur ce
-  // second cas, jamais sur un échec de la soumission elle-même.
-  const { data: bet } = await supabase.from("bets").select("status").eq("id", result.betId).maybeSingle();
-  return { success: true, betId: result.betId, autoValidated: bet?.status === "VALIDATED" };
+  // Statut, proba et difficulté relus APRÈS la structuration : le client
+  // affiche la popup « Pari validé » si l'IA a fait sauter la file admin,
+  // sinon un toast « un admin va fixer la difficulté ». Une lecture ratée
+  // retombe sur ce second cas, jamais sur un échec de la soumission.
+  return { success: true, betId: result.betId, ...(await readSubmitOutcome(supabase, result.betId)) };
+}
+
+type SubmitOutcome =
+  | { outcome: "VALIDATED"; probaPct: number | null; points: number | null }
+  | { outcome: "PENDING_ADMIN" };
+
+async function readSubmitOutcome(supabase: Awaited<ReturnType<typeof getServerClient>>, betId: string): Promise<SubmitOutcome> {
+  const { data: bet } = await supabase
+    .from("bets")
+    .select("status, calculated_proba, validated_difficulty, competition_id")
+    .eq("id", betId)
+    .maybeSingle();
+  if (bet?.status !== "VALIDATED") return { outcome: "PENDING_ADMIN" };
+
+  const { data: competition } = await supabase.from("competitions").select("type").eq("id", bet.competition_id).maybeSingle();
+  const proba = bet.calculated_proba as number | null;
+  const difficulty = bet.validated_difficulty as number | null;
+  return {
+    outcome: "VALIDATED",
+    probaPct: proba === null ? null : Math.round(proba * 100),
+    points: competition && difficulty !== null ? (betDifficultyPoints(competition.type)[difficulty] ?? null) : null,
+  };
 }
 
 /** « Revenir en brouillon » (§9, geste « retirer ») : SUBMITTED → DRAFT, aucun champ touché. */

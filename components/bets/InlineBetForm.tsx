@@ -3,13 +3,6 @@
 import { useEffect, useId, useState, useTransition } from "react";
 import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
-import {
-  BET_CATEGORY_OPTIONS,
-  BET_DIFFICULTY_LABELS,
-  DEFAULT_BET_CATEGORY,
-  DEFAULT_BET_DIFFICULTY,
-} from "@/lib/labels/bets";
-import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import { ModalDialog } from "@/components/ui/ModalDialog";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
@@ -19,12 +12,11 @@ import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { BetsIcon } from "@/components/icons/home-icons";
 import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
-import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
 import { DeleteBetButton } from "./DeleteBetButton";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
+import { validatedBetDialog, PENDING_ADMIN_TOAST } from "./validatedBetDialog";
 import styles from "./InlineBetForm.module.css";
 import { requestBadgeCheck } from "@/lib/badges/checkRequest";
-import type { CompetitionType } from "@/lib/competitions/types";
 
 // Saisie de pari partagée, générique sur le scope (MATCH ou SERIES) —
 // GÉNÉRALISÉ le 28/07/2026 depuis components/matches/InlineBetForm.tsx
@@ -36,13 +28,11 @@ import type { CompetitionType } from "@/lib/competitions/types";
 // indicateur de slot en `hasBet`/`triggerLabel` avant d'appeler ce composant,
 // plutôt que d'imposer une forme unique aux deux écrans.
 
-export type InlineBetFields = { description: string; category: BetCategory; difficulty: BetDifficulty };
+export type InlineBetFields = { description: string };
 export type InlineBetOwned = InlineBetFields & { betId: string; status: "DRAFT" | "SUBMITTED" };
 
 type InlineBetFormProps = {
   scope: "MATCH" | "SERIES";
-  /** Barème affiché dans l'aide (défaut : Playoffs). */
-  competitionType?: CompetitionType;
   matchId: string | null; // null si scope === "SERIES"
   seriesId: string;
   /** Un pari (tout statut confondu) occupe déjà le slot pour cette cible. */
@@ -79,7 +69,6 @@ type InlineBetFormProps = {
 
 export function InlineBetForm({
   scope,
-  competitionType,
   matchId,
   seriesId,
   hasBet,
@@ -98,8 +87,6 @@ export function InlineBetForm({
   // la carte dès qu'un pari existe déjà.
   const [isOpen, setIsOpen] = useState(presentation === "modal" ? false : myBet !== null);
   const [description, setDescription] = useState(myBet?.description ?? "");
-  const [category, setCategory] = useState<BetCategory>(myBet?.category ?? DEFAULT_BET_CATEGORY);
-  const [difficulty, setDifficulty] = useState<BetDifficulty>(myBet?.difficulty ?? DEFAULT_BET_DIFFICULTY);
   const [error, setError] = useState<string | null>(null);
   // p3-14 : joueur absent du match selon l'IA, pari repassé en brouillon en
   // attente de confirmation. `draftBetId` sert aux envois suivants même si
@@ -126,18 +113,14 @@ export function InlineBetForm({
   useEffect(() => {
     if (!onFieldsChange) return;
     const ready = isOpen && description.trim().length > 0;
-    onFieldsChange(ready ? { description, category, difficulty } : null);
-  }, [isOpen, description, category, difficulty, onFieldsChange]);
+    onFieldsChange(ready ? { description } : null);
+  }, [isOpen, description, onFieldsChange]);
 
   useEffect(() => {
-    const dirty =
-      isOpen &&
-      (description !== (myBet?.description ?? "") ||
-        category !== (myBet?.category ?? DEFAULT_BET_CATEGORY) ||
-        difficulty !== (myBet?.difficulty ?? DEFAULT_BET_DIFFICULTY));
+    const dirty = isOpen && description !== (myBet?.description ?? "");
     if (dirty) markDirty();
     else clearDirty();
-  }, [isOpen, description, category, difficulty, myBet, markDirty, clearDirty]);
+  }, [isOpen, description, myBet, markDirty, clearDirty]);
 
   // Démontage (ligne repliée, formulaire fermé) : rien ne reste à protéger.
   useEffect(() => () => clearDirty(), [clearDirty]);
@@ -199,8 +182,6 @@ export function InlineBetForm({
       seriesId,
       matchId,
       description,
-      category,
-      difficulty,
     };
   }
 
@@ -238,10 +219,10 @@ export function InlineBetForm({
         // succès (ModalDialog ne fait que porter le bouton de fermeture
         // manuelle, onClose).
         setIsOpen(false);
-        // Auto-validé par l'IA (file admin sautée) : popup « Pari validé »
-        // (04/10/2026) ; sinon il attend l'admin, le toast suffit.
-        if (result.autoValidated) showValidated({ title: "Pari validé", items: [payload.description] });
-        else showToast(isSubmittedBet ? "Modifications envoyées à validation" : "Pari envoyé à validation");
+        // Validé par l'IA (file admin sautée) : popup « Pari validé : x % de
+        // chance pour x pts à gagner » ; sinon un admin le traite, le toast suffit.
+        if (result.outcome === "VALIDATED") showValidated(validatedBetDialog(payload.description, result.probaPct, result.points));
+        else showToast(PENDING_ADMIN_TOAST);
         flashTrigger();
       } else {
         setError(result.error);
@@ -268,8 +249,6 @@ export function InlineBetForm({
           </label>
           <RuleHelpButton title="Bien rédiger un pari" label="Aide pour rédiger un pari">
             <BetWritingTips />
-            <p className={styles.helpSubLabel}>Barème par difficulté</p>
-            <BetDifficulteGrid competitionType={competitionType} />
           </RuleHelpButton>
         </div>
         <textarea
@@ -283,35 +262,20 @@ export function InlineBetForm({
         />
       </div>
 
-      <div className={styles.selectRow}>
-        <select
-          className={styles.select}
-          value={category}
-          onChange={(e) => setCategory(e.target.value as BetCategory)}
-        >
-          {BET_CATEGORY_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className={styles.select}
-          value={difficulty}
-          onChange={(e) => setDifficulty(Number(e.target.value) as BetDifficulty)}
-        >
-          {([1, 2, 3, 4, 5] as BetDifficulty[]).map((level) => (
-            <option key={level} value={level}>
-              {level} — {BET_DIFFICULTY_LABELS[level]}
-            </option>
-          ))}
-        </select>
-      </div>
-
       {error && (
         <p className={styles.error} role="alert">
           {error}
         </p>
+      )}
+
+      {isPending && (
+      <div className={styles.analyzing} role="status" aria-live="polite">
+        <Spinner size="md" />
+        <div>
+          <p className={styles.analyzingTitle}>Analyse de ton pari en cours…</p>
+          <p className={styles.analyzingHint}>Calcul de ta probabilité de gagner, quelques secondes.</p>
+        </div>
+      </div>
       )}
 
       {notInMatch ? (

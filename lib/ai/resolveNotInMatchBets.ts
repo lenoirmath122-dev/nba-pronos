@@ -7,8 +7,10 @@ import {
   type BoxScoreRow,
   type SupabaseServiceClient,
   computeOutcome,
+  formatActualStatReason,
   resolveNbaGameId,
   isBoxScoreSynced,
+  DNP_RESOLUTION_REASON,
 } from "./resolveBetsShared";
 
 // p3-14 (04/10/2026) -- pari JOUEUR simple (scope MATCH) resté sans
@@ -254,7 +256,9 @@ async function resolveMatchScopeBet(
     summary,
     bet.id,
     won ? "WON" : "LOST",
-    "Résolu automatiquement via les statistiques officielles du match.",
+    box
+      ? formatActualStatReason(bet.structured_player_name, bet.structured_stat as StatCode, box)
+      : DNP_RESOLUTION_REASON,
     nameMatch.playerId
   );
 }

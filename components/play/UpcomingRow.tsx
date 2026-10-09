@@ -116,7 +116,7 @@ function remainingBetsLabel(betSlot: BetSlotIndicator): string {
  *  annulé/refusé, restent visibles (décision actée avant la fusion). */
 function toInlineBetOwned(bet: UpcomingMatchRowData["bet"]): InlineBetOwned | null {
   if (!bet || (bet.status !== "DRAFT" && bet.status !== "SUBMITTED")) return null;
-  return { betId: bet.betId, status: bet.status, description: bet.description, category: bet.category, difficulty: bet.difficulty };
+  return { betId: bet.betId, status: bet.status, description: bet.description };
 }
 
 type UpcomingRowProps = { match: UpcomingMatchRowData };
@@ -321,7 +321,6 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
             ) : (
               <InlineBetForm
                 scope="MATCH"
-                competitionType={match.daily ? "DAILY_MATCH" : undefined}
                 matchId={match.matchId}
                 seriesId={match.seriesId}
                 hasBet={match.bet !== null}

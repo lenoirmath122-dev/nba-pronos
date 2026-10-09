@@ -440,7 +440,9 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
             resolutionReason: activeBet.resolution_reason,
             pointsAwarded: activeBet.points_awarded,
             pointsAtStake:
-              betDifficultyPoints(competition.type)[activeBet.validated_difficulty ?? activeBet.proposed_difficulty] ?? null,
+              activeBet.validated_difficulty !== null
+                ? (betDifficultyPoints(competition.type)[activeBet.validated_difficulty] ?? null)
+                : null,
             // "Pari oublié" (même principe que lib/queries/play.ts) : VALIDATED
             // + série déjà décidée pour de vrai (official_status FINISHED) =
             // aurait dû être résolu (WON/LOST) mais ne l'est pas encore.

@@ -77,10 +77,13 @@ export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctio
       <p className={isCancelled ? `${styles.description} ${styles.descriptionCancelled}` : styles.description}>
         {bet.description}
       </p>
-      <span className={styles.meta}>
-        {CATEGORY_LABEL[bet.category]} · difficulté {bet.difficulty}
-        {!bet.isDifficultyValidated && " (proposée)"}
-      </span>
+      {/* Catégorie/difficulté seulement une fois fixées (IA ou admin) : le
+          joueur ne les choisit plus, la valeur « proposée » est neutre. */}
+      {bet.isDifficultyValidated && (
+        <span className={styles.meta}>
+          {CATEGORY_LABEL[bet.category]} · difficulté {bet.difficulty}
+        </span>
+      )}
       <BetStatusPill status={bet.status} />
       {bet.pointsAwarded !== null && <span className={styles.points}>{bet.pointsAwarded} pts</span>}
       {possiblePoints && <span className={styles.meta}>{possiblePoints}</span>}

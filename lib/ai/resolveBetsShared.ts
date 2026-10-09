@@ -1,7 +1,7 @@
 import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { nyDateString } from "@/lib/dates/newyork";
-import { PERCENTAGE_STATS, type StatCode } from "./statCodes";
+import { PERCENTAGE_STATS, STAT_LABELS_FR, type StatCode } from "./statCodes";
 
 // Types et helpers PARTAGÉS par les 14 resolvers de lib/ai/resolve*Bets.ts.
 // Extrait le 09/09/2026 (p1-31, feuille de route Phase 1) de
@@ -172,6 +172,46 @@ export function computeOutcome(
   const rawValue = box[COUNTING_STAT_COLUMN[stat]!];
   if (rawValue === null) return null;
   return comparison === "UNDER" ? rawValue < threshold : rawValue > threshold;
+}
+
+const PCT_STAT_LABEL_FR: Partial<Record<StatCode, string>> = {
+  ft: "aux lancers francs",
+  fg: "aux tirs",
+  fg3: "à 3-points",
+};
+
+/** Justification affichée au joueur une fois un pari « stat joueur » résolu
+ *  (« Perdu » + ce texte) : la VRAIE valeur du joueur, pour qu'il comprenne
+ *  pourquoi. Texte figé dans `resolution_reason`, pas de colonne dédiée --
+ *  même convention que les autres resolvers. Ne répète pas le seuil (la
+ *  description du pari est affichée juste au-dessus) et reste donc juste
+ *  quel que soit le sens du pari. Pure : aucun accès base. */
+export function formatActualStatReason(playerName: string | null, stat: StatCode, box: BoxScoreRow): string {
+  const who = playerName?.trim() || "Le joueur";
+
+  if (stat === "dd" || stat === "td") {
+    const n = categoriesAtTen(box);
+    const detail = `${box.pts ?? 0} pts, ${box.reb ?? 0} reb, ${box.ast ?? 0} pd, ${box.stl ?? 0} int, ${box.blk ?? 0} ct`;
+    return `${who} a atteint 10 ou plus dans ${n} catégorie${n > 1 ? "s" : ""} (${detail}).`;
+  }
+  if (stat === "tech") {
+    const n = box.technical_fouls ?? 0;
+    return `${who} a écopé de ${n} faute${n > 1 ? "s" : ""} technique${n > 1 ? "s" : ""}.`;
+  }
+  if (PERCENTAGE_STATS.has(stat)) {
+    const [makesCol, attemptsCol] = PCT_MAKES_ATTEMPTS_COLUMNS[stat]!;
+    const makes = box[makesCol] ?? 0;
+    const attempts = box[attemptsCol] ?? 0;
+    const pct = attempts > 0 ? Math.round((makes / attempts) * 100) : 0;
+    return `${who} a terminé à ${pct} % ${PCT_STAT_LABEL_FR[stat]} (${makes}/${attempts}).`;
+  }
+  if (stat === "min") {
+    const minutes = Math.round(minutesToFloat(box.minutes) * 10) / 10;
+    return `${who} a joué ${String(minutes).replace(".", ",")} minutes.`;
+  }
+  const value = box[COUNTING_STAT_COLUMN[stat]!] ?? 0;
+  const verb = stat === "pts" ? "a marqué" : "a terminé avec";
+  return `${who} ${verb} ${value} ${STAT_LABELS_FR[stat]}.`;
 }
 
 /** Retrouve le vrai game_id NBA (stats_matchs) pour un match de l'appli --
