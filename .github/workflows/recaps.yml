@@ -1,5 +1,7 @@
 name: Récaps du matin (journalier, hebdo le lundi)
 
+# SECOURS : le déclencheur principal est le cron Vercel de vercel.json
+# (09/10/2026) ; les crons GitHub partent avec 4 à 7 h de retard.
 # Appelle /api/recaps (p3-10) : récap du matin en push, journalier, ou hebdo
 # le lundi. Deux passages (8h et 9h UTC) pour tomber sur 10h Paris été comme
 # hiver : la route ne fait rien avant 10h Paris, et recap_log empêche tout

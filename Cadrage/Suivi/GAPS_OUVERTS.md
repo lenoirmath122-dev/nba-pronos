@@ -204,6 +204,19 @@
   2026-27 incomplet (vide du 10/11 au 27/11 au sondage du 06/10) : la route renvoie 500 (issue d'alerte) si le match d'aujourd'hui ou de demain manque.
   **Mise à jour du 07/10/2026 (fenêtre glissante de 7 jours)** : le cron commence le 16/10 (pas le 18/10) et tire 9 jours à l'avance ; la vraie compétition DAILY_MATCH doit donc exister **avant le 16/10 à 5h UTC** (prévu le 14/10 : clôturer la compétition de test après la présaison, puis recréer). À surveiller : (1) la synchro des horaires ne regarde que 4 jours (`SYNC_HORIZON_DAYS`, `lib/sync/schedule.ts`) alors que les matchs sont visibles 7 jours avant, donc un report peut rester affiché 2 à 4 jours ; (2) quota Highlightly, jusqu'à 18 appels/jour si le calendrier est vide (arrêt sous 50 restants) ; (3) Thanksgiving (26/11) sans match probable : alerte 500 pendant 2 jours.
 
+- **Crons GitHub Actions systématiquement en retard (09/10/2026)** : aucun
+  récap reçu le 09/10 à 10h. Constat : `recaps.yml` (prévu 8h/9h UTC) a tourné
+  vers 15h UTC les 06, 07 et 08/10 (la route répond « trop tard dans la
+  journée » après 13h Paris), aucun run le 09/10 ; `daily-match-draw.yml`
+  (5h/7h UTC) vers 11h30 UTC ; `heartbeat.yml` (6h UTC) vers 12h UTC.
+  **Récap traité (PR #151)** : cron Vercel dans `vercel.json` (8h et 9h UTC) +
+  variable Vercel `CRON_SECRET` (créée le 09/10) ; `recaps.yml` reste en
+  secours. **Reste** : migrer `daily-match-draw.yml` de la même façon (la vraie
+  compétition DAILY_MATCH démarre le 16/10 à 5h UTC, un tirage tardif décale la
+  publication des matchs) ; les autres workflows planifiés (`heartbeat`,
+  reminders, snapshot du classement) subissent le même retard. À vérifier le
+  10/10 : ligne `recap_log` du 09 ou du 10/10 et logs du cron Vercel.
+
 - **Match du jour : résultats et récap trop dépendants du planificateur GitHub
   (06/10/2026)** — test PR 5 fait le 06/10 (tirage + push au propriétaire OK).
   Constat : `sync-results.yml` est réglé à 30 min mais GitHub l'espace de
