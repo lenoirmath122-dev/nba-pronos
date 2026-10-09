@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
+import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { runRecaps } from "@/lib/recaps/sendRecaps";
 
 // Récaps du matin (p3-10) : push journalier, hebdo le lundi. Même garde
 // d'authentification que /api/reminders/* (Bearer SYNC_SECRET, service_role)
-// — déclenché par un planificateur GitHub Actions. `?force=1` ignore la
+// — déclenché par un cron Vercel (vercel.json, fiable) et par GitHub Actions (secours, souvent en retard de plusieurs heures). `?force=1` ignore la
 // fenêtre 10h-13h (Paris), pour un déclenchement manuel ; la déduplication
 // (recap_log) s'applique toujours. Exception : en compétition « Match du
 // jour », rien n'est envoyé avant 10h même avec force (le match du jour n'est
@@ -12,7 +12,7 @@ import { runRecaps } from "@/lib/recaps/sendRecaps";
 export const runtime = "nodejs";
 
 async function handle(request: Request): Promise<Response> {
-  if (!isAuthorizedSyncRequest(request)) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
