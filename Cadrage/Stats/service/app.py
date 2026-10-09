@@ -44,6 +44,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 from tester_modele import CLASSIFIER_STATS, MODELS_DIR, PCT_STATS, REGRESSION_STATS  # noqa: E402
 
 import supabase_context  # noqa: E402
+from model_cache import cache_stats  # noqa: E402
 
 STATS_DISPONIBLES = sorted(set(REGRESSION_STATS) | set(CLASSIFIER_STATS) | set(PCT_STATS))
 
@@ -123,6 +124,12 @@ def health():
         "modeles_charges": modeles,
         "stats_disponibles": STATS_DISPONIBLES,
     }
+
+
+@app.get("/cache-stats")
+def cache_stats_route():
+    """Compteurs du cache de modèles (protégé par le secret partagé, contrairement à /health)."""
+    return cache_stats()
 
 
 @app.post("/predict")
