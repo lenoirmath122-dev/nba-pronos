@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import type { SortDirection, SortKey } from "@/lib/queries/leaderboard";
+import { leaderboardHref, type LeaderboardView } from "@/lib/leaderboard/href";
 import styles from "./MobileSortSelect.module.css";
 
 // Sélecteur de colonne de détail — MOBILE UNIQUEMENT (masqué en desktop par
@@ -34,9 +35,10 @@ type MobileSortSelectProps = {
   active: SortKey;
   direction: SortDirection;
   leagueId: string | null;
+  vue?: LeaderboardView;
 };
 
-export function MobileSortSelect({ active, direction, leagueId }: MobileSortSelectProps) {
+export function MobileSortSelect({ active, direction, leagueId, vue }: MobileSortSelectProps) {
   const router = useRouter();
   // Repli sur "matches" quand le tri actif est "total" : sur mobile, ce cas
   // n'affiche déjà aucune 3e colonne (les 4 masquées par .colActive absent)
@@ -45,11 +47,7 @@ export function MobileSortSelect({ active, direction, leagueId }: MobileSortSele
   const value: Exclude<SortKey, "total"> = active === "total" ? "matches" : active;
 
   function navigate(key: string, nextDirection: SortDirection) {
-    const params = new URLSearchParams();
-    params.set("tri", key);
-    if (nextDirection === "asc") params.set("ordre", "asc");
-    if (leagueId) params.set("ligue", leagueId);
-    router.push(`/leaderboard?${params.toString()}`);
+    router.push(leaderboardHref({ vue, tri: key, ordre: nextDirection, ligue: leagueId }));
   }
 
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
