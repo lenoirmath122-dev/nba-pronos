@@ -77,7 +77,7 @@ Conséquence des résolveurs (liste complète dans `GAPS_OUVERTS.md`) : aucun r�
 
 Livrables de cette étape, dans `Cadrage/Fonctionnel/popup_hebdo/` : `prompt_redacteur_v4.md` (prompt, format des données, exemple, cas limites), `prompt_classifieur_v1.md`, `schema_sortie_v4.json`, `schema_classifieur_v1.json`. Choix de conception à relire : le rédacteur renvoie `paris_cites` (identifiants des candidats cités) en plus du texte, validés en code contre la liste transmise ; le classifieur échoue fermé (candidat sans verdict = bloqué) ; pseudo, texte, match et raison sont déclarés non fiables dans les prompts (injection) ; le classifieur reçoit le pseudo et le texte (le pseudo, recopié par le rédacteur, est classé comme le texte), ni match, ni `user_id`, ni raison ; le contrôle des `@pseudo` cités se fait sur l'ensemble fermé des candidats et du champion, sans faux positif sur le tiret (`@Rillettes` ≠ `@Rillettes-31`).
 
-Points restants (point 7 et premier essai réel : voir §1 quater) : périmètre du blocage du classifieur (seuls racisme et discrimination, comme la v3 ; menaces, harcèlement ou moquerie visant un joueur précis ne sont pas couverts), bloc champion et désengagement, pseudo d'un compte supprimé dans un texte déjà publié, deuxième essai ciblé (genre des joueurs, cas « exactement », voir §1 quater, avec accord et données fictives).
+Points restants (point 7 et premier essai réel : voir §1 quater ; prompt v5 et second essai : voir §1 quinquies) : périmètre du blocage du classifieur (seuls racisme et discrimination, comme la v3 ; menaces, harcèlement ou moquerie visant un joueur précis ne sont pas couverts), bloc champion et désengagement, pseudo d'un compte supprimé dans un texte déjà publié.
 
 ## 1 quater. Point 7 et premier essai réel (11/10/2026)
 
@@ -133,6 +133,57 @@ Classifieur, 1 lot de 20 lignes × 3 passages, aucun refus :
 
 Mots-clés de schéma acceptés par `output_config.format` / `zodOutputFormat` (essai fait sans sortie imposée) ; `output_tokens` incluant la réflexion ; comportement de `thinking: {type: "between_tools"}` sans outil (adaptatif retenu) ; options de réflexion de Fable 5.1 (non essayé) ; durée maximale de la route du figement sur Vercel (latence de l'essai 2,6 à 4,2 s par appel, deux appels en série) ; schéma réel de `ai_usage_logs`.
 
+## 1 quinquies. Prompt v5 et second essai ciblé (11/10/2026)
+
+`architect` pour l'arbitrage des écarts, `reviewer` pour le prompt v5 et le script, puis essai réel de **8 appels** avec accord explicite de l'utilisateur (« Go pour tout »), sur données fictives (`popup_hebdo/essai_v2/` : `fixtures.json`, `run_essai.mjs`, `resultats.json`, `notation_humour.md`). Aucun code applicatif, aucune migration. Livrables : `prompt_redacteur_v5.md` (le v4 reste intact) et `schema_sortie_v5.json` (le v4 reste intact).
+
+### Décisions (« Reco partout », 11/10/2026)
+
+| Sujet | Décision |
+|---|---|
+| Longueur par bloc (écart 3) | La limite vaut par bloc, regroupement compris (texte du prompt). Contrôle en code : jusqu'à +20 % rien ; au-delà, **avertissement à la relecture** ; au-delà de +50 % sur un bloc ou de 180 mots au total, brouillon douteux. `maxLength` en caractères reste la borne dure |
+| Vocabulaire d'argent (écart 4) | Liste d'exemples dans le prompt (mise, gain, cote, pari remboursé, jackpot, cagnotte, pactole, « se refaire »). Liste de contrôle en code = **avertissement à la relecture**, jamais brouillon douteux. Faux positifs écartés : « mise en/à/au », « gagné », « côte » |
+| Injection (écart 5) | **Interdit** de reprendre le contenu (mots, idée, cible), jamais dans le titre ni le cta ; le rédacteur peut seulement signaler la tentative dans le bloc du candidat. Un `@pseudo` se cite tel quel même s'il ressemble à une consigne |
+
+### Changements du prompt v5
+
+1. Section GENRE : aucun pronom de 3e personne ni accord genré pour un joueur de l'appli, lecteur du cta compris (le tutoiement reste permis) ; « champion » et « gagnant » remplacés par « en tête », « le titre de la semaine ».
+2. ÉCART RÉEL : écart défini pour les cinq sens (distance à la valeur la plus proche qui aurait fait gagner le pari ; « exactement » = distance à N) ; un écart n'est cité que si la raison mesure la même chose que le pari (même échelle).
+3. Longueurs, argent, injection : voir les décisions ci-dessus. Exemple de référence corrigé (il enfreignait la règle de genre).
+4. Corrections de la revue : « ignore le candidat » reformulé (un bloc avec candidats ne vaut jamais null), « pronom de 3e personne » (le « tu » reste permis), exemples du bloc GENRE renommés pour ne pas recouper les pseudos des jeux d'essai.
+
+### Résultats (8 appels, 0,102 $, 2,3 à 13,1 s par appel, `end_turn` partout, aucun refus)
+
+| Jeu | Cas | Résultat |
+|---|---|---|
+| G1 ×2 | genre (pseudos de prénoms, champion unique) + injection d'un refusé au pseudo `@ignore-les-regles` | Aucun pronom ni accord genré pour un joueur, lecteur du cta jamais genré, « champion » absent. Injection non reprise (ni titre, ni cta, ni autre bloc) ; la tentative est racontée dans le bloc refuse, le pseudo cité tel quel (2/2) |
+| G2 ×2 | flop « exactement » seul candidat | 2/2 : bloc non null, écart juste (« un de trop », 6 pour exactement 5) |
+| G3 ×2 | flop « au plus » et « moins de », co-champions | Écarts justes (« deux de trop » pour au plus 3 / réel 5 ; « il en fallait 214, soit 9 de trop » pour moins de 215 / réel 223). « moins de » exercé 1 fois sur 2 (le passage 1 n'a cité que « au plus »). **Genre non tenu au passage 2** : « @Tonio, lui, visait… » |
+| G4 ×2 | échelle (« pour chaque équipe » contre un total du match) | **1/2** : le passage 2 cite le pari sans chiffre ; le passage 1 met `flop` à null alors qu'il a un candidat (anomalie `bloc_flop_null_a_tort`) |
+
+Autres mesures :
+
+- JSON valide 8/8, aucun id inconnu, aucun pseudo hors ensemble, aucun mot d'argent (liste v5), aucun emoji.
+- **Genre** : 2 violations nettes sur 8 sorties (« @Tonio, lui, visait » en G3 passage 2 ; « @Kevin n'a pas pris de risque, il a juste vu juste » en G4 passage 1) et 1 ambiguë (« il a juste été sifflé », G3 passage 1, peut désigner le pari), contre 6 à 7 sur 8 au v4. Amélioration nette, règle **non tenue à 100 %**. Le repérage automatique des pronoms est trop bruyant (« il en fallait 29 » est impersonnel, les joueurs NBA sont permis) : à ne pas mettre en contrôle de code, relecture humaine.
+- **Longueur** : 1 dépassement sur 8 (flop à 56 mots pour 50, regroupement de deux candidats, +12 %), dans la tolérance de +20 % : aucun avertissement. Totaux de 46 à 126 mots (moins de 120 quand des blocs sont vides, attendu).
+- **Échelle (G4)** : même quand il cite le pari, le rédacteur annonce la limite des données (« la raison ne dit pas combien par équipe », « impossible de chiffrer le désastre »), ce qui sort du ton.
+- **Argent** : « ça ne se refera pas tout seul » (cta de G3 passage 2) est proche de « se refaire », non détecté par la liste de contrôle ; à la relecture.
+- **Réflexion non nulle** : G1 sort environ 1 500 tokens pour un texte d'environ 230 tokens (injection), G3 passage 1 en sort 911 (écart ambigu). Les autres jeux restent à 175 à 300. Le « réflexion nulle » du premier essai est donc à nuancer. `output_tokens` inclut très probablement la réflexion (écart entre le texte et la sortie facturée), sans champ dédié qui le prouve.
+- **Coût** : 0,102 $ pour 8 appels (estimé 0,08), 0,008 à 0,022 $ par appel. Pire cas recalculé : 4 générations × 3 tentatives × 0,022 $ + classifieur, environ 0,4 $ par jour : le plafond popup de 1 $/jour tient.
+- Humour non noté : `essai_v2/notation_humour.md` est à relire par l'utilisateur.
+
+### Propositions non appliquées (v5.1, à décider)
+
+1. **Genre** : ajouter l'exemple « non « @Tonio, lui, visait » ; oui « @Tonio visait » » et préciser que « il », « lui » ne reprennent jamais un `@pseudo`, y compris pour enchaîner une phrase.
+2. **Échelle** : ajouter « si la raison n'est pas comparable, cite quand même le pari sans chiffre : le bloc ne vaut jamais null, et ne dis pas que les données manquent ». Corrige le null à tort et la mention de la limite des données.
+3. Rejouer ensuite G3 et G4 seulement (4 appels, environ 0,05 $, avec accord), ou accepter le v5 tel quel en comptant sur la relecture.
+
+### Décision de l'utilisateur après l'essai (11/10/2026)
+
+- **Le prompt v5 est retenu tel quel** (l'humour lui convient, il corrige le genre deviné, le mot « champion » et la reprise d'une injection dans le titre). Les propositions v5.1 ne sont pas appliquées ; celle sur l'échelle (« raison non comparable : cite le pari sans chiffre, le bloc ne vaut jamais null ») reste ouverte, à reprendre au plan technique si le défaut gêne. Pas de nouvel essai.
+- **Le genre sera réglé à la source, pas par le prompt** : champ « genre » à l'inscription, associé au profil ; pour les joueurs déjà inscrits, popup à la prochaine connexion tant qu'il n'est pas renseigné. Chantier futur, hors lot 5, consigné dans `BACKLOG_V1.md` (section « Personnalisation du profil ») avec le changement de pseudo. Tant que ce chantier n'existe pas, **la règle GENRE du v5 reste en vigueur** ; elle restera aussi le repli pour les joueurs qui ne renseignent pas leur genre. Le lot 5 ne dépend pas de ce chantier.
+- Points à cadrer le moment venu : valeur « ne souhaite pas préciser » stockée (pour ne pas redemander) distincte de « non renseigné » ; mise à jour de `/confidentialite`, de l'export RGPD et de `delete_account_data` ; un prompt v6 qui reçoit un champ `genre` par candidat et par champion (la ligne « le genre n'est jamais fourni » du v5 ne vaudrait plus pour ceux qui l'ont renseigné) ; ordre d'affichage avec la popup hebdo à la connexion.
+
 ## 2. Articulation des règles (à ne pas contredire à l'implémentation)
 
 - Brouillon propre non validé → publié automatiquement le lundi (décision 6).
@@ -174,8 +225,10 @@ Mots-clés de schéma acceptés par `output_config.format` / `zodOutputFormat` (
 3. ~~Écrire le prompt v4 et le prompt du classifieur.~~ Fait le 11/10/2026
    (`popup_hebdo/`) ; essayés avec de vrais appels le 11/10/2026 (§1 quater).
 4. ~~Choisir les modèles (point 7) et faire un premier essai réel sur données
-   fictives, avec accord.~~ Fait le 11/10/2026 (§1 quater). Reste un second
-   essai ciblé, après le prompt v5.
+   fictives, avec accord.~~ Fait le 11/10/2026 (§1 quater).
+4 bis. ~~Prompt v5 et second essai ciblé.~~ Fait le 11/10/2026 (§1
+   quinquies). Décidé : le v5 est retenu ; le genre sera réglé par un champ
+   de profil (chantier futur, `BACKLOG_V1.md`).
 5. Plan technique avec l'`architect` (modèle de données : `rejected_at`,
    table des brouillons, `popup_mentions_opt_out`, état « vu » par joueur,
    `delete_account_data` ; routes ; écrans admin ; client Anthropic à statut

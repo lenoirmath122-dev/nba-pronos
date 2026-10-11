@@ -638,8 +638,9 @@
   Écarts à corriger au prompt v5 : genre des joueurs deviné d'après le pseudo
   (6 sorties sur 8 avec pronom ou accord genré, 7 sur 8 avec « champion »), cas « exactement » non exercé, 1 dépassement de longueur,
   mots proches de l'argent ; humour jugé satisfaisant par l'utilisateur
-  (`popup_hebdo/essai_v1/notation_humour.md`). Reste : (1) prompt v5 puis second
-  essai ciblé ; (2) plan technique avec l'`architect`
+  (`popup_hebdo/essai_v1/notation_humour.md`). Reste : (1) ~~prompt v5 puis second
+  essai ciblé~~ fait le 11/10/2026, voir l'entrée « Lot 5, second essai »
+  ci-dessous ; (2) plan technique avec l'`architect`
   (migration : `bets.rejected_at` + remplissage depuis `audit_logs`, table des
   brouillons avec `candidates jsonb` et `featured_user_ids uuid[]`, état « vu »
   par joueur en base, `users.popup_mentions_opt_out`, purge dans
@@ -673,6 +674,28 @@
   paris dans la fenêtre d'un récap. Autre piège pour la présélection :
   `processCorrectionRequest` (`admin-requests.ts:93-110`) change le statut sans
   toucher `resolved_at` ; d'où l'exclusion des `is_admin_corrected`.
+- **Lot 5, second essai (11/10/2026, prompt v5, aucun code)** : décisions
+  de l'utilisateur (« Reco partout ») : longueur par bloc = avertissement à la
+  relecture (tolérance +20 %, brouillon douteux au-delà de +50 % par bloc ou
+  de 180 mots au total) ; vocabulaire d'argent = avertissement, jamais
+  brouillon douteux ; contenu d'une injection jamais repris (ni titre ni cta).
+  Livrables : `popup_hebdo/prompt_redacteur_v5.md`, `schema_sortie_v5.json`,
+  `essai_v2/` (cadrage §1 quinquies). Essai réel de 8 appels, 0,102 $ :
+  JSON valide 8/8, injection non reprise, « exactement » et « au plus »/« moins
+  de » justes ; genre nettement amélioré mais **non tenu à 100 %** (2
+  violations nettes sur 8, contre 6 à 7 sur 8 au v4) ; règle d'échelle tenue
+  1 fois sur 2 (un `flop` mis à null à tort). La réflexion se déclenche
+  (jusqu'à environ 1 500 tokens de sortie sur le jeu d'injection) : coût par
+  appel jusqu'à 0,022 $, plafond de 1 $/jour inchangé. **Décidé par
+  l'utilisateur après l'essai : le prompt v5 est retenu** (pas de v5.1, pas de
+  nouvel essai) ; le genre sera réglé par un champ de profil rempli à
+  l'inscription, popup rétroactive pour les inscrits (chantier futur dans
+  `BACKLOG_V1.md`, « Personnalisation du profil », avec le changement de
+  pseudo). Reste ouvert : la règle d'échelle (cadrage §1 quinquies). **Pour le plan technique** :
+  contrôle de longueur en mots avec tolérance et avertissement (pas de
+  détection automatique des pronoms, trop bruyante), avertissement affiché à
+  la relecture admin, brouillon douteux seulement hors tolérance,
+  `schema_sortie_v5.json` fait foi.
 - Popup hebdo LLM : utilisée aussi en pré-Cup (décidé le 11/10/2026),
   c'est le format du récap envoyé par le bouton ; génération au figement du
   lundi (plus « dimanche soir »), bloc champion inclus. Il ne reste dans le

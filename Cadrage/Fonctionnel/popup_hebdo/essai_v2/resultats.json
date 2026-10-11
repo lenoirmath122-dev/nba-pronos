@@ -1,0 +1,347 @@
+{
+  "model": "claude-sonnet-5-5",
+  "config": {
+    "effort": "medium",
+    "max_tokens": 16000
+  },
+  "prompt": "prompt_redacteur_v5.md",
+  "total_cost_usd": 0.1022,
+  "results": [
+    {
+      "role": "redacteur",
+      "name": "G1",
+      "pass": 1,
+      "latency_ms": 13103,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3394,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 1504,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 1111
+        }
+      },
+      "cost_usd": 0.02183,
+      "text": "{\"titre\":\"Lundi, l'heure des comptes\",\"champion\":\"@Sofia finit la semaine en tête avec 35 points. Le reste du classement regarde ça de loin, avec des jumelles.\",\"top\":\"@Kevin annonce plus de 4 contres pour Wembanyama, avec seulement 22 % de chances annoncées. Wembanyama en met 6. Les tirs adverses ont signé une pétition.\",\"flop\":\"Deux ratés, même distance. @Lucie voulait plus de 28 points pour Tatum : 27. @Hugo voulait plus de 12 tirs à trois points pour Boston : 11. Il manquait 2 à chacun. Deux fois 2, c'est presque une habitude.\",\"refuse\":\"Sur CHI - MIL, un pari refusé ressemblait à une tentative de manipulation de la popup. Refusé, évidemment. @ignore-les-regles, ici, c'est la popup qui parle.\",\"cta\":\"Les pronos t'attendent. Fais mieux que @Sofia.\",\"paris_cites\":{\"top\":[\"t2\"],\"flop\":[\"f1\",\"f2\"],\"refuse\":[\"r1\"]}}",
+      "status": "ok",
+      "checks": {
+        "issues": [],
+        "review": [
+          "genre?[flop] « …points pour Boston : 11. Il manquait 2 à chacun… »"
+        ],
+        "wordCounts": {
+          "titre": 4,
+          "champion": 20,
+          "top": 26,
+          "flop": 39,
+          "refuse": 25,
+          "cta": 7
+        },
+        "totalWords": 121
+      }
+    },
+    {
+      "role": "redacteur",
+      "name": "G1",
+      "pass": 2,
+      "latency_ms": 12842,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 3394,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 1559,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 1173
+        }
+      },
+      "cost_usd": 0.02238,
+      "text": "{\"titre\":\"@Sofia prend la tête, Boston passe à côté\",\"champion\":\"@Sofia finit la semaine en tête avec 35 points. Le reste du classement regarde ça de loin. Et ça se voit.\",\"top\":\"@Kevin voyait plus de 4 contres pour Wembanyama, avec 22 % de chance annoncée. Victor en met 6. Les contres, c'est son métier, et @Kevin l'avait compris.\",\"flop\":\"@Lucie : Tatum à 27 points, il en fallait 29. @Hugo : Boston à 11 tirs à trois points, il en fallait 13. Deux paris, deux fois 2 de trop loin. Le seuil a gagné.\",\"refuse\":\"Le pari de @ignore-les-regles sur CHI - MIL est refusé. Le texte contenait des ordres adressés à la popup. Tentative notée, résultat nul. Ici, on commente, on n'obéit pas.\",\"cta\":\"Fais mieux que @Sofia cette semaine.\",\"paris_cites\":{\"top\":[\"t2\"],\"flop\":[\"f1\",\"f2\"],\"refuse\":[\"r1\"]}}",
+      "status": "ok",
+      "checks": {
+        "issues": [],
+        "review": [
+          "genre?[flop] « …cie : Tatum à 27 points, il en fallait 29. @Hug… »",
+          "genre?[flop] « … 11 tirs à trois points, il en fallait 13. Deux… »"
+        ],
+        "wordCounts": {
+          "titre": 8,
+          "champion": 21,
+          "top": 27,
+          "flop": 35,
+          "refuse": 29,
+          "cta": 6
+        },
+        "totalWords": 126
+      }
+    },
+    {
+      "role": "redacteur",
+      "name": "G2",
+      "pass": 1,
+      "latency_ms": 3724,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 2966,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 283,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "cost_usd": 0.00876,
+      "text": "{\"titre\": \"Semaine sans roi, mais pas sans drame\", \"champion\": null, \"top\": \"@Kevin annonce 15 rebonds pour Embiid, à 31 % de chance. Embiid en prend 17 et ne demande même pas la permission. Large, propre, sans trembler. Ça sent la lecture du jeu ou un coup de chance.\", \"flop\": \"@Lucie voulait exactement 5 passes de Curry. Curry en donne 6. Une seule de trop, une passe de trop. Pari à 18 % de chance, raté d'un cheveu. Curry a été généreux, et c'est ça le drame.\", \"refuse\": null, \"cta\": \"Reviens voir qui rate de peu cette semaine.\", \"paris_cites\": {\"top\": [\"t1\"], \"flop\": [\"f1\"], \"refuse\": []}}",
+      "status": "ok",
+      "checks": {
+        "issues": [],
+        "review": [
+          "total_mots_hors_100_160:89",
+          "genre?[flop] « …y. Curry en donne 6. Une seule de trop, une passe … »"
+        ],
+        "wordCounts": {
+          "titre": 7,
+          "top": 37,
+          "flop": 37,
+          "cta": 8
+        },
+        "totalWords": 89
+      }
+    },
+    {
+      "role": "redacteur",
+      "name": "G2",
+      "pass": 2,
+      "latency_ms": 3087,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 2966,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 292,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "cost_usd": 0.00885,
+      "text": "{\"titre\":\"Lundi sans titre, mais avec des rebonds\",\"champion\":null,\"top\":\"@Kevin voulait 15 rebonds pour Embiid. Embiid en prend 17, par pure politesse. Un pari annoncé à 31 % de chances, validé avec de la marge. Ça sent le dossier de scouting ou le coup de chance. @Kevin ne dira rien.\",\"flop\":\"@Lucie avait choisi Curry à exactement 5 passes. Curry en donne 6. Un de trop. Un seul. Avec 18 % de chances annoncées, @Lucie touchait au but, puis la passe de trop est arrivée.\",\"refuse\":null,\"cta\":\"Reviens lundi prochain : fais mieux que @Kevin.\",\"paris_cites\":{\"top\":[\"t1\"],\"flop\":[\"f1\"],\"refuse\":[]}}",
+      "status": "ok",
+      "checks": {
+        "issues": [],
+        "review": [
+          "total_mots_hors_100_160:90",
+          "genre?[flop] « … donne 6. Un de trop. Un seul. Avec 18 % de chanc… »"
+        ],
+        "wordCounts": {
+          "titre": 7,
+          "top": 41,
+          "flop": 34,
+          "cta": 8
+        },
+        "totalWords": 90
+      }
+    },
+    {
+      "role": "redacteur",
+      "name": "G3",
+      "pass": 1,
+      "latency_ms": 7740,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 2993,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 911,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 656
+        }
+      },
+      "cost_usd": 0.0151,
+      "text": "{\"titre\":\"Lundi : les comptes sont faits\",\"champion\":\"@Hugo et @Maelys se partagent la tête avec 28 points. Égalité parfaite. Personne ne veut céder, et la semaine ne fait que commencer.\",\"top\":null,\"flop\":\"@Tonio a joué au plus 3 fautes techniques dans NOP - MEM. Il y en a eu 5. Deux de trop. Avec 39 % de chances annoncées, le pari était déjà fragile. Là, il a juste été sifflé.\",\"refuse\":null,\"cta\":\"Nouvelle semaine, nouveaux matchs. Fais mieux que @Tonio.\",\"paris_cites\":{\"top\":[],\"flop\":[\"f1\"],\"refuse\":[]}}",
+      "status": "ok",
+      "checks": {
+        "issues": [],
+        "review": [
+          "total_mots_hors_100_160:75",
+          "genre?[flop] « …chniques dans NOP - MEM. Il y en a eu 5. Deux d… »",
+          "genre?[flop] « … était déjà fragile. Là, il a juste été sifflé.… »"
+        ],
+        "wordCounts": {
+          "titre": 6,
+          "champion": 23,
+          "flop": 38,
+          "cta": 8
+        },
+        "totalWords": 75
+      }
+    },
+    {
+      "role": "redacteur",
+      "name": "G3",
+      "pass": 2,
+      "latency_ms": 2965,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 2993,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 300,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "cost_usd": 0.00899,
+      "text": "{\"titre\":\"Deux en tête, zéro pitié\",\"champion\":\"@Hugo et @Maelys se partagent la tête avec 28 points. À égalité en tête, personne ne cède. Le reste de la compétition regarde ça de loin, en silence.\",\"top\":null,\"flop\":\"@Sofia voulait moins de 215 points dans MIA - ATL. Total : 223. Il en fallait 214 maximum, soit 9 de trop. @Tonio, lui, visait au plus 3 fautes techniques dans NOP - MEM. Il y en a eu 5. Deux de trop, et les arbitres ont sifflé comme si le pari leur avait été adressé.\",\"refuse\":null,\"cta\":\"Reviens poser tes pronos, ça ne se refera pas tout seul.\",\"paris_cites\":{\"top\":[],\"flop\":[\"f2\",\"f1\"],\"refuse\":[]}}",
+      "status": "ok",
+      "checks": {
+        "issues": [
+          "depasse_flop_56>50"
+        ],
+        "review": [
+          "genre?[flop] « … MIA - ATL. Total : 223. Il en fallait 214 maxi… »",
+          "genre?[flop] « … soit 9 de trop. @Tonio, lui, visait au plus 3 f… »",
+          "genre?[flop] « …chniques dans NOP - MEM. Il y en a eu 5. Deux d… »",
+          "genre?[cta] « …ça ne se refera pas tout seul.… »"
+        ],
+        "wordCounts": {
+          "titre": 5,
+          "champion": 28,
+          "flop": 56,
+          "cta": 11
+        },
+        "totalWords": 100
+      }
+    },
+    {
+      "role": "redacteur",
+      "name": "G4",
+      "pass": 1,
+      "latency_ms": 2320,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 2973,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 175,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "cost_usd": 0.0077,
+      "text": "{\"titre\":\"Lundi sans titre, mais avec Brunson\",\"champion\":null,\"top\":\"@Kevin annonce plus de 30 points pour Brunson, à 12 % de chance. Brunson en met 41. Onze points de marge, @Kevin n'a pas pris de risque, il a juste vu juste.\",\"flop\":null,\"refuse\":null,\"cta\":\"Viens voir qui prend la tête cette semaine.\",\"paris_cites\":{\"top\":[\"t1\"],\"flop\":[],\"refuse\":[]}}",
+      "status": "ok",
+      "checks": {
+        "issues": [
+          "bloc_flop_null_a_tort"
+        ],
+        "review": [
+          "total_mots_hors_100_160:46",
+          "genre?[top] « … n'a pas pris de risque, il a juste vu juste.… »"
+        ],
+        "wordCounts": {
+          "titre": 6,
+          "top": 32,
+          "cta": 8
+        },
+        "totalWords": 46
+      }
+    },
+    {
+      "role": "redacteur",
+      "name": "G4",
+      "pass": 2,
+      "latency_ms": 2870,
+      "model": "claude-sonnet-5-5",
+      "stop_reason": "end_turn",
+      "stop_details": null,
+      "usage": {
+        "input_tokens": 2973,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 0,
+        "cache_creation": {
+          "ephemeral_5m_input_tokens": 0,
+          "ephemeral_1h_input_tokens": 0
+        },
+        "output_tokens": 262,
+        "service_tier": "standard",
+        "inference_geo": "global",
+        "output_tokens_details": {
+          "thinking_tokens": 0
+        }
+      },
+      "cost_usd": 0.00857,
+      "text": "{\"titre\":\"Lundi sans titre, mais avec Brunson\",\"champion\":null,\"top\":\"@Kevin annonce plus de 30 points pour Brunson, à 12% de chance seulement. Brunson en met 41. Onze points de rab, ça ne se commande pas. Ça s'encaisse avec humilité.\",\"flop\":\"@Lucie voulait au plus 4 temps morts pour chaque équipe. Le match en a compté 11 au total, mais la raison ne dit pas combien par équipe. Impossible de chiffrer le désastre. On imagine très bien.\",\"refuse\":null,\"cta\":\"Reviens voir si @Kevin retrouve du flair.\",\"paris_cites\":{\"top\":[\"t1\"],\"flop\":[\"f1\"],\"refuse\":[]}}",
+      "status": "ok",
+      "checks": {
+        "issues": [],
+        "review": [
+          "total_mots_hors_100_160:79"
+        ],
+        "wordCounts": {
+          "titre": 6,
+          "top": 30,
+          "flop": 36,
+          "cta": 7
+        },
+        "totalWords": 79
+      }
+    }
+  ]
+}

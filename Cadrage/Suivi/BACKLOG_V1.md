@@ -198,6 +198,22 @@
 
 ## Personnalisation du profil
 
+- **Genre du joueur et changement de pseudo** (11/10/2026, décidé, non
+  spécifié). Origine : la popup hebdo rédigée par LLM devinait le genre d'un
+  joueur d'après son pseudo (pronoms, accords, « champion »). Le prompt v5
+  limite le défaut par des tournures neutres, mais la vraie réponse est de
+  connaître le genre. Idée de l'utilisateur : (1) champ « genre » demandé à
+  l'inscription et rattaché au profil ; (2) pour les joueurs déjà inscrits,
+  popup à la prochaine connexion tant qu'il n'est pas renseigné ; (3) même
+  chantier que le **changement de pseudo**. À cadrer : valeur « ne souhaite
+  pas préciser » stockée et distincte de « non renseigné » (sinon la popup
+  revient à chaque connexion) ; `/confidentialite`, export RGPD et
+  `delete_account_data` à mettre à jour ; prompt v6 de la popup hebdo avec un
+  champ `genre` par candidat et par champion, la règle GENRE du v5 restant le
+  repli ; articulation avec la popup hebdo à la connexion ; pour le
+  changement de pseudo, effet sur les textes déjà publiés qui citent
+  `@pseudo` en clair, unicité et usurpation. Cadrage de la popup :
+  `Cadrage/Fonctionnel/nba_pronos_cadrage_popup_hebdo.md` §1 quinquies.
 - ~~Couleurs de l'interface du Profil adaptées à l'équipe favorite choisie~~
   **REESSAYÉE ET FAITE — 04/08/2026** (`lib/labels/teamColors.ts`,
   `app/(app)/profile/page.tsx`) : 1er essai (30/07/2026, accents doux puis
