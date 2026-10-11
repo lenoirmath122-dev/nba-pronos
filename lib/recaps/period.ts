@@ -22,7 +22,7 @@ export type RecapPeriod = {
   endIso: string;
   /** Vrai tant que 10h n'est pas passée : le récap se remplit encore. */
   inProgress: boolean;
-  /** Les classements de référence sont les snapshots quotidiens (pris à 14h)
+  /** Les classements de référence sont les snapshots quotidiens (figés à 10h Paris)
    *  STRICTEMENT antérieurs à ce jour : le plus récent d'entre eux sert de
    *  point de départ pour les points gagnés et l'évolution du rang. */
   baselineBefore: string;

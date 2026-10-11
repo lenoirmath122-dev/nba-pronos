@@ -10,8 +10,8 @@ import { dailyPeriod, recapBoundaryIso, recapKindFor, weeklyPeriod } from "./per
 import { dailyPushText, weeklyPushText, type DailyMatchAnnounce, type PushText } from "./text";
 import { getTrashTalkArticles } from "./trashtalkFeed";
 
-// Envoi des récaps du matin (p3-10), appelé par /api/recaps (cron GitHub
-// Actions à 8h et 9h UTC). Ne fait rien avant 10h Paris : en hiver le passage
+// Envoi des récaps du matin (p3-10), appelé par /api/recaps (cron Vercel
+// à 8h, 9h et 10h UTC ; GitHub Actions en secours). Ne fait rien avant 10h Paris : en hiver le passage
 // de 8h UTC tombe à 9h Paris et s'arrête là, celui de 9h UTC envoie ; en été
 // le premier envoie et le second ne retrouve que des joueurs déjà servis
 // (recap_log). Au-delà de 3h de retard (cron GitHub très en retard), on
