@@ -275,8 +275,11 @@ la nuit avec lien de débrief TrashTalk (article rapproché par surnom
 d'équipe depuis le flux RSS public, repli sur la page d'accueil du site).
 Points gagnés = total actuel moins le dernier snapshot quotidien du
 classement avant la fenêtre (`scored_at` n'est pas fiable, le moteur de
-barème le réécrit à chaque recalcul). Push à 10h Paris (cron Vercel de `vercel.json`, 8h et
-9h UTC, authentifié par `CRON_SECRET` ; `recaps.yml` reste en secours mais GitHub
+barème le réécrit à chaque recalcul). Push à 10h Paris (cron Vercel de `vercel.json`, 8h, 9h et
+10h UTC, authentifié par `CRON_SECRET` ; la même route fige d'abord le
+snapshot quotidien du classement, `lib/snapshots/leaderboardSnapshot.ts` :
+une ligne par joueur et par jour Paris, jamais réécrite, avec départage
+persisté — code en PR #155, migration `20261011090000` à pousser ; `recaps.yml` reste en secours mais GitHub
 le lance avec 4 à 7 h de retard ; la route ne fait rien avant 10h, refuse
 plus de 3 h après, et `recap_log` dédoublonne les deux passages),
 journalier ou hebdo le lundi, jamais vide, ouvre `/home#recap` (carte
@@ -289,6 +292,41 @@ le match du jour NY D sort à 10h Paris le D-6, jamais avant le 19/10 (les
 jours 20 à 25/10 sortent ensemble le 19/10) ; voir `lib/dates/paris.ts::dailyPublishAt`. Tout est gratuit ; l'accès
 passe par `canReceiveRecap()` (`lib/recaps/access.ts`), seul point à
 brancher à la bascule payante.
+
+**Classement hebdomadaire** (pause avant la vraie Cup, lots 0 et 1 codés ;
+branche `feat/classement-hebdo-lot1`, migration `20261012090000` à pousser) :
+interrupteur `competitions.weekly_ranking` par compétition (réglable en admin,
+case à la création). Semaine lundi 10 h → lundi 10 h (Paris) ; points de la
+semaine = snapshot de fin − snapshot de début (`lib/weekly/standings.ts`, pur),
+départage bons vainqueurs puis écarts exacts, co-champions possibles, aucun
+champion si le meilleur total est <= 0. `runWeeklyFreeze` (`lib/weekly/
+freezeWeek.ts`) tourne dans `/api/recaps` après le snapshot quotidien, ou par
+le bouton « Figer la semaine » de `/admin/competitions` ; idempotent (RPC
+`freeze_weekly_ranking`), en-tête `weekly_rankings` + palmarès
+`weekly_champions` (UPDATE interdit par trigger, lecture publique). Une semaine
+dont le snapshot du lundi manque est rattrapée avec le premier snapshot
+suivant ; la première semaine d'une compétition n'est pas figée. Quand
+`weekly_ranking` est actif, le lundi reçoit le récap journalier et le hebdo
+est manuel (lot 3, PR #158 + #159 : bouton « Envoyer le récap hebdo » et « M'envoyer un essai » (un seul destinataire, rien de réservé, testé OK le 11/10) à côté de
+« Figer la semaine », `lib/weekly/sendWeeklyRecap.ts` ; push du champion figé de
+la dernière semaine close, réservation par joueur dans `recap_log` avant
+envoi donc relance sans doublon, lien `/leaderboard?vue=semaine` ; la carte
+« Ta semaine » de l'Accueil est masquée quand le classement hebdo est actif).
+**Vue Semaine du Classement** (lot 2,
+branche `feat/classement-hebdo-lot2`, aucune migration) : quand
+`competitions.weekly_ranking` est actif, `/leaderboard` a deux onglets Semaine
+(par défaut) / Général (`?vue=semaine|general` ; un ancien lien `?tri=`/`?ordre=`
+ouvre Général). Semaine = `user_scores` moins le snapshot de début
+(`lib/queries/weeklyLeaderboard.ts`, `lib/weekly/currentWeek.ts`), ordre fixe
+(points, bons vainqueurs, écarts exacts, puis pseudo), sans tri ni tendance,
+filtre ligue conservé (rangs recalculés), bandeau « Champion(s) de la semaine
+dernière » (semaine figée qui se termine au lundi courant, masqué en ligue),
+compte à rebours jusqu'au lundi 10 h. Départ : fin du figement précédent, sinon
+premier snapshot >= lundi (mention « Compteurs partis du … » si en retard) ;
+aucun snapshot du tout = départ à 0 ; snapshots anciens seulement = « semaine
+vient de commencer » (jamais de repli sur la semaine d'avant) ; erreur de
+lecture = « indisponible ». Flag lu à part et tolérant (colonne absente = vue
+Générale d'avant, URLs inchangées). L'Accueil n'est pas modifié.
 
 ### 4.7 Panneau d'administration
 Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des
@@ -340,7 +378,13 @@ joueur, y compris par période/quart-temps). Protégé par un secret partagé
 (`STATS_SERVICE_SECRET`, header `Authorization: Bearer`) sur toutes les
 routes `/predict*` — seule `/health` reste ouverte. Comportement de panne
 vérifié robuste de bout en bout (repli `null`/non-calculable systématique,
-jamais d'exception propagée). Alimente aussi une partie des tables
+jamais d'exception propagée). Les modèles (61 joblib, 920 Mo) sont relus du
+disque à chaque appel, sans cache, 2 à 3 fois par requête (vérification de
+cohérence) ; le service Cloud Run tourne à 2 Gi depuis le 09/10/2026 avec un cache
+LRU borné en octets (PR #154, déployé le 09/10 : `service/model_cache.py`,
+`GET /cache-stats`, `MODEL_CACHE_MAX_BYTES`=1,1 Go, 0 = désactivé). Les probas
+d'un même appel répété ne sont pas stables (3 valeurs sur 20 appels, avec ou
+sans cache), voir `GAPS_OUVERTS.md`. Alimente aussi une partie des tables
 `stats_*` de Supabase via des scripts de backfill/synchro quotidienne
 (`refresh_daily.py`, workflow `refresh-stats-supabase.yml`).
 Depuis la PR #134 (07/10/2026) : chaque exécution de `refresh_daily.py` écrit

@@ -28,6 +28,14 @@
   `canReceiveRecap()`) ; le rapprochement des articles TrashTalk se fait
   par surnom d'équipe dans le titre, heuristique jamais éprouvée en saison
   régulière (en présaison, le flux ne contenait aucun article de résultats).
+- **Popup hebdomadaire générée par LLM (cadrage du 09/10/2026, aucun code)** :
+  12 décisions prises, 10 points ouverts, détail et étapes suivantes dans
+  `Cadrage/Fonctionnel/nba_pronos_cadrage_popup_hebdo.md`. **Mis de côté,
+  non urgent** (décision du 09/10/2026, d'autres cadrages passent avant).
+  Prochaine étape à la reprise :
+  trancher les points produit ouverts (seuil de semaine pauvre, texte de
+  repli, règles de présélection, heure de publication), puis explorer
+  l'existant (paris refusés, admin, push, cron).
 - **Déjà dans la feuille de route mais reportés, redemandés par les
   testeurs** : photo de profil/avatars (p6-22), landing page (p5-2).
 - **Badges, suite de p3-9 (05/10/2026)** : popup et écusson livrés, mais les
@@ -37,8 +45,9 @@
   joueur depuis le 05/10/2026 ; les badges liés aux résultats (points, bons
   vainqueurs...) restent découverts à l'ouverture ou au retour au premier
   plan, puisqu'ils changent avec la synchro et non avec un geste.
-- **Couverture des types de paris** : choisir sa difficulté n'est pas
-  intuitif. Couvrir plus de types (modèles ML) et aider au choix.
+- **Couverture des types de paris** : le choix de la difficulté par le joueur
+  est supprimé (09/10/2026, la difficulté est calculée ou fixée par l'admin).
+  Reste : couvrir plus de types (modèles ML) et aider au choix.
   **Cadré le 07/10/2026** : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md`
   (12 décisions, catalogue, lots). Étapes à traiter, une par conversation :
   1. re-mesurer la couverture réelle (l'audit du 24/08 est périmé) ET
@@ -96,6 +105,45 @@
        61 joblib, ~920 Mo, chargés 2 à 3 fois par requête via
        `_compute_with_consistency_check`) ou allègement des modèles
        (compression, HistGradientBoosting) -- choix à trancher ;
+       **Lot 0, avancement (09/10/2026)** : *C1* faite, peu de matière (43
+       paris en base, 6 non calculables, un seul avec diagnostic : le pari
+       Memphis ; mesure de couverture impossible tant que les joueurs ne
+       soumettent pas de paris ; deux autres non calculables de l'alpha
+       ressemblent à des trous de routage : « Trois joueurs en double double »,
+       sans « au moins », même défaut que Memphis, et « Milwaukee ne gagne que le
+       premier quart temps »). *Étape 2* faite : 6 paris joueur + seuil
+       calculables résolus à la main (pas 7) : 5 sans `structured_player_id`
+       (4 de la compétition « test » du 22/08, Brunson de l'alpha résolu le
+       04/10), tous avant le correctif `resolveNotInMatchBets` du 05/10 (cause
+       probable, non rejouée) ; Tatum avait un id et une proba de 1,7 %, résolu à
+       la main à la clôture du 04/10, hypothèse : box score pas encore importé
+       (stats.nba.com expirait alors), non vérifiée. *Cache* : option A
+       (cache LRU borné en octets) retenue, **PR #154** (`feat/stats-model-cache`,
+       à merger) ; mémoire Cloud Run montée à **2 Gi le 09/10/2026** (révision
+       `nba-pronos-stats-00038-nxp`, `gcloud run services update`), avant le
+       déploiement du code. Reste après le merge : lancer le workflow
+       `deploy-stats-service.yml` (passe `--memory 2Gi` et
+       `MODEL_CACHE_MAX_BYTES=1100000000`), lire `/cache-stats` (`hit_rate`,
+       `rss_bytes`, ajuster `MODEL_CACHE_SIZE_FACTOR` et la borne), rejouer la
+       reproduction de `CONSISTENCY_CHECK_NOTE` (50+ appels identiques, le cache
+       fait partager le même objet aux essais de la vérification de cohérence).
+       **Déployé le 09/10/2026** (run 37942807901, révision `00039-rsr`, 2 Gi,
+       borne 1,1 Go). Premier test en production : 20 appels identiques à
+       `/predict-total-points` (Memphis–Boston) -> 41 recherches de modèle, 1
+       seul chargement (hit_rate 97,6 %), RSS 211 -> 252 Mo ; MAIS 3 valeurs
+       différentes sur les 20 réponses (0,473 / 0,620 / 0,624) : l'instabilité de
+       `CONSISTENCY_CHECK_NOTE` est toujours là avec un objet modèle unique en
+       mémoire, ce qui indique qu'elle ne vient pas du rechargement des
+       modèles. **Référence sans cache mesurée le même jour**
+       (`MODEL_CACHE_MAX_BYTES=0`, révision `00040`, puis remise à 1,1 Go,
+       révision `00041-9qn`) : les 3 MÊMES valeurs exactes (0,4727 / 0,6205 /
+       0,6245) sur 20 appels, 41 chargements au lieu de 1, 4,7 s de chargement
+       au lieu de 0,2 s. L'instabilité est donc antérieure au cache et
+       indépendante de lui, à instruire à part (piste : données Supabase lues
+       d'un appel à l'autre, pas les modèles). Latence : 10 s au 1er appel, 6,4 s médiane
+       (surtout les requêtes Supabase, pas les modèles).
+       Coupe-circuit : `MODEL_CACHE_MAX_BYTES=0`. Option B (alléger les modèles)
+       reportée tant que la mémoire n'est pas un goulot.
      - **Lot 1** (avant la bêta Cup du 04/12) : S2 (corrélation entre stats
        dans la somme + coefficients pour le fantasy, aujourd'hui `var = Σσ²`
        dans `supabase_context.py::_resolve_weighted_operand`), S1 (`pf` à
@@ -114,6 +162,53 @@
      - **Lot 4** (fév.-mars, avant les playoffs d'avril 2027) : R3 (score exact
        de série, balayage, remontée 3-1 via `simulate_series`), puis R1 côté
        équipe/total.
+     **Premier cas réel mesuré par le diagnostic (09/10/2026)** : « Un joueur
+     de Memphis marque + de 25 points » (pari `f4f3ebd6…`, `UNKNOWN_TYPE`,
+     route `GENERAL`, empreinte `439391119ea8`, squelette « un joueur de X
+     marque + de N points », motif IA « aucun joueur précis nommé »). Cause
+     vérifiée : `ROSTER_COUNT_KEYWORD_REGEX` exige « au moins/plus de/moins de/
+     exactement » + UN mot + « joueurs » ; « un joueur de X » ne le matche pas,
+     le texte tombe dans `GENERAL` et `structureBet` le refuse. Ce n'est PAS un
+     trou de modèle : ROSTER_COUNT sait déjà compter sur une équipe
+     (`scope=team1|team2`, `min_players=1`, `count_relation=AT_LEAST`). Correctif
+     probable (Lot 1, très bon marché) : élargir la regex à « un/n'importe quel
+     joueur de X », ajouter l'exemple au prompt de `structureRosterCountBet.ts`,
+     test dans `structureAndScoreBet.test.ts`. Piège à traiter : « + de 25 »
+     = strictement plus de 25 (décision « plus de X strict »), et les formes
+     voisines (« un joueur de Memphis fait un double-double », « un joueur des
+     Grizzlies marque 30 »). Ce pari reste à résoudre à la main par l'admin en
+     attendant ; à rejouer une fois le correctif livré.
+     **PROCHAINE ÉTAPE (reprise, décidée le 09/10/2026, rien de codé)** --
+     correctif Memphis, une branche + une PR depuis `origin/main` (worktree,
+     les docs du dépôt principal sont non commitées) :
+     (1) `ROSTER_COUNT_KEYWORD_REGEX` (`lib/ai/structureAndScoreBet.ts`, ~l.160,
+     branche de routage ~l.255) : ajouter « un joueur de/des/du <équipe> » et
+     « n'importe quel joueur de <équipe> » (regex pure, gratuit, aucun appel IA) ;
+     (2) `lib/ai/structureRosterCountBet.ts` : ajouter ton pari en exemple
+     `calculable=true` du prompt (scope = équipe via team1/team2 du match,
+     pool=ALL, stat=pts, seuil 25, OVER, min_players=1, AT_LEAST) ;
+     (3) **à vérifier AVANT d'écrire** : comment « + de 25 » (strictement plus
+     de 25, décision « plus de X strict ») se distingue de « 25 ou plus »
+     dans le schéma ; les exemples actuels du prompt écrivent « 11 points ou
+     plus » avec la même comparaison OVER, ne pas supposer ;
+     (4) tests dans `lib/ai/structureAndScoreBet.test.ts` : cas qui routent
+     (« Un joueur de Memphis marque + de 25 points », « n'importe quel joueur
+     des Grizzlies… ») ET cas qui ne doivent pas changer (pari qui nomme un
+     joueur, ex. « Ja Morant, un joueur de Memphis, marque… »).
+     Limites : le pari doit être lié à un match où joue l'équipe (sinon refus
+     propre) ; risque principal = capter trop de formulations. Optionnel dans la
+     foulée : « Trois joueurs en double double » (même défaut, nombre sans
+     « au moins »). Rejouer le pari `f4f3ebd6…` coûte un appel IA : demander
+     d'abord. Ensuite : reste du Lot 1 (S1, S2, S4, S3, S8...).
+     **À part, autre conversation : instabilité des probas** (mesurée le
+     09/10/2026, indépendante du cache) : mêmes 20 appels identiques à
+     `/predict-total-points` Memphis–Boston -> 3 valeurs (0,4727 / 0,6205 /
+     0,6245), avec ET sans cache. Piste non vérifiée : données Supabase lues
+     d'un appel à l'autre, pas les modèles. Impact : la proba affichée au
+     joueur fixe difficulté et points d'un pari. Script de mesure :
+     `scripts/stats-service-smoke.py` (non commité, lit `STATS_SERVICE_SECRET` dans
+     `.env.local` sans l'afficher). À faire avec l'`architect`, sans toucher la
+     production.
      Estimation : ~30 à 35 jours, 6 à 10 nouveaux modèles, ~+3 à 4 points de
      couverture sur le corpus des playoffs (estimation, à confirmer par la
      re-mesure). Nouveaux modèles : entraînés sur les saisons déjà en local.
@@ -302,6 +397,34 @@
      la correspondance `teams.abbreviation` (Highlightly) ↔ `stats_equipes.tricode`
      n'est vérifiée que pour OKC/NOP (comparer en SQL : GS/GSW, NY/NYK, SA/SAS,
      UTA...).
+
+- **Idée (non décidée, 07/10/2026) : remplacer Highlightly par la VM + l'API
+  NBA pour le calendrier et les résultats.** Rien n'est engagé, c'est une
+  piste notée. Aujourd'hui Highlightly fournit le calendrier (`sync-schedule`,
+  1×/jour sur 4 jours), les scores (`sync-results`, cron 30 min) et le tirage
+  du Match du jour (~9 appels/jour), avec un quota de 100 requêtes/jour ; la VM
+  `nba-refresh` ne fournit que les box scores. *Principe* : la VM récupérerait
+  aussi calendrier et résultats (`nba_api` ou les JSON publics `cdn.nba.com`,
+  à tester : non vérifié) et écrirait dans les mêmes tables ; un timer
+  systemd remplacerait le cron GitHub (espacé de plusieurs heures) ;
+  `entity_mappings` accepte déjà plusieurs sources (nouveau `source_type`).
+  *Gains* : une seule source (fin de la correspondance Highlightly ↔
+  `nba_api`, tricodes compris), plus de quota ni de calendrier Highlightly
+  incomplet (vide du 10/11 au 27/11 au sondage du 06/10), résultats plus
+  rapides. *Risques* : `nba_api` non officielle, sans garantie, endpoints
+  modifiables ou bloquables sans préavis ; blocage par IP déjà constaté
+  (GitHub, Cloud Run) et une seule VM = point de défaillance unique pour
+  calendrier, résultats et résolution des paris ; usage commercial de `nba_api`
+  à revoir (p8-3) ; mapping A7 de la Cup à faire quelle que soit la source ;
+  VM sans recul (premier vrai import à la reprise de la saison) ; cas limites
+  (reports, statuts, fuseaux NY/Paris) à retester. *Approche recommandée si on
+  y va* : (1) tester si `cdn.nba.com` répond depuis GitHub Actions/Vercel (si
+  oui, la VM n'est nécessaire que pour les box scores) ; (2) écrire une source
+  NBA derrière la même interface que Highlightly et la faire tourner en mode
+  ombre pendant la présaison/le Match du jour en comparant calendrier, scores
+  et statuts ; (3) ne basculer qu'à écart nul, Highlightly gardé en repli.
+  Décision actuelle inchangée : Highlightly reste en service (gratuit) pour
+  calendrier/scores.
   2. ~~Déployer la migration `20261008090000_sync_type_stats_import.sql`~~ --
      faite le 07/10/2026 via l'outil MCP Supabase (CLI absente de la machine),
      version de l'historique réalignée à la main sur celle du fichier
@@ -415,6 +538,104 @@
   après le lancement de l'alpha (trop peu de paris résolus avec
   `calculated_proba` en base pour l'instant).
 
+## Classement hebdomadaire — pause avant la NBA Cup (décidé le 11/10/2026)
+
+> Stratégie complète et décisions : `BACKLOG_V1.md` (section « Fun /
+> esprit ligue entre potes »). Aucun code à ce jour.
+
+- **Échéance : lots 0 et 1 déployés, migrations poussées, avant le lundi
+  26/10/2026** (premier figement, semaine du changement d'heure). Si les
+  migrations ne sont pas poussées, le figement hebdo répond 500 avec un
+  message explicite (lot 1).
+- **Lot 0 codé le 11/10/2026, PR #155 (à merger)** : snapshot figé (pris au
+  premier passage après 10 h Paris, jamais réécrit, trigger anti-UPDATE),
+  `correct_match_winners`/`exact_margins` persistés (nullables, pas de
+  backfill : le lot 1 traite NULL comme « départage inconnu »), figement
+  branché sur `/api/recaps` (avant les récaps, isolé), 3e cron Vercel
+  `0 10 * * *`, erreurs Supabase remontées en 500. Le workflow GitHub
+  `snapshot-leaderboard.yml` est gardé en secours (ne peut plus rien écraser).
+  **Reste à faire par l'utilisateur** : (1) vérifier dans Vercel (Settings →
+  Cron Jobs) que le plan autorise 3 crons, sinon retirer celui de 10 h UTC ;
+  (2) pousser la migration `20261011090000_leaderboard_snapshots_frozen.sql`
+  puis `supabase migration list` (sans elle, 500 chaque jour) ; (3) après
+  déploiement, `POST /api/snapshots/leaderboard?force=1` deux fois (2e =
+  « déjà figé ») ; (4) tests d'intégration Docker du trigger et de
+  `delete_account_data` (non lancés). Points relevés à la revue : deux
+  compétitions ACTIVE feraient échouer le snapshot (500) alors que `runRecaps`
+  se tait (invariant « une seule ACTIVE » non documenté ailleurs) ; le champ
+  `late` n'est consommé par rien ; la réponse de `/api/recaps` est maintenant
+  `{ snapshot, recaps }` (aucun lecteur) ; pagination (limite 1000 lignes
+  PostgREST) absente de `computeBiggestClimb`, dette existante. Les snapshots
+  déjà pris avant la migration (ex. 11/10 à 12 h UTC) auront des colonnes de
+  départage NULL. Déployer avant le lundi 19/10 10 h (première semaine DAILY_MATCH).
+- **Lot 0 mergé (PR #155, 11/10/2026).** **Lot 1 mergé (PR #156, 11/10/2026)** :
+  migration `20261012090000_weekly_ranking.sql` **appliquée en production le
+  11/10/2026** (outil MCP Supabase, CLI absente ; version de l'historique
+  réalignée sur celle du fichier, avec l'accord de l'utilisateur),
+  `lib/weekly/*`, figement dans `/api/recaps`, bouton « Figer la semaine » et
+  interrupteur sur `/admin/competitions`. **Reste à faire par l'utilisateur** :
+  (2) activer `weekly_ranking` sur la vraie compétition (interrupteur admin ou
+  case à la création) ; (3) vérifier après le premier lundi 10 h que
+  `weekly_rankings` a une ligne (premier figement possible le 26/10 : la
+  première semaine n'a pas de snapshot de référence, décidé). Comportement :
+  semaine sautée ou snapshot en retard = rattrapage automatique (`endLate` /
+  `baselineLate` dans la réponse de la route), départage NULL (snapshots
+  d'avant le lot 0) = classement aux points seuls, un champion figé ne se
+  retire que par DELETE SQL manuel. Dette : lecture d'un snapshot limitée à
+  1000 lignes PostgREST, tests d'intégration Docker (trigger, RPC concurrent,
+  `delete_account_data`) non lancés. **Quand `weekly_ranking` est actif, le
+  lundi reçoit le récap journalier** ; le hebdo « Ta semaine » automatique
+  n'existe plus pour cette compétition (le hebdo manuel arrive au lot 3).
+  **Limites relevées à la revue** : (a) le cron refuse de figer quand le
+  snapshot de départ est plus ancien que le lundi n-1 (`skipped: "départ trop
+  ancien…"`, réponse 200) : seul le bouton admin tranche ; un skip « snapshot
+  de fin absent » ou « première semaine » n'alerte personne, à surveiller le
+  26/10 ; (b) l'Accueil (`lib/recaps/home.ts`, `visibleWeeklyPeriod`) affiche
+  toujours la carte hebdo « Ta semaine » le lundi, même quand le push du lundi
+  est devenu journalier : à trancher au lot 2/3 ; (c) pas de test pour
+  `runRecaps`, `getActiveCompetitionSummary` et les actions admin.
+- **Lot 2 codé (branche `feat/classement-hebdo-lot2`, 11/10/2026, PR à
+  ouvrir)** : vue Semaine du Classement, voir `ETAT_ACTUEL.md` §4.6. Décidé avec
+  l'utilisateur : Accueil du lundi non touché (« Ta semaine » reste affichée le
+  lundi alors que le push est journalier : à reprendre au lot 3), ordre fixe en
+  Semaine, anciens liens vers Général. Reste : limite PostgREST 1000 lignes
+  (`user_scores` et snapshot, à traiter ensemble), lundi : écran « semaine vient
+  de commencer » tant que le cron des snapshots n'est pas passé (peut durer
+  plusieurs heures), points de bracket comptés dans la semaine où il se résout,
+  une correction admin rétroactive retombe sur la semaine en cours (peut être
+  négative), aucun test de composant (onglets, liste).
+- **Lot 3 codé (branches `feat/classement-hebdo-lot3` et `feat/recap-hebdo-essai`, PR #158 + #159, 11/10/2026 ; essai « M'envoyer un essai » testé OK sur la compétition active)** :
+  envoi manuel du récap hebdo, voir `ETAT_ACTUEL.md` §4.6. Aucune migration.
+  Décidé par défaut (recommandations de l'architect, à confirmer) : relance
+  aussi aux joueurs sans point ; semaine sans champion envoyée quand même ;
+  seule la dernière semaine close est envoyable ; figer et envoyer = deux
+  gestes. Carte « Ta semaine » de l'Accueil masquée quand le classement hebdo
+  est actif (règle l'ancien point lot 2/3). Limites : envois séquentiels
+  (`maxDuration` ou parallélisme borné si la base grandit), « envoyé à N »
+  peut surestimer sur erreur transitoire, `users`/`recap_log` non paginés
+  (1000 lignes), `getHomeRecap` sans test, envoi réel jamais exercé (à tester
+  sur une compétition de test : figer, envoyer, relancer = « déjà servi »).
+- ~~Prochaine étape : lots 2 et 3~~ (faits ci-dessus). Reste : lot 4
+  (Palmarès au Profil), lot 5 (popup LLM).
+- Popup hebdo LLM : utilisée aussi en pré-Cup (décidé le 11/10/2026),
+  c'est le format du récap envoyé par le bouton ; le cadrage
+  (`nba_pronos_cadrage_popup_hebdo.md`) compte encore 10 points ouverts à
+  trancher, dont la présélection (ajouter le bloc champion) et le
+  calendrier (génération au figement du lundi, plus « dimanche soir »).
+  Son point ouvert 3 est sans objet (une seule ACTIVE). Repli en attendant :
+  récap déterministe avec champion.
+- **Décidé le 11/10/2026 : envoi du récap hebdo 100 % manuel** en
+  pré-Cup (bouton admin, aucun envoi automatique, rappel dans l'admin ; le
+  cron ne fait que figer les données). Ordre : 1) lots 0 et 1 avant le
+  26/10, 2) popup LLM ensuite.
+- **À cadrer au lot 1 (conséquence du 100 % manuel)** : aujourd'hui
+  `runRecaps` envoie automatiquement le récap « Ta semaine » le lundi.
+  Quand `weekly_ranking` est actif sur la compétition, cet envoi hebdo
+  automatique doit être remplacé par le bouton (sinon double envoi), les
+  récaps quotidiens restant inchangés. À confirmer avec l'utilisateur.
+- La compétition réelle (à créer avant le 16/10) doit avoir
+  `weekly_ranking` activé ; la compétition de test est à archiver avant.
+
 ## NBA Cup — bêta réelle (octobre-novembre 2026)
 
 > Distinct de l'alpha fictive de septembre (automatisée, voir
@@ -473,14 +694,6 @@
 > Issue de l'audit UX du 16/08/2026 et de sessions ultérieures, jamais
 > reprise depuis.
 
-- **Aucun visuel de chargement à la soumission d'un pari personnalisé**
-  (demandé par l'utilisateur, 06/09/2026) — `components/bets/BetForm.tsx`
-  et `InlineBetForm.tsx` désactivent déjà le bouton pendant `isPending`
-  (`useTransition`) mais le libellé reste statique ("Soumettre à
-  validation"), aucun spinner ni changement de texte : la requête (appel
-  Claude pour structurer le pari, pas instantané) peut donner l'impression
-  que rien ne se passe. `components/ui/Spinner.tsx` existe déjà et est
-  réutilisable tel quel.
 - **Listes déroulantes qui ne passent pas au-dessus du reste de la page**
   (demandé par l'utilisateur, 06/09/2026 -- reproduit sur le Profil) --
   `components/profile/TeamPicker.tsx`/`.module.css` a pourtant déjà
