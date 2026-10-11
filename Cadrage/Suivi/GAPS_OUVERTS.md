@@ -625,13 +625,52 @@
   RGPD (`app/api/account/export/route.ts`, à ajouter avec la mention
   « palmarès » dans le texte de « Mes données »), non fait ici ; aucun test de
   composant.
+- **Lot 5, avancement (11/10/2026, cadrage terminé, aucun code)** : points 1,
+  2, 4, 5, 6, 9, 10 tranchés (cadrage §1 bis et §1 ter), prompts versionnés
+  dans `Cadrage/Fonctionnel/popup_hebdo/` (`prompt_redacteur_v4.md`,
+  `prompt_classifieur_v1.md`, deux schémas JSON), **jamais essayés avec un vrai
+  appel** (accord requis, données fictives). Reste : (1) point 7, choix des
+  modèles et du fournisseur, coût à chiffrer ; (2) premier essai réel des
+  prompts sur les cas limites du prompt ; (3) plan technique avec l'`architect`
+  (migration : `bets.rejected_at` + remplissage depuis `audit_logs`, table des
+  brouillons avec `candidates jsonb` et `featured_user_ids uuid[]`, état « vu »
+  par joueur en base, `users.popup_mentions_opt_out`, purge dans
+  `delete_account_data` ; client Anthropic à statut explicite ; routes et écrans
+  admin) ; (4) à confirmer : le bloc champion ignore-t-il le désengagement, que
+  faire du pseudo d'un compte supprimé dans un texte déjà publié, périmètre du
+  classifieur (seuls racisme et discrimination, comme la v3).
+  **Résolveurs et valeur réelle dans `resolution_reason`** (exploré le
+  11/10/2026) : aucun résolveur n'écrit le seuil ni l'écart. Valeur réelle OUI :
+  joueur simple MATCH (`resolveMatchBets.ts:103`, via `formatActualStatReason`)
+  et NotInMatch SINGLE (`resolveNotInMatchBets.ts:260`), `total_points`
+  (`resolveMatchTotalBets.ts:129`), stat équipe (`resolveTeamStatBets.ts:172`,
+  sans dire quelle équipe), duel (`resolveComparisonBets.ts:164`, les deux
+  côtés sans nom de joueur, et pas de seuil pour un duel « plus que » :
+  exclu du flop), période équipe (`resolvePeriodBets.ts:371`), `total_timeouts`
+  (`resolveGameEventBets.ts:96`), fautes techniques
+  (`resolveTechnicalFoulsCountBets.ts:110`). PARTIELLE : roster count (nombre de
+  joueurs, pas leurs valeurs), superlatif (valeur du joueur seulement), roster
+  split (BENCH_SUM et STARTERS_SUM : nombre de joueurs, pas la somme ;
+  STARTERS_SHARE : pourcentage réel). NON : série (`resolveSeriesBets.ts`),
+  `went_to_ot`, combo, période joueur, dernier panier, contre sur un joueur, flags
+  game-event, DNP (texte sans valeur). Un pari passé en résolution admin porte un
+  texte libre (`admin-resolution.ts:44`). Les paris perdus de ces familles
+  n'alimentent donc pas le bloc flop. Défauts relevés en passant, hors lot 5 :
+  « points » codé en dur dans la branche STARTERS_SHARE du roster
+  split, même pour une autre stat (`resolveRosterSplitBets.ts:134`), « fautes techniques » sans accord au
+  singulier (`resolveTechnicalFoulsCountBets.ts:110`), un superlatif perdu ne dit
+  pas qui a gagné (`resolveSuperlativeBets.ts:117`). **À corriger à part** :
+  `lib/recaps/load.ts:72-80` filtre les paris du récap sur `scored_at`, que le
+  recalcul admin réécrit (`recompute.ts:315`) : un « Recalculer » déplace des
+  paris dans la fenêtre d'un récap. Autre piège pour la présélection :
+  `processCorrectionRequest` (`admin-requests.ts:93-110`) change le statut sans
+  toucher `resolved_at` ; d'où l'exclusion des `is_admin_corrected`.
 - Popup hebdo LLM : utilisée aussi en pré-Cup (décidé le 11/10/2026),
-  c'est le format du récap envoyé par le bouton ; le cadrage
-  (`nba_pronos_cadrage_popup_hebdo.md`) compte encore 10 points ouverts à
-  trancher, dont la présélection (ajouter le bloc champion) et le
-  calendrier (génération au figement du lundi, plus « dimanche soir »).
-  Son point ouvert 3 est sans objet (une seule ACTIVE). Repli en attendant :
-  récap déterministe avec champion.
+  c'est le format du récap envoyé par le bouton ; génération au figement du
+  lundi (plus « dimanche soir »), bloc champion inclus. Il ne reste dans le
+  cadrage (`nba_pronos_cadrage_popup_hebdo.md`) que les points listés dans
+  « Lot 5, avancement » ci-dessus. Repli en attendant : récap déterministe
+  avec champion.
 - **Décidé le 11/10/2026 : envoi du récap hebdo 100 % manuel** en
   pré-Cup (bouton admin, aucun envoi automatique, rappel dans l'admin ; le
   cron ne fait que figer les données). Ordre : 1) lots 0 et 1 avant le
