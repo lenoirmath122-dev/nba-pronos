@@ -93,6 +93,9 @@ export async function deleteCompetitionCascade(competitionId: string) {
   await serviceClient.from("user_scores").delete().eq("competition_id", competitionId);
   await serviceClient.from("user_recent_form").delete().eq("competition_id", competitionId);
   await serviceClient.from("leaderboard_snapshots").delete().eq("competition_id", competitionId);
+  // weekly_popups référence weekly_rankings sans ON DELETE : à retirer avant.
+  // (weekly_popup_views part en cascade.)
+  await serviceClient.from("weekly_popups").delete().eq("competition_id", competitionId);
   await serviceClient.from("weekly_champions").delete().eq("competition_id", competitionId);
   await serviceClient.from("weekly_rankings").delete().eq("competition_id", competitionId);
   await serviceClient.from("competitions").delete().eq("id", competitionId);

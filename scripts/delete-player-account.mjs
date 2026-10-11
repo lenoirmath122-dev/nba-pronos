@@ -27,7 +27,8 @@
 // public.users -- voir 20260718090000_initial_schema.sql et les migrations
 // listées dans TABLES ci-dessous) : feuilles vers racines, compte en tout
 // dernier (auth.admin.deleteUser cascade vers public.users ET les 3 tables
-// à cascade automatique).
+// à cascade automatique). Étape à part, avant les tables possédées : nettoyage
+// des mentions dans weekly_popups (jeton {{u:id}} -> {{u:supprime}}).
 // ============================================================================
 
 import { createClient } from "@supabase/supabase-js";
@@ -74,6 +75,7 @@ const OWNED_TABLES = [
   { table: "match_predictions", column: "user_id" },             // migration T1 §11
   { table: "bracket_picks", column: null },                      // via bracket_id, cf. ci-dessous
   { table: "brackets", column: "user_id" },                      // migration T1 §9
+  { table: "chat_message_reports", column: "reporter_user_id" }, // migration 20260903130000 (signalements émis par la cible)
   { table: "chat_messages", column: "user_id" },                 // migration #27/08
   { table: "bug_reports", column: "user_id" },                   // migration #33
   { table: "league_memberships", column: "user_id" },            // migration #16
@@ -90,6 +92,7 @@ const ADMIN_REFERENCE_COLUMNS = [
   { table: "bug_reports", columns: ["resolved_by_admin_id"] },
   { table: "correction_requests", columns: ["handled_by_admin_id"] },
   { table: "entity_mappings", columns: ["confirmed_by_admin_id"] },
+  { table: "chat_message_reports", columns: ["message_author_id", "resolved_by_admin_id"] }, // comme delete_account_data
 ];
 
 async function main() {
@@ -173,6 +176,47 @@ async function main() {
     );
   } else {
     console.log("[dry-run] correction_request_id -> NULL sur match_predictions/bets (préparatoire)");
+  }
+
+  // ── Popups hebdo (migration 20261013090000) : la cible n'est plus nommée.
+  // Même nettoyage que delete_account_data : jeton {{u:<id>}} -> {{u:supprime}},
+  // candidats (texte de ses paris) retirés, sortie brute effacée.
+  // weekly_popup_views part en cascade avec le compte, published_by passe à NULL.
+  {
+    const token = `{{u:${user.id}}}`;
+    const popups = ok(
+      "lecture des popups hebdo",
+      await supabase
+        .from("weekly_popups")
+        .select("id, candidates, featured_user_ids, content, generated_content")
+    );
+    const touched = (popups ?? []).filter(
+      (p) =>
+        (Array.isArray(p.candidates) && p.candidates.some((c) => c?.user_id === user.id)) ||
+        (p.featured_user_ids ?? []).includes(user.id) ||
+        JSON.stringify(p.content ?? null).includes(token) ||
+        JSON.stringify(p.generated_content ?? null).includes(token)
+    );
+    if (DRY_RUN) {
+      console.log(`[dry-run] weekly_popups à nettoyer : ${touched.length}`);
+    } else {
+      for (const p of touched) {
+        const swap = (v) => (v == null ? v : JSON.parse(JSON.stringify(v).split(token).join("{{u:supprime}}")));
+        ok(
+          `weekly_popups ${p.id} : mentions retirées`,
+          await supabase
+            .from("weekly_popups")
+            .update({
+              candidates: (p.candidates ?? []).filter((c) => c?.user_id !== user.id),
+              featured_user_ids: (p.featured_user_ids ?? []).filter((id) => id !== user.id),
+              content: swap(p.content),
+              generated_content: swap(p.generated_content),
+              raw_output: null,
+            })
+            .eq("id", p.id)
+        );
+      }
+    }
   }
 
   // ── Tables possédées, feuilles vers racines ──────────────────────────────
