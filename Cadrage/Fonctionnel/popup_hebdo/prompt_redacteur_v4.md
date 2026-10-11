@@ -1,8 +1,11 @@
 # Prompt rédacteur — popup hebdomadaire, v4
 
 > Versionné le 11/10/2026 (la v3 vivait dans `Cadrage/DA/Résumés/`, dossier
-> ignoré par git). Aucun appel réel n'a été fait avec ce prompt : il est à
-> valider sur des données fictives avant toute mise en œuvre.
+> ignoré par git). Essayé le 11/10/2026 sur données fictives (8 appels,
+> `claude-sonnet-5-5`, effort `medium`, résultats dans le cadrage §1 quater et
+> `essai_v1/`). Le texte entre les `=====` n'a pas changé ; corrections à
+> intégrer en v5 : ne jamais deviner le genre d'un joueur, trancher la reprise
+> du contenu d'une injection, mots proches de l'argent.
 >
 > **Différences avec la v3** : bloc champion ajouté ; le LLM choisit parmi des
 > candidats présélectionnés par le code et renvoie leurs identifiants ; sortie

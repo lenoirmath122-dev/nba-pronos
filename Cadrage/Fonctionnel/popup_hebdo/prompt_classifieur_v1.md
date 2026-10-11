@@ -4,7 +4,9 @@
 > chaque pari candidat « ok » ou « bloqué » AVANT la rédaction. Aucun filtre
 > aval (décision 9) : ce filtre est donc la seule barrière automatique,
 > d'où la règle « au moindre doute, bloquer ».
-> Aucun appel réel n'a été fait avec ce prompt.
+> Essayé une fois le 11/10/2026 (3 passages sur un lot fictif de 20 lignes,
+> résultats identiques, voir le cadrage §1 quater). Le texte du prompt entre
+> les `=====` n'a pas changé.
 >
 > Périmètre volontairement identique à la v3 du rédacteur : seul le
 > caractère raciste ou discriminatoire bloque. Politique, blessures,
@@ -60,8 +62,15 @@ Un objet JSON par ligne : {"id": "...", "pseudo": "...", "texte": "..."}
 
 ## Consignes côté code
 
-- Appel à température basse (0), un seul appel par génération, tous les
-  candidats d'un coup.
+- Un seul appel par génération, tous les candidats d'un coup. **Aucun
+  paramètre d'échantillonnage** (`temperature`, `top_p`, `top_k` non défaut
+  renvoient un 400 sur la génération 5.x d'après la référence de l'API, non éprouvé par un appel ; le « température 0 » initial est
+  retiré). Modèle `claude-sonnet-5-5`, effort `low`, réflexion adaptative.
+  La stabilité vient des verdicts conservés par pari et réutilisés à la
+  régénération : un pari bloqué reste bloqué, seuls les nouveaux candidats
+  sont classés. Si l'appel en lot est refusé (`stop_reason: "refusal"`),
+  repli sur un appel par candidat ; le refus d'un candidat vaut « bloque »,
+  catégorie « doute ».
 - **Échec fermé** : toute anomalie vaut « bloqué » pour le candidat concerné :
   id absent de la réponse, verdict inconnu, JSON invalide pour tout l'appel
   (dans ce cas, 2 retries puis brouillon douteux, décision 11).
