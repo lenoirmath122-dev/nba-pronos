@@ -16,6 +16,7 @@ let upserts: Row[];
 let pushes: Array<{ userId: string; body: string; url?: string }>;
 let deleted: Array<{ table: string; filters: Record<string, unknown> }>;
 let pushFails: boolean;
+let snapshotDates: string[]; // du plus récent au plus ancien, pour l'aperçu
 
 // Chaîne PostgREST minimale : mémorise les filtres, résout selon la table.
 function query(table: string) {
@@ -34,6 +35,12 @@ function query(table: string) {
   };
   c.in = (column: string, values: unknown) => {
     filters[`in:${column}`] = values;
+    return c;
+  };
+  c.order = () => c;
+  c.limit = () => c;
+  c.lt = (column: string, value: unknown) => {
+    filters[`lt:${column}`] = value;
     return c;
   };
   c.upsert = (row: Row) => {
@@ -56,12 +63,21 @@ function query(table: string) {
       case "weekly_champions":
         return { data: champions, error: null };
       case "users":
-        return { data: selectedColumns.includes("pseudo") ? pseudos : users, error: null };
+        if (selectedColumns.includes("pseudo")) return { data: pseudos, error: null };
+        return {
+          data: users.filter((row) => !filters["eq:id"] || row.id === filters["eq:id"]),
+          error: null,
+        };
       case "recap_log":
         return { data: logged, error: null };
       case "push_subscriptions":
         return { data: subscriptions, error: null };
       case "leaderboard_snapshots":
+        if (selectedColumns === "snapshot_date") {
+          const below = filters["lt:snapshot_date"] as string | undefined;
+          const date = snapshotDates.find((candidate) => !below || candidate < below);
+          return { data: date ? [{ snapshot_date: date }] : [], error: null };
+        }
         return { data: rowsByDate[filters["eq:snapshot_date"] as string] ?? [], error: null };
       default:
         return { data: [], error: null };
@@ -112,6 +128,7 @@ beforeEach(() => {
   pushes = [];
   deleted = [];
   pushFails = false;
+  snapshotDates = ["2026-10-26", "2026-10-19"];
 });
 
 describe("runWeeklyRecapSend", () => {
@@ -182,5 +199,22 @@ describe("runWeeklyRecapSend", () => {
         filters: { "eq:user_id": "a", "eq:kind": "WEEKLY", "eq:recap_date": "2026-10-26" },
       },
     ]);
+  });
+
+  it("essai : un seul destinataire, aucune réservation, aperçu si semaine non figée", async () => {
+    header = { data: null, error: null };
+    const result = await runWeeklyRecapSend(MONDAY_26, { onlyUserId: "b" });
+    expect(result).toMatchObject({ sent: true, test: true, preview: true, notified: 1 });
+    expect(pushes).toEqual([
+      { userId: "b", body: "Alice est champion de la semaine (+20 pts). Toi : +4 pts, 2e de la semaine.", url: "/leaderboard?vue=semaine" },
+    ]);
+    expect(upserts).toHaveLength(0);
+  });
+
+  it("essai : même sur une semaine figée, rien n'est réservé et les déjà servis sont ignorés", async () => {
+    logged = [{ user_id: "b" }];
+    const result = await runWeeklyRecapSend(MONDAY_26, { onlyUserId: "b" });
+    expect(result).toMatchObject({ test: true, preview: false, notified: 1 });
+    expect(upserts).toHaveLength(0);
   });
 });
