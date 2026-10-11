@@ -11,6 +11,9 @@ export type ActiveCompetitionSummary = {
   name: string;
   type: CompetitionType;
   joinCode: string;
+  /** Null : colonne absente (migration 20261012090000 pas encore poussée). */
+  weeklyRanking: boolean | null;
+  lastFrozenWeek: { weekEnd: string; champions: number } | null;
 };
 
 export type TeamOption = {
@@ -36,7 +39,36 @@ export async function getActiveCompetitionSummary(): Promise<ActiveCompetitionSu
     .eq("competition_id", competition.id)
     .maybeSingle<{ join_code: string }>();
 
-  return { ...competition, joinCode: secret?.join_code ?? "—" };
+  // Lectures SÉPARÉES et tolérantes : si la migration du classement hebdo
+  // n'est pas poussée, l'écran reste utilisable (ajouter la colonne au select
+  // ci-dessus ferait afficher « Aucune compétition en cours »).
+  const { data: flag, error: flagError } = await supabase
+    .from("competitions")
+    .select("weekly_ranking")
+    .eq("id", competition.id)
+    .maybeSingle<{ weekly_ranking: boolean }>();
+  const weeklyRanking = flagError || !flag ? null : flag.weekly_ranking;
+
+  let lastFrozenWeek: ActiveCompetitionSummary["lastFrozenWeek"] = null;
+  if (weeklyRanking !== null) {
+    const { data: last } = await supabase
+      .from("weekly_rankings")
+      .select("week_end_date")
+      .eq("competition_id", competition.id)
+      .order("week_end_date", { ascending: false })
+      .limit(1)
+      .maybeSingle<{ week_end_date: string }>();
+    if (last) {
+      const { count } = await supabase
+        .from("weekly_champions")
+        .select("id", { count: "exact", head: true })
+        .eq("competition_id", competition.id)
+        .eq("week_end_date", last.week_end_date);
+      lastFrozenWeek = { weekEnd: last.week_end_date, champions: count ?? 0 };
+    }
+  }
+
+  return { ...competition, joinCode: secret?.join_code ?? "—", weeklyRanking, lastFrozenWeek };
 }
 
 export async function getTeamOptions(): Promise<TeamOption[]> {

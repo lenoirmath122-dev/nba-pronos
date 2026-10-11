@@ -93,6 +93,8 @@ export async function deleteCompetitionCascade(competitionId: string) {
   await serviceClient.from("user_scores").delete().eq("competition_id", competitionId);
   await serviceClient.from("user_recent_form").delete().eq("competition_id", competitionId);
   await serviceClient.from("leaderboard_snapshots").delete().eq("competition_id", competitionId);
+  await serviceClient.from("weekly_champions").delete().eq("competition_id", competitionId);
+  await serviceClient.from("weekly_rankings").delete().eq("competition_id", competitionId);
   await serviceClient.from("competitions").delete().eq("id", competitionId);
 }
 

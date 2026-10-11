@@ -77,6 +77,7 @@ const OWNED_TABLES = [
   { table: "chat_messages", column: "user_id" },                 // migration #27/08
   { table: "bug_reports", column: "user_id" },                   // migration #33
   { table: "league_memberships", column: "user_id" },            // migration #16
+  { table: "weekly_champions", column: "user_id" },              // migration 20261012090000 (FK sans cascade)
   { table: "leaderboard_snapshots", column: "user_id" },         // migration #18
   { table: "competition_superlatives", column: "user_id" },      // migration #18
   { table: "competition_archives", column: "user_id" },          // migration T1 §16 (snapshot historique, purgé quand même -- RGPD prime)

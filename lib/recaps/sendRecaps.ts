@@ -40,11 +40,14 @@ export async function runRecaps(
   }
 
   const supabase = getServiceClient();
-  const { data: competition } = await supabase
+  const { data: competition, error: competitionError } = await supabase
     .from("competitions")
     .select("id, type")
     .eq("status", "ACTIVE")
     .maybeSingle<{ id: string; type: string }>();
+  // Une erreur de lecture ne doit pas se confondre avec « aucune compétition »
+  // (tous les récaps s'arrêteraient sans bruit).
+  if (competitionError) throw new Error(`Lecture de la compétition : ${competitionError.message}`);
   if (!competition) return { skipped: "aucune compétition active", notified: 0, candidates: 0 };
   const isDaily = competition.type === "DAILY_MATCH";
   // Un lancement forcé avant 10h écrirait recap_log sans annoncer le match du
@@ -53,7 +56,21 @@ export async function runRecaps(
     return { skipped: "match du jour pas encore publié (avant 10h Paris)", notified: 0, candidates: 0 };
   }
 
-  const kind = recapKindFor(recapDate);
+  // Classement hebdo actif : le hebdo part à la main (bouton admin, lot 3),
+  // le lundi reçoit le journalier. Lecture SÉPARÉE et tolérante : si la
+  // migration du classement hebdo n'est pas poussée, la colonne manque et on
+  // garde le comportement historique plutôt que d'arrêter tous les récaps.
+  const { data: weeklyFlag, error: weeklyFlagError } = await supabase
+    .from("competitions")
+    .select("weekly_ranking")
+    .eq("id", competition.id)
+    .maybeSingle<{ weekly_ranking: boolean }>();
+  // Colonne absente = migration pas poussée, toléré ; toute autre erreur
+  // (réseau...) lèverait sinon un hebdo un lundi où le classement hebdo est actif.
+  if (weeklyFlagError && !/weekly_ranking|does not exist|column/i.test(weeklyFlagError.message)) {
+    throw new Error(`Lecture de weekly_ranking : ${weeklyFlagError.message}`);
+  }
+  const kind = recapKindFor(recapDate, { weeklyAutoSend: !weeklyFlag?.weekly_ranking });
 
   let usersQuery = supabase
     .from("users")
