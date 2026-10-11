@@ -7,6 +7,7 @@ import type { TeamRef } from "@/lib/queries/matches";
 // colonne secrète depuis le retrait de l'email, D5).
 
 export type ProfileData = {
+  userId: string;
   pseudo: string;
   isAdmin: boolean;
   favoriteTeamId: string | null;
@@ -66,6 +67,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
   const favoriteTeam = data.favorite_team_id ? await fetchTeam(data.favorite_team_id) : null;
 
   return {
+    userId: user.id,
     pseudo: data.pseudo,
     isAdmin: data.role === "ADMIN",
     favoriteTeamId: data.favorite_team_id,

@@ -615,8 +615,16 @@
   peut surestimer sur erreur transitoire, `users`/`recap_log` non paginés
   (1000 lignes), `getHomeRecap` sans test, envoi réel jamais exercé (à tester
   sur une compétition de test : figer, envoyer, relancer = « déjà servi »).
-- ~~Prochaine étape : lots 2 et 3~~ (faits ci-dessus). Reste : lot 4
-  (Palmarès au Profil), lot 5 (popup LLM).
+- ~~Prochaine étape : lots 2 et 3~~ (faits ci-dessus). **Lot 4 codé le
+  11/10/2026** (branche `feat/classement-hebdo-lot4`, PR à ouvrir, aucune
+  migration) : palmarès hebdo sur le profil propre et sur `/players`, voir
+  `ETAT_ACTUEL.md` §4.6. Décidé avec l'utilisateur : visible sur les deux
+  profils, toutes compétitions avec nom, total + liste, section dans l'onglet
+  Stats. Reste : lot 5 (popup LLM). Limites : mention co-champion perdue si
+  l'autre champion supprime son compte ; `weekly_champions` absent de l'export
+  RGPD (`app/api/account/export/route.ts`, à ajouter avec la mention
+  « palmarès » dans le texte de « Mes données »), non fait ici ; aucun test de
+  composant.
 - Popup hebdo LLM : utilisée aussi en pré-Cup (décidé le 11/10/2026),
   c'est le format du récap envoyé par le bouton ; le cadrage
   (`nba_pronos_cadrage_popup_hebdo.md`) compte encore 10 points ouverts à
