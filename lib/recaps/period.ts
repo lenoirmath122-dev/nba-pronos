@@ -45,9 +45,12 @@ export function recapBoundaryIso(dateKey: string): string {
   return parisLocalToUtcIso(`${dateKey}T${String(RECAP_HOUR).padStart(2, "0")}:00`);
 }
 
-/** Le récap hebdo part le lundi, à la place du journalier. */
-export function recapKindFor(recapDate: string): RecapKind {
-  return isoWeekday(recapDate) === 1 ? "WEEKLY" : "DAILY";
+/** Le récap hebdo part le lundi, à la place du journalier. Quand le classement
+ *  hebdo est actif (`weeklyAutoSend: false`), le hebdo part à la main (bouton
+ *  admin) : le lundi reste un jour journalier ordinaire. */
+export function recapKindFor(recapDate: string, options: { weeklyAutoSend?: boolean } = {}): RecapKind {
+  const weeklyAutoSend = options.weeklyAutoSend ?? true;
+  return weeklyAutoSend && isoWeekday(recapDate) === 1 ? "WEEKLY" : "DAILY";
 }
 
 /** Récap journalier du jour : la nuit en cours avant 10h, la nuit passée

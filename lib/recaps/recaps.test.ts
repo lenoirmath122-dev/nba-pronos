@@ -21,6 +21,12 @@ describe("fenêtres des récaps", () => {
     expect(addDays("2026-10-01", -2)).toBe("2026-09-29");
   });
 
+  it("classement hebdo actif : le lundi reste un journalier (hebdo manuel)", () => {
+    expect(recapKindFor("2026-10-05", { weeklyAutoSend: false })).toBe("DAILY");
+    expect(recapKindFor("2026-10-05", { weeklyAutoSend: true })).toBe("WEEKLY");
+    expect(recapKindFor("2026-10-06", { weeklyAutoSend: false })).toBe("DAILY");
+  });
+
   it("avant 10h, le journalier couvre la nuit en cours jusqu'à maintenant", () => {
     const now = Date.parse("2026-10-06T05:00:00.000Z"); // 7h Paris
     const period = dailyPeriod(now);

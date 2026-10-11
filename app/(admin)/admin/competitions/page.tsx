@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { getActiveCompetitionSummary } from "@/lib/queries/admin-competitions";
 import { CloseCompetitionButton } from "@/components/admin/CloseCompetitionButton";
+import { FreezeWeekButton } from "@/components/admin/FreezeWeekButton";
+import { setWeeklyRankingFormAction } from "@/lib/actions/admin-competitions";
 import styles from "./page.module.css";
 import type { CompetitionType } from "@/lib/competitions/types";
 
@@ -34,6 +36,40 @@ export default async function AdminCompetitionsPage() {
           <div className={styles.joinCode}>
             <span className={styles.joinCodeLabel}>Code de compétition</span>
             <span className={styles.joinCodeValue}>{competition.joinCode}</span>
+          </div>
+          <div className={styles.weekly}>
+            <span className={styles.weeklyTitle}>Classement hebdomadaire</span>
+            {competition.weeklyRanking === null ? (
+              <p className={styles.weeklyNote}>
+                Indisponible : la migration 20261012090000 n&apos;est pas encore poussée.
+              </p>
+            ) : (
+              <>
+                <p className={styles.weeklyNote}>
+                  {competition.weeklyRanking
+                    ? "Activé : un champion par semaine (lundi 10h → lundi 10h, heure de Paris), figé automatiquement par le cron."
+                    : "Désactivé."}
+                </p>
+                {competition.lastFrozenWeek && (
+                  <p className={styles.weeklyNote}>
+                    Dernière semaine figée : {competition.lastFrozenWeek.weekEnd.slice(8, 10)}/
+                    {competition.lastFrozenWeek.weekEnd.slice(5, 7)} (
+                    {competition.lastFrozenWeek.champions === 0
+                      ? "aucun champion"
+                      : `${competition.lastFrozenWeek.champions} champion${competition.lastFrozenWeek.champions > 1 ? "s" : ""}`}
+                    ).
+                  </p>
+                )}
+                <form action={setWeeklyRankingFormAction}>
+                  <input type="hidden" name="competition_id" value={competition.id} />
+                  <input type="hidden" name="enabled" value={competition.weeklyRanking ? "0" : "1"} />
+                  <button type="submit" className={styles.weeklyToggle}>
+                    {competition.weeklyRanking ? "Désactiver" : "Activer"}
+                  </button>
+                </form>
+                {competition.weeklyRanking && <FreezeWeekButton />}
+              </>
+            )}
           </div>
           <Link href="/admin/competitions/results" className={styles.createLink}>
             Saisir les résultats

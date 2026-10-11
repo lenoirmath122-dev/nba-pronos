@@ -72,6 +72,10 @@ export default async function NewCompetitionPage({
           </p>
         </fieldset>
 
+        <label className={styles.radioLabel}>
+          <input type="checkbox" name="weekly_ranking" /> Classement hebdomadaire (un champion par semaine)
+        </label>
+
         <div className={styles.playoffsSection}>
           <p className={styles.sectionNote}>
             Affiches du 1er tour — utilisées uniquement si « Playoffs » est sélectionné ci-dessus.

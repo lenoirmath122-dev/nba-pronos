@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { runRecaps } from "@/lib/recaps/sendRecaps";
 import { runLeaderboardSnapshot } from "@/lib/snapshots/leaderboardSnapshot";
+import { runWeeklyFreeze } from "@/lib/weekly/freezeWeek";
 
 // Cette route fige aussi le snapshot du classement (une fois par jour, après
 // 10h Paris, jamais réécrit). Crons Vercel à 8h, 9h et 10h UTC : 10h Paris
@@ -46,6 +47,17 @@ async function handle(request: Request): Promise<Response> {
         error: error instanceof Error ? error.message : "Erreur inconnue.",
       }),
     );
+    // Figement hebdomadaire (classement hebdo, lot 1) : après le snapshot du
+    // jour, avant les récaps, isolé lui aussi. Sans effet tant que
+    // `competitions.weekly_ranking` est faux ; échoue explicitement si la
+    // migration n'est pas poussée.
+    const weekly = await runWeeklyFreeze(now).then(
+      (value) => ({ ok: true as const, value }),
+      (error: unknown) => ({
+        ok: false as const,
+        error: error instanceof Error ? error.message : "Erreur inconnue.",
+      }),
+    );
     const recaps = await runRecaps(now, { force, onlyUserId }).then(
       (value) => ({ ok: true as const, value }),
       (error: unknown) => ({
@@ -56,9 +68,10 @@ async function handle(request: Request): Promise<Response> {
 
     const body = {
       snapshot: snapshot.ok ? snapshot.value : { error: snapshot.error },
+      weekly: weekly.ok ? weekly.value : { error: weekly.error },
       recaps: recaps.ok ? recaps.value : { error: recaps.error },
     };
-    return NextResponse.json(body, { status: snapshot.ok && recaps.ok ? 200 : 500 });
+    return NextResponse.json(body, { status: snapshot.ok && weekly.ok && recaps.ok ? 200 : 500 });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur inconnue.";
     return NextResponse.json({ error: message }, { status: 500 });

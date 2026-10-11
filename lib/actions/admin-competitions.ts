@@ -10,6 +10,8 @@ import { assignRanks } from "@/lib/scoring/ranking";
 import { computeSuperlatives } from "@/lib/scoring/superlatives";
 import { toClientError } from "@/lib/actions/errors";
 import { isCompetitionType, type CompetitionType } from "@/lib/competitions/types";
+import { runLeaderboardSnapshot } from "@/lib/snapshots/leaderboardSnapshot";
+import { runWeeklyFreeze, type WeeklyFreezeResult } from "@/lib/weekly/freezeWeek";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -41,6 +43,7 @@ export async function createCompetition(input: {
   type: CompetitionType;
   round1Matchups?: [string, string][]; // 8 paires, ordre ROUND1_SLOTS — Playoffs uniquement
   cupQuarterMatchups?: [string, string][]; // 4 paires, ordre CUP_QUARTER_SLOTS — NBA Cup uniquement
+  weeklyRanking?: boolean; // classement hebdomadaire (un champion par semaine), faux par défaut
 }): Promise<ActionResult> {
   const supabase = await getServerClient();
   const {
@@ -106,7 +109,15 @@ export async function createCompetition(input: {
 
   const { data: competition, error: compErr } = await supabase
     .from("competitions")
-    .insert({ name, type: input.type, status: "ACTIVE", bracket_deadline: null })
+    // `weekly_ranking` n'est écrit que s'il est vrai : la création reste
+    // possible tant que la migration 20261012090000 n'est pas poussée.
+    .insert({
+      name,
+      type: input.type,
+      status: "ACTIVE",
+      bracket_deadline: null,
+      ...(input.weeklyRanking ? { weekly_ranking: true } : {}),
+    })
     .select("id")
     .single<{ id: string }>();
   if (compErr || !competition) return { success: false, error: compErr ? toClientError("createCompetition", compErr) : "Échec de la création." };
@@ -138,7 +149,7 @@ export async function createCompetition(input: {
     action: "CREATE_COMPETITION",
     targetType: "competition",
     targetId: competition.id,
-    after: { name, type: input.type },
+    after: { name, type: input.type, weeklyRanking: input.weeklyRanking === true },
   });
 
   return { success: true };
@@ -258,7 +269,9 @@ export async function createCompetitionFormAction(formData: FormData): Promise<v
     });
   }
 
-  const result = await createCompetition({ name, type, round1Matchups, cupQuarterMatchups });
+  const weeklyRanking = formData.get("weekly_ranking") === "on";
+
+  const result = await createCompetition({ name, type, round1Matchups, cupQuarterMatchups, weeklyRanking });
 
   if (!result.success) {
     redirect(`/admin/competitions/new?competitionError=${encodeURIComponent(result.error)}`);
@@ -369,4 +382,116 @@ export async function closeCompetition(competitionId: string): Promise<ActionRes
   revalidatePath("/play");
 
   return { success: true };
+}
+
+export type FreezeWeekActionResult = { success: true; message: string } | { success: false; error: string };
+
+const frenchDate = (dateKey: string) => `${dateKey.slice(8, 10)}/${dateKey.slice(5, 7)}`;
+
+function describeFreeze(result: WeeklyFreezeResult): FreezeWeekActionResult {
+  if (result.frozen) {
+    const count = result.champions ?? 0;
+    const who = count === 0 ? "aucun champion (meilleur total à 0 ou moins)" : count === 1 ? "1 champion" : `${count} co-champions`;
+    const notes = [
+      result.endLate ? "fin prise sur un snapshot en retard" : null,
+      result.baselineLate ? "départ pris sur un snapshot plus ancien que prévu" : null,
+      result.tiebreakAvailable === false ? "départage indisponible (classement aux points seuls)" : null,
+    ].filter(Boolean);
+    return {
+      success: true,
+      message: `Semaine du ${frenchDate(result.startSnapshotDate!)} au ${frenchDate(result.endSnapshotDate!)} figée : ${who}.${notes.length > 0 ? ` Attention : ${notes.join(" ; ")}.` : ""}`,
+    };
+  }
+  if (result.skipped === "déjà figé") {
+    return { success: true, message: `La semaine se terminant le ${frenchDate(result.weekEnd!)} est déjà figée.` };
+  }
+  return { success: false, error: `Rien n'a été figé : ${result.skipped ?? "raison inconnue"}.` };
+}
+
+// Bouton « Figer la semaine » (classement hebdo, lot 1) : complète le cron
+// (idempotent, même fonction). Prend d'abord le snapshot du jour si besoin (la
+// garde des 10h reste active : avant 10h Paris, rien n'est figé). L'envoi du
+// récap hebdo n'en fait PAS partie (lot 3).
+export async function freezeWeeklyRanking(): Promise<FreezeWeekActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { success: false, error: "Réservé aux admins." };
+
+  let result: WeeklyFreezeResult;
+  try {
+    const now = Date.now();
+    await runLeaderboardSnapshot(now);
+    result = await runWeeklyFreeze(now, { frozenBy: "ADMIN" });
+  } catch (error) {
+    // Action réservée aux admins : le message brut (migration non poussée,
+    // etc.) est plus utile que le message générique.
+    return { success: false, error: error instanceof Error ? error.message : "Erreur inconnue." };
+  }
+
+  if (result.frozen) {
+    const { data: active } = await supabase
+      .from("competitions")
+      .select("id")
+      .eq("status", "ACTIVE")
+      .maybeSingle<{ id: string }>();
+    if (active) {
+      await logAdminAction(supabase, {
+        actorUserId: user.id,
+        action: "FREEZE_WEEKLY_RANKING",
+        targetType: "competition",
+        targetId: active.id,
+        after: { ...result },
+      });
+    }
+    revalidatePath("/admin/competitions");
+    revalidatePath("/leaderboard");
+    revalidatePath("/home");
+    revalidatePath("/profile");
+  }
+
+  return describeFreeze(result);
+}
+
+// Interrupteur `competitions.weekly_ranking` (session admin : policy
+// competitions_update = is_admin()). Variante `<form action>` native.
+export async function setWeeklyRankingFormAction(formData: FormData): Promise<void> {
+  const competitionId = String(formData.get("competition_id") ?? "");
+  const enabled = formData.get("enabled") === "1";
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return;
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin || competitionId.length === 0) return;
+
+  const { data: updated, error } = await supabase
+    .from("competitions")
+    .update({ weekly_ranking: enabled })
+    .eq("id", competitionId)
+    .eq("status", "ACTIVE")
+    .select("id")
+    .maybeSingle<{ id: string }>();
+  // Erreur (migration absente) ou aucune ligne (plus ACTIVE) : rien n'a changé,
+  // pas d'audit ; la page se rafraîchit et montre l'état réel.
+  if (error || !updated) {
+    revalidatePath("/admin/competitions");
+    return;
+  }
+
+  await logAdminAction(supabase, {
+    actorUserId: user.id,
+    action: "SET_WEEKLY_RANKING",
+    targetType: "competition",
+    targetId: competitionId,
+    after: { weeklyRanking: enabled },
+  });
+  revalidatePath("/admin/competitions");
+  revalidatePath("/leaderboard");
 }
