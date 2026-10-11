@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { LeaderboardRow as RowData, SortDirection, SortKey } from "@/lib/queries/leaderboard";
+import { leaderboardHref, type LeaderboardView } from "@/lib/leaderboard/href";
 import { LeaderboardRowList } from "./LeaderboardRowList";
 import { MobileSortSelect } from "./MobileSortSelect";
 import styles from "./LeaderboardTable.module.css";
@@ -23,6 +24,8 @@ type LeaderboardTableProps = {
   sortKey: SortKey;
   sortDirection: SortDirection;
   leagueId: string | null;
+  /** Posé seulement quand le classement hebdo est actif (onglets visibles). */
+  vue?: LeaderboardView;
 };
 
 const DETAIL_COLUMNS: { key: Exclude<SortKey, "total">; label: string }[] = [
@@ -37,13 +40,13 @@ function nextDirection(key: SortKey, activeKey: SortKey, activeDirection: SortDi
   return activeDirection === "desc" ? "asc" : "desc";
 }
 
-function sortHref(key: SortKey, direction: SortDirection, leagueId: string | null): string {
-  const params = new URLSearchParams();
-  if (key !== "total") params.set("tri", key);
-  if (direction === "asc") params.set("ordre", "asc");
-  if (leagueId) params.set("ligue", leagueId);
-  const query = params.toString();
-  return query ? `/leaderboard?${query}` : "/leaderboard";
+function sortHref(
+  key: SortKey,
+  direction: SortDirection,
+  leagueId: string | null,
+  vue: LeaderboardView | undefined,
+): string {
+  return leaderboardHref({ vue, tri: key, ordre: direction, ligue: leagueId });
 }
 
 function Caret({ direction }: { direction: SortDirection }) {
@@ -54,7 +57,7 @@ function Caret({ direction }: { direction: SortDirection }) {
   );
 }
 
-export function LeaderboardTable({ rows, sortKey, sortDirection, leagueId }: LeaderboardTableProps) {
+export function LeaderboardTable({ rows, sortKey, sortDirection, leagueId, vue }: LeaderboardTableProps) {
   return (
     <>
       {/* Indication (04/10/2026, p3-4 — retour de l'alpha : personne ne
@@ -74,7 +77,7 @@ export function LeaderboardTable({ rows, sortKey, sortDirection, leagueId }: Lea
             Joueur
           </span>
           <Link
-            href={sortHref("total", nextDirection("total", sortKey, sortDirection), leagueId)}
+            href={sortHref("total", nextDirection("total", sortKey, sortDirection), leagueId, vue)}
             role="columnheader"
             aria-sort={sortKey === "total" ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
             className={sortKey === "total" ? `${styles.colTotal} ${styles.totalBand} ${styles.sortLink}` : `${styles.colTotal} ${styles.sortLink}`}
@@ -92,7 +95,7 @@ export function LeaderboardTable({ rows, sortKey, sortDirection, leagueId }: Lea
               return (
                 <Link
                   key={col.key}
-                  href={sortHref(col.key, nextDirection(col.key, sortKey, sortDirection), leagueId)}
+                  href={sortHref(col.key, nextDirection(col.key, sortKey, sortDirection), leagueId, vue)}
                   role="columnheader"
                   aria-sort={isActive ? (sortDirection === "asc" ? "ascending" : "descending") : "none"}
                   className={isActive ? `${styles.colDetail} ${styles.colActive} ${styles.sortLink}` : `${styles.colDetail} ${styles.sortLink}`}
@@ -105,7 +108,7 @@ export function LeaderboardTable({ rows, sortKey, sortDirection, leagueId }: Lea
           </div>
 
           <div className={styles.mobileSortSlot}>
-            <MobileSortSelect active={sortKey} direction={sortDirection} leagueId={leagueId} />
+            <MobileSortSelect active={sortKey} direction={sortDirection} leagueId={leagueId} vue={vue} />
           </div>
 
           {/* Espace réservé, largeur = .chevron de LeaderboardRow (1rem) : sans

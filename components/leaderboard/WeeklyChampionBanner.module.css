@@ -1,0 +1,27 @@
+.banner {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+}
+
+.label {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.names {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.points {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-secondary);
+}
