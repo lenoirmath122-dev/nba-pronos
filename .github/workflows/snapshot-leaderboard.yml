@@ -2,9 +2,10 @@ name: Snapshot quotidien du classement
 
 # Appelle /api/snapshots/leaderboard (backlog "Fun / esprit ligue entre
 # potes" — socle pour "plus grosse remontée" + le futur "courbe
-# d'évolution"). Une fois par jour, à 12h UTC (choix arbitraire, milieu de
-# journée US/Europe) — fréquence confirmée avec l'utilisateur, upsert par
-# jour (leaderboard_snapshots) empêche tout doublon si relancé manuellement.
+# d'évolution"). SECOURS : le figement normal est fait à 10h Paris par le cron
+# Vercel de /api/recaps. Un jour déjà figé n'est jamais réécrit, donc ce
+# workflow (souvent en retard de plusieurs heures) ne fait rien quand Vercel
+# est passé, et fige en retard si Vercel a échoué.
 on:
   schedule:
     - cron: "0 12 * * *"

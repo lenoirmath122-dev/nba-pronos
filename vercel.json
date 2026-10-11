@@ -3,6 +3,7 @@
   "regions": ["dub1"],
   "crons": [
     { "path": "/api/recaps", "schedule": "0 8 * * *" },
-    { "path": "/api/recaps", "schedule": "0 9 * * *" }
+    { "path": "/api/recaps", "schedule": "0 9 * * *" },
+    { "path": "/api/recaps", "schedule": "0 10 * * *" }
   ]
 }
