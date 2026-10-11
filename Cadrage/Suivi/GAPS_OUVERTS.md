@@ -696,6 +696,17 @@
   détection automatique des pronoms, trop bruyante), avertissement affiché à
   la relecture admin, brouillon douteux seulement hors tolérance,
   `schema_sortie_v5.json` fait foi.
+- **Lot 5, plan technique (11/10/2026, aucun code)** : document
+  `Cadrage/Fonctionnel/nba_pronos_plan_technique_popup_hebdo.md`, 5 PR (1 ∥ 2,
+  puis 3 ∥ 5, puis 4), une migration. **Reste pour l'utilisateur** : (1)
+  trancher les 21 décisions du §9 (celles du schéma avant la PR 1) ; (2) lire
+  dans la console Anthropic le coût réel du 11/10 pour fixer le tarif de
+  `claude-sonnet-5-5` (les 0,097 $ et 0,102 $ des essais sont calculés au
+  tarif supposé de sonnet-5) ; (3) vérifier si Fluid Compute est actif sur le
+  projet Vercel (plan Hobby : 300 s seulement avec Fluid ; un `maxDuration`
+  au-dessus du plafond fait échouer le build) ; (4) écrire 3 à 5 textes de repli
+  (sans genre, argent ni emoji). Dette notée : purge des `candidates` à
+  l'archivage d'une compétition, dans aucune PR.
 - Popup hebdo LLM : utilisée aussi en pré-Cup (décidé le 11/10/2026),
   c'est le format du récap envoyé par le bouton ; génération au figement du
   lundi (plus « dimanche soir »), bloc champion inclus. Il ne reste dans le
