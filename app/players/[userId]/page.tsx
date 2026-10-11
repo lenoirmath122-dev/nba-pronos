@@ -5,6 +5,8 @@ import { ScreenShell } from "@/components/nav/ScreenShell";
 import { EmptyState } from "@/components/home/EmptyState";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { PinnedBadges } from "@/components/profile/PinnedBadges";
+import { WeeklyPalmares, hasWeeklyPalmaresToShow } from "@/components/profile/WeeklyPalmares";
+import { getWeeklyPalmares } from "@/lib/queries/weeklyPalmares";
 import styles from "./page.module.css";
 import type { Metadata } from "next";
 
@@ -35,7 +37,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     data: { user },
   } = await supabase.auth.getUser();
 
-  const profile = await getPlayerProfile(userId);
+  const [profile, palmares] = await Promise.all([getPlayerProfile(userId), getWeeklyPalmares(supabase, userId)]);
   if (!profile) redirect("/leaderboard");
 
   return (
@@ -58,6 +60,15 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
           )}
           {profile.bio && <p className={styles.bio}>{profile.bio}</p>}
         </header>
+
+        {/* Palmarès hebdo : toutes compétitions, donc avant la condition sur la
+            compétition active. Masqué s'il n'y a aucune victoire à montrer. */}
+        {hasWeeklyPalmaresToShow(palmares) && (
+          <section className={`${styles.section} glass-card`}>
+            <h2 className={styles.sectionTitle}>Palmarès hebdo</h2>
+            <WeeklyPalmares data={palmares} variant="other" />
+          </section>
+        )}
 
         {profile.competitionId === null ? (
           <EmptyState title="Aucune compétition en cours" subtitle="Rien à montrer pour l'instant." />

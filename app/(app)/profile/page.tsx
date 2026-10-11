@@ -7,6 +7,8 @@ import { getMyLeagues } from "@/lib/queries/leagues";
 import { getCompetitionHistory } from "@/lib/queries/history";
 import { getProfileStats } from "@/lib/queries/stats";
 import { getProfileBadges } from "@/lib/queries/badges";
+import { getWeeklyPalmares } from "@/lib/queries/weeklyPalmares";
+import { getServerClient } from "@/lib/supabase/server";
 import { updateThemePreference, updateBackgroundTheme, updateProfile } from "@/lib/actions/profile";
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { deleteAccountFormAction } from "@/lib/actions/account";
@@ -19,6 +21,7 @@ import { LeagueScopeChips } from "@/components/profile/LeagueScopeChips";
 import { RankEvolutionChart } from "@/components/profile/RankEvolutionChart";
 import { BadgesSection } from "@/components/profile/BadgesSection";
 import { PinnedBadges } from "@/components/profile/PinnedBadges";
+import { WeeklyPalmares } from "@/components/profile/WeeklyPalmares";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import { BadgeCheckOnMount } from "@/components/badges/BadgeCheckOnMount";
@@ -89,6 +92,10 @@ export default async function ProfilePage({
   const history = activeTab === "historique" ? await getCompetitionHistory() : [];
   const stats = activeTab === "stats" ? await getProfileStats(sp.ligue) : null;
   const statsLeagues = activeTab === "stats" ? await getMyLeagues() : [];
+  // Palmarès hebdo (lot 4 du classement hebdo) : toutes compétitions
+  // confondues, donc hors de `stats` (scopée à la compétition ACTIVE). Ne lève
+  // jamais : une panne affiche « indisponible », elle ne casse pas l'onglet.
+  const palmares = activeTab === "stats" ? await getWeeklyPalmares(await getServerClient(), profile.userId) : null;
   // Badges permanents (09/08/2026, phase 1) — à VIE, indépendants d'une
   // compétition active, cf. SPEC_BADGES_PERMANENTS_V0_1.md. Fetch séparé de
   // getProfileStats (scopée à la compétition ACTIVE). Chargé sur TOUS les
@@ -419,6 +426,14 @@ export default async function ProfilePage({
                 </CollapsibleCard>
               </section>
             </>
+          )}
+
+          {palmares && (
+            <section className={`${styles.section} glass-card`} aria-label="Palmarès hebdo">
+              <CollapsibleCard id="stats-palmares" title="Palmarès hebdo" count={palmares.state === "ok" ? palmares.total : undefined}>
+                <WeeklyPalmares data={palmares} variant="self" />
+              </CollapsibleCard>
+            </section>
           )}
 
           <section className={`${styles.section} glass-card`} aria-label="Badges">

@@ -327,6 +327,17 @@ aucun snapshot du tout = départ à 0 ; snapshots anciens seulement = « semaine
 vient de commencer » (jamais de repli sur la semaine d'avant) ; erreur de
 lecture = « indisponible ». Flag lu à part et tolérant (colonne absente = vue
 Générale d'avant, URLs inchangées). L'Accueil n'est pas modifié.
+**Palmarès hebdo** (lot 4, branche `feat/classement-hebdo-lot4`, aucune
+migration) : section « Palmarès hebdo » dans l'onglet Stats du profil propre
+(carte repliable, avant Badges, avec « Aucune semaine gagnée » ou « indisponible »
+selon le cas) et sur `/players/[userId]` (masquée sans victoire). Toutes
+compétitions confondues, archivées comprises : total de semaines gagnées puis
+une ligne par semaine (date de fin, compétition, points, mention « Co-champion »
+si plusieurs lignes partagent compétition et semaine). Lecture
+`lib/queries/weeklyPalmares.ts` (client RLS, ne lève jamais), calcul pur
+`lib/weekly/palmares.ts`, composant `components/profile/WeeklyPalmares.tsx`. Ce
+n'est pas un badge. La mention co-champion est recalculée en direct : elle
+disparaît si le co-champion supprime son compte.
 
 ### 4.7 Panneau d'administration
 Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des
