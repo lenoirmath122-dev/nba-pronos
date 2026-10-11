@@ -56,7 +56,7 @@ export async function runRecaps(
     return { skipped: "match du jour pas encore publié (avant 10h Paris)", notified: 0, candidates: 0 };
   }
 
-  // Classement hebdo actif : le hebdo part à la main (bouton admin, lot 3),
+  // Classement hebdo actif : le hebdo part à la main (bouton admin, `lib/weekly/sendWeeklyRecap.ts`),
   // le lundi reçoit le journalier. Lecture SÉPARÉE et tolérante : si la
   // migration du classement hebdo n'est pas poussée, la colonne manque et on
   // garde le comportement historique plutôt que d'arrêter tous les récaps.

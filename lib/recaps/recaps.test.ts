@@ -5,7 +5,7 @@
 import { describe, expect, it } from "vitest";
 import { buildCompetitionRecap, personalRecap, type BuildInput, type ScoredBetRow } from "./build";
 import { addDays, dailyPeriod, isoWeekday, recapBoundaryIso, recapKindFor, visibleWeeklyPeriod, weeklyPeriod } from "./period";
-import { dailyPushText, kickoffHour, personalDetail, weeklyPushText } from "./text";
+import { dailyPushText, kickoffHour, personalDetail, weeklyChampionPushText, weeklyPushText } from "./text";
 import { articleForMatch, parseRssArticles, teamKeywords } from "./trashtalk";
 
 describe("fenêtres des récaps", () => {
@@ -173,6 +173,27 @@ describe("textes", () => {
   it("détail personnel", () => {
     const recap = buildCompetitionRecap(input());
     expect(personalDetail(personalRecap(recap, "C")!)).toBe("2 bons vainqueurs dont 1 écart exact · 1 pari gagné");
+  });
+
+  it("push hebdo manuel : champion, co-champions, aucun champion", () => {
+    const alice = { userId: "a", pseudo: "Alice", points: 20 };
+    const bob = { userId: "b", pseudo: "Bob", points: 20 };
+    const out = { userId: "z" };
+    expect(weeklyChampionPushText({ champions: [alice], me: { points: 6, rank: 3 }, ...out }).body).toBe(
+      "Alice est champion de la semaine (+20 pts). Toi : +6 pts, 3e de la semaine."
+    );
+    expect(weeklyChampionPushText({ champions: [alice, bob], me: null, ...out }).body).toBe(
+      "Alice et Bob sont co-champions de la semaine (+20 pts). À toi de jouer cette semaine !"
+    );
+    expect(weeklyChampionPushText({ champions: [alice], me: { points: 20, rank: 1 }, userId: "a" }).body).toBe(
+      "Tu es champion de la semaine (+20 pts) !"
+    );
+    expect(weeklyChampionPushText({ champions: [alice, bob], me: { points: 20, rank: 1 }, userId: "b" }).body).toBe(
+      "Tu es co-champion de la semaine avec Alice (+20 pts) !"
+    );
+    expect(weeklyChampionPushText({ champions: [], me: { points: 0, rank: 4 }, ...out }).body).toBe(
+      "Pas de champion cette semaine. À toi de jouer cette semaine !"
+    );
   });
 
   it("push journalier : points, rang, matchs du soir", () => {

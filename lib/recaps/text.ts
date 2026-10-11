@@ -113,6 +113,43 @@ export function weeklyPushText(
   return { title: "Ta semaine", body: parts.join(" ") };
 }
 
+/** Push du récap hebdo manuel (classement hebdo, lot 3) : champion(s) figé(s)
+ *  de la semaine, puis le bilan du joueur ou une relance. `me` vient des deux
+ *  snapshots de l'en-tête figé ; null = absent de la fin de semaine. */
+export function weeklyChampionPushText(input: {
+  champions: { userId: string; pseudo: string; points: number }[];
+  me: { points: number; rank: number } | null;
+  userId: string;
+}): PushText {
+  const { champions, me, userId } = input;
+  const parts: string[] = [];
+  const isChampion = champions.some((champion) => champion.userId === userId);
+  if (champions.length === 0) {
+    parts.push("Pas de champion cette semaine.");
+  } else {
+    const points = `+${pointsLabel(champions[0].points)}`;
+    const others = champions.filter((champion) => champion.userId !== userId);
+    if (isChampion) {
+      parts.push(
+        others.length === 0
+          ? `Tu es champion de la semaine (${points}) !`
+          : `Tu es co-champion de la semaine avec ${joinPseudos(others)} (${points}) !`,
+      );
+    } else {
+      parts.push(
+        champions.length === 1
+          ? `${champions[0].pseudo} est champion de la semaine (${points}).`
+          : `${joinPseudos(champions)} sont co-champions de la semaine (${points}).`,
+      );
+    }
+  }
+  if (!isChampion) {
+    if (me && me.points > 0) parts.push(`Toi : +${pointsLabel(me.points)}, ${ordinal(me.rank)} de la semaine.`);
+    else parts.push("À toi de jouer cette semaine !");
+  }
+  return { title: "Ta semaine", body: parts.join(" ") };
+}
+
 /** « 2 bons vainqueurs dont 1 écart exact · 1 pari gagné, 1 perdu ». */
 export function personalDetail(me: PersonalRecap): string {
   const parts: string[] = [];
