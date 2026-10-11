@@ -987,6 +987,32 @@ et doivent être prises **avant la PR 1** ; 12 et 18 avant la PR 2.
 | 20 | **Écart avec le cadrage** : génération « assurée » à chaque passage du cron (idempotente) plutôt que seulement sur `frozen: true` | oui / non | **oui** : même déclencheur (le figement), mais auto-réparation ; sans effet si déjà généré |
 | 21 | Nouvelle colonne `competitions.weekly_popup` (le cadrage du 11/10 demande un réglage par compétition mais ne nomme pas la colonne) | oui / non | **oui** |
 
+## 9 bis. Décisions prises le 11/10/2026
+
+L'utilisateur a validé **les recommandations de l'architect pour les 21
+décisions du §9** (« on garde tout comme ça »), avec ces précisions :
+
+- **Décision 10** : Fluid Compute est actif sur le projet Vercel (confirmé par
+  l'utilisateur) : option (a), `maxDuration` 300 s. Le doute (k) est levé.
+- **Décision 12** : la console Anthropic n'affichait encore aucun coût le
+  11/10. L'utilisateur estime le mouvement observé à environ 0,1 $ pour les
+  essais. Tarif retenu **provisoirement** : celui de sonnet-5 (surestimation,
+  sans danger pour un coupe-circuit à 1 $/jour), à ajuster quand la console
+  affichera le coût réel.
+- **Décision 19** : textes de repli validés (5, sans genre, argent ni emoji,
+  aucun pseudo ; titre <= 8 mots, cta <= 15 mots) :
+
+| # | Titre | Repli | CTA |
+|---|---|---|---|
+| 1 | Semaine calme au comptoir | Peu de paris cette semaine, et le classement a fait la sieste. Les prochains matchs ne vont pas se pronostiquer tout seuls. | Passe sur Jouer, les matchs t'attendent. |
+| 2 | Le banc était plein | Les pronos ont fait banquette cette semaine. Pas de quoi faire une vanne, et c'est bien le problème. | Un pari perso, une idée farfelue : lance-toi. |
+| 3 | Semaine sans histoire | Rien à raconter : peu de paris, aucune légende. La rédaction cherche encore ses vannes. | Remplis ta grille, on se retrouve lundi prochain. |
+| 4 | Mi-temps | Vestiaires silencieux cette semaine. Peu de pronos, peu de paris, donc peu de matière. À toi de remettre du sel. | Un pronostic, un pari : fais du bruit. |
+| 5 | Temps mort | Temps mort sur le terrain des paris : pas assez de matière pour une vraie revue de presse. Le prochain coup d'envoi est déjà là. | Ouvre l'appli et pronostique avant le coup d'envoi. |
+
+Ces textes sont à recopier tels quels dans `FALLBACK_TEXTS` (PR 3), dans cet
+ordre. Le tableau du §9 reste la référence des options écartées.
+
 ## 10. Écarts avec le cadrage à corriger (PR 3)
 
 1. §1 ter, ligne « Flop » et `prompt_redacteur_v5.md` « Règles de production
