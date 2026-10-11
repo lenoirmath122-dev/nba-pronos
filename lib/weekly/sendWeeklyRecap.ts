@@ -5,6 +5,7 @@ import { canReceiveRecap } from "@/lib/recaps/access";
 import { weeklyChampionPushText } from "@/lib/recaps/text";
 import {
   computeWeeklyStandings,
+  pickWeeklyChampions,
   weekEndFor,
   type WeeklySnapshotRow,
   type WeeklyStanding,
@@ -25,6 +26,10 @@ import {
 export type WeeklySendResult = {
   sent: boolean;
   weekEnd?: string;
+  /** Envoi d'essai (un seul destinataire, rien de consommé). */
+  test?: boolean;
+  /** Essai sur une semaine non figée : champion calculé en aperçu. */
+  preview?: boolean;
   /** Joueurs notifiés par cet appel. */
   notified: number;
   /** Joueurs éligibles déjà servis (envoi précédent). */
@@ -43,7 +48,14 @@ function fail(context: string, error: { message: string }): never {
   throw new Error(`${context} : ${error.message}`);
 }
 
-export async function runWeeklyRecapSend(nowMs: number = Date.now()): Promise<WeeklySendResult> {
+// `onlyUserId` = envoi d'essai : un seul destinataire, sans réservation dans
+// `recap_log` (rien n'est consommé) et, si la semaine n'est pas figée, champion
+// calculé en aperçu sur les deux derniers snapshots (rien n'est écrit).
+export async function runWeeklyRecapSend(
+  nowMs: number = Date.now(),
+  options: { onlyUserId?: string } = {},
+): Promise<WeeklySendResult> {
+  const test = options.onlyUserId !== undefined;
   const weekEnd = weekEndFor(nowMs);
   const none = { notified: 0, alreadySent: 0, noSubscription: 0, candidates: 0 };
   const supabase = getServiceClient();
@@ -64,7 +76,7 @@ export async function runWeeklyRecapSend(nowMs: number = Date.now()): Promise<We
     .eq("week_end_date", weekEnd)
     .maybeSingle<{ start_snapshot_date: string; end_snapshot_date: string }>();
   if (headerError) fail("Lecture de la semaine figée", headerError);
-  if (!header) return { sent: false, weekEnd, skipped: "semaine non figée", ...none };
+  if (!header && !test) return { sent: false, weekEnd, skipped: "semaine non figée", ...none };
 
   const loadRows = async (date: string): Promise<WeeklySnapshotRow[]> => {
     const { data, error } = await supabase
@@ -76,27 +88,63 @@ export async function runWeeklyRecapSend(nowMs: number = Date.now()): Promise<We
     return (data ?? []) as WeeklySnapshotRow[];
   };
 
-  const [startRows, endRows, championsResult, usersResult, loggedResult] = await Promise.all([
-    loadRows(header.start_snapshot_date),
-    loadRows(header.end_snapshot_date),
-    supabase
-      .from("weekly_champions")
-      .select("user_id, points")
+  // Essai sur une semaine non figée : les deux derniers snapshots datés.
+  let startDate = header?.start_snapshot_date ?? null;
+  let endDate = header?.end_snapshot_date ?? null;
+  if (!header) {
+    const latest = await supabase
+      .from("leaderboard_snapshots")
+      .select("snapshot_date")
       .eq("competition_id", competition.id)
-      .eq("week_end_date", weekEnd),
-    supabase
-      .from("users")
-      .select("id")
-      .eq("status", "ACTIVE")
-      .eq("notification_preference", "PUSH")
-      .eq("recap_enabled", true),
-    supabase.from("recap_log").select("user_id").eq("kind", "WEEKLY").eq("recap_date", weekEnd),
+      .order("snapshot_date", { ascending: false })
+      .limit(1);
+    if (latest.error) fail("Lecture du dernier snapshot", latest.error);
+    endDate = (latest.data?.[0] as { snapshot_date: string } | undefined)?.snapshot_date ?? null;
+    if (endDate) {
+      const previous = await supabase
+        .from("leaderboard_snapshots")
+        .select("snapshot_date")
+        .eq("competition_id", competition.id)
+        .lt("snapshot_date", endDate)
+        .order("snapshot_date", { ascending: false })
+        .limit(1);
+      if (previous.error) fail("Lecture du snapshot précédent", previous.error);
+      startDate = (previous.data?.[0] as { snapshot_date: string } | undefined)?.snapshot_date ?? null;
+    }
+    if (!startDate || !endDate) return { sent: false, weekEnd, skipped: "semaine non figée", ...none };
+  }
+
+  let usersQuery = supabase
+    .from("users")
+    .select("id")
+    .eq("status", "ACTIVE")
+    .eq("notification_preference", "PUSH")
+    .eq("recap_enabled", true);
+  if (options.onlyUserId) usersQuery = usersQuery.eq("id", options.onlyUserId);
+
+  const [startRows, endRows, championsResult, usersResult, loggedResult] = await Promise.all([
+    loadRows(startDate!),
+    loadRows(endDate!),
+    header
+      ? supabase
+          .from("weekly_champions")
+          .select("user_id, points")
+          .eq("competition_id", competition.id)
+          .eq("week_end_date", weekEnd)
+      : Promise.resolve({ data: [], error: null }),
+    usersQuery,
+    test
+      ? Promise.resolve({ data: [], error: null })
+      : supabase.from("recap_log").select("user_id").eq("kind", "WEEKLY").eq("recap_date", weekEnd),
   ]);
   if (championsResult.error) fail("Lecture des champions", championsResult.error);
   if (usersResult.error) fail("Lecture des joueurs", usersResult.error);
   if (loggedResult.error) fail("Lecture de recap_log", loggedResult.error);
 
-  const championRows = (championsResult.data ?? []) as { user_id: string; points: number }[];
+  const computed = computeWeeklyStandings(startRows, endRows);
+  const championRows: { user_id: string; points: number }[] = header
+    ? ((championsResult.data ?? []) as { user_id: string; points: number }[])
+    : pickWeeklyChampions(computed.standings).map((standing) => ({ user_id: standing.userId, points: standing.points }));
   const { data: pseudoRows, error: pseudoError } =
     championRows.length > 0
       ? await supabase
@@ -112,8 +160,7 @@ export async function runWeeklyRecapSend(nowMs: number = Date.now()): Promise<We
     points: row.points,
   }));
 
-  const { standings } = computeWeeklyStandings(startRows, endRows);
-  const standingByUser = new Map<string, WeeklyStanding>(standings.map((standing) => [standing.userId, standing]));
+  const standingByUser = new Map<string, WeeklyStanding>(computed.standings.map((standing) => [standing.userId, standing]));
 
   const logged = new Set(((loggedResult.data ?? []) as { user_id: string }[]).map((row) => row.user_id));
   const eligible = ((usersResult.data ?? []) as { id: string }[])
@@ -149,18 +196,20 @@ export async function runWeeklyRecapSend(nowMs: number = Date.now()): Promise<We
     }
 
     // Réservation atomique : seule la ligne réellement insérée donne le droit
-    // d'envoyer.
-    const { data: reserved, error: reserveError } = await supabase
-      .from("recap_log")
-      .upsert(
-        { user_id: userId, kind: "WEEKLY", recap_date: weekEnd },
-        { onConflict: "user_id,kind,recap_date", ignoreDuplicates: true },
-      )
-      .select("user_id");
-    if (reserveError) fail("Réservation de l'envoi", reserveError);
-    if (!reserved || reserved.length === 0) {
-      servedMeanwhile += 1;
-      continue;
+    // d'envoyer. Pas de réservation pour un essai (rien n'est consommé).
+    if (!test) {
+      const { data: reserved, error: reserveError } = await supabase
+        .from("recap_log")
+        .upsert(
+          { user_id: userId, kind: "WEEKLY", recap_date: weekEnd },
+          { onConflict: "user_id,kind,recap_date", ignoreDuplicates: true },
+        )
+        .select("user_id");
+      if (reserveError) fail("Réservation de l'envoi", reserveError);
+      if (!reserved || reserved.length === 0) {
+        servedMeanwhile += 1;
+        continue;
+      }
     }
 
     const text = weeklyChampionPushText({
@@ -178,12 +227,14 @@ export async function runWeeklyRecapSend(nowMs: number = Date.now()): Promise<We
     } catch (error) {
       // Exception avant tout envoi (clés VAPID absentes...) : on libère la
       // réservation pour que la relance serve ce joueur, puis on remonte.
-      await supabase
-        .from("recap_log")
-        .delete()
-        .eq("user_id", userId)
-        .eq("kind", "WEEKLY")
-        .eq("recap_date", weekEnd);
+      if (!test) {
+        await supabase
+          .from("recap_log")
+          .delete()
+          .eq("user_id", userId)
+          .eq("kind", "WEEKLY")
+          .eq("recap_date", weekEnd);
+      }
       throw error;
     }
     dead.forEach((id) => deadSubscriptionIds.add(id));
@@ -197,6 +248,7 @@ export async function runWeeklyRecapSend(nowMs: number = Date.now()): Promise<We
   return {
     sent: true,
     weekEnd,
+    ...(test ? { test: true, preview: !header } : {}),
     notified,
     alreadySent: alreadySent + servedMeanwhile,
     noSubscription,

@@ -461,7 +461,9 @@ export async function freezeWeeklyRanking(): Promise<FreezeWeekActionResult> {
 // Bouton « Envoyer le récap hebdo » (classement hebdo, lot 3) : push du
 // champion figé de la dernière semaine close, 100 % manuel. Idempotent par
 // joueur (`recap_log`) : relancer ne sert que ceux qui n'ont pas été servis.
-export async function sendWeeklyRecap(): Promise<FreezeWeekActionResult> {
+// `test: true` = essai envoyé au seul admin appelant, rien n'est réservé ni
+// figé (n'accepte aucune autre cible venant du client).
+export async function sendWeeklyRecap(options: { test?: boolean } = {}): Promise<FreezeWeekActionResult> {
   const supabase = await getServerClient();
   const {
     data: { user },
@@ -473,7 +475,7 @@ export async function sendWeeklyRecap(): Promise<FreezeWeekActionResult> {
 
   let result: WeeklySendResult;
   try {
-    result = await runWeeklyRecapSend(Date.now());
+    result = await runWeeklyRecapSend(Date.now(), options.test ? { onlyUserId: user.id } : {});
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Erreur inconnue." };
   }
@@ -481,6 +483,17 @@ export async function sendWeeklyRecap(): Promise<FreezeWeekActionResult> {
   if (!result.sent) {
     const hint = result.skipped === "semaine non figée" ? " Fige d'abord la semaine." : "";
     return { success: false, error: `Rien n'a été envoyé : ${result.skipped ?? "raison inconnue"}.${hint}` };
+  }
+
+  if (result.test) {
+    const where = result.preview ? " (semaine non figée : champion calculé en aperçu)" : "";
+    return {
+      success: true,
+      message:
+        result.notified > 0
+          ? `Essai envoyé à ton compte${where}. Rien n'est réservé : l'envoi réel reste possible.`
+          : "Essai non envoyé : ton compte n'a pas d'abonnement push actif (ou le récap du matin est désactivé).",
+    };
   }
 
   const { data: active } = await supabase
