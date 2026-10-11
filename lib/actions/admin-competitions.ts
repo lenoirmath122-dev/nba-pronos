@@ -12,6 +12,7 @@ import { toClientError } from "@/lib/actions/errors";
 import { isCompetitionType, type CompetitionType } from "@/lib/competitions/types";
 import { runLeaderboardSnapshot } from "@/lib/snapshots/leaderboardSnapshot";
 import { runWeeklyFreeze, type WeeklyFreezeResult } from "@/lib/weekly/freezeWeek";
+import { runWeeklyRecapSend, type WeeklySendResult } from "@/lib/weekly/sendWeeklyRecap";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -411,7 +412,7 @@ function describeFreeze(result: WeeklyFreezeResult): FreezeWeekActionResult {
 // Bouton « Figer la semaine » (classement hebdo, lot 1) : complète le cron
 // (idempotent, même fonction). Prend d'abord le snapshot du jour si besoin (la
 // garde des 10h reste active : avant 10h Paris, rien n'est figé). L'envoi du
-// récap hebdo n'en fait PAS partie (lot 3).
+// récap hebdo n'en fait PAS partie : geste séparé, `sendWeeklyRecap`.
 export async function freezeWeeklyRanking(): Promise<FreezeWeekActionResult> {
   const supabase = await getServerClient();
   const {
@@ -455,6 +456,56 @@ export async function freezeWeeklyRanking(): Promise<FreezeWeekActionResult> {
   }
 
   return describeFreeze(result);
+}
+
+// Bouton « Envoyer le récap hebdo » (classement hebdo, lot 3) : push du
+// champion figé de la dernière semaine close, 100 % manuel. Idempotent par
+// joueur (`recap_log`) : relancer ne sert que ceux qui n'ont pas été servis.
+export async function sendWeeklyRecap(): Promise<FreezeWeekActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { data: isAdmin } = await supabase.rpc("is_admin");
+  if (!isAdmin) return { success: false, error: "Réservé aux admins." };
+
+  let result: WeeklySendResult;
+  try {
+    result = await runWeeklyRecapSend(Date.now());
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Erreur inconnue." };
+  }
+
+  if (!result.sent) {
+    const hint = result.skipped === "semaine non figée" ? " Fige d'abord la semaine." : "";
+    return { success: false, error: `Rien n'a été envoyé : ${result.skipped ?? "raison inconnue"}.${hint}` };
+  }
+
+  const { data: active } = await supabase
+    .from("competitions")
+    .select("id")
+    .eq("status", "ACTIVE")
+    .maybeSingle<{ id: string }>();
+  if (active) {
+    await logAdminAction(supabase, {
+      actorUserId: user.id,
+      action: "SEND_WEEKLY_RECAP",
+      targetType: "competition",
+      targetId: active.id,
+      after: { ...result },
+    });
+  }
+
+  const extras = [
+    result.alreadySent > 0 ? `${result.alreadySent} déjà servi${result.alreadySent > 1 ? "s" : ""}` : null,
+    result.noSubscription > 0 ? `${result.noSubscription} sans abonnement push` : null,
+  ].filter(Boolean);
+  return {
+    success: true,
+    message: `Récap de la semaine du ${frenchDate(result.weekEnd!)} envoyé à ${result.notified} joueur${result.notified > 1 ? "s" : ""}${extras.length > 0 ? ` (${extras.join(", ")})` : ""}.`,
+  };
 }
 
 // Interrupteur `competitions.weekly_ranking` (session admin : policy

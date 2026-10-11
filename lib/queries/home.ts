@@ -8,6 +8,7 @@ import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDateKey } from "@/lib/dates/paris";
 import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
 import { getHomeRecap, type HomeRecap } from "@/lib/recaps/home";
+import { readWeeklyRankingFlag } from "@/lib/weekly/flag";
 import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
@@ -154,7 +155,9 @@ export async function getHomeData(): Promise<HomeData> {
     getSeriesBetsTodo(supabase, user.id, competition),
     getMatchBetsTodo(supabase, user.id, competition),
     getFeed(supabase, competition.id, user.id),
-    getHomeRecap(supabase, competition.id, user.id),
+    readWeeklyRankingFlag(supabase, competition.id).then((weeklyRanking) =>
+      getHomeRecap(supabase, competition.id, user.id, Date.now(), { weeklyRanking }),
+    ),
   ]);
 
   return {

@@ -7,7 +7,7 @@ import styles from "./FreezeWeekButton.module.css";
 // Bouton « Figer la semaine » (classement hebdo, lot 1) : même fonction que le
 // cron, idempotente (une semaine déjà figée n'est jamais recalculée). Pas de
 // dialogue : relancer ne change rien, et le retour dit ce qui s'est passé.
-// L'envoi du récap hebdo n'est PAS déclenché ici (lot 3).
+// L'envoi du récap hebdo n'est PAS déclenché ici (SendWeeklyRecapButton).
 
 export function FreezeWeekButton() {
   const [feedback, setFeedback] = useState<{ ok: boolean; text: string } | null>(null);

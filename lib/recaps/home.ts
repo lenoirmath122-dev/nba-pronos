@@ -59,9 +59,13 @@ export async function getHomeRecap(
   supabase: SupabaseClient,
   competitionId: string,
   userId: string,
-  nowMs: number = Date.now()
+  nowMs: number = Date.now(),
+  // Classement hebdo actif : le hebdo n'est plus poussé automatiquement et le
+  // champion figé vit sur le Classement. La carte « Ta semaine » (calcul en
+  // direct lundi → lundi) pourrait le contredire : on la masque.
+  options: { weeklyRanking?: boolean } = {}
 ): Promise<HomeRecap> {
-  const weeklyPeriod = visibleWeeklyPeriod(nowMs);
+  const weeklyPeriod = options.weeklyRanking ? null : visibleWeeklyPeriod(nowMs);
   const [weekly, daily] = await Promise.all([
     weeklyPeriod ? viewFor(supabase, competitionId, userId, weeklyPeriod) : Promise.resolve(null),
     viewFor(supabase, competitionId, userId, dailyPeriod(nowMs)),

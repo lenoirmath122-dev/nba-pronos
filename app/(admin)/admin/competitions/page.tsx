@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getActiveCompetitionSummary } from "@/lib/queries/admin-competitions";
 import { CloseCompetitionButton } from "@/components/admin/CloseCompetitionButton";
 import { FreezeWeekButton } from "@/components/admin/FreezeWeekButton";
+import { SendWeeklyRecapButton } from "@/components/admin/SendWeeklyRecapButton";
 import { setWeeklyRankingFormAction } from "@/lib/actions/admin-competitions";
 import styles from "./page.module.css";
 import type { CompetitionType } from "@/lib/competitions/types";
@@ -68,6 +69,7 @@ export default async function AdminCompetitionsPage() {
                   </button>
                 </form>
                 {competition.weeklyRanking && <FreezeWeekButton />}
+                {competition.weeklyRanking && <SendWeeklyRecapButton />}
               </>
             )}
           </div>
