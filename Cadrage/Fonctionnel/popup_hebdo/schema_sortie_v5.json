@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "popup-hebdo/sortie-redacteur-v5",
+  "title": "Sortie du rédacteur de la popup hebdomadaire (v5)",
+  "description": "Validé par le code avant tout stockage. Les limites en mots (titre 8, champion 30, top 45, flop 50, refuse 40, cta 15) sont contrôlées en code, avec tolérance et avertissement (voir x-controles-en-code) ; maxLength borne seulement les caractères. Les identifiants de paris_cites doivent appartenir à la liste des candidats transmise (contrôle en code). Un échec de validation structurelle (JSON, clés, ids, pseudos hors ensemble, candidat bloqué cité, dépassement hors tolérance) = brouillon douteux ; les avertissements (dépassement modéré, vocabulaire d'argent) sont affichés à la relecture sans bloquer.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["titre", "champion", "top", "flop", "refuse", "cta", "paris_cites"],
+  "properties": {
+    "titre": { "type": "string", "minLength": 1, "maxLength": 100 },
+    "champion": { "type": ["string", "null"], "minLength": 1, "maxLength": 300 },
+    "top": { "type": ["string", "null"], "minLength": 1, "maxLength": 450 },
+    "flop": { "type": ["string", "null"], "minLength": 1, "maxLength": 500 },
+    "refuse": { "type": ["string", "null"], "minLength": 1, "maxLength": 400 },
+    "cta": { "type": "string", "minLength": 1, "maxLength": 150 },
+    "paris_cites": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["top", "flop", "refuse"],
+      "properties": {
+        "top": { "$ref": "#/$defs/ids" },
+        "flop": { "$ref": "#/$defs/ids" },
+        "refuse": { "$ref": "#/$defs/ids" }
+      }
+    }
+  },
+  "$defs": {
+    "ids": {
+      "type": "array",
+      "items": { "type": "string", "pattern": "^[a-z][0-9]{1,3}$" },
+      "maxItems": 8,
+      "uniqueItems": true
+    }
+  },
+  "anyOf": [
+    { "properties": { "top": { "type": "string" } } },
+    { "properties": { "flop": { "type": "string" } } },
+    { "properties": { "refuse": { "type": "string" } } }
+  ],
+  "x-controles-en-code": [
+    "au moins un des blocs top, flop, refuse est une chaîne (imposé par le anyOf, les trois propriétés étant requises ; champion seul ne suffit pas)",
+    "un bloc null a un tableau paris_cites vide, un bloc non null a au moins un id",
+    "chaque id de paris_cites existe dans les candidats ET appartient au bloc correspondant (préfixe t/f/r)",
+    "chaque @pseudo cité dans le texte appartient à l'ensemble fermé des pseudos candidats ou champions, non suivi d'un caractère de pseudo ([A-Za-z0-9_-] ou lettre Unicode), comparaison normalisée (accents, casse) : @max ≠ @maxime et @Rillettes ≠ @Rillettes-31",
+    "aucun candidat bloqué par le classifieur n'est cité",
+    "vocabulaire d'argent (mise sauf « mise en/à/au », gain, euros, cash, payé/payer/paiement, misé, douille, jackpot, cagnotte, pactole, cote, remboursé, récompense, rente) : liste de contrôle simple, AVERTISSEMENT à la relecture, jamais brouillon douteux (décision du 11/10/2026)",
+    "limites en mots par bloc : jusqu'à +20 % rien ; au-delà, avertissement à la relecture ; au-delà de +50 % sur un bloc ou de 180 mots au total, brouillon douteux (décision du 11/10/2026). maxLength ci-dessus : environ 10 caractères par mot, pour absorber les pseudos longs"
+  ]
+}
