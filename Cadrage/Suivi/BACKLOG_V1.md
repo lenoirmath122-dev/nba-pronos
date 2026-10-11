@@ -77,10 +77,60 @@
   l'onglet. **Cadrage CLOS le 08/08/2026** — voir
   `Cadrage/V1/Spec visuelle/SPEC_BADGES_PERMANENTS_V0_1.md` (~30 badges,
   6 axes, paliers Bronze→Diamant, noms validés, approche technique en
-  lecture pure via vue SQL). Reste à coder.
-- Face-à-face entre deux joueurs précis, match par match / série par série
-  — EN OPTION, pas prioritaire, utilité encore incertaine pour
-  l'utilisateur.
+  lecture pure via vue SQL). **Codés** (vue `user_badges_lifetime`,
+  `lib/badges/`, onglet Stats du Profil — constaté le 11/10/2026).
+- **Classement hebdomadaire pour la période avant la NBA Cup** (idée du
+  11/10/2026, **stratégie validée le 11/10/2026**, pas encore codée) :
+  pendant la pause entre l'alpha et la vraie Cup, on garde le principe
+  actuel, mais le classement repart à zéro chaque semaine — un champion
+  par semaine, pour un suivi plus attractif et une compétitivité qui se
+  construit. Une seule compétition continue (DAILY_MATCH, son barème), pas
+  une compétition par semaine. Décisions : (1) points de la semaine =
+  snapshot du lundi n − snapshot du lundi n-1, snapshots figés (jamais
+  écrasés), scoring et `recompute.ts` non touchés, `scored_at` inutilisable ;
+  (2) semaine lundi 10 h → lundi 10 h, heure de Paris, alignée sur le récap
+  (le cadrage de la popup hebdo, « dimanche soir », est à ajuster) ;
+  (3) corrections tardives comptées dans la semaine où elles sont
+  constatées, un champion figé n'est jamais retiré ; (4) départage points,
+  bons vainqueurs, écarts exacts ; co-champions si égalité, pas de champion
+  si le meilleur total <= 0 ; (5) champion dans un « Palmarès » (table
+  `weekly_champions`), PAS dans les badges permanents (la spec §1 interdit
+  la comparaison entre joueurs) ; (6) interrupteur
+  `competitions.weekly_ranking` par compétition, vue Semaine par défaut sur
+  le Classement ; (7) figement dans `runRecaps` (cron Vercel, pas GitHub),
+  3e cron à 10 h UTC si le plan Vercel le permet (à vérifier) ; (8) bascule
+  vers la vraie Cup un lundi, après le figement ; (9) **bouton admin**
+  (`/admin/competitions`) « figer la semaine et envoyer le récap hebdo »,
+  déclenché à la main le lundi matin, qui complète le cron automatique
+  (idempotent). **Format du récap hebdo décidé le 11/10/2026** : le récap
+  envoyé depuis le bouton en pré-Cup (DAILY_MATCH) est le MÊME objet que
+  pendant les playoffs : la popup hebdo rédigée par LLM
+  (`nba_pronos_cadrage_popup_hebdo.md`), avec un bloc classement/champion
+  de la semaine en plus (présélection par le code depuis
+  `weekly_champions`). Le bouton « figer la semaine et envoyer » =
+  figement + publication du brouillon relu. **Envoi 100 % manuel en
+  pré-Cup (décidé le 11/10/2026)** : aucun envoi automatique, ni secours ni
+  publication auto (la décision 6 du cadrage est donc écartée pour la
+  pré-Cup) ; le cron ne fait que figer les données, et un rappel dans
+  l'admin (pastille/push, cf. décision 12) signale « récap à envoyer ».
+  **Ordre validé** : 1) lots 0 et 1 avant le 26/10, 2) popup LLM ensuite. Réglages PAR COMPÉTITION (`weekly_ranking` et un second
+  interrupteur pour la popup), pas de codage en dur par type ; le récap
+  « Ta semaine » déterministe existant reste inchangé. Conséquence : la
+  génération du brouillon passe de « dimanche soir » à « au figement du
+  lundi » (les matchs du dimanche US finissent le lundi vers 5-6 h Paris).
+  Repli tant que la popup n'est pas prête : le bouton envoie le récap
+  déterministe avec le champion en tête (le figement des données ne dépend
+  pas de la popup). Lots (une conversation chacun) : 0 fiabiliser le
+  snapshot (migration), 1 calcul + figement + table + colonne +
+  `delete_account_data` + action admin (migration), 2 UI Classement, 3
+  récap hebdo déterministe avec champion, 4 Palmarès au Profil, 5 popup
+  hebdo LLM (plusieurs étapes d'après son cadrage : points ouverts, prompt
+  v4, classifieur, admin, affichage ; migration), à livrer après les lots
+  0-1, en visant les premières semaines de novembre.
+  **Échéance : lots 0 et 1 déployés (migrations
+  poussées) avant le lundi 26/10/2026**, premier figement, la semaine
+  traverse le changement d'heure du 25/10. La compétition réelle doit
+  avoir `weekly_ranking` activé.
 
 ## Confort au quotidien
 
