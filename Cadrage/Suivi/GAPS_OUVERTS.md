@@ -628,15 +628,23 @@
 - **Lot 5, avancement (11/10/2026, cadrage terminé, aucun code)** : points 1,
   2, 4, 5, 6, 9, 10 tranchés (cadrage §1 bis et §1 ter), prompts versionnés
   dans `Cadrage/Fonctionnel/popup_hebdo/` (`prompt_redacteur_v4.md`,
-  `prompt_classifieur_v1.md`, deux schémas JSON), **jamais essayés avec un vrai
-  appel** (accord requis, données fictives). Reste : (1) point 7, choix des
-  modèles et du fournisseur, coût à chiffrer ; (2) premier essai réel des
-  prompts sur les cas limites du prompt ; (3) plan technique avec l'`architect`
+  `prompt_classifieur_v1.md`, deux schémas JSON), **essayés une fois le 11/10/2026**
+  (11 appels, 0,10 $, données fictives). **Point 7 tranché le 11/10/2026**
+  (cadrage §1 quater) : `claude-sonnet-5-5` pour les deux rôles (rédacteur
+  effort `medium`, classifieur effort `low`), Anthropic direct, nouveau client à
+  statut explicite, plafond popup séparé (1 $/jour, confirmé), pas
+  de température (400 sur la génération 5.x). Essai : JSON valide 8/8 sans
+  sortie imposée, classifieur 7/7 bloqués et 12/12 « ok » stable sur 3 passages.
+  Écarts à corriger au prompt v5 : genre des joueurs deviné d'après le pseudo
+  (6 sorties sur 8 avec pronom ou accord genré, 7 sur 8 avec « champion »), cas « exactement » non exercé, 1 dépassement de longueur,
+  mots proches de l'argent ; humour jugé satisfaisant par l'utilisateur
+  (`popup_hebdo/essai_v1/notation_humour.md`). Reste : (1) prompt v5 puis second
+  essai ciblé ; (2) plan technique avec l'`architect`
   (migration : `bets.rejected_at` + remplissage depuis `audit_logs`, table des
   brouillons avec `candidates jsonb` et `featured_user_ids uuid[]`, état « vu »
   par joueur en base, `users.popup_mentions_opt_out`, purge dans
   `delete_account_data` ; client Anthropic à statut explicite ; routes et écrans
-  admin) ; (4) à confirmer : le bloc champion ignore-t-il le désengagement, que
+  admin) ; (3) à confirmer : le bloc champion ignore-t-il le désengagement, que
   faire du pseudo d'un compte supprimé dans un texte déjà publié, périmètre du
   classifieur (seuls racisme et discrimination, comme la v3).
   **Résolveurs et valeur réelle dans `resolution_reason`** (exploré le

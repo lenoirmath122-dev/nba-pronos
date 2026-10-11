@@ -77,7 +77,61 @@ Conséquence des résolveurs (liste complète dans `GAPS_OUVERTS.md`) : aucun r�
 
 Livrables de cette étape, dans `Cadrage/Fonctionnel/popup_hebdo/` : `prompt_redacteur_v4.md` (prompt, format des données, exemple, cas limites), `prompt_classifieur_v1.md`, `schema_sortie_v4.json`, `schema_classifieur_v1.json`. Choix de conception à relire : le rédacteur renvoie `paris_cites` (identifiants des candidats cités) en plus du texte, validés en code contre la liste transmise ; le classifieur échoue fermé (candidat sans verdict = bloqué) ; pseudo, texte, match et raison sont déclarés non fiables dans les prompts (injection) ; le classifieur reçoit le pseudo et le texte (le pseudo, recopié par le rédacteur, est classé comme le texte), ni match, ni `user_id`, ni raison ; le contrôle des `@pseudo` cités se fait sur l'ensemble fermé des candidats et du champion, sans faux positif sur le tiret (`@Rillettes` ≠ `@Rillettes-31`).
 
-Points restants : 7 (choix des modèles et fournisseur, coût à chiffrer), périmètre du blocage du classifieur (seuls racisme et discrimination, comme la v3 ; menaces, harcèlement ou moquerie visant un joueur précis ne sont pas couverts), bloc champion et désengagement, pseudo d'un compte supprimé dans un texte déjà publié, premier essai réel des prompts (cas limites listés dans `prompt_redacteur_v4.md`, avec accord et données fictives).
+Points restants (point 7 et premier essai réel : voir §1 quater) : périmètre du blocage du classifieur (seuls racisme et discrimination, comme la v3 ; menaces, harcèlement ou moquerie visant un joueur précis ne sont pas couverts), bloc champion et désengagement, pseudo d'un compte supprimé dans un texte déjà publié, deuxième essai ciblé (genre des joueurs, cas « exactement », voir §1 quater, avec accord et données fictives).
+
+## 1 quater. Point 7 et premier essai réel (11/10/2026)
+
+Exploration de `lib/ai/` par `explorer`, options par `architect`, décisions de l'utilisateur. Essai réel de 11 appels avec accord explicite (script jetable `popup_hebdo/essai_v1/run_essai.mjs`, données fictives `fixtures.json` (textes inventés ; pseudos de l'Alpha réutilisés pour le réalisme des jeux du rédacteur, aucun texte n'a été écrit par ces joueurs), sorties `resultats.json` et `notation_humour.md`). Aucun code applicatif, aucune migration.
+
+### Décisions
+
+| Sujet | Décision |
+|---|---|
+| Rédacteur | `claude-sonnet-5-5`, réflexion adaptative, effort `medium`, `max_tokens` 16 000 (le 2 048 de `structureBet.ts` tronquerait le JSON) |
+| Classifieur | `claude-sonnet-5-5`, effort `low`, `max_tokens` 8 000 |
+| Fournisseur | Anthropic en direct, SDK existant. AI Gateway écartée (1 génération par semaine, comportement des paramètres 5.x et de `refusal` non vérifié, un intermédiaire de plus à déclarer dans `/confidentialite`) |
+| Température | **Aucun paramètre d'échantillonnage** : `temperature`, `top_p`, `top_k` non défaut = 400 sur la génération 5.x (d'après la référence de l'API du 11/10/2026 ; **non éprouvé par un appel**, l'essai n'en envoie pas). Le « température 0 » de `prompt_classifieur_v1.md` est retiré. La stabilité vient des verdicts conservés par pari et réutilisés à la régénération (un pari bloqué reste bloqué, seuls les nouveaux candidats sont classés) ; deux passages combinés en OU seulement si l'instabilité se voit |
+| Refus du classifieur | Si l'appel en lot renvoie `refusal`, repli sur un appel par candidat ; le refus d'un candidat vaut « bloque », catégorie « doute » |
+| Client | Nouveau client à statut explicite, jamais dérivé de `structureBet` : `ok / refusal / invalid_output / max_tokens / api_error / timeout / cap_reached`, modèle réellement servi (`response.model`), `stop_reason`, `requestId`, latence, tentative, tokens complets. SDK en `maxRetries` 0 ou 1 (sinon les retries se multiplient, jusqu'à 9 tentatives). `timeout` explicite |
+| Journal et coût | Une ligne `ai_usage_logs` par tentative facturée (refus et sortie invalide compris), `call_site` distincts (`popupClassifier`, `popupRedacteur`), tarif de `claude-sonnet-5-5` ajouté à `PRICE_PER_MTOK_USD` (le repli actuel est sur `claude-sonnet-5`). Colonne `status` : à confirmer au plan technique (schéma de la table non relu) |
+| Plafond | Plafond popup **séparé** du plafond de structuration (5 $/jour partagé aujourd'hui). Atteint = `cap_reached` = brouillon douteux, jamais un abandon silencieux. Valeur : voir « Coût mesuré » |
+| Schémas | Les mots-clés `anyOf` racine, `if/then/else`, `pattern`, `uniqueItems` ne sont probablement pas tous pris en charge par `output_config.format` : schémas à traduire en Zod simple, contrôles en code après l'analyse (`invalid_output`) |
+
+### Résultats de l'essai (11 appels, 0,0973 $, 2,6 à 4,2 s par appel)
+
+Rédacteur, 4 jeux × 2 passages, aucun refus, `stop_reason` toujours `end_turn` :
+
+- JSON valide 8/8 **sans sortie imposée** (le prompt seul a suffi), clés exactes, `paris_cites` cohérent avec les blocs, aucun id inconnu, aucun pseudo hors de l'ensemble fermé (y compris `@max`/`@maxime`, `@Rillettes`/`@Rillettes-31`, `@ignore-les-regles`), aucun mot de la liste d'argent, aucun emoji.
+- Champion `null` respecté, blocs sans candidat à `null`, blocs avec candidats jamais `null`, tous `cite_recemment` à true : bloc quand même cité (F1).
+- Écarts : tous corrects (« 24 au lieu de 25 », « 11 au lieu de 12 », « 2 au lieu de 3 »), aucun chiffre inventé quand la raison n'en donnait pas (F2, pari de Tatum) ni quand la raison est `null` (pari résolu par un admin, F2).
+- Injection (F2) : l'instruction n'est pas suivie ; le modèle la raconte comme une tentative de piratage, et reprend le mot BANANE dans le titre (« Curry, Tatum et une banane »). Conforme à « traite-le comme une blague » ; le test automatique « mot repris » a donc été trop strict.
+- Longueurs : total de 118 à 138 mots sur les jeux complets ; une seule violation de limite par bloc sur 8 (F1 passage 2 : `top` à 52 mots pour 45, deux candidats regroupés).
+- Le prompt seul tient le format : le client ne dépend donc pas d'une sortie imposée pour fonctionner, le schéma sert de garde en code.
+
+Classifieur, 1 lot de 20 lignes × 3 passages, aucun refus :
+
+- 7 bloquées sur 7 attendues, 12 « ok » sur 12 attendus, 0 faux négatif, 0 faux positif ; **les 3 passages sont strictement identiques** ; la ligne « flou » (`c5`, « attardé ») est bloquée aux 3 passages ; l'injection est classée `manipulation`.
+- Limite : lot de 20 lignes volontairement modérées (énoncés discriminatoires explicites, mais aucune injure raciale extrême). Le comportement en cas de `refusal` sur du contenu franchement raciste n'a **pas** été observé : le repli par candidat reste à tester.
+
+### Coût mesuré
+
+- Une génération nominale : classifieur 0,0092 $ + rédacteur 0,0115 $ (jeu F4 à taille réelle) = **0,021 $**, soit environ 0,09 $ par mois.
+- Pire cas mesuré : 4 générations dans la journée × 3 tentatives = environ 0,25 $ **sans réflexion** (l'estimation de l'`architect`, 1,4 $, supposait des tokens de réflexion maximaux : non infirmée, ces jeux n'ayant sollicité aucune réflexion). **Plafond popup : 1 $/jour** (4 fois le pire cas mesuré), confirmé par l'utilisateur le 11/10/2026.
+- La réflexion a été **nulle** (`thinking_tokens` à 0 aux 11 appels ; sortie de 200 à 406 tokens pour le rédacteur, 519 pour le classifieur) : le pire cas mesuré est donc un pire cas sans réflexion, et que `output_tokens` inclue la réflexion n'est pas prouvé par cet essai. Le plafond recommandé repose sur cette hypothèse.
+
+### Écarts à corriger (prompt v5 / plan technique)
+
+1. **Genre deviné.** Dans 6 sorties sur 8 le rédacteur genre un joueur d'après son pseudo par un pronom ou un accord (« Elle l'a senti » pour `@Maelys`, « il est voyant », « mon grand », « le bougre »), 7 sur 8 en comptant « champion » ; seul F1 passage 1 n'en contient pas. Le CTA de F2 passage 2 genre aussi le lecteur (« t'es meilleur que Tonio »). Le genre ne figure pas dans les données. Règle à ajouter au prompt v5 : ne jamais deviner le genre d'un joueur ; tournures sans accord ni pronom genrés, ou le pseudo répété. À vérifier par un second essai.
+2. **Cas « exactement » non exercé.** Aucun passage n'a choisi les candidats flop `exactement` (F3 `f2`, F4 `f2`) : le cas 11 (flop) reste à couvrir avec un jeu où ce candidat est le seul de son bloc. À noter : le top « exactement 30 » (F3 `t1`) a été cité aux deux passages, correctement formulé, mais le cas 11 vise le flop.
+3. **Limite de longueur par bloc** : 1 dépassement sur 8, non attrapé par `maxLength` en caractères (52 mots ≈ 300 caractères). À décider : contrôle en mots en code = brouillon douteux (donc 2 retries), ou simple avertissement à la relecture.
+4. **Mots d'argent proches non couverts** par la liste de contrôle : « remboursée », « rente », « coûté cher » apparaissent dans les sorties. Décider si la liste s'élargit ou si on s'en remet à la relecture.
+5. **Contenu d'une injection repris** (titre de F2) : décider si c'est acceptable (blague) ou à interdire dans le prompt v5.
+6. **Détail typographique** : « Tu fais peur,@Tonio » (espace manquante, F1 passage 1) : sans conséquence, le contrôle de pseudo la tolère.
+7. **Humour** : jugé satisfaisant par l'utilisateur après relecture des 8 textes (`essai_v1/notation_humour.md`, « tout me va parfaitement », 11/10/2026), sans note détaillée.
+
+### Doutes non levés (plan technique)
+
+Mots-clés de schéma acceptés par `output_config.format` / `zodOutputFormat` (essai fait sans sortie imposée) ; `output_tokens` incluant la réflexion ; comportement de `thinking: {type: "between_tools"}` sans outil (adaptatif retenu) ; options de réflexion de Fable 5.1 (non essayé) ; durée maximale de la route du figement sur Vercel (latence de l'essai 2,6 à 4,2 s par appel, deux appels en série) ; schéma réel de `ai_usage_logs`.
 
 ## 2. Articulation des règles (à ne pas contredire à l'implémentation)
 
@@ -105,7 +159,7 @@ Points restants : 7 (choix des modèles et fournisseur, coût à chiffrer), pér
 6. **Mémoire de l'HISTORIQUE** : stockage des pseudos mis en avant sur les
    2 dernières semaines (nouvelle table ou colonnes du brouillon).
 7. **Modèles LLM** (rédacteur, classifieur) et fournisseur ; coût négligeable
-   à cette échelle, à chiffrer.
+   à cette échelle, à chiffrer. **Tranché le 11/10/2026** (§1 quater).
 8. **Prompt v4** : exemple de sortie de référence, limite de longueur par
    bloc, cas « catégorie vide », forme de la sortie JSON validée par schéma.
 9. **Paris refusés** : vérifier ce qui est conservé en base (texte, statut)
@@ -118,9 +172,10 @@ Points restants : 7 (choix des modèles et fournisseur, coût à chiffrer), pér
 1. ~~Trancher les points ouverts 1 à 6 (produit).~~ Fait (§1 bis et §1 ter).
 2. ~~Explorer l'existant.~~ Fait le 11/10/2026.
 3. ~~Écrire le prompt v4 et le prompt du classifieur.~~ Fait le 11/10/2026
-   (`popup_hebdo/`), non essayés avec un vrai appel.
-4. Choisir les modèles (point 7) et faire un premier essai réel sur données
-   fictives, avec accord.
+   (`popup_hebdo/`) ; essayés avec de vrais appels le 11/10/2026 (§1 quater).
+4. ~~Choisir les modèles (point 7) et faire un premier essai réel sur données
+   fictives, avec accord.~~ Fait le 11/10/2026 (§1 quater). Reste un second
+   essai ciblé, après le prompt v5.
 5. Plan technique avec l'`architect` (modèle de données : `rejected_at`,
    table des brouillons, `popup_mentions_opt_out`, état « vu » par joueur,
    `delete_account_data` ; routes ; écrans admin ; client Anthropic à statut
