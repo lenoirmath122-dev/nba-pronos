@@ -168,11 +168,15 @@ Règles de production côté code (à respecter à l'implémentation) :
 - une ligne par candidat, JSON strictement échappé (le texte d'un pari peut
   contenir `|`, des guillemets, des retours à la ligne) ; texte tronqué à une
   longueur maximale fixe (le texte d'un pari est déjà borné en base) ;
-- `sens` vaut « plus de », « au moins », « moins de », « au plus » ou
-  « exactement », calculé par le code depuis `structured_comparison` et
-  `structured_negation`, ou depuis `count_relation` pour les fautes techniques
-  (AT_LEAST, MORE_THAN, FEWER_THAN, EXACTLY) ; `null` si inconnu. **Un
-  candidat flop dont `sens` est null est écarté du flop par le code** ;
+- `sens` vaut « plus de », « au moins », « moins de » ou « exactement »,
+  calculé par le code : `structured_comparison` OVER = « plus de » et UNDER =
+  « moins de » (stricts, comme le résolveur) ; `count_relation` pour les
+  fautes techniques (AT_LEAST, MORE_THAN, FEWER_THAN, EXACTLY) ; « exactement »
+  pour `QUARTERS_WON_COUNT` avec `exact_count` ; `null` sinon. « au plus »
+  n'est jamais produit et `structured_negation` ne sert pas à un seuil. Texte
+  du pari à formulation inclusive (« au moins N », « N+ », « minimum »...) avec
+  seuil entier : `seuil` et `sens` à `null` (règle m). **Un candidat flop dont
+  `sens` est null est écarté du flop par le code** ;
 - `raison` = `resolution_reason` tel quel, jamais parsé ni recalculé, et
   **mise à `null` pour un pari résolu par un admin** (`resolved_by_admin_id`
   non nul : texte libre, jamais classé) ;
@@ -181,8 +185,8 @@ Règles de production côté code (à respecter à l'implémentation) :
   conservée dans le brouillon ;
 - un candidat dont le `texte` contient un `@pseudo` est écarté (V1, strict) ;
 - aucun candidat bloqué par le classifieur (voir `prompt_classifieur_v1.md`),
-  aucun joueur désengagé (`popup_mentions_opt_out`) ; le champion n'est pas
-  filtré par le désengagement (règle provisoire, à confirmer).
+  aucun joueur désengagé (`popup_mentions_opt_out`) ; le champion est classé
+  et filtré par le désengagement comme les autres (décisions 2 et 6).
 
 ## Exemple de sortie de référence (données fictives)
 
