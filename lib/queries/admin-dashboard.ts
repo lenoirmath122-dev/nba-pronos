@@ -22,6 +22,8 @@ export type AdminDashboardData = {
   weeklyPopupPendingCount: number;
   /** Parmi eux, ceux que la génération a bloqués (alerte). */
   weeklyPopupDoubtful: number;
+  /** Demandes de changement de pseudo en attente (indépendant de la compétition). */
+  pendingPseudoCount: number;
   totalPlayers: number;
   leagues: LeagueOverview[];
 };
@@ -47,14 +49,16 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   // utile (elle affiche quand même les entrées Gestion des joueurs / Logs).
   // Total d'inscrits/ligues indépendants de la compétition -- calculés dans
   // tous les cas, jamais dans le repli "aucune compétition active".
-  const [{ data: competition }, totalPlayers, leagues] = await Promise.all([
+  const [{ data: competition }, totalPlayers, leagues, { count: pseudoCount }] = await Promise.all([
     supabase.from("competitions").select("id, name").eq("status", "ACTIVE").maybeSingle<CompetitionRow>(),
     getTotalPlayers(supabase),
     getLeaguesOverview(supabase),
+    supabase.from("pseudo_change_requests").select("id", { count: "exact", head: true }).eq("status", "PENDING"),
   ]);
+  const pendingPseudoCount = pseudoCount ?? 0;
 
   if (!competition) {
-    return { competitionId: null, competitionName: null, ...EMPTY_COUNTS, totalPlayers, leagues };
+    return { competitionId: null, competitionName: null, ...EMPTY_COUNTS, pendingPseudoCount, totalPlayers, leagues };
   }
 
   const [
@@ -78,6 +82,7 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     pendingRequestsCount,
     weeklyPopupPendingCount: popupCounts.pending,
     weeklyPopupDoubtful: popupCounts.doubtful,
+    pendingPseudoCount,
     totalPlayers,
     leagues,
   };

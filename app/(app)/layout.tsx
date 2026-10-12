@@ -9,6 +9,7 @@ import { ToastProvider } from "@/components/ui/Toast";
 import { ValidatedDialogProvider } from "@/components/ui/ValidatedDialog";
 import { ValidatedBetsWatcher } from "@/components/bets/ValidatedBetsWatcher";
 import { NewBadgesWatcher } from "@/components/badges/NewBadgesWatcher";
+import { OnboardingGuide } from "@/components/onboarding/OnboardingGuide";
 import { WeeklyPopupProvider } from "@/components/weeklyPopup/WeeklyPopupProvider";
 import { WeeklyPopupWatcher } from "@/components/weeklyPopup/WeeklyPopupWatcher";
 import styles from "./layout.module.css";
@@ -55,6 +56,8 @@ export default async function AppLayout({
               <WeeklyPopupWatcher />
               {/* Popup « nouveau badge » (p3-9). */}
               <NewBadgesWatcher />
+            {/* Guide d'arrivée : notifications + raccourci écran d'accueil. */}
+            <OnboardingGuide />
             </WeeklyPopupProvider>
           </ValidatedDialogProvider>
         </ToastProvider>
