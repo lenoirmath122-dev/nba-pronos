@@ -279,7 +279,7 @@ barème le réécrit à chaque recalcul). Push à 10h Paris (cron Vercel de `ver
 10h UTC, authentifié par `CRON_SECRET` ; la même route fige d'abord le
 snapshot quotidien du classement, `lib/snapshots/leaderboardSnapshot.ts` :
 une ligne par joueur et par jour Paris, jamais réécrite, avec départage
-persisté — code en PR #155, migration `20261011090000` à pousser ; `recaps.yml` reste en secours mais GitHub
+persisté — PR #155, migration `20261011090000` appliquée ; `recaps.yml` reste en secours mais GitHub
 le lance avec 4 à 7 h de retard ; la route ne fait rien avant 10h, refuse
 plus de 3 h après, et `recap_log` dédoublonne les deux passages),
 journalier ou hebdo le lundi, jamais vide, ouvre `/home#recap` (carte
@@ -293,8 +293,8 @@ jours 20 à 25/10 sortent ensemble le 19/10) ; voir `lib/dates/paris.ts::dailyPu
 passe par `canReceiveRecap()` (`lib/recaps/access.ts`), seul point à
 brancher à la bascule payante.
 
-**Classement hebdomadaire** (pause avant la vraie Cup, lots 0 et 1 codés ;
-branche `feat/classement-hebdo-lot1`, migration `20261012090000` à pousser) :
+**Classement hebdomadaire** (pause avant la vraie Cup, lots 0 à 4 mergés ;
+migration `20261012090000` appliquée) :
 interrupteur `competitions.weekly_ranking` par compétition (réglable en admin,
 case à la création). Semaine lundi 10 h → lundi 10 h (Paris) ; points de la
 semaine = snapshot de fin − snapshot de début (`lib/weekly/standings.ts`, pur),
@@ -312,8 +312,8 @@ est manuel (lot 3, PR #158 + #159 : bouton « Envoyer le récap hebdo » et « M
 la dernière semaine close, réservation par joueur dans `recap_log` avant
 envoi donc relance sans doublon, lien `/leaderboard?vue=semaine` ; la carte
 « Ta semaine » de l'Accueil est masquée quand le classement hebdo est actif).
-**Vue Semaine du Classement** (lot 2,
-branche `feat/classement-hebdo-lot2`, aucune migration) : quand
+**Vue Semaine du Classement** (lot 2, aucune
+migration) : quand
 `competitions.weekly_ranking` est actif, `/leaderboard` a deux onglets Semaine
 (par défaut) / Général (`?vue=semaine|general` ; un ancien lien `?tri=`/`?ordre=`
 ouvre Général). Semaine = `user_scores` moins le snapshot de début
@@ -327,8 +327,7 @@ aucun snapshot du tout = départ à 0 ; snapshots anciens seulement = « semaine
 vient de commencer » (jamais de repli sur la semaine d'avant) ; erreur de
 lecture = « indisponible ». Flag lu à part et tolérant (colonne absente = vue
 Générale d'avant, URLs inchangées). L'Accueil n'est pas modifié.
-**Palmarès hebdo** (lot 4, branche `feat/classement-hebdo-lot4`, aucune
-migration) : section « Palmarès hebdo » dans l'onglet Stats du profil propre
+**Palmarès hebdo** (lot 4, aucune migration) : section « Palmarès hebdo » dans l'onglet Stats du profil propre
 (carte repliable, avant Badges, avec « Aucune semaine gagnée » ou « indisponible »
 selon le cas) et sur `/players/[userId]` (masquée sans victoire). Toutes
 compétitions confondues, archivées comprises : total de semaines gagnées puis
@@ -338,6 +337,22 @@ si plusieurs lignes partagent compétition et semaine). Lecture
 `lib/weekly/palmares.ts`, composant `components/profile/WeeklyPalmares.tsx`. Ce
 n'est pas un badge. La mention co-champion est recalculée en direct : elle
 disparaît si le co-champion supprime son compte.
+**Popup hebdo générée par LLM** (lot 5, PR 1 à 3 faites ; aucune fonctionnalité
+visible : ni écran admin, ni popup joueur, PR 4 et 5 à faire) : interrupteur
+`competitions.weekly_popup` (faux par défaut, donc rien ne tourne en
+production). Quand il est actif avec `weekly_ranking`, `/api/recaps` assure à
+CHAQUE passage du cron (8h, 9h, 10h UTC), une fois la semaine figée, une ligne
+`weekly_popups` : réservation synchrone, puis génération dans `after()` après
+les récaps (`lib/weeklyPopup/ensure.ts`, `generate.ts` ; `maxDuration` 300 s sur
+la route et sur `/admin/competitions`, dont le bouton « Figer la semaine »
+assure aussi le brouillon). Pipeline : présélection par le code (top 5, flop 8,
+refusé 5, 2 par joueur et par bloc), classifieur (lot, puis un appel par
+candidat si le lot est refusé), rédacteur (prompt v5), contrôles du code
+(mentions en jetons `{{u:uuid}}`, mots, argent, ensemble fermé) ; semaine
+pauvre = texte de repli sans rédacteur. Le résultat est un brouillon
+(READY ou DOUBTFUL avec motif), jamais publié tout seul ; alerte push aux
+admins seulement au passage du cron. Plafond de dépense popup 1 $/jour, fermé
+si la lecture échoue. Aucun appel LLM réel n'a été fait avec ce code.
 
 ### 4.7 Panneau d'administration
 Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des

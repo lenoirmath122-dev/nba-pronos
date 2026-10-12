@@ -918,14 +918,14 @@ Après chaque merge : `ETAT_ACTUEL.md`, `GAPS_OUVERTS.md` (section
 | (c) réflexion adaptative sans outil | **Oui** (19 appels réels) | `between_tools` non utilisé | levé | — |
 | (d) schéma et colonne `status` de `ai_usage_logs` | migration `20260907120000`, sans `status` | état réel en production | la PR 1 ajoute les colonnes ; `supabase migration list` / `list_tables` en lecture | 1 |
 | (e) classifieur face à un vrai refus | type `stop_details` existe, repli conçu | comportement réel (jamais observé) | accepter (échec fermé, publication manuelle) ; test réel optionnel, sur contenu fictif, avec accord | 3 (logique) |
-| (f) règle d'échelle du flop | familles et gabarits relus (§3.4) | — | liste blanche + tests ; bloc NULL à tort = avertissement | 3 |
+| (f) règle d'échelle du flop | familles et gabarits relus (§3.4) | — | liste blanche + tests ; bloc NULL à tort = avertissement | 3 (levé : `families.ts`, `families.test.ts`) |
 | (g) champion et désengagement | — | choix produit | décision 2 | — |
 | (h) pseudo d'un compte supprimé | — | choix produit | décision 3 (jetons) | 1, 3 |
 | (i) périmètre du classifieur | prompt v1 : racisme, discrimination, manipulation | choix produit | décision 5 | — |
 | (j) tarif de sonnet-5-5 | les essais ont **supposé** le tarif de sonnet-5 | valeur réelle | console Anthropic (coût du 11/10 rapporté aux tokens de `resultats.json`), gratuit, avant merge | 2 |
 | (k) Fluid Compute | plan Hobby, 60 s utilisé ailleurs | Fluid actif ou non | réglages Vercel ou `get_project` en lecture, avant la PR 3 | 3 |
 | (l) relations de jointure du libellé de match | `matches.home_team_id`/`away_team_id` + `teams`, `lib/recaps/load.ts:66,108-109` | — | levé | 3 |
-| (m) valeur de `seuil` pour « au moins N » | `computeOutcome` compare en `>` strict ; `structured_comparison` n'a que OVER/UNDER | comment le structureur stocke « au moins N » (N ou N-1 en OVER) : change le `seuil` transmis au LLM et donc l'écart | relire le prompt de `structureBet.ts` (gratuit) et trancher la formulation de `sens` et d'écart | 3 |
+| (m) valeur de `seuil` pour « au moins N » | `computeOutcome` compare en `>` strict ; `structured_comparison` n'a que OVER/UNDER | comment le structureur stocke « au moins N » (N ou N-1 en OVER) : change le `seuil` transmis au LLM et donc l'écart | relire le prompt de `structureBet.ts` (gratuit) et trancher la formulation de `sens` et d'écart | 3 (levé le 12/10/2026 : `seuil` = valeur stockée jamais transformée ; « plus de » et « moins de » stricts comme le résolveur ; texte inclusif (« au moins N », « N+ », « minimum »…) avec seuil entier = `seuil` et `sens` à `null`, donc écarté du flop ; `lib/weeklyPopup/sens.ts`) |
 
 ## 8. Risques
 
@@ -1014,6 +1014,12 @@ Ces textes sont à recopier tels quels dans `FALLBACK_TEXTS` (PR 3), dans cet
 ordre. Le tableau du §9 reste la référence des options écartées.
 
 ## 10. Écarts avec le cadrage à corriger (PR 3)
+
+> **Faits le 12/10/2026 (PR 3)** : les points 1 et 2 sont corrigés dans le
+> cadrage (§1 ter), `prompt_redacteur_v5.md` et `prompt_classifieur_v1.md`
+> (hors texte entre `=====`) ; les points 3 et 4 n'appellent aucune
+> correction. Règle m ajoutée au point 1 : texte inclusif à seuil entier =
+> `seuil` et `sens` à `null`.
 
 1. §1 ter, ligne « Flop » et `prompt_redacteur_v5.md` « Règles de production
    côté code » : `sens` ne vient pas de `structured_comparison`/
