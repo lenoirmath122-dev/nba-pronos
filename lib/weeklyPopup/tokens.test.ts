@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { detokenize, extractTokenUserIds, findMentions, tokenize, type TokenUserInfo } from "./tokens";
+import { detokenize, extractTokenUserIds, findMentions, stripIncomingTokens, tokenize, type TokenUserInfo } from "./tokens";
 
 const A = "11111111-1111-4111-8111-111111111111";
 const B = "22222222-2222-4222-8222-222222222222";
@@ -97,6 +97,20 @@ describe("detokenize", () => {
 describe("extractTokenUserIds", () => {
   it("liste les ids cités sans doublon ni supprime", () => {
     expect(extractTokenUserIds(`{{u:${A}}} {{u:${A}}} {{u:supprime}} {{u:${B}}}`)).toEqual([A, B]);
+  });
+});
+
+describe("tokenize : jeton reconstitué par le retrait", () => {
+  it("un jeton enfoui dans un autre ne survit pas", () => {
+    const sneaky = `{{u{{u:a}}:${A}}}`;
+    const out = tokenize(`Salut ${sneaky} @Nico`, [{ userId: B, pseudo: "Nico" }]);
+    expect(out).not.toContain(A);
+    expect(out).toBe(`Salut  {{u:${B}}}`);
+  });
+  it("stripIncomingTokens atteint un point fixe", () => {
+    const once = stripIncomingTokens("a {{u{{u{{u:x}}:y}}:" + A + "}} b");
+    expect(stripIncomingTokens(once)).toBe(once);
+    expect(once).not.toContain("{{u:");
   });
 });
 

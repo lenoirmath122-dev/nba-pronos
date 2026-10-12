@@ -74,3 +74,19 @@ describe("règle m : formulation inclusive avec seuil entier", () => {
     expect(seuilEtSens(bet({ structured_threshold: null }))).toEqual({ seuil: null, sens: null });
   });
 });
+
+describe("règle m : formulations inclusives supplémentaires (revue PR 3)", () => {
+  it.each([
+    "Il faut supérieur ou égal à 25",
+    "égal ou supérieur à 25",
+    "à partir de 25 points",
+    "dès 25 points",
+    "atteint 25 points",
+    "25 points ou davantage",
+    "au-moins 5 rebonds",
+    "5+ de 3pts",
+  ])("ambigu : %s", (description) => {
+    const b = bet({ description, structured_threshold: 25, structured_comparison: "OVER" });
+    expect(isInclusiveAmbiguous(b)).toBe(true);
+  });
+});

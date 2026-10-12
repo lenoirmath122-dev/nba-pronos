@@ -29,7 +29,7 @@ describe("sendPushToAdmins", () => {
     };
     send.mockResolvedValue({ deadSubscriptionIds: [] });
     const r = await sendPushToAdmins({ title: "t", body: "b" });
-    expect(r).toEqual({ admins: 2, subscriptions: 1, dead: 0 });
+    expect(r).toEqual({ admins: 2, subscriptions: 1, dead: 0, ok: true });
     const users = calls.find((c) => c.table === "users")!;
     expect(hasFilter(users, "eq", "role", "ADMIN")).toBe(true);
     expect(hasFilter(users, "eq", "status", "ACTIVE")).toBe(true);
@@ -38,7 +38,7 @@ describe("sendPushToAdmins", () => {
 
   it("aucun admin : aucun envoi", async () => {
     handler = () => ({ data: [] });
-    expect(await sendPushToAdmins({ title: "t", body: "b" })).toEqual({ admins: 0, subscriptions: 0, dead: 0 });
+    expect(await sendPushToAdmins({ title: "t", body: "b" })).toEqual({ admins: 0, subscriptions: 0, dead: 0, ok: false });
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -46,6 +46,7 @@ describe("sendPushToAdmins", () => {
     handler = (call) => (call.table === "users" ? { data: [{ id: "a1" }] } : { data: [] });
     const r = await sendPushToAdmins({ title: "t", body: "b" });
     expect(r.subscriptions).toBe(0);
+    expect(r.ok).toBe(false);
     expect(send).not.toHaveBeenCalled();
   });
 
@@ -69,6 +70,7 @@ describe("sendPushToAdmins", () => {
       admins: 0,
       subscriptions: 0,
       dead: 0,
+      ok: false,
     });
   });
 });

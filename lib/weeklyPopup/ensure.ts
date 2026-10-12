@@ -25,6 +25,13 @@ function fail(context: string, error: { message: string }): never {
   throw new Error(`${context} (${MIGRATION_HINT}) : ${error.message}`);
 }
 
+/**
+ * Filtre `.or()` : `.eq("generation_id", null)` enverrait `eq.null`, un uuid
+ * invalide que PostgREST rejette (ligne jamais reprise, cron en 500).
+ */
+const generationIs = (id: string | null): string =>
+  id === null ? "generation_id.is.null" : `generation_id.eq.${id}`;
+
 export type EnsureResult = {
   action: "scheduled" | "none";
   weekEnd: string;
@@ -106,7 +113,8 @@ export async function ensureWeeklyPopupDraft(
   const staleBefore = new Date(nowMs - STALE_GENERATING_MS).toISOString();
   const isStaleGenerating =
     existing?.status === "GENERATING" &&
-    (existing.generation_started_at === null || existing.generation_started_at < staleBefore);
+    (existing.generation_started_at === null ||
+      Date.parse(existing.generation_started_at) < Date.parse(staleBefore));
 
   // Semaine trop ancienne : le cron ne génère plus tout seul (un figement
   // admin tardif, lui, passe : la garde ne s'applique qu'au cron).
@@ -118,7 +126,7 @@ export async function ensureWeeklyPopupDraft(
         .update({ status: "DOUBTFUL", doubt_code: "stale", doubt_detail: "semaine trop ancienne" })
         .eq("id", existing.id)
         .eq("status", "GENERATING")
-        .eq("generation_id", existing.generation_id as string);
+        .or(generationIs(existing.generation_id));
     }
     return none("semaine trop ancienne", existing?.id);
   }
@@ -151,7 +159,7 @@ export async function ensureWeeklyPopupDraft(
       .update({ generation_id: generationId, generation_started_at: startedAt, admin_notified_at: null })
       .eq("id", existing.id)
       .eq("status", "GENERATING")
-      .eq("generation_id", existing.generation_id as string)
+      .or(generationIs(existing.generation_id))
       .select("id");
     if (error) fail("Reprise du brouillon de popup", error);
     if (!data || data.length === 0) return none("réservée par un autre passage", existing.id);
@@ -198,7 +206,9 @@ export async function reserveRegeneration(
     .update(patch)
     .eq("id", popupId)
     .eq("status", "GENERATING")
-    .lt("generation_started_at", new Date(nowMs - STALE_GENERATING_MS).toISOString())
+    .or(
+      `generation_started_at.is.null,generation_started_at.lt.${new Date(nowMs - STALE_GENERATING_MS).toISOString()}`,
+    )
     .select("id");
   if (stale.error) fail("Réservation de la régénération", stale.error);
   if (stale.data && stale.data.length > 0) return { ok: true, generationId };

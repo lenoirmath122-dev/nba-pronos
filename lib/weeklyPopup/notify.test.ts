@@ -24,11 +24,21 @@ describe("notifyAdminsOfDraft", () => {
 
   it("réserve admin_notified_at (is null) puis envoie", async () => {
     const { client, calls } = fakeClient(() => ({ data: [{ id: "p1" }] }));
-    const send = vi.fn().mockResolvedValue({ admins: 1, subscriptions: 1, dead: 0 });
+    const send = vi.fn().mockResolvedValue({ admins: 1, subscriptions: 1, dead: 0, ok: true });
     const r = await notifyAdminsOfDraft("p1", info, { client, send, now: () => 0 });
     expect(r.sent).toBe(true);
     expect(calls[0].filters).toContainEqual(["is", "admin_notified_at", null]);
     expect(send).toHaveBeenCalledOnce();
+  });
+
+  it("alerte non délivrée (aucun abonné) : le tampon est retiré pour ne pas perdre l'alerte", async () => {
+    const { client, calls } = fakeClient(() => ({ data: [{ id: "p1" }] }));
+    const send = vi.fn().mockResolvedValue({ admins: 1, subscriptions: 0, dead: 0, ok: false });
+    const r = await notifyAdminsOfDraft("p1", info, { client, send, now: () => 0 });
+    expect(r.sent).toBe(false);
+    const reset = calls[calls.length - 1];
+    expect(reset.op).toBe("update");
+    expect(reset.payload).toEqual({ admin_notified_at: null });
   });
 
   it("déjà notifié : aucun envoi", async () => {

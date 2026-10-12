@@ -69,7 +69,13 @@ export async function notifyAdminsOfDraft(
       .is("admin_notified_at", null)
       .select("id");
     if (error || !data || data.length === 0) return { sent: false };
-    await send(draftPayload(info));
+    const delivery = await send(draftPayload(info));
+    if (!delivery.ok) {
+      // Aucun admin abonné, ou envoi en échec : le tampon est retiré, sinon
+      // l'alerte serait perdue pour de bon (aucun passage ne renotifie).
+      await supabase.from("weekly_popups").update({ admin_notified_at: null }).eq("id", popupId);
+      return { sent: false };
+    }
     return { sent: true };
   } catch (error) {
     console.error("notifyAdminsOfDraft : échec non bloquant", error instanceof Error ? error.name : "Error");

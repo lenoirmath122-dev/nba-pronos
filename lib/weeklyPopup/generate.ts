@@ -133,6 +133,8 @@ export async function runWeeklyPopupGeneration(
   const attempts: WeeklyPopupAttempt[] = [];
   const warnings: WeeklyPopupWarning[] = [];
   let finalWritten = false;
+  /** Statut réellement écrit par `finish` (pour un retour fidèle si la suite lève). */
+  let writtenOutcome: GenerationOutcome | null = null;
   let costUsd = 0;
   let row: WeeklyPopupRow | null = null;
   /** Derniers candidats avec verdicts : conservés même si la génération échoue. */
@@ -193,6 +195,7 @@ export async function runWeeklyPopupGeneration(
   ): Promise<GenerationOutcome> => {
     const written = await finalize({ status, kind, ...fields });
     finalWritten = true;
+    writtenOutcome = { written, status, kind, doubtCode: doubtCode ?? undefined, costUsd, notified: false };
     let notified = false;
     if (written && opts.trigger === "CRON") {
       const result = await notify(popupId, { status, kind, doubtCode, weekEnd }, { client });
@@ -331,14 +334,25 @@ export async function runWeeklyPopupGeneration(
           const outcomes = await Promise.all(
             group.map(async (c) => ({ c, out: await classify([c], "classifier_unit", group.length) })),
           );
+          let abort: Abort | null = null;
           for (const { c, out } of outcomes) {
             const r = out.result;
-            if (r?.status === "cap_reached") throw new Abort("cap_reached", "classifieur unitaire : plafond");
-            if (!r) throw new Abort("budget", "classifieur unitaire : temps insuffisant");
+            if (r?.status === "cap_reached") {
+              abort ??= new Abort("cap_reached", "classifieur unitaire : plafond");
+              continue;
+            }
+            if (!r) {
+              abort ??= new Abort("budget", "classifieur unitaire : temps insuffisant");
+              continue;
+            }
             // Refus, erreur ou sortie invalide après relances : bloqué (échec fermé).
             const merged = mergeVerdicts([c], r.status === "ok" && r.data ? r.data : null, "unitaire");
             verdicts.set(c.short_id, merged.candidates[0]);
           }
+          // Les verdicts déjà payés survivent à un abandon (le « Relancer »
+          // ne les repaie pas).
+          latestCandidates = candidates.map((c) => verdicts.get(c.short_id) ?? c);
+          if (abort) throw abort;
         }
         candidates = candidates.map((c) => verdicts.get(c.short_id) ?? c);
       } else {
@@ -485,7 +499,8 @@ export async function runWeeklyPopupGeneration(
   /** Brouillon douteux : le contenu précédent n'est jamais détruit. */
   async function failClosed(error: unknown): Promise<GenerationOutcome> {
     if (finalWritten) {
-      return { written: true, status: "DOUBTFUL", costUsd, notified: false };
+      // La ligne est déjà écrite (ce qui a levé vient après) : rendre son vrai statut.
+      return writtenOutcome ?? { written: true, status: "DOUBTFUL", costUsd, notified: false };
     }
     const abort = error instanceof Abort ? error : null;
     const code: WeeklyPopupDoubtCode = abort ? abort.code : "internal";

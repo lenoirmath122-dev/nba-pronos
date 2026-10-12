@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { scanMentions } from "./mentions";
+import { countBareMentions, scanMentions } from "./mentions";
 import { U1, U2, U3 } from "./testFixtures";
 
 const set = (...pseudos: string[]) =>
@@ -42,5 +42,30 @@ describe("scanMentions", () => {
     const scan = scanMentions(`voilà {{u:${U1}}} @Nico`, set("Nico"));
     expect(scan.incomingTokens).toBe(1);
     expect(scan.hits[0].userId).toBe(U1);
+  });
+});
+
+describe("scanMentions : pseudos à symbole initial", () => {
+  it("@🏀Jordan hors ensemble fermé est compté", () => {
+    expect(scanMentions("bravo @🏀Jordan", set("Nico")).unknownCount).toBe(1);
+    expect(scanMentions("bravo @-X", set("Nico")).unknownCount).toBe(1);
+  });
+  it("pseudo à symbole initial dans l'ensemble : apparié", () => {
+    expect(scanMentions("bravo @🏀Jordan !", set("🏀Jordan")).hits[0].userId).toBe(U1);
+  });
+});
+
+describe("countBareMentions", () => {
+  it("pseudo cité sans @ : compté ; avec @ : non", () => {
+    expect(countBareMentions("Maxime a fait 40 points", set("Maxime"))).toBe(1);
+    expect(countBareMentions("@Maxime a fait 40 points", set("Maxime"))).toBe(0);
+  });
+  it("bornes de mot, accents et casse", () => {
+    expect(countBareMentions("maximement bien", set("Maxime"))).toBe(0);
+    expect(countBareMentions("Zoé est en tête", set("Zoe "))).toBe(1);
+  });
+  it("pseudos de moins de 3 lettres ignorés ; jeton ignoré", () => {
+    expect(countBareMentions("Al est là", set("Al"))).toBe(0);
+    expect(countBareMentions(`{{u:${U1}}} Nico`, set("Nico"))).toBe(1);
   });
 });

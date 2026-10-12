@@ -103,7 +103,22 @@ describe("ensureWeeklyPopupDraft : génération", () => {
     expect(r).toMatchObject({ action: "scheduled", popupId: "popup-1" });
     const update = s.calls.find((c) => c.op === "update")!;
     expect(update.payload).toMatchObject({ generation_id: "gen-new", admin_notified_at: null });
-    expect(hasFilter(update, "eq", "generation_id", "old")).toBe(true);
+    expect(hasFilter(update, "or", "generation_id.eq.old")).toBe(true);
+  });
+
+  it("GENERATING périmé sans generation_id : filtre is.null, jamais eq.null", async () => {
+    const started = new Date(MONDAY_0900Z - 11 * 60_000).toISOString();
+    const s = setup({ popup: { id: "popup-1", status: "GENERATING", generation_id: null, generation_started_at: started } });
+    const r = await ensure(MONDAY_0900Z, s.deps);
+    expect(r.action).toBe("scheduled");
+    const update = s.calls.find((c) => c.op === "update")!;
+    expect(hasFilter(update, "or", "generation_id.is.null")).toBe(true);
+    expect(update.filters.some(([, column]) => column === "generation_id")).toBe(false);
+  });
+
+  it("GENERATING sans date de début : considéré périmé", async () => {
+    const s = setup({ popup: { id: "popup-1", status: "GENERATING", generation_id: "old", generation_started_at: null } });
+    expect((await ensure(MONDAY_0900Z, s.deps)).action).toBe("scheduled");
   });
 
   it("26/10 à 08:00Z (hiver) : la semaine close est encore celle du 19/10, plus de 36 h, rien", async () => {
@@ -146,6 +161,15 @@ describe("reserveRegeneration", () => {
     const r = await reserveRegeneration("p1", MONDAY_0900Z, { client, newId: () => "gen-2" });
     expect(r).toEqual({ ok: true, generationId: "gen-2" });
     expect(hasFilter(calls[0], "in", "status", ["READY", "DOUBTFUL", "SKIPPED"])).toBe(true);
+  });
+
+  it("GENERATING périmé (y compris sans date) : repris par un filtre or", async () => {
+    const replies = [{ data: [] }, { data: [{ id: "p1" }] }];
+    const { client, calls } = fakeClient(() => replies.shift() ?? { data: [] });
+    const r = await reserveRegeneration("p1", MONDAY_0900Z, { client, newId: () => "gen-3" });
+    expect(r).toEqual({ ok: true, generationId: "gen-3" });
+    const stale = calls[1];
+    expect(stale.filters.some(([op, column]) => op === "or" && String(column).includes("generation_started_at.is.null"))).toBe(true);
   });
 
   it("PUBLISHED, RETRACTED ou génération récente : refusé", async () => {

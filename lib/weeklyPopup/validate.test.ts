@@ -91,6 +91,15 @@ describe("validateOutput", () => {
     expect(w).toEqual(expect.arrayContaining(["argent", "emoji", "champion_absent", "bloc_vide_avec_candidats"]));
   });
 
+  it("pseudo cité sans @ : avertissement pseudo_sans_arobase", () => {
+    const r = validateOutput(output({ top: "Alix a vu juste." }), ctx);
+    expect(r.warnings.map((w) => w.code)).toContain("pseudo_sans_arobase");
+  });
+
+  it("@ collé à un symbole hors ensemble : mention hors ensemble", () => {
+    expect(codes(validateOutput(output({ top: "@🏀Intrus a vu juste." }), ctx))).toContain("mention_hors_ensemble");
+  });
+
   it("aucun pseudo ni texte dans les erreurs et avertissements", () => {
     const r = validateOutput(
       output({ top: `@Intrus et @Nico ${words(70)} gain` }),

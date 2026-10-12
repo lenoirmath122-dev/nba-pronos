@@ -284,6 +284,22 @@ describe("classifieur", () => {
     expect(f1).toMatchObject({ verdict: "bloque", categorie: "doute", verdict_source: "unitaire" });
   });
 
+  it("plafond atteint en plein repli unitaire : les verdicts déjà payés sont conservés", async () => {
+    const { run, writes } = setup({
+      call: (opts) => {
+        const ids = idsOf(opts.user);
+        if (ids.length > 1) return llm("refusal");
+        if (ids[0] === "f1") return llm("cap_reached");
+        return llm("ok", { data: { verdicts: [{ id: ids[0], verdict: "ok" as const, categorie: null }] } });
+      },
+    });
+    const outcome = await run();
+    expect(outcome).toMatchObject({ status: "DOUBTFUL", doubtCode: "cap_reached" });
+    const cands = lastWrite(writes).candidates as WeeklyPopupCandidate[];
+    expect(cands.find((c) => c.short_id === "t1")?.verdict).toBe("ok");
+    expect(cands.find((c) => c.short_id === "f1")?.verdict).toBeUndefined();
+  });
+
   it("lot invalide 3 fois : DOUBTFUL invalid_output, contenu précédent conservé", async () => {
     const { run, call, writes } = setup({
       call: () => llm("invalid_output", { retriable: true, rawText: "pas du json" }),

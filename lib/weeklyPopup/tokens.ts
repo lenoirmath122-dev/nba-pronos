@@ -15,6 +15,21 @@ const TOKEN_RE =
   /\{\{u:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|supprime)\}\}/g;
 /** Tout ce qui ressemble à un jeton dans un texte entrant (même mal formé). */
 export const ANY_TOKEN_RE = /\{\{u:[^}]*\}\}/g;
+
+/**
+ * Retire les jetons jusqu'à stabilité : retirer un jeton enfoui dans un autre
+ * peut en reconstituer un (`{{u{{u:a}}:UUID}}` redonne `{{u:UUID}}`).
+ */
+export function stripIncomingTokens(text: string): string {
+  let current = text;
+  for (let i = 0; i < 8; i += 1) {
+    const next = current.replace(ANY_TOKEN_RE, "");
+    if (next === current) return next;
+    current = next;
+  }
+  // Pas de point fixe en 8 passes : aucune ouverture de jeton ne survit.
+  return current.replace(/\{\{u:/g, "");
+}
 /** Caractère qui prolonge un pseudo (signes combinants compris) : une mention
  *  ne peut pas y finir. */
 const PSEUDO_CHAR_RE = /[\p{L}\p{N}\p{M}_-]/u;
@@ -69,7 +84,10 @@ export function findMentions(text: string, closedSet: readonly MentionableUser[]
     normalizedCount.set(n, (normalizedCount.get(n) ?? 0) + 1);
   }
 
-  const endsCleanly = (end: number) => end >= text.length || !PSEUDO_CHAR_RE.test(text[end]);
+  // Point de code (et non unité UTF-16) : un caractère hors plan basique est un
+  // seul caractère.
+  const endsCleanly = (end: number) =>
+    end >= text.length || !PSEUDO_CHAR_RE.test(String.fromCodePoint(text.codePointAt(end) as number));
 
   // Plus longue fin `end` telle que la tranche normalisée égale le pseudo
   // normalisé : la normalisation (NFD/NFC, ligatures) change les longueurs.
@@ -128,7 +146,7 @@ export function tokenize(rawText: string, closedSet: readonly MentionableUser[])
   // Un jeton déjà présent dans la sortie du LLM n'a pas été produit par nous
   // (id copié du prompt, injection par un pseudo ou un texte de pari) : il
   // serait résolu à l'affichage hors de l'ensemble fermé. On le retire.
-  const text = rawText.replace(ANY_TOKEN_RE, "");
+  const text = stripIncomingTokens(rawText);
   if (!text.includes("@")) return text;
 
   let out = "";

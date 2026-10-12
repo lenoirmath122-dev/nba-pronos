@@ -16,7 +16,7 @@ const COUNT_RELATION_SENS: Record<string, Sens> = {
 
 /** Formulations qui rendent un seuil entier ambigu (inclusif ou non ?). */
 export const INCLUSIVE_PHRASE_RE =
-  /\bau\s+(moins|plus|minimum|maximum)\b|\bou\s+(plus|moins|\+)|\b(minimum|maximum)\b|\bpas\s+(plus|moins)\s+de\b|\d\s*\+(?!\s*de\b)|>=|<=|≥|≤/iu;
+  /\bau[\s-]+(moins|plus|minimum|maximum)\b|\bou\s+(plus|moins|davantage|\+|égal|egal|supérieur|superieur|inférieur|inferieur)|(?<![\p{L}])(égal|egal)\s+ou\b|\b(minimum|maximum)\b|\bpas\s+(plus|moins)\s+de\b|(?<![\p{L}])à\s+partir\s+de\b|\bdès\b|\batteint|\batteindre|\d\s*\+|>=|<=|≥|≤/iu;
 
 type SensSource = "fautes_techniques" | "quarts_exact" | "comparaison";
 

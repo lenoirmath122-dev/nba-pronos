@@ -80,7 +80,7 @@ export function flopFamily(bet: PopupBetRow): FlopFamily | null {
   if (!stat) return null;
 
   if (present(bet.structured_player_id) && !present(bet.structured_team_id)) {
-    return stat !== "plus_minus" && stat in COUNTING_STAT_COLUMN ? "player" : null;
+    return stat !== "plus_minus" && Object.hasOwn(COUNTING_STAT_COLUMN, stat) ? "player" : null;
   }
   if (!present(bet.structured_player_id) && !present(bet.structured_team_id)) {
     const isMatchStat = (MATCH_STAT_CODES as string[]).includes(stat);

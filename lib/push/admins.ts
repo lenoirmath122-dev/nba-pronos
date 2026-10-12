@@ -9,8 +9,10 @@ import { sendPushToSubscriptions, type PushPayload, type PushSubscriptionRow } f
 export async function sendPushToAdmins(
   payload: PushPayload,
   options: { ttlSeconds?: number } = {},
-): Promise<{ admins: number; subscriptions: number; dead: number }> {
-  const result = { admins: 0, subscriptions: 0, dead: 0 };
+): Promise<{ admins: number; subscriptions: number; dead: number; ok: boolean }> {
+  // `ok` : l'envoi a eu lieu (au moins un abonnement, aucune erreur). L'appelant
+  // s'en sert pour ne pas considérer une alerte perdue comme livrée.
+  const result = { admins: 0, subscriptions: 0, dead: 0, ok: false };
   try {
     const supabase = getServiceClient();
     const { data: admins, error: adminsError } = await supabase
@@ -34,6 +36,7 @@ export async function sendPushToAdmins(
 
     const { deadSubscriptionIds } = await sendPushToSubscriptions(subscriptions, payload, options);
     result.dead = deadSubscriptionIds.length;
+    result.ok = true;
     if (deadSubscriptionIds.length > 0) {
       await supabase.from("push_subscriptions").delete().in("id", deadSubscriptionIds);
     }

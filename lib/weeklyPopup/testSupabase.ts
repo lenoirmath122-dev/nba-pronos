@@ -77,7 +77,7 @@ export function fakeClient(handler: (call: Call) => Reply) {
           }
         },
       };
-      for (const name of ["eq", "neq", "in", "is", "lt", "lte", "gt", "gte", "not"]) {
+      for (const name of ["eq", "neq", "in", "is", "lt", "lte", "gt", "gte", "not", "or"]) {
         builder[name] = (column: string, ...rest: unknown[]) => {
           call.filters.push([name, column, rest.length > 1 ? rest : rest[0]]);
           return builder;

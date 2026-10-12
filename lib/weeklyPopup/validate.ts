@@ -7,7 +7,7 @@
 // et exportable).
 
 import { TOTAL_WORD_LIMIT, WORD_LIMITS } from "./config";
-import { scanMentions } from "./mentions";
+import { countBareMentions, scanMentions } from "./mentions";
 import { findMoneyWords } from "./money";
 import type { RedacteurOutput } from "./schemas";
 import { extractTokenUserIds, tokenize, type MentionableUser } from "./tokens";
@@ -94,6 +94,11 @@ export function validateText(
     } else if (status === "warn") {
       warnings.push({ code: "mots_bloc", bloc, detail: `${words}/${WORD_LIMITS[field]}` });
     }
+
+    // Pseudo cité sans « @ » : pas tokenisé, donc hors désengagement et purge
+    // de compte (avertissement ; à rendre bloquant à la publication, PR 4).
+    const bare = countBareMentions(raw, ctx.closedSet);
+    if (bare > 0) warnings.push({ code: "pseudo_sans_arobase", bloc, detail: String(bare) });
 
     const money = findMoneyWords(raw);
     if (money.length > 0) warnings.push({ code: "argent", bloc, detail: money.join(",") });

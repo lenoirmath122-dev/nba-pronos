@@ -18,6 +18,9 @@ type Client = ReturnType<typeof getServiceClient>;
 
 const MIGRATION_HINT = "migration 20261013090000 poussée ?";
 
+/** Identifiants par `.in()` : 100 uuid restent largement sous la limite d'URL. */
+const ID_CHUNK = 100;
+
 function fail(context: string, error: { message: string }): never {
   // Le message PostgREST ne porte aucune donnée de joueur.
   throw new Error(`${context} (${MIGRATION_HINT}) : ${error.message}`);
@@ -169,7 +172,7 @@ export async function loadWeekData(
   // 4. Joueurs : auteurs des paris et champions.
   const userIds = [...new Set([...bets.map((b) => b.user_id), ...champions.map((c) => c.userId)])];
   const users = new Map<string, PopupUserRow>();
-  for (const ids of chunk(userIds, 200)) {
+  for (const ids of chunk(userIds, ID_CHUNK)) {
     const { data, error } = await supabase
       .from("users")
       .select("id, pseudo, status, popup_mentions_opt_out")
@@ -192,7 +195,7 @@ export async function loadWeekData(
   const matchLabels = new Map<string, string>();
   if (matchIds.length > 0) {
     const matches: { id: string; home_team_id: string | null; away_team_id: string | null }[] = [];
-    for (const ids of chunk(matchIds, 200)) {
+    for (const ids of chunk(matchIds, ID_CHUNK)) {
       const { data, error } = await supabase
         .from("matches")
         .select("id, home_team_id, away_team_id")
@@ -204,7 +207,7 @@ export async function loadWeekData(
       ...new Set(matches.flatMap((m) => [m.home_team_id, m.away_team_id]).filter((t): t is string => !!t)),
     ];
     const abbreviation = new Map<string, string>();
-    for (const ids of chunk(teamIds, 200)) {
+    for (const ids of chunk(teamIds, ID_CHUNK)) {
       const { data, error } = await supabase.from("teams").select("id, abbreviation").in("id", ids);
       if (error) fail("Lecture des équipes", error);
       for (const t of data ?? []) abbreviation.set(String(t.id), String(t.abbreviation ?? ""));
