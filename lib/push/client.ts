@@ -1,4 +1,5 @@
 import { savePushSubscription, updateNotificationPreference } from "@/lib/actions/notifications";
+import type { InstallPlatform } from "./onboarding";
 
 // Logique CLIENT du Push (permission navigateur + ServiceWorker + PushManager),
 // extraite de components/profile/NotificationSettings.tsx le 27/08/2026 pour
@@ -18,14 +19,26 @@ export function pushSupported(): boolean {
  *  faut d'abord proposer l'installation. iPadOS se présente comme un Mac
  *  ("MacIntel") mais avec un écran tactile, d'où le 2e test. */
 export function iosNeedsInstall(): boolean {
-  if (typeof window === "undefined") return false;
+  return detectInstallPlatform() === "ios" && !isStandalone();
+}
+
+/** Plateforme pour choisir le bon tutoriel d'installation sur l'écran
+ *  d'accueil (components/onboarding). */
+export function detectInstallPlatform(): InstallPlatform {
+  if (typeof window === "undefined") return "desktop";
   const ua = navigator.userAgent;
-  const isIos = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-  if (!isIos) return false;
-  const standalone =
+  if (/iPad|iPhone|iPod/.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)) return "ios";
+  if (/Android/.test(ua)) return "android";
+  return "desktop";
+}
+
+/** App lancée depuis l'icône de l'écran d'accueil plutôt que dans un onglet. */
+export function isStandalone(): boolean {
+  if (typeof window === "undefined") return false;
+  return (
     window.matchMedia("(display-mode: standalone)").matches ||
-    (navigator as Navigator & { standalone?: boolean }).standalone === true;
-  return !standalone;
+    (navigator as Navigator & { standalone?: boolean }).standalone === true
+  );
 }
 
 // PushManager.subscribe() exige un Uint8Array adossé à un vrai ArrayBuffer
