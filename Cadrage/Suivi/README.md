@@ -16,27 +16,41 @@ en tête de chaque fichier quand il existe :
 
 ## Méthode de travail
 
-Toute reprise de développement suit la même règle, une étape à la fois :
-
 1. **Une seule étape par conversation** (un écran, un chantier, un correctif
-   de fond). Pas d'enchaînement de plusieurs étapes dans la même session. Si
-   la prochaine étape n'est pas évidente, la soumettre explicitement à
+   de fond). Si la prochaine étape n'est pas évidente, la soumettre à
    l'utilisateur plutôt que de la deviner.
-2. **Documenter avant de s'arrêter, pas après coup** : mettre à jour
-   `JOURNAL_SESSIONS.md` (nouvelle entrée), `ETAT_ACTUEL.md` et
-   `GAPS_OUVERTS.md` pour refléter ce qui vient d'être fait et ce qui reste
-   ouvert — avant de considérer la session terminée.
-3. **Reprendre dans une nouvelle conversation**, en relisant d'abord ce
-   fichier puis les 3 fichiers vivants ci-dessous.
+2. **Début de session : lire uniquement [`REPRISE.md`](REPRISE.md)** (20
+   lignes). Ouvrir ensuite seulement ce dont la tâche a besoin : la section
+   utile d'`ETAT_ACTUEL.md`, le résumé du chantier dans `GAPS_OUVERTS.md`, le
+   fichier du chantier dans `chantiers/`. Ne pas relire le dossier en entier,
+   ne pas lancer de sous-agent pour le lire, ne jamais ouvrir `archive/`
+   sauf demande explicite.
+3. **Fin de session (passation), avant de s'arrêter** :
+   - réécrire `REPRISE.md` en entier (20 lignes max : objectif, fait,
+     prochaine étape, échéances, points ouverts, pièges) ;
+   - ajouter **une ligne** à `JOURNAL_SESSIONS.md` (300 caractères max :
+     `- Titre-résumé (JJ/MM/AAAA) — PR #n`) ;
+   - `GAPS_OUVERTS.md` et `chantiers/` : seulement si un point est ouvert ou
+     fermé (un point fermé est retiré, jamais barré) ;
+   - `ETAT_ACTUEL.md` : seulement si l'architecture ou une fonctionnalité
+     livrée change.
+4. **Reprendre dans une nouvelle conversation.**
 
 ## Fichiers vivants
 
-| Fichier | Rôle |
-|---|---|
-| [`ETAT_ACTUEL.md`](ETAT_ACTUEL.md) | Vue d'ensemble de l'état RÉEL du projet — architecture, fonctionnalités livrées, conventions. Réécrit entièrement à chaque mise à jour, jamais accumulé. Point d'entrée pour reprendre le projet à froid. |
-| [`GAPS_OUVERTS.md`](GAPS_OUVERTS.md) | Liste des points fonctionnels/produit encore ouverts. Un point retiré = un point traité (la trace du traitement va dans `JOURNAL_SESSIONS.md`, pas ici). |
-| [`JOURNAL_SESSIONS.md`](JOURNAL_SESSIONS.md) | Journal chronologique append-only : qui a changé quoi, quand, pourquoi. Seulement complété — sauf compression périodique quand il devient trop long (voir `archive/` ci-dessous), qui réécrit le fichier en synthèse sans en changer le principe append-only pour la suite. |
-| [`BACKLOG_V1.md`](BACKLOG_V1.md) | Backlog produit (idées/fonctionnalités à considérer). Garde les items faits en `~~barré~~` plutôt que de les retirer — accepté tel quel, volume encore gérable. |
+| Fichier | Rôle | Lu en début de session ? |
+|---|---|---|
+| [`REPRISE.md`](REPRISE.md) | Passation : où on en est, prochaine étape. Réécrit à chaque fin de session. | **Oui, seul fichier lu** |
+| [`GAPS_OUVERTS.md`](GAPS_OUVERTS.md) | Points ouverts uniquement, avec un résumé de chaque chantier en cours. | Non, à la demande |
+| [`chantiers/`](chantiers/) | Détail d'un gros chantier (un fichier par chantier). | Non, seulement le chantier en cours |
+| [`ETAT_ACTUEL.md`](ETAT_ACTUEL.md) | Référence de l'état réel : architecture, fonctionnalités, conventions. | Non, section utile seulement |
+| [`JOURNAL_SESSIONS.md`](JOURNAL_SESSIONS.md) | Une ligne par session, append-only. Le détail est dans `git log` et les PR. | Non |
+| [`BACKLOG_V1.md`](BACKLOG_V1.md) | Backlog produit (idées). Items faits en `~~barré~~`. | Non |
+
+**Seuils de taille** : `REPRISE.md` 20 lignes ; `GAPS_OUVERTS.md` ~20 Ko ;
+`JOURNAL_SESSIONS.md` ~40 Ko ; un fichier de chantier ~20 Ko. Au-delà,
+archiver la version complète (voir `archive/` ci-dessous) puis réécrire en
+version courte.
 
 ## Fichiers figés (historique)
 
@@ -63,7 +77,12 @@ d'avant restructuration/compression est conservé, non modifié, dans
 [`archive/`](archive/) pour référence historique. Ne pas y ajouter de
 nouveau contenu.
 
-Règle générale pour les trois fichiers vivants : quand un fichier redevient
+Dernier nettoyage : 12/10/2026 (journal d'octobre ramené à une ligne par
+session, gros chantiers de `GAPS_OUVERTS.md` déplacés dans `chantiers/`,
+`ETAT_ACTUEL.md` allégé) ; versions complètes d'avant dans `archive/*_2026-10-12.md`.
+`archive/` n'est jamais lu sauf demande explicite.
+
+Règle générale pour les fichiers vivants : quand un fichier redevient
 trop long pour être relu d'une traite en début de session, archiver sa
 version complète sous `archive/NOM_FICHIER_archive_jusquau_AAAA-MM-JJ.md`
 (jamais modifiée ensuite), puis réécrire le fichier actif en version

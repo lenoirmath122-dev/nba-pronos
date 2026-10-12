@@ -1,0 +1,648 @@
+# NBA Pronos ("Panier Ballon") — État actuel
+
+> **Nature** : instantané de l'état RÉEL du projet au moment de la dernière
+> réécriture — **réécrit ENTIÈREMENT à chaque mise à jour, jamais complété
+> ni accumulé**. Ne raconte pas ce qui a changé ni quand ; décrit uniquement
+> ce qui est vrai maintenant. Pour l'historique chronologique (qui a changé
+> quoi, quand, pourquoi), voir `JOURNAL_SESSIONS.md`. Pour les points
+> ouverts/décisions en attente, voir `GAPS_OUVERTS.md`. Pour les règles
+> fonctionnelles détaillées, voir `Cadrage/Fonctionnel/` et l'écran `/regles`
+> de l'application elle-même (seule source garantie synchrone avec le code
+> réel). Ce fichier ne contient pas de barème chiffré, de spec d'écran ni de
+> décision produit détaillée — seulement une vue d'ensemble d'architecture
+> et d'avancement.
+>
+> **Restructuration du 06/09/2026** : ce fichier avait dérivé en journal
+> chronologique accumulé (7 828 lignes, préambule jusqu'à un §2.128 jamais
+> réellement atteint par les sections numérotées du corps, qui s'arrêtaient
+> à §2.100) — il dupliquait `JOURNAL_SESSIONS.md` au lieu de photographier
+> l'état courant. Réécrit intégralement à partir : d'une relecture complète
+> de l'ancien contenu, d'une vérification croisée avec le code réel
+> (structure `app/`/`lib/`/`components/`, migrations, `package.json`,
+> `next.config.ts`, `README.md`, exécution réelle de la suite de tests), et
+> de l'audit indépendant du 03/09/2026 (`audit/RAPPORT_FINAL.md`,
+> `audit/SCORECARD.md`). L'intégralité de l'ancien contenu est conservée
+> telle quelle dans `Cadrage/Suivi/archive/ETAT_ACTUEL_archive_jusquau_2026-09-06.md`.
+
+---
+
+## 1. Vue d'ensemble
+
+**Panier Ballon** est une application de pronostics et paris NBA à jouer
+entre amis : pronostics de matchs, remplissage de bracket de playoffs (+
+format "NBA Cup" à élimination directe), paris personnalisés en texte libre
+structurés et résolus automatiquement par IA, classement avec ligues
+privées, badges à paliers, chat temps réel, panneau d'administration
+complet, self-service RGPD (export/suppression de compte).
+
+Développée en quelques semaines par un développeur unique (débutant sur
+cette stack au démarrage du projet) assisté en continu par Claude, en
+dialogue permanent avec l'unique partie prenante produit. Le cœur technique
+(autorisation, modèle de données, moteur de scoring) est structurellement
+plus mature que ce que la taille et le rythme du projet laisseraient
+attendre — confirmé par un audit indépendant en lecture seule le
+03/09/2026. Contexte d'usage actuel : cercle fermé d'amis, phase alpha.
+
+---
+
+## 2. Stack technique et architecture
+
+```text
+Framework   : Next.js 16.2.12 (App Router, Turbopack, TypeScript). Cette
+              version a des ruptures par rapport aux conventions plus
+              anciennes — AGENTS.md impose de vérifier
+              node_modules/next/dist/docs/ avant toute brique de code
+              touchant une convention Next.js (ex. middleware.ts renommé
+              proxy.ts, cookies()/searchParams asynchrones, next/image qui
+              refuse d'optimiser un SVG sans dangerouslyAllowSVG).
+UI          : React 19.2.4. CSS Modules colocalisés par composant
+              (*.module.css), lisant exclusivement les tokens sémantiques de
+              app/tokens.css (aucune valeur en dur). Tailwind v4 présent au
+              projet mais cantonné aux écrans publics d'auth (login/signup/
+              reset-password), pas la convention pour le reste de l'appli.
+              Composants serveur par défaut ; un "use client" doit être
+              justifié (un simple fetch de données n'en est pas un).
+Backend     : Supabase (Postgres/Auth/RLS/Realtime). Trois clients cloisonnés
+              (lib/supabase/{browser,server,service}.ts) — anon côté
+              navigateur, anon+JWT cookies côté serveur, service_role
+              (contourne la RLS) réservé aux routes système et jamais
+              exposé au navigateur. Autorisation intégralement portée en
+              base : RLS sur 100% des 31 tables publiques + fonctions
+              SECURITY DEFINER pour les écritures qui doivent contourner une
+              policy précise (paris, corrections, suppression de compte) +
+              triggers d'invariants (empêchent l'auto-élévation de rôle,
+              les transitions de statut invalides, etc.).
+IA          : Anthropic (Claude) pour structurer un pari personnalisé en
+              texte libre en un schéma de données calculable (lib/ai/*) —
+              fonctionnalité différenciante du produit. Micro-service Python
+              séparé (Cloud Run) pour le calcul des probabilités
+              pré-match/live (voir §5).
+Services    : Highlightly (données NBA officielles, synchro calendrier/
+              scores), Web Push (VAPID) pour les notifications, Cloudflare
+              Turnstile (anti-bot sur signup/login).
+Écriture    : exclusivement via Server Actions (lib/actions/*) ; lecture via
+              des requêtes dédiées (lib/queries/*) — séparation stricte,
+              aucune Server Action ne sert à la fois lecture et écriture.
+Déploiement : Vercel (région Dublin — dub1), déploiement auto sur merge vers
+              `main`. Région du projet Supabase **non confirmée** (corrigé
+              07/09/2026 — ce document affirmait à tort "eu-west-1, alignée
+              sur Vercel" ; en réalité jamais vérifiée dans le dashboard,
+              cohérent avec Cadrage/Juridique/mentions_legales.md et
+              conseils_juridiques_deploiement_application.md qui la
+              signalent tous deux comme à confirmer). Migrations Supabase
+              séparées du déploiement applicatif, jamais automatiques (voir
+              audit/RUNBOOK_MIGRATIONS.md).
+```
+
+---
+
+## 3. Modèle de données
+
+69 migrations SQL versionnées (`supabase/migrations/`, nommage
+`<timestamp>_nom.sql`, décompte vérifié le 07/09/2026), appliquées via `npx supabase db push`. 31 tables
+publiques, RLS activée sur 100% d'entre elles (vérifié exhaustivement par
+l'audit du 03/09/2026). Domaines couverts :
+
+- **Identité/auth** : `users` (pont depuis `auth.users` via trigger SQL),
+  rôles PLAYER/ADMIN.
+- **Compétitions & structure de jeu** : `competitions` (type PLAYOFFS ou
+  NBA_CUP), `competition_secrets`, `competition_archives`,
+  `competition_superlatives`, `series`, `matches`, `teams`,
+  `entity_mappings` (résolution des identifiants Highlightly ↔ IDs internes).
+- **Pronostics & paris** : `match_predictions`, `brackets`,
+  `bracket_picks`, `bets` (paris personnalisés), `correction_requests`
+  (contestation d'un score déjà calculé, y compris après verrouillage).
+- **Classement & ligues** : vues `user_scores`/`user_recent_form`
+  (`security_invoker=false`, n'exposent que des agrégats — jamais une ligne
+  individuelle, la confidentialité par pari/pronostic reste portée par la
+  RLS des tables sources), `leagues`, `league_memberships`,
+  `league_secrets`, `leaderboard_snapshots`.
+- **Chat** : `chat_messages`, `chat_muted_channels`, `chat_message_reports`.
+- **Signalements & exploitation** : `bug_reports`, `sync_logs`,
+  `audit_logs`, `reminder_log`, `recap_log`, `rate_limit_events`,
+  `push_subscriptions`.
+- **Données statistiques NBA** (alimentées par le micro-service Python, voir
+  §5) : `stats_matchs`, `stats_equipes`, `stats_joueurs`,
+  `stats_box_scores`, `stats_box_scores_by_period`, `stats_block_events`.
+
+Patrons récurrents : les écritures les plus sensibles (création/résolution
+de pari, suppression de compte, corrections) passent par des fonctions
+`SECURITY DEFINER` qui revalident systématiquement propriété/`auth.uid()`
+elles-mêmes plutôt que de faire confiance à l'appelant ; les écrans de
+lecture consomment directement `getServerClient()` (jamais `service_role`).
+Point de vigilance déjà identifié (audit `DATA-001`) : plusieurs migrations
+correctives ont été nécessaires après l'ajout d'un nouveau statut/colonne
+sans revue systématique des objets dépendants — à garder en tête pour toute
+nouvelle valeur d'enum.
+
+---
+
+## 4. Fonctionnalités livrées
+
+### 4.1 Compte et authentification
+Supabase Auth (email + mot de passe), CAPTCHA Cloudflare Turnstile vérifié
+côté serveur sur signup/login, déclaration d'âge à l'inscription,
+confirmation du mot de passe côté client. Écrans `/login`, `/signup`,
+`/reset-password`, `/verify-email`, `/email-confirmed` (groupe
+`app/(public)`, non retouchés selon la convention design des écrans joueur —
+Tailwind brut).
+
+### 4.2 Pronostics de match, Bracket Playoffs, NBA Cup
+Écran **Matchs** (pronostic vainqueur + écart), écran **Bracket personnel**
+(remplissage, rendu uniquement en arbre visuel connecté — l'ancienne vue
+en cartes par tour a été retirée ; « Quitter » ramène à l'onglet Jouer, dont
+l'entrée Bracket porte une pastille du nombre d'actions en attente, même
+décompte que celui de l'onglet), vue **Bracket globale** de consultation (`/bracket`,
+distincte du remplissage, elle aussi uniquement en arbre plein écran : filtre
+par ligue, progression et compte à rebours dans l'en-tête ; « Quitter » mène
+à l'onglet Jouer, ou au Classement pour un visiteur). Deux formats de compétition : Playoffs NBA
+(best-of-7, score de série) et NBA Cup (élimination directe, barème dédié).
+Live : statut/score de série poussé en Realtime (publication
+`supabase_realtime` sur `matches`), bandeau LiveTicker épinglé au-dessus de
+la TabBar sur l'écran Jouer. Retour visuel des actions : spinner sur le
+bouton en attente, toast de confirmation (prono validé, brouillon
+enregistré, pari envoyé à validation, bracket validé…), éclat vert sur la
+carte du prono validé, coche « Enregistré » sur la carte de chaque pick du
+bracket (sans toast, un tap = un enregistrement). Popup « Prono validé » /
+« Pari validé » (coche, rappel de ce qui a été validé, bouton « OK ») à la
+validation d'un prono, sur « Tout valider », quand l'IA auto-valide un pari
+perso, et au chargement suivant quand un admin a validé un pari du joueur
+(dernière validation vue gardée en localStorage, rien en base). Onglet
+Résultats : sur chaque match terminé, un seul bouton « Pronos et paris des
+autres » ouvre une popup avec les pronos des autres (et le nombre
+d'absents) puis leurs paris, chacun avec son statut, ses points gagnés ou
+en jeu et sa proba calculée ; le pari du joueur affiche aussi les points en
+jeu (« 15 pts en jeu », « valait 15 pts » s'il est perdu). Le prono
+du joueur s'affiche en bandeau façon bandeau d'info télé (`PronoBug` :
+bloc sombre « Mon prono », coupe en biseau, bande « BOS +3 » à la couleur
+de l'équipe pronostiquée, sous-bandeau avec le détail et le total des
+points), sur les cartes verrouillées (onglet Résultats, qui contient tout match commencé) et
+sur un prono validé avant le coup d'envoi ; blocs sombres sur les deux thèmes (tokens
+`--color-broadcast-*`). Les couleurs d'équipe (`lib/labels/teamColors.ts`)
+ne servent qu'à ce bandeau et au bandeau Profil.
+
+### 4.3 Paris personnalisés structurés par IA
+Fonctionnalité différenciante du produit (~4000 lignes,
+`lib/ai/*` + `components/bets/*`). Un joueur rédige un pari en texte libre, sans choisir ni catégorie ni difficulté
+(l'IA calcule la difficulté depuis la probabilité, l'admin la fixe sinon ; popup « Pari validé : x % de chance pour x pts à gagner » ; à la résolution, la justification donne la vraie valeur du joueur) (ex. "Jokic fait un triple-double ET plus de 25 points") ; Claude le
+structure en un schéma typé et routé par famille (`lib/ai/structure*.ts` —
+MATCH_TOTAL, TEAM_STAT, PERIOD, ROSTER_SPLIT, ROSTER_COUNT, COMPARISON,
+COMBO, GAME_EVENT, TECHNICAL_FOULS_COUNT, LAST_BASKET, BLOCK_ON_PLAYER,
+SUPERLATIF, entre autres) ; la résolution automatique
+(`lib/ai/resolveCalculable*.ts`, une fonction dédiée par famille) calcule
+gagné/perdu une fois les données officielles disponibles, avec repli
+`is_calculable=false` (jamais bloquant) si la formulation ne peut pas être
+résolue automatiquement — un admin traite alors le pari à la main. Un
+pari (ou une condition de combo/duel) qui nomme un joueur absent du match
+(blessure, repos, DNP) est perdu dès que le box score du match est importé
+(`isBoxScoreSynced()`, `lib/ai/resolveBetsShared.ts`), règle affichée sur
+`/regles` ; en relation « OU », seul le côté du joueur absent échoue. Un
+pari sur un joueur qui ne joue pour aucune des deux équipes (jugement de
+l'IA, `not_in_match`) n'est plus auto-validé en silence : il repasse en
+brouillon et le joueur choisit « Corriger le pari » ou « Envoyer quand
+même » (`PlayerNotInMatchConfirm`, dans `InlineBetForm` et `BetForm`). Envoyé
+quand même, il est validé à 0 % puis résolu par
+`lib/ai/resolveNotInMatchBets.ts`, qui cherche le joueur par son nom sur la
+feuille du match : absent → perdu, présent → résolu sur ses vraies stats,
+nom de famille seul → laissé à l'admin. Même recherche pour un pari SÉRIE
+(sur chaque match terminé ; absent de toute une série terminée → perdu) et
+pour un pari période joueur ou superlatif resté sans id (trouvé → id
+renseigné, le resolver de la famille tranche ; absent → perdu). Chaque
+pari jugé calculable par l'IA est validé directement, sans geste admin ;
+l'admin garde un droit de correction après coup. Le pipeline de probabilités
+pré-match (utilisé pour informer/valider certains paris) s'appuie sur le
+micro-service Python (§5) avec repli `null`/non-calculable systématique en
+cas de panne (jamais d'exception qui casserait la soumission d'un pari —
+vérifié explicitement le 03/09/2026 sur les 18 fonctions `predict*()`).
+Depuis début septembre 2026, l'effectif réel des deux équipes est injecté
+dans le prompt de structuration (au lieu de compter sur la seule
+connaissance générale du modèle) pour réduire les erreurs de vérification de
+présence au roster.
+
+### 4.4 Classement, ligues, badges, superlatifs
+Classement global avec tri par en-têtes cliquables, tendance de rang, top 3
+mis en avant, indication au-dessus du tableau (toucher une ligne pour le
+détail ; en portrait, tourner le téléphone pour toutes les colonnes). Ligues privées (création, code d'invitation, appartenance).
+Badges permanents à paliers (Bronze/Argent/Or/Platine/Diamant), catalogue de
+base complet sur trois familles (pronostics de match, bracket personnel,
+paris perso) + badges de volume/participation ; jusqu'à 3 badges épinglables
+dans le bandeau de profil. Chaque badge s'affiche en écusson biseauté au métal
+du palier (`components/badges/BadgeEmblem.tsx`), icônes calées sur
+`Cadrage/DA/BADGES.pdf` et centres sur-mesure (« 0.0 » du buzzer, « 0:03 »,
+« 4-2 », record de Métronome/Fidèle). Popup « nouveau badge / nouveau palier »
+à l'ouverture de l'app (`NewBadgesWatcher`) et juste après un geste qui peut
+en débloquer un (prono ou pari envoyé, bracket validé, ligue rejointe ou
+créée : `requestBadgeCheck()`, `lib/badges/checkRequest.ts`), en attendant la
+fermeture de la popup « Pari validé » le cas échéant : badges déjà montrés
+retenus par appareil et par compte (localStorage `badges-seen:<userId>`),
+tout l'existant défile au premier passage sur un appareil. Superlatifs de fin de compétition (Nostradamus,
+Sniper, Meilleur bracket, Meilleur 1ᵉʳ tour, Plus grosse remontée),
+calculés une fois à la clôture d'une compétition.
+
+### 4.5 Chat
+Canal général + un canal par ligue, liste de canaux avec notifications par
+canal (mute possible), signalement d'un message (`chat_message_reports`,
+distinct du panneau `/admin/bug-reports`). Messages non lus (p3-7) : nombre
+sur l'onglet Chat et sur chaque canal de la liste. Le serveur fournit la date
+des messages des autres joueurs des 14 derniers jours
+(`getRecentChatActivity()`, lu avec les pastilles de la TabBar) ; l'état
+« lu » reste sur l'appareil (`lib/nav/chatSeen.ts`, clé localStorage
+`chat-seen-at`, dernier message vu par canal, posé à l'ouverture d'une
+conversation). Pas de mise à jour en direct de la pastille hors du chat :
+recalculée au rechargement ou après une action serveur, comme les autres.
+
+### 4.6 Notifications et rappels
+Web Push (VAPID) pour les rappels ciblés (deadlines de pronostic/bracket
+proches), notifications de chat par canal. Rappels automatisés côté serveur
+via workflows GitHub Actions programmés (`reminder-bracket.yml`,
+`reminder-matches.yml`). Tous les push partent en urgence `high` avec un TTL
+calé sur l'échéance du rappel (`lib/push/send.ts`). Activation proposée
+en haut de l'Accueil par une carte dédiée (`components/home/PushPrompt.tsx`)
+tant que l'appareil n'est pas abonné : activation du compte, activation de
+CET appareil quand le compte est déjà en push (changement de téléphone),
+ou consigne d'ajout à l'écran d'accueil sur iPhone/iPad ouvert dans
+Safari (seul contexte où Apple autorise le push web). « Plus tard » la
+masque 7 jours sur l'appareil (localStorage). Le réglage complet reste
+dans le Profil.
+
+**Récaps du matin** (`lib/recaps/`) : bloc « Ta nuit » (et « Ta semaine »
+du lundi 10h au mardi 10h) en tête de la carte « Ça vient de tomber » de
+l'Accueil : points gagnés et détail (bons vainqueurs, écarts exacts, paris),
+rang et évolution, joueurs dépassés ; meilleure nuit et plus gros pari
+réussi ; en hebdo classement de la semaine (top 3 + ta place), plus grosse
+remontée, sniper, pari de la semaine et « plus loufoque perdu » ; scores de
+la nuit avec lien de débrief TrashTalk (article rapproché par surnom
+d'équipe depuis le flux RSS public, repli sur la page d'accueil du site).
+Points gagnés = total actuel moins le dernier snapshot quotidien du
+classement avant la fenêtre (`scored_at` n'est pas fiable, le moteur de
+barème le réécrit à chaque recalcul). Push à 10h Paris (cron Vercel de `vercel.json`, 8h, 9h et
+10h UTC, authentifié par `CRON_SECRET` ; la même route fige d'abord le
+snapshot quotidien du classement, `lib/snapshots/leaderboardSnapshot.ts` :
+une ligne par joueur et par jour Paris, jamais réécrite, avec départage
+persisté — PR #155, migration `20261011090000` appliquée ; `recaps.yml` reste en secours mais GitHub
+le lance avec 4 à 7 h de retard ; la route ne fait rien avant 10h, refuse
+plus de 3 h après, et `recap_log` dédoublonne les deux passages),
+journalier ou hebdo le lundi, jamais vide, ouvre `/home#recap` (carte
+dépliée d'office). Interrupteur « Récap du matin » dans le Profil
+(`users.recap_enabled`, activé par défaut). En compétition « Match du
+jour » (DAILY_MATCH), le même push annonce le prochain match non pronostiqué
+des 24 h (titre « Match du jour », lien `/play`) ; rien n'est
+envoyé avant 10h, même forcé. Publication en fenêtre glissante de 7 jours (07/10/2026) :
+le match du jour NY D sort à 10h Paris le D-6, jamais avant le 19/10 (les
+jours 20 à 25/10 sortent ensemble le 19/10) ; voir `lib/dates/paris.ts::dailyPublishAt`. Tout est gratuit ; l'accès
+passe par `canReceiveRecap()` (`lib/recaps/access.ts`), seul point à
+brancher à la bascule payante.
+
+**Classement hebdomadaire** (pause avant la vraie Cup, lots 0 à 4 mergés ;
+migration `20261012090000` appliquée) :
+interrupteur `competitions.weekly_ranking` par compétition (réglable en admin,
+case à la création). Semaine lundi 10 h → lundi 10 h (Paris) ; points de la
+semaine = snapshot de fin − snapshot de début (`lib/weekly/standings.ts`, pur),
+départage bons vainqueurs puis écarts exacts, co-champions possibles, aucun
+champion si le meilleur total est <= 0. `runWeeklyFreeze` (`lib/weekly/
+freezeWeek.ts`) tourne dans `/api/recaps` après le snapshot quotidien, ou par
+le bouton « Figer la semaine » de `/admin/competitions` ; idempotent (RPC
+`freeze_weekly_ranking`), en-tête `weekly_rankings` + palmarès
+`weekly_champions` (UPDATE interdit par trigger, lecture publique). Une semaine
+dont le snapshot du lundi manque est rattrapée avec le premier snapshot
+suivant ; la première semaine d'une compétition n'est pas figée. Quand
+`weekly_ranking` est actif, le lundi reçoit le récap journalier et le hebdo
+est manuel (lot 3, PR #158 + #159 : bouton « Envoyer le récap hebdo » et « M'envoyer un essai » (un seul destinataire, rien de réservé, testé OK le 11/10) à côté de
+« Figer la semaine », `lib/weekly/sendWeeklyRecap.ts` ; push du champion figé de
+la dernière semaine close, réservation par joueur dans `recap_log` avant
+envoi donc relance sans doublon, lien `/leaderboard?vue=semaine` ; la carte
+« Ta semaine » de l'Accueil est masquée quand le classement hebdo est actif).
+**Vue Semaine du Classement** (lot 2, aucune
+migration) : quand
+`competitions.weekly_ranking` est actif, `/leaderboard` a deux onglets Semaine
+(par défaut) / Général (`?vue=semaine|general` ; un ancien lien `?tri=`/`?ordre=`
+ouvre Général). Semaine = `user_scores` moins le snapshot de début
+(`lib/queries/weeklyLeaderboard.ts`, `lib/weekly/currentWeek.ts`), ordre fixe
+(points, bons vainqueurs, écarts exacts, puis pseudo), sans tri ni tendance,
+filtre ligue conservé (rangs recalculés), bandeau « Champion(s) de la semaine
+dernière » (semaine figée qui se termine au lundi courant, masqué en ligue),
+compte à rebours jusqu'au lundi 10 h. Départ : fin du figement précédent, sinon
+premier snapshot >= lundi (mention « Compteurs partis du … » si en retard) ;
+aucun snapshot du tout = départ à 0 ; snapshots anciens seulement = « semaine
+vient de commencer » (jamais de repli sur la semaine d'avant) ; erreur de
+lecture = « indisponible ». Flag lu à part et tolérant (colonne absente = vue
+Générale d'avant, URLs inchangées). L'Accueil n'est pas modifié.
+**Palmarès hebdo** (lot 4, aucune migration) : section « Palmarès hebdo » dans l'onglet Stats du profil propre
+(carte repliable, avant Badges, avec « Aucune semaine gagnée » ou « indisponible »
+selon le cas) et sur `/players/[userId]` (masquée sans victoire). Toutes
+compétitions confondues, archivées comprises : total de semaines gagnées puis
+une ligne par semaine (date de fin, compétition, points, mention « Co-champion »
+si plusieurs lignes partagent compétition et semaine). Lecture
+`lib/queries/weeklyPalmares.ts` (client RLS, ne lève jamais), calcul pur
+`lib/weekly/palmares.ts`, composant `components/profile/WeeklyPalmares.tsx`. Ce
+n'est pas un badge. La mention co-champion est recalculée en direct : elle
+disparaît si le co-champion supprime son compte.
+**Popup hebdo générée par LLM** (lot 5, PR 1 à 3 faites ; aucune fonctionnalité
+visible : ni écran admin, ni popup joueur, PR 4 et 5 à faire) : interrupteur
+`competitions.weekly_popup` (faux par défaut, donc rien ne tourne en
+production). Quand il est actif avec `weekly_ranking`, `/api/recaps` assure à
+CHAQUE passage du cron (8h, 9h, 10h UTC), une fois la semaine figée, une ligne
+`weekly_popups` : réservation synchrone, puis génération dans `after()` après
+les récaps (`lib/weeklyPopup/ensure.ts`, `generate.ts` ; `maxDuration` 300 s sur
+la route et sur `/admin/competitions`, dont le bouton « Figer la semaine »
+assure aussi le brouillon). Pipeline : présélection par le code (top 5, flop 8,
+refusé 5, 2 par joueur et par bloc), classifieur (lot, puis un appel par
+candidat si le lot est refusé), rédacteur (prompt v5), contrôles du code
+(mentions en jetons `{{u:uuid}}`, mots, argent, ensemble fermé) ; semaine
+pauvre = texte de repli sans rédacteur. Le résultat est un brouillon
+(READY ou DOUBTFUL avec motif), jamais publié tout seul ; alerte push aux
+admins seulement au passage du cron. Plafond de dépense popup 1 $/jour, fermé
+si la lecture échoue. Aucun appel LLM réel n'a été fait avec ce code.
+
+### 4.7 Panneau d'administration
+Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des
+pronostics/paris, résolution des paris non calculables automatiquement,
+requêtes de correction, gestion des joueurs, gestion des compétitions
+(création, résultats, clôture/archivage), vue "qui manque à l'appel",
+historique des logs, file des signalements de bug (`/admin/bug-reports`),
+file des signalements de messages de chat (`/admin/chat-reports`). Les
+paris à résoudre qui visent un joueur jamais identifié
+(`structured_player_id` vide) portent un badge « Joueur non identifié » dans
+la file de résolution, et le tableau de bord affiche une alerte quand il y en
+a.
+
+### 4.8 RGPD — self-service compte
+Suppression de compte en self-service (`lib/actions/account.ts`,
+`deleteAccountFormAction`) rendue **atomique/rejouable** début septembre
+2026 (corrige l'ancien risque d'état partiellement supprimé en cas
+d'interruption) — refuse un rôle ADMIN ou une ligue créée avec d'autres
+membres actifs, confirmation par saisie du pseudo exact. Export de données
+en self-service (`app/api/account/export/route.ts`, JSON téléchargeable :
+profil, paris, messages de chat, signalements, appartenances de ligue).
+
+### 4.9 Signalements
+Bouton "Signaler" flottant sur tout l'espace joueur connecté (texte libre,
+contexte capturé automatiquement) — capture ce qui se perdrait sinon en DM
+pendant l'alpha/bêta, distinct de `correction_requests` (qui conteste un
+score déjà calculé).
+
+### 4.10 SEO et page d'accueil publique (branche `feat/seo-socle`, 05/10/2026)
+`/` est une page publique (`app/(public)/page.tsx`, sans requête Supabase) ;
+un connecté qui l'ouvre est renvoyé vers `/home` par `proxy.ts`. Métadonnées
+centralisées dans `lib/seo.ts` (`pageMetadata()` : titre via le template du
+layout, canonique, Open Graph/Twitter ; `noindex` sur reset-password,
+verify-email, email-confirmed, `/players` et profils). `app/robots.ts` et
+`app/sitemap.ts` (9 pages). Le mot « paris » est voulu (référencement) dans les métadonnées et sur
+la page `/` (test `lib/seo.test.ts`) ; il reste dans l'UI interne et le corps
+de `/regles` et `/confidentialite`. Image d'aperçu : `public/og-image.png` (1200×630, carte Twitter `summary_large_image`), aperçu de lien vérifié en prod. Dans tout message/légende, écrire `https://panierballon.fr` avec le schéma (un domaine nu ne produit pas de carte d'aperçu).
+
+---
+
+## 5. Micro-service Python de calcul de probabilités
+
+`Cadrage/Stats/service/` (déployé sur Cloud Run, région europe-west1),
+appelé par `lib/ai/statsService.ts`. Modèles entraînés (scripts dans
+`Cadrage/Stats/scripts/`) sur l'historique NBA local (télécharge/backfill
+play-by-play et box-scores, y compris par période) pour prédire des
+probabilités pré-match sur de nombreuses familles de stats (équipe et
+joueur, y compris par période/quart-temps). Protégé par un secret partagé
+(`STATS_SERVICE_SECRET`, header `Authorization: Bearer`) sur toutes les
+routes `/predict*` — seule `/health` reste ouverte. Comportement de panne
+vérifié robuste de bout en bout (repli `null`/non-calculable systématique,
+jamais d'exception propagée). Les modèles (61 joblib, 920 Mo) sont relus du
+disque à chaque appel, sans cache, 2 à 3 fois par requête (vérification de
+cohérence) ; le service Cloud Run tourne à 2 Gi depuis le 09/10/2026 avec un cache
+LRU borné en octets (PR #154, déployé le 09/10 : `service/model_cache.py`,
+`GET /cache-stats`, `MODEL_CACHE_MAX_BYTES`=1,1 Go, 0 = désactivé). Les probas
+d'un même appel répété ne sont pas stables (3 valeurs sur 20 appels, avec ou
+sans cache), voir `GAPS_OUVERTS.md`. Alimente aussi une partie des tables
+`stats_*` de Supabase via des scripts de backfill/synchro quotidienne
+(`refresh_daily.py`, workflow `refresh-stats-supabase.yml`).
+Depuis la PR #134 (07/10/2026) : chaque exécution de `refresh_daily.py` écrit
+une ligne `sync_logs` (`sync_type='STATS_IMPORT'`, nécessite la migration
+`20261008090000`), et les lancements manuels du workflow passent en mode
+`--strict` (retries complets, job rouge si l'import est incomplet). Limite
+connue : stats.nba.com expire depuis les runners GitHub ET depuis Cloud Run
+(import réussi en local le 07/10, et en 0,2 s depuis Cloud Shell). Highlightly
+(testé) ne remplace pas nba_api : box score match entier seulement, play-by-play
+sans id joueur. Seule une VM Compute Engine (e2-micro, us-central1) a répondu
+(5,1 s). VM `nba-refresh` EN SERVICE depuis le 07/10/2026 (PR #137 + création
+par l'utilisateur ; premier test `[vm-manuel]` OK : `resolve-bets` HTTP 200).
+Code (PR 1, #137) : `refresh_job.py`
+(import strict puis `/api/resolve-bets`), `Cadrage/Stats/vm/` (timer à 12h et
+16h Paris, runbook `DEPLOIEMENT_VM.md`), tests pytest et job CI
+`python-import`. Un match n'est enregistré que complet (box score,
+play-by-play, 4 quarts-temps), sinon réessayé au passage suivant. PR 2
+(branche `feat/stats-vm-trigger-watchdog`) : workflow « Import des box scores
+— lancer sur la VM » (`run-stats-import-vm.yml`, bouton Run workflow, SSH via
+IAP avec un compte de service dédié `github-vm-trigger` et un wrapper root
+`nba-refresh-trigger` limité à `manuel|presaison`), watchdog
+(`watchdog-stats-import.yml`, toutes les 4 h : issue `cron-failure` +
+`stats-import` si dernier `STATS_IMPORT` en échec, absent ou > 26 h, fermée
+automatiquement au retour au vert), cron retiré de `refresh-stats-supabase.yml`
+(désormais plan B manuel), versions Python épinglées. Mise en place du
+déclencheur : `DEPLOIEMENT_VM.md` étape 7 (actions de l'utilisateur après
+merge). Voir `GAPS_OUVERTS.md`.
+**Poller des résultats NBA** (VM, `poll_results.py`, unité `nba-results-poll`, ScoreboardV3 via `nba_api` vers `/api/sync/results-nba`, 2 min la nuit et 15 min le jour) : déployé en dryRun (`RESULTS_POLL_DRYRUN=1`) depuis le 08/10/2026, passage en réel après 2 soirs d'observation. Sur un match suivi par lui (mapping `NBA_LIVE`), Highlightly n'avance que le statut (`highlightlyMayWrite`, `lib/sync/results.ts`). Repli : un fetch NBA en échec appelle `/api/sync/results` depuis la VM (1 fois par heure max). Code de sortie 75 = panne passagère (unité non `failed`). Watchdog `watchdog-results-poll.yml` (R1 muet, R2 match non terminé 5 h après le coup d'envoi, R3 échecs en boucle) : à activer après le passage en réel.
+
+---
+
+## 6. Sécurité — état actuel
+
+Un audit de sécurité dédié (29/08/2026, `security-audit-report.md`,
+commité) a identifié 15 findings (1 critique/1 élevé/6 moyen/6 faible/1
+info) ; 11 des 13 findings pertinents étaient déjà corrigés et
+**revérifiés indépendamment** par l'audit global du 03/09/2026. Aucune
+vulnérabilité de gravité P0/P1/P2 n'était ouverte à cette date. Mesures en
+place : rotation complète de la clé `service_role` précédemment fuitée
+(migration vers les clés Supabase `sb_publishable_`/`sb_secret_`, anciennes
+clés legacy désactivées), secret d'authentification sur le micro-service
+Cloud Run, headers de sécurité HTTP complets (`next.config.ts` — CSP,
+X-Frame-Options, etc.), CAPTCHA Turnstile vérifié serveur, comparaison
+timing-safe sur `SYNC_SECRET`, helper d'erreur générique évitant de
+renvoyer un message d'erreur brut au client sur la plupart des écritures,
+limites de taille sur les champs texte libre (bio/pari/justification/
+signalement), rate limiting applicatif de base sur chat/paris/signalements
+(ajouté début septembre 2026), tests d'intégration automatisés sur la RLS
+(propriété des paris et du bracket).
+
+Point restant, assumé et documenté (pas un bug) : les cookies de session ne
+sont pas `HttpOnly`, compensé par la CSP en filet. Configuration réelle du
+dashboard Supabase de production (rate-limiting natif, CAPTCHA serveur au
+niveau Auth, Leaked Password Protection) non vérifiable depuis le dépôt de
+code — à confirmer manuellement si besoin.
+
+---
+
+## 7. Qualité, tests, CI/CD
+
+- **Tests unitaires** (`npm test`, Vitest) : 307 tests sur 30 fichiers,
+  tous verts au 04/10/2026. Couvrent la logique métier la plus critique —
+  moteur de scoring pur, résolution automatique des paris IA (une fonction
+  de test dédiée par famille de pari), deadline de pari (désormais
+  factorisée en un seul module, `lib/scoring/bet-deadline.ts`).
+- **Tests d'intégration** (`npm run test:integration`, nécessite
+  `npx supabase start`) : scénarios RLS/permissions (propriété des paris et
+  du bracket).
+- **Tests e2e** (`npm run test:e2e`, Playwright, `e2e/`) : 3 parcours
+  critiques (focus-trap clavier sur les dialogues, connexion → pronostic →
+  déconnexion, statut d'un pari personnalisé). Environnement dédié (port
+  3100, Supabase local, comptes/données de test créés puis nettoyés
+  automatiquement).
+- `tsc --noEmit` et `eslint .` propres à 100% sur le code applicatif.
+- **CI** (`.github/workflows/ci.yml`) bloquante : lint/typecheck/test/build,
+  `npm audit` intégré. Autres workflows programmés : `heartbeat.yml`
+  (anti-pause), `sync-teams.yml`/`sync-schedule.yml`/`sync-results.yml`
+  (synchro NBA via Highlightly), `reminder-bracket.yml`/
+  `reminder-matches.yml`, `recaps.yml`, `snapshot-leaderboard.yml`,
+  `refresh-stats-supabase.yml`, `daily-match-draw.yml` (tirage automatique
+  du Match du jour, 5h et 7h UTC, route `/api/daily-match/draw`, commence le
+  16/10/2026 et tire 9 jours à partir d'aujourd'hui ; `workflow_dispatch` pour un lot manuel et un push limité au
+  compte `OWNER_USER_ID`, variable créée en Production le 06/10/2026 ;
+  tirage et push propriétaire testés avec succès le 06/10/2026). Limite
+  connue : `sync-results.yml` (30 min) est espacé de plusieurs heures par
+  GitHub, voir `GAPS_OUVERTS.md` (poller de résultats NBA sur la VM en cours de
+  déploiement, dryRun, 08/10/2026).
+- Limite connue et assumée : aucun test de composant React, et la
+  génération de schéma IA elle-même (appels réels à Claude) reste testée à
+  la main plutôt qu'automatisée — seule la résolution déterministe en aval
+  est couverte par des tests.
+
+---
+
+## 8. Déploiement et exploitation
+
+Déployé sur Vercel (`https://nba-pronos.vercel.app`, domaine
+`panierballon.fr` acheté et pointé), région `dub1` (Dublin, alignée sur
+Supabase `eu-west-1`), déploiement automatique sur merge vers `main`.
+Migrations Supabase poussées séparément (`npx supabase db push`), jamais
+par le pipeline de déploiement — une checklist de séquencement
+code/migration existe (`audit/RUNBOOK_MIGRATIONS.md`) pour éviter qu'un
+déploiement suppose un schéma pas encore migré. Route de santé `/api/health`
+disponible pour un monitoring externe. Route `/api/heartbeat` + workflow
+associé pour éviter l'auto-désactivation de GitHub Actions après 60 jours
+sans activité. `README.md` documente prérequis/installation/tests/
+déploiement de bout en bout pour un nouveau contributeur ; `.env.example`
+liste toutes les variables d'environnement nécessaires avec leur usage.
+
+Workflow Git du projet : toujours une branche + PR (jamais de commit direct
+sur `main`), CI verte requise, merge final toujours un geste humain
+explicite de l'utilisateur.
+
+---
+
+## 9. État des compétitions
+
+Aucune compétition active au 04/10/2026. L'**Alpha NBA Cup** (cercle
+d'amis, quarts → finale à partir de vrais matchs NBA déjà joués, effectifs
+générés `NBA_CUP_ALPHA_EFFECTIFS.md`) s'est jouée du 20 au 23/09/2026 et a
+été clôturée le 04/10/2026, après que les 4 paris restés `VALIDATED` ont
+été tranchés à la main en admin (classement final : Leopoldinho 110,
+Rillettes-31 109, Nico 36, Rillettes-49 25). Son automatisation propre
+(révélation des matchs fictifs, création du tour suivant, cron 30 min) a
+été retirée le même jour ; les scripts manuels `scripts/nba-cup-*.mjs`
+restent dans le repo. Pause intentionnelle jusqu'à la vraie NBA Cup
+(~décembre), qui passera par la synchro Highlightly normale. Retours de
+l'alpha : `RETOURS_ALPHA_NBA_CUP.md`, Phase 3 de la feuille de route.
+
+---
+
+## 10. Conventions de travail actuelles
+
+- L'utilisateur committe/merge lui-même via des PR (branche dédiée par
+  chantier, CI verte requise, clic "Merge" toujours humain) — Claude ne
+  committe/pousse jamais directement sur `main`.
+- Toute migration SQL passe par `supabase/migrations/` + `npx supabase db
+  push`, jamais par un copier-coller manuel dans l'éditeur SQL Supabase ;
+  contenu montré intégralement avant application.
+- Toute validation serveur recalcule ses propres garde-fous depuis la base
+  — jamais de confiance dans ce qu'affiche le client.
+- Écrans joueur : aucune valeur visuelle en dur, uniquement les tokens de
+  `app/tokens.css` via CSS Modules colocalisés ; composants serveur par
+  défaut, "use client" justifié explicitement.
+- Avant d'écrire du code touchant une convention Next.js, vérifier
+  `node_modules/next/dist/docs/` (rappelé par `AGENTS.md`).
+- Noms de colonnes/valeurs de statut absents d'une spec produit : lire le
+  schéma réel avant d'écrire une requête, jamais deviner.
+- En cas d'ambiguïté réelle (spec contradictoire, périmètre qui déborde
+  d'un écran), s'arrêter et demander plutôt que choisir en silence.
+- Un jeu de données de test réel (pas seulement `tsc`/`eslint`/`next
+  build`) fait partie de la vérification avant de considérer un chantier
+  fermé, quand c'est praticable.
+- Secrets/clés API : jamais collés en clair dans la conversation.
+- Les fichiers de suivi (`ETAT_ACTUEL.md`, `JOURNAL_SESSIONS.md`,
+  `GAPS_OUVERTS.md`) sont mis à jour à la fin de chaque chantier notable —
+  `ETAT_ACTUEL.md` spécifiquement réécrit en entier, jamais accumulé (voir
+  l'en-tête de ce fichier).
+
+---
+
+## 11. Points ouverts connus
+
+Suivi vivant dans `Cadrage/Suivi/GAPS_OUVERTS.md` (points fonctionnels/
+produit) et `audit/PLAN_ACTION.md` (plan d'action issu de l'audit du
+03/09/2026, organisé en 4 vagues). Au 06/09/2026, la quasi-totalité des
+actions des vagues 1 à 4 de `PLAN_ACTION.md` sont traitées (suppression de
+compte atomique, rate limiting, tests d'intégration RLS, injection du
+roster réel dans le pipeline IA, factorisation de la deadline de pari,
+route de santé + checklist de migration, suite e2e, README réel, barèmes
+factorisés, `npm audit` en CI, focus-trap clavier sur les dialogues,
+`eslint-plugin-jsx-a11y`, mesure des Web Vitals). Reste ouvert
+explicitement :
+
+- **D2 — responsive desktop** (`UX-002`) : décidé le 06/09/2026 — un visuel
+  distinct PC/téléphone viendra à terme (l'app n'est pas mobile-only par
+  choix définitif), mais rien n'est planifié ni codé pour l'instant. Le
+  Bracket a déjà son arbre visuel connecté (§4.2) ; l'effort restant
+  concernerait plutôt le Classement/l'Accueil (toujours 0 breakpoint
+  Tailwind hors auth).
+- Base légale précise pour les 15-17 ans (RGPD, `GAPS_OUVERTS.md` §8.5) —
+  hors de portée d'un codage, nécessite un avis juridique.
+- Décision de persistance de l'usage du pipeline IA (TTL cache /
+  classify-then-structure) reportée faute de trafic réel — à revisiter au
+  démarrage de la vraie NBA Cup.
+
+---
+
+## 12. Carte rapide des dossiers
+
+```text
+app/
+  (public)/   — login, signup, reset-password, verify-email, email-confirmed.
+  (app)/      — espace joueur connecté : home, play (hub Jouer), chat, profile.
+  (admin)/    — panneau d'administration complet (voir §4.7).
+  api/        — routes système : sync/*, reminders/*, recaps, snapshots/*, heartbeat,
+                health, resolve-bets, account/export.
+  bracket/, leaderboard/, players/, regles/ — vues de consultation partagées
+    visiteur/connecté (nav choisie par ScreenShell.tsx, hors du groupe (app)).
+  cgu/, confidentialite/, mentions-legales/ — pages légales.
+
+lib/
+  actions/    — Server Actions (écriture), une famille par domaine.
+  queries/    — lecture dédiée par écran/domaine.
+  ai/         — structuration + résolution des paris personnalisés IA.
+  scoring/    — moteur pur (engine.ts) + orchestration (recompute.ts) +
+                avancement de bracket + superlatifs.
+  sync/       — intégration Highlightly (calendrier, scores, équipes).
+  auth/, badges/, dates/, hooks/, labels/, nba/, push/, recaps/,
+  reminders/, snapshots/, supabase/ — modules dédiés par domaine.
+
+components/   — un dossier par domaine d'écran (admin, auth, bets, bracket,
+  bracket-fill, chat, feedback, home, leaderboard, my-bets, nav, play,
+  profile, regles) ; ui/ — primitives partagées transversalement
+  (ModalDialog.tsx, FocusTrap.tsx, Backdrop.tsx — fond de popup qui ferme
+  au toucher, utilisé par toutes les popups de l'app ; Toast.tsx — toast de
+  confirmation des actions réussies, monté par la coquille de la zone
+  joueur ; ValidatedDialog.tsx — popup « Pari validé », montée au même
+  endroit ; SuccessFlash.module.css + lib/hooks/useSuccessFlash.ts — éclat
+  vert de validation sur la carte concernée, etc.).
+
+supabase/migrations/ — 69 migrations SQL versionnées, voir §3.
+
+Cadrage/
+  Fonctionnel/, V1/ — specs produit/techniques.
+  Suivi/            — ce fichier, JOURNAL_SESSIONS.md, GAPS_OUVERTS.md,
+                       archive/ (contenu pré-restructuration).
+  Stats/            — micro-service Python + scripts d'entraînement (§5).
+  DA/               — gitignored, visuels/identité graphique.
+
+audit/        — audit indépendant du 03/09/2026 (rapport, scorecard, plan
+  d'action, anomalies détaillées par axe) — voir §11.
+
+e2e/          — suite Playwright (§7).
+```
