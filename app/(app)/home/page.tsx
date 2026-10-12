@@ -11,6 +11,17 @@ import { PushPrompt } from "@/components/home/PushPrompt";
 import { WipDisclaimer } from "@/components/ui/WipDisclaimer";
 import styles from "./page.module.css";
 
+// Message d'attente avant la saison : affiché tant qu'aucun pari n'est ouvert.
+function SeasonNotice() {
+  return (
+    <div className={`${styles.header} glass-card`}>
+      <p className={styles.title}>
+        Les premiers matchs apparaîtront quelques jours avant le début de la saison
+      </p>
+    </div>
+  );
+}
+
 // Écran Accueil (SPEC_ECRAN_ACCUEIL) : compose en-tête + « Reste à faire »
 // (+ bloc admin, renommé « À traiter (admin) » sans lien avec le nom joueur)
 // + « Paris disponibles » (accordéon Séries/Matchs, 15/08/2026 — remplace
@@ -30,6 +41,7 @@ export default async function HomePage() {
         </div>
         <PushPrompt preference={notificationPreference} />
         <WipDisclaimer />
+        <SeasonNotice />
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
     );
@@ -44,6 +56,8 @@ export default async function HomePage() {
       <PushPrompt preference={notificationPreference} />
 
       <WipDisclaimer />
+
+      {seriesBets.length === 0 && matchBets.length === 0 && <SeasonNotice />}
 
       <section className={`${styles.section} glass-card`} aria-label="Reste à faire">
         <CollapsibleCard id="todo" title="Reste à faire" count={todo.length}>
