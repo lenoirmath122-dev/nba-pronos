@@ -32,6 +32,12 @@ export default async function AdminDashboardPage() {
       href: "/admin/requests",
     },
     {
+      key: "pseudo",
+      count: data.pendingPseudoCount,
+      label: (n: number) => (n > 1 ? "changements de pseudo à valider" : "changement de pseudo à valider"),
+      href: "/admin/pseudo",
+    },
+    {
       key: "popup",
       count: data.weeklyPopupPendingCount,
       label: (n: number) => (n > 1 ? "popups hebdo à relire" : "popup hebdo à relire"),

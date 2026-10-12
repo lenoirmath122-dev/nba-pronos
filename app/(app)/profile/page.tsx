@@ -12,6 +12,9 @@ import { getServerClient } from "@/lib/supabase/server";
 import { updateThemePreference, updateBackgroundTheme, updateProfile } from "@/lib/actions/profile";
 import { createLeagueFormAction, joinLeagueFormAction, leaveLeagueFormAction } from "@/lib/actions/leagues";
 import { deleteAccountFormAction } from "@/lib/actions/account";
+import { requestPseudoChangeFormAction } from "@/lib/actions/pseudo";
+import { getMyLatestPseudoRequest } from "@/lib/queries/pseudo-requests";
+import { PSEUDO_COOLDOWN_DAYS, PSEUDO_MAX_LENGTH, PSEUDO_MIN_LENGTH } from "@/lib/pseudo/rules";
 import { logout } from "@/lib/auth/actions";
 import { TeamPicker } from "@/components/profile/TeamPicker";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
@@ -60,6 +63,8 @@ function formatArchivedDate(iso: string): string {
 type SearchParams = {
   tab?: string;
   profileError?: string;
+  pseudoError?: string;
+  pseudoSent?: string;
   leagueError?: string;
   leagueJoined?: string;
   newLeagueName?: string;
@@ -88,6 +93,7 @@ export default async function ProfilePage({
   const activeTab = parseTab(sp.tab, profile.isAdmin);
 
   const teams = activeTab === "compte" ? await getTeamOptions() : [];
+  const pseudoRequest = activeTab === "compte" ? await getMyLatestPseudoRequest(profile.userId) : null;
   const leagues = activeTab === "ligues" ? await getMyLeagues() : [];
   const history = activeTab === "historique" ? await getCompetitionHistory() : [];
   const stats = activeTab === "stats" ? await getProfileStats(sp.ligue) : null;
@@ -163,6 +169,58 @@ export default async function ProfilePage({
               {sp.profileError}
             </p>
           )}
+
+          <section className={`${styles.section} glass-card`}>
+            <h2 className={styles.sectionTitle}>Pseudo</h2>
+            {sp.pseudoError && (
+              <p className={styles.error} role="alert">
+                {sp.pseudoError}
+              </p>
+            )}
+            {sp.pseudoSent && (
+              <p className={styles.success} role="status">
+                Demande envoyée. Un admin la valide, ton pseudo actuel est conservé en attendant.
+              </p>
+            )}
+
+            {pseudoRequest?.status === "PENDING" ? (
+              <p className={styles.hint}>
+                Demande en attente : « {pseudoRequest.requestedPseudo} ». Tu seras prévenu dès qu&apos;un admin l&apos;aura
+                traitée.
+              </p>
+            ) : (
+              <>
+                {pseudoRequest?.status === "REJECTED" && (
+                  <p className={styles.hint}>
+                    Ta dernière demande (« {pseudoRequest.requestedPseudo} ») a été refusée
+                    {pseudoRequest.rejectReason ? ` : ${pseudoRequest.rejectReason}` : "."}
+                  </p>
+                )}
+                <form action={requestPseudoChangeFormAction} className={styles.preferencesForm}>
+                  <label className={styles.field}>
+                    <span className={styles.fieldLabel}>Nouveau pseudo</span>
+                    <input
+                      type="text"
+                      name="pseudo"
+                      required
+                      minLength={PSEUDO_MIN_LENGTH}
+                      maxLength={PSEUDO_MAX_LENGTH}
+                      autoComplete="off"
+                      placeholder={profile.pseudo}
+                      className={styles.textInput}
+                    />
+                  </label>
+                  <p className={styles.hint}>
+                    {PSEUDO_MIN_LENGTH} à {PSEUDO_MAX_LENGTH} caractères. Un admin valide chaque changement, et tu ne peux
+                    en demander qu&apos;un tous les {PSEUDO_COOLDOWN_DAYS} jours.
+                  </p>
+                  <button type="submit" className={styles.primaryButton}>
+                    Demander le changement
+                  </button>
+                </form>
+              </>
+            )}
+          </section>
 
           <section className={`${styles.section} glass-card`}>
             <h2 className={styles.sectionTitle}>Thème</h2>
