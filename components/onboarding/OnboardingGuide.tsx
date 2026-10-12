@@ -25,6 +25,9 @@ import styles from "./OnboardingGuide.module.css";
 const SNOOZE_KEY = "onboarding-guide-snoozed-until";
 const INSTALL_CONFIRMED_KEY = "onboarding-install-confirmed";
 const SNOOZE_MS = 24 * 60 * 60 * 1000;
+// Coupe-circuit posé par les tests e2e (e2e/fixtures.ts) : même raison que
+// les autres popups, son fond avale les clics des scénarios mobile.
+const DISABLED_KEY = "onboarding-guide:disabled";
 
 // Événement Chrome/Android non typé par lib.dom : propose l'installation
 // native en un tap, quand le navigateur la juge possible.
@@ -58,7 +61,7 @@ function isSnoozed(): boolean {
 type Resolved = { state: OnboardingState; platform: InstallPlatform };
 
 async function resolve(): Promise<Resolved | null> {
-  if (isSnoozed()) return null;
+  if (readFlag(DISABLED_KEY) === "1" || isSnoozed()) return null;
 
   const platform = detectInstallPlatform();
   const supported = pushSupported() && "Notification" in window;
