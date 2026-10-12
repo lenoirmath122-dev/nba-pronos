@@ -28,14 +28,6 @@
   `canReceiveRecap()`) ; le rapprochement des articles TrashTalk se fait
   par surnom d'équipe dans le titre, heuristique jamais éprouvée en saison
   régulière (en présaison, le flux ne contenait aucun article de résultats).
-- **Popup hebdomadaire générée par LLM (cadrage du 09/10/2026, aucun code)** :
-  12 décisions prises, 10 points ouverts, détail et étapes suivantes dans
-  `Cadrage/Fonctionnel/nba_pronos_cadrage_popup_hebdo.md`. **Mis de côté,
-  non urgent** (décision du 09/10/2026, d'autres cadrages passent avant).
-  Prochaine étape à la reprise :
-  trancher les points produit ouverts (seuil de semaine pauvre, texte de
-  repli, règles de présélection, heure de publication), puis explorer
-  l'existant (paris refusés, admin, push, cron).
 - **Déjà dans la feuille de route mais reportés, redemandés par les
   testeurs** : photo de profil/avatars (p6-22), landing page (p5-2).
 - **Badges, suite de p3-9 (05/10/2026)** : popup et écusson livrés, mais les
@@ -706,25 +698,46 @@
   (#167 mergée, migration `20261013090000` appliquée en production le
   11/10/2026, tests d'intégration Docker écrits et non lancés). **PR 2 faite**
   (12/10/2026 : client LLM, relances, plafond popup, schémas, jetons ;
-  aucun appel réel). **Reste** :
-  PR 3, 5, 4 ; puis par l'utilisateur : activer `weekly_popup`
-  sur la compétition réelle, premier essai payant avec accord. Dette notée : purge des `candidates` à l'archivage d'une
+  aucun appel réel). **PR 3 faite** (12/10/2026, branche
+  `feat/popup-hebdo-pipeline`, aucune migration : pipeline de génération,
+  étape cron, `maxDuration` 300 s, accroche de « Figer la semaine » ; aucun
+  appel LLM réel). **Reste** : PR 5 (popup joueur, export RGPD) puis PR 4
+  (page `/admin/popup`, garde et URL du push hebdo) ; puis par l'utilisateur :
+  activer `weekly_popup` sur la compétition réelle, premier essai payant avec
+  accord. Dette notée : purge des `candidates` à l'archivage d'une
   compétition, dans aucune PR.
-- Popup hebdo LLM : utilisée aussi en pré-Cup (décidé le 11/10/2026),
-  c'est le format du récap envoyé par le bouton ; génération au figement du
-  lundi (plus « dimanche soir »), bloc champion inclus. Il ne reste dans le
-  cadrage (`nba_pronos_cadrage_popup_hebdo.md`) que les points listés dans
-  « Lot 5, avancement » ci-dessus. Repli en attendant : récap déterministe
-  avec champion.
+- **Popup hebdo, points ouverts après la PR 3** :
+  - **Vérifier sur preview la durée réelle** de `/admin/competitions` : le
+    layout admin déclare 60 s, la page 300 s, la doc locale ne dit pas
+    laquelle s'applique (Vercel, Deployment → Functions). Si 60 s : la
+    génération lancée depuis « Figer » est coupée, la ligne reste GENERATING et
+    le passage suivant du cron la reprend (verrou de 10 min).
+  - **Champion en semaine pauvre de niveau 1** : aucun appel (§3.10), donc le
+    champion n'est pas classé ; avertissement `champion_non_classe` à la
+    relecture (publication manuelle). Alternative : un appel du classifieur
+    sur le seul champion (~0,005 $). À trancher si cela gêne.
+  - **Règle m (seuil inclusif)** : un pari au texte inclusif (« au moins N »,
+    « N+ », « minimum »…) avec seuil entier est écarté du flop, la
+    structuration ne dit pas comment elle stocke « au moins N ». Le flop peut
+    en être appauvri ; à revoir si la structuration fixe une convention. La
+    règle est dans `lib/weeklyPopup/sens.ts` mais pas encore dans le plan
+    technique (§3.3/§3.4).
+  - **Pseudo cité sans « @ »** : avertissement `pseudo_sans_arobase` ; il
+    n'est ni tokenisé ni retrouvable par la purge de compte. À rendre
+    bloquant à la publication (PR 4).
+  - **Alerte admin** : push seulement au passage du cron (pas au figement
+    manuel), et jamais renotifié si aucun admin n'est abonné à cet instant.
+    Un brouillon DOUBTFUL transitoire (`api_error`, `timeout`) n'est pas
+    retenté par les passages suivants (choix du plan : l'admin régénère).
+  - **Cible du push admin** : `/admin/popup` n'existe qu'en PR 4 (404 d'ici
+    là ; sans effet tant que `weekly_popup` reste faux).
+  - **Test de l'action `freezeWeeklyRanking`** : aucun test des actions
+    admin n'existe (dette connue) ; l'accroche popup n'est testée que par
+    `ensure.test.ts` et `route.test.ts`.
 - **Décidé le 11/10/2026 : envoi du récap hebdo 100 % manuel** en
   pré-Cup (bouton admin, aucun envoi automatique, rappel dans l'admin ; le
   cron ne fait que figer les données). Ordre : 1) lots 0 et 1 avant le
   26/10, 2) popup LLM ensuite.
-- **À cadrer au lot 1 (conséquence du 100 % manuel)** : aujourd'hui
-  `runRecaps` envoie automatiquement le récap « Ta semaine » le lundi.
-  Quand `weekly_ranking` est actif sur la compétition, cet envoi hebdo
-  automatique doit être remplacé par le bouton (sinon double envoi), les
-  récaps quotidiens restant inchangés. À confirmer avec l'utilisateur.
 - La compétition réelle (à créer avant le 16/10) doit avoir
   `weekly_ranking` activé ; la compétition de test est à archiver avant.
 

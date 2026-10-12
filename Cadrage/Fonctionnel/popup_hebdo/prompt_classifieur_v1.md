@@ -79,8 +79,9 @@ Un objet JSON par ligne : {"id": "...", "pseudo": "...", "texte": "..."}
   rédacteur.
 - Seuls le pseudo et le texte sont transmis (ni match, ni `user_id`, ni
   raison) : le pseudo est nécessaire parce que le rédacteur le recopie. Le
-  champion n'est pas classé (pseudo factuel) ; son pseudo est contrôlé comme
-  les autres à l'inscription, ce qui reste à vérifier au plan technique.
+  pseudo n'est pas modéré à l'inscription (plan technique §1.9) : le champion
+  passe donc par le classifieur (ligne `{"id": "c1", "pseudo": ..., "texte":
+  ""}`) et un champion bloqué est retiré.
 - La `raison` n'est jamais transmise au classifieur : le code la met à null
   pour tout pari résolu par un admin (texte libre), le reste vient des
   résolveurs et est déterministe.

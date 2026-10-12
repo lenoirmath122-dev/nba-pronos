@@ -14,7 +14,22 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const TOKEN_RE =
   /\{\{u:([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}|supprime)\}\}/g;
 /** Tout ce qui ressemble à un jeton dans un texte entrant (même mal formé). */
-const ANY_TOKEN_RE = /\{\{u:[^}]*\}\}/g;
+export const ANY_TOKEN_RE = /\{\{u:[^}]*\}\}/g;
+
+/**
+ * Retire les jetons jusqu'à stabilité : retirer un jeton enfoui dans un autre
+ * peut en reconstituer un (`{{u{{u:a}}:UUID}}` redonne `{{u:UUID}}`).
+ */
+export function stripIncomingTokens(text: string): string {
+  let current = text;
+  for (let i = 0; i < 8; i += 1) {
+    const next = current.replace(ANY_TOKEN_RE, "");
+    if (next === current) return next;
+    current = next;
+  }
+  // Pas de point fixe en 8 passes : aucune ouverture de jeton ne survit.
+  return current.replace(/\{\{u:/g, "");
+}
 /** Caractère qui prolonge un pseudo (signes combinants compris) : une mention
  *  ne peut pas y finir. */
 const PSEUDO_CHAR_RE = /[\p{L}\p{N}\p{M}_-]/u;
@@ -40,22 +55,26 @@ export function makeToken(userId: string): string {
   return `{{u:${userId}}}`;
 }
 
-/**
- * Remplace chaque `@pseudo` de l'ensemble fermé par son jeton. À chaque `@` :
- * plus longue correspondance, d'abord à l'identique puis normalisée, suivie
- * d'une fin de texte ou d'un caractère hors `[\p{L}\p{N}_-]` (`@max` ≠
- * `@maxime`). Deux pseudos qui se confondent une fois normalisés : la
- * correspondance normalisée est désactivée pour eux. Un `@` sans
- * correspondance est laissé tel quel.
- */
-export function tokenize(rawText: string, closedSet: readonly MentionableUser[]): string {
-  // Un jeton déjà présent dans la sortie du LLM n'a pas été produit par nous
-  // (id copié du prompt, injection par un pseudo ou un texte de pari) : il
-  // serait résolu à l'affichage hors de l'ensemble fermé. On le retire.
-  const text = rawText.replace(ANY_TOKEN_RE, "");
-  const users = closedSet.filter((u) => UUID_RE.test(u.userId) && u.pseudo.length > 0);
-  if (users.length === 0 || !text.includes("@")) return text;
+/** Une occurrence de `@` : appariée à un joueur de l'ensemble fermé, ou non. */
+export interface MentionHit {
+  /** Index du `@`. */
+  start: number;
+  /** Index après la mention (start + 1 si non appariée). */
+  end: number;
+  userId: string | null;
+}
 
+/**
+ * Chaque `@` du texte, apparié ou non à l'ensemble fermé. À chaque `@` :
+ * plus longue correspondance, d'abord à l'identique puis normalisée, suivie
+ * d'une fin de texte ou d'un caractère hors `[p{L}p{N}_-]` (`@max` ≠
+ * `@maxime`). Deux pseudos qui se confondent une fois normalisés : la
+ * correspondance normalisée est désactivée pour eux. Précondition : le texte
+ * ne contient plus de jeton entrant (`tokenize` les retire d'abord).
+ */
+export function findMentions(text: string, closedSet: readonly MentionableUser[]): MentionHit[] {
+  const hits: MentionHit[] = [];
+  const users = closedSet.filter((u) => UUID_RE.test(u.userId) && u.pseudo.length > 0);
   const byLength = [...users].sort((a, b) => b.pseudo.length - a.pseudo.length);
   const normalizedCount = new Map<string, number>();
   const normalizedOf = new Map<string, string>();
@@ -65,7 +84,10 @@ export function tokenize(rawText: string, closedSet: readonly MentionableUser[])
     normalizedCount.set(n, (normalizedCount.get(n) ?? 0) + 1);
   }
 
-  const endsCleanly = (end: number) => end >= text.length || !PSEUDO_CHAR_RE.test(text[end]);
+  // Point de code (et non unité UTF-16) : un caractère hors plan basique est un
+  // seul caractère.
+  const endsCleanly = (end: number) =>
+    end >= text.length || !PSEUDO_CHAR_RE.test(String.fromCodePoint(text.codePointAt(end) as number));
 
   // Plus longue fin `end` telle que la tranche normalisée égale le pseudo
   // normalisé : la normalisation (NFD/NFC, ligatures) change les longueurs.
@@ -77,11 +99,9 @@ export function tokenize(rawText: string, closedSet: readonly MentionableUser[])
     return null;
   };
 
-  let out = "";
   let i = 0;
   while (i < text.length) {
     if (text[i] !== "@") {
-      out += text[i];
       i += 1;
       continue;
     }
@@ -107,14 +127,36 @@ export function tokenize(rawText: string, closedSet: readonly MentionableUser[])
     }
 
     if (hit) {
-      out += makeToken(hit.user.userId);
+      hits.push({ start: i, end: hit.end, userId: hit.user.userId });
       i = hit.end;
     } else {
-      out += "@";
+      hits.push({ start: i, end: i + 1, userId: null });
       i += 1;
     }
   }
-  return out;
+  return hits;
+}
+
+/**
+ * Remplace chaque `@pseudo` de l'ensemble fermé par son jeton (voir
+ * `findMentions` pour l'appariement). Un `@` sans correspondance est laissé
+ * tel quel.
+ */
+export function tokenize(rawText: string, closedSet: readonly MentionableUser[]): string {
+  // Un jeton déjà présent dans la sortie du LLM n'a pas été produit par nous
+  // (id copié du prompt, injection par un pseudo ou un texte de pari) : il
+  // serait résolu à l'affichage hors de l'ensemble fermé. On le retire.
+  const text = stripIncomingTokens(rawText);
+  if (!text.includes("@")) return text;
+
+  let out = "";
+  let cursor = 0;
+  for (const hit of findMentions(text, closedSet)) {
+    if (hit.userId === null) continue;
+    out += text.slice(cursor, hit.start) + makeToken(hit.userId);
+    cursor = hit.end;
+  }
+  return out + text.slice(cursor);
 }
 
 /**

@@ -13,6 +13,8 @@ import { isCompetitionType, type CompetitionType } from "@/lib/competitions/type
 import { runLeaderboardSnapshot } from "@/lib/snapshots/leaderboardSnapshot";
 import { runWeeklyFreeze, type WeeklyFreezeResult } from "@/lib/weekly/freezeWeek";
 import { runWeeklyRecapSend, type WeeklySendResult } from "@/lib/weekly/sendWeeklyRecap";
+import { deadlineFrom } from "@/lib/weeklyPopup/config";
+import { ensureNote, ensureWeeklyPopupDraft } from "@/lib/weeklyPopup/ensure";
 
 // Écriture de la Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1
 // §4). competitions/competition_secrets : session admin (RLS
@@ -414,6 +416,8 @@ function describeFreeze(result: WeeklyFreezeResult): FreezeWeekActionResult {
 // garde des 10h reste active : avant 10h Paris, rien n'est figé). L'envoi du
 // récap hebdo n'en fait PAS partie : geste séparé, `sendWeeklyRecap`.
 export async function freezeWeeklyRanking(): Promise<FreezeWeekActionResult> {
+  // Début de l'action : la durée maximale de la page (300 s) compte depuis ici.
+  const actionStartMs = Date.now();
   const supabase = await getServerClient();
   const {
     data: { user },
@@ -455,7 +459,25 @@ export async function freezeWeeklyRanking(): Promise<FreezeWeekActionResult> {
     revalidatePath("/profile");
   }
 
-  return describeFreeze(result);
+  // Popup hebdo (lot 5) : assure le brouillon de la semaine, y compris quand
+  // elle était déjà figée (répare un figement antérieur). Jamais bloquant :
+  // le figement est fait, la génération part dans after() et son issue est
+  // écrite dans la ligne.
+  let popupNote = "";
+  if (result.frozen || result.skipped === "déjà figé") {
+    try {
+      const ensured = await ensureWeeklyPopupDraft(Date.now(), {
+        trigger: "ADMIN_FREEZE",
+        deadlineMs: deadlineFrom(actionStartMs),
+      });
+      popupNote = ensureNote(ensured);
+    } catch {
+      popupNote = " Popup : préparation impossible (voir les logs).";
+    }
+  }
+
+  const described = describeFreeze(result);
+  return described.success ? { ...described, message: `${described.message}${popupNote}` } : described;
 }
 
 // Bouton « Envoyer le récap hebdo » (classement hebdo, lot 3) : push du
