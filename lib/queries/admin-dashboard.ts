@@ -1,6 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { computeBetDeadlinesPassed } from "@/lib/scoring/bet-deadline";
 import { isUnidentifiedPlayerBet } from "@/lib/queries/admin-resolution";
+import { getWeeklyPopupPendingCounts } from "@/lib/queries/admin-weekly-popup";
 
 // Lecture du tableau de bord admin (composants serveur uniquement),
 // SPEC_ECRAN_ADMIN_DASHBOARD_V0_1 §6. Un seul module, appelé avec
@@ -17,6 +18,10 @@ export type AdminDashboardData = {
   /** p3-14 : parmi les paris à résoudre, ceux dont le joueur n'a jamais été identifié. */
   unidentifiedPlayerCount: number;
   pendingRequestsCount: number;
+  /** Popup hebdo (lot 5) : brouillons READY ou DOUBTFUL à relire. */
+  weeklyPopupPendingCount: number;
+  /** Parmi eux, ceux que la génération a bloqués (alerte). */
+  weeklyPopupDoubtful: number;
   totalPlayers: number;
   leagues: LeagueOverview[];
 };
@@ -28,6 +33,8 @@ const EMPTY_COUNTS = {
   pendingResolutionCount: 0,
   unidentifiedPlayerCount: 0,
   pendingRequestsCount: 0,
+  weeklyPopupPendingCount: 0,
+  weeklyPopupDoubtful: 0,
 };
 
 type CompetitionRow = { id: string; name: string };
@@ -50,12 +57,17 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     return { competitionId: null, competitionName: null, ...EMPTY_COUNTS, totalPlayers, leagues };
   }
 
-  const [pendingValidationCount, { pendingResolutionCount, unidentifiedPlayerCount }, pendingRequestsCount] =
-    await Promise.all([
-      getPendingValidationCount(supabase, competition.id),
-      getPendingResolutionCount(supabase, competition.id),
-      getPendingRequestsCount(supabase),
-    ]);
+  const [
+    pendingValidationCount,
+    { pendingResolutionCount, unidentifiedPlayerCount },
+    pendingRequestsCount,
+    popupCounts,
+  ] = await Promise.all([
+    getPendingValidationCount(supabase, competition.id),
+    getPendingResolutionCount(supabase, competition.id),
+    getPendingRequestsCount(supabase),
+    getWeeklyPopupPendingCounts(supabase, competition.id),
+  ]);
 
   return {
     competitionId: competition.id,
@@ -64,6 +76,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     pendingResolutionCount,
     unidentifiedPlayerCount,
     pendingRequestsCount,
+    weeklyPopupPendingCount: popupCounts.pending,
+    weeklyPopupDoubtful: popupCounts.doubtful,
     totalPlayers,
     leagues,
   };

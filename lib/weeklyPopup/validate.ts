@@ -64,7 +64,8 @@ export function validateText(
   for (const field of FIELDS) {
     const raw = content[field];
     const bloc = field;
-    if (raw === null || raw === undefined) {
+    // Une chaîne vide vaut absent (champ d'éditeur laissé vide).
+    if (raw === null || raw === undefined || raw.trim() === "") {
       if (field === "titre" || field === "cta") errors.push({ code: "champ_vide", bloc });
       continue;
     }

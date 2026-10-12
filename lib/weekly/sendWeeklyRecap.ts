@@ -37,10 +37,16 @@ export type WeeklySendResult = {
   /** Joueurs éligibles sans abonnement push (non réservés : servis à une relance). */
   noSubscription: number;
   candidates: number;
-  skipped?: "aucune compétition active" | "classement hebdo désactivé" | "semaine non figée";
+  skipped?:
+    | "aucune compétition active"
+    | "classement hebdo désactivé"
+    | "semaine non figée"
+    | "popup non publiée";
 };
 
-const RECAP_URL = "/leaderboard?vue=semaine";
+// La popup hebdo (lot 5) s'ouvre partout dans `(app)` : le push y mène, la
+// popup renvoie ensuite vers le classement (plan §4.5, décision 9).
+const RECAP_URL = "/home";
 // Un récap hebdo garde son intérêt toute la journée.
 const TTL_SECONDS = 24 * 60 * 60;
 
@@ -68,6 +74,32 @@ export async function runWeeklyRecapSend(
   if (competitionError) fail("Lecture de la compétition", competitionError);
   if (!competition) return { sent: false, weekEnd, skipped: "aucune compétition active", ...none };
   if (!competition.weekly_ranking) return { sent: false, weekEnd, skipped: "classement hebdo désactivé", ...none };
+
+  // Envoi RÉEL seulement : la popup de la semaine doit être publiée ou écartée
+  // (« Ne pas publier »), sinon le push mènerait à une popup absente. L'essai
+  // reste permis. Lecture séparée et tolérante : sans la migration de la
+  // popup, le récap hebdo existant doit continuer de partir.
+  let popupEnabled = false;
+  if (!test) {
+    const { data: flag, error: flagError } = await supabase
+      .from("competitions")
+      .select("weekly_popup")
+      .eq("id", competition.id)
+      .maybeSingle<{ weekly_popup: boolean }>();
+    popupEnabled = !flagError && flag?.weekly_popup === true;
+  }
+  if (popupEnabled) {
+    const { data: popup, error: popupError } = await supabase
+      .from("weekly_popups")
+      .select("status")
+      .eq("competition_id", competition.id)
+      .eq("week_end_date", weekEnd)
+      .maybeSingle<{ status: string }>();
+    if (popupError) fail("Lecture de la popup hebdo", popupError);
+    if (!popup || (popup.status !== "PUBLISHED" && popup.status !== "SKIPPED")) {
+      return { sent: false, weekEnd, skipped: "popup non publiée", ...none };
+    }
+  }
 
   const { data: header, error: headerError } = await supabase
     .from("weekly_rankings")

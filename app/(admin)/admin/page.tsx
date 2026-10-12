@@ -31,6 +31,12 @@ export default async function AdminDashboardPage() {
       label: (n: number) => (n > 1 ? "requêtes en attente" : "requête en attente"),
       href: "/admin/requests",
     },
+    {
+      key: "popup",
+      count: data.weeklyPopupPendingCount,
+      label: (n: number) => (n > 1 ? "popups hebdo à relire" : "popup hebdo à relire"),
+      href: "/admin/popup",
+    },
   ] as const;
 
   return (
@@ -104,10 +110,30 @@ export default async function AdminDashboardPage() {
         </Link>
       )}
 
+      {/* Popup hebdo (lot 5) : une génération bloquée n'attend pas seule. */}
+      {data.weeklyPopupDoubtful > 0 && (
+        <Link href="/admin/popup" className={styles.alert}>
+          {data.weeklyPopupDoubtful > 1
+            ? `${data.weeklyPopupDoubtful} popups hebdo bloquées : à régénérer ou à rédiger`
+            : "1 popup hebdo bloquée : à régénérer ou à rédiger"}
+          <span className={styles.chevron} aria-hidden="true">
+            ›
+          </span>
+        </Link>
+      )}
+
       <ul className={styles.linkList}>
         <li>
           <Link href="/admin/competitions" className={styles.linkEntryActive}>
             Compétitions
+            <span className={styles.chevron} aria-hidden="true">
+              ›
+            </span>
+          </Link>
+        </li>
+        <li>
+          <Link href="/admin/popup" className={styles.linkEntryActive}>
+            Popup hebdo
             <span className={styles.chevron} aria-hidden="true">
               ›
             </span>

@@ -114,14 +114,15 @@ function setup(
     week?: WeekData | (() => WeekData);
     call?: (opts: CallOpts) => LlmCallResult<unknown>;
     finalMatches?: boolean;
-    trigger?: "CRON" | "ADMIN_FREEZE";
+    trigger?: "CRON" | "ADMIN_FREEZE" | "ADMIN_GENERATE";
     load?: GenerateDeps["load"];
     deadlineMs?: number;
+    preview?: { competitionId: string; weekEnd: string };
   } = {},
 ) {
   const current = options.row === undefined ? row() : options.row;
   const writes: Call[] = [];
-  const { client } = fakeClient((call) => {
+  const { client, calls } = fakeClient((call) => {
     if (call.table === "weekly_popups" && call.op === "select") return { data: current };
     if (call.table === "weekly_popups" && call.op === "update") {
       writes.push(call);
@@ -141,8 +142,13 @@ function setup(
     sleep: async () => {},
   };
   const run = () =>
-    runWeeklyPopupGeneration(POPUP_ID, GEN_ID, { deadlineMs: options.deadlineMs ?? DEADLINE, trigger: options.trigger ?? "CRON", deps });
-  return { run, call, notify, writes, load };
+    runWeeklyPopupGeneration(POPUP_ID, GEN_ID, {
+      deadlineMs: options.deadlineMs ?? DEADLINE,
+      trigger: options.trigger ?? "CRON",
+      deps,
+      preview: options.preview,
+    });
+  return { run, call, notify, writes, load, calls };
 }
 
 function defaultCall(opts: CallOpts): LlmCallResult<unknown> {
@@ -462,3 +468,39 @@ describe("garde-fous", () => {
   });
 });
 
+
+describe("essai (preview, décision 13)", () => {
+  const preview = { competitionId: "comp", weekEnd: "2026-10-26" };
+
+  it("ne lit ni n'écrit weekly_popups, ne notifie pas, renvoie ce qui aurait été écrit", async () => {
+    const { run, call, notify, calls } = setup({ preview, row: null, trigger: "ADMIN_GENERATE" });
+    const outcome = await run();
+    expect(outcome).toMatchObject({ written: true, status: "READY", kind: "LLM", notified: false });
+    expect(outcome.preview?.content?.top).toBe(`{{u:${U1}}} a vu juste.`);
+    expect(outcome.preview?.candidates.length).toBeGreaterThan(0);
+    expect(call).toHaveBeenCalledTimes(2);
+    expect(calls.filter((c) => c.table === "weekly_popups")).toHaveLength(0);
+    expect(notify).not.toHaveBeenCalled();
+  });
+
+  it("lit la semaine demandée, pas celle d'une ligne", async () => {
+    const { run, load } = setup({ preview, row: null, trigger: "ADMIN_GENERATE" });
+    await run();
+    expect(load).toHaveBeenCalledWith("comp", "2026-10-26", expect.anything());
+  });
+
+  it("échec du modèle : DOUBTFUL avec le motif, toujours sans écriture", async () => {
+    const { run, calls } = setup({
+      preview,
+      row: null,
+      trigger: "ADMIN_GENERATE",
+      call: (opts) => (opts.callSite === "popupClassifier" ? okClassifier(opts) : llm("api_error", { retriable: false })),
+    });
+    const outcome = await run();
+    expect(outcome.status).toBe("DOUBTFUL");
+    expect(outcome.doubtCode).toBe("api_error");
+    expect(outcome.preview?.content).toBeNull();
+    expect(outcome.preview?.doubtDetail).toContain("api_error");
+    expect(calls.filter((c) => c.table === "weekly_popups")).toHaveLength(0);
+  });
+});

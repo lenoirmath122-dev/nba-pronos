@@ -4,6 +4,7 @@ type Result = { data: unknown; error: { message: string } | null };
 type Row = Record<string, unknown>;
 
 let competition: Result;
+let popup: Result;
 let header: Result;
 let champions: Row[];
 let users: Row[];
@@ -52,7 +53,8 @@ function query(table: string) {
     isDelete = true;
     return c;
   };
-  c.maybeSingle = () => Promise.resolve(table === "competitions" ? competition : header);
+  c.maybeSingle = () =>
+    Promise.resolve(table === "competitions" ? competition : table === "weekly_popups" ? popup : header);
   const resolve = (): Result => {
     if (isDelete) {
       deleted.push({ table, filters: { ...filters } });
@@ -112,7 +114,8 @@ const snap = (user_id: string, total_points: number) => ({
 const sub = (user_id: string) => ({ id: `s-${user_id}`, user_id, endpoint: "e", p256dh_key: "p", auth_key: "a" });
 
 beforeEach(() => {
-  competition = { data: { id: "comp", weekly_ranking: true }, error: null };
+  competition = { data: { id: "comp", weekly_ranking: true, weekly_popup: false }, error: null };
+  popup = { data: null, error: null };
   header = { data: { start_snapshot_date: "2026-10-19", end_snapshot_date: "2026-10-26" }, error: null };
   champions = [{ user_id: "a", points: 20 }];
   users = [{ id: "a" }, { id: "b" }, { id: "c" }];
@@ -158,7 +161,46 @@ describe("runWeeklyRecapSend", () => {
     expect(bodyOf("a")).toBe("Tu es champion de la semaine (+20 pts) !");
     expect(bodyOf("b")).toBe("Alice est champion de la semaine (+20 pts). Toi : +4 pts, 2e de la semaine.");
     expect(bodyOf("c")).toBe("Alice est champion de la semaine (+20 pts). À toi de jouer cette semaine !");
-    expect(pushes.every((push) => push.url === "/leaderboard?vue=semaine")).toBe(true);
+    expect(pushes.every((push) => push.url === "/home")).toBe(true);
+  });
+
+  describe("popup hebdo active (plan §4.5)", () => {
+    beforeEach(() => {
+      competition = { data: { id: "comp", weekly_ranking: true, weekly_popup: true }, error: null };
+    });
+
+    it.each([
+      ["aucune ligne", null],
+      ["brouillon prêt", { status: "READY" }],
+      ["brouillon douteux", { status: "DOUBTFUL" }],
+      ["génération en cours", { status: "GENERATING" }],
+      ["popup retirée", { status: "RETRACTED" }],
+    ])("refuse l'envoi réel : %s", async (_label, data) => {
+      popup = { data, error: null };
+      const result = await runWeeklyRecapSend(MONDAY_26);
+      expect(result).toMatchObject({ sent: false, skipped: "popup non publiée" });
+      expect(pushes).toHaveLength(0);
+      expect(upserts).toHaveLength(0);
+    });
+
+    it.each([["publiée", "PUBLISHED"], ["écartée", "SKIPPED"]])("autorise l'envoi réel : %s", async (_label, status) => {
+      popup = { data: { status }, error: null };
+      const result = await runWeeklyRecapSend(MONDAY_26);
+      expect(result).toMatchObject({ sent: true, notified: 3 });
+    });
+
+    it("autorise toujours l'essai, même sans popup publiée", async () => {
+      popup = { data: { status: "READY" }, error: null };
+      const result = await runWeeklyRecapSend(MONDAY_26, { onlyUserId: "b" });
+      expect(result).toMatchObject({ sent: true, test: true, notified: 1 });
+    });
+
+    it("ne regarde pas la popup quand l'interrupteur est coupé", async () => {
+      competition = { data: { id: "comp", weekly_ranking: true, weekly_popup: false }, error: null };
+      popup = { data: null, error: null };
+      const result = await runWeeklyRecapSend(MONDAY_26);
+      expect(result).toMatchObject({ sent: true, notified: 3 });
+    });
   });
 
   it("ne renvoie pas aux joueurs déjà servis (relance)", async () => {
@@ -206,7 +248,7 @@ describe("runWeeklyRecapSend", () => {
     const result = await runWeeklyRecapSend(MONDAY_26, { onlyUserId: "b" });
     expect(result).toMatchObject({ sent: true, test: true, preview: true, notified: 1 });
     expect(pushes).toEqual([
-      { userId: "b", body: "Alice est champion de la semaine (+20 pts). Toi : +4 pts, 2e de la semaine.", url: "/leaderboard?vue=semaine" },
+      { userId: "b", body: "Alice est champion de la semaine (+20 pts). Toi : +4 pts, 2e de la semaine.", url: "/home" },
     ]);
     expect(upserts).toHaveLength(0);
   });
