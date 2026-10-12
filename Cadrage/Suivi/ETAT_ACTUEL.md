@@ -1,28 +1,13 @@
 # NBA Pronos ("Panier Ballon") — État actuel
 
-> **Nature** : instantané de l'état RÉEL du projet au moment de la dernière
-> réécriture — **réécrit ENTIÈREMENT à chaque mise à jour, jamais complété
-> ni accumulé**. Ne raconte pas ce qui a changé ni quand ; décrit uniquement
-> ce qui est vrai maintenant. Pour l'historique chronologique (qui a changé
-> quoi, quand, pourquoi), voir `JOURNAL_SESSIONS.md`. Pour les points
-> ouverts/décisions en attente, voir `GAPS_OUVERTS.md`. Pour les règles
-> fonctionnelles détaillées, voir `Cadrage/Fonctionnel/` et l'écran `/regles`
-> de l'application elle-même (seule source garantie synchrone avec le code
-> réel). Ce fichier ne contient pas de barème chiffré, de spec d'écran ni de
-> décision produit détaillée — seulement une vue d'ensemble d'architecture
-> et d'avancement.
->
-> **Restructuration du 06/09/2026** : ce fichier avait dérivé en journal
-> chronologique accumulé (7 828 lignes, préambule jusqu'à un §2.128 jamais
-> réellement atteint par les sections numérotées du corps, qui s'arrêtaient
-> à §2.100) — il dupliquait `JOURNAL_SESSIONS.md` au lieu de photographier
-> l'état courant. Réécrit intégralement à partir : d'une relecture complète
-> de l'ancien contenu, d'une vérification croisée avec le code réel
-> (structure `app/`/`lib/`/`components/`, migrations, `package.json`,
-> `next.config.ts`, `README.md`, exécution réelle de la suite de tests), et
-> de l'audit indépendant du 03/09/2026 (`audit/RAPPORT_FINAL.md`,
-> `audit/SCORECARD.md`). L'intégralité de l'ancien contenu est conservée
-> telle quelle dans `Cadrage/Suivi/archive/ETAT_ACTUEL_archive_jusquau_2026-09-06.md`.
+> **Nature** : vivant — décrit uniquement ce qui est vrai MAINTENANT
+> (architecture, fonctionnalités livrées, conventions), réécrit, jamais
+> accumulé. Pas d'historique (→ `JOURNAL_SESSIONS.md`), pas de points ouverts
+> (→ `GAPS_OUVERTS.md`), pas de spec détaillée (→ `Cadrage/Fonctionnel/`).
+> **Fichier de référence, pas de reprise** : il n'est pas lu en début de
+> session (→ `REPRISE.md`) ; on n'ouvre que la section utile à la tâche.
+> Versions antérieures complètes : `archive/ETAT_ACTUEL_archive_jusquau_2026-09-06.md`
+> et `archive/ETAT_ACTUEL_archive_jusquau_2026-10-12.md`.
 
 ---
 
@@ -293,66 +278,32 @@ jours 20 à 25/10 sortent ensemble le 19/10) ; voir `lib/dates/paris.ts::dailyPu
 passe par `canReceiveRecap()` (`lib/recaps/access.ts`), seul point à
 brancher à la bascule payante.
 
-**Classement hebdomadaire** (pause avant la vraie Cup, lots 0 à 4 mergés ;
-migration `20261012090000` appliquée) :
-interrupteur `competitions.weekly_ranking` par compétition (réglable en admin,
-case à la création). Semaine lundi 10 h → lundi 10 h (Paris) ; points de la
-semaine = snapshot de fin − snapshot de début (`lib/weekly/standings.ts`, pur),
-départage bons vainqueurs puis écarts exacts, co-champions possibles, aucun
-champion si le meilleur total est <= 0. `runWeeklyFreeze` (`lib/weekly/
-freezeWeek.ts`) tourne dans `/api/recaps` après le snapshot quotidien, ou par
-le bouton « Figer la semaine » de `/admin/competitions` ; idempotent (RPC
-`freeze_weekly_ranking`), en-tête `weekly_rankings` + palmarès
-`weekly_champions` (UPDATE interdit par trigger, lecture publique). Une semaine
-dont le snapshot du lundi manque est rattrapée avec le premier snapshot
-suivant ; la première semaine d'une compétition n'est pas figée. Quand
-`weekly_ranking` est actif, le lundi reçoit le récap journalier et le hebdo
-est manuel (lot 3, PR #158 + #159 : bouton « Envoyer le récap hebdo » et « M'envoyer un essai » (un seul destinataire, rien de réservé, testé OK le 11/10) à côté de
-« Figer la semaine », `lib/weekly/sendWeeklyRecap.ts` ; push du champion figé de
-la dernière semaine close, réservation par joueur dans `recap_log` avant
-envoi donc relance sans doublon, lien `/leaderboard?vue=semaine` ; la carte
-« Ta semaine » de l'Accueil est masquée quand le classement hebdo est actif).
-**Vue Semaine du Classement** (lot 2, aucune
-migration) : quand
-`competitions.weekly_ranking` est actif, `/leaderboard` a deux onglets Semaine
-(par défaut) / Général (`?vue=semaine|general` ; un ancien lien `?tri=`/`?ordre=`
-ouvre Général). Semaine = `user_scores` moins le snapshot de début
-(`lib/queries/weeklyLeaderboard.ts`, `lib/weekly/currentWeek.ts`), ordre fixe
-(points, bons vainqueurs, écarts exacts, puis pseudo), sans tri ni tendance,
-filtre ligue conservé (rangs recalculés), bandeau « Champion(s) de la semaine
-dernière » (semaine figée qui se termine au lundi courant, masqué en ligue),
-compte à rebours jusqu'au lundi 10 h. Départ : fin du figement précédent, sinon
-premier snapshot >= lundi (mention « Compteurs partis du … » si en retard) ;
-aucun snapshot du tout = départ à 0 ; snapshots anciens seulement = « semaine
-vient de commencer » (jamais de repli sur la semaine d'avant) ; erreur de
-lecture = « indisponible ». Flag lu à part et tolérant (colonne absente = vue
-Générale d'avant, URLs inchangées). L'Accueil n'est pas modifié.
-**Palmarès hebdo** (lot 4, aucune migration) : section « Palmarès hebdo » dans l'onglet Stats du profil propre
-(carte repliable, avant Badges, avec « Aucune semaine gagnée » ou « indisponible »
-selon le cas) et sur `/players/[userId]` (masquée sans victoire). Toutes
-compétitions confondues, archivées comprises : total de semaines gagnées puis
-une ligne par semaine (date de fin, compétition, points, mention « Co-champion »
-si plusieurs lignes partagent compétition et semaine). Lecture
-`lib/queries/weeklyPalmares.ts` (client RLS, ne lève jamais), calcul pur
-`lib/weekly/palmares.ts`, composant `components/profile/WeeklyPalmares.tsx`. Ce
-n'est pas un badge. La mention co-champion est recalculée en direct : elle
-disparaît si le co-champion supprime son compte.
-**Popup hebdo générée par LLM** (lot 5, PR 1 à 3 faites ; aucune fonctionnalité
-visible : ni écran admin, ni popup joueur, PR 4 et 5 à faire) : interrupteur
-`competitions.weekly_popup` (faux par défaut, donc rien ne tourne en
-production). Quand il est actif avec `weekly_ranking`, `/api/recaps` assure à
-CHAQUE passage du cron (8h, 9h, 10h UTC), une fois la semaine figée, une ligne
-`weekly_popups` : réservation synchrone, puis génération dans `after()` après
-les récaps (`lib/weeklyPopup/ensure.ts`, `generate.ts` ; `maxDuration` 300 s sur
-la route et sur `/admin/competitions`, dont le bouton « Figer la semaine »
-assure aussi le brouillon). Pipeline : présélection par le code (top 5, flop 8,
-refusé 5, 2 par joueur et par bloc), classifieur (lot, puis un appel par
-candidat si le lot est refusé), rédacteur (prompt v5), contrôles du code
-(mentions en jetons `{{u:uuid}}`, mots, argent, ensemble fermé) ; semaine
-pauvre = texte de repli sans rédacteur. Le résultat est un brouillon
-(READY ou DOUBTFUL avec motif), jamais publié tout seul ; alerte push aux
-admins seulement au passage du cron. Plafond de dépense popup 1 $/jour, fermé
-si la lecture échoue. Aucun appel LLM réel n'a été fait avec ce code.
+**Classement hebdomadaire** (lots 0 à 4 ; migration `20261012090000`) :
+interrupteur `competitions.weekly_ranking` (admin ou case à la création).
+Semaine lundi 10 h → lundi 10 h Paris ; points = snapshot de fin − snapshot de
+début (`lib/weekly/standings.ts`, pur), départage bons vainqueurs puis écarts
+exacts, co-champions possibles, aucun champion si le meilleur total est <= 0.
+Figement `runWeeklyFreeze` (`lib/weekly/freezeWeek.ts`) dans `/api/recaps` ou
+par le bouton « Figer la semaine » de `/admin/competitions`, idempotent (RPC
+`freeze_weekly_ranking`) → `weekly_rankings` + `weekly_champions` (UPDATE
+interdit par trigger). Snapshot du lundi manquant = rattrapage avec le suivant ;
+première semaine d'une compétition non figée. Avec `weekly_ranking` actif : le
+lundi reçoit le récap journalier, le récap hebdo part à la main (« Envoyer le
+récap hebdo » / « M'envoyer un essai », `lib/weekly/sendWeeklyRecap.ts`,
+dédoublonné par `recap_log`), la carte « Ta semaine » de l'Accueil est masquée.
+- **Vue Semaine** de `/leaderboard` (`?vue=semaine|general`,
+  `lib/queries/weeklyLeaderboard.ts`, `lib/weekly/currentWeek.ts`) : ordre fixe,
+  filtre ligue conservé, bandeau des champions de la semaine dernière, compte à
+  rebours ; flag absent = vue Générale d'avant.
+- **Palmarès hebdo** : onglet Stats du profil et `/players/[userId]`
+  (`lib/queries/weeklyPalmares.ts`, `lib/weekly/palmares.ts`,
+  `components/profile/WeeklyPalmares.tsx`). Ce n'est pas un badge.
+- **Popup hebdo LLM** (lot 5, PR 1 à 3 ; rien de visible tant que les PR 4 et 5
+  ne sont pas faites) : interrupteur `competitions.weekly_popup` (faux par
+  défaut). Après le figement, un brouillon `weekly_popups` est généré dans
+  `after()` (`lib/weeklyPopup/ensure.ts`, `generate.ts`) : présélection par le
+  code, classifieur, rédacteur (prompt v5), contrôles du code ; READY ou
+  DOUBTFUL, jamais publié seul ; plafond 1 $/jour. Aucun appel LLM réel fait.
 
 ### 4.7 Panneau d'administration
 Groupe de routes `app/(admin)/admin/` : tableau de bord, validation des
@@ -565,37 +516,17 @@ l'alpha : `RETOURS_ALPHA_NBA_CUP.md`, Phase 3 de la feuille de route.
   build`) fait partie de la vérification avant de considérer un chantier
   fermé, quand c'est praticable.
 - Secrets/clés API : jamais collés en clair dans la conversation.
-- Les fichiers de suivi (`ETAT_ACTUEL.md`, `JOURNAL_SESSIONS.md`,
-  `GAPS_OUVERTS.md`) sont mis à jour à la fin de chaque chantier notable —
-  `ETAT_ACTUEL.md` spécifiquement réécrit en entier, jamais accumulé (voir
-  l'en-tête de ce fichier).
+- Suivi : voir `Cadrage/Suivi/README.md` (reprise par `REPRISE.md`, routine
+  de fin de session). `ETAT_ACTUEL.md` n'est modifié que si l'architecture
+  ou une fonctionnalité livrée change.
 
 ---
 
 ## 11. Points ouverts connus
 
-Suivi vivant dans `Cadrage/Suivi/GAPS_OUVERTS.md` (points fonctionnels/
-produit) et `audit/PLAN_ACTION.md` (plan d'action issu de l'audit du
-03/09/2026, organisé en 4 vagues). Au 06/09/2026, la quasi-totalité des
-actions des vagues 1 à 4 de `PLAN_ACTION.md` sont traitées (suppression de
-compte atomique, rate limiting, tests d'intégration RLS, injection du
-roster réel dans le pipeline IA, factorisation de la deadline de pari,
-route de santé + checklist de migration, suite e2e, README réel, barèmes
-factorisés, `npm audit` en CI, focus-trap clavier sur les dialogues,
-`eslint-plugin-jsx-a11y`, mesure des Web Vitals). Reste ouvert
-explicitement :
-
-- **D2 — responsive desktop** (`UX-002`) : décidé le 06/09/2026 — un visuel
-  distinct PC/téléphone viendra à terme (l'app n'est pas mobile-only par
-  choix définitif), mais rien n'est planifié ni codé pour l'instant. Le
-  Bracket a déjà son arbre visuel connecté (§4.2) ; l'effort restant
-  concernerait plutôt le Classement/l'Accueil (toujours 0 breakpoint
-  Tailwind hors auth).
-- Base légale précise pour les 15-17 ans (RGPD, `GAPS_OUVERTS.md` §8.5) —
-  hors de portée d'un codage, nécessite un avis juridique.
-- Décision de persistance de l'usage du pipeline IA (TTL cache /
-  classify-then-structure) reportée faute de trafic réel — à revisiter au
-  démarrage de la vraie NBA Cup.
+Ne sont pas tenus ici : voir `Cadrage/Suivi/GAPS_OUVERTS.md` (produit et
+fonctionnel, avec résumé des chantiers en cours) et `audit/PLAN_ACTION.md`
+(audit du 03/09/2026).
 
 ---
 
