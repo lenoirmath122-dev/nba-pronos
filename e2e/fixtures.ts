@@ -1,7 +1,8 @@
 import { test as base, expect } from "@playwright/test";
 
 /** `test` partagé par toutes les specs : désactive la popup « nouveau badge »
- *  (NewBadgesWatcher, p3-9) avant le chargement de chaque page. Elle s'ouvre
+ *  (NewBadgesWatcher, p3-9) et la popup hebdo (WeeklyPopupWatcher, lot 5) avant
+ *  le chargement de chaque page. La première s'ouvre
  *  ~800 ms après le montage de la coquille, à un instant non déterministe, dès
  *  qu'un badge gagné n'a pas été vu sur l'appareil -- or les specs en font
  *  gagner (pari perso, prono validé). Son fond interceptait alors les clics en
@@ -14,6 +15,8 @@ export const test = base.extend({
     await page.addInitScript(() => {
       try {
         window.localStorage.setItem("badges-popup:disabled", "1");
+        // Popup hebdo (lot 5) : même raison, son fond avale les clics.
+        window.localStorage.setItem("weekly-popup:disabled", "1");
       } catch {
         // about:blank et autres origines opaques : pas de stockage, rien à couper.
       }

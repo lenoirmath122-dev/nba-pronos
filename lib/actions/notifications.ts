@@ -51,6 +51,23 @@ export async function updateRecapPreference(enabled: boolean): Promise<ActionRes
   return { success: true };
 }
 
+/** Interrupteur « Ne pas me citer dans la popup hebdo » (lot 5). Rétroactif :
+ *  les mentions sont résolues à l'affichage (« un joueur discret »). */
+export async function updatePopupMentionsOptOut(optOut: boolean): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Session expirée." };
+
+  const { error } = await supabase.from("users").update({ popup_mentions_opt_out: optOut }).eq("id", user.id);
+
+  if (error) return { success: false, error: toClientError("updatePopupMentionsOptOut", error) };
+
+  revalidatePath("/profile");
+  return { success: true };
+}
+
 type PushSubscriptionInput = {
   endpoint: string;
   keys: { p256dh: string; auth: string };
