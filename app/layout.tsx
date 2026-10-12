@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, Oswald } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getServerClient } from "@/lib/supabase/server";
 import {
@@ -106,6 +107,9 @@ export default async function RootLayout({
             faute d'accès navigateur en audit — RUM via Vercel (déploiement
             existant), aucun code de collecte à maintenir. */}
         <SpeedInsights />
+        {/* Visites / pages vues (Vercel Web Analytics) : sans cookie, donc pas de
+            bandeau de consentement. À activer aussi côté dashboard Vercel. */}
+        <Analytics />
       </body>
     </html>
   );
