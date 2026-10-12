@@ -4,6 +4,7 @@ const order: string[] = [];
 const runLeaderboardSnapshot = vi.fn();
 const runRecaps = vi.fn();
 const runWeeklyFreeze = vi.fn();
+const ensureWeeklyPopupDraft = vi.fn();
 let authorized = true;
 
 vi.mock("@/lib/sync/auth", () => ({ isAuthorizedCronRequest: () => authorized }));
@@ -13,6 +14,10 @@ vi.mock("@/lib/snapshots/leaderboardSnapshot", () => ({
 vi.mock("@/lib/recaps/sendRecaps", () => ({ runRecaps: (...a: unknown[]) => runRecaps(...a) }));
 vi.mock("@/lib/weekly/freezeWeek", () => ({
   runWeeklyFreeze: (...a: unknown[]) => runWeeklyFreeze(...a),
+}));
+
+vi.mock("@/lib/weeklyPopup/ensure", () => ({
+  ensureWeeklyPopupDraft: (...a: unknown[]) => ensureWeeklyPopupDraft(...a),
 }));
 
 import { GET } from "./route";
@@ -25,6 +30,7 @@ beforeEach(() => {
   runLeaderboardSnapshot.mockReset();
   runRecaps.mockReset();
   runWeeklyFreeze.mockReset();
+  ensureWeeklyPopupDraft.mockReset();
   runLeaderboardSnapshot.mockImplementation(async () => {
     order.push("snapshot");
     return { snapshotted: 3 };
@@ -32,6 +38,10 @@ beforeEach(() => {
   runWeeklyFreeze.mockImplementation(async () => {
     order.push("weekly");
     return { frozen: false, skipped: "classement hebdo désactivé" };
+  });
+  ensureWeeklyPopupDraft.mockImplementation(async () => {
+    order.push("popup");
+    return { action: "none", weekEnd: "2026-10-26", reason: "popup désactivée" };
   });
   runRecaps.mockImplementation(async () => {
     order.push("recaps");
@@ -47,13 +57,14 @@ describe("GET /api/recaps", () => {
     expect(runRecaps).not.toHaveBeenCalled();
   });
 
-  it("fige le snapshot, puis la semaine, avant les récaps", async () => {
+  it("fige le snapshot, puis la semaine, assure la popup, avant les récaps", async () => {
     const res = await GET(req());
     expect(res.status).toBe(200);
-    expect(order).toEqual(["snapshot", "weekly", "recaps"]);
+    expect(order).toEqual(["snapshot", "weekly", "popup", "recaps"]);
     expect(await res.json()).toEqual({
       snapshot: { snapshotted: 3 },
       weekly: { frozen: false, skipped: "classement hebdo désactivé" },
+      popup: { action: "none", weekEnd: "2026-10-26", reason: "popup désactivée" },
       recaps: { notified: 1, candidates: 1 },
     });
   });
@@ -64,6 +75,26 @@ describe("GET /api/recaps", () => {
     expect(res.status).toBe(500);
     expect(runRecaps).toHaveBeenCalled();
     expect((await res.json()).weekly).toEqual({ error: "migration absente" });
+  });
+
+  it("une popup en échec ne bloque pas les récaps (500), message d'erreur seul", async () => {
+    ensureWeeklyPopupDraft.mockRejectedValue(new Error("migration 20261013090000 poussée ?"));
+    const res = await GET(req());
+    expect(res.status).toBe(500);
+    expect(runRecaps).toHaveBeenCalled();
+    expect((await res.json()).popup).toEqual({ error: "migration 20261013090000 poussée ?" });
+  });
+
+  it("l'échéance de la génération part du début de la requête (+ 270 s)", async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-10-26T09:00:00Z"));
+    try {
+      await GET(req());
+    } finally {
+      vi.useRealTimers();
+    }
+    const [, options] = ensureWeeklyPopupDraft.mock.calls[0];
+    expect(options).toEqual({ trigger: "CRON", deadlineMs: Date.parse("2026-10-26T09:00:00Z") + 270_000 });
   });
 
   it("un snapshot en échec ne bloque pas les récaps (500)", async () => {

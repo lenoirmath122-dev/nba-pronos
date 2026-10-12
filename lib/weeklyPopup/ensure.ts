@@ -39,6 +39,14 @@ export type EnsureResult = {
     | "réservée par un autre passage";
 };
 
+/** Suffixe du message de « Figer la semaine » (sans donnée de joueur). */
+export function ensureNote(result: EnsureResult): string {
+  if (result.action === "scheduled") return " Popup : génération lancée.";
+  if (result.reason === "déjà générée") return " Popup : déjà générée.";
+  if (result.reason === "génération en cours") return " Popup : génération déjà en cours.";
+  return "";
+}
+
 export type EnsureDeps = {
   client?: Client;
   /** Défaut : `after` de next/server (hors requête, il lève : injecter en test). */

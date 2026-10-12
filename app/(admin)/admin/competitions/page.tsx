@@ -7,6 +7,12 @@ import { setWeeklyRankingFormAction } from "@/lib/actions/admin-competitions";
 import styles from "./page.module.css";
 import type { CompetitionType } from "@/lib/competitions/types";
 
+// « Figer la semaine » (Server Action de cette page) lance la génération de la
+// popup hebdo dans after() : elle partage cette durée maximale (Fluid Compute
+// actif, 300 s). Littéral exigé par Next ; gardé égal à ROUTE_MAX_DURATION_S
+// par `lib/weeklyPopup/maxDuration.test.ts`.
+export const maxDuration = 300;
+
 // Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1, VALIDÉ) —
 // lots 1/3 (création) et 3/3 (clôture/archivage, §9). Lien vers
 // /admin/competitions/results (lot 2/3, SPEC_ECRAN_ADMIN_RESULTATS_V0_1).
