@@ -704,8 +704,10 @@
   provisoire = celui de sonnet-5 (à ajuster quand la console Anthropic
   affichera le coût réel, ~0,1 $ estimé pour les essais). **PR 1 faite**
   (#167 mergée, migration `20261013090000` appliquée en production le
-  11/10/2026, tests d'intégration Docker écrits et non lancés). **Reste** :
-  PR 2 (client LLM), 3, 5, 4 ; puis par l'utilisateur : activer `weekly_popup`
+  11/10/2026, tests d'intégration Docker écrits et non lancés). **PR 2 faite**
+  (12/10/2026 : client LLM, relances, plafond popup, schémas, jetons ;
+  aucun appel réel). **Reste** :
+  PR 3, 5, 4 ; puis par l'utilisateur : activer `weekly_popup`
   sur la compétition réelle, premier essai payant avec accord. Dette notée : purge des `candidates` à l'archivage d'une
   compétition, dans aucune PR.
 - Popup hebdo LLM : utilisée aussi en pré-Cup (décidé le 11/10/2026),
