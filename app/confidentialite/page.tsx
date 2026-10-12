@@ -78,6 +78,18 @@ export default async function ConfidentialitePage() {
             </li>
             <li className={styles.listItem}>
               <span>
+                <strong>Le texte hebdomadaire humoristique</strong> — chaque semaine, une intelligence artificielle
+                (Anthropic/Claude) rédige un court texte à partir du texte de certains paris et du pseudo des
+                joueurs concernés ; un administrateur le relit avant publication (intérêt légitime : animer le
+                jeu). Vous pouvez demander à ne pas y être cité depuis votre profil : l&apos;effet est
+                rétroactif, vous y apparaissez alors comme « un joueur discret ». Si vous supprimez votre compte,
+                vous n&apos;y êtes plus nommé (« un ancien joueur »). Les textes de paris retenus pour la
+                rédaction sont conservés tant que votre compte est actif ; le texte publié est conservé sans
+                lien vers vous une fois votre compte supprimé.
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
                 <strong>Vos messages de chat</strong> — pour les échanges entre membres d&apos;une ligue ou du
                 canal général (exécution du contrat / intérêt légitime), conservés tant que votre compte est
                 actif.
@@ -150,7 +162,9 @@ export default async function ConfidentialitePage() {
             <li className={styles.listItem}>
               <span>
                 <strong>Anthropic (Claude)</strong> — structuration automatique par IA du texte de vos paris
-                personnalisés. Le texte que vous saisissez pour un pari personnalisé.
+                personnalisés, et rédaction du texte hebdomadaire humoristique. Le texte que vous saisissez pour
+                un pari personnalisé, et, pour le texte hebdomadaire, votre pseudo avec le texte de certains de
+                vos paris (sauf si vous avez demandé à ne pas être cité).
               </span>
             </li>
             <li className={styles.listItem}>

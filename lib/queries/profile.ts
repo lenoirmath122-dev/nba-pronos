@@ -29,6 +29,8 @@ export type ProfileData = {
   notificationPreference: "NONE" | "PUSH" | "EMAIL";
   /** Récaps du matin (p3-10), activés par défaut. */
   recapEnabled: boolean;
+  /** « Ne pas me citer » dans la popup hebdo (lot 5). */
+  popupMentionsOptOut: boolean;
 };
 
 export type TeamOption = {
@@ -48,7 +50,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, recap_enabled"
+      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, recap_enabled, popup_mentions_opt_out"
     )
     .eq("id", user.id)
     .single<{
@@ -60,6 +62,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
       background_theme: "MURAL" | "HOOP" | "HK";
       notification_preference: "NONE" | "PUSH" | "EMAIL";
       recap_enabled: boolean;
+      popup_mentions_opt_out: boolean;
     }>();
 
   if (error || !data) return null;
@@ -77,6 +80,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
     backgroundTheme: data.background_theme,
     notificationPreference: data.notification_preference,
     recapEnabled: data.recap_enabled,
+    popupMentionsOptOut: data.popup_mentions_opt_out,
   };
 }
 

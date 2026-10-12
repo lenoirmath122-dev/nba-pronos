@@ -1,7 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { updateNotificationPreference, updateRecapPreference, deletePushSubscription } from "@/lib/actions/notifications";
+import {
+  updateNotificationPreference,
+  updatePopupMentionsOptOut,
+  updateRecapPreference,
+  deletePushSubscription,
+} from "@/lib/actions/notifications";
 import { ensurePushSubscribed, pushSupported } from "@/lib/push/client";
 import styles from "./NotificationSettings.module.css";
 
@@ -23,11 +28,17 @@ type Preference = "NONE" | "PUSH" | "EMAIL";
 type NotificationSettingsProps = {
   initialPreference: Preference;
   initialRecapEnabled: boolean;
+  initialPopupMentionsOptOut: boolean;
 };
 
-export function NotificationSettings({ initialPreference, initialRecapEnabled }: NotificationSettingsProps) {
+export function NotificationSettings({
+  initialPreference,
+  initialRecapEnabled,
+  initialPopupMentionsOptOut,
+}: NotificationSettingsProps) {
   const [preference, setPreference] = useState<Preference>(initialPreference);
   const [recapEnabled, setRecapEnabled] = useState(initialRecapEnabled);
+  const [popupOptOut, setPopupOptOut] = useState(initialPopupMentionsOptOut);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // La préférence est liée au COMPTE, pas à l'appareil : un joueur connecté
@@ -136,6 +147,24 @@ export function NotificationSettings({ initialPreference, initialRecapEnabled }:
     }
   }
 
+  async function togglePopupOptOut(next: boolean) {
+    setPending(true);
+    setError(null);
+    setPopupOptOut(next);
+    try {
+      const result = await updatePopupMentionsOptOut(next);
+      if (!result.success) {
+        setPopupOptOut(!next);
+        setError(result.error);
+      }
+    } catch (err) {
+      setPopupOptOut(!next);
+      setError(err instanceof Error ? err.message : "Erreur inattendue, réessaie.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   function handleChange(next: Preference) {
     if (pending || next === preference) return;
     if (next === "PUSH") void enablePush();
@@ -199,6 +228,22 @@ export function NotificationSettings({ initialPreference, initialRecapEnabled }:
           </span>
         </label>
       )}
+
+      {/* Popup hebdo (lot 5) : indépendante du canal push, c'est une popup à
+          l'ouverture de l'appli. Rétroactif, y compris pour les textes déjà
+          publiés. */}
+      <label className={styles.option}>
+        <input
+          type="checkbox"
+          checked={popupOptOut}
+          disabled={pending}
+          onChange={(event) => void togglePopupOptOut(event.target.checked)}
+        />
+        <span>
+          Ne pas me citer dans la popup du lundi{" "}
+          <span className={styles.soon}>(effet rétroactif : un texte déjà publié dira « un joueur discret »)</span>
+        </span>
+      </label>
 
       {error && (
         <p className={styles.error} role="alert">

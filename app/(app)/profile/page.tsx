@@ -246,6 +246,7 @@ export default async function ProfilePage({
             <NotificationSettings
               initialPreference={profile.notificationPreference}
               initialRecapEnabled={profile.recapEnabled}
+              initialPopupMentionsOptOut={profile.popupMentionsOptOut}
             />
           </section>
 
@@ -273,7 +274,8 @@ export default async function ProfilePage({
             <h2 className={styles.sectionTitle}>Mes données</h2>
             <p className={styles.fieldLabel}>
               Télécharge une copie de tes données personnelles (profil, pronostics de match, bracket, paris,
-              badges, messages de chat, signalements de bug, ligues) au format JSON.
+              badges, palmarès hebdo, mentions dans la popup du lundi, messages de chat, signalements de bug,
+              ligues) au format JSON.
             </p>
             <a href="/api/account/export" className={styles.helpLink}>
               Télécharger mes données
