@@ -4,6 +4,7 @@ import { CloseCompetitionButton } from "@/components/admin/CloseCompetitionButto
 import { FreezeWeekButton } from "@/components/admin/FreezeWeekButton";
 import { SendWeeklyRecapButton } from "@/components/admin/SendWeeklyRecapButton";
 import { setWeeklyRankingFormAction } from "@/lib/actions/admin-competitions";
+import { setWeeklyPopupFormAction } from "@/lib/actions/admin-weekly-popup";
 import styles from "./page.module.css";
 import type { CompetitionType } from "@/lib/competitions/types";
 
@@ -76,9 +77,43 @@ export default async function AdminCompetitionsPage() {
                 </form>
                 {competition.weeklyRanking && <FreezeWeekButton />}
                 {competition.weeklyRanking && <SendWeeklyRecapButton />}
+                {competition.weeklyRanking && competition.weeklyPopup === true && (
+                  <p className={styles.weeklyNote}>
+                    Envoi manuel : avec la popup activée, l&apos;envoi réel du récap attend que la popup de la semaine
+                    soit publiée ou écartée (essai toujours permis).
+                  </p>
+                )}
               </>
             )}
           </div>
+          {competition.weeklyRanking && (
+            <div className={styles.weekly}>
+              <span className={styles.weeklyTitle}>Popup hebdomadaire</span>
+              {competition.weeklyPopup === null ? (
+                <p className={styles.weeklyNote}>
+                  Indisponible : la migration 20261013090000 n&apos;est pas encore poussée.
+                </p>
+              ) : (
+                <>
+                  <p className={styles.weeklyNote}>
+                    {competition.weeklyPopup
+                      ? "Activée : un brouillon est généré à chaque figement de semaine, à relire avant publication."
+                      : "Désactivée : aucun brouillon n'est généré."}
+                  </p>
+                  <form action={setWeeklyPopupFormAction}>
+                    <input type="hidden" name="competition_id" value={competition.id} />
+                    <input type="hidden" name="enabled" value={competition.weeklyPopup ? "0" : "1"} />
+                    <button type="submit" className={styles.weeklyToggle}>
+                      {competition.weeklyPopup ? "Désactiver" : "Activer"}
+                    </button>
+                  </form>
+                  <Link href="/admin/popup" className={styles.weeklyToggle}>
+                    Ouvrir la popup hebdo
+                  </Link>
+                </>
+              )}
+            </div>
+          )}
           <Link href="/admin/competitions/results" className={styles.createLink}>
             Saisir les résultats
           </Link>

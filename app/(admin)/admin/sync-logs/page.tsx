@@ -2,7 +2,7 @@ import Link from "next/link";
 import { getSyncLogs, getLatestHighlightlyQuota, SYNC_TYPE_LABELS } from "@/lib/queries/admin-sync-logs";
 import { SyncLogRow } from "@/components/admin/SyncLogRow";
 import { LOW_QUOTA_THRESHOLD } from "@/lib/sync/logging";
-import { getTodaySpendUsd, DAILY_COST_CAP_USD } from "@/lib/ai/usageTracking";
+import { getTodaySpendUsd, DAILY_COST_CAP_USD, POPUP_DAILY_COST_CAP_USD } from "@/lib/ai/usageTracking";
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import styles from "./page.module.css";
 
@@ -22,10 +22,18 @@ export default async function AdminSyncLogsPage({
   const sp = await searchParams;
   const filters = { syncType: sp.type, failedOnly: sp.failed === "1" };
 
-  const [logs, quota, aiSpendUsd] = await Promise.all([getSyncLogs(filters), getLatestHighlightlyQuota(), getTodaySpendUsd()]);
+  const [logs, quota, aiSpendUsd, popupSpendUsd] = await Promise.all([
+    getSyncLogs(filters),
+    getLatestHighlightlyQuota(),
+    getTodaySpendUsd(),
+    getTodaySpendUsd("popup"),
+  ]);
   const hasActiveFilters = Boolean(sp.type || sp.failed);
   const quotaLow = quota !== null && quota.requestsRemaining <= LOW_QUOTA_THRESHOLD;
   const aiSpendHigh = aiSpendUsd >= DAILY_COST_CAP_USD;
+  // La lecture de la popup échoue fermée (Infinity) : afficher l'échec, pas « Infinity $ ».
+  const popupSpendUnknown = !Number.isFinite(popupSpendUsd);
+  const popupSpendHigh = popupSpendUnknown || popupSpendUsd >= POPUP_DAILY_COST_CAP_USD;
 
   return (
     <div className={styles.page}>
@@ -39,6 +47,12 @@ export default async function AdminSyncLogsPage({
       )}
       <p className={aiSpendHigh ? styles.quotaBannerLow : styles.quotaBanner}>
         {aiSpendHigh && "⚠️ "}Dépense IA (structuration de paris) aujourd&apos;hui : {aiSpendUsd.toFixed(2)}$ / {DAILY_COST_CAP_USD}$
+      </p>
+      <p className={popupSpendHigh ? styles.quotaBannerLow : styles.quotaBanner}>
+        {popupSpendHigh && "⚠️ "}Dépense IA (popup hebdo) aujourd&apos;hui :{" "}
+        {popupSpendUnknown
+          ? "lecture impossible (plafond fermé)"
+          : `${popupSpendUsd.toFixed(2)}$ / ${POPUP_DAILY_COST_CAP_USD}$`}
       </p>
 
       <form method="get" className={styles.filters}>

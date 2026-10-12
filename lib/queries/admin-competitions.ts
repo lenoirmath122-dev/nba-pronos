@@ -13,6 +13,8 @@ export type ActiveCompetitionSummary = {
   joinCode: string;
   /** Null : colonne absente (migration 20261012090000 pas encore poussée). */
   weeklyRanking: boolean | null;
+  /** Null : colonne absente (migration 20261013090000 pas encore poussée). */
+  weeklyPopup: boolean | null;
   lastFrozenWeek: { weekEnd: string; champions: number } | null;
 };
 
@@ -49,6 +51,13 @@ export async function getActiveCompetitionSummary(): Promise<ActiveCompetitionSu
     .maybeSingle<{ weekly_ranking: boolean }>();
   const weeklyRanking = flagError || !flag ? null : flag.weekly_ranking;
 
+  const { data: popupFlag, error: popupFlagError } = await supabase
+    .from("competitions")
+    .select("weekly_popup")
+    .eq("id", competition.id)
+    .maybeSingle<{ weekly_popup: boolean }>();
+  const weeklyPopup = popupFlagError || !popupFlag ? null : popupFlag.weekly_popup;
+
   let lastFrozenWeek: ActiveCompetitionSummary["lastFrozenWeek"] = null;
   if (weeklyRanking !== null) {
     const { data: last } = await supabase
@@ -68,7 +77,7 @@ export async function getActiveCompetitionSummary(): Promise<ActiveCompetitionSu
     }
   }
 
-  return { ...competition, joinCode: secret?.join_code ?? "—", weeklyRanking, lastFrozenWeek };
+  return { ...competition, joinCode: secret?.join_code ?? "—", weeklyRanking, weeklyPopup, lastFrozenWeek };
 }
 
 export async function getTeamOptions(): Promise<TeamOption[]> {

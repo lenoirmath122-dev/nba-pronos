@@ -51,6 +51,14 @@ import { applyVerdicts, mergeVerdicts, reuseVerdicts } from "./verdicts";
 
 type Client = ReturnType<typeof getServiceClient>;
 
+/** Résultat d'un essai (`opts.preview`) : ce qui aurait été écrit, rien n'est écrit. */
+export type PreviewResult = {
+  content: WeeklyPopupContent | null;
+  candidates: WeeklyPopupCandidate[];
+  warnings: WeeklyPopupWarning[];
+  doubtDetail: string | null;
+};
+
 export type GenerationOutcome = {
   written: boolean;
   status: "READY" | "DOUBTFUL" | "abandoned";
@@ -58,6 +66,8 @@ export type GenerationOutcome = {
   doubtCode?: WeeklyPopupDoubtCode;
   costUsd: number;
   notified: boolean;
+  /** Présent seulement pour un essai. */
+  preview?: PreviewResult;
 };
 
 export type GenerateDeps = {
@@ -73,6 +83,13 @@ export type GenerateOptions = {
   deadlineMs: number;
   trigger: GenerationTrigger;
   deps?: GenerateDeps;
+  /**
+   * Essai (décision 13) : exécute le pipeline sur la semaine donnée sans
+   * ligne `weekly_popups` (aucune lecture ni écriture de la table, aucune
+   * notification). Les appels LLM restent payants et journalisés. `popupId` et
+   * `generationId` sont alors sans effet.
+   */
+  preview?: { competitionId: string; weekEnd: string };
 };
 
 /** Résultat d'une tentative du rédacteur : réponse LLM puis contrôles du code. */
@@ -122,6 +139,27 @@ export async function runWeeklyPopupGeneration(
   generationId: string,
   opts: GenerateOptions,
 ): Promise<GenerationOutcome> {
+  const captured: { fields: Record<string, unknown> | null } = { fields: null };
+  const outcome = await generate(popupId, generationId, opts, captured);
+  if (!opts.preview) return outcome;
+  const f = captured.fields;
+  return {
+    ...outcome,
+    preview: {
+      content: (f?.content as WeeklyPopupContent | null | undefined) ?? null,
+      candidates: (f?.candidates as WeeklyPopupCandidate[] | undefined) ?? [],
+      warnings: (f?.warnings as WeeklyPopupWarning[] | undefined) ?? [],
+      doubtDetail: (f?.doubt_detail as string | null | undefined) ?? null,
+    },
+  };
+}
+
+async function generate(
+  popupId: string,
+  generationId: string,
+  opts: GenerateOptions,
+  captured: { fields: Record<string, unknown> | null },
+): Promise<GenerationOutcome> {
   const deps = opts.deps ?? {};
   const client = deps.client ?? getServiceClient();
   const call = deps.call ?? callClaudeJson;
@@ -166,6 +204,10 @@ export async function runWeeklyPopupGeneration(
 
   /** Écriture finale, gardée : seule la génération qui détient `generationId` écrit. */
   const finalize = async (fields: Record<string, unknown>): Promise<boolean> => {
+    if (opts.preview) {
+      captured.fields = fields;
+      return true;
+    }
     const { data, error } = await client
       .from("weekly_popups")
       .update(fields)
@@ -212,13 +254,42 @@ export async function runWeeklyPopupGeneration(
   };
 
   try {
-    const { data: found, error: readError } = await client
-      .from("weekly_popups")
-      .select("*")
-      .eq("id", popupId)
-      .maybeSingle();
-    if (readError) throw new Error("lecture de la ligne");
-    row = found as WeeklyPopupRow | null;
+    if (opts.preview) {
+      // Essai : ligne virtuelle, jamais lue ni écrite.
+      row = {
+        id: popupId,
+        competition_id: opts.preview.competitionId,
+        week_end_date: opts.preview.weekEnd,
+        kind: "LLM",
+        status: "GENERATING",
+        doubt_code: null,
+        doubt_detail: null,
+        generation_id: generationId,
+        generation_started_at: null,
+        generation_count: 0,
+        prompt_version: null,
+        candidates: [],
+        generated_content: null,
+        raw_output: null,
+        content: null,
+        warnings: [],
+        attempts: [],
+        featured_user_ids: [],
+        admin_notified_at: null,
+        published_at: null,
+        published_by: null,
+        created_at: "",
+        updated_at: "",
+      };
+    } else {
+      const { data: found, error: readError } = await client
+        .from("weekly_popups")
+        .select("*")
+        .eq("id", popupId)
+        .maybeSingle();
+      if (readError) throw new Error("lecture de la ligne");
+      row = found as WeeklyPopupRow | null;
+    }
     if (!row || row.status !== "GENERATING" || row.generation_id !== generationId) {
       return { written: false, status: "abandoned", costUsd, notified: false };
     }

@@ -64,7 +64,11 @@ export type EnsureDeps = {
 
 export async function ensureWeeklyPopupDraft(
   nowMs: number,
-  opts: { trigger: Extract<GenerationTrigger, "CRON" | "ADMIN_FREEZE">; deadlineMs: number; deps?: EnsureDeps },
+  opts: {
+    trigger: Extract<GenerationTrigger, "CRON" | "ADMIN_FREEZE" | "ADMIN_GENERATE">;
+    deadlineMs: number;
+    deps?: EnsureDeps;
+  },
 ): Promise<EnsureResult> {
   const deps = opts.deps ?? {};
   const supabase = deps.client ?? getServiceClient();

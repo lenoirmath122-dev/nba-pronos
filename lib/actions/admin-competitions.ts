@@ -503,7 +503,12 @@ export async function sendWeeklyRecap(options: { test?: boolean } = {}): Promise
   }
 
   if (!result.sent) {
-    const hint = result.skipped === "semaine non figée" ? " Fige d'abord la semaine." : "";
+    const hint =
+      result.skipped === "semaine non figée"
+        ? " Fige d'abord la semaine."
+        : result.skipped === "popup non publiée"
+          ? " Publie d'abord la popup ou écarte-la, dans « Popup hebdo »."
+          : "";
     return { success: false, error: `Rien n'a été envoyé : ${result.skipped ?? "raison inconnue"}.${hint}` };
   }
 
