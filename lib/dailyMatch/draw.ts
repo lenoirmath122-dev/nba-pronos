@@ -16,7 +16,8 @@ export const MAX_DRAW_DAYS = 10;
 // publié à 10h Paris le D-6, donc il doit être tiré au plus tard ce matin-là.
 // Le cron tire 9 jours à partir d'aujourd'hui (J..J+8) : 2 jours de marge pour
 // rattraper un calendrier Highlightly pas encore chargé. Il commence le 16/10
-// pour que les jours 20 à 25/10, publiés ensemble le 19/10, aient 3 passages.
+// pour que les jours 20 à 22/10, publiés ensemble le 16/10, soient tirés au
+// premier passage (publication avancée du 19 au 16/10/2026).
 // Il tire les jours >= FIRST_DAY de sa fenêtre, sans toucher aux autres.
 export const DAILY_MATCH_CRON_START = "2026-10-16";
 export const DRAW_AHEAD_DAYS = 9;

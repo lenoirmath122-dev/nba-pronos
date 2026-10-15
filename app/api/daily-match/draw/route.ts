@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
-import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
+import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { getServiceClient } from "@/lib/supabase/service";
 import { getMatchesByDate, normalizeMatchStatus } from "@/lib/nba/client";
 import { dailyPublishAt, isDailyDayPublished, nyDayToSlot, parisDateKey } from "@/lib/dates/paris";
@@ -12,8 +12,9 @@ import {
   validateManualRange,
 } from "@/lib/dailyMatch/draw";
 
-// Tirage automatique du Match du jour (PR 5), déclenché par le workflow GitHub
-// Actions daily-match-draw.yml (Bearer SYNC_SECRET, comme /api/recaps).
+// Tirage automatique du Match du jour (PR 5), déclenché par les crons Vercel de
+// vercel.json (Bearer CRON_SECRET, 5h et 7h UTC) ; le workflow GitHub
+// daily-match-draw.yml reste en secours et en lancement manuel (SYNC_SECRET).
 // - Sans paramètre : mode cron. Tire les jours à venir de la fenêtre
 //   (cronDrawDays), et ne fait rien en dehors de la période de la compétition.
 // - ?from=&to= : lot manuel. `override=1` ignore les bornes de la compétition
@@ -26,7 +27,7 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 async function handle(request: Request): Promise<Response> {
-  if (!isAuthorizedSyncRequest(request)) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 

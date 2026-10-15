@@ -104,7 +104,7 @@ describe("cronDrawDays", () => {
   it("le 16/10 ne tire que les jours >= premier jour", () => {
     expect(cronDrawDays("2026-10-16")).toEqual(["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24"]);
   });
-  it("le 19/10 (publication des jours 20 à 25) les jours 20 à 25 sont dans la fenêtre", () => {
+  it("le 19/10 les jours 20 à 25 sont toujours dans la fenêtre", () => {
     const days = cronDrawDays("2026-10-19");
     for (const d of ["2026-10-20", "2026-10-21", "2026-10-22", "2026-10-23", "2026-10-24", "2026-10-25"]) {
       expect(days).toContain(d);

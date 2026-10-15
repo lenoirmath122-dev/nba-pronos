@@ -69,20 +69,21 @@ describe("publication du Match du jour (fenêtre glissante de 7 jours, 10h Paris
     expect(dailyPublishDay("2026-11-15")).toBe("2026-11-09");
   });
 
-  it("lancement : les jours 20 à 25/10 sortent tous le 19/10", () => {
-    for (const day of ["2026-10-20", "2026-10-22", "2026-10-25"]) {
-      expect(dailyPublishDay(day)).toBe("2026-10-19");
+  it("lancement : les jours 20 à 22/10 sortent tous le 16/10, puis un par jour", () => {
+    for (const day of ["2026-10-20", "2026-10-21", "2026-10-22"]) {
+      expect(dailyPublishDay(day)).toBe("2026-10-16");
     }
+    expect(dailyPublishDay("2026-10-23")).toBe("2026-10-17");
     expect(dailyPublishDay("2026-10-26")).toBe("2026-10-20");
   });
 
   it("jours antérieurs au lancement (tests avec override) : publiés le jour même", () => {
     expect(dailyPublishDay("2026-10-07")).toBe("2026-10-07");
-    expect(dailyPublishDay("2026-10-19")).toBe("2026-10-19");
+    expect(dailyPublishDay("2026-10-16")).toBe("2026-10-16");
   });
 
   it("été (CEST) : 10h Paris = 08:00Z", () => {
-    expect(dailyPublishAt("2026-10-24")).toBe("2026-10-19T08:00:00.000Z");
+    expect(dailyPublishAt("2026-10-24")).toBe("2026-10-18T08:00:00.000Z");
     expect(dailyPublishAt("2026-10-26")).toBe("2026-10-20T08:00:00.000Z");
     expect(dailyPublishAt("2026-10-07")).toBe("2026-10-07T08:00:00.000Z");
   });

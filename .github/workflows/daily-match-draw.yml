@@ -1,5 +1,8 @@
 name: Tirage du match du jour
 
+# Secours et lancement manuel : le tirage nominal tourne en cron Vercel
+# (vercel.json, 5h et 7h UTC, CRON_SECRET) car GitHub retarde ce planning de
+# plusieurs heures. L'idempotence évite tout double tirage.
 # Appelle /api/daily-match/draw (PR 5) : tire à l'avance les prochains matchs du
 # jour (DAILY_MATCH). Deux passages (5h et 7h UTC), tous deux avant la
 # publication de 10h Paris été comme hiver et avant recaps.yml (8h/9h UTC) ; le

@@ -59,7 +59,8 @@ export function parisDateTimeLabel(iso: string): string {
 // de J+6 apparaît, et 7 matchs sont visibles en permanence), sans jamais passer
 // avant DAILY_FIRST_PUBLISH_DAY : au lancement, les premiers jours sortent
 // ensemble ce jour-là (décision du 07/10/2026 : ne pas forcer à venir parier
-// tous les jours).
+// tous les jours ; avancé du 19 au 16/10/2026 pour afficher les matchs dès
+// le premier tirage).
 // Le jour de référence est `series.slot_index` (YYYYMMDD, jour NY figé au
 // tirage), pas `scheduled_at` qui peut bouger. Ici pour rester sans import
 // relatif : importable tel quel par scripts/*.mjs.
@@ -68,7 +69,7 @@ export const DAILY_PUBLISH_HOUR_PARIS = 10;
 /** Nombre de jours de match visibles en même temps (jour J compris). */
 export const DAILY_WINDOW_DAYS = 7;
 /** Premier jour de publication : les jours qui tomberaient avant sortent ce jour-là. */
-export const DAILY_FIRST_PUBLISH_DAY = "2026-10-19";
+export const DAILY_FIRST_PUBLISH_DAY = "2026-10-16";
 
 function shiftDay(day: string, n: number): string {
   const d = new Date(`${day}T12:00:00.000Z`);
