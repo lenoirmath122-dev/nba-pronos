@@ -9,10 +9,10 @@ describe("unpublishedDailySeriesIds", () => {
   ];
 
   it("un jour est masqué avant 10h Paris le D-6, visible ensuite", () => {
-    // 26/10 : publié le 20/10 (CEST), 10h Paris = 08:00Z. Le 24/10, comme les
-    // jours 20 à 25/10, est publié ensemble le 19/10 (lancement).
-    expect(unpublishedDailySeriesIds(rows, Date.parse("2026-10-19T07:59:59Z"))).toEqual(["a", "b", "c"]);
-    expect(unpublishedDailySeriesIds(rows, Date.parse("2026-10-19T08:00:00Z"))).toEqual(["b", "c"]);
+    // 26/10 : publié le 20/10 (CEST), 10h Paris = 08:00Z. Le 24/10 est publié
+    // le 18/10 (D-6 ; les jours 20 à 22/10 sortent ensemble le 16/10, lancement).
+    expect(unpublishedDailySeriesIds(rows, Date.parse("2026-10-18T07:59:59Z"))).toEqual(["a", "b", "c"]);
+    expect(unpublishedDailySeriesIds(rows, Date.parse("2026-10-18T08:00:00Z"))).toEqual(["b", "c"]);
     expect(unpublishedDailySeriesIds(rows, Date.parse("2026-10-20T08:00:00Z"))).toEqual(["c"]);
     expect(unpublishedDailySeriesIds(rows, Date.parse("2026-10-21T08:00:00Z"))).toEqual([]);
   });
