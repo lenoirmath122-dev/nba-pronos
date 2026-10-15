@@ -1,7 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
-import { HOME_TITLE, TAGLINE, pageMetadata } from "@/lib/seo";
+import { HOME_TITLE, pageMetadata } from "@/lib/seo";
 import styles from "./home.module.css";
 
 // Page d'accueil publique (socle SEO, étape C du 05/10/2026) -- remplace la
@@ -31,30 +30,35 @@ const FEATURES = [
     text: "Prédis le parcours de chaque série jusqu'au titre.",
   },
   {
-    title: "Ligues entre amis",
-    text: "Crée ta ligue privée et suis le classement en direct.",
+    title: "Classement et ligues",
+    text: "Grimpe au classement général, ou crée ta ligue privée avec ta bande.",
   },
+];
+
+const STEPS = [
+  "Crée ton compte en 30 secondes.",
+  "Chaque jour, pronostique le match : vainqueur et écart.",
+  "Grimpe au classement, gagne des badges, chambre tes potes.",
 ];
 
 export default function LandingPage() {
   return (
     <main className={`${styles.page} photo-page force-photo`}>
       <section className={styles.hero}>
-        <Image src="/brand/logo-horizontal.svg" alt="Panier Ballon" width={299} height={56} unoptimized className={styles.logo} />
-        <h1 className={styles.title}>{TAGLINE.replace(/\.$/, "")}</h1>
+        <h1 className={styles.title}>La saison NBA démarre le 20/10. Pronostique chaque match, grimpe au classement.</h1>
         <p className={styles.lead}>
-          Pronostique les matchs, lance tes paris perso, remplis ton bracket et grimpe au classement face à ta bande. NBA Cup, playoffs :
-          chaque soir de match compte.
+          Choisis le vainqueur et l&apos;écart de points, remplis ton bracket des playoffs et défie ta bande. 100 % gratuit : que des
+          points, aucun argent réel.
         </p>
         <div className={styles.actions}>
           <Link href="/signup" className={styles.primary}>
-            Créer mon compte
-          </Link>
-          <Link href="/login" className={styles.secondary}>
-            J&apos;ai déjà un compte
+            Je rejoins la saison
           </Link>
         </div>
-        <p className={styles.free}>100 % gratuit — aucun argent réel, uniquement des points.</p>
+        <p className={styles.free}>Inscription en 30 secondes · Classement général ouvert à tous</p>
+        <Link href="/login" className={styles.loginLink}>
+          J&apos;ai déjà un compte
+        </Link>
       </section>
 
       <section className={styles.features}>
@@ -64,6 +68,17 @@ export default function LandingPage() {
             <p className={styles.cardText}>{f.text}</p>
           </article>
         ))}
+      </section>
+
+      <section className={styles.steps} aria-labelledby="how-title">
+        <h2 id="how-title" className={styles.stepsTitle}>
+          Comment ça marche
+        </h2>
+        <ol className={styles.stepList}>
+          {STEPS.map((text) => (
+            <li key={text}>{text}</li>
+          ))}
+        </ol>
       </section>
 
       <nav className={styles.discover} aria-label="Découvrir">

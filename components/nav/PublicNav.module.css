@@ -70,7 +70,7 @@
 
 .linkCta {
   composes: link;
-  color: var(--color-accent);
+  color: var(--color-text-primary);
 }
 
 /* Rangée secondaire, mentions légales/confidentialité/CGU (03/09/2026,

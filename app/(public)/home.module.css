@@ -18,12 +18,6 @@
   text-align: center;
 }
 
-.logo {
-  height: 56px;
-  width: auto;
-  filter: drop-shadow(0 2px 12px rgba(0, 0, 0, 0.5));
-}
-
 .title {
   margin: 0;
   font-size: var(--font-size-xl);
@@ -45,8 +39,7 @@
   gap: var(--space-3);
 }
 
-.primary,
-.secondary {
+.primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -66,9 +59,33 @@
   background: var(--color-accent-hover);
 }
 
-.secondary {
-  border: 1px solid var(--color-border-strong);
+.loginLink {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  text-decoration: underline;
+}
+
+.steps {
+  width: 100%;
+  max-width: 32rem;
+}
+
+.stepsTitle {
+  margin: 0 0 var(--space-3);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
+}
+
+.stepList {
+  margin: 0;
+  padding-left: var(--space-5);
+  display: grid;
+  gap: var(--space-2);
+  color: var(--color-text-secondary);
 }
 
 .free {

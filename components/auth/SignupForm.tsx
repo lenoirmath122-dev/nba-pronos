@@ -4,8 +4,6 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signup } from "@/lib/auth/actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/passwordPolicy";
-import { StandaloneAuthGate } from "./StandaloneAuthGate";
-import { TurnstileWidget } from "./TurnstileWidget";
 import styles from "./AuthScreen.module.css";
 
 export function SignupForm() {
@@ -29,7 +27,6 @@ export function SignupForm() {
   }
 
   return (
-    <StandaloneAuthGate>
     <div className={`${styles.card} glass-card`}>
       <h1 className={styles.cardTitle}>Inscription</h1>
       <form action={formAction} onSubmit={handleSubmit} className={styles.form}>
@@ -110,7 +107,6 @@ export function SignupForm() {
             Je certifie avoir 15 ans ou plus.
           </label>
         </div>
-        <TurnstileWidget resetKey={state} />
         {(mismatchError || state?.error) && (
           <p role="alert" className={styles.error}>
             {mismatchError ?? state?.error}
@@ -129,6 +125,5 @@ export function SignupForm() {
         </p>
       </div>
     </div>
-    </StandaloneAuthGate>
   );
 }

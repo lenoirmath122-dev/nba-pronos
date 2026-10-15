@@ -155,12 +155,6 @@ export default async function ConfidentialitePage() {
             </li>
             <li className={styles.listItem}>
               <span>
-                <strong>Cloudflare (Turnstile)</strong> — protection anti-robot à l&apos;inscription. Signal
-                technique de vérification, pas de donnée de profil.
-              </span>
-            </li>
-            <li className={styles.listItem}>
-              <span>
                 <strong>Anthropic (Claude)</strong> — structuration automatique par IA du texte de vos paris
                 personnalisés, et rédaction du texte hebdomadaire humoristique. Le texte que vous saisissez pour
                 un pari personnalisé, et, pour le texte hebdomadaire, votre pseudo avec le texte de certains de
