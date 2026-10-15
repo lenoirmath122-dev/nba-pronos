@@ -16,7 +16,6 @@ export async function login(
 ): Promise<AuthFormState> {
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const captchaToken = String(formData.get("cf-turnstile-response") ?? "");
 
   if (!email || !password) {
     return { error: "Email et mot de passe requis." };
@@ -35,17 +34,9 @@ export async function login(
   const { error } = await supabase.auth.signInWithPassword({
     email,
     password,
-    options: { captchaToken },
   });
 
   if (error) {
-    // Vérification CAPTCHA (audit de sécurité, finding 3, Turnstile) : message
-    // dédié plutôt que le générique "Email ou mot de passe incorrect", qui
-    // induirait en erreur sur la vraie cause (widget bloqué par un
-    // bloqueur de pub, script Cloudflare indisponible...).
-    if (error.message.toLowerCase().includes("captcha")) {
-      return { error: "Vérification de sécurité échouée. Réessaie (désactive un éventuel bloqueur de pub)." };
-    }
     return { error: "Email ou mot de passe incorrect." };
   }
 
@@ -61,7 +52,6 @@ export async function signup(
   const password = String(formData.get("password") ?? "");
   const code = String(formData.get("code") ?? "").trim();
   const ageConfirmed = formData.get("ageConfirmed") === "on";
-  const captchaToken = String(formData.get("cf-turnstile-response") ?? "");
 
   if (!pseudo || !email || !password) {
     return { error: "Tous les champs sont obligatoires." };
@@ -127,7 +117,7 @@ export async function signup(
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
-    options: { data: { pseudo }, emailRedirectTo: `${origin}/email-confirmed`, captchaToken },
+    options: { data: { pseudo }, emailRedirectTo: `${origin}/email-confirmed` },
   });
 
   // Énumération de compte assumée ici (audit de sécurité, finding 14,
@@ -144,11 +134,6 @@ export async function signup(
   if (signUpError) {
     if (signUpError.message.toLowerCase().includes("already registered")) {
       return { error: "Un compte existe déjà avec cet email." };
-    }
-    // Vérification CAPTCHA (audit de sécurité, finding 3, Turnstile) : même
-    // message dédié que login(), plutôt que le générique ci-dessous.
-    if (signUpError.message.toLowerCase().includes("captcha")) {
-      return { error: "Vérification de sécurité échouée. Réessaie (désactive un éventuel bloqueur de pub)." };
     }
     return { error: "Impossible de créer le compte. Réessaie." };
   }
@@ -184,8 +169,7 @@ export async function signup(
 // la confirmation (choix du nouveau mot de passe) reste côté client, elle
 // a besoin de détecter l'évènement PASSWORD_RECOVERY du SDK navigateur.
 export async function requestPasswordReset(
-  email: string,
-  captchaToken: string
+  email: string
 ): Promise<{ error: string | null }> {
   if (!(await checkAnonRateLimit("reset_password_request", 5, 3600))) {
     return { error: RATE_LIMIT_ERROR };
@@ -197,7 +181,6 @@ export async function requestPasswordReset(
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${origin}/reset-password`,
-    captchaToken,
   });
   if (error) {
     return { error: "Impossible d'envoyer l'email pour le moment. Réessaie plus tard." };

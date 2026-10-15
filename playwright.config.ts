@@ -95,10 +95,6 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_URL: local.API_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: local.ANON_KEY,
       SUPABASE_SERVICE_ROLE_KEY: local.SERVICE_ROLE_KEY,
-      // Turnstile désactivé (widget ne se rend pas sans clé) : la CAPTCHA
-      // locale est déjà désactivée côté GoTrue (supabase/config.toml,
-      // [auth.captcha] commenté), donc le login réussit sans token.
-      NEXT_PUBLIC_TURNSTILE_SITE_KEY: "",
       // Force le repli "non calculable" de structureBet() (return null
       // immédiat, AUCUN appel réseau) plutôt que de mocker le protocole de
       // sortie structurée du SDK Anthropic -- ce chemin de repli est déjà le

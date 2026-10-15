@@ -33,16 +33,13 @@ const securityHeaders = [
     key: "Content-Security-Policy",
     value: [
       "default-src 'self'",
-      // https://challenges.cloudflare.com : script du widget CAPTCHA Turnstile
-      // (audit de sécurité, finding 3, 02/09/2026) -- ajouté en script-src ET
-      // frame-src, le widget se rend dans un iframe cross-origin.
       // 'unsafe-eval' UNIQUEMENT en dev (jamais en prod, cf. NODE_ENV
       // ci-dessous) : React s'en sert pour reconstruire des stack traces
       // lisibles en mode dev (Fast Refresh) -- absent, chaque montage de
       // composant loggait "eval() is not supported in this environment"
       // dans la console (constaté 09/09/2026), sans casser l'app (React
       // n'utilise jamais eval() en production, le message le dit lui-même).
-      `script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
+      `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV !== "production" ? " 'unsafe-eval'" : ""}`,
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https:",
       "font-src 'self' data:",
@@ -54,8 +51,7 @@ const securityHeaders = [
       // était bloqué depuis son intégration (PR #50) -- jamais remarqué car
       // la vérification de bout en bout avait utilisé une route API (erreur
       // CÔTÉ SERVEUR, jamais soumise à la CSP du navigateur).
-      `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin} https://api.anthropic.com https://challenges.cloudflare.com https://*.sentry.io`,
-      "frame-src https://challenges.cloudflare.com",
+      `connect-src 'self' ${supabaseOrigin} ${supabaseWsOrigin} https://api.anthropic.com https://*.sentry.io`,
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { HOME_TITLE, TAGLINE, pageMetadata } from "@/lib/seo";
+import { HOME_TITLE, pageMetadata } from "@/lib/seo";
 import styles from "./home.module.css";
 
 // Page d'accueil publique (socle SEO, étape C du 05/10/2026) -- remplace la
