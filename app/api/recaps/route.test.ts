@@ -5,6 +5,7 @@ const runLeaderboardSnapshot = vi.fn();
 const runRecaps = vi.fn();
 const runWeeklyFreeze = vi.fn();
 const ensureWeeklyPopupDraft = vi.fn();
+const runCompetitionWeekName = vi.fn();
 let authorized = true;
 
 vi.mock("@/lib/sync/auth", () => ({ isAuthorizedCronRequest: () => authorized }));
@@ -14,6 +15,10 @@ vi.mock("@/lib/snapshots/leaderboardSnapshot", () => ({
 vi.mock("@/lib/recaps/sendRecaps", () => ({ runRecaps: (...a: unknown[]) => runRecaps(...a) }));
 vi.mock("@/lib/weekly/freezeWeek", () => ({
   runWeeklyFreeze: (...a: unknown[]) => runWeeklyFreeze(...a),
+}));
+
+vi.mock("@/lib/weekly/competitionName", () => ({
+  runCompetitionWeekName: (...a: unknown[]) => runCompetitionWeekName(...a),
 }));
 
 vi.mock("@/lib/weeklyPopup/ensure", () => ({
@@ -31,6 +36,11 @@ beforeEach(() => {
   runRecaps.mockReset();
   runWeeklyFreeze.mockReset();
   ensureWeeklyPopupDraft.mockReset();
+  runCompetitionWeekName.mockReset();
+  runCompetitionWeekName.mockImplementation(async () => {
+    order.push("weekName");
+    return { renamed: false, skipped: "nom inchangé ou format non reconnu" };
+  });
   runLeaderboardSnapshot.mockImplementation(async () => {
     order.push("snapshot");
     return { snapshotted: 3 };
@@ -57,16 +67,25 @@ describe("GET /api/recaps", () => {
     expect(runRecaps).not.toHaveBeenCalled();
   });
 
-  it("fige le snapshot, puis la semaine, assure la popup, avant les récaps", async () => {
+  it("fige le snapshot, puis la semaine, renomme, assure la popup, avant les récaps", async () => {
     const res = await GET(req());
     expect(res.status).toBe(200);
-    expect(order).toEqual(["snapshot", "weekly", "popup", "recaps"]);
+    expect(order).toEqual(["snapshot", "weekly", "weekName", "popup", "recaps"]);
     expect(await res.json()).toEqual({
       snapshot: { snapshotted: 3 },
       weekly: { frozen: false, skipped: "classement hebdo désactivé" },
+      weekName: { renamed: false, skipped: "nom inchangé ou format non reconnu" },
       popup: { action: "none", weekEnd: "2026-10-26", reason: "popup désactivée" },
       recaps: { notified: 1, candidates: 1 },
     });
+  });
+
+  it("un renommage en échec ne bloque pas les récaps (500)", async () => {
+    runCompetitionWeekName.mockRejectedValue(new Error("lecture impossible"));
+    const res = await GET(req());
+    expect(res.status).toBe(500);
+    expect(runRecaps).toHaveBeenCalled();
+    expect((await res.json()).weekName).toEqual({ error: "lecture impossible" });
   });
 
   it("un figement hebdo en échec ne bloque pas les récaps (500)", async () => {
