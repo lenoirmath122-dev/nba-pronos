@@ -265,7 +265,7 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
           // Paris — cas quasi systématique, l'heure seule serait trompeuse.
           <time dateTime={match.scheduledAt} className={styles.dailyKickoff}>
             <span className={styles.dailyTitle}>
-              {match.daily.dayLabel} · {match.daily.time}
+              {match.daily.time}
             </span>
             {match.daily.nightLabel && <span className={styles.dailyNight}>{match.daily.nightLabel}</span>}
           </time>
