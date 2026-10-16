@@ -3,6 +3,7 @@ import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { runRecaps } from "@/lib/recaps/sendRecaps";
 import { runLeaderboardSnapshot } from "@/lib/snapshots/leaderboardSnapshot";
 import { runWeeklyFreeze } from "@/lib/weekly/freezeWeek";
+import { runCompetitionWeekName } from "@/lib/weekly/competitionName";
 import { deadlineFrom } from "@/lib/weeklyPopup/config";
 import { ensureWeeklyPopupDraft } from "@/lib/weeklyPopup/ensure";
 
@@ -67,6 +68,15 @@ async function handle(request: Request): Promise<Response> {
         error: error instanceof Error ? error.message : "Erreur inconnue.",
       }),
     );
+    // Numéro de semaine dans le nom de la compétition, juste après le
+    // figement (semaines figées + 1). Idempotent, isolé comme le reste.
+    const weekName = await runCompetitionWeekName().then(
+      (value) => ({ ok: true as const, value }),
+      (error: unknown) => ({
+        ok: false as const,
+        error: error instanceof Error ? error.message : "Erreur inconnue.",
+      }),
+    );
     // Popup hebdo (lot 5) : à CHAQUE passage, pas seulement quand le figement
     // vient d'avoir lieu (« déjà figé » est le cas normal des passages 2 et 3).
     // Seule la réservation de la ligne est synchrone ; la génération part dans
@@ -94,10 +104,13 @@ async function handle(request: Request): Promise<Response> {
     const body = {
       snapshot: snapshot.ok ? snapshot.value : { error: snapshot.error },
       weekly: weekly.ok ? weekly.value : { error: weekly.error },
+      weekName: weekName.ok ? weekName.value : { error: weekName.error },
       popup: popup.ok ? popup.value : { error: popup.error },
       recaps: recaps.ok ? recaps.value : { error: recaps.error },
     };
-    return NextResponse.json(body, { status: snapshot.ok && weekly.ok && popup.ok && recaps.ok ? 200 : 500 });
+    return NextResponse.json(body, {
+      status: snapshot.ok && weekly.ok && weekName.ok && popup.ok && recaps.ok ? 200 : 500,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur inconnue.";
     return NextResponse.json({ error: message }, { status: 500 });
