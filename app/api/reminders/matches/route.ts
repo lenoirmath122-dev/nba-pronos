@@ -1,14 +1,15 @@
 import { NextResponse } from "next/server";
-import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
+import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { runMatchesReminder } from "@/lib/reminders/matchesReminder";
 
 // Rappel "match du soir non pronostiqué" (backlog "Rappels ciblés").
-// Même garde d'authentification que /api/sync/* (Bearer SYNC_SECRET,
-// service_role) — déclenché par un planificateur GitHub Actions.
+// Garde d'authentification : Bearer SYNC_SECRET ou CRON_SECRET. Déclenché par
+// les crons Vercel (vercel.json, fiables) et par GitHub Actions en secours
+// (souvent en retard de plusieurs heures) ; reminder_log dédoublonne.
 export const runtime = "nodejs";
 
 async function handle(request: Request): Promise<Response> {
-  if (!isAuthorizedSyncRequest(request)) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 
