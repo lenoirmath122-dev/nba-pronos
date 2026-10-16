@@ -6,6 +6,12 @@
     { "path": "/api/recaps", "schedule": "0 9 * * *" },
     { "path": "/api/recaps", "schedule": "0 10 * * *" },
     { "path": "/api/daily-match/draw", "schedule": "0 5 * * *" },
-    { "path": "/api/daily-match/draw", "schedule": "0 7 * * *" }
+    { "path": "/api/daily-match/draw", "schedule": "0 7 * * *" },
+    { "path": "/api/reminders/matches", "schedule": "0 15 * * *" },
+    { "path": "/api/reminders/matches", "schedule": "0 17 * * *" },
+    { "path": "/api/reminders/matches", "schedule": "0 19 * * *" },
+    { "path": "/api/reminders/matches", "schedule": "0 21 * * *" },
+    { "path": "/api/reminders/matches", "schedule": "0 23 * * *" },
+    { "path": "/api/reminders/matches", "schedule": "0 1 * * *" }
   ]
 }
