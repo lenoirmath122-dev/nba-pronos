@@ -1,6 +1,7 @@
 import type { PlayerRow as PlayerRowData } from "@/lib/queries/admin-players";
 import { setPlayerRoleFormAction, setPlayerStatusFormAction } from "@/lib/actions/admin-players";
 import { PlayerLink } from "@/components/ui/PlayerLink";
+import { CopyEmailButton } from "./CopyEmailButton";
 import styles from "./PlayerRow.module.css";
 
 // Une ligne de Gestion des joueurs (SPEC_ECRAN_ADMIN_PLAYERS_V0_1 §2) :
@@ -31,6 +32,22 @@ export function PlayerRow({ player, error }: PlayerRowProps) {
         </span>
         <span className={player.status === "ACTIVE" ? styles.statusBadgeActive : styles.statusBadgeDisabled}>
           {player.status === "ACTIVE" ? "Actif" : "Désactivé"}
+        </span>
+      </div>
+
+      <div className={styles.contact}>
+        {player.email ? (
+          <>
+            <span className={styles.email}>{player.email}</span>
+            <CopyEmailButton email={player.email} className={styles.actionButton} />
+          </>
+        ) : (
+          <span className={styles.noEmail}>Pas d'e-mail</span>
+        )}
+        <span className={player.pushDevices > 0 ? styles.statusBadgeActive : styles.statusBadgeDisabled}>
+          {player.pushDevices > 0
+            ? `Notifs actives (${player.pushDevices} appareil${player.pushDevices > 1 ? "s" : ""})`
+            : "Notifs inactives"}
         </span>
       </div>
 
