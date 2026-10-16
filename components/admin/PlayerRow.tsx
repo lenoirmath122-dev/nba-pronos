@@ -42,7 +42,7 @@ export function PlayerRow({ player, error }: PlayerRowProps) {
             <CopyEmailButton email={player.email} className={styles.actionButton} />
           </>
         ) : (
-          <span className={styles.noEmail}>Pas d'e-mail</span>
+          <span className={styles.noEmail}>Pas d&apos;e-mail</span>
         )}
         <span className={player.pushDevices > 0 ? styles.statusBadgeActive : styles.statusBadgeDisabled}>
           {player.pushDevices > 0
