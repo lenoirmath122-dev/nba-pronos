@@ -14,6 +14,10 @@ export default function VerifyEmailPage() {
         Ton compte a bien été créé. Clique sur le lien reçu par email pour le
         confirmer avant de te connecter.
       </p>
+      <p className="max-w-sm text-sm">
+        Rien dans ta boîte de réception ? Regarde aussi dans tes spams ou
+        courriers indésirables, le message peut s&apos;y trouver.
+      </p>
       <Link href="/login" className="text-sm underline">
         Retour à la connexion
       </Link>
