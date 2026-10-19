@@ -42,13 +42,6 @@
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
-.reassure {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-}
-
 .live {
   display: flex;
   align-items: center;
@@ -144,8 +137,6 @@
 }
 
 .team:focus-visible,
-.shortcut:focus-visible,
-.add:focus-visible,
 .barButton:focus-visible,
 .linkButton:focus-visible {
   outline: 2px solid var(--color-accent);
@@ -190,26 +181,6 @@
   accent-color: var(--color-accent);
 }
 
-.shortcuts {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.shortcut {
-  min-height: 44px;
-  min-width: 56px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-}
-
 .rulesHint {
   margin: 0;
   font-size: var(--font-size-xs);
@@ -217,21 +188,6 @@
 
 .rulesHint a {
   color: var(--color-accent-rest);
-}
-
-.add {
-  min-height: 48px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
-  font: inherit;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.add:hover {
-  background: var(--color-accent-hover);
 }
 
 .saved {

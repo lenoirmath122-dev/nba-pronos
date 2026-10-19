@@ -43,11 +43,3 @@ export function remainingLabel(ms: number): string {
   if (h > 0) return `${h} h ${String(m).padStart(2, "0")} min`;
   return `${m} min`;
 }
-
-/** Raccourcis du curseur d'écart (plan §1.4, bloc 3). */
-export const MARGIN_SHORTCUTS: { label: string; value: number }[] = [
-  { label: "1–5", value: 3 },
-  { label: "6–10", value: 8 },
-  { label: "11–15", value: 13 },
-  { label: "16+", value: 20 },
-];

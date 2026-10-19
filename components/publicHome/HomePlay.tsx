@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { HomeMatch, HomeTeam } from "@/lib/publicHome/query";
@@ -16,7 +16,7 @@ import {
   type OpenMatch,
 } from "@/lib/publicHome/basket";
 import { trackFunnel } from "@/lib/funnel/track";
-import { MARGIN_SHORTCUTS, remainingLabel } from "@/lib/publicHome/labels";
+import { remainingLabel } from "@/lib/publicHome/labels";
 import styles from "./HomePlay.module.css";
 
 // Blocs 2 à 5 de l'accueil public (plan d'attractivité, §1.4) : match de la
@@ -68,7 +68,6 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
   const [draft, setDraft] = useState<Draft | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [now, setNow] = useState<number | null>(null);
-  const nextRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     trackFunnel("home_view");
@@ -110,31 +109,34 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
     writeStorage(items);
   }, []);
 
-  const startDraft = (match: HomeMatch, team: HomeTeam) => {
-    const existing = basket.find((i) => i.matchId === match.id);
-    setNotice(null);
-    trackFunnel("team_picked", match.id);
-    setDraft({
-      matchId: match.id,
-      winnerTeamId: team.id,
-      margin: existing && existing.winnerTeamId === team.id ? existing.margin : 7,
-    });
-  };
-
-  const addDraft = (match: HomeMatch) => {
-    if (!draft || draft.matchId !== match.id) return;
+  const saveProno = (match: HomeMatch, winnerTeamId: string, margin: number) => {
     commit(
       upsertItem(basket, {
         matchId: match.id,
         competitionId: match.competitionId,
-        winnerTeamId: draft.winnerTeamId,
-        margin: draft.margin,
+        winnerTeamId,
+        margin,
         addedAt: Date.now(),
       }),
     );
+  };
+
+  // Le prono entre dans le panier dès le choix de l'équipe (écart par défaut 7) ;
+  // le curseur ne fait ensuite que le corriger.
+  const startDraft = (match: HomeMatch, team: HomeTeam) => {
+    const existing = basket.find((i) => i.matchId === match.id);
+    const margin = existing && existing.winnerTeamId === team.id ? existing.margin : 7;
+    setNotice(null);
+    trackFunnel("team_picked", match.id);
+    setDraft({ matchId: match.id, winnerTeamId: team.id, margin });
+    saveProno(match, team.id, margin);
     trackFunnel("prono_added", match.id);
-    setDraft(null);
-    nextRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const changeMargin = (match: HomeMatch, margin: number) => {
+    if (!draft || draft.matchId !== match.id) return;
+    setDraft({ ...draft, margin });
+    saveProno(match, draft.winnerTeamId, margin);
   };
 
   const cancelProno = (matchId: string) => {
@@ -148,8 +150,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
     splits,
     now,
     onPick: startDraft,
-    onMargin: (margin: number) => setDraft((d) => (d ? { ...d, margin } : d)),
-    onAdd: addDraft,
+    onMargin: changeMargin,
     onCancel: cancelProno,
   };
 
@@ -180,7 +181,6 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
             </p>
           )}
           <MatchCard match={featured} big {...cardProps} />
-          <p className={styles.reassure}>Gratuit · que des points, aucun argent réel · 15 ans et plus</p>
         </section>
       ) : (
         <section className={styles.featured} aria-labelledby="featured-title">
@@ -198,7 +198,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
       ) : null}
 
       {next.length > 0 ? (
-        <section ref={nextRef} className={styles.next} aria-labelledby="next-title">
+        <section className={styles.next} aria-labelledby="next-title">
           <h2 id="next-title" className={styles.nextTitle}>
             Les prochains matchs
           </h2>
@@ -230,12 +230,11 @@ type CardProps = {
   splits: Record<string, Split>;
   now: number | null;
   onPick: (match: HomeMatch, team: HomeTeam) => void;
-  onMargin: (margin: number) => void;
-  onAdd: (match: HomeMatch) => void;
+  onMargin: (match: HomeMatch, margin: number) => void;
   onCancel: (matchId: string) => void;
 };
 
-function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin, onAdd, onCancel }: CardProps) {
+function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin, onCancel }: CardProps) {
   const saved = basket.find((i) => i.matchId === match.id) ?? null;
   const drafting = draft?.matchId === match.id ? draft : null;
   const chosenTeamId = drafting?.winnerTeamId ?? saved?.winnerTeamId ?? null;
@@ -264,8 +263,7 @@ function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin
         <MarginPanel
           match={match}
           draft={drafting}
-          onMargin={onMargin}
-          onAdd={() => onAdd(match)}
+          onMargin={(margin) => onMargin(match, margin)}
         />
       ) : saved && savedTeam ? (
         <p className={styles.saved}>
@@ -315,12 +313,10 @@ function MarginPanel({
   match,
   draft,
   onMargin,
-  onAdd,
 }: {
   match: HomeMatch;
   draft: Draft;
   onMargin: (margin: number) => void;
-  onAdd: () => void;
 }) {
   const winner = draft.winnerTeamId === match.home.id ? match.home : match.away;
   const sliderId = `margin-${match.id}`;
@@ -343,19 +339,9 @@ function MarginPanel({
         className={styles.slider}
         onChange={(e) => onMargin(Number(e.target.value))}
       />
-      <div className={styles.shortcuts}>
-        {MARGIN_SHORTCUTS.map((s) => (
-          <button key={s.label} type="button" className={styles.shortcut} onClick={() => onMargin(s.value)}>
-            {s.label}
-          </button>
-        ))}
-      </div>
       <p className={styles.rulesHint}>
         <Link href="/regles">Voir le barème</Link>
       </p>
-      <button type="button" className={styles.add} onClick={onAdd}>
-        Ajouter à mes pronos
-      </button>
     </div>
   );
 }
