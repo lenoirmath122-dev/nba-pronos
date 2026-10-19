@@ -13,6 +13,12 @@
     { "path": "/api/reminders/matches", "schedule": "0 21 * * *" },
     { "path": "/api/reminders/matches", "schedule": "0 23 * * *" },
     { "path": "/api/reminders/matches", "schedule": "0 1 * * *" },
-    { "path": "/api/cron/purge-pending", "schedule": "30 4 * * *" }
+    { "path": "/api/cron/purge-pending", "schedule": "30 4 * * *" },
+    { "path": "/api/emails?kind=morning", "schedule": "0 8 * * *" },
+    { "path": "/api/emails?kind=morning", "schedule": "0 9 * * *" },
+    { "path": "/api/emails?kind=morning", "schedule": "0 10 * * *" },
+    { "path": "/api/emails?kind=evening", "schedule": "0 16 * * *" },
+    { "path": "/api/emails?kind=evening", "schedule": "0 17 * * *" },
+    { "path": "/api/emails?kind=evening", "schedule": "0 18 * * *" }
   ]
 }
