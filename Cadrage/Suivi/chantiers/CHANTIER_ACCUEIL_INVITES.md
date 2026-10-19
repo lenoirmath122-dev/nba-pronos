@@ -22,3 +22,17 @@
   - **Reste à vérifier** : automatisation des matchs (≥ 4 jours d'avance).
 - **Ordre** : migration (t2) → requêtes et blocs de l'accueil (t3-4) → Server Action
   et callback (t5-6) → Google, mot de passe, filtres, états, funnel (t7-11).
+- **Tâche 2 faite** (migrations non poussées) : `PENDING` rouvre volontairement la
+  décision de juillet 2026 (« PENDING écarté », B1, sans motif écrit), parce que le
+  parcours invité en a besoin. Préférences e-mail ajoutées ; rappel du soir décoché
+  par défaut tant que 1.12 n'est pas tranché.
+- **Tâche 3 faite** : `lib/publicHome/select.ts` (logique pure, testée) et
+  `lib/publicHome/query.ts` (client anonyme sans cookie, donc `revalidate = 60`
+  possible). Une seule compétition `ACTIVE` à la fois : « toutes les compétitions
+  `DAILY_MATCH` » du plan se réduit à celle-là. Le filtre de publication des jours
+  (`hiddenSeriesFilter`) est appliqué. Deux fonctions SQL ajoutées à la migration
+  `...090100` : totaux de pronos et stats du dernier résultat.
+- **Piste pour la tâche 9** : la vue `user_scores` (CTE `participants`) est la source du
+  classement et ne filtre pas le statut. Ajouter l'exclusion de `PENDING` **dans la
+  vue** corrige d'un coup tout ce qui la lit ; il restera les requêtes qui lisent
+  `users` directement (annuaire, profil, chat, snapshots).
