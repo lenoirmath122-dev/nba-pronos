@@ -5,6 +5,7 @@ import { useEffect, useState, useTransition } from "react";
 import { registerPronos, requestLoginLink } from "@/lib/auth/guest";
 import { BASKET_KEY, parseBasket, type BasketItem } from "@/lib/publicHome/basket";
 import { PSEUDO_MAX_LENGTH } from "@/lib/pseudo/rules";
+import { trackFunnel } from "@/lib/funnel/track";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import styles from "@/components/auth/AuthScreen.module.css";
 
@@ -34,6 +35,7 @@ export function RegisterForm() {
   useEffect(() => {
     const load = () => setCount(readBasket().length);
     load();
+    trackFunnel("save_opened");
   }, []);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -41,7 +43,10 @@ export function RegisterForm() {
     setError(null);
     startTransition(async () => {
       const result = await registerPronos({ pseudo, email, ageConfirmed: age, items: readBasket() });
-      if (result.ok) setSentTo(email.trim());
+      if (result.ok) {
+        trackFunnel("save_email_submitted");
+        setSentTo(email.trim());
+      }
       else setError(result.error);
     });
   }

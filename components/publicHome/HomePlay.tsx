@@ -15,6 +15,7 @@ import {
   type BasketItem,
   type OpenMatch,
 } from "@/lib/publicHome/basket";
+import { trackFunnel } from "@/lib/funnel/track";
 import { MARGIN_SHORTCUTS, remainingLabel } from "@/lib/publicHome/labels";
 import styles from "./HomePlay.module.css";
 
@@ -69,6 +70,10 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
   const [now, setNow] = useState<number | null>(null);
   const nextRef = useRef<HTMLElement | null>(null);
 
+  useEffect(() => {
+    trackFunnel("home_view");
+  }, []);
+
   // Chargement du panier, puis nettoyage des matchs commencés (§1.5).
   useEffect(() => {
     const load = () => {
@@ -108,6 +113,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
   const startDraft = (match: HomeMatch, team: HomeTeam) => {
     const existing = basket.find((i) => i.matchId === match.id);
     setNotice(null);
+    trackFunnel("team_picked", match.id);
     setDraft({
       matchId: match.id,
       winnerTeamId: team.id,
@@ -126,6 +132,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
         addedAt: Date.now(),
       }),
     );
+    trackFunnel("prono_added", match.id);
     setDraft(null);
     nextRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -206,7 +213,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
           <span className={styles.barCount}>
             {basket.length} {basket.length > 1 ? "pronos prêts" : "prono prêt"}
           </span>
-          <Link href={saveHref} className={styles.barButton}>
+          <Link href={saveHref} className={styles.barButton} onClick={() => trackFunnel("save_opened")}>
             Enregistrer
           </Link>
         </div>

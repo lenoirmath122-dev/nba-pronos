@@ -63,5 +63,20 @@
   lien `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email` (sans cela le lien
   ouvert dans un autre navigateur échoue) ; ajouter `/auth/callback` aux URLs de redirection
   autorisées. Vérifier qu'un utilisateur créé non confirmé peut recevoir un lien `signInWithOtp`.
-- **Reste du chantier** : t9 (filtrage `ACTIVE` partout + nettoyage 7 jours), t10 (états, ménage
-  de la page, blocs 6-9), t11 (funnel + recette). Piste t9 : la vue `user_scores`.
+- **Tâches 9 à 11 faites** (code seulement, rien testé contre un vrai Supabase ni vu à l'écran) :
+  - t9 : migration `...090300` : policy `users_select` masque les `PENDING` (sauf soi et admin),
+    vues `user_scores` / `user_recent_form` les excluent, fonction `purge_pending_users` (7 jours,
+    supprime d'abord `match_predictions`, FK sans cascade) appelée par `/api/cron/purge-pending`
+    (vercel.json, 04h30 UTC). Les envois (récaps, rappels, chat) filtraient déjà `ACTIVE`.
+  - t10 : accueil = blocs 7 (résultat de la nuit) et 8 (top 5) ajoutés, bloc 9 raccourci, bracket
+    retiré, cartes « paris perso / ligues / NBA Cup ». Non fait : en-tête réduit du bloc 1 et pied de
+    page (la `PublicNav` est partagée avec /leaderboard, /regles ; liens légaux déjà en barre du haut).
+    Bandeau « compte en attente » inutile : `proxy.ts` + `(app)/layout.tsx` renvoient déjà le PENDING.
+  - t11 : migration `...090400` (`funnel_events`, lecture admin), route `/api/funnel` (limiteur
+    anonyme, toujours 204), `lib/funnel/*`, 8 événements branchés (`account_validated` côté serveur
+    dans le callback, via le cookie `pb_vid`). Confidentialité mise à jour (mesure interne 25 mois,
+    cookie 13 mois) : **à faire relire** (exemption CNIL de la mesure d'audience). Non fait : mention
+    de la purge à 7 jours et des e-mails de résultats dans la page.
+- **Recette 1A restante** (à faire avec un Supabase local ou de preview) : appliquer les 5 migrations,
+  parcours invité de bout en bout (choix → panier → /enregistrer → lien → /bienvenue), PENDING absent
+  du classement/annuaire, purge, événements dans `funnel_events`, 2 specs e2e de connexion.

@@ -1,7 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { getServerClient } from "@/lib/supabase/server";
+import { cookies } from "next/headers";
 import { getServiceClient } from "@/lib/supabase/service";
+import { VISITOR_COOKIE } from "@/lib/funnel/events";
 
 // Retour des liens de connexion (plan d'attractivité, §1.6) : lien magique reçu
 // par e-mail et retour de Google. Deux formes :
@@ -50,7 +52,17 @@ export async function GET(request: NextRequest) {
     if (profile.age_confirmed_at === null) {
       return NextResponse.redirect(new URL("/choisir-pseudo", request.url));
     }
-    await service.from("users").update({ status: "ACTIVE" }).eq("id", user.id).eq("status", "PENDING");
+    const { data: activated } = await service
+      .from("users")
+      .update({ status: "ACTIVE" })
+      .eq("id", user.id)
+      .eq("status", "PENDING")
+      .select("id");
+    // Entonnoir (§1.13) : le lien s'ouvre parfois dans un autre navigateur, sans le cookie.
+    const visitor = (await cookies()).get(VISITOR_COOKIE)?.value;
+    if (activated?.length && visitor) {
+      await service.from("funnel_events").insert({ visitor_id: visitor, event: "account_validated" });
+    }
   }
 
   return NextResponse.redirect(new URL("/bienvenue", request.url));

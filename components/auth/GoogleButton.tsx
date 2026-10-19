@@ -2,6 +2,7 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
+import { trackFunnel } from "@/lib/funnel/track";
 import { isInAppBrowser } from "@/lib/auth/inAppBrowser";
 import styles from "./AuthScreen.module.css";
 
@@ -24,6 +25,7 @@ export function GoogleButton({ label = "Continuer avec Google" }: { label?: stri
 
   async function start() {
     setError(null);
+    trackFunnel("save_google_started");
     const { error: oauthError } = await getBrowserClient().auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

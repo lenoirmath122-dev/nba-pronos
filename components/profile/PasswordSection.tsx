@@ -1,5 +1,6 @@
 "use client";
 
+import { trackFunnel } from "@/lib/funnel/track";
 import { useState, type FormEvent } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import { MIN_PASSWORD_LENGTH, passwordPolicyError } from "@/lib/auth/passwordPolicy";
@@ -27,6 +28,7 @@ export function PasswordSection() {
     if (updateError) return setError("Impossible d'enregistrer le mot de passe. Reconnecte-toi puis réessaie.");
     setPassword("");
     setConfirm("");
+    trackFunnel("password_created");
     setDone(true);
   }
 

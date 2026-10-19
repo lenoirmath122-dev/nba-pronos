@@ -175,7 +175,10 @@ export default async function ConfidentialitePage() {
             conditions commerciales d&apos;Anthropic.
           </p>
           <p className={styles.body}>
-            Nous ne faisons appel à aucun service de mesure d&apos;audience, de publicité, ni de paiement.
+            Nous ne faisons appel à aucun service externe de mesure d&apos;audience, de publicité, ni de paiement.
+            Nous mesurons en interne, de façon anonyme, le parcours des visiteurs de la page d&apos;accueil
+            (match choisi, pronos ajoutés, inscription), sans lien avec un compte ni donnée personnelle ; ces
+            mesures sont conservées 25 mois au plus.
           </p>
         </section>
 
@@ -184,7 +187,8 @@ export default async function ConfidentialitePage() {
           <p className={styles.body}>
             Panier Ballon utilise uniquement des cookies et technologies strictement nécessaires au
             fonctionnement du service : un cookie de session pour vous garder connecté, un cookie technique lié
-            à la vérification anti-robot à l&apos;inscription, et une préférence d&apos;affichage enregistrée
+            à la vérification anti-robot à l&apos;inscription, un identifiant aléatoire de visiteur (13 mois) servant à cette
+            mesure d&apos;audience interne et anonyme, et une préférence d&apos;affichage enregistrée
             localement sur votre appareil (jamais transmise à nos serveurs).
           </p>
           <p className={styles.body}>
