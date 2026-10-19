@@ -27,6 +27,7 @@ import { PinnedBadges } from "@/components/profile/PinnedBadges";
 import { WeeklyPalmares } from "@/components/profile/WeeklyPalmares";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { PlayerLink } from "@/components/ui/PlayerLink";
+import { PasswordSection } from "@/components/profile/PasswordSection";
 import { BadgeCheckOnMount } from "@/components/badges/BadgeCheckOnMount";
 import styles from "./page.module.css";
 
@@ -306,6 +307,11 @@ export default async function ProfilePage({
               initialRecapEnabled={profile.recapEnabled}
               initialPopupMentionsOptOut={profile.popupMentionsOptOut}
             />
+          </section>
+
+          <section className={`${styles.section} glass-card`}>
+            <h2 className={styles.sectionTitle}>Mot de passe</h2>
+            <PasswordSection />
           </section>
 
           <section className={`${styles.section} glass-card`}>

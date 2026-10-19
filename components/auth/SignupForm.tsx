@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState, useState } from "react";
 import { signup } from "@/lib/auth/actions";
 import { MIN_PASSWORD_LENGTH } from "@/lib/auth/passwordPolicy";
+import { GoogleButton } from "./GoogleButton";
 import styles from "./AuthScreen.module.css";
 
 export function SignupForm() {
@@ -116,6 +117,8 @@ export function SignupForm() {
           {pending ? "Création…" : "Créer mon compte"}
         </button>
       </form>
+      <p className={styles.separator}>ou</p>
+      <GoogleButton />
       <div className={styles.links}>
         <p className={styles.linkLine}>
           Déjà un compte ?{" "}

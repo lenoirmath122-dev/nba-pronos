@@ -42,3 +42,26 @@
   La page garde en dessous les anciens blocs (cartes, étapes) : ménage en tâche 10.
   Le bouton « Enregistrer » pointe sur `/signup` en attendant l'écran ② (tâche 5).
   Pas de vérification visuelle : il faut un Supabase avec matchs `DAILY_MATCH`.
+- **Tâches 5 à 8 faites** (rien testé contre un vrai Supabase) :
+  - t5 : `/enregistrer` + Server Action `registerPronos` (`lib/auth/guest.ts`) : le compte est
+    créé par `auth.admin.createUser` (e-mail non confirmé, métadonnée `pending_validation`),
+    pronos insérés avec le client privilégié (`buildPredictionRows`, `competition_id` pris en
+    base), puis lien envoyé par `signInWithOtp`. E-mail déjà inscrit : même écran, lien de
+    connexion, panier gardé dans le navigateur. Le panier local n'est vidé que par `/bienvenue`.
+  - t6 : `app/auth/callback/route.ts` (`token_hash`+`type`, ou `code`), `PENDING` -> `ACTIVE`
+    si l'âge est déclaré, sinon `/choisir-pseudo`. `/bienvenue` : liste des pronos, préférences
+    e-mail, « Je préfère en push » (app installée seulement), enregistrement du panier restant.
+    `(app)/layout.tsx` renvoie un compte `PENDING` finir son inscription.
+  - t7 : `GoogleButton` (masqué dans Instagram/Facebook), `/choisir-pseudo`, bouton aussi sur
+    `/signup` et `/login`. Migration `...090200` : `handle_new_user` crée un profil `PENDING`
+    au pseudo provisoire pour un retour Google.
+  - t8 : `/login` à trois options (lien par défaut, e-mail + mot de passe, Google),
+    `PasswordSection` dans le profil. Les 2 specs e2e de connexion cliquent d'abord
+    « Email + mot de passe » (non rejouées).
+- **À faire avant de tester** : appliquer les 3 migrations ; activer le fournisseur Google
+  (Supabase + Google Cloud) ; **modèle d'e-mail Supabase** « Magic Link » et « Confirm signup » :
+  lien `{{ .SiteURL }}/auth/callback?token_hash={{ .TokenHash }}&type=email` (sans cela le lien
+  ouvert dans un autre navigateur échoue) ; ajouter `/auth/callback` aux URLs de redirection
+  autorisées. Vérifier qu'un utilisateur créé non confirmé peut recevoir un lien `signInWithOtp`.
+- **Reste du chantier** : t9 (filtrage `ACTIVE` partout + nettoyage 7 jours), t10 (états, ménage
+  de la page, blocs 6-9), t11 (funnel + recette). Piste t9 : la vue `user_scores`.

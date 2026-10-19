@@ -33,7 +33,7 @@ type Props = {
   splits: Record<string, Split>;
   /** Surtitre du match mis en avant, calculé côté serveur. */
   featuredKicker: string | null;
-  /** Écran d'enregistrement (tâche 5) ; /signup en attendant. */
+  /** Écran d'enregistrement (tâche 5) ; /enregistrer. */
   saveHref?: string;
 };
 
@@ -55,7 +55,7 @@ function writeStorage(items: BasketItem[]) {
   }
 }
 
-export function HomePlay({ live, featured, next, splits, featuredKicker, saveHref = "/signup" }: Props) {
+export function HomePlay({ live, featured, next, splits, featuredKicker, saveHref = "/enregistrer" }: Props) {
   const open = useMemo(() => [featured, ...next].filter((m): m is HomeMatch => m !== null), [featured, next]);
   const openMatches: OpenMatch[] = useMemo(
     () => open.map((m) => ({ id: m.id, scheduledAt: m.scheduledAt, homeTeamId: m.home.id, awayTeamId: m.away.id })),

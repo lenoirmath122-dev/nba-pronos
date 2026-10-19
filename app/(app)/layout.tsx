@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
+import { getServiceClient } from "@/lib/supabase/service";
 import { getNavBadgeData } from "@/lib/queries/home";
 import { getRecentAdminValidatedBets } from "@/lib/queries/bets";
 import { TabBar } from "@/components/nav/TabBar";
@@ -28,6 +29,18 @@ export default async function AppLayout({
 
   if (!user) {
     redirect("/login");
+  }
+
+  // Compte en attente (arrivé par Google sans pseudo, ou lien pas encore cliqué) :
+  // les règles de lecture ne le reconnaissent pas encore, on le renvoie finir
+  // son inscription plutôt que d'afficher des écrans vides.
+  const { data: profile } = await getServiceClient()
+    .from("users")
+    .select("status, age_confirmed_at")
+    .eq("id", user.id)
+    .maybeSingle<{ status: string; age_confirmed_at: string | null }>();
+  if (profile?.status === "PENDING") {
+    redirect(profile.age_confirmed_at === null ? "/choisir-pseudo" : "/login");
   }
 
   // Pastilles TabBar (18/09/2026, demandé par l'utilisateur) : lues UNE FOIS
