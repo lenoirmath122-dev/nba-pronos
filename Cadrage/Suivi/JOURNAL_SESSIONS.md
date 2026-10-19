@@ -353,6 +353,7 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 - Classement hebdo : lot 5, PR 2 client LLM de la popup hebdo (12/10/2026)
 - Classement hebdo : lot 5, PR 3 pipeline de la popup hebdo (12/10/2026)
 - Instagram : Reel de clôture du test (v3, 30 s, texte animé, chiffres lus en base, enjeux de saison) et légende, prêts à publier (12/10/2026)
+- Accueil jouable et pronos invités : plan d'attractivité repris, tâches 1 à 3 (vérifications, migrations `PENDING`/préférences/agrégats, requêtes de l'accueil), branche locale non poussée (19/10/2026)
 
 ## Référence
 
