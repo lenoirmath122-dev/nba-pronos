@@ -109,6 +109,18 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
     writeStorage(items);
   }, []);
 
+  // Le curseur se replie dès qu'on touche en dehors de la carte ouverte.
+  const draftMatchId = draft?.matchId ?? null;
+  useEffect(() => {
+    if (!draftMatchId) return;
+    const onPointerDown = (e: PointerEvent) => {
+      const target = e.target as Element | null;
+      if (!target?.closest(`[data-match-id="${draftMatchId}"]`)) setDraft(null);
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [draftMatchId]);
+
   const saveProno = (match: HomeMatch, winnerTeamId: string, margin: number) => {
     commit(
       upsertItem(basket, {
@@ -243,7 +255,7 @@ function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin
   const split = splits[match.id];
 
   return (
-    <article className={`${styles.card} ${big ? styles.cardBig : ""} glass-card`}>
+    <article data-match-id={match.id} className={`${styles.card} ${big ? styles.cardBig : ""} glass-card`}>
       <div className={styles.teams} role="group" aria-label={`${match.home.name} contre ${match.away.name}`}>
         {teams.map((team) => (
           <button
@@ -266,15 +278,13 @@ function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin
           onMargin={(margin) => onMargin(match, margin)}
         />
       ) : saved && savedTeam ? (
-        <p className={styles.saved}>
+        <p className={styles.saved} title={`${savedTeam.name} +${saved.margin} : touche l'équipe pour modifier`}>
+          <span aria-hidden="true">✓</span>
           <span>
-            ✓ {savedTeam.name} +{saved.margin}
+            {savedTeam.abbreviation} +{saved.margin}
           </span>
-          <button type="button" className={styles.linkButton} onClick={() => onPick(match, savedTeam)}>
-            modifier
-          </button>
-          <button type="button" className={styles.linkButton} onClick={() => onCancel(match.id)}>
-            retirer
+          <button type="button" className={styles.savedRemove} aria-label="Retirer ce prono" onClick={() => onCancel(match.id)}>
+            ×
           </button>
         </p>
       ) : null}
@@ -301,9 +311,7 @@ function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin
               </span>
             </p>
           </div>
-        ) : (
-          <p className={styles.splitText}>Sois parmi les premiers à pronostiquer ce match.</p>
-        )
+        ) : null
       ) : null}
     </article>
   );
