@@ -51,6 +51,27 @@ export async function updateRecapPreference(enabled: boolean): Promise<ActionRes
   return { success: true };
 }
 
+/** Interrupteurs e-mail (1B) : résultats du matin et rappel du soir. Indépendants
+ *  du canal push, et coupables aussi sans connexion via le lien de désinscription. */
+export async function updateEmailPreference(
+  kind: "results" | "reminders",
+  enabled: boolean
+): Promise<ActionResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Session expirée." };
+
+  const column = kind === "results" ? "email_results_enabled" : "email_reminders_enabled";
+  const { error } = await supabase.from("users").update({ [column]: enabled }).eq("id", user.id);
+
+  if (error) return { success: false, error: toClientError("updateEmailPreference", error) };
+
+  revalidatePath("/profile");
+  return { success: true };
+}
+
 /** Interrupteur « Ne pas me citer dans la popup hebdo » (lot 5). Rétroactif :
  *  les mentions sont résolues à l'affichage (« un joueur discret »). */
 export async function updatePopupMentionsOptOut(optOut: boolean): Promise<ActionResult> {
