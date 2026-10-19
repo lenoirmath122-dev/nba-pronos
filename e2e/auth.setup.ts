@@ -12,6 +12,7 @@ setup("authenticate as playerA", async ({ page }) => {
   const seed: E2ESeed = JSON.parse(readFileSync(SEED_FILE, "utf8"));
 
   await page.goto("/login");
+  await page.getByRole("button", { name: "Email + mot de passe" }).click();
   await page.getByLabel("Email").fill(seed.playerA.email);
   await page.getByLabel("Mot de passe").fill(seed.playerA.password);
   await page.getByRole("button", { name: "Se connecter" }).click();

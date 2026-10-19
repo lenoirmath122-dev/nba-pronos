@@ -23,6 +23,7 @@ test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }, 
   const match2 = seed.match2[testInfo.project.name as E2EBrowserProject];
 
   await gotoAndWaitReady(page, "/login");
+  await page.getByRole("button", { name: "Email + mot de passe" }).click();
   await page.getByLabel("Email").fill(seed.playerB.email);
   await page.getByLabel("Mot de passe").fill(seed.playerB.password);
   await page.getByRole("button", { name: "Se connecter" }).click();

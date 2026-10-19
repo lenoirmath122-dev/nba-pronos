@@ -12,6 +12,7 @@
     { "path": "/api/reminders/matches", "schedule": "0 19 * * *" },
     { "path": "/api/reminders/matches", "schedule": "0 21 * * *" },
     { "path": "/api/reminders/matches", "schedule": "0 23 * * *" },
-    { "path": "/api/reminders/matches", "schedule": "0 1 * * *" }
+    { "path": "/api/reminders/matches", "schedule": "0 1 * * *" },
+    { "path": "/api/cron/purge-pending", "schedule": "30 4 * * *" }
   ]
 }

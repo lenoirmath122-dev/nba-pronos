@@ -136,3 +136,61 @@
   color: var(--color-accent-rest);
   font-size: var(--font-size-sm);
 }
+
+.block {
+  width: 100%;
+  max-width: 32rem;
+}
+
+.result {
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.resultScore {
+  margin: 0 0 var(--space-2);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.top {
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  list-style: none;
+  border-radius: var(--radius-md);
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+}
+
+.topRank {
+  width: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-secondary);
+}
+
+.topPseudo {
+  flex: 1;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.topPoints {
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: var(--space-2);
+  color: var(--color-accent-rest);
+  font-size: var(--font-size-sm);
+}
