@@ -44,6 +44,11 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   vérifier la facturation IPv4, la correspondance des tricodes.
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 
+### Accueil jouable et pronos invités — [`chantiers/CHANTIER_ACCUEIL_INVITES.md`](chantiers/CHANTIER_ACCUEIL_INVITES.md)
+- Phase 1 du plan d'attractivité (`Cadrage/Business/`). Tâche 1 (vérifications) faite ;
+  **prochaine étape : migration `PENDING` + préférences email (tâche 2)**.
+- `refonte-ux` à merger après ce chantier.
+
 ### Classement hebdo et popup LLM — [`chantiers/CHANTIER_CLASSEMENT_HEBDO.md`](chantiers/CHANTIER_CLASSEMENT_HEBDO.md)
 - Lots 0 à 4 codés (vérifier que les PR des lots 2 et 4 sont mergées).
 - **Lot 5, popup LLM** : PR 1 à 3 faites ; **reste PR 5** (popup joueur,
