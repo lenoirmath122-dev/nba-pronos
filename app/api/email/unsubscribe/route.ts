@@ -18,7 +18,9 @@ function page(body: string, status = 200): Response {
 function parse(request: Request) {
   const token = new URL(request.url).searchParams.get("token") ?? "";
   const secret = process.env.EMAIL_UNSUBSCRIBE_SECRET;
-  return secret ? verifyUnsubscribeToken(token, secret) : null;
+  const parsed = secret ? verifyUnsubscribeToken(token, secret) : null;
+  // Un jeton « validate » (bouton de la relance) ne désinscrit personne.
+  return parsed && parsed.scope !== "validate" ? { userId: parsed.userId, scope: parsed.scope } : null;
 }
 
 export async function GET(request: Request): Promise<Response> {

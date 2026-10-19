@@ -3,9 +3,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 // Jeton de désinscription en un clic (1B) : signé, sans connexion requise.
 // Format `<userId>.<scope>.<signature>` ; la signature couvre userId et scope,
 // donc un jeton « rappels » ne peut pas servir à couper les résultats.
-export type UnsubscribeScope = "results" | "reminders";
+// Le scope « validate » sert au bouton de la relance (jeton lié au compte, pas à une préférence).
+export type UnsubscribeScope = "results" | "reminders" | "validate";
 
-const SCOPES: readonly UnsubscribeScope[] = ["results", "reminders"];
+const SCOPES: readonly UnsubscribeScope[] = ["results", "reminders", "validate"];
 
 function sign(userId: string, scope: UnsubscribeScope, secret: string): string {
   return createHmac("sha256", secret).update(`${userId}:${scope}`).digest("base64url");

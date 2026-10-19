@@ -33,9 +33,10 @@ export function unsubscribeUrl(userId: string, scope: UnsubscribeScope): string 
 // n'écrit `email_log` qu'après un envoi réussi, pour qu'un échec soit retenté.
 export async function sendEmail(
   email: OutgoingEmail,
-  unsubscribe: { userId: string; scope: UnsubscribeScope }
+  // null pour la relance : compte en attente, aucune préférence à couper.
+  unsubscribe: { userId: string; scope: UnsubscribeScope } | null
 ): Promise<string> {
-  const link = unsubscribeUrl(unsubscribe.userId, unsubscribe.scope);
+  const link = unsubscribe ? unsubscribeUrl(unsubscribe.userId, unsubscribe.scope) : null;
   const response = await fetch(RESEND_URL, {
     method: "POST",
     headers: {
@@ -48,10 +49,9 @@ export async function sendEmail(
       subject: email.subject,
       html: email.html,
       text: email.text,
-      headers: {
-        "List-Unsubscribe": `<${link}>`,
-        "List-Unsubscribe-Post": "List-Unsubscribe=One-Click",
-      },
+      ...(link
+        ? { headers: { "List-Unsubscribe": `<${link}>`, "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" } }
+        : {}),
     }),
   });
   if (!response.ok) {
