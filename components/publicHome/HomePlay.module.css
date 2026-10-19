@@ -42,13 +42,6 @@
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
-.reassure {
-  margin: 0;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
-}
-
 .live {
   display: flex;
   align-items: center;
@@ -98,6 +91,7 @@
 }
 
 .card {
+  position: relative;
   width: 100%;
   display: flex;
   flex-direction: column;
@@ -144,10 +138,7 @@
 }
 
 .team:focus-visible,
-.shortcut:focus-visible,
-.add:focus-visible,
-.barButton:focus-visible,
-.linkButton:focus-visible {
+.barButton:focus-visible {
   outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
@@ -190,26 +181,6 @@
   accent-color: var(--color-accent);
 }
 
-.shortcuts {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-
-.shortcut {
-  min-height: 44px;
-  min-width: 56px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--color-text-primary);
-  font: inherit;
-  font-size: var(--font-size-sm);
-  cursor: pointer;
-}
-
 .rulesHint {
   margin: 0;
   font-size: var(--font-size-xs);
@@ -219,43 +190,42 @@
   color: var(--color-accent-rest);
 }
 
-.add {
-  min-height: 48px;
-  border: 0;
-  border-radius: var(--radius-md);
-  background: var(--color-accent);
-  color: var(--color-text-on-accent);
-  font: inherit;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.add:hover {
-  background: var(--color-accent-hover);
-}
-
 .saved {
+  position: absolute;
+  top: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-1);
   margin: 0;
-  color: var(--color-win);
-  font-size: var(--font-size-sm);
+  padding: 0 var(--space-1) 0 var(--space-2);
+  height: 22px;
+  border-radius: 11px;
+  background: var(--color-win);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
 }
 
-.linkButton {
-  min-height: 44px;
-  padding: 0 var(--space-1);
+.savedRemove {
+  width: 18px;
+  height: 18px;
+  padding: 0;
   border: 0;
-  background: none;
-  color: var(--color-text-secondary);
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.2);
+  color: inherit;
   font: inherit;
-  font-weight: var(--font-weight-regular, 400);
-  text-decoration: underline;
+  line-height: 1;
   cursor: pointer;
+}
+
+.savedRemove:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: 2px;
 }
 
 .split {
