@@ -17,9 +17,9 @@ export function PublicNav() {
   return (
     <>
       <nav className={styles.bar} aria-label="Navigation">
-        <span className={styles.brand}>
+        <a href="https://panierballon.fr/" className={styles.brand}>
           <Image src="/brand/logo-horizontal.svg" alt="Panier Ballon" width={128} height={24} unoptimized className={styles.brandLogo} />
-        </span>
+        </a>
         <div className={styles.links}>
           <Link href="/leaderboard" className={styles.link}>
             Classement

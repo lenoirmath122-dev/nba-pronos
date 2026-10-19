@@ -35,6 +35,7 @@
   align-items: center;
   flex-shrink: 0;
   white-space: nowrap;
+  text-decoration: none;
 }
 
 .brandLogo {
@@ -70,7 +71,7 @@
 
 .linkCta {
   composes: link;
-  color: var(--color-text-primary);
+  color: var(--color-accent);
 }
 
 /* Rangée secondaire, mentions légales/confidentialité/CGU (03/09/2026,
