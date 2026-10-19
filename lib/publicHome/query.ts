@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
+import { matchKicker } from "./labels";
 import { selectHomeMatches, voteSplit, MIN_VOTES_TO_SHOW, type HomeMatchRow, type VoteSplit } from "./select";
 
 // Lectures de l'accueil public (plan d'attractivité, §1.7). Client anonyme sans
@@ -32,6 +33,8 @@ export type TopPlayer = { userId: string; pseudo: string; avatarUrl: string | nu
 export type PublicHomeData = {
   live: HomeMatch | null;
   featured: HomeMatch | null;
+  /** Surtitre du match mis en avant (« Match de cette nuit · 1h00 »). */
+  featuredKicker: string | null;
   next: HomeMatch[];
   /** Répartition des votes par match (absent = sous le seuil). */
   splits: Record<string, NonNullable<VoteSplit>>;
@@ -39,7 +42,7 @@ export type PublicHomeData = {
   top: TopPlayer[];
 };
 
-const EMPTY: PublicHomeData = { live: null, featured: null, next: [], splits: {}, lastResult: null, top: [] };
+const EMPTY: PublicHomeData = { live: null, featured: null, featuredKicker: null, next: [], splits: {}, lastResult: null, top: [] };
 
 type TeamRow = { id: string; name: string; abbreviation: string; logo_url: string | null };
 type MatchRow = HomeMatchRow & {
@@ -175,5 +178,7 @@ export async function getPublicHomeData(nowMs: number = Date.now()): Promise<Pub
     .filter((p): p is TopPlayer => p !== null)
     .slice(0, 5);
 
-  return { live, featured, next, splits, lastResult, top };
+  const featuredKicker = featured ? matchKicker(featured.scheduledAt, nowMs) : null;
+
+  return { live, featured, featuredKicker, next, splits, lastResult, top };
 }

@@ -36,3 +36,9 @@
   classement et ne filtre pas le statut. Ajouter l'exclusion de `PENDING` **dans la
   vue** corrige d'un coup tout ce qui la lit ; il restera les requêtes qui lisent
   `users` directement (annuaire, profil, chat, snapshots).
+- **Tâche 4 faite** (non vérifiée à l'écran) : `components/publicHome/HomePlay.tsx`
+  (blocs 2 à 5, preuve sociale dans la carte après le choix), `lib/publicHome/basket.ts`
+  (panier localStorage, logique pure testée) et `labels.ts` (surtitre, compte à rebours).
+  La page garde en dessous les anciens blocs (cartes, étapes) : ménage en tâche 10.
+  Le bouton « Enregistrer » pointe sur `/signup` en attendant l'écran ② (tâche 5).
+  Pas de vérification visuelle : il faut un Supabase avec matchs `DAILY_MATCH`.
