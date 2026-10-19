@@ -306,6 +306,8 @@ export default async function ProfilePage({
               initialPreference={profile.notificationPreference}
               initialRecapEnabled={profile.recapEnabled}
               initialPopupMentionsOptOut={profile.popupMentionsOptOut}
+              initialEmailResults={profile.emailResultsEnabled}
+              initialEmailReminders={profile.emailRemindersEnabled}
             />
           </section>
 

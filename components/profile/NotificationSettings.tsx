@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import {
   updateNotificationPreference,
+  updateEmailPreference,
   updatePopupMentionsOptOut,
   updateRecapPreference,
   deletePushSubscription,
@@ -29,16 +30,22 @@ type NotificationSettingsProps = {
   initialPreference: Preference;
   initialRecapEnabled: boolean;
   initialPopupMentionsOptOut: boolean;
+  initialEmailResults: boolean;
+  initialEmailReminders: boolean;
 };
 
 export function NotificationSettings({
   initialPreference,
   initialRecapEnabled,
   initialPopupMentionsOptOut,
+  initialEmailResults,
+  initialEmailReminders,
 }: NotificationSettingsProps) {
   const [preference, setPreference] = useState<Preference>(initialPreference);
   const [recapEnabled, setRecapEnabled] = useState(initialRecapEnabled);
   const [popupOptOut, setPopupOptOut] = useState(initialPopupMentionsOptOut);
+  const [emailResults, setEmailResults] = useState(initialEmailResults);
+  const [emailReminders, setEmailReminders] = useState(initialEmailReminders);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // La préférence est liée au COMPTE, pas à l'appareil : un joueur connecté
@@ -147,6 +154,25 @@ export function NotificationSettings({
     }
   }
 
+  async function toggleEmail(kind: "results" | "reminders", next: boolean) {
+    const setValue = kind === "results" ? setEmailResults : setEmailReminders;
+    setPending(true);
+    setError(null);
+    setValue(next);
+    try {
+      const result = await updateEmailPreference(kind, next);
+      if (!result.success) {
+        setValue(!next);
+        setError(result.error);
+      }
+    } catch (err) {
+      setValue(!next);
+      setError(err instanceof Error ? err.message : "Erreur inattendue, réessaie.");
+    } finally {
+      setPending(false);
+    }
+  }
+
   async function togglePopupOptOut(next: boolean) {
     setPending(true);
     setError(null);
@@ -194,10 +220,6 @@ export function NotificationSettings({
         />
         Notifications push
       </label>
-      <label className={`${styles.option} ${styles.optionDisabled}`}>
-        <input type="radio" name="notificationPreference" checked={preference === "EMAIL"} disabled />
-        Email <span className={styles.soon}>(bientôt disponible)</span>
-      </label>
 
       {/* Compte déjà en Push (ex. activé depuis un autre appareil) mais CET
           appareil n'a pas encore son propre abonnement local — le radio
@@ -228,6 +250,30 @@ export function NotificationSettings({
           </span>
         </label>
       )}
+
+      {/* E-mails (1B) : indépendants du canal push ci-dessus. */}
+      <label className={styles.option}>
+        <input
+          type="checkbox"
+          checked={emailResults}
+          disabled={pending}
+          onChange={(event) => void toggleEmail("results", event.target.checked)}
+        />
+        <span>
+          Résultats du matin par e-mail <span className={styles.soon}>(quand tes pronos ont été jugés)</span>
+        </span>
+      </label>
+      <label className={styles.option}>
+        <input
+          type="checkbox"
+          checked={emailReminders}
+          disabled={pending}
+          onChange={(event) => void toggleEmail("reminders", event.target.checked)}
+        />
+        <span>
+          Rappel du soir par e-mail <span className={styles.soon}>(si un match arrive et que tu n&apos;as pas pronostiqué)</span>
+        </span>
+      </label>
 
       {/* Popup hebdo (lot 5) : indépendante du canal push, c'est une popup à
           l'ouverture de l'appli. Rétroactif, y compris pour les textes déjà

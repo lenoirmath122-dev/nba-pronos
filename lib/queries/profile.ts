@@ -31,6 +31,9 @@ export type ProfileData = {
   recapEnabled: boolean;
   /** « Ne pas me citer » dans la popup hebdo (lot 5). */
   popupMentionsOptOut: boolean;
+  /** E-mails (1B) : résultats du matin et rappel du soir. */
+  emailResultsEnabled: boolean;
+  emailRemindersEnabled: boolean;
 };
 
 export type TeamOption = {
@@ -50,7 +53,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, recap_enabled, popup_mentions_opt_out"
+      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, recap_enabled, popup_mentions_opt_out, email_results_enabled, email_reminders_enabled"
     )
     .eq("id", user.id)
     .single<{
@@ -63,6 +66,8 @@ export async function getProfileData(): Promise<ProfileData | null> {
       notification_preference: "NONE" | "PUSH" | "EMAIL";
       recap_enabled: boolean;
       popup_mentions_opt_out: boolean;
+      email_results_enabled: boolean;
+      email_reminders_enabled: boolean;
     }>();
 
   if (error || !data) return null;
@@ -81,6 +86,8 @@ export async function getProfileData(): Promise<ProfileData | null> {
     notificationPreference: data.notification_preference,
     recapEnabled: data.recap_enabled,
     popupMentionsOptOut: data.popup_mentions_opt_out,
+    emailResultsEnabled: data.email_results_enabled,
+    emailRemindersEnabled: data.email_reminders_enabled,
   };
 }
 
