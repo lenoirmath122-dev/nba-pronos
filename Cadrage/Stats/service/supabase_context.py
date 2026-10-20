@@ -1441,6 +1441,16 @@ def _condition_proba(
     comparison = condition["comparison"]
     players = condition.get("joueurs") or []
 
+    # Vainqueur du match (S4, Lot 1, 20/10/2026) : pseudo-stat "win", condition
+    # d'EQUIPE seule, sans seuil -- OVER = l'equipe gagne, UNDER = elle perd
+    # (pas de nul en NBA). Reutilise home_win.joblib tel quel.
+    if kind == "TEAM" and stats == [COMBO_WIN_STAT]:
+        p_home = compute_home_win_proba(client, home_team_id, away_team_id, as_of_date, season=season)["p_home_win"]
+        is_home = condition["equipe"] == "domicile"
+        p_win = p_home if is_home else 1 - p_home
+        proba = 1 - p_win if comparison == "UNDER" else p_win
+        return float(proba), {"kind": "TEAM", "team_id": home_team_id if is_home else away_team_id, "stats": stats}
+
     is_simple = (kind == "TEAM" and len(stats) == 1) or (kind == "PLAYER" and len(players) == 1 and len(stats) == 1)
 
     if is_simple:
@@ -1617,6 +1627,60 @@ def _dd_td_conditional_factor(mean: float, scale: float, threshold: float, compa
     return float(min(max(p_threshold / p_ten, 0.0), 1.0))
 
 
+COMBO_WIN_STAT = "win"
+
+
+def _is_win_group(group: list[dict]) -> bool:
+    return len(group) == 1 and group[0]["kind"] == "TEAM" and group[0]["stats"] == [COMBO_WIN_STAT]
+
+
+def _is_team_pts_group(group: list[dict]) -> bool:
+    return (
+        len(group) == 1 and group[0]["kind"] == "TEAM" and group[0]["stats"] == ["pts"]
+        and group[0].get("seuil") is not None
+    )
+
+
+def _win_and_team_pts_joint(
+    client, win_cond: dict, pts_cond: dict, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
+) -> float:
+    """P(vainqueur ET points d'une equipe) sous un modele normal bivarie
+    (S4, 20/10/2026). Le produit des deux probas suppose l'independance,
+    fausse : une equipe qui marque beaucoup gagne bien plus souvent. Modele :
+    pts_home et pts_away normales independantes (moyennes et ecarts des
+    modeles equipe), M = pts_home - pts_away d'ecart-type s = sqrt(sh^2+sa^2),
+    recale pour que P(M>0) = p_home_win (home_win.joblib, la reference de
+    victoire). Correlation corr(pts_home, M) = +sh/s, corr(pts_away, M) =
+    -sa/s. Seules les points d'equipe sont corriges : les autres stats
+    (rebonds, passes, stats joueur) restent traitees en independance."""
+    from scipy.stats import multivariate_normal
+
+    mu_h, sh = _team_stat_mean_scale(client, "pts", home_team_id, away_team_id, True, as_of_date, season=season)
+    mu_a, sa = _team_stat_mean_scale(client, "pts", away_team_id, home_team_id, False, as_of_date, season=season)
+    s_m = math.sqrt(sh ** 2 + sa ** 2)
+    p_home = min(max(
+        compute_home_win_proba(client, home_team_id, away_team_id, as_of_date, season=season)["p_home_win"], 1e-6
+    ), 1 - 1e-6)
+    # Evenement victoire exprime sur M = pts_home - pts_away : M > 0 (domicile
+    # gagne) ou M < 0 (exterieur gagne).
+    wants_home_win = (win_cond["equipe"] == "domicile") == (win_cond["comparison"] == "OVER")
+    # Z2 = (M - m*) / s avec P(M>0) = p_home  =>  seuil standardise b = -Phi^-1(p_home)
+    b = -float(norm.ppf(p_home))
+    f2 = -1.0 if wants_home_win else 1.0  # M > 0 <=> -Z2 < -b ; M < 0 <=> Z2 < b
+    c2 = -b if wants_home_win else b
+
+    pts_is_home = pts_cond["equipe"] == "domicile"
+    mu_x, sx = (mu_h, sh) if pts_is_home else (mu_a, sa)
+    rho = (sh if pts_is_home else -sa) / s_m
+    a = (pts_cond["seuil"] - mu_x) / sx
+    f1 = -1.0 if pts_cond["comparison"] == "OVER" else 1.0  # pts > t <=> -Z1 < -a ; pts < t <=> Z1 < a
+    c1 = -a if pts_cond["comparison"] == "OVER" else a
+
+    r = min(max(rho * f1 * f2, -0.999), 0.999)
+    joint = multivariate_normal(mean=[0.0, 0.0], cov=[[1.0, r], [r, 1.0]]).cdf([c1, c2])
+    return float(min(max(joint, 0.0), 1.0))
+
+
 def _compute_combo_proba_once(
     client, conditions: list[list[dict]], home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> dict:
@@ -1699,6 +1763,18 @@ def _compute_combo_proba_once(
         corrected_probas.append(corrected)
         consumed_groups.update(group_indices)
 
+    # Vainqueur x points d'equipe (S4) : un seul couple corrige (le 1er), a
+    # condition qu'il y ait UN SEUL groupe vainqueur ; le reste reste en
+    # independance.
+    win_idx = [i for i, g in enumerate(conditions) if _is_win_group(g)]
+    pts_idx = [i for i, g in enumerate(conditions) if _is_team_pts_group(g)]
+    if len(win_idx) == 1 and pts_idx:
+        joint = _win_and_team_pts_joint(
+            client, conditions[win_idx[0]][0], conditions[pts_idx[0]][0], home_team_id, away_team_id, as_of_date, season=season,
+        )
+        corrected_probas.append(joint)
+        consumed_groups.update([win_idx[0], pts_idx[0]])
+
     proba = 1.0
     for i, p in enumerate(group_probas):
         if i not in consumed_groups:
@@ -1708,7 +1784,7 @@ def _compute_combo_proba_once(
 
     return {
         "proba": float(proba),
-        "detail": f"{len(conditions)} groupes combines ({len(corrected_probas)} cluster(s) corrige(s) pour correlation dd/td)"
+        "detail": f"{len(conditions)} groupes combines ({len(corrected_probas)} cluster(s) corrige(s) pour correlation dd/td ou vainqueur x points)"
         if corrected_probas else f"{len(conditions)} groupes combines (independance assumee)",
         "conditions_meta": conditions_meta,
     }

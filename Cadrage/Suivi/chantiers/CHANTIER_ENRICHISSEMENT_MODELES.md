@@ -162,6 +162,11 @@
      « au moins »). Rejouer le pari `f4f3ebd6…` coûte un appel IA : demander
      d'abord. Ensuite : reste du Lot 1 (S4, S3, S8, S2...). **S1 livré le 20/10/2026 (PR #198)** : `pf` (modèle Poisson, colonne
      `stats_box_scores.pf`, joueur seulement) + `dreb`/`fgm`/`ftm`/`fta` composés (`_composed_distribution`).
+     **S4 livré le 20/10/2026 (branche feat/lot1-s4-vainqueur-combo)** : pseudo-stat `win` (`COMBO_WIN_STAT`) dans la condition
+     combo d'équipe (OVER = gagne, UNDER = perd, seule, sans seuil ; un vainqueur seul = combo à 1 condition). Proba via
+     `home_win`, résolution par `matches.home_score/away_score`. Corrélation vainqueur × points d'équipe corrigée (normale
+     bivariée recalée sur `p_home_win`, `_win_and_team_pts_joint`) ; autres stats (reb, ast, joueurs) restent en indépendance
+     (limite connue, à reprendre avec S2). Reste de S4 : combo période + match entier. Cloud Run à redéployer après merge.
      **À part, autre conversation : instabilité des probas** (mesurée le
      09/10/2026, indépendante du cache) : mêmes 20 appels identiques à
      `/predict-total-points` Memphis–Boston -> 3 valeurs (0,4727 / 0,6205 /
