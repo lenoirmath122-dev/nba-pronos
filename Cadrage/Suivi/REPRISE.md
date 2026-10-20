@@ -1,7 +1,7 @@
 # Reprise — NBA Pronos
 
 > Seul fichier lu en début de session. Réécrit en entier à chaque passation, 20 lignes max.
-> Mis à jour le 20/10/2026 (nettoyage des gaps contre `origin/main`).
+> Mis à jour le 20/10/2026 (fin de session, passation).
 
 - **Livré et mergé** : accueil jouable + pronos invités (#184, #188), e-mails 1B + réglages
   (#185 à #187, migration `email_log` appliquée, Resend vérifié), pseudo + onboarding (#176),
@@ -17,8 +17,8 @@
 - **Reste ouvert** : correctif Memphis (`ROSTER_COUNT_KEYWORD_REGEX`) ; crons GitHub `heartbeat`,
   `snapshot-leaderboard`, `reminder-bracket` à migrer ; Réel V2 (`Cadrage/docs/reel-v2-pack/`,
   dépôt principal, non commité) ; création auto des matchs ≥ 4 jours à vérifier.
-- **Nettoyage local** : le dépôt principal est sur `feat/popup-hebdo-pipeline` (mergée, 51 commits
-  de retard) avec des modifs de suivi non commitées ; branche `refonte-ux` (non poussée) à supprimer.
+- **Nettoyage fait (20/10)** : gaps nettoyés (PR #189), `refonte-ux` supprimée, dépôt principal sur `main`.
+  `stash@{0}` garde les anciennes modifs locales (code accueil/nav, docs Business, suivi obsolète) : `git stash drop` si inutile.
 - **Échéances** : saison NBA 20/10 ; figement hebdo 26/10 (vérifier « Semaine N », `reminder_log`) ;
   bêta Cup 04/12.
 - **Pièges** : une branche + un worktree par PR depuis `origin/main` ; après merge d'une migration,
