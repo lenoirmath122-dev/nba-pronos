@@ -8,6 +8,13 @@
 /** Stats non entières (fractions, minutes) : pas de « N-1 » possible, on décale d'un epsilon. */
 const NON_INTEGER_STATS = new Set(["ft", "fg", "fg3", "min"]);
 const EPSILON = 1e-6;
+const PERCENTAGE_STATS = new Set(["ft", "fg", "fg3"]);
+
+/** Les pourcentages sont stockés en fraction 0-1 ; le modèle écrit parfois 50 pour « 50 % ». */
+function toFraction(threshold: number | null, stats: readonly string[]): number | null {
+  if (threshold !== null && threshold > 1 && stats.some((s) => PERCENTAGE_STATS.has(s))) return threshold / 100;
+  return threshold;
+}
 
 export function applyInclusiveThreshold(
   threshold: number | null,
@@ -15,6 +22,7 @@ export function applyInclusiveThreshold(
   inclusive: boolean | null | undefined,
   stats: readonly string[],
 ): number | null {
+  threshold = toFraction(threshold, stats);
   if (!inclusive || threshold === null || comparison === null) return threshold;
   // Stats non entières : une égalité exacte reste possible (1/2 aux lancers francs = 50 %). Le moteur
   // compare en strict, donc OVER N inclusif -> > N - epsilon (UNDER : < N + epsilon).
@@ -47,7 +55,7 @@ export function resolveInclusiveComparison(
   comparison: ThresholdComparison | null,
   stats: readonly string[],
 ): { threshold: number | null; comparison: "OVER" | "UNDER" | null } {
-  if (comparison === null) return { threshold, comparison: null };
+  if (comparison === null) return { threshold: toFraction(threshold, stats), comparison: null };
   const strict = comparison === "AT_LEAST" ? "OVER" : comparison === "AT_MOST" ? "UNDER" : comparison;
   const inclusive = comparison === "AT_LEAST" || comparison === "AT_MOST";
   return { threshold: applyInclusiveThreshold(threshold, strict, inclusive, stats), comparison: strict };

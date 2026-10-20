@@ -29,4 +29,9 @@ describe("applyInclusiveThreshold", () => {
   it("somme de stats entières (PRA)", () => {
     expect(applyInclusiveThreshold(45, "OVER", true, ["pts", "reb", "ast"])).toBe(44);
   });
+  it("pourcentage écrit en 0-100 : ramené en fraction", () => {
+    expect(applyInclusiveThreshold(50, "OVER", false, ["ft"])).toBe(0.5);
+    expect(applyInclusiveThreshold(50, "OVER", true, ["ft"])!).toBeLessThan(0.5);
+    expect(applyInclusiveThreshold(50, "OVER", true, ["ft"])!).toBeGreaterThan(0.499);
+  });
 });

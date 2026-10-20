@@ -20,9 +20,10 @@
 Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md` (scénario A).
 - **Correctif Memphis mergé (#192, 20/10/2026)**. Reste : rejouer le pari `f4f3ebd6…` après
   déploiement (coût d'un appel IA, demander d'abord).
-- **À traiter côté modèles** : l'exemple du prompt ROSTER_COUNT « 11 points ou plus » est encodé
-  `OVER 11`, or le calcul est strict (`> seuil`) : « N ou plus » est décalé de 1 ; vérifier les
-  autres schémas (`structureBet`, combo, période) avant la bêta.
+- **Seuils inclusifs corrigés (PR en cours, 20/10/2026)** : « N ou plus » / « au moins N » étaient
+  encodés `OVER N` alors que le calcul est strict. `inclusiveThreshold.ts` convertit en code
+  (enum `AT_LEAST`/`AT_MOST` dans `structureBet`, booléen `inclusive` ailleurs). Vérifié par appels
+  réels. Reste : « Hauser ou Pritchard » (COMPARISON/OR) non vérifié ; rejouer d'anciens paris ?
 - Puis reste du **Lot 1** (S1, S2, S4, S3, S8…) avant la bêta Cup du 04/12 ;
   Lots 2 à 4 ensuite (déc. → mars).
 - **À part, conversation dédiée** : instabilité des probas (3 valeurs pour 20
