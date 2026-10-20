@@ -5,8 +5,9 @@
 // en seuil strict équivalent pour les stats entières (OVER N inclusif -> > N-1,
 // UNDER N inclusif -> < N+1).
 
-/** Stats non entières : une égalité exacte au seuil y est négligeable, le seuil reste tel quel. */
+/** Stats non entières (fractions, minutes) : pas de « N-1 » possible, on décale d'un epsilon. */
 const NON_INTEGER_STATS = new Set(["ft", "fg", "fg3", "min"]);
+const EPSILON = 1e-6;
 
 export function applyInclusiveThreshold(
   threshold: number | null,
@@ -15,8 +16,13 @@ export function applyInclusiveThreshold(
   stats: readonly string[],
 ): number | null {
   if (!inclusive || threshold === null || comparison === null) return threshold;
+  // Stats non entières : une égalité exacte reste possible (1/2 aux lancers francs = 50 %). Le moteur
+  // compare en strict, donc OVER N inclusif -> > N - epsilon (UNDER : < N + epsilon).
+  if (stats.some((s) => NON_INTEGER_STATS.has(s))) {
+    return comparison === "OVER" ? threshold - EPSILON : threshold + EPSILON;
+  }
+  // Stat entière avec seuil non entier (24,5) : strict et inclusif sont déjà équivalents.
   if (!Number.isInteger(threshold)) return threshold;
-  if (stats.some((s) => NON_INTEGER_STATS.has(s))) return threshold;
   return comparison === "OVER" ? threshold - 1 : threshold + 1;
 }
 

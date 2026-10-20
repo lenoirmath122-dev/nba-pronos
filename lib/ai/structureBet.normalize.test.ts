@@ -52,13 +52,14 @@ describe("normalizeBetStructuration", () => {
     expect(out.combo_bet?.conditions.map((c) => c.threshold)).toEqual([100, 111]);
   });
 
-  it("dd/td (threshold null) et pourcentage : inchangés", () => {
+  it("dd/td inchangé, pourcentage décalé d'un epsilon", () => {
     const out = normalizeBetStructuration({
       ...base,
       player: { name: "X", team: "team1", stat: "td", threshold: null, comparison: null, inclusive: true, not_in_match: false },
       team_stat: { team: "team1", stat: "fg", threshold: 0.5, comparison: "OVER", inclusive: true },
     } as unknown as BetStructuration);
     expect(out.player?.threshold).toBeNull();
-    expect(out.team_stat?.threshold).toBe(0.5);
+    expect(out.team_stat?.threshold).toBeLessThan(0.5);
+    expect(out.team_stat?.threshold).toBeGreaterThan(0.499);
   });
 });
