@@ -1102,6 +1102,8 @@ class ComboCondition(BaseModel):
             raise ValueError(f"kind inconnu : {self.kind}")
         if not self.stats:
             raise ValueError("stats (1+) requis")
+        if "win" in self.stats and (self.kind != "TEAM" or self.stats != ["win"]):
+            raise ValueError("stat \"win\" (vainqueur du match) : kind=TEAM et stats=[\"win\"] uniquement")
         return self
 
 

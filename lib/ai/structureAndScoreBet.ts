@@ -32,7 +32,7 @@ import {
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
-import type { TeamStatCode } from "./teamStatCodes";
+import { COMBO_WIN_STAT, type TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 import { NO_THRESHOLD_MATCH_STATS, type MatchStatCode } from "./matchStatCodes";
@@ -1089,6 +1089,7 @@ export async function structureAndScoreBet(
     if (c.stats.length === 0) return { ok: false, reason: "AI_INCOMPLETE" };
     if (c.kind === "PLAYER") {
       if (c.players.length === 0) return { ok: false, reason: "AI_INCOMPLETE" };
+      if (c.stats.includes(COMBO_WIN_STAT)) return { ok: false, reason: "UNSUPPORTED_STAT" };
       const isSimple = c.players.length === 1 && c.stats.length === 1;
       if (!isSimple && c.stats.some((s) => !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(s))) {
         return { ok: false, reason: "UNSUPPORTED_STAT" };
@@ -1103,6 +1104,13 @@ export async function structureAndScoreBet(
     const name = c.kind === "team1" ? teamNames?.[0] : teamNames?.[1];
     const side = !name ? null : name === matchTeams.homeTeamName ? "domicile" : name === matchTeams.awayTeamName ? "exterieur" : null;
     if (!side) return { ok: false, reason: "TEAM_UNRESOLVED" };
+    // Vainqueur du match (S4) : seul dans sa condition, sans seuil -- OVER =
+    // gagne, UNDER = perd. Mélangé à d'autres stats ou rattaché à un joueur,
+    // il n'a pas de sens.
+    if (c.stats.includes(COMBO_WIN_STAT)) {
+      if (c.stats.length !== 1) return { ok: false, reason: "UNSUPPORTED_STAT" };
+      return { ok: true, condition: { kind: "TEAM", team: side, stats: [COMBO_WIN_STAT], threshold: null, comparison: c.comparison } };
+    }
     if (c.threshold === null) return { ok: false, reason: "AI_INCOMPLETE" };
     if (c.stats.some((s) => !(COMPARISON_TEAM_STAT_CODES as string[]).includes(s))) return { ok: false, reason: "UNSUPPORTED_STAT" };
     return { ok: true, condition: { kind: "TEAM", team: side, stats: c.stats, threshold: c.threshold, comparison: c.comparison } };

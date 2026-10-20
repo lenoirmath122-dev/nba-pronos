@@ -380,3 +380,49 @@ describe("resolveCalculableComboBets — garde-fous d'éligibilité", () => {
     expect(summary.skipped).toEqual([{ betId: "betH", reason: "match NBA correspondant introuvable" }]);
   });
 });
+
+describe("resolveCalculableComboBets — vainqueur du match (S4)", () => {
+  const win = (team_id: string, comparison: "OVER" | "UNDER" = "OVER") =>
+    ({ kind: "TEAM", team_id, stats: ["win"], threshold: null, comparison }) as unknown as Parameters<typeof combo>[0][number];
+
+  function scoreMatch(home_score: number | null, away_score: number | null) {
+    seed("matches", [{ id: "m1", status: "FINISHED", home_team_id: "TEAM_A", away_team_id: "TEAM_B", home_score, away_score, scheduled_at: "2026-04-15T23:00:00.000Z" }]);
+  }
+
+  it("l'équipe visée gagne + condition joueur vraie -> WON", async () => {
+    scoreMatch(110, 100);
+    seed("bets", [betRow({ id: "betW1", structured_combo: combo([win("TEAM_A")], [{ kind: "PLAYER", player_ids: [201], stats: ["pts"], threshold: 20, comparison: "OVER" }]) })]);
+
+    const summary = await resolveCalculableComboBets();
+
+    expect(summary.resolved).toEqual([{ betId: "betW1", outcome: "WON" }]);
+  });
+
+  it("l'équipe visée (extérieur) perd -> LOST", async () => {
+    scoreMatch(110, 100);
+    seed("bets", [betRow({ id: "betW2", structured_combo: combo([win("TEAM_B")], [{ kind: "PLAYER", player_ids: [201], stats: ["pts"], threshold: 20, comparison: "OVER" }]) })]);
+
+    const summary = await resolveCalculableComboBets();
+
+    expect(summary.resolved).toEqual([{ betId: "betW2", outcome: "LOST" }]);
+  });
+
+  it("« perd » (UNDER) : l'équipe perd effectivement -> WON", async () => {
+    scoreMatch(110, 100);
+    seed("bets", [betRow({ id: "betW3", structured_combo: combo([win("TEAM_B", "UNDER")]) })]);
+
+    const summary = await resolveCalculableComboBets();
+
+    expect(summary.resolved).toEqual([{ betId: "betW3", outcome: "WON" }]);
+  });
+
+  it("score final absent -> pari laissé en attente", async () => {
+    scoreMatch(null, null);
+    seed("bets", [betRow({ id: "betW4", structured_combo: combo([win("TEAM_A")]) })]);
+
+    const summary = await resolveCalculableComboBets();
+
+    expect(summary.resolved).toEqual([]);
+    expect(summary.skipped.map((s) => s.betId)).toEqual(["betW4"]);
+  });
+});

@@ -2,6 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
+import { COMBO_WIN_STAT } from "./teamStatCodes";
 import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, rowStatValue, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced } from "./resolveBetsShared";
 
 type ComboConditionRow = {
@@ -36,8 +37,21 @@ type EligibleComboBetRow = {
  *  false si elles le sont mais qu'un joueur nommé n'a pas joué (p3-15,
  *  cf. isBoxScoreSynced()). */
 async function resolveComboConditionSatisfied(
-  supabase: SupabaseServiceClient, condition: ComboConditionRow, gameId: string
+  supabase: SupabaseServiceClient, condition: ComboConditionRow, gameId: string, matchId: string
 ): Promise<boolean | null> {
+  // Vainqueur du match (S4) : lit le score final de matches, pas le box score.
+  if (condition.kind === "TEAM" && condition.stats.length === 1 && condition.stats[0] === COMBO_WIN_STAT) {
+    const { data: match } = await supabase
+      .from("matches")
+      .select("home_team_id, away_team_id, home_score, away_score")
+      .eq("id", matchId)
+      .maybeSingle<{ home_team_id: string | null; away_team_id: string | null; home_score: number | null; away_score: number | null }>();
+    if (!match || match.home_score === null || match.away_score === null) return null;
+    const isHome = condition.team_id === match.home_team_id;
+    if (!isHome && condition.team_id !== match.away_team_id) return null;
+    const wins = isHome ? match.home_score > match.away_score : match.away_score > match.home_score;
+    return condition.comparison === "UNDER" ? !wins : wins;
+  }
   const isSimple = condition.kind === "TEAM"
     ? condition.stats.length === 1
     : condition.stats.length === 1 && (condition.player_ids?.length ?? 0) === 1;
@@ -100,11 +114,11 @@ async function resolveComboConditionSatisfied(
  *  perdre un groupe OU si une autre condition du même groupe est déjà
  *  confirmée vraie). */
 async function resolveComboGroupSatisfied(
-  supabase: SupabaseServiceClient, group: ComboConditionGroup, gameId: string
+  supabase: SupabaseServiceClient, group: ComboConditionGroup, gameId: string, matchId: string
 ): Promise<boolean | null> {
   let sawIncomplete = false;
   for (const condition of group.or) {
-    const satisfied = await resolveComboConditionSatisfied(supabase, condition, gameId);
+    const satisfied = await resolveComboConditionSatisfied(supabase, condition, gameId, matchId);
     if (satisfied === true) return true;
     if (satisfied === null) sawIncomplete = true;
   }
@@ -174,7 +188,7 @@ export async function resolveCalculableComboBets(): Promise<ResolveBetsSummary> 
     let allSatisfied = true;
     let incomplete = false;
     for (const group of bet.structured_combo.conditions) {
-      const satisfied = await resolveComboGroupSatisfied(supabase, group, gameId);
+      const satisfied = await resolveComboGroupSatisfied(supabase, group, gameId, bet.match_id);
       if (satisfied === null) {
         incomplete = true;
         break;

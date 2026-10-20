@@ -55,3 +55,12 @@ export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
   fga: "tirs tentés de l'équipe",
   tov: "pertes de balle de l'équipe",
 };
+
+// Pseudo-stat "win" (S4, Lot 1, 20/10/2026) : valide UNIQUEMENT dans une
+// condition combo d'ÉQUIPE (kind team1/team2), seule, sans seuil -- OVER =
+// l'équipe gagne le match, UNDER = elle le perd (pas de nul en NBA).
+// Volontairement HORS de TEAM_STAT_CODES : ce tableau alimente les paris
+// équipe et la comparaison (COMPARISON_TEAM_STAT_CODES), où "win" n'a pas
+// de sens. Élargit l'enum `stats` du schéma combo, pas de nouveau champ
+// (schéma partagé au plafond de grammaire de l'API).
+export const COMBO_WIN_STAT = "win";

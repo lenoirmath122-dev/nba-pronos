@@ -4,7 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
 import { MATCH_STAT_CODES, MATCH_STAT_LABELS_FR, NO_THRESHOLD_MATCH_STATS } from "./matchStatCodes";
-import { TEAM_STAT_CODES, TEAM_STAT_LABELS_FR } from "./teamStatCodes";
+import { TEAM_STAT_CODES, TEAM_STAT_LABELS_FR, COMBO_WIN_STAT } from "./teamStatCodes";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 import type { KnownRosters } from "./roster";
 import { resolveInclusiveComparison, THRESHOLD_COMPARISONS, THRESHOLD_COMPARISON_DESCRIPTION } from "./inclusiveThreshold";
@@ -24,7 +24,7 @@ const COMPARISON_STAT_CODES = [...new Set([...COMPARISON_PLAYER_STAT_CODES, ...C
 // côté service, cf. supabase_context.py::_condition_proba) -- seule une
 // condition "somme" (plusieurs entités/stats) est restreinte aux stats
 // comptées, vérifié à l'exécution, pas dans le schéma.
-const COMBO_STAT_CODES = [...new Set([...STAT_CODES, ...TEAM_STAT_CODES])];
+const COMBO_STAT_CODES = [...new Set([...STAT_CODES, ...TEAM_STAT_CODES, COMBO_WIN_STAT])];
 
 // Structuration IA d'un pari perso en texte libre (SPEC_TECHNIQUE_PROBA_
 // PARIS_PERSOS_V0_1.md §3, décidé le 21/08/2026 : Claude Sonnet 5, appel
@@ -164,12 +164,12 @@ const BetStructurationSchema = z.object({
                   "ex. \"25pts+12reb+8pas cumulés\" -> [\"pts\",\"reb\",\"ast\"]). Si players a 2+ noms, stats doit " +
                   "rester à 1 seul code (cumul entre joueurs, pas de croisement joueurs×stats).",
               ),
-            threshold: z.number().nullable().describe("null uniquement si stats=[\"dd\"] ou [\"td\"] (probabilité directe)."),
+            threshold: z.number().nullable().describe("null uniquement si stats=[\"dd\"], [\"td\"] ou [\"win\"] (probabilité directe)."),
             comparison: z.enum(THRESHOLD_COMPARISONS).describe(THRESHOLD_COMPARISON_DESCRIPTION),
           }),
         )
         .describe(
-          "2 conditions ou plus, reliées par un ET implicite (TOUTES doivent être vraies). Ne PAS utiliser pour un " +
+          "2 conditions ou plus (1 seule si c'est le vainqueur du match), reliées par un ET implicite (TOUTES doivent être vraies). Ne PAS utiliser pour un " +
             "OU entre conditions, ni pour \"au moins N joueurs remplissent X\" (comptage sur tout le roster) -- " +
             "marque calculable=false dans ces 2 cas, pas encore géré.",
         ),
@@ -261,6 +261,9 @@ function buildStaticSystemText(): string {
     "joueurs, 1 stat sommée), \"Sengun marque au moins 23 points et prend au moins 13 rebonds\" (2 conditions), " +
     "\"Minnesota marque entre 101 et 110 points inclus\" (2 conditions SUR LA MÊME équipe/stat : threshold=101 " +
     "AT_LEAST et threshold=110 AT_MOST -- une fourchette est toujours 2 conditions, jamais un seul seuil). " +
+    "Le VAINQUEUR du match est une condition comme une autre : stats=[\"win\"], kind=team1/team2, threshold=null, " +
+    "comparison=OVER pour \"gagne\" ou UNDER pour \"perd\" (ex. \"Boston gagne ET Tatum marque 30+\" = 2 conditions ; " +
+    "\"Boston gagne le match\" seul = combo à 1 seule condition). " +
     "PAS géré (calculable=false) : un OU entre conditions (ex. \"triple-double AVEC 40+points ET (20+rebonds OU " +
     "20+passes)\"), et \"au moins N joueurs remplissent une condition\" (ex. \"8 joueurs marquent 11+ points\" -- " +
     "nécessite de compter sur tout le roster, pas encore géré).\n\n" +
