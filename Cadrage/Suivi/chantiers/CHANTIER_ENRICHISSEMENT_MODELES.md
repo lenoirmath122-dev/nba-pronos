@@ -160,7 +160,8 @@
      propre) ; risque principal = capter trop de formulations. Optionnel dans la
      foulée : « Trois joueurs en double double » (même défaut, nombre sans
      « au moins »). Rejouer le pari `f4f3ebd6…` coûte un appel IA : demander
-     d'abord. Ensuite : reste du Lot 1 (S1, S2, S4, S3, S8...).
+     d'abord. Ensuite : reste du Lot 1 (S4, S3, S8, S2...). **S1 livré le 20/10/2026 (PR #198)** : `pf` (modèle Poisson, colonne
+     `stats_box_scores.pf`, joueur seulement) + `dreb`/`fgm`/`ftm`/`fta` composés (`_composed_distribution`).
      **À part, autre conversation : instabilité des probas** (mesurée le
      09/10/2026, indépendante du cache) : mêmes 20 appels identiques à
      `/predict-total-points` Memphis–Boston -> 3 valeurs (0,4727 / 0,6205 /
