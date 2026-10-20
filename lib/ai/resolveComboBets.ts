@@ -2,7 +2,8 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { COMBO_WIN_STAT } from "./teamStatCodes";
+import { COMBO_WIN_STAT, COMBO_QUARTERS_WON_STAT, periodOfComboWinStat } from "./teamStatCodes";
+import { computePeriodTeamOutcome, type MatchPeriodRow } from "./resolvePeriodBets";
 import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, rowStatValue, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced } from "./resolveBetsShared";
 
 type ComboConditionRow = {
@@ -51,6 +52,27 @@ async function resolveComboConditionSatisfied(
     if (!isHome && condition.team_id !== match.away_team_id) return null;
     const wins = isHome ? match.home_score > match.away_score : match.away_score > match.home_score;
     return condition.comparison === "UNDER" ? !wins : wins;
+  }
+  // Période d'équipe (S4 fin) : quarts-temps remportés / remporte une période,
+  // lus dans matches.quarter_scores comme le pari période.
+  if (condition.kind === "TEAM" && condition.stats.length === 1) {
+    const stat = condition.stats[0];
+    const period = periodOfComboWinStat(stat);
+    if (stat === COMBO_QUARTERS_WON_STAT || period) {
+      const { data: match } = await supabase
+        .from("matches")
+        .select("id, status, home_team_id, away_team_id, home_score, away_score, quarter_scores")
+        .eq("id", matchId)
+        .maybeSingle<MatchPeriodRow>();
+      if (!match || !match.quarter_scores) return null;
+      const isHome = condition.team_id === match.home_team_id;
+      if (!isHome && condition.team_id !== match.away_team_id) return null;
+      const outcome = period
+        ? computePeriodTeamOutcome(period.startsWith("Q") ? "QUARTER_WINNER" : "HALF_WINNER", period, isHome, null, null, null, match)
+        : computePeriodTeamOutcome("QUARTERS_WON_COUNT", null, isHome, false, condition.threshold, condition.comparison, match);
+      if (!outcome) return null;
+      return period && condition.comparison === "UNDER" ? !outcome.won : outcome.won;
+    }
   }
   const isSimple = condition.kind === "TEAM"
     ? condition.stats.length === 1

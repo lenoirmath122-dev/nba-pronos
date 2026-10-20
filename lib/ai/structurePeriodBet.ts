@@ -96,6 +96,15 @@ const PeriodBetStructurationSchema = z.object({
     })
     .nullable()
     .describe("Rempli seulement si calculable=true, sinon null."),
+  mixed_combo: z
+    .boolean()
+    .describe(
+      "true UNIQUEMENT si le pari est un ET qui mêle une condition sur une période/un résultat de quarts-temps ET " +
+        "une AUTRE condition indépendante (stat d'équipe ou de joueur sur le match entier, vainqueur du match, autre " +
+        "période) -- ex. \"tirent à plus de 32% à 3 points ET remportent les 4 quarts-temps\". Dans ce cas " +
+        "calculable=false (un autre service le structure). false pour tout le reste, y compris \"mène à la mi-temps " +
+        "ET gagne/perd le match\" (un seul LEADS_HALF_RESULT, calculable=true).",
+    ),
   reasoning: z
     .string()
     .describe("Explication TRÈS COURTE (10-15 mots), pour trace/debug admin, pas pour le joueur."),
@@ -135,9 +144,10 @@ function buildStaticSystemText(): string {
     "passant ; un pourcentage des points totaux d'un JOUEUR (pas d'une équipe) sur une période (ex. \"Wembanyama " +
     "marque plus de 40% de ses points totaux au 4e quart-temps\") -- non géré, différent d'un seuil simple sur " +
     "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain ; " +
-    "un pari COMPOSÉ mélangeant un seuil de stat ET un résultat de période dans la MÊME condition (ex. \"Les " +
-    "Knicks tirent à plus de 32% à 3 points ET remportent les 4 quarts-temps\") -- non géré, ne structure JAMAIS " +
-    "seulement une moitié de ce genre de pari (ne choisis pas la partie la plus facile, rejette le pari entier)." +
+    "un pari COMPOSÉ mélangeant un seuil de stat ET un résultat de période (ex. \"Les Knicks tirent à plus de " +
+    "32% à 3 points ET remportent les 4 quarts-temps\") -- ne structure JAMAIS seulement une moitié de ce genre " +
+    "de pari : calculable=false ET mixed_combo=true (un autre service prend le relais). Ne mets mixed_combo=true " +
+    "que pour ce genre de mélange, jamais pour un pari période simple ni pour un LEADS_HALF_RESULT." +
     // Règle de vérification de présence déplacée ici (03/09/2026, optimisation
     // coût, même geste que structureBet.ts) -- texte identique à chaque
     // appel, donc mis en cache plutôt que payé en clair à chaque appel.

@@ -1451,6 +1451,32 @@ def _condition_proba(
         proba = 1 - p_win if comparison == "UNDER" else p_win
         return float(proba), {"kind": "TEAM", "team_id": home_team_id if is_home else away_team_id, "stats": stats}
 
+    # Stats de PERIODE d'equipe (S4 fin, 20/10/2026) : "qwon" (quarts-temps
+    # remportes) et "win_q1".."win_h2" (remporte la periode). Memes modeles que
+    # le pari periode (QUARTERS_WON_COUNT / QUARTER_WINNER / HALF_WINNER). Le
+    # lien avec les autres conditions (ex. un % aux tirs sur le match entier)
+    # reste en independance -- limite connue, a reprendre avec S2.
+    if kind == "TEAM" and len(stats) == 1 and stats[0] in COMBO_PERIOD_STATS:
+        is_home = condition["equipe"] == "domicile"
+        team_id = home_team_id if is_home else away_team_id
+        opponent_id = away_team_id if is_home else home_team_id
+        if stats[0] == COMBO_QUARTERS_WON_STAT:
+            # Strict comme le reste du combo : seuil deja converti en strict cote TS
+            # (« les 4 » = au moins 4 = OVER 3).
+            result = _compute_period_proba_once(
+                client, "QUARTERS_WON_COUNT", None, team_id, opponent_id, home_team_id, away_team_id,
+                False, seuil, comparison, as_of_date, season=season,
+            )
+            proba = result["proba"]
+        else:
+            period = stats[0][4:].upper()
+            result = _compute_period_proba_once(
+                client, "QUARTER_WINNER" if period.startswith("Q") else "HALF_WINNER", period, team_id, opponent_id,
+                home_team_id, away_team_id, None, None, None, as_of_date, season=season,
+            )
+            proba = 1 - result["proba"] if comparison == "UNDER" else result["proba"]
+        return float(proba), {"kind": "TEAM", "team_id": team_id, "stats": stats}
+
     is_simple = (kind == "TEAM" and len(stats) == 1) or (kind == "PLAYER" and len(players) == 1 and len(stats) == 1)
 
     if is_simple:
@@ -1628,6 +1654,8 @@ def _dd_td_conditional_factor(mean: float, scale: float, threshold: float, compa
 
 
 COMBO_WIN_STAT = "win"
+COMBO_QUARTERS_WON_STAT = "qwon"
+COMBO_PERIOD_STATS = ("qwon", "win_q1", "win_q2", "win_q3", "win_q4", "win_h1", "win_h2")
 
 
 def _is_win_group(group: list[dict]) -> bool:

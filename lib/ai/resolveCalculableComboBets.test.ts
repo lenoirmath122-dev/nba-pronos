@@ -426,3 +426,42 @@ describe("resolveCalculableComboBets — vainqueur du match (S4)", () => {
     expect(summary.skipped.map((s) => s.betId)).toEqual(["betW4"]);
   });
 });
+
+describe("resolveCalculableComboBets — périodes d'équipe (S4 fin)", () => {
+  const teamStat = (team_id: string, stat: string, threshold: number | null, comparison: "OVER" | "UNDER" = "OVER") =>
+    ({ kind: "TEAM", team_id, stats: [stat], threshold, comparison }) as unknown as Parameters<typeof combo>[0][number];
+  const player20 = { kind: "PLAYER", player_ids: [201], stats: ["pts"], threshold: 20, comparison: "OVER" } as unknown as Parameters<typeof combo>[0][number];
+
+  function quarters(home: number[], away: number[] | null = null) {
+    seed("matches", [{
+      id: "m1", status: "FINISHED", home_team_id: "TEAM_A", away_team_id: "TEAM_B", home_score: 110, away_score: 100,
+      quarter_scores: away ? { homeTeam: home, awayTeam: away } : null, scheduled_at: "2026-04-15T23:00:00.000Z",
+    }]);
+  }
+
+  it("« remporte les 4 quarts » (qwon > 3) vrai + condition joueur vraie -> WON", async () => {
+    quarters([30, 30, 25, 25], [20, 20, 20, 20]);
+    seed("bets", [betRow({ id: "betQ1", structured_combo: combo([teamStat("TEAM_A", "qwon", 3)], [player20]) })]);
+    expect((await resolveCalculableComboBets()).resolved).toEqual([{ betId: "betQ1", outcome: "WON" }]);
+  });
+
+  it("3 quarts seulement remportés -> LOST", async () => {
+    quarters([30, 30, 25, 15], [20, 20, 20, 20]);
+    seed("bets", [betRow({ id: "betQ2", structured_combo: combo([teamStat("TEAM_A", "qwon", 3)], [player20]) })]);
+    expect((await resolveCalculableComboBets()).resolved).toEqual([{ betId: "betQ2", outcome: "LOST" }]);
+  });
+
+  it("remporte la 1re mi-temps (win_h1) et « ne remporte pas » le Q4 (win_q4 UNDER) -> WON", async () => {
+    quarters([30, 30, 25, 15], [20, 20, 20, 20]);
+    seed("bets", [betRow({ id: "betQ3", structured_combo: combo([teamStat("TEAM_A", "win_h1", null)], [teamStat("TEAM_A", "win_q4", null, "UNDER")]) })]);
+    expect((await resolveCalculableComboBets()).resolved).toEqual([{ betId: "betQ3", outcome: "WON" }]);
+  });
+
+  it("tableau de score par quart absent -> pari laissé en attente", async () => {
+    quarters([]);
+    seed("bets", [betRow({ id: "betQ4", structured_combo: combo([teamStat("TEAM_A", "win_q1", null)]) })]);
+    const summary = await resolveCalculableComboBets();
+    expect(summary.resolved).toEqual([]);
+    expect(summary.skipped.map((s) => s.betId)).toEqual(["betQ4"]);
+  });
+});
