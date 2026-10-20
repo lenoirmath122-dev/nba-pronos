@@ -16,15 +16,22 @@ describe("applyInclusiveThreshold", () => {
     expect(applyInclusiveThreshold(null, "OVER", true, ["dd"])).toBeNull();
     expect(applyInclusiveThreshold(5, null, true, ["pts"])).toBe(5);
   });
-  it("pourcentages et minutes : inchangés", () => {
-    expect(applyInclusiveThreshold(0.5, "OVER", true, ["fg"])).toBe(0.5);
-    expect(applyInclusiveThreshold(30, "OVER", true, ["min"])).toBe(30);
-    expect(applyInclusiveThreshold(1, "OVER", true, ["pts", "fg3"])).toBe(1);
+  it("pourcentages et minutes : décalage d'un epsilon", () => {
+    expect(applyInclusiveThreshold(0.5, "OVER", true, ["fg"])).toBeCloseTo(0.5, 5);
+    expect(applyInclusiveThreshold(0.5, "OVER", true, ["fg"])!).toBeLessThan(0.5);
+    expect(applyInclusiveThreshold(0.5, "UNDER", true, ["ft"])!).toBeGreaterThan(0.5);
+    expect(applyInclusiveThreshold(30, "OVER", true, ["min"])!).toBeLessThan(30);
+    expect(applyInclusiveThreshold(30, "OVER", true, ["min"])!).toBeGreaterThan(29.99);
   });
   it("seuil non entier : inchangé", () => {
     expect(applyInclusiveThreshold(24.5, "OVER", true, ["pts"])).toBe(24.5);
   });
   it("somme de stats entières (PRA)", () => {
     expect(applyInclusiveThreshold(45, "OVER", true, ["pts", "reb", "ast"])).toBe(44);
+  });
+  it("pourcentage écrit en 0-100 : ramené en fraction", () => {
+    expect(applyInclusiveThreshold(50, "OVER", false, ["ft"])).toBe(0.5);
+    expect(applyInclusiveThreshold(50, "OVER", true, ["ft"])!).toBeLessThan(0.5);
+    expect(applyInclusiveThreshold(50, "OVER", true, ["ft"])!).toBeGreaterThan(0.499);
   });
 });

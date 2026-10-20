@@ -7,7 +7,7 @@ import { MATCH_STAT_CODES, MATCH_STAT_LABELS_FR, NO_THRESHOLD_MATCH_STATS } from
 import { TEAM_STAT_CODES, TEAM_STAT_LABELS_FR } from "./teamStatCodes";
 import { COMPARISON_PLAYER_STAT_CODES, COMPARISON_TEAM_STAT_CODES } from "./comparisonCodes";
 import type { KnownRosters } from "./roster";
-import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThreshold";
+import { resolveInclusiveComparison, THRESHOLD_COMPARISONS, THRESHOLD_COMPARISON_DESCRIPTION } from "./inclusiveThreshold";
 import { recordAnthropicUsage } from "./usageTracking";
 
 // Union des 2 listes de codes valides dans un duel (joueur OU équipe,
@@ -83,8 +83,7 @@ const BetStructurationSchema = z.object({
       team: z.enum(["team1", "team2"]).nullable().describe("null si not_in_match=true."),
       stat: z.enum(STAT_CODES as [string, ...string[]]).describe("Code de la stat JOUEUR concernée."),
       threshold: z.number().nullable().describe("null pour dd/td/tech (probabilité directe, pas de seuil)."),
-      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour dd/td/tech."),
-      inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
+      comparison: z.enum(THRESHOLD_COMPARISONS).nullable().describe("null pour dd/td/tech. " + THRESHOLD_COMPARISON_DESCRIPTION),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=PLAYER, sinon null."),
@@ -93,8 +92,7 @@ const BetStructurationSchema = z.object({
       team: z.enum(["team1", "team2"]),
       stat: z.enum(TEAM_STAT_CODES as [string, ...string[]]),
       threshold: z.number(),
-      comparison: z.enum(["OVER", "UNDER"]),
-      inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
+      comparison: z.enum(THRESHOLD_COMPARISONS).describe(THRESHOLD_COMPARISON_DESCRIPTION),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=TEAM_STAT, sinon null."),
@@ -102,8 +100,7 @@ const BetStructurationSchema = z.object({
     .object({
       stat: z.enum(MATCH_STAT_CODES as [string, ...string[]]),
       threshold: z.number().nullable().describe("null pour went_to_ot/had_backcourt_turnover/had_buzzer_beater (probabilité directe, pas de seuil)."),
-      comparison: z.enum(["OVER", "UNDER"]).nullable().describe("null pour went_to_ot/had_backcourt_turnover/had_buzzer_beater."),
-      inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
+      comparison: z.enum(THRESHOLD_COMPARISONS).nullable().describe("null pour went_to_ot/had_backcourt_turnover/had_buzzer_beater. " + THRESHOLD_COMPARISON_DESCRIPTION),
       negation: z
         .boolean()
         .describe(
@@ -150,7 +147,6 @@ const BetStructurationSchema = z.object({
         .number()
         .nullable()
         .describe("DIFF_LT : la borne de l'écart. OR : le seuil comparé indépendamment aux 2 côtés. null pour GT."),
-      inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION + " Uniquement pour relation=OR, sinon false."),
     })
     .nullable()
     .describe("Rempli seulement si bet_subject=COMPARISON, sinon null."),
@@ -169,8 +165,7 @@ const BetStructurationSchema = z.object({
                   "rester à 1 seul code (cumul entre joueurs, pas de croisement joueurs×stats).",
               ),
             threshold: z.number().nullable().describe("null uniquement si stats=[\"dd\"] ou [\"td\"] (probabilité directe)."),
-            comparison: z.enum(["OVER", "UNDER"]),
-            inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
+            comparison: z.enum(THRESHOLD_COMPARISONS).describe(THRESHOLD_COMPARISON_DESCRIPTION),
           }),
         )
         .describe(
@@ -186,48 +181,34 @@ const BetStructurationSchema = z.object({
     .describe("Explication TRÈS COURTE (10-15 mots), pour trace/debug admin, pas pour le joueur."),
 });
 
-export type BetStructuration = z.infer<typeof BetStructurationSchema>;
+type RawBetStructuration = z.infer<typeof BetStructurationSchema>;
+/** Apres normalisation, AT_LEAST/AT_MOST n'existent plus : seuls OVER/UNDER stricts sortent d'ici. */
+type Strict<T> = T extends { comparison: infer C } ? Omit<T, "comparison"> & { comparison: Exclude<C, "AT_LEAST" | "AT_MOST"> } : T;
+export type BetStructuration = Omit<RawBetStructuration, "player" | "team_stat" | "match_total" | "combo_bet"> & {
+  player: Strict<NonNullable<RawBetStructuration["player"]>> | null;
+  team_stat: Strict<NonNullable<RawBetStructuration["team_stat"]>> | null;
+  match_total: Strict<NonNullable<RawBetStructuration["match_total"]>> | null;
+  combo_bet: { conditions: Strict<NonNullable<RawBetStructuration["combo_bet"]>["conditions"][number]>[] } | null;
+};
 
 /** Convertit les seuils INCLUSIFS (« au moins N ») en seuils stricts attendus par les moteurs
  *  de proba et de résolution -- appliqué une fois pour toutes juste après l'appel IA, de sorte
  *  que le reste du code ne voit que des OVER/UNDER stricts (cf. inclusiveThreshold.ts). */
-export function normalizeBetStructuration(b: BetStructuration): BetStructuration {
-  const out: BetStructuration = { ...b };
-  if (b.player) {
-    out.player = { ...b.player, threshold: applyInclusiveThreshold(b.player.threshold, b.player.comparison, b.player.inclusive, [b.player.stat]) };
-  }
-  if (b.team_stat) {
-    out.team_stat = {
-      ...b.team_stat,
-      threshold: applyInclusiveThreshold(b.team_stat.threshold, b.team_stat.comparison, b.team_stat.inclusive, [b.team_stat.stat]) as number,
-    };
-  }
-  if (b.match_total) {
-    out.match_total = {
-      ...b.match_total,
-      threshold: applyInclusiveThreshold(b.match_total.threshold, b.match_total.comparison, b.match_total.inclusive, [b.match_total.stat]),
-    };
-  }
-  if (b.comparison_bet && b.comparison_bet.relation === "OR") {
-    // OR : « dépasse threshold » pour chaque côté, donc inclusif = OVER.
-    out.comparison_bet = {
-      ...b.comparison_bet,
-      threshold: applyInclusiveThreshold(b.comparison_bet.threshold, "OVER", b.comparison_bet.inclusive, [
-        b.comparison_bet.left.stat,
-        b.comparison_bet.right.stat,
-      ]),
-    };
-  }
-  if (b.combo_bet) {
-    out.combo_bet = {
-      ...b.combo_bet,
-      conditions: b.combo_bet.conditions.map((c) => ({
-        ...c,
-        threshold: applyInclusiveThreshold(c.threshold, c.comparison, c.inclusive, c.stats),
-      })),
-    };
-  }
-  return out;
+export function normalizeBetStructuration(b: RawBetStructuration): BetStructuration {
+  const fix = <T extends { threshold: number | null; comparison: (typeof THRESHOLD_COMPARISONS)[number] | null }>(
+    o: T,
+    stats: readonly string[],
+  ) => {
+    const r = resolveInclusiveComparison(o.threshold, o.comparison, stats);
+    return { ...o, threshold: r.threshold, comparison: r.comparison };
+  };
+  return {
+    ...b,
+    player: b.player ? fix(b.player, [b.player.stat]) : null,
+    team_stat: b.team_stat ? (fix(b.team_stat, [b.team_stat.stat]) as unknown as BetStructuration["team_stat"]) : null,
+    match_total: b.match_total ? fix(b.match_total, [b.match_total.stat]) : null,
+    combo_bet: b.combo_bet ? { ...b.combo_bet, conditions: b.combo_bet.conditions.map((c) => fix(c, c.stats)) } : null,
+  } as BetStructuration;
 }
 
 /** Partie STATIQUE du prompt (identique à CHAQUE appel, quel que soit le
@@ -250,9 +231,9 @@ function buildStaticSystemText(): string {
     "\"la série\"/\"les matchs\", marque calculable=false, ce cas n'est pas encore géré) :\n\n" +
     `1. bet_subject=PLAYER -- UN seul joueur + UNE des ${STAT_CODES.length} stats suivantes :\n` +
     statList +
-    "\n\nSEUILS INCLUSIFS : pour \"au moins N\"/\"N+\"/\"N ou plus\" (OVER) et \"au plus N\"/\"N ou moins\" (UNDER), écris " +
-    "threshold=N tel que dans le texte et inclusive=true (ex. \"Wembanyama marque au moins 25 points\" -> threshold=25, " +
-    "comparison=OVER, inclusive=true). Pour \"plus de N\"/\"moins de N\" : threshold=N, inclusive=false. Ne fais JAMAIS " +
+    "\n\nSEUILS INCLUSIFS : pour \"au moins N\"/\"N+\"/\"N ou plus\" écris comparison=AT_LEAST, pour \"au plus N\"/\"N ou " +
+    "moins\" comparison=AT_MOST, avec threshold=N tel que dans le texte (ex. \"Wembanyama marque au moins 25 points\" -> " +
+    "threshold=25, comparison=AT_LEAST). Pour \"plus de N\"/\"moins de N\" : OVER/UNDER, threshold=N. Ne fais JAMAIS " +
     "toi-même N-1 ou N+1, le code s'en charge." +
     "\n\n2. bet_subject=TEAM_STAT -- UNE équipe précise (ex. \"Boston aura 45+ rebonds\") + UNE des stats " +
     "suivantes :\n" +
@@ -270,7 +251,7 @@ function buildStaticSystemText(): string {
     "marque plus que Booker+Brooks cumulés\" (joueur vs somme de 2, GT), \"Boston prend plus de rebonds que " +
     "Philadelphie\" (2 équipes, GT), \"écart de points entre LeBron et Bronny inférieur à 20\" (2 joueurs, " +
     "DIFF_LT), \"les Spurs ont au moins 2 fois plus d'interceptions que les Knicks\" (2 équipes, GT, " +
-    "multiplicateur), \"Hauser ou Pritchard marque au moins 3 paniers à 3 points\" (2 joueurs, OR, threshold=3, inclusive=true).\n\n" +
+    "multiplicateur), \"Hauser ou Pritchard marque au moins 3 paniers à 3 points\" (2 joueurs, OR, threshold=2 -- ce threshold-là est STRICT, \"au moins 3\" = dépasse 2).\n\n" +
     "5. bet_subject=COMBO -- PLUSIEURS conditions reliées par un ET (TOUTES doivent être vraies). Chaque " +
     "condition vise UN joueur, une SOMME de plusieurs joueurs (même stat), ou UNE équipe, avec sa propre stat/" +
     "seuil/comparaison. Une condition peut aussi sommer PLUSIEURS stats pour UN MÊME joueur (style PRA). " +
@@ -278,8 +259,8 @@ function buildStaticSystemText(): string {
     "stats différentes), \"Wembanyama réalise au moins 25 points, 12 rebonds et 8 passes\" (1 condition, 3 stats " +
     "sommées pour Wembanyama), \"le cumul des points de Castle et Harper est supérieur à 40\" (1 condition, 2 " +
     "joueurs, 1 stat sommée), \"Sengun marque au moins 23 points et prend au moins 13 rebonds\" (2 conditions), " +
-    "\"Minnesota marque entre 101 et 110 points inclus\" (2 conditions SUR LA MÊME équipe/stat : threshold=101 OVER " +
-    "inclusive=true et threshold=110 UNDER inclusive=true -- une fourchette est toujours 2 conditions, jamais un seul seuil). " +
+    "\"Minnesota marque entre 101 et 110 points inclus\" (2 conditions SUR LA MÊME équipe/stat : threshold=101 " +
+    "AT_LEAST et threshold=110 AT_MOST -- une fourchette est toujours 2 conditions, jamais un seul seuil). " +
     "PAS géré (calculable=false) : un OU entre conditions (ex. \"triple-double AVEC 40+points ET (20+rebonds OU " +
     "20+passes)\"), et \"au moins N joueurs remplissent une condition\" (ex. \"8 joueurs marquent 11+ points\" -- " +
     "nécessite de compter sur tout le roster, pas encore géré).\n\n" +
