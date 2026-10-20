@@ -24,7 +24,7 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   encodés `OVER N` alors que le calcul est strict. `inclusiveThreshold.ts` convertit en code
   (enum `AT_LEAST`/`AT_MOST` dans `structureBet`, booléen `inclusive` ailleurs). Vérifié par appels
   réels. Reste : « Hauser ou Pritchard » (COMPARISON/OR) non vérifié ; rejouer d'anciens paris ?
-- Puis reste du **Lot 1** (S1, S2, S4, S3, S8…) avant la bêta Cup du 04/12 ;
+- Puis reste du **Lot 1** (S4, S3 + S8, « exactement N »/égalité/score exact, S2 ; S1 livré, PR #198) avant la bêta Cup du 04/12 ;
   Lots 2 à 4 ensuite (déc. → mars).
 - **À part, conversation dédiée** : instabilité des probas (3 valeurs pour 20
   appels identiques, avec ou sans cache).
