@@ -156,9 +156,15 @@ const ROSTER_SPLIT_KEYWORD_REGEX = /cinq\s*majeur|5\s*majeur|titulaires?|\bbancs
  *  "chacun" (comptage individuel, pas une somme) -- la 2e lecture est la
  *  bonne, ROSTER_SPLIT rejette déjà explicitement ce cas dans son propre
  *  prompt ("condition INDIVIDUELLE sur chaque titulaire, pas une somme --
- *  non géré"), confirmant que ce n'est jamais le bon schéma pour ce texte. */
+ *  non géré"), confirmant que ce n'est jamais le bon schéma pour ce texte.
+ *  Dernière alternative (correctif Memphis, 20/10/2026) : un texte qui
+ *  COMMENCE par "un joueur de/du/des <équipe>" ou "n'importe quel joueur de
+ *  <équipe>" est un comptage "au moins 1 joueur de cette équipe" (scope =
+ *  équipe, min_players=1) -- ancrée en début de texte pour ne pas capter un
+ *  joueur nommé en apposition ("Ja Morant, un joueur de Memphis, marque...")
+ *  ni "plus de points que n'importe quel joueur de Memphis". */
 const ROSTER_COUNT_KEYWORD_REGEX =
-  /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b/i;
+  /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b|^\s*(?:un|n['’]importe quel)\s+joueur\s+(?:de|du|des|d['’])\s*\S/i;
 
 /** Détecte un texte "de forme" superlatif implicite ("meilleur marqueur")
  *  AVANT tout appel Claude (étape 4 du plan de reprise post-audit,

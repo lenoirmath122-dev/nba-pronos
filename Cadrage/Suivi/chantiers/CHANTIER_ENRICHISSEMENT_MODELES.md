@@ -139,7 +139,7 @@
      voisines (« un joueur de Memphis fait un double-double », « un joueur des
      Grizzlies marque 30 »). Ce pari reste à résoudre à la main par l'admin en
      attendant ; à rejouer une fois le correctif livré.
-     **PROCHAINE ÉTAPE (reprise, décidée le 09/10/2026, rien de codé)** --
+     [CODÉ le 20/10/2026 : points 1, 2 et 4 faits ; point 3 tranché : `OVER` est strict (`actual > threshold`, `computeOutcome`), « + de 25 » = `OVER 25`. Constat à part : « N ou plus » encodé `OVER N` est décalé de 1, non traité.] Plan d'origine (reprise, décidée le 09/10/2026) --
      correctif Memphis, une branche + une PR depuis `origin/main` (worktree,
      les docs du dépôt principal sont non commitées) :
      (1) `ROSTER_COUNT_KEYWORD_REGEX` (`lib/ai/structureAndScoreBet.ts`, ~l.160,
