@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES } from "./statCodes";
-import { TEAM_STAT_CODES, COMBO_WIN_STAT, COMBO_PERIOD_STATS } from "./teamStatCodes";
+import { TEAM_STAT_CODES, COMBO_WIN_STAT, COMBO_MARGIN_STAT, COMBO_STARTER_STAT, COMBO_PERIOD_STATS } from "./teamStatCodes";
 import { recordAnthropicUsage } from "./usageTracking";
 import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThreshold";
 
@@ -18,7 +18,7 @@ import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThres
 // groupe = 1+ conditions reliées par un OU), donc même stockage
 // (structured_combo) et même résolution. Les conditions de période sont des
 // pseudo-stats d'équipe (cf. teamStatCodes.ts) : pas de champ « période ».
-const COMBO_PERIOD_STAT_CODES = [...new Set([...STAT_CODES, ...TEAM_STAT_CODES, COMBO_WIN_STAT, ...COMBO_PERIOD_STATS])];
+const COMBO_PERIOD_STAT_CODES = [...new Set([...STAT_CODES, ...TEAM_STAT_CODES, COMBO_WIN_STAT, COMBO_MARGIN_STAT, COMBO_STARTER_STAT, ...COMBO_PERIOD_STATS])];
 
 const ComboPeriodConditionSchema = z.object({
   kind: z.enum(["PLAYER", "team1", "team2"]).describe("PLAYER pour un/des joueur(s), team1/team2 pour une équipe."),
@@ -27,7 +27,7 @@ const ComboPeriodConditionSchema = z.object({
     .array(z.enum(COMBO_PERIOD_STAT_CODES as [string, ...string[]]))
     .describe(
       "1 code = condition normale (stat sur le MATCH ENTIER). 2+ codes = SOMME de stats pour LE MÊME joueur. Codes " +
-        "d'équipe spéciaux, seuls dans stats, kind=team1/team2 : \"win\" = vainqueur du match ; \"qwon\" = nombre de " +
+        "d'équipe spéciaux, seuls dans stats, kind=team1/team2 : \"win\" = vainqueur du match ; \"margin\" = écart final signé de l'équipe (avec threshold) ; \"starter\" = joueur titulaire (OVER) / remplaçant (UNDER), kind=PLAYER, un seul joueur, threshold=null ; \"qwon\" = nombre de " +
         "quarts-temps remportés (0 à 4, avec threshold) ; \"win_q1\"..\"win_q4\", \"win_h1\", \"win_h2\" = remporte ce " +
         "quart-temps / cette mi-temps (threshold=null).",
     ),

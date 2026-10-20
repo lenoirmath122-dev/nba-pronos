@@ -465,3 +465,76 @@ describe("resolveCalculableComboBets — périodes d'équipe (S4 fin)", () => {
     expect(summary.skipped.map((s) => s.betId)).toEqual(["betQ4"]);
   });
 });
+
+describe("resolveCalculableComboBets — écart final signé (S3)", () => {
+  const margin = (team_id: string, threshold: number, comparison: "OVER" | "UNDER" = "OVER") =>
+    ({ kind: "TEAM", team_id, stats: ["margin"], threshold, comparison }) as unknown as Parameters<typeof combo>[0][number];
+
+  function scoreMatch(home_score: number, away_score: number) {
+    seed("matches", [{ id: "m1", status: "FINISHED", home_team_id: "TEAM_A", away_team_id: "TEAM_B", home_score, away_score, scheduled_at: "2026-04-15T23:00:00.000Z" }]);
+  }
+
+  async function outcomeOf(id: string, ...conds: Parameters<typeof combo>[0]) {
+    seed("bets", [betRow({ id, structured_combo: combo(...conds.map((c) => [c])) })]);
+    return (await resolveCalculableComboBets()).resolved;
+  }
+
+  it("« gagne de 10+ » : domicile +12 -> WON, +8 -> LOST", async () => {
+    scoreMatch(112, 100);
+    expect(await outcomeOf("bM1", margin("TEAM_A", 9))).toEqual([{ betId: "bM1", outcome: "WON" }]);
+  });
+
+  it("écart insuffisant -> LOST", async () => {
+    scoreMatch(108, 100);
+    expect(await outcomeOf("bM2", margin("TEAM_A", 9))).toEqual([{ betId: "bM2", outcome: "LOST" }]);
+  });
+
+  it("extérieur : l'écart est mesuré de son côté", async () => {
+    scoreMatch(100, 112);
+    expect(await outcomeOf("bM3", margin("TEAM_B", 9))).toEqual([{ betId: "bM3", outcome: "WON" }]);
+  });
+
+  it("handicap +5,5 sur une défaite de 4 -> WON ; défaite de 7 -> LOST", async () => {
+    scoreMatch(100, 104);
+    expect(await outcomeOf("bM4", margin("TEAM_A", -5.5))).toEqual([{ betId: "bM4", outcome: "WON" }]);
+  });
+
+  it("handicap +5,5 sur une défaite de 7 -> LOST", async () => {
+    scoreMatch(100, 107);
+    expect(await outcomeOf("bM5", margin("TEAM_A", -5.5))).toEqual([{ betId: "bM5", outcome: "LOST" }]);
+  });
+
+  it("tranche 6 à 10 : écart 8 -> WON", async () => {
+    scoreMatch(108, 100);
+    expect(await outcomeOf("bM6", margin("TEAM_A", 5), margin("TEAM_A", 11, "UNDER"))).toEqual([{ betId: "bM6", outcome: "WON" }]);
+  });
+});
+
+describe("resolveCalculableComboBets — titulaire ou remplaçant (S8)", () => {
+  const starter = (comparison: "OVER" | "UNDER" = "OVER") =>
+    ({ kind: "PLAYER", player_ids: [201], stats: ["starter"], threshold: null, comparison }) as unknown as Parameters<typeof combo>[0][number];
+
+  async function run(id: string, position: string | null, comparison: "OVER" | "UNDER" = "OVER") {
+    seed("stats_box_scores", [boxScoreRow({ player_id: 201, position })]);
+    seed("bets", [betRow({ id, structured_combo: combo([starter(comparison)]) })]);
+    return (await resolveCalculableComboBets()).resolved;
+  }
+
+  it("position non vide, « titulaire » -> WON", async () => {
+    expect(await run("bS1", "F")).toEqual([{ betId: "bS1", outcome: "WON" }]);
+  });
+
+  it("position vide, « titulaire » -> LOST", async () => {
+    expect(await run("bS2", "")).toEqual([{ betId: "bS2", outcome: "LOST" }]);
+  });
+
+  it("position vide, « remplaçant » (UNDER) -> WON", async () => {
+    expect(await run("bS3", "", "UNDER")).toEqual([{ betId: "bS3", outcome: "WON" }]);
+  });
+
+  it("joueur sans ligne de box score (n'a pas joué) -> LOST pour les deux sens", async () => {
+    seed("stats_box_scores", [boxScoreRow({ player_id: 999, position: "G" })]);
+    seed("bets", [betRow({ id: "bS4", structured_combo: combo([starter()]) })]);
+    expect((await resolveCalculableComboBets()).resolved).toEqual([{ betId: "bS4", outcome: "LOST" }]);
+  });
+});
