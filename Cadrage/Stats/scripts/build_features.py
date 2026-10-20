@@ -126,6 +126,7 @@ CREATE TABLE features_joueur (
     blk_moy5 REAL, blk_moy10 REAL, blk_ecarttype10 REAL,
     oreb_moy5 REAL, oreb_moy10 REAL, oreb_ecarttype10 REAL,
     tov_moy5 REAL, tov_moy10 REAL, tov_ecarttype10 REAL,
+    pf_moy5 REAL, pf_moy10 REAL, pf_ecarttype10 REAL,
     ts_pct_moy5 REAL, ts_pct_moy10 REAL,
     usg_pct_moy5 REAL, usg_pct_moy10 REAL,
     plus_minus_moy5 REAL, plus_minus_moy10 REAL, plus_minus_ecarttype10 REAL,
@@ -375,7 +376,7 @@ def compute_missed_games(conn: sqlite3.Connection) -> pd.DataFrame:
 def build_player_games(conn: sqlite3.Connection, team_context: pd.DataFrame) -> pd.DataFrame:
     box_scores = pd.read_sql(
         "SELECT game_id, player_id, team_id, minutes, pts, reb, ast, fg3m, stl, blk, plus_minus, "
-        "ftm, fta, fgm, fga, fg3a, oreb, tov FROM box_scores",
+        "ftm, fta, fgm, fga, fg3a, oreb, tov, pf FROM box_scores",
         conn, dtype={"game_id": str},
     )
     box_adv = pd.read_sql(
@@ -413,6 +414,7 @@ def add_player_rolling_features(players: pd.DataFrame) -> pd.DataFrame:
         df[f"blk_moy{window}"] = g["blk"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"oreb_moy{window}"] = g["oreb"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"tov_moy{window}"] = g["tov"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
+        df[f"pf_moy{window}"] = g["pf"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"ts_pct_moy{window}"] = g["ts_pct"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"usg_pct_moy{window}"] = g["usg_pct"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
         df[f"plus_minus_moy{window}"] = g["plus_minus"].transform(lambda s, w=window: shifted_rolling_mean(s, w))
@@ -427,7 +429,7 @@ def add_player_rolling_features(players: pd.DataFrame) -> pd.DataFrame:
     # directement ("tente plus de 7 tirs a 3 points").
     ecarttype_cols = {
         "pts": "pts", "reb": "reb", "ast": "ast", "fg3m": "fg3m", "stl": "stl", "blk": "blk", "min": "minutes_f",
-        "fga": "fga", "fg3a": "fg3a", "oreb": "oreb", "tov": "tov",
+        "fga": "fga", "fg3a": "fg3a", "oreb": "oreb", "tov": "tov", "pf": "pf",
         # "plus_minus" ajoute le 24/08/2026 (chantier "petits gains groupes",
         # GAPS_OUVERTS.md) -- moy5/moy10 deja calcules plus haut (utilises
         # comme feature partagee par d'autres modeles), seul l'ecart-type
@@ -504,6 +506,7 @@ PLAYER_TABLE_COLUMNS = [
     "blk_moy5", "blk_moy10", "blk_ecarttype10",
     "oreb_moy5", "oreb_moy10", "oreb_ecarttype10",
     "tov_moy5", "tov_moy10", "tov_ecarttype10",
+    "pf_moy5", "pf_moy10", "pf_ecarttype10",
     "ts_pct_moy5", "ts_pct_moy10", "usg_pct_moy5", "usg_pct_moy10",
     "plus_minus_moy5", "plus_minus_moy10", "plus_minus_ecarttype10",
     "vs_adversaire_pts_moy",

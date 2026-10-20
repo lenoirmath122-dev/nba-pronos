@@ -30,7 +30,7 @@ export function sumBoxRows(rows: RosterSplitBoxRow[]): BoxScoreRow {
     fgm: sum("fgm"), fga: sum("fga"), fg3a: sum("fg3a"), oreb: sum("oreb"),
     plus_minus: sum("plus_minus"),
     technical_fouls: sum("technical_fouls"),
-    tov: sum("tov"),
+    tov: sum("tov"), pf: sum("pf"),
   };
 }
 
@@ -100,7 +100,7 @@ export async function resolveCalculableRosterSplitBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
+      .select("player_id, position, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov, pf")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
     if (!rows || rows.length === 0) {

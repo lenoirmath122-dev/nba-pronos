@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, minutesToFloat, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, rowStatValue, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced } from "./resolveBetsShared";
 
 type ComboConditionRow = {
   kind: "PLAYER" | "TEAM";
@@ -22,13 +22,6 @@ type EligibleComboBetRow = {
   match_id: string | null;
   structured_combo: StructuredCombo | null;
 };
-
-// Colonnes comptees potentiellement sommees dans une condition combo
-// "somme" (2+ joueurs et/ou 2+ stats) -- meme restriction que cote
-// service (supabase_context.py::_condition_proba, REGRESSION_STATS) : pas
-// de dd/td/pourcentage, qui n'ont pas de valeur numerique directe a
-// sommer.
-type ComboSumColumn = "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus" | "tov";
 
 /** Valeur réelle (true/false/null) d'UNE condition combo pour le match
  *  résolu (24/08/2026, GAPS_OUVERTS.md, chantier combo). 2 chemins, MÊME
@@ -54,7 +47,7 @@ async function resolveComboConditionSatisfied(
     if (!playerId) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov, pf")
       .eq("game_id", gameId)
       .eq("player_id", playerId);
     if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
@@ -67,7 +60,7 @@ async function resolveComboConditionSatisfied(
     if (playerIds.length === 0) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus, tov")
+      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov, pf")
       .eq("game_id", gameId)
       .in("player_id", playerIds);
     if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
@@ -75,24 +68,20 @@ async function resolveComboConditionSatisfied(
     // joueur nommé manque : il n'a pas joué, la condition est fausse
     // (p3-15) -- avant, sa part comptait silencieusement pour 0.
     if (rows.length < new Set(playerIds).size) return false;
-    for (const r of rows as (Pick<BoxScoreRow, "minutes"> & Record<ComboSumColumn, number | null>)[]) {
-      for (const s of condition.stats) {
-        total += s === "min" ? minutesToFloat(r.minutes) : (r[s as ComboSumColumn] ?? 0);
-      }
+    for (const r of rows as Record<string, unknown>[]) {
+      for (const s of condition.stats) total += rowStatValue(s, r);
     }
   } else {
     const nbaTeamId = condition.team_id ? await resolveNbaTeamId(supabase, condition.team_id) : null;
     if (nbaTeamId === null) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("pts, reb, ast, fg3m, stl, blk, fga, fg3a, oreb, plus_minus, tov")
+      .select("pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov, pf")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
     if (!rows || rows.length === 0) return null;
-    for (const r of rows as Record<ComboSumColumn, number | null>[]) {
-      for (const s of condition.stats) {
-        total += r[s as ComboSumColumn] ?? 0;
-      }
+    for (const r of rows as Record<string, unknown>[]) {
+      for (const s of condition.stats) total += rowStatValue(s, r);
     }
   }
   if (condition.threshold === null) return null;

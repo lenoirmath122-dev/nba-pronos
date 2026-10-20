@@ -104,7 +104,7 @@ export async function resolveCalculableRosterCountBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov, pf")
       .eq("game_id", gameId)
       .in("player_id", rc.player_ids);
     const boxByPlayer = new Map(

@@ -63,7 +63,9 @@ MODELS_DIR = SCRIPT_DIR.parent / "models"
 # profil low-count (moyenne ~1.3, mediane 1, 25e percentile 0) que oreb/
 # fg3m/stl/blk, Poisson essaye directement -- a reverifier empiriquement
 # comme les autres (calibration_check ci-dessous).
-POISSON_STATS = {"fg3m", "stl", "blk", "oreb", "tov"}
+# "pf" ajoutee le 20/10/2026 (Lot 1 S1) : moyenne ~1.8, plafond 6 (exclusion), Poisson
+# essaye comme les autres stats low-count, calibration a verifier.
+POISSON_STATS = {"fg3m", "stl", "blk", "oreb", "tov", "pf"}
 
 # Stats bénéficiant de `vs_adversaire_{stat}_moy` (généralisé le 02/09/2026,
 # GAPS_OUVERTS.md) -- REGRESSION_STATS SAUF "min" (pas de lien avec
@@ -187,6 +189,8 @@ def main():
     run("oreb", "Rebonds offensifs", thresholds=(1, 2, 3, 4, 5))
     # ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle")
     run("tov", "Pertes de balle", thresholds=(1, 2, 3, 4, 5))
+    # ajoutee le 20/10/2026 (Lot 1 S1, fautes personnelles)
+    run("pf", "Fautes personnelles", thresholds=(1, 2, 3, 4, 5))
     # ajoutee le 24/08/2026 (chantier "petits gains groupes", GAPS_OUVERTS.md,
     # categorie "+/- comme stat pariable") -- plus_minus_moy5/10 deja
     # calculees (feature partagee par d'autres modeles), seul l'ecart-type

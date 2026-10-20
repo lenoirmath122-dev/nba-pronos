@@ -27,6 +27,7 @@ from scipy.stats import betabinom, binom, norm, poisson  # noqa: E402
 
 from tester_modele import (  # noqa: E402
     CLASSIFIER_STATS,
+    COMPOSED_STATS,
     MIN_SCALE,
     MODELS_DIR,
     PCT_STATS,
@@ -126,7 +127,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     rows = (
         client.table("stats_box_scores")
         .select("game_date, minutes, pts, reb, ast, fg3m, stl, blk, plus_minus, "
-                 "ftm, fta, fgm, fga, fg3a, oreb, tov, ts_pct, usg_pct, games_played_season_avant")
+                 "ftm, fta, fgm, fga, fg3a, oreb, tov, pf, ts_pct, usg_pct, games_played_season_avant")
         .eq("player_id", player_id)
         .order("game_date", desc=True)
         .limit(10)
@@ -157,7 +158,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
+        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"), ("pf", "pf"),
         ("plus_minus", "plus_minus"),
     ):
         context[f"{stat}_moy5"] = last5[col].mean()
@@ -197,7 +198,7 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
+        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"), ("pf", "pf"),
     ):
         ecarttypes[stat] = recent[col].std()
 
@@ -1048,20 +1049,84 @@ def compute_player_period_proba(*args, **kwargs) -> dict:
     return _compute_with_consistency_check(lambda: _compute_player_period_proba_once(*args, **kwargs))
 
 
+def _composed_distribution(stat: str, context: dict, recent: pd.DataFrame) -> dict:
+    """Loi d'une stat COMPOSEE (Lot 1 S1, 20/10/2026) a partir des modeles
+    existants, sans nouveau .joblib :
+    - dreb = reb - oreb : difference des 2 moyennes predites, dispersion =
+      ecart-type OBSERVE de (reb - oreb) sur les matchs recents (capte la
+      correlation reb/oreb, que Var(reb)+Var(oreb) ignorerait) ;
+    - fta : attempts_model du bundle ft_pct, dispersion observee ;
+    - fgm / ftm : n_hat tentatives * taux estime, meme mecanique que run_pct()
+      (Binomiale, ou Beta-Binomiale quand le bundle le dit).
+    Retourne {"mean", "scale", "discrete": None | (n_hat, p_hat | (alpha, beta))}."""
+    if stat == "dreb":
+        means = {}
+        for name in ("reb", "oreb"):
+            bundle = load_model(MODELS_DIR / f"{name}.joblib")
+            means[name] = float(bundle["model"].predict(pd.DataFrame([context])[bundle["feature_cols"]])[0])
+        ect = (recent["reb"] - recent["oreb"]).std()
+        return {"mean": max(means["reb"] - means["oreb"], 0.0), "scale": max(ect if pd.notna(ect) else 1.0, MIN_SCALE)}
+
+    bundle = load_model(MODELS_DIR / ("ft_pct.joblib" if stat in ("ftm", "fta") else "fg_pct.joblib"))
+    n_raw = float(bundle["attempts_model"].predict(pd.DataFrame([context])[bundle["attempts_feature_cols"]])[0])
+    if stat == "fta":
+        ect = recent["fta"].std()
+        return {"mean": max(n_raw, 0.0), "scale": max(ect if pd.notna(ect) else 1.0, MIN_SCALE)}
+
+    n_hat = max(round(n_raw), 1)
+    k, league_avg = bundle["shrinkage_k"], bundle["league_avg"]
+    makes_sum, attempts_sum = (
+        (context["ftm_sum10"], context["fta_sum10"]) if stat == "ftm" else (context["fgm_sum10"], context["fga_sum10"])
+    )
+    alpha_post = k * league_avg + makes_sum
+    beta_post = k * (1 - league_avg) + (attempts_sum - makes_sum)
+    p_hat = alpha_post / (alpha_post + beta_post)
+    betabin = bundle.get("distribution") == "beta_binomial"
+    var = n_hat * p_hat * (1 - p_hat)
+    if betabin:
+        var *= (alpha_post + beta_post + n_hat) / (alpha_post + beta_post + 1)
+    return {
+        "mean": n_hat * p_hat, "scale": max(math.sqrt(var), MIN_SCALE),
+        "discrete": (n_hat, p_hat, (alpha_post, beta_post) if betabin else None),
+    }
+
+
+def _composed_proba(stat: str, context: dict, recent: pd.DataFrame, seuil) -> tuple[float, str]:
+    dist = _composed_distribution(stat, context, recent)
+    discrete = dist.get("discrete")
+    if discrete is not None:
+        n_hat, p_hat, beta_params = discrete
+        floor_seuil = math.floor(seuil)
+        if beta_params is not None:
+            proba = 1 - betabinom.cdf(floor_seuil, n_hat, *beta_params)
+        else:
+            proba = 1 - binom.cdf(floor_seuil, n_hat, p_hat)
+        return float(proba), f"tentatives predites = {n_hat} | taux estime = {p_hat:.1%} (stat composee)"
+    proba = 1 - norm.cdf(seuil, loc=dist["mean"], scale=dist["scale"])
+    return float(proba), f"prediction moyenne = {dist['mean']:.2f} (+/- {dist['scale']:.2f}, normale, stat composee)"
+
+
 def compute_proba(client, player_id: int, stat: str, seuil, opponent_id=None, is_home: int = 1, rest_days: int = 2) -> dict:
     """Equivalent Supabase de compute_proba() (tester_modele.py) -- meme
     contrat/sortie, seule la source du contexte change (build_context()
     ci-dessus au lieu de la version SQLite)."""
-    if stat not in REGRESSION_STATS and stat not in CLASSIFIER_STATS and stat not in PCT_STATS:
+    if stat not in REGRESSION_STATS and stat not in CLASSIFIER_STATS and stat not in PCT_STATS and stat not in COMPOSED_STATS:
         raise ValueError(f"stat inconnue : {stat}")
-    famille, model_file, label, raw_col_key = resolve_stat(stat)
-    if famille != "classifier" and seuil is None:
-        raise ValueError(f"seuil obligatoire pour la stat {stat}")
+    if stat in COMPOSED_STATS:
+        if seuil is None:
+            raise ValueError(f"seuil obligatoire pour la stat {stat}")
+        famille, label, raw_col_key = "composed", COMPOSED_STATS[stat], None
+    else:
+        famille, model_file, label, raw_col_key = resolve_stat(stat)
+        if famille != "classifier" and seuil is None:
+            raise ValueError(f"seuil obligatoire pour la stat {stat}")
 
     context, ecarttypes, recent = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
-    bundle = load_model(MODELS_DIR / f"{model_file}.joblib")
+    bundle = None if famille == "composed" else load_model(MODELS_DIR / f"{model_file}.joblib")
 
-    if famille == "regression":
+    if famille == "composed":
+        proba, detail = _composed_proba(stat, context, recent, seuil)
+    elif famille == "regression":
         proba, detail = run_regression(bundle, context, ecarttypes, raw_col_key, seuil)
     elif famille == "classifier":
         proba, detail = run_classifier(bundle, context)
@@ -1105,10 +1170,14 @@ def _player_stat_mean_scale(
     assume avec l'utilisateur le 24/08/2026, coherent avec les autres
     simplifications deja acceptees dans ce projet -- UNDER = 1-OVER,
     independance des 2 cotes d'un duel, etc)."""
+    if stat in COMPOSED_STATS:
+        context, _, recent = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
+        dist = _composed_distribution(stat, context, recent)
+        return dist["mean"], dist["scale"]
     if stat not in REGRESSION_STATS:
         raise ValueError(
             f"stat non supportee pour un duel : {stat} (seules les stats comptees le sont : "
-            f"{sorted(REGRESSION_STATS)})"
+            f"{sorted(REGRESSION_STATS) + sorted(COMPOSED_STATS)})"
         )
     model_file, raw_col_key, _ = REGRESSION_STATS[stat]
     context, ecarttypes, _ = build_context(client, player_id, opponent_id, is_home=is_home, rest_days=rest_days)
