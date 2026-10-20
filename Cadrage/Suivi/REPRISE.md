@@ -1,13 +1,12 @@
-# Reprise — NBA Pronos (20/10/2026, passation 5)
+# Reprise — NBA Pronos (20/10/2026, passation 6)
 - **Livré** : accueil jouable + invités (#184, #188), e-mails 1B (#185-187), pseudo/onboarding (#176),
   crons Vercel (#191, #194), Memphis (#192), seuils inclusifs (#195), **Lot 1 S1 (#198)** : `pf` (modèle,
   migration prod, backfill, `pf.joblib` sur GCS) + `dreb`/`fgm`/`ftm`/`fta` composés ; Cloud Run redéployé,
-  5 stats testées en réel sur le service. **S4 partiel (#200)** : pseudo-stat `win` (vainqueur) dans la condition
-  combo d'équipe, corrélation vainqueur × points d'équipe corrigée (autres stats en indépendance, voir S2).
-  **Cloud Run à redéployer** si pas fait : `gh workflow run deploy-stats-service.yml --ref main`.
-- **Prochaine étape : fin de S4** (combo période + match entier ; vainqueur dans un pari hors combo si utile)
-  (`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`). Puis S3 + S8, « exactement N »/égalité/score exact,
-  S2 en dernier. Avant la bêta Cup du 04/12 ; Lots 2 à 4 ensuite.
+  5 stats testées en réel sur le service. **S4 partiel (#200)** : pseudo-stat `win` dans le combo d'équipe. **S4 fin (PR #202, à merger)** : combo match entier + période
+  (`qwon`, `win_q1`..`win_h2`, champ `mixed_combo` de `structurePeriodBet` -> `structureComboPeriodBet`). Corrélations en
+  indépendance (voir S2). **Cloud Run à redéployer après merge** : `gh workflow run deploy-stats-service.yml --ref main`.
+- **Prochaine étape : Lot 1, S3 + S8** (écart final recalé sur `home_win`, titulaire/remplaçant), puis « exactement N »/égalité/
+  score exact, S2 en dernier (`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`). Avant la bêta Cup du 04/12 ; Lots 2 à 4 ensuite.
 - **Pièges Lot 1** : le schéma partagé `structureBet` est AU PLAFOND de grammaire de l'API : pas de nouveau
   champ, élargir un enum (S1 l'a fait sans erreur, 4 vrais appels). Tout changement de schéma = vrais appels
   (test vitest jetable, `usageTracking` mocké avec `recordAnthropicUsage`). Seuils : `inclusiveThreshold.ts`.
