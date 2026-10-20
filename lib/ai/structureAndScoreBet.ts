@@ -134,7 +134,7 @@ async function resolveKnownRostersForSeries(
  *  validé sans régression sur les 167 paris réels de
  *  types_de_paris_playoffs_2026.md avant d'être élargi. */
 const PERIOD_KEYWORD_REGEX =
-  /quart[s]?[\s-]?temps|mi[\s-]?temps|\bqt\d*\b|\bmt\d*\b|\b(?:\d{1,2}\s*(?:e|è|er|ère|ème|eme|éme)?|premier|première|deuxi[eè]me|troisi[eè]me|quatri[eè]me|dernier|derni[eè]re)\s+quarts?\b(?!\s+de\s+finale)/i;
+  /quart[s]?[\s-]?temps|mi[e]?[\s-]?temps|\bqt\d*\b|\bmt\d*\b|\b(?:\d{1,2}\s*(?:e|è|er|ère|ème|eme|éme)?|premier|première|deuxi[eè]me|troisi[eè]me|quatri[eè]me|dernier|derni[eè]re)\s+quarts?\b(?!\s+de\s+finale)/i;
 
 /** Détecte un texte "de forme" pari 5 majeur/banc AVANT tout appel Claude
  *  (24/08/2026, GAPS_OUVERTS.md, chantier "5 majeur/banc") -- même
