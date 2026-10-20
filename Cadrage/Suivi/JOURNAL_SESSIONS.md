@@ -363,3 +363,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 `archive/JOURNAL_SESSIONS_archive_jusquau_2026-10-12.md`.
 - Nettoyage des gaps : chantiers vérifiés contre origin/main, PR #170-#188 retirées des points ouverts, REPRISE réécrite (20/10/2026)
 - Nettoyage du suivi : gaps contre origin/main (PR #189), refonte-ux supprimée, dépôt principal sur main ; prochaine étape = essai réel e-mails 1B (20/10/2026)
+- Crons heartbeat/snapshot/bracket sur Vercel (#191) et correctif Memphis (#192) constatés mergés ; passation ; prochaine étape = essai réel e-mails 1B puis enrichissement des modèles (20/10/2026)
