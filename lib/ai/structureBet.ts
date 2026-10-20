@@ -137,7 +137,8 @@ const BetStructurationSchema = z.object({
           "GT si \"plus que\"/\"au moins X fois plus\". DIFF_LT pour un ÉCART borné (\"la différence est " +
             "inférieure à X\"). OR si \"A OU B\" atteint CHACUN indépendamment un même seuil (ex. \"Hauser OU " +
             "Pritchard marque au moins 3 paniers à 3 points\") -- gagné si au moins un des deux dépasse threshold. " +
-            "Une ÉGALITÉ EXACTE (\"le même nombre de minutes\") n'est PAS gérée -- calculable=false dans ce cas.",
+            "ÉGALITÉ EXACTE sur une stat ENTIÈRE (\"autant de rebonds que\", \"le même nombre de passes\") = DIFF_LT " +
+            "avec threshold=0.5 (|écart| < 0.5 revient à l'égalité). Égalité sur minutes ou pourcentage : calculable=false.",
         ),
       multiplier: z
         .number()
@@ -250,7 +251,8 @@ function buildStaticSystemText(): string {
     comparisonTeamStatList + ". Exemples : \"Holmgren marque plus de points que Brooks\" (2 joueurs, GT), \"SGA " +
     "marque plus que Booker+Brooks cumulés\" (joueur vs somme de 2, GT), \"Boston prend plus de rebonds que " +
     "Philadelphie\" (2 équipes, GT), \"écart de points entre LeBron et Bronny inférieur à 20\" (2 joueurs, " +
-    "DIFF_LT), \"les Spurs ont au moins 2 fois plus d'interceptions que les Knicks\" (2 équipes, GT, " +
+    "DIFF_LT), \"Tatum prend autant de rebonds que Brown\" (2 joueurs, DIFF_LT, threshold=0.5 : égalité exacte), " +
+    "\"les Spurs ont au moins 2 fois plus d'interceptions que les Knicks\" (2 équipes, GT, " +
     "multiplicateur), \"Hauser ou Pritchard marque au moins 3 paniers à 3 points\" (2 joueurs, OR, threshold=2 -- ce threshold-là est STRICT, \"au moins 3\" = dépasse 2).\n\n" +
     "5. bet_subject=COMBO -- PLUSIEURS conditions reliées par un ET (TOUTES doivent être vraies). Chaque " +
     "condition vise UN joueur, une SOMME de plusieurs joueurs (même stat), ou UNE équipe, avec sa propre stat/" +
@@ -282,7 +284,7 @@ function buildStaticSystemText(): string {
     "20+passes)\"), et \"au moins N joueurs remplissent une condition\" (ex. \"8 joueurs marquent 11+ points\" -- " +
     "nécessite de compter sur tout le roster, pas encore géré).\n\n" +
     "Tout le reste (contre/action visant un joueur adverse précis, événement de match, paris fun/hors-terrain " +
-    "comme \"l'entraîneur criera au moins 3 fois\", scénarios complexes, formulation trop vague, égalité exacte, " +
+    "comme \"l'entraîneur criera au moins 3 fois\", scénarios complexes, formulation trop vague, égalité sur minutes/pourcentage, " +
     "ou total cumulé sur une série) doit être marqué calculable=false — ne force jamais une extraction incertaine." +
     // Règle de vérification de présence déplacée ici (03/09/2026, optimisation
     // coût suite à un retour utilisateur -- BUG-003) : texte IDENTIQUE à
