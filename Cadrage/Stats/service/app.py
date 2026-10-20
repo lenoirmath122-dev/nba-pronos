@@ -1104,6 +1104,10 @@ class ComboCondition(BaseModel):
             raise ValueError("stats (1+) requis")
         if "win" in self.stats and (self.kind != "TEAM" or self.stats != ["win"]):
             raise ValueError("stat \"win\" (vainqueur du match) : kind=TEAM et stats=[\"win\"] uniquement")
+        if "starter" in self.stats and (self.kind != "PLAYER" or self.stats != ["starter"] or len(self.joueurs or []) != 1):
+            raise ValueError('stat "starter" (titulaire/remplacant) : kind=PLAYER, un seul joueur et stats=["starter"]')
+        if "margin" in self.stats and (self.kind != "TEAM" or self.stats != ["margin"] or self.seuil is None):
+            raise ValueError('stat "margin" (ecart final) : kind=TEAM, stats=["margin"] et seuil obligatoire')
         if any(x in supabase_context.COMBO_PERIOD_STATS for x in self.stats) and (self.kind != "TEAM" or len(self.stats) != 1):
             raise ValueError(f"stat de periode ({sorted(supabase_context.COMBO_PERIOD_STATS)}) : kind=TEAM et une seule stat par condition")
         if self.stats == ["qwon"] and self.seuil is None:

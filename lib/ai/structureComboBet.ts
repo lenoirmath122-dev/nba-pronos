@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES } from "./statCodes";
-import { TEAM_STAT_CODES, COMBO_WIN_STAT } from "./teamStatCodes";
+import { TEAM_STAT_CODES, COMBO_WIN_STAT, COMBO_MARGIN_STAT, COMBO_STARTER_STAT } from "./teamStatCodes";
 import { recordAnthropicUsage } from "./usageTracking";
 import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThreshold";
 
@@ -32,7 +32,7 @@ import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThres
 // COMBO ; 2+ = au moins une doit être vraie). Mêmes règles de validité
 // pour chaque condition individuelle que le schéma partagé (stats
 // comptées uniquement pour une condition "somme").
-const COMBO_STAT_CODES = [...new Set([...STAT_CODES, ...TEAM_STAT_CODES, COMBO_WIN_STAT])];
+const COMBO_STAT_CODES = [...new Set([...STAT_CODES, ...TEAM_STAT_CODES, COMBO_WIN_STAT, COMBO_MARGIN_STAT, COMBO_STARTER_STAT])];
 
 const ComboNestedConditionSchema = z.object({
   kind: z.enum(["PLAYER", "team1", "team2"]).describe("PLAYER pour un/des joueur(s), team1/team2 pour une équipe."),
@@ -43,9 +43,10 @@ const ComboNestedConditionSchema = z.object({
       "1 code = condition normale. 2+ codes = SOMME de plusieurs stats pour LE MÊME joueur (style PRA, ex. " +
         "\"25pts+12reb+8pas cumulés\" -> [\"pts\",\"reb\",\"ast\"]). Si players a 2+ noms, stats doit rester à 1 " +
         "seul code (cumul entre joueurs, pas de croisement joueurs×stats). \"win\" = vainqueur du match, réservé à " +
-        "kind=team1/team2, seul dans stats, threshold=null (OVER = l'équipe gagne, UNDER = elle perd).",
+        "kind=team1/team2, seul dans stats, threshold=null (OVER = l'équipe gagne, UNDER = elle perd). " +
+        "\"margin\" = écart final signé de l'équipe (ses points moins ceux de l'adversaire), réservé à kind=team1/team2, seul dans stats, avec threshold (négatif possible). \"starter\" = titulaire (OVER) ou remplaçant (UNDER), réservé à kind=PLAYER avec UN seul joueur, seul dans stats, threshold=null.",
     ),
-  threshold: z.number().nullable().describe("null uniquement si stats=[\"dd\"], [\"td\"] ou [\"win\"] (probabilité directe)."),
+  threshold: z.number().nullable().describe("null uniquement si stats=[\"dd\"], [\"td\"] ou [\"win\"] (probabilité directe). Obligatoire pour [\"margin\"]."),
   comparison: z.enum(["OVER", "UNDER"]),
   inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
 });

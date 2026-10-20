@@ -65,6 +65,20 @@ export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
 // (schéma partagé au plafond de grammaire de l'API).
 export const COMBO_WIN_STAT = "win";
 
+// Pseudo-stat "margin" (S3, Lot 1) : écart final SIGNÉ d'une équipe (ses
+// points - ceux de l'adversaire, prolongation comprise), dans une condition
+// combo d'ÉQUIPE seule, avec seuil (négatif possible). Couvre « gagne de 10+ »
+// (AT_LEAST 10), le handicap (« +5,5 » = OVER -5,5 ; « -5,5 » = OVER 5,5) et
+// les tranches (2 conditions). Mêmes règles que "win" : hors TEAM_STAT_CODES.
+export const COMBO_MARGIN_STAT = "margin";
+
+// Pseudo-stat "starter" (S8, Lot 1) : titulaire ou remplaçant, dans une
+// condition combo de JOUEUR (kind PLAYER, un seul joueur), seule dans stats,
+// sans seuil -- OVER = titulaire, UNDER = remplaçant. Lue sur
+// stats_box_scores.position ("" = remplaçant). Un joueur qui ne joue pas rend
+// la condition fausse. Hors TEAM_STAT_CODES et hors STAT_CODES.
+export const COMBO_STARTER_STAT = "starter";
+
 // Pseudo-stats de période dans un combo d'ÉQUIPE (S4, fin, 20/10/2026) : le
 // combo « tirent à 32 % à 3 points ET remportent les 4 quarts-temps » mêle
 // une condition match entier et une condition de période. Mêmes règles que

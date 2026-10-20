@@ -167,6 +167,12 @@
      `home_win`, résolution par `matches.home_score/away_score`. Corrélation vainqueur × points d'équipe corrigée (normale
      bivariée recalée sur `p_home_win`, `_win_and_team_pts_joint`) ; autres stats (reb, ast, joueurs) restent en indépendance
      (limite connue, à reprendre avec S2). **S4 fin (branche feat/lot1-s4-combo-periode)** : combo match entier + période, pseudo-stats d'équipe `qwon` (quarts-temps remportés, seuil) et `win_q1`..`win_h2` (remporte la période), probas via les modèles période existants, résolution sur `matches.quarter_scores`. Routage : `structurePeriodBet` renvoie `mixed_combo=true` (nouveau champ, vérifié en vrais appels) -> `structureComboPeriodBet` (schéma dédié). Corrélations avec les autres conditions (et vainqueur × période) laissées en indépendance, à reprendre avec S2. Cloud Run à redéployer après merge.
+     **S3 + S8 livrés le 21/10/2026 (branche feat/lot1-s3-s8)** : pseudo-stat d'équipe `margin` (écart final signé, prolongation comprise, seuil
+     négatif possible) pour « gagne de N+ », handicap (« +5,5 » = OVER -5,5) et tranches (2 conditions, intersection exacte sur l'écart) ;
+     loi normale d'écart recalée sur `home_win` (`_margin_dist`), corrélation avec les points d'équipe via `_win_and_team_pts_joint`
+     généralisée (sauf tranche). Pseudo-stat de joueur `starter` (OVER = titulaire, UNDER = remplaçant, 1 joueur) : proba = part de
+     titularisations sur ses 15 derniers matchs (lissée, bornée 0,02-0,98, <3 matchs = non calculable), résolution sur
+     `stats_box_scores.position`, joueur absent du box score = condition fausse. 5 vrais appels IA corrects. Cloud Run à redéployer.
      **À part, autre conversation : instabilité des probas** (mesurée le
      09/10/2026, indépendante du cache) : mêmes 20 appels identiques à
      `/predict-total-points` Memphis–Boston -> 3 valeurs (0,4727 / 0,6205 /

@@ -1243,6 +1243,31 @@ def _team_starters(client, team_id: int, as_of_date, n_recent_games: int = 10) -
     return starters
 
 
+def _player_start_rate(client, player_id: int, team_id: int, as_of_date, n_recent_games: int = 15) -> float:
+    """Part de titularisations d'un joueur sur ses n derniers matchs joues
+    pour cette equipe avant as_of_date (S8, Lot 1). stats_box_scores ne
+    contient que des lignes "a joue" (DNP filtres a l'ingestion) et
+    position != "" = titulaire (cf. _team_starters()). Estimation lissee
+    (+0,5/+1) puis bornee, pour ne jamais renvoyer 0 ou 1 sur un petit
+    echantillon ; moins de 3 matchs = trop peu d'historique (ValueError ->
+    calculable=false cote TypeScript)."""
+    rows = (
+        client.table("stats_box_scores")
+        .select("position, game_date")
+        .eq("player_id", player_id)
+        .eq("team_id", team_id)
+        .lt("game_date", str(as_of_date))
+        .order("game_date", desc=True)
+        .limit(n_recent_games)
+        .execute()
+        .data
+    )
+    if len(rows) < 3:
+        raise ValueError(f"Trop peu de matchs recents pour estimer la titularisation (player_id={player_id}, {len(rows)} match(s)).")
+    starts = sum(1 for r in rows if r.get("position"))
+    return min(max((starts + 0.5) / (len(rows) + 1), 0.02), 0.98)
+
+
 def _team_rotation(client, team_id: int, as_of_date, n_recent_games: int = 15, top_n: int = 15) -> list[int]:
     """Bassin ELARGI d'une equipe (chantier "comptage roster-wide", etape 3
     du plan de reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- generalise
@@ -1451,6 +1476,29 @@ def _condition_proba(
         proba = 1 - p_win if comparison == "UNDER" else p_win
         return float(proba), {"kind": "TEAM", "team_id": home_team_id if is_home else away_team_id, "stats": stats}
 
+    # Titulaire ou remplacant (S8, Lot 1) : pseudo-stat "starter", condition
+    # JOUEUR seule (1 joueur), sans seuil -- OVER = titulaire, UNDER =
+    # remplacant. Un joueur qui ne joue pas ce match rend la condition fausse
+    # (meme convention que la resolution : pas de ligne de box score = faux).
+    if kind == "PLAYER" and stats == [COMBO_STARTER_STAT]:
+        player_id, _ = find_player(client, players[0])
+        player_team_id = _player_current_team_id(client, player_id)
+        meta = {"kind": "PLAYER", "player_ids": [player_id], "stats": stats}
+        if player_team_id not in (home_team_id, away_team_id):
+            return 0.0, meta
+        p_start = _player_start_rate(client, player_id, player_team_id, as_of_date)
+        return float(1 - p_start if comparison == "UNDER" else p_start), meta
+
+    # Ecart final signe (S3, Lot 1) : pseudo-stat "margin", condition d'EQUIPE
+    # seule, avec seuil (peut etre negatif : handicap "+5,5" = OVER -5,5).
+    # Ecart de l'equipe = ses points - ceux de l'adversaire, prolongation
+    # comprise ; loi recalee sur home_win (cf. _margin_dist).
+    if kind == "TEAM" and stats == [COMBO_MARGIN_STAT]:
+        mean_m, s_m = _margin_dist(client, home_team_id, away_team_id, as_of_date, season=season)
+        proba = _margin_events_proba(mean_m, s_m, [_margin_event(condition)])
+        is_home = condition["equipe"] == "domicile"
+        return float(proba), {"kind": "TEAM", "team_id": home_team_id if is_home else away_team_id, "stats": stats}
+
     # Stats de PERIODE d'equipe (S4 fin, 20/10/2026) : "qwon" (quarts-temps
     # remportes) et "win_q1".."win_h2" (remporte la periode). Memes modeles que
     # le pari periode (QUARTERS_WON_COUNT / QUARTER_WINNER / HALF_WINNER). Le
@@ -1654,12 +1702,60 @@ def _dd_td_conditional_factor(mean: float, scale: float, threshold: float, compa
 
 
 COMBO_WIN_STAT = "win"
+COMBO_MARGIN_STAT = "margin"
+COMBO_STARTER_STAT = "starter"
 COMBO_QUARTERS_WON_STAT = "qwon"
 COMBO_PERIOD_STATS = ("qwon", "win_q1", "win_q2", "win_q3", "win_q4", "win_h1", "win_h2")
 
 
 def _is_win_group(group: list[dict]) -> bool:
     return len(group) == 1 and group[0]["kind"] == "TEAM" and group[0]["stats"] == [COMBO_WIN_STAT]
+
+
+def _is_margin_group(group: list[dict]) -> bool:
+    """Groupe a 1 condition portant sur l'issue du match : vainqueur (win) ou
+    ecart final signe (margin, S3)."""
+    return len(group) == 1 and group[0]["kind"] == "TEAM" and group[0]["stats"] in ([COMBO_WIN_STAT], [COMBO_MARGIN_STAT])
+
+
+def _margin_event(cond: dict) -> tuple[float, bool]:
+    """Condition win/margin -> evenement sur M = pts_domicile - pts_exterieur :
+    (c, True) = "M > c", (c, False) = "M < c". win : c = 0. margin (ecart de
+    l'equipe T = M si domicile, -M si exterieur, seuil deja strict) : T > s
+    <=> M > s (domicile) ou M < -s (exterieur)."""
+    is_home = cond["equipe"] == "domicile"
+    over = cond["comparison"] == "OVER"
+    c = 0.0 if cond["stats"] == [COMBO_WIN_STAT] else float(cond["seuil"])
+    if is_home:
+        return c, over
+    return -c, not over
+
+
+def _margin_dist(client, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None) -> tuple[float, float]:
+    """(moyenne, ecart-type) de M = pts_domicile - pts_exterieur, normale dont
+    l'ecart-type vient des modeles de points d'equipe et la moyenne est
+    recalee pour que P(M > 0) = p_home_win (home_win.joblib reste la
+    reference de victoire)."""
+    _, sh = _team_stat_mean_scale(client, "pts", home_team_id, away_team_id, True, as_of_date, season=season)
+    _, sa = _team_stat_mean_scale(client, "pts", away_team_id, home_team_id, False, as_of_date, season=season)
+    s_m = math.sqrt(sh ** 2 + sa ** 2)
+    p_home = min(max(
+        compute_home_win_proba(client, home_team_id, away_team_id, as_of_date, season=season)["p_home_win"], 1e-6
+    ), 1 - 1e-6)
+    return s_m * float(norm.ppf(p_home)), s_m
+
+
+def _margin_events_proba(mean: float, s_m: float, events: list[tuple[float, bool]]) -> float:
+    """P(tous les evenements sur M), intersection de demi-droites."""
+    lo, hi = -math.inf, math.inf
+    for c, greater in events:
+        if greater:
+            lo = max(lo, c)
+        else:
+            hi = min(hi, c)
+    if lo >= hi:
+        return 0.0
+    return float(norm.cdf(hi, loc=mean, scale=s_m) - norm.cdf(lo, loc=mean, scale=s_m))
 
 
 def _is_team_pts_group(group: list[dict]) -> bool:
@@ -1672,30 +1768,27 @@ def _is_team_pts_group(group: list[dict]) -> bool:
 def _win_and_team_pts_joint(
     client, win_cond: dict, pts_cond: dict, home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> float:
-    """P(vainqueur ET points d'une equipe) sous un modele normal bivarie
-    (S4, 20/10/2026). Le produit des deux probas suppose l'independance,
-    fausse : une equipe qui marque beaucoup gagne bien plus souvent. Modele :
-    pts_home et pts_away normales independantes (moyennes et ecarts des
-    modeles equipe), M = pts_home - pts_away d'ecart-type s = sqrt(sh^2+sa^2),
-    recale pour que P(M>0) = p_home_win (home_win.joblib, la reference de
-    victoire). Correlation corr(pts_home, M) = +sh/s, corr(pts_away, M) =
-    -sa/s. Seules les points d'equipe sont corriges : les autres stats
-    (rebonds, passes, stats joueur) restent traitees en independance."""
+    """P(issue du match ET points d'une equipe) sous un modele normal bivarie
+    (S4, 20/10/2026 ; etendu a l'ecart final, S3). Le produit des deux probas
+    suppose l'independance, fausse : une equipe qui marque beaucoup gagne bien
+    plus souvent. Modele : pts_home et pts_away normales independantes
+    (moyennes et ecarts des modeles equipe), M = pts_home - pts_away
+    d'ecart-type s = sqrt(sh^2+sa^2), recale pour que P(M>0) = p_home_win
+    (home_win.joblib, la reference de victoire). Correlation corr(pts_home, M)
+    = +sh/s, corr(pts_away, M) = -sa/s. win_cond est une condition win ou
+    margin (evenement M > c ou M < c). Seules les points d'equipe sont
+    corriges : les autres stats (rebonds, passes, stats joueur) restent
+    traitees en independance."""
     from scipy.stats import multivariate_normal
 
     mu_h, sh = _team_stat_mean_scale(client, "pts", home_team_id, away_team_id, True, as_of_date, season=season)
     mu_a, sa = _team_stat_mean_scale(client, "pts", away_team_id, home_team_id, False, as_of_date, season=season)
-    s_m = math.sqrt(sh ** 2 + sa ** 2)
-    p_home = min(max(
-        compute_home_win_proba(client, home_team_id, away_team_id, as_of_date, season=season)["p_home_win"], 1e-6
-    ), 1 - 1e-6)
-    # Evenement victoire exprime sur M = pts_home - pts_away : M > 0 (domicile
-    # gagne) ou M < 0 (exterieur gagne).
-    wants_home_win = (win_cond["equipe"] == "domicile") == (win_cond["comparison"] == "OVER")
-    # Z2 = (M - m*) / s avec P(M>0) = p_home  =>  seuil standardise b = -Phi^-1(p_home)
-    b = -float(norm.ppf(p_home))
-    f2 = -1.0 if wants_home_win else 1.0  # M > 0 <=> -Z2 < -b ; M < 0 <=> Z2 < b
-    c2 = -b if wants_home_win else b
+    mean_m, s_m = _margin_dist(client, home_team_id, away_team_id, as_of_date, season=season)
+    c, greater = _margin_event(win_cond)
+    # Z2 = (M - mean_m) / s ; M > c <=> -Z2 < -b ; M < c <=> Z2 < b, b = (c - mean_m) / s
+    b = (c - mean_m) / s_m
+    f2 = -1.0 if greater else 1.0
+    c2 = -b if greater else b
 
     pts_is_home = pts_cond["equipe"] == "domicile"
     mu_x, sx = (mu_h, sh) if pts_is_home else (mu_a, sa)
@@ -1794,9 +1887,17 @@ def _compute_combo_proba_once(
     # Vainqueur x points d'equipe (S4) : un seul couple corrige (le 1er), a
     # condition qu'il y ait UN SEUL groupe vainqueur ; le reste reste en
     # independance.
-    win_idx = [i for i, g in enumerate(conditions) if _is_win_group(g)]
+    win_idx = [i for i, g in enumerate(conditions) if _is_margin_group(g)]
     pts_idx = [i for i, g in enumerate(conditions) if _is_team_pts_group(g)]
-    if len(win_idx) == 1 and pts_idx:
+    if len(win_idx) >= 2:
+        # Plusieurs conditions sur l'issue (ex. "gagne de 1 a 5" = au moins 1
+        # ET au plus 5) : intersection exacte sur M, sinon le produit des
+        # probas serait faux. Pas de correlation avec les points d'equipe dans
+        # ce cas (limite assumee).
+        mean_m, s_m = _margin_dist(client, home_team_id, away_team_id, as_of_date, season=season)
+        corrected_probas.append(_margin_events_proba(mean_m, s_m, [_margin_event(conditions[i][0]) for i in win_idx]))
+        consumed_groups.update(win_idx)
+    elif len(win_idx) == 1 and pts_idx:
         joint = _win_and_team_pts_joint(
             client, conditions[win_idx[0]][0], conditions[pts_idx[0]][0], home_team_id, away_team_id, as_of_date, season=season,
         )

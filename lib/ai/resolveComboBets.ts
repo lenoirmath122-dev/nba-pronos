@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { COMBO_WIN_STAT, COMBO_QUARTERS_WON_STAT, periodOfComboWinStat } from "./teamStatCodes";
+import { COMBO_WIN_STAT, COMBO_MARGIN_STAT, COMBO_STARTER_STAT, COMBO_QUARTERS_WON_STAT, periodOfComboWinStat } from "./teamStatCodes";
 import { computePeriodTeamOutcome, type MatchPeriodRow } from "./resolvePeriodBets";
 import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, rowStatValue, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced } from "./resolveBetsShared";
 
@@ -41,7 +41,8 @@ async function resolveComboConditionSatisfied(
   supabase: SupabaseServiceClient, condition: ComboConditionRow, gameId: string, matchId: string
 ): Promise<boolean | null> {
   // Vainqueur du match (S4) : lit le score final de matches, pas le box score.
-  if (condition.kind === "TEAM" && condition.stats.length === 1 && condition.stats[0] === COMBO_WIN_STAT) {
+  const isMargin = condition.kind === "TEAM" && condition.stats.length === 1 && condition.stats[0] === COMBO_MARGIN_STAT;
+  if (condition.kind === "TEAM" && condition.stats.length === 1 && (condition.stats[0] === COMBO_WIN_STAT || isMargin)) {
     const { data: match } = await supabase
       .from("matches")
       .select("home_team_id, away_team_id, home_score, away_score")
@@ -50,6 +51,11 @@ async function resolveComboConditionSatisfied(
     if (!match || match.home_score === null || match.away_score === null) return null;
     const isHome = condition.team_id === match.home_team_id;
     if (!isHome && condition.team_id !== match.away_team_id) return null;
+    if (isMargin) {
+      if (condition.threshold === null) return null;
+      const margin = isHome ? match.home_score - match.away_score : match.away_score - match.home_score;
+      return condition.comparison === "UNDER" ? margin < condition.threshold : margin > condition.threshold;
+    }
     const wins = isHome ? match.home_score > match.away_score : match.away_score > match.home_score;
     return condition.comparison === "UNDER" ? !wins : wins;
   }
@@ -81,6 +87,18 @@ async function resolveComboConditionSatisfied(
   if (condition.kind === "PLAYER" && isSimple) {
     const playerId = condition.player_ids?.[0];
     if (!playerId) return null;
+    // Titulaire ou remplaçant (S8) : position non vide = titulaire. Pas de
+    // ligne = le joueur n'a pas joué (condition fausse) ou box score pas encore importé.
+    if (condition.stats[0] === COMBO_STARTER_STAT) {
+      const { data: startRows } = await supabase
+        .from("stats_box_scores")
+        .select("position")
+        .eq("game_id", gameId)
+        .eq("player_id", playerId);
+      if (!startRows || startRows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
+      const started = Boolean((startRows[0] as { position: string | null }).position);
+      return condition.comparison === "UNDER" ? !started : started;
+    }
     const { data: rows } = await supabase
       .from("stats_box_scores")
       .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov, pf")
