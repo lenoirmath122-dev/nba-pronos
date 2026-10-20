@@ -67,6 +67,7 @@ CREATE TABLE labels_joueur (
     fgm REAL, fga REAL, fg3a REAL,
     oreb REAL,
     tov REAL,
+    pf REAL,
     plus_minus REAL,
     double_double INTEGER,
     triple_double INTEGER,
@@ -333,7 +334,7 @@ def _quarter_scores_from_pbp(conn: sqlite3.Connection) -> pd.DataFrame:
 
 def build_labels_joueur(conn: sqlite3.Connection) -> pd.DataFrame:
     box = pd.read_sql(
-        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a, oreb, tov, "
+        "SELECT game_id, player_id, pts, reb, ast, fg3m, stl, blk, minutes, ftm, fta, fgm, fga, fg3a, oreb, tov, pf, "
         "plus_minus "
         "FROM box_scores",
         conn, dtype={"game_id": str},

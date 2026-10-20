@@ -1,7 +1,7 @@
 import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
-import { type ResolveBetsSummary, type SupabaseServiceClient, minutesToFloat, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced, DNP_RESOLUTION_REASON } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type SupabaseServiceClient, statSelectColumns, rowStatValue, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced, DNP_RESOLUTION_REASON } from "./resolveBetsShared";
 
 type DuelOperandMeta = {
   kind: "PLAYER" | "TEAM";
@@ -41,34 +41,30 @@ async function resolveDuelOperandActual(
   // de GenericStringError sur un .select() dynamique (meme piège que
   // resolveCalculableTeamStatBets() ci-dessus, qui caste `stat` en
   // TeamStatCode pour la meme raison).
-  const column = (operand.stat === "min" ? "minutes" : operand.stat) as
-    | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "tov" | "minutes";
+  const columns = statSelectColumns(operand.stat);
 
   if (operand.kind === "PLAYER") {
     const playerIds = operand.player_ids ?? [];
     if (playerIds.length === 0) return null;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select(column)
+      .select(columns)
       .eq("game_id", gameId)
       .in("player_id", playerIds);
     if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? "DNP" : null;
     if (rows.length < new Set(playerIds).size) return "DNP";
-    return rows.reduce((sum, r) => {
-      const raw = (r as Record<string, unknown>)[column];
-      return sum + (operand.stat === "min" ? minutesToFloat(raw as string | null) : ((raw as number | null) ?? 0));
-    }, 0);
+    return (rows as unknown as Record<string, unknown>[]).reduce((sum, r) => sum + rowStatValue(operand.stat, r), 0);
   }
 
   const nbaTeamId = operand.team_id ? await resolveNbaTeamId(supabase, operand.team_id) : null;
   if (nbaTeamId === null) return null;
   const { data: rows } = await supabase
     .from("stats_box_scores")
-    .select(column)
+    .select(columns)
     .eq("game_id", gameId)
     .eq("team_id", nbaTeamId);
   if (!rows || rows.length === 0) return null;
-  return rows.reduce((sum, r) => sum + (((r as Record<string, number | null>)[column]) ?? 0), 0);
+  return (rows as unknown as Record<string, unknown>[]).reduce((sum, r) => sum + rowStatValue(operand.stat, r), 0);
 }
 
 /** Chantier comparaison/duel (24/08/2026, GAPS_OUVERTS.md) -- résolution

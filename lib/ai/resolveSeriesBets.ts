@@ -90,7 +90,7 @@ export async function resolveCalculableSeriesBets(): Promise<ResolveBetsSummary>
       }
       const { data: box } = await supabase
         .from("stats_box_scores")
-        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov")
+        .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov, pf")
         .eq("game_id", gameId)
         .eq("player_id", bet.structured_player_id)
         .maybeSingle<BoxScoreRow>();

@@ -69,6 +69,8 @@ REGRESSION_STATS = {
     # ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- tov.joblib
     # entraine (train_stat_model.py), meme patron mecanique que oreb.
     "tov": ("tov", "tov", "Pertes de balle"),
+    # ajoutee le 20/10/2026 (Lot 1 S1) -- pf.joblib, fautes personnelles.
+    "pf": ("pf", "pf", "Fautes personnelles"),
 }
 CLASSIFIER_STATS = {
     "dd": ("double_double", "Double-double"),
@@ -84,6 +86,15 @@ PCT_STATS = {
     "ft": ("ft_pct", "ftm", "fta", "Lancers francs (FT%)"),
     "fg": ("fg_pct", "fgm", "fga", "Tirs au panier (FG%)"),
     "fg3": ("fg3_pct", "fg3m", "fg3a", "3-points (3P%)"),
+}
+
+# Stats COMPOSEES (Lot 1 S1, 20/10/2026) : aucun .joblib propre, calculees a
+# partir des modeles existants (voir supabase_context._composed_distribution).
+COMPOSED_STATS = {
+    "dreb": "Rebonds défensifs",
+    "fgm": "Tirs réussis",
+    "ftm": "Lancers francs réussis",
+    "fta": "Lancers francs tentés",
 }
 
 MIN_SCALE = 0.5  # plancher de dispersion, même valeur que train_stat_model.py
@@ -161,7 +172,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     recent = pd.read_sql(
         """
         SELECT m.game_date, b.minutes, b.pts, b.reb, b.ast, b.fg3m, b.stl, b.blk,
-               b.plus_minus, b.ftm, b.fta, b.fgm, b.fga, b.fg3a, b.oreb, b.tov,
+               b.plus_minus, b.ftm, b.fta, b.fgm, b.fga, b.fg3a, b.oreb, b.tov, b.pf,
                a.ts_pct, a.usg_pct,
                f.games_played_season_avant
         FROM box_scores b
@@ -191,7 +202,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
+        ("fta", "fta"), ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"), ("pf", "pf"),
     ):
         context[f"{stat}_moy5"] = last5[col].mean()
         context[f"{stat}_moy10"] = recent[col].mean()
@@ -227,7 +238,7 @@ def build_context(conn, player_id: int, opponent_id, is_home: int, rest_days: in
     for stat, col in (
         ("pts", "pts"), ("reb", "reb"), ("ast", "ast"), ("fg3m", "fg3m"),
         ("stl", "stl"), ("blk", "blk"), ("min", "minutes_f"),
-        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"),
+        ("fga", "fga"), ("fg3a", "fg3a"), ("oreb", "oreb"), ("tov", "tov"), ("pf", "pf"),
     ):
         ecarttypes[stat] = recent[col].std()
 

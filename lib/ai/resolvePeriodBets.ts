@@ -305,6 +305,8 @@ export async function resolveCalculablePeriodBets(): Promise<ResolveBetsSummary>
         // scope de ce chantier (pas de preuve d'usage réel à l'échelle
         // période, demanderait une 2e migration).
         tov: null,
+        // pf (20/10/2026) : pas de colonne pf non plus dans stats_box_scores_by_period.
+        pf: null,
       };
       const won = dnp ? false : computeOutcome(stat, bet.structured_threshold, bet.structured_comparison, box);
       if (won === null) {

@@ -54,7 +54,7 @@ export function minutesToFloat(raw: string | null): number {
  *  n'inclut PAS dd/td (calculées, voir isDoubleOrTripleDouble) ni les
  *  stats en pourcentage (voir PCT_MAKES_ATTEMPTS_COLUMNS), qui ont chacune
  *  leur propre logique ci-dessous. */
-export const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus" | "tov">> = {
+export const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "fga" | "fg3a" | "oreb" | "plus_minus" | "tov" | "pf" | "fgm" | "ftm" | "fta">> = {
   pts: "pts",
   reb: "reb",
   ast: "ast",
@@ -81,7 +81,38 @@ export const COUNTING_STAT_COLUMN: Partial<Record<StatCode, "pts" | "reb" | "ast
   // patron mecanique que oreb, meme piege deja documente ci-dessus pour
   // plus_minus (ne JAMAIS oublier cette entree en ajoutant une stat comptee).
   tov: "tov",
+  pf: "pf",
+  // Lot 1 S1 (20/10/2026) : colonnes deja presentes dans BoxScoreRow. "dreb"
+  // n'a PAS de colonne (= reb - oreb), voir countingStatValue().
+  fgm: "fgm",
+  ftm: "ftm",
+  fta: "fta",
 };
+
+/** Colonnes stats_box_scores à lire pour calculer la valeur d'une stat
+ *  (« dreb » = reb - oreb n'a pas de colonne propre, « min » = minutes). */
+export function statSelectColumns(stat: string): string {
+  if (stat === "min") return "minutes";
+  if (stat === "dreb") return "reb, oreb";
+  return stat;
+}
+
+/** Valeur d'une stat dans une ligne lue avec statSelectColumns() (0 si
+ *  absente). Pour les sommes combo / duel, qui lisent des lignes brutes. */
+export function rowStatValue(stat: string, row: Record<string, unknown>): number {
+  if (stat === "min") return minutesToFloat(row.minutes as string | null);
+  if (stat === "dreb") return ((row.reb as number | null) ?? 0) - ((row.oreb as number | null) ?? 0);
+  return (row[stat] as number | null) ?? 0;
+}
+
+/** Valeur brute d'une stat comptée pour un match, null si la donnée manque.
+ *  "dreb" est dérivée (reb - oreb), les autres lisent leur colonne. */
+export function countingStatValue(stat: StatCode, box: BoxScoreRow): number | null {
+  if (stat === "dreb") {
+    return box.reb === null || box.oreb === null ? null : box.reb - box.oreb;
+  }
+  return box[COUNTING_STAT_COLUMN[stat]!];
+}
 
 const PCT_MAKES_ATTEMPTS_COLUMNS: Partial<Record<StatCode, ["ftm" | "fgm" | "fg3m", "fta" | "fga" | "fg3a"]>> = {
   ft: ["ftm", "fta"],
@@ -106,6 +137,7 @@ export type BoxScoreRow = {
   plus_minus: number | null;
   technical_fouls: number | null;
   tov: number | null;
+  pf: number | null;
 };
 
 /** Même définition EXACTE que build_targets.py (Cadrage/Stats/scripts,
@@ -169,7 +201,7 @@ export function computeOutcome(
     const actual = minutesToFloat(box.minutes);
     return comparison === "UNDER" ? actual < threshold : actual > threshold;
   }
-  const rawValue = box[COUNTING_STAT_COLUMN[stat]!];
+  const rawValue = countingStatValue(stat, box);
   if (rawValue === null) return null;
   return comparison === "UNDER" ? rawValue < threshold : rawValue > threshold;
 }
@@ -209,7 +241,7 @@ export function formatActualStatReason(playerName: string | null, stat: StatCode
     const minutes = Math.round(minutesToFloat(box.minutes) * 10) / 10;
     return `${who} a joué ${String(minutes).replace(".", ",")} minutes.`;
   }
-  const value = box[COUNTING_STAT_COLUMN[stat]!] ?? 0;
+  const value = countingStatValue(stat, box) ?? 0;
   const verb = stat === "pts" ? "a marqué" : "a terminé avec";
   return `${who} ${verb} ${value} ${STAT_LABELS_FR[stat]}.`;
 }
@@ -313,7 +345,7 @@ export async function resolveNbaTeamId(supabase: SupabaseServiceClient, appTeamI
  *  minute") dépend justement de ce comptage pour être résolu du tout. */
 export const ZERO_BOX_ROW: BoxScoreRow = {
   minutes: null, pts: 0, reb: 0, ast: 0, fg3m: 0, stl: 0, blk: 0,
-  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0, technical_fouls: 0, tov: 0,
+  ftm: 0, fta: 0, fgm: 0, fga: 0, fg3a: 0, oreb: 0, plus_minus: 0, technical_fouls: 0, tov: 0, pf: 0,
 };
 
 /** p3-15 (04/10/2026) -- règle du joueur qui ne joue pas (blessure, repos,

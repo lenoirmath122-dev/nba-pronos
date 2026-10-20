@@ -21,13 +21,16 @@
 // "tov" ajoutee le 06/09/2026 (GAPS_OUVERTS.md, "pertes de balle") -- meme
 // patron mecanique que l'extension oreb du 23/08/2026, stat a seuil comptee
 // (Poisson cote train_stat_model.py, meme profil que fg3m/stl/blk/oreb).
+// "dreb"/"fgm"/"ftm"/"fta" ajoutees le 20/10/2026 (Lot 1 S1, chantier
+// enrichissement des modeles) -- stats COMPOSEES cote service, aucun .joblib
+// propre (voir supabase_context._composed_distribution). dreb = reb - oreb.
 export type StatCode =
   | "pts" | "reb" | "ast" | "fg3m" | "stl" | "blk" | "min" | "dd" | "td" | "ft" | "fg" | "fg3"
-  | "fga" | "fg3a" | "oreb" | "plus_minus" | "tech" | "tov";
+  | "fga" | "fg3a" | "oreb" | "plus_minus" | "tech" | "tov" | "pf" | "dreb" | "fgm" | "ftm" | "fta";
 
 export const STAT_CODES: StatCode[] = [
   "pts", "reb", "ast", "fg3m", "stl", "blk", "min", "dd", "td", "ft", "fg", "fg3", "fga", "fg3a", "oreb",
-  "plus_minus", "tech", "tov",
+  "plus_minus", "tech", "tov", "pf", "dreb", "fgm", "ftm", "fta",
 ];
 
 // Stats sans seuil (probabilité directe, pas de "> X") — dd/td/tech dans
@@ -57,4 +60,9 @@ export const STAT_LABELS_FR: Record<StatCode, string> = {
   plus_minus: "+/-",
   tech: "faute technique (au moins une)",
   tov: "pertes de balle",
+  pf: "fautes personnelles",
+  dreb: "rebonds défensifs",
+  fgm: "tirs réussis",
+  ftm: "lancers francs réussis",
+  fta: "lancers francs tentés",
 };

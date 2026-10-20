@@ -2,7 +2,7 @@ import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
 import type { StatCode } from "./statCodes";
-import { type ResolveBetsSummary, type BoxScoreRow, minutesToFloat, resolveNbaGameId, ZERO_BOX_ROW, COUNTING_STAT_COLUMN } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, minutesToFloat, resolveNbaGameId, ZERO_BOX_ROW, countingStatValue } from "./resolveBetsShared";
 
 // ============================================================================
 // Chantier "meilleur marqueur" / superlatif implicite (étape 4 du plan de
@@ -23,7 +23,7 @@ type EligibleSuperlativeBetRow = {
  *  reste via COUNTING_STAT_COLUMN), extraite ici car le superlatif compare
  *  des VALEURS entre elles plutôt qu'une valeur à un seuil fixe. */
 export function rawStatValue(stat: StatCode, box: BoxScoreRow): number {
-  return stat === "min" ? minutesToFloat(box.minutes) : (box[COUNTING_STAT_COLUMN[stat]!] ?? 0);
+  return stat === "min" ? minutesToFloat(box.minutes) : (countingStatValue(stat, box) ?? 0);
 }
 
 /** Résolution des paris SUPERLATIVE -- "X marque plus de {stat} que TOUT
@@ -91,7 +91,7 @@ export async function resolveCalculableSuperlativeBets(): Promise<ResolveBetsSum
 
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov, pf")
       .eq("game_id", gameId);
     if (!rows || rows.length === 0) {
       summary.skipped.push({ betId: bet.id, reason: "pas encore de stats synchronisées pour ce match" });
