@@ -9,9 +9,14 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from supabase_context import MODELS_DIR, _composed_distribution, _composed_proba, load_model  # noqa: E402
+# Dependances lourdes (scipy, sklearn) et modeles .joblib absents du job CI
+# "python-import" (requirements-refresh.txt) : le fichier est alors ignore.
+pytest.importorskip("scipy")
+pytest.importorskip("sklearn")
+if not (Path(__file__).resolve().parents[2] / "models" / "ft_pct.joblib").exists():
+    pytest.skip("modeles absents", allow_module_level=True)
 
-pytestmark = pytest.mark.skipif(not (MODELS_DIR / "ft_pct.joblib").exists(), reason="modeles absents")
+from supabase_context import MODELS_DIR, _composed_distribution, _composed_proba, load_model  # noqa: E402
 
 
 def _context_and_recent():
