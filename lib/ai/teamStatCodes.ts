@@ -64,3 +64,21 @@ export const TEAM_STAT_LABELS_FR: Record<TeamStatCode, string> = {
 // de sens. Élargit l'enum `stats` du schéma combo, pas de nouveau champ
 // (schéma partagé au plafond de grammaire de l'API).
 export const COMBO_WIN_STAT = "win";
+
+// Pseudo-stats de période dans un combo d'ÉQUIPE (S4, fin, 20/10/2026) : le
+// combo « tirent à 32 % à 3 points ET remportent les 4 quarts-temps » mêle
+// une condition match entier et une condition de période. Mêmes règles que
+// "win" : seule dans sa condition (kind team1/team2), hors de TEAM_STAT_CODES.
+// - "qwon" : nombre de quarts-temps remportés (0-4), threshold + comparison ;
+// - "win_q1".."win_h2" : remporte cette période, sans seuil (OVER = remporte,
+//   UNDER = ne remporte pas).
+export const COMBO_QUARTERS_WON_STAT = "qwon";
+export const COMBO_PERIOD_WIN_STATS = ["win_q1", "win_q2", "win_q3", "win_q4", "win_h1", "win_h2"] as const;
+export const COMBO_PERIOD_STATS: readonly string[] = [COMBO_QUARTERS_WON_STAT, ...COMBO_PERIOD_WIN_STATS];
+
+/** "win_q3" -> "Q3" ; null si ce n'est pas une pseudo-stat « remporte la période ». */
+export function periodOfComboWinStat(stat: string): "Q1" | "Q2" | "Q3" | "Q4" | "H1" | "H2" | null {
+  return (COMBO_PERIOD_WIN_STATS as readonly string[]).includes(stat)
+    ? (stat.slice(4).toUpperCase() as "Q1" | "Q2" | "Q3" | "Q4" | "H1" | "H2")
+    : null;
+}

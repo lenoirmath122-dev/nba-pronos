@@ -9,6 +9,7 @@ import { structureTechnicalFoulsCountBet } from "./structureTechnicalFoulsCountB
 import { structureLastBasketBet } from "./structureLastBasketBet";
 import { structureBlockOnPlayerBet } from "./structureBlockOnPlayerBet";
 import { structureComboNestedBet } from "./structureComboBet";
+import { structureComboPeriodBet } from "./structureComboPeriodBet";
 import {
   predictOverUnder,
   predictSeriesStat,
@@ -32,7 +33,7 @@ import {
   type DuelOperand,
   type ComboCondition,
 } from "./statsService";
-import { COMBO_WIN_STAT, type TeamStatCode } from "./teamStatCodes";
+import { COMBO_WIN_STAT, COMBO_QUARTERS_WON_STAT, COMBO_PERIOD_STATS, type TeamStatCode } from "./teamStatCodes";
 import { probaToDifficulty } from "./difficultyTiers";
 import { NO_THRESHOLD_STATS, type StatCode } from "./statCodes";
 import { NO_THRESHOLD_MATCH_STATS, type MatchStatCode } from "./matchStatCodes";
@@ -449,6 +450,10 @@ export async function structureAndScoreBet(
    *  séparé de structureBet.ts (voir sa docstring pour le pourquoi). */
   async function handlePeriodBet(teamNames: [string, string] | null, rosters: KnownRosters | null): Promise<void> {
     const structuration = await structurePeriodBet(description, teamNames, undefined, rosters);
+    if (structuration && !structuration.calculable && structuration.mixed_combo) {
+      await handleComboPeriodBet(teamNames);
+      return;
+    }
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "PERIOD") {
       await markNotCalculable(aiFailureReason(structuration, "PERIOD"), structuration);
       return;
@@ -1089,7 +1094,7 @@ export async function structureAndScoreBet(
     if (c.stats.length === 0) return { ok: false, reason: "AI_INCOMPLETE" };
     if (c.kind === "PLAYER") {
       if (c.players.length === 0) return { ok: false, reason: "AI_INCOMPLETE" };
-      if (c.stats.includes(COMBO_WIN_STAT)) return { ok: false, reason: "UNSUPPORTED_STAT" };
+      if (c.stats.includes(COMBO_WIN_STAT) || c.stats.some((s) => COMBO_PERIOD_STATS.includes(s))) return { ok: false, reason: "UNSUPPORTED_STAT" };
       const isSimple = c.players.length === 1 && c.stats.length === 1;
       if (!isSimple && c.stats.some((s) => !(COMPARISON_PLAYER_STAT_CODES as string[]).includes(s))) {
         return { ok: false, reason: "UNSUPPORTED_STAT" };
@@ -1110,6 +1115,16 @@ export async function structureAndScoreBet(
     if (c.stats.includes(COMBO_WIN_STAT)) {
       if (c.stats.length !== 1) return { ok: false, reason: "UNSUPPORTED_STAT" };
       return { ok: true, condition: { kind: "TEAM", team: side, stats: [COMBO_WIN_STAT], threshold: null, comparison: c.comparison } };
+    }
+    // Périodes d'équipe (S4 fin) : seules dans leur condition ; "qwon" exige un
+    // seuil, "win_q1".."win_h2" n'en ont pas.
+    if (c.stats.some((s) => COMBO_PERIOD_STATS.includes(s))) {
+      if (c.stats.length !== 1) return { ok: false, reason: "UNSUPPORTED_STAT" };
+      if (c.stats[0] === COMBO_QUARTERS_WON_STAT) {
+        if (c.threshold === null) return { ok: false, reason: "AI_INCOMPLETE" };
+        return { ok: true, condition: { kind: "TEAM", team: side, stats: c.stats, threshold: c.threshold, comparison: c.comparison } };
+      }
+      return { ok: true, condition: { kind: "TEAM", team: side, stats: c.stats, threshold: null, comparison: c.comparison } };
     }
     if (c.threshold === null) return { ok: false, reason: "AI_INCOMPLETE" };
     if (c.stats.some((s) => !(COMPARISON_TEAM_STAT_CODES as string[]).includes(s))) return { ok: false, reason: "UNSUPPORTED_STAT" };
@@ -1182,7 +1197,19 @@ export async function structureAndScoreBet(
    *  structuration vient de structureComboNestedBet(), un schéma séparé de
    *  structureBet.ts (voir sa docstring pour le pourquoi). */
   async function handleComboNestedBet(teamNames: [string, string] | null): Promise<void> {
-    const structuration = await structureComboNestedBet(description, teamNames);
+    await writeStructuredComboGroups(await structureComboNestedBet(description, teamNames), teamNames);
+  }
+
+  /** Combo match entier + période (S4 fin) -- appelée UNIQUEMENT quand
+   *  structurePeriodBet() a répondu mixed_combo=true (cf. structureComboPeriodBet.ts). */
+  async function handleComboPeriodBet(teamNames: [string, string] | null): Promise<void> {
+    await writeStructuredComboGroups(await structureComboPeriodBet(description, teamNames), teamNames);
+  }
+
+  async function writeStructuredComboGroups(
+    structuration: Awaited<ReturnType<typeof structureComboNestedBet>>,
+    teamNames: [string, string] | null,
+  ): Promise<void> {
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "COMBO" || structuration.conditions.length === 0) {
       await markNotCalculable(aiFailureReason(structuration, "COMBO"), structuration);
       return;
