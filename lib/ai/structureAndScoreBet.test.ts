@@ -22,6 +22,7 @@ describe("routeBetDescription — chaque forme vers son propre schéma", () => {
     // GAPS_OUVERTS_journal_archive_jusquau_2026-09-06.md, cas "Simon").
     ["L'équipe qui gagne au début du 4e quart perd le match.", "PERIOD"],
     ["Les Knicks gagnent le premier quart.", "PERIOD"],
+    ["Tor marque le plus de point à la mie-temps et Min remporte le match", "PERIOD"],
     ["Au moins deux joueurs du match ne joueront aucune minute (DNP).", "ROSTER_COUNT"],
     ["Le cinq majeur des Knicks marque plus de 68% des points totaux de l'équipe.", "ROSTER_SPLIT"],
     ["Jaylen Brown marque plus de points que tout autre joueur du match.", "SUPERLATIVE"],
