@@ -1,9 +1,11 @@
-# Reprise — NBA Pronos (20/10/2026, passation 4)
+# Reprise — NBA Pronos (20/10/2026, passation 5)
 - **Livré** : accueil jouable + invités (#184, #188), e-mails 1B (#185-187), pseudo/onboarding (#176),
   crons Vercel (#191, #194), Memphis (#192), seuils inclusifs (#195), **Lot 1 S1 (#198)** : `pf` (modèle,
   migration prod, backfill, `pf.joblib` sur GCS) + `dreb`/`fgm`/`ftm`/`fta` composés ; Cloud Run redéployé,
-  5 stats testées en réel sur le service.
-- **Prochaine étape : Lot 1, S4** (condition générique du combo, règle aussi combo période + match entier)
+  5 stats testées en réel sur le service. **S4 partiel (#200)** : pseudo-stat `win` (vainqueur) dans la condition
+  combo d'équipe, corrélation vainqueur × points d'équipe corrigée (autres stats en indépendance, voir S2).
+  **Cloud Run à redéployer** si pas fait : `gh workflow run deploy-stats-service.yml --ref main`.
+- **Prochaine étape : fin de S4** (combo période + match entier ; vainqueur dans un pari hors combo si utile)
   (`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`). Puis S3 + S8, « exactement N »/égalité/score exact,
   S2 en dernier. Avant la bêta Cup du 04/12 ; Lots 2 à 4 ensuite.
 - **Pièges Lot 1** : le schéma partagé `structureBet` est AU PLAFOND de grammaire de l'API : pas de nouveau
