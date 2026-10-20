@@ -20,7 +20,7 @@
 Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md` (scénario A).
 - **Correctif Memphis mergé (#192, 20/10/2026)**. Reste : rejouer le pari `f4f3ebd6…` après
   déploiement (coût d'un appel IA, demander d'abord).
-- **Seuils inclusifs corrigés (PR en cours, 20/10/2026)** : « N ou plus » / « au moins N » étaient
+- **Seuils inclusifs corrigés (#195, 20/10/2026)** : « N ou plus » / « au moins N » étaient
   encodés `OVER N` alors que le calcul est strict. `inclusiveThreshold.ts` convertit en code
   (enum `AT_LEAST`/`AT_MOST` dans `structureBet`, booléen `inclusive` ailleurs). Vérifié par appels
   réels. Reste : « Hauser ou Pritchard » (COMPARISON/OR) non vérifié ; rejouer d'anciens paris ?
