@@ -44,9 +44,10 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 
 ### Données NBA (crons, résultats, box scores) — [`chantiers/CHANTIER_DONNEES_NBA.md`](chantiers/CHANTIER_DONNEES_NBA.md)
 - Crons passés sur Vercel : récap, tirage du match du jour, rappel du match
-  du soir. Restent sur GitHub (retard possible) : `heartbeat`,
-  `snapshot-leaderboard`, `reminder-bracket` ; les autres workflows planifiés
-  (`sync-*`, watchdogs, health-check) n'ont pas été réexaminés.
+  du soir, `heartbeat`, `snapshot-leaderboard`, `reminder-bracket` (20/10/2026,
+  workflows GitHub supprimés ; plus d'issue `cron-failure` automatique pour
+  ces trois-là). Les autres workflows planifiés (`sync-*`, watchdogs,
+  health-check) n'ont pas été réexaminés.
 - Poller des résultats sur la VM : PR C mergée (#149) ; à confirmer : VM à
   jour, 2 soirs en dryRun, passage en réel, puis activer le watchdog.
 - Import des box scores sur la VM : observer une semaine à la reprise,

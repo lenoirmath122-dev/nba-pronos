@@ -1,15 +1,15 @@
 import { NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/supabase/service";
-import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
+import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { writeSyncLog } from "@/lib/sync/logging";
 
 // SPEC_TECHNIQUE_SYNCHRO_V0.1 §6 : ping DB léger anti-pause Supabase, actif
 // TOUTE L'ANNÉE (A8) — AUCUN appel à l'API Highlightly, jamais de quota
-// consommé. Bearer SYNC_SECRET comme les 3 autres jobs.
+// consommé. Bearer SYNC_SECRET ou CRON_SECRET (cron Vercel).
 export const runtime = "nodejs";
 
 async function handle(request: Request): Promise<Response> {
-  if (!isAuthorizedSyncRequest(request)) {
+  if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
 

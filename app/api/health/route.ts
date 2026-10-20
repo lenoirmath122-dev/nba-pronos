@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 // Route de santé PUBLIQUE, sans authentification (B4, OPS-001) -- volontairement
-// distincte de /api/heartbeat (Bearer SYNC_SECRET, service_role, ping DB
+// distincte de /api/heartbeat (Bearer SYNC_SECRET ou CRON_SECRET, service_role, ping DB
 // anti-pause Supabase 1x/jour) : celle-ci n'a rien de privilégié à protéger,
 // juste confirmer que le déploiement répond, pour un moniteur externe
 // (UptimeRobot ou équivalent) appelé toutes les quelques minutes.
