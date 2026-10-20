@@ -1,5 +1,4 @@
 # Reprise — NBA Pronos
-
 > Seul fichier lu en début de session. Réécrit en entier à chaque passation, 20 lignes max.
 > Mis à jour le 20/10/2026 (fin de session, passation).
 
