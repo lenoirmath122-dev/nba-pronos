@@ -31,29 +31,42 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   de clôture du test (`DA/instagram/Réels/…cloture-test-reel-v3.mp4`, + Story
   de repost), suite du calendrier oct.-nov. **D (recrutement)** : mode d'emploi d'inscription,
   tableau de suivi, message aux ambassadeurs, exécution du calendrier.
-- **Match du jour** : vraie compétition `DAILY_MATCH` à créer **avant le
-  16/10 à 5 h UTC** (compétition de test archivée avant) ; à surveiller :
-  horizon de synchro de 4 jours, quota Highlightly, Thanksgiving.
+- **Match du jour** : publié depuis le 16/10, tirage en cron Vercel (PR #178 à
+  #181 mergées). À surveiller : horizon de synchro de 4 jours (création auto des
+  matchs à ≥ 4 jours à vérifier), quota Highlightly, Thanksgiving.
+- **Conversion pub Instagram** (PR #177 mergée le 15/10, captcha retiré) :
+  vérifier que le captcha est bien désactivé côté Supabase (Auth > Attack
+  Protection). Restent : compteur d'inscrits et captures sur la landing (p5-2),
+  UTM sur les liens de pub, surveillance des faux comptes sans captcha.
+- **Pseudo modifiable + onboarding** (PR #176 mergée le 12/10, changement de
+  pseudo avec validation admin inclus) : reste à valider sur de vrais téléphones
+  (Android Chrome, iPhone Safari, iPhone installé).
 
 ### Données NBA (crons, résultats, box scores) — [`chantiers/CHANTIER_DONNEES_NBA.md`](chantiers/CHANTIER_DONNEES_NBA.md)
-- Migrer `daily-match-draw.yml` (et les autres crons GitHub en retard) vers
-  un cron Vercel, comme le récap (PR #151).
-- Poller des résultats sur la VM : merger la PR C, mettre à jour la VM,
-  2 soirs en dryRun, passage en réel, puis activer le watchdog.
+- Crons passés sur Vercel : récap, tirage du match du jour, rappel du match
+  du soir. Restent sur GitHub (retard possible) : `heartbeat`,
+  `snapshot-leaderboard`, `reminder-bracket` ; les autres workflows planifiés
+  (`sync-*`, watchdogs, health-check) n'ont pas été réexaminés.
+- Poller des résultats sur la VM : PR C mergée (#149) ; à confirmer : VM à
+  jour, 2 soirs en dryRun, passage en réel, puis activer le watchdog.
 - Import des box scores sur la VM : observer une semaine à la reprise,
   vérifier la facturation IPv4, la correspondance des tricodes.
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 
 ### Accueil jouable et pronos invités — [`chantiers/CHANTIER_ACCUEIL_INVITES.md`](chantiers/CHANTIER_ACCUEIL_INVITES.md)
-- Phase 1 du plan d'attractivité (`Cadrage/Business/`). Tâche 1 (vérifications) faite ;
-  **prochaine étape : migration `PENDING` + préférences email (tâche 2)**.
-- `refonte-ux` à merger après ce chantier.
+- Phase 1A livrée (PR #184 et #188 mergées le 19/10) : accueil jouable, pronos
+  invités `PENDING`, mesure de l'entonnoir.
+- **1B e-mails** livrée (PR #185 à #187 mergées le 19/10, migration `email_log`
+  appliquée, Resend en place). **Reste** : essai réel (dry-run puis envoi) et
+  recette Gmail/Outlook/iCloud, spam, désinscription, 1 relance, ≤ 1 mail/jour.
+  Deux flags coexistent : `recap_enabled` (push) et `email_results_enabled` (mail).
+- Refonte UI/UX : à refaire de zéro plus tard (branche locale `refonte-ux`
+  non poussée, à supprimer).
 
 ### Classement hebdo et popup LLM — [`chantiers/CHANTIER_CLASSEMENT_HEBDO.md`](chantiers/CHANTIER_CLASSEMENT_HEBDO.md)
 - Lots 0 à 4 codés (vérifier que les PR des lots 2 et 4 sont mergées).
-- **Lot 5, popup LLM** : PR 1 à 3 faites ; **reste PR 5** (popup joueur,
-  export RGPD) **puis PR 4** (page `/admin/popup`). Points ouverts après la
-  PR 3 listés dans le fichier.
+- **Lot 5, popup LLM** : codé de bout en bout (PR 3, 4 et 5 mergées : #170,
+  #172, #171). Points ouverts après la PR 3 listés dans le fichier.
 - À faire par l'utilisateur : activer `weekly_ranking` (puis `weekly_popup`)
   sur la compétition réelle ; vérifier que Vercel autorise 3 crons ;
   contrôler le premier figement du **lundi 26/10**.

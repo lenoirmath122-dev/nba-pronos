@@ -361,3 +361,4 @@ Détail complet de chaque session (contexte, échanges avec l'utilisateur,
 code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 `archive/JOURNAL_SESSIONS_archive_jusquau_2026-09-18.md` ; jusqu'au 12/10/2026 :
 `archive/JOURNAL_SESSIONS_archive_jusquau_2026-10-12.md`.
+- Nettoyage des gaps : chantiers vérifiés contre origin/main, PR #170-#188 retirées des points ouverts, REPRISE réécrite (20/10/2026)
