@@ -368,3 +368,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Branche fix/cron-bracket-hobby constatée doublon de #194 et supprimée ; passation ; prochaine étape = Lot 1 enrichissement modèles (S1 d'abord) (20/10/2026)
 
 - Lot 1 S1 livré (#198) : pf (modèle, migration, backfill prod) + dreb/fgm/ftm/fta composés ; Cloud Run redéployé, 5 stats testées en réel ; prochaine étape = S4 (20/10/2026)
+- Lot 1 S4 partiel livré (#200) : stat win (vainqueur) dans le combo, corrélation vainqueur × points d'équipe corrigée ; reste combo période + match entier ; Cloud Run à redéployer (20/10/2026)
