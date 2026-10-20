@@ -1307,12 +1307,55 @@ def _team_rotation(client, team_id: int, as_of_date, n_recent_games: int = 15, t
     return roster
 
 
+# Stats sommables dont on sait lire la correlation dans stats_box_scores (S2).
+_CORRELATION_COLUMNS = {
+    "pts": "pts", "reb": "reb", "ast": "ast", "fg3m": "fg3m", "stl": "stl", "blk": "blk", "fga": "fga",
+    "fg3a": "fg3a", "oreb": "oreb", "tov": "tov", "pf": "pf", "ftm": "ftm", "fta": "fta", "fgm": "fgm",
+}
+CORRELATION_WINDOW = 20
+CORRELATION_MIN_GAMES = 8
+
+
+def _player_sum_variance(client, player_id: int, stats: list[str], scales: list[float], as_of_date=None) -> float:
+    """Variance de la SOMME de plusieurs stats d'un meme joueur (S2, Lot 1) :
+    sum_i sum_j rho_ij * s_i * s_j. Avant, on prenait sum s_i^2 (independance),
+    or pts/reb/ast montent ensemble avec les minutes -> variance sous-estimee,
+    probas trop tranchees sur un cumul type PRA. rho_ij = correlation observee
+    sur les CORRELATION_WINDOW derniers matchs, reduite vers 0 selon la taille
+    de l'echantillon (n / (n + 10)). Une stat inconnue ou moins de
+    CORRELATION_MIN_GAMES matchs : independance (comportement precedent)."""
+    independent = sum(sc ** 2 for sc in scales)
+    if len(stats) < 2 or any(st not in _CORRELATION_COLUMNS for st in stats):
+        return independent
+    cols = list(dict.fromkeys(_CORRELATION_COLUMNS[st] for st in stats))
+    query = client.table("stats_box_scores").select(", ".join(cols)).eq("player_id", player_id)
+    if as_of_date is not None:
+        query = query.lt("game_date", str(as_of_date))
+    rows = query.order("game_date", desc=True).limit(CORRELATION_WINDOW).execute().data
+    if len(rows) < CORRELATION_MIN_GAMES:
+        return independent
+    frame = pd.DataFrame(rows)[cols].astype(float)
+    corr = frame.corr().fillna(0.0)
+    shrink = len(frame) / (len(frame) + 10)
+    variance = 0.0
+    for i, si in enumerate(stats):
+        for j, sj in enumerate(stats):
+            if i == j:
+                rho = 1.0
+            else:
+                ci, cj = _CORRELATION_COLUMNS[si], _CORRELATION_COLUMNS[sj]
+                rho = 0.0 if ci == cj else float(corr.loc[ci, cj]) * shrink
+            variance += rho * scales[i] * scales[j]
+    return max(variance, 0.0)
+
+
 def _resolve_weighted_operand(
     client, kind: str, players: list[str], team_side: str | None, stats: list[str],
     home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> tuple[float, float, dict]:
-    """Somme de moyennes + combinaison des variances (INDEPENDANCE assumee)
-    sur UN OU PLUSIEURS joueurs ET/OU UNE OU PLUSIEURS stats -- generalise
+    """Somme de moyennes + combinaison des variances (independance ENTRE
+    joueurs ; entre stats d'un MEME joueur, correlation observee, cf.
+    _player_sum_variance()) sur UN OU PLUSIEURS joueurs ET/OU UNE OU PLUSIEURS stats -- generalise
     _resolve_comparison_operand() (chantier duel, 24/08/2026) au cas
     MULTI-STATS (24/08/2026, chantier combo, GAPS_OUVERTS.md -- ex. PRA :
     "Wembanyama 25+ points, 12+ rebonds ET 8+ passes cumules" = 1 joueur, 3
@@ -1359,10 +1402,12 @@ def _resolve_weighted_operand(
             continue
         is_home = 1 if player_team_id == home_team_id else 0
         opponent_id = away_team_id if is_home else home_team_id
+        scales = []
         for stat in stats:
             mean, scale = _player_stat_mean_scale(client, player_id, stat, opponent_id=opponent_id, is_home=is_home)
             means.append(mean)
-            variances.append(scale ** 2)
+            scales.append(scale)
+        variances.append(_player_sum_variance(client, player_id, stats, scales, as_of_date))
     return sum(means), math.sqrt(sum(variances)), {"player_ids": player_ids}
 
 
