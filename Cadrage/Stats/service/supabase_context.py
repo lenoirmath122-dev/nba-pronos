@@ -1802,6 +1802,39 @@ def _win_and_team_pts_joint(
     return float(min(max(joint, 0.0), 1.0))
 
 
+def _same_variable_intersections(
+    conditions: list[list[dict]], group_probas: list[float], consumed_groups: set[int],
+) -> list[float]:
+    """Groupes a 1 condition OVER/UNDER sur la MEME variable (type, equipe,
+    joueurs, stats) -> une proba d'intersection par variable ; marque les
+    groupes concernes comme consommes. Exclut l'issue du match (traitee a
+    part, _margin_events_proba), dd/td et les conditions sans seuil. Bornes
+    de meme sens : la plus stricte (proba la plus faible) l'emporte."""
+    by_variable: dict[tuple, list[int]] = {}
+    for i, group in enumerate(conditions):
+        if i in consumed_groups or len(group) != 1 or _is_margin_group(group):
+            continue
+        c = group[0]
+        if c.get("seuil") is None or c.get("comparison") not in ("OVER", "UNDER") or c["stats"][0] in ("dd", "td"):
+            continue
+        key = (c["kind"], c.get("equipe"), tuple(sorted(c.get("joueurs") or [])), tuple(c["stats"]))
+        by_variable.setdefault(key, []).append(i)
+
+    result = []
+    for indices in by_variable.values():
+        if len(indices) < 2:
+            continue
+        overs = [group_probas[i] for i in indices if conditions[i][0]["comparison"] == "OVER"]
+        unders = [group_probas[i] for i in indices if conditions[i][0]["comparison"] == "UNDER"]
+        if overs and unders:
+            p = max(0.0, min(overs) + min(unders) - 1.0)
+        else:
+            p = min(overs or unders)
+        result.append(p)
+        consumed_groups.update(indices)
+    return result
+
+
 def _compute_combo_proba_once(
     client, conditions: list[list[dict]], home_team_id: int, away_team_id: int, as_of_date, season: str | None = None,
 ) -> dict:
@@ -1883,6 +1916,11 @@ def _compute_combo_proba_once(
             corrected *= f
         corrected_probas.append(corrected)
         consumed_groups.update(group_indices)
+
+    # Meme variable, plusieurs bornes (tranche "entre 101 et 110", "exactement
+    # N" = OVER N-0,5 et UNDER N+0,5) : intersection, pas produit. Les deux
+    # probas viennent de la meme loi, donc P(a < X < b) = P(X>a) + P(X<b) - 1.
+    corrected_probas.extend(_same_variable_intersections(conditions, group_probas, consumed_groups))
 
     # Vainqueur x points d'equipe (S4) : un seul couple corrige (le 1er), a
     # condition qu'il y ait UN SEUL groupe vainqueur ; le reste reste en

@@ -270,6 +270,11 @@ function buildStaticSystemText(): string {
     "HANDICAP : \"Boston +5,5\" = threshold=-5.5 OVER ; \"Boston -5,5\" = threshold=5.5 OVER (la ligne est ajoutée à " +
     "l'écart ; ne jamais confondre avec un total de points). TRANCHE : \"Boston gagne de 6 à 10\" = 2 conditions sur " +
     "la MÊME équipe (threshold=6 AT_LEAST et threshold=10 AT_MOST). \"Gagne\" seul sans écart = stats=[\"win\"]. " +
+    "\"EXACTEMENT N\" sur une stat entière (points, rebonds, passes, 3 points... d'UN joueur ou d'UNE équipe) = COMBO à 2 " +
+    "conditions SUR LA MÊME variable, avec des demi-seuils : threshold=N-0.5 OVER et threshold=N+0.5 UNDER " +
+    "(ex. \"Tatum prend exactement 8 rebonds\" = stats=[\"reb\"], 7.5 OVER + 8.5 UNDER ; \"Boston marque exactement " +
+    "110 points\" = 109.5 OVER + 110.5 UNDER ; le total cumulé des 2 équipes n'est pas géré : calculable=false). Ici, et ici seulement, ces N-0.5/N+0.5 sont à écrire toi-même. " +
+    "Exactement sur un pourcentage ou des minutes = calculable=false. " +
     "TITULAIRE / REMPLAÇANT : kind=PLAYER, players=[le joueur] (un seul), stats=[\"starter\"], threshold=null, " +
     "comparison=OVER pour \"est titulaire / dans le 5 majeur\", UNDER pour \"sort du banc / est remplaçant\" " +
     "(ex. \"Tatum est titulaire et marque 25+\" = 2 conditions ; \"Hauser sort du banc\" seul = combo à 1 condition). " +
