@@ -239,8 +239,8 @@ recalculée au rechargement ou après une action serveur, comme les autres.
 ### 4.6 Notifications et rappels
 Web Push (VAPID) pour les rappels ciblés (deadlines de pronostic/bracket
 proches), notifications de chat par canal. Rappels automatisés côté serveur
-via workflows GitHub Actions programmés (`reminder-bracket.yml`,
-`reminder-matches.yml`). Tous les push partent en urgence `high` avec un TTL
+via crons Vercel (`vercel.json` : `/api/reminders/bracket`,
+`/api/reminders/matches`). Tous les push partent en urgence `high` avec un TTL
 calé sur l'échéance du rappel (`lib/push/send.ts`). Activation proposée
 en haut de l'Accueil par une carte dédiée (`components/home/PushPrompt.tsx`)
 tant que l'appareil n'est pas abonné : activation du compte, activation de
@@ -437,10 +437,8 @@ code — à confirmer manuellement si besoin.
   automatiquement).
 - `tsc --noEmit` et `eslint .` propres à 100% sur le code applicatif.
 - **CI** (`.github/workflows/ci.yml`) bloquante : lint/typecheck/test/build,
-  `npm audit` intégré. Autres workflows programmés : `heartbeat.yml`
-  (anti-pause), `sync-teams.yml`/`sync-schedule.yml`/`sync-results.yml`
-  (synchro NBA via Highlightly), `reminder-bracket.yml`/
-  `reminder-matches.yml`, `recaps.yml`, `snapshot-leaderboard.yml`,
+  `npm audit` intégré. Autres workflows programmés : `sync-teams.yml`/`sync-schedule.yml`/`sync-results.yml`
+  (synchro NBA via Highlightly), `reminder-matches.yml`, `recaps.yml`,
   `refresh-stats-supabase.yml`, `daily-match-draw.yml` (tirage automatique
   du Match du jour, 5h et 7h UTC, route `/api/daily-match/draw`, commence le
   16/10/2026 et tire 9 jours à partir d'aujourd'hui ; `workflow_dispatch` pour un lot manuel et un push limité au
@@ -465,8 +463,8 @@ Migrations Supabase poussées séparément (`npx supabase db push`), jamais
 par le pipeline de déploiement — une checklist de séquencement
 code/migration existe (`audit/RUNBOOK_MIGRATIONS.md`) pour éviter qu'un
 déploiement suppose un schéma pas encore migré. Route de santé `/api/health`
-disponible pour un monitoring externe. Route `/api/heartbeat` + workflow
-associé pour éviter l'auto-désactivation de GitHub Actions après 60 jours
+disponible pour un monitoring externe. Route `/api/heartbeat` (cron Vercel
+quotidien) ; `keep-alive.yml` évite l'auto-désactivation de GitHub Actions après 60 jours
 sans activité. `README.md` documente prérequis/installation/tests/
 déploiement de bout en bout pour un nouveau contributeur ; `.env.example`
 liste toutes les variables d'environnement nécessaires avec leur usage.
