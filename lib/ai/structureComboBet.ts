@@ -5,6 +5,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES } from "./statCodes";
 import { TEAM_STAT_CODES } from "./teamStatCodes";
 import { recordAnthropicUsage } from "./usageTracking";
+import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThreshold";
 
 // Chantier "OU imbriqué dans un ET" (étape 7 du plan de reprise post-audit,
 // 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de structureBet.ts, même
@@ -45,6 +46,7 @@ const ComboNestedConditionSchema = z.object({
     ),
   threshold: z.number().nullable().describe("null uniquement si stats=[\"dd\"] ou [\"td\"] (probabilité directe)."),
   comparison: z.enum(["OVER", "UNDER"]),
+  inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
 });
 
 const ComboNestedBetStructurationSchema = z.object({
@@ -83,8 +85,9 @@ function buildStaticSystemText(): string {
     "cas. TOUJOURS pour UN match précis.\n\n" +
     "Exemple calculable=true (cas réel) : \"Nikola Jokic réalise un triple-double avec au moins 40 points et au " +
     "moins 20 rebonds ou passes.\" -> 3 groupes : [triple-double (dd/td selon le nombre de catégories visées -- " +
-    "ici \"triple-double\" -> td)], [pts>=40], [reb>=20 OU ast>=20] (ce dernier groupe a 2 conditions reliées par " +
-    "OU, les 2 autres groupes n'en ont qu'une seule).\n\n" +
+    "ici \"triple-double\" -> td)], [pts, threshold=40, inclusive=true], [reb threshold=20 inclusive=true OU ast " +
+    "threshold=20 inclusive=true] (ce dernier groupe a 2 conditions reliées par OU, les 2 autres groupes n'en ont " +
+    "qu'une seule). \"au moins N\"/\"N+\" = inclusive=true avec threshold=N, jamais de N-1 de ta part.\n\n" +
     "Exemples calculable=false : \"Cunningham marque plus de 25 points et réalise plus de 5 passes\" (ET simple, " +
     "AUCUN OU imbriqué -- relève du schéma combo simple, pas celui-ci) ; \"Hauser ou Pritchard marque au moins 3 " +
     "paniers à 3 points\" (OU seul, entre 2 JOUEURS différents pour la MÊME condition -- relève de " +
@@ -125,7 +128,14 @@ export async function structureComboNestedBet(
       output_config: { format: zodOutputFormat(ComboNestedBetStructurationSchema) },
     });
     await recordAnthropicUsage("structureComboNestedBet", model, response.usage);
-    return response.parsed_output;
+    const parsed = response.parsed_output;
+    if (!parsed) return null;
+    return {
+      ...parsed,
+      conditions: parsed.conditions.map((g) => ({
+        or: g.or.map((c) => ({ ...c, threshold: applyInclusiveThreshold(c.threshold, c.comparison, c.inclusive, c.stats) })),
+      })),
+    };
   } catch {
     return null;
   }

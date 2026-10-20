@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR } from "./statCodes";
 import { recordAnthropicUsage } from "./usageTracking";
+import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThreshold";
 
 // Chantier "5 majeur / banc" (24/08/2026, GAPS_OUVERTS.md) -- schéma
 // SÉPARÉ de structureBet.ts, même patron que structurePeriodBet.ts (voir
@@ -46,6 +47,7 @@ const RosterSplitBetStructurationSchema = z.object({
         .number()
         .describe("Seuil. Pour STARTERS_SHARE : fraction 0-1 (ex. 68% -> 0.68), pas 68."),
       comparison: z.enum(["OVER", "UNDER"]),
+      inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
     })
     .nullable()
     .describe("Rempli seulement si calculable=true, sinon null."),
@@ -67,10 +69,11 @@ function buildStaticSystemText(): string {
     "dans ce cas, non géré).\n\n" +
     "Stats valides :\n" + statList + "\n\n" +
     "Exemples calculable=true : \"Le cinq majeur des Knicks marque plus de 68% des points totaux de l'équipe\" " +
-    "(kind=STARTERS_SHARE, team=Knicks, stat=pts, threshold=0.68, comparison=OVER), \"Le banc de Detroit marque " +
-    "strictement moins de 10 points\" (kind=BENCH_SUM, team=Detroit, stat=pts, threshold=10, comparison=UNDER), " +
+    "(kind=STARTERS_SHARE, team=Knicks, stat=pts, threshold=0.68, comparison=OVER, inclusive=false),\"Le banc de Detroit marque " +
+    "strictement moins de 10 points\" (kind=BENCH_SUM, team=Detroit, stat=pts, threshold=10, comparison=UNDER, inclusive=false)," +
     "\"Le 5 majeur des Lakers marque plus de 85 points au total\" (kind=STARTERS_SUM, team=Lakers, stat=pts, " +
-    "threshold=85, comparison=OVER).\n\n" +
+    "threshold=85, comparison=OVER, inclusive=false). \"au moins N\"/\"N ou plus\"/\"N ou moins\" = inclusive=true avec " +
+    "threshold=N (jamais de N-1 de ta part).\n\n" +
     "Exemples calculable=false : \"les titulaires des deux équipes marquent plus de 70% du total du match\" " +
     "(2 équipes à la fois, non géré) ; \"les 10 joueurs titulaires marquent chacun plus de 8 points\" (condition " +
     "INDIVIDUELLE sur chaque titulaire, pas une somme -- non géré) ; toute formulation qui ne nomme pas " +
@@ -111,7 +114,11 @@ export async function structureRosterSplitBet(
       output_config: { format: zodOutputFormat(RosterSplitBetStructurationSchema) },
     });
     await recordAnthropicUsage("structureRosterSplitBet", model, response.usage);
-    return response.parsed_output;
+    const parsed = response.parsed_output;
+    const rsb = parsed?.roster_split_bet;
+    if (!parsed || !rsb) return parsed;
+    const stats = rsb.kind === "STARTERS_SHARE" ? ["fg"] : [rsb.stat];
+    return { ...parsed, roster_split_bet: { ...rsb, threshold: applyInclusiveThreshold(rsb.threshold, rsb.comparison, rsb.inclusive, stats) as number } };
   } catch {
     return null;
   }

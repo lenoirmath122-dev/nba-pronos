@@ -4,6 +4,7 @@ import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_CODES, STAT_LABELS_FR } from "./statCodes";
 import { recordAnthropicUsage } from "./usageTracking";
+import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThreshold";
 
 // Chantier "comptage roster-wide" (étape 3 du plan de reprise post-audit,
 // 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de structureBet.ts, même
@@ -62,6 +63,11 @@ const RosterCountBetStructurationSchema = z.object({
           "Comparaison de la condition par joueur (ex. \"marque 11+ points\" -> OVER, threshold=11 ; \"ne joue " +
             "aucune minute\"/DNP -> UNDER, threshold=1). null uniquement pour dd/td.",
         ),
+      stat_inclusive: z
+        .boolean()
+        .describe(
+          INCLUSIVE_DESCRIPTION + " Concerne la condition PAR JOUEUR (stat_threshold), pas min_players/count_relation.",
+        ),
       min_players: z
         .number()
         .int()
@@ -99,19 +105,19 @@ function buildStaticSystemText(): string {
     "Exemples calculable=true : \"Au moins un joueur réalise un triple-double durant le match\" " +
     "(scope=MATCH, pool=ALL, stat=td, stat_threshold=null, stat_comparison=null, min_players=1, " +
     "count_relation=AT_LEAST), \"Au moins 8 joueurs marquent 11 points ou plus dans le match\" (scope=MATCH, " +
-    "pool=ALL, stat=pts, stat_threshold=11, stat_comparison=OVER, min_players=8, count_relation=AT_LEAST), " +
+    "pool=ALL, stat=pts, stat_threshold=11, stat_comparison=OVER, stat_inclusive=true, min_players=8, count_relation=AT_LEAST)," +
     "\"Au moins 5 joueurs terminent le match avec un +/- supérieur ou égal à 20\" (scope=MATCH, pool=ALL, " +
-    "stat=plus_minus, stat_threshold=20, stat_comparison=OVER, min_players=5, count_relation=AT_LEAST), " +
+    "stat=plus_minus, stat_threshold=20, stat_comparison=OVER, stat_inclusive=true, min_players=5, count_relation=AT_LEAST)," +
     "\"Les 10 joueurs titulaires marquent chacun plus de 8 points\" (scope=MATCH, pool=STARTERS, stat=pts, " +
-    "stat_threshold=8, stat_comparison=OVER, min_players=10, count_relation=AT_LEAST -- 10 = 5 titulaires des " +
+    "stat_threshold=8, stat_comparison=OVER, stat_inclusive=false, min_players=10, count_relation=AT_LEAST -- 10 = 5 titulaires des " +
     "2 équipes), \"Plus de 28 joueurs ont joué au moins 1 minute dans le match\" (scope=MATCH, pool=ALL, " +
     "stat=min, stat_threshold=1, stat_comparison=OVER, min_players=28, count_relation=MORE_THAN), \"Au moins " +
     "deux joueurs du match ne joueront aucune minute (DNP)\" (scope=MATCH, pool=ALL, stat=min, " +
     "stat_threshold=1, stat_comparison=UNDER, min_players=2, count_relation=AT_LEAST), \"Un joueur de Memphis " +
     "marque + de 25 points\" ou \"N'importe quel joueur des Grizzlies marque plus de 25 points\" (au moins UN " +
     "joueur d'UNE équipe : scope=team1 ou team2 selon l'équipe nommée dans le match, pool=ALL, stat=pts, " +
-    "stat_threshold=25, stat_comparison=OVER, min_players=1, count_relation=AT_LEAST -- \"plus de 25\" est déjà " +
-    "STRICT via OVER, ne pas l'ajuster ; si l'équipe nommée n'est aucune des 2 du match, calculable=false).\n\n" +
+    "stat_threshold=25, stat_comparison=OVER, stat_inclusive=false, min_players=1, count_relation=AT_LEAST -- " +
+    "\"plus de 25\" est déjà STRICT via OVER, stat_inclusive=false, ne pas l'ajuster ; si l'équipe nommée n'est aucune des 2 du match, calculable=false).\n\n" +
     "Exemples calculable=false : \"Les Knicks utilisent au moins 3 joueurs de plus que les 76ers\" (compare 2 " +
     "COMPTAGES entre équipes, pas un comptage contre un seuil fixe -- non géré) ; \"le même nombre de joueurs " +
     "des 2 équipes dépassent 15 points\" (égalité exacte entre 2 comptages -- non géré) ; tout pari qui nomme " +
@@ -152,7 +158,11 @@ export async function structureRosterCountBet(
       output_config: { format: zodOutputFormat(RosterCountBetStructurationSchema) },
     });
     await recordAnthropicUsage("structureRosterCountBet", model, response.usage);
-    return response.parsed_output;
+    const parsed = response.parsed_output;
+    const rcb = parsed?.roster_count_bet;
+    if (!parsed || !rcb) return parsed;
+    const stat_threshold = applyInclusiveThreshold(rcb.stat_threshold, rcb.stat_comparison, rcb.stat_inclusive, [rcb.stat]);
+    return { ...parsed, roster_count_bet: { ...rcb, stat_threshold } };
   } catch {
     return null;
   }
