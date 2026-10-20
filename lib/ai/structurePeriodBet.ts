@@ -6,6 +6,7 @@ import { STAT_CODES, STAT_LABELS_FR, NO_THRESHOLD_STATS } from "./statCodes";
 import { PERIOD_CODES, PERIOD_LABELS_FR, PERIOD_OUTCOME_KINDS, PERIOD_OUTCOME_LABELS_FR, NO_THRESHOLD_PERIOD_OUTCOMES } from "./periodStatCodes";
 import type { KnownRosters } from "./roster";
 import { recordAnthropicUsage } from "./usageTracking";
+import { applyInclusiveThreshold, INCLUSIVE_DESCRIPTION } from "./inclusiveThreshold";
 
 // Chantier "pari période" (24/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de
 // structureBet.ts, pas un 7e bet_subject dans le schéma existant. Découvert
@@ -91,6 +92,7 @@ const PeriodBetStructurationSchema = z.object({
           "null pour QUARTER_WINNER/HALF_WINNER. Pour LEADS_HALF_RESULT : OVER = l'équipe qui mène à la mi-temps " +
             "gagne le match, UNDER = elle perd.",
         ),
+      inclusive: z.boolean().describe(INCLUSIVE_DESCRIPTION),
     })
     .nullable()
     .describe("Rempli seulement si calculable=true, sinon null."),
@@ -119,14 +121,15 @@ function buildStaticSystemText(): string {
     "period=H1, team=Minnesota, comparison=UNDER -- Minnesota mène mais perd), \"l'équipe qui mène au début du 4e " +
     "quart perd le match\" (LEADS_HALF_RESULT, period=Q3 -- \"au début du 4e quart\" = le score CUMULÉ à la FIN " +
     "du 3e quart, pas le 4e quart lui-même ; team=l'équipe qui mène, comparison=UNDER), \"les Knicks gagnent au moins 2 " +
-    "quarts-temps\" (QUARTERS_WON_COUNT, period=null -- match entier, team=Knicks, threshold=1, comparison=OVER), " +
+    "quarts-temps\" (QUARTERS_WON_COUNT, period=null -- match entier, team=Knicks, threshold=2, comparison=OVER, inclusive=true), " +
     "\"Orlando perd le 3e quart-temps\" (QUARTER_WINNER, period=Q3, team=Orlando adversaire -- décris la proba " +
     "que l'AUTRE équipe gagne ce quart), \"l'écart à la mi-temps est de 5 points ou moins\" (MARGIN, period=H1, " +
-    "team=null, threshold=5, comparison=UNDER), \"moins de 45 points combinés au 4e quart-temps\" (TOTAL_POINTS, " +
-    "period=Q4, threshold=45, comparison=UNDER), \"San Antonio marque plus de 60% de ses points totaux en 2ème " +
+    "team=null, threshold=5, comparison=UNDER, inclusive=true),\"moins de 45 points combinés au 4e quart-temps\" (TOTAL_POINTS, " +
+    "period=Q4, threshold=45, comparison=UNDER, inclusive=false),\"San Antonio marque plus de 60% de ses points totaux en 2ème " +
     "mi-temps\" (POINT_SHARE_PCT, period=H2, team=San Antonio, threshold=0.6, comparison=OVER), \"3 contres en " +
     "1ère mi-temps pour Wembanyama\" (period=H1, player=\"Victor Wembanyama\", player_stat=\"blk\", threshold=3, " +
-    "comparison=OVER).\n\n" +
+    "comparison=OVER, inclusive=true -- un nombre nu vaut « au moins »). \"au moins N\"/\"N ou plus\"/\"N ou moins\" = inclusive=true avec threshold=N " +
+    "(jamais de N-1 de ta part).\n\n" +
     "Exemples calculable=false : un pari sur la prolongation (\"le match ira en prolongation\") -- pas un pari " +
     "période, un autre service s'en charge, ne l'accepte JAMAIS ici même s'il mentionne un quart-temps en " +
     "passant ; un pourcentage des points totaux d'un JOUEUR (pas d'une équipe) sur une période (ex. \"Wembanyama " +
@@ -201,7 +204,11 @@ export async function structurePeriodBet(
       output_config: { format: zodOutputFormat(PeriodBetStructurationSchema) },
     });
     await recordAnthropicUsage("structurePeriodBet", model, response.usage);
-    return response.parsed_output;
+    const parsed = response.parsed_output;
+    if (!parsed?.period_bet) return parsed;
+    const pb = parsed.period_bet;
+    const stats = pb.player_stat ? [pb.player_stat] : pb.outcome_kind === "POINT_SHARE_PCT" ? ["fg"] : [];
+    return { ...parsed, period_bet: { ...pb, threshold: applyInclusiveThreshold(pb.threshold, pb.comparison, pb.inclusive, stats) } };
   } catch {
     return null;
   }

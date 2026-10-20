@@ -1,0 +1,27 @@
+// Les moteurs de probabilité et de résolution comparent en STRICT (`> seuil` pour
+// OVER, `< seuil` pour UNDER, cf. resolveBetsShared.computeOutcome). Un texte
+// « au moins 25 points » / « 25 ou plus » / « au plus 3 » est INCLUSIF : le modèle
+// IA ne fait plus l'arithmétique, il renseigne `inclusive` et ce module convertit
+// en seuil strict équivalent pour les stats entières (OVER N inclusif -> > N-1,
+// UNDER N inclusif -> < N+1).
+
+/** Stats non entières : une égalité exacte au seuil y est négligeable, le seuil reste tel quel. */
+const NON_INTEGER_STATS = new Set(["ft", "fg", "fg3", "min"]);
+
+export function applyInclusiveThreshold(
+  threshold: number | null,
+  comparison: "OVER" | "UNDER" | null,
+  inclusive: boolean | null | undefined,
+  stats: readonly string[],
+): number | null {
+  if (!inclusive || threshold === null || comparison === null) return threshold;
+  if (!Number.isInteger(threshold)) return threshold;
+  if (stats.some((s) => NON_INTEGER_STATS.has(s))) return threshold;
+  return comparison === "OVER" ? threshold - 1 : threshold + 1;
+}
+
+/** Description du champ `inclusive`, partagée par tous les schémas de structuration IA. */
+export const INCLUSIVE_DESCRIPTION =
+  "true si le texte est INCLUSIF sur le seuil : \"au moins N\", \"N+\", \"N ou plus\" (OVER), \"au plus N\", \"N ou moins\" " +
+  "(UNDER). Mettre alors threshold = N tel qu'écrit dans le texte (le code convertit en seuil strict, ne fais AUCUN N-1 toi-même). " +
+  "false pour \"plus de N\"/\"moins de N\"/\"supérieur à\" (déjà stricts) et pour tout pari sans seuil.";
