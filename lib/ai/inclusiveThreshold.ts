@@ -31,3 +31,24 @@ export const INCLUSIVE_DESCRIPTION =
   "true si le texte est INCLUSIF sur le seuil : \"au moins N\", \"N+\", \"N ou plus\" (OVER), \"au plus N\", \"N ou moins\" " +
   "(UNDER). Mettre alors threshold = N tel qu'écrit dans le texte (le code convertit en seuil strict, ne fais AUCUN N-1 toi-même). " +
   "false pour \"plus de N\"/\"moins de N\"/\"supérieur à\" (déjà stricts) et pour tout pari sans seuil.";
+
+/** Variante sans champ supplémentaire (schéma structureBet, déjà au plafond de grammaire de l'API) :
+ *  l'inclusivité est portée par la comparaison elle-même. */
+export const THRESHOLD_COMPARISONS = ["OVER", "UNDER", "AT_LEAST", "AT_MOST"] as const;
+export type ThresholdComparison = (typeof THRESHOLD_COMPARISONS)[number];
+
+export const THRESHOLD_COMPARISON_DESCRIPTION =
+  "OVER = strictement plus de N (plus de/supérieur à). UNDER = strictement moins de N. AT_LEAST = au moins N, N+, " +
+  "N ou plus (inclusif). AT_MOST = au plus N, N ou moins (inclusif). threshold = N tel qu'écrit dans le texte, " +
+  "jamais de N-1 ni N+1 de ta part (le code convertit).";
+
+export function resolveInclusiveComparison(
+  threshold: number | null,
+  comparison: ThresholdComparison | null,
+  stats: readonly string[],
+): { threshold: number | null; comparison: "OVER" | "UNDER" | null } {
+  if (comparison === null) return { threshold, comparison: null };
+  const strict = comparison === "AT_LEAST" ? "OVER" : comparison === "AT_MOST" ? "UNDER" : comparison;
+  const inclusive = comparison === "AT_LEAST" || comparison === "AT_MOST";
+  return { threshold: applyInclusiveThreshold(threshold, strict, inclusive, stats), comparison: strict };
+}
