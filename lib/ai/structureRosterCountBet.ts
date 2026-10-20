@@ -107,7 +107,11 @@ function buildStaticSystemText(): string {
     "2 équipes), \"Plus de 28 joueurs ont joué au moins 1 minute dans le match\" (scope=MATCH, pool=ALL, " +
     "stat=min, stat_threshold=1, stat_comparison=OVER, min_players=28, count_relation=MORE_THAN), \"Au moins " +
     "deux joueurs du match ne joueront aucune minute (DNP)\" (scope=MATCH, pool=ALL, stat=min, " +
-    "stat_threshold=1, stat_comparison=UNDER, min_players=2, count_relation=AT_LEAST).\n\n" +
+    "stat_threshold=1, stat_comparison=UNDER, min_players=2, count_relation=AT_LEAST), \"Un joueur de Memphis " +
+    "marque + de 25 points\" ou \"N'importe quel joueur des Grizzlies marque plus de 25 points\" (au moins UN " +
+    "joueur d'UNE équipe : scope=team1 ou team2 selon l'équipe nommée dans le match, pool=ALL, stat=pts, " +
+    "stat_threshold=25, stat_comparison=OVER, min_players=1, count_relation=AT_LEAST -- \"plus de 25\" est déjà " +
+    "STRICT via OVER, ne pas l'ajuster ; si l'équipe nommée n'est aucune des 2 du match, calculable=false).\n\n" +
     "Exemples calculable=false : \"Les Knicks utilisent au moins 3 joueurs de plus que les 76ers\" (compare 2 " +
     "COMPTAGES entre équipes, pas un comptage contre un seuil fixe -- non géré) ; \"le même nombre de joueurs " +
     "des 2 équipes dépassent 15 points\" (égalité exacte entre 2 comptages -- non géré) ; tout pari qui nomme " +

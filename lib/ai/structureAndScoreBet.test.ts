@@ -61,6 +61,27 @@ describe("routeBetDescription — collisions documentées, l'ORDRE de vérificat
   });
 });
 
+describe("routeBetDescription — « un joueur de <équipe> » (correctif Memphis, 20/10/2026)", () => {
+  it.each([
+    "Un joueur de Memphis marque + de 25 points.",
+    "Un joueur des Grizzlies marque plus de 25 points.",
+    "N'importe quel joueur de Memphis marque plus de 25 points.",
+    "Un joueur du Thunder réalise un double-double.",
+  ])("%s -> ROSTER_COUNT", (description) => {
+    expect(routeBetDescription(description)).toBe("ROSTER_COUNT");
+  });
+
+  it.each([
+    // Joueur nommé en apposition : reste un pari joueur classique.
+    "Ja Morant, un joueur de Memphis, marque plus de 25 points.",
+    // Comparaison à "n'importe quel joueur de X" : pas un comptage.
+    "Jaylen Brown marque plus de points que n'importe quel joueur de Memphis.",
+    "Paolo Banchero réalise un triple-double.",
+  ])("%s -> reste hors ROSTER_COUNT", (description) => {
+    expect(routeBetDescription(description)).not.toBe("ROSTER_COUNT");
+  });
+});
+
 describe("routeBetDescription — GENERAL par défaut", () => {
   it("aucun mot-clé reconnu -> GENERAL (repli vers le schéma partagé structureBet.ts)", () => {
     expect(routeBetDescription("Paolo Banchero réalise un triple-double.")).toBe("GENERAL");

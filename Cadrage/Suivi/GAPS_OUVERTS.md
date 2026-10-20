@@ -18,8 +18,11 @@
 
 ### Enrichissement des modèles / types de paris — [`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`](chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md)
 Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md` (scénario A).
-- **Prochaine étape (rien de codé)** : correctif Memphis, élargir
-  `ROSTER_COUNT_KEYWORD_REGEX` à « un joueur de X » (4 points détaillés dans le fichier).
+- **Correctif Memphis codé (20/10/2026, PR en cours)** : regex élargie, exemple ajouté au prompt,
+  tests. Reste : rejouer le pari `f4f3ebd6…` après déploiement (coût d'un appel IA, demander d'abord).
+- **À traiter côté modèles** : l'exemple du prompt ROSTER_COUNT « 11 points ou plus » est encodé
+  `OVER 11`, or le calcul est strict (`> seuil`) : « N ou plus » est décalé de 1 ; vérifier les
+  autres schémas (`structureBet`, combo, période) avant la bêta.
 - Puis reste du **Lot 1** (S1, S2, S4, S3, S8…) avant la bêta Cup du 04/12 ;
   Lots 2 à 4 ensuite (déc. → mars).
 - **À part, conversation dédiée** : instabilité des probas (3 valeurs pour 20
