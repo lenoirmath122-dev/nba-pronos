@@ -11,6 +11,12 @@ import { unpublishedDailySeriesIds } from "@/lib/queries/dailyVisibility";
 // ce soit trop tard pour pronostiquer). À ajuster si l'usage montre qu'il
 // faut un délai différent.
 const WINDOW_HOURS = 4;
+// Premier rappel, plus tôt : matchs dont le coup d'envoi tombe entre 4 h et 8 h.
+// Les deux fenêtres ne se chevauchent pas ; un match entré tard dans la fenêtre
+// (moins de 4 h) ne reçoit que le rappel « ce soir ».
+const EARLY_WINDOW_HOURS = 8;
+
+type ReminderKind = "MATCH_TONIGHT" | "MATCH_8H";
 
 type MatchRow = {
   id: string;
@@ -33,7 +39,8 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
   if (competitionIds.length === 0) return { notified: 0, matchesChecked: 0 };
 
   const nowMs = Date.now();
-  const windowEnd = new Date(nowMs + WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const tonightLimitMs = nowMs + WINDOW_HOURS * 60 * 60 * 1000;
+  const windowEnd = new Date(nowMs + EARLY_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
   const { data: matchesData } = await supabase
     .from("matches")
     .select("id, home_team_id, away_team_id, scheduled_at, series_id")
@@ -86,22 +93,23 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
 
   const teamById = new Map(((teamsData ?? []) as TeamRow[]).map((t) => [t.id, t.abbreviation]));
 
-  // Dédoublonnage : une ligne (user_id, 'MATCH_TONIGHT', match_id) déjà
-  // présente = déjà notifié pour CE match, ne jamais renvoyer.
+  // Dédoublonnage : une ligne (user_id, kind, match_id) déjà présente = déjà
+  // notifié pour CE match et CE rappel, ne jamais renvoyer.
   const { data: alreadySentData } = await supabase
     .from("reminder_log")
-    .select("user_id, ref_id")
-    .eq("kind", "MATCH_TONIGHT")
+    .select("user_id, ref_id, kind")
+    .in("kind", ["MATCH_TONIGHT", "MATCH_8H"])
     .in("ref_id", matchIds);
-  const alreadySent = new Set((alreadySentData ?? []).map((r) => `${r.user_id}:${r.ref_id}`));
+  const alreadySent = new Set((alreadySentData ?? []).map((r) => `${r.kind}:${r.user_id}:${r.ref_id}`));
 
-  const toNotify: { userId: string; match: MatchRow }[] = [];
+  const toNotify: { userId: string; match: MatchRow; kind: ReminderKind }[] = [];
   for (const match of matches) {
+    const kind: ReminderKind = new Date(match.scheduled_at).getTime() <= tonightLimitMs ? "MATCH_TONIGHT" : "MATCH_8H";
     const committed = committedByMatch.get(match.id) ?? new Set<string>();
     for (const user of pushUsers) {
       if (committed.has(user.id)) continue;
-      if (alreadySent.has(`${user.id}:${match.id}`)) continue;
-      toNotify.push({ userId: user.id, match });
+      if (alreadySent.has(`${kind}:${user.id}:${match.id}`)) continue;
+      toNotify.push({ userId: user.id, match, kind });
     }
   }
   if (toNotify.length === 0) return { notified: 0, matchesChecked: matches.length };
@@ -121,7 +129,7 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
   const deadSubscriptionIds = new Set<string>();
   let notified = 0;
 
-  for (const { userId, match } of toNotify) {
+  for (const { userId, match, kind } of toNotify) {
     const subscriptions = subscriptionsByUser.get(userId) ?? [];
     if (subscriptions.length === 0) continue; // préférence PUSH mais aucun abonnement navigateur actif
 
@@ -130,7 +138,7 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
     const { deadSubscriptionIds: dead } = await sendPushToSubscriptions(
       subscriptions,
       {
-        title: "Match ce soir",
+        title: kind === "MATCH_8H" ? "Match dans quelques heures" : "Match ce soir",
         body: `${home} - ${away} : tu n'as pas encore pronostiqué.`,
         url: "/play",
       },
@@ -138,7 +146,7 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
     );
     dead.forEach((id) => deadSubscriptionIds.add(id));
 
-    await supabase.from("reminder_log").insert({ user_id: userId, kind: "MATCH_TONIGHT", ref_id: match.id });
+    await supabase.from("reminder_log").insert({ user_id: userId, kind, ref_id: match.id });
     notified += 1;
   }
 
