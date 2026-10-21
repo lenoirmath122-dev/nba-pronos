@@ -17,6 +17,8 @@ export const test = base.extend({
         window.localStorage.setItem("badges-popup:disabled", "1");
         // Popup hebdo (lot 5) : même raison, son fond avale les clics.
         window.localStorage.setItem("weekly-popup:disabled", "1");
+        // Récap « depuis ta dernière visite » : même raison.
+        window.localStorage.setItem("activity-recap:disabled", "1");
         // Guide d'onboarding (notifications + raccourci écran d'accueil) :
         // visible seulement sur mobile, son fond avale les clics.
         window.localStorage.setItem("onboarding-guide:disabled", "1");

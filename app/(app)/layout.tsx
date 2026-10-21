@@ -13,6 +13,7 @@ import { NewBadgesWatcher } from "@/components/badges/NewBadgesWatcher";
 import { OnboardingGuide } from "@/components/onboarding/OnboardingGuide";
 import { WeeklyPopupProvider } from "@/components/weeklyPopup/WeeklyPopupProvider";
 import { WeeklyPopupWatcher } from "@/components/weeklyPopup/WeeklyPopupWatcher";
+import { ActivityRecapWatcher } from "@/components/recap/ActivityRecapWatcher";
 import styles from "./layout.module.css";
 
 // Zone joueur connecté (T6a §3.1) : garde de session + nav 4 onglets.
@@ -67,6 +68,8 @@ export default async function AppLayout({
                 l'affichage, pour ne pas ralentir la coquille. */}
             <WeeklyPopupProvider>
               <WeeklyPopupWatcher />
+              {/* Récap des résultats tombés depuis la dernière visite. */}
+              <ActivityRecapWatcher />
               {/* Popup « nouveau badge » (p3-9). */}
               <NewBadgesWatcher />
             {/* Guide d'arrivée : notifications + raccourci écran d'accueil. */}

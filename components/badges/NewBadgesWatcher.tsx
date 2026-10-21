@@ -7,7 +7,7 @@ import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
 import { BadgeEmblem, TierPips } from "./BadgeEmblem";
 import { useIsValidatedDialogOpen } from "@/components/ui/ValidatedDialog";
-import { useIsWeeklyPopupOpen } from "@/components/weeklyPopup/WeeklyPopupProvider";
+import { useIsRecapOpen, useIsWeeklyPopupOpen } from "@/components/weeklyPopup/WeeklyPopupProvider";
 import { getUnlockedBadges } from "@/lib/actions/badges";
 import { onBadgeCheckRequest } from "@/lib/badges/checkRequest";
 import { TIER_LABELS, seenSnapshot, tierRank, unseenBadges, type SeenBadges } from "@/lib/badges/display";
@@ -79,6 +79,8 @@ export function NewBadgesWatcher() {
   const validatedDialogOpen = useIsValidatedDialogOpen();
   // Passe après la popup hebdo (y compris pendant son chargement).
   const weeklyPopupOpen = useIsWeeklyPopupOpen();
+  // Puis après le récap « depuis ta dernière visite ».
+  const recapOpen = useIsRecapOpen();
   const openRef = useRef(false);
   const lastCheckRef = useRef(0);
   const inFlightRef = useRef(false);
@@ -155,7 +157,7 @@ export function NewBadgesWatcher() {
     setPending({ ...pending, index: pending.index + 1 });
   }, [pending, finish]);
 
-  if (!pending || validatedDialogOpen || weeklyPopupOpen) return null;
+  if (!pending || validatedDialogOpen || weeklyPopupOpen || recapOpen) return null;
 
   const badge = pending.queue[pending.index];
   const total = pending.queue.length;

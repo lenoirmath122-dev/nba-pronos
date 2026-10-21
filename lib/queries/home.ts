@@ -547,9 +547,11 @@ type MatchScoreRow = {
 async function getFeed(
   supabase: SupabaseServerClient,
   competitionId: string,
-  userId: string
+  userId: string,
+  options: { since?: string; maxItems?: number } = {}
 ): Promise<FeedItem[]> {
-  const since = new Date(Date.now() - FEED_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const since = options.since ?? new Date(Date.now() - FEED_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const maxItems = options.maxItems ?? FEED_MAX_ITEMS;
 
   const [{ data: scoredPredictions }, { data: scoredBets }, { data: resolvedBets }] =
     await Promise.all([
@@ -667,7 +669,28 @@ async function getFeed(
 
   return [...matchItems, ...betScoredItems, ...betResolvedItems]
     .sort((a, b) => Date.parse(b.occurredAt) - Date.parse(a.occurredAt))
-    .slice(0, FEED_MAX_ITEMS);
+    .slice(0, maxItems);
+}
+
+/** Résultats du joueur (pronos scorés, paris corrigés ou neutralisés) tombés
+ *  depuis `since`, pour la popup « depuis ta dernière visite »
+ *  (components/recap/ActivityRecapWatcher.tsx). Même source que « Ça vient de
+ *  tomber », sans la fenêtre de 48 h ni le plafond de 5. */
+export async function getResultsSince(since: string, maxItems: number): Promise<FeedItem[]> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  const { data: competition } = await supabase
+    .from("competitions")
+    .select("id")
+    .eq("status", "ACTIVE")
+    .maybeSingle<{ id: string }>();
+  if (!competition) return [];
+
+  return getFeed(supabase, competition.id, user.id, { since, maxItems });
 }
 
 // ============================================================================
