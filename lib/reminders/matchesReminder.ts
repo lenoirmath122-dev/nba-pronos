@@ -138,7 +138,7 @@ export async function runMatchesReminder(): Promise<{ notified: number; matchesC
     const { deadSubscriptionIds: dead } = await sendPushToSubscriptions(
       subscriptions,
       {
-        title: kind === "MATCH_8H" ? "Match dans quelques heures" : "Match ce soir",
+        title: kind === "MATCH_8H" ? "Match ce soir" : "Match dans quelques heures",
         body: `${home} - ${away} : tu n'as pas encore pronostiqué.`,
         url: "/play",
       },
