@@ -2,11 +2,23 @@
    (app/globals.css), posées via className à côté de ces classes locales
    (.page, .header, .section ne portent plus que la géométrie). */
 .page {
+  /* Lisibilité de l'Accueil : texte minimal 13px et gris tertiaire éclairci
+     (AA sur fond sombre), limités à cet écran — les tokens globaux restent
+     inchangés pour les autres pages. */
+  --font-size-home-sm: 0.8125rem;
+  --color-text-muted: #a3aebf;
+
   display: flex;
   flex-direction: column;
   gap: var(--space-5);
   padding-top: var(--space-4);
-  padding-bottom: var(--space-6);
+  /* Dégage le bas des cartes du bouton « Signaler un souci » (40px, fixé
+     au-dessus de la TabBar, BugReportButton.module.css). */
+  padding-bottom: calc(var(--space-6) + 56px);
+}
+
+:global([data-theme="light"]) .page {
+  --color-text-muted: var(--c-slate-400);
 }
 
 /* Repli affiché même sans compétition active — quand HomeHeader (carte

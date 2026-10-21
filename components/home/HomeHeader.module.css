@@ -38,49 +38,35 @@
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
 
-.statsHero {
+.stats {
   display: flex;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  gap: var(--space-3);
+  gap: var(--space-6);
 }
 
-.rankHero {
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.statLabel {
+  font-size: var(--font-size-home-sm);
+  color: var(--color-text-muted);
+}
+
+.statValue {
   font-variant-numeric: tabular-nums;
   font-family: var(--font-numeric);
-  font-size: var(--font-size-3xl);
+  font-size: var(--font-size-2xl);
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   line-height: var(--line-height-tight);
 }
 
-.rankHero sup {
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-secondary);
-  margin-left: 1px;
-}
-
-.ptsSecondary {
-  font-variant-numeric: tabular-nums;
-  font-family: var(--font-numeric);
-  font-size: var(--font-size-md);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-secondary);
-  padding-bottom: var(--space-1);
-}
-
-.ptsSecondary span {
-  margin-left: var(--space-1);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-regular);
-  color: var(--color-text-muted);
-}
-
 .leaderChip {
-  margin-left: auto;
+  align-self: flex-start;
   padding: var(--space-1) var(--space-3);
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   font-weight: var(--font-weight-medium);
   color: var(--color-text-secondary);
   background: var(--color-surface-inset);
@@ -88,17 +74,11 @@
   border-radius: var(--radius-pill);
 }
 
-.leaderChip b {
-  font-variant-numeric: tabular-nums;
-  font-family: var(--font-numeric);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-primary);
-}
-
 .form {
   font-size: var(--font-size-sm);
-  /* Élan 7 jours : jamais vert/rouge (réservés au résultat), R-COL7. */
-  color: var(--color-trend);
+  /* Texte secondaire : en --color-trend (bleu clair) il se lisait comme un
+     lien. */
+  color: var(--color-text-secondary);
 }
 
 .hint {

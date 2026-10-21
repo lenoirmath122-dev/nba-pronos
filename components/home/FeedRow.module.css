@@ -62,8 +62,26 @@
   color: var(--color-text-primary);
 }
 
+/* Statut d'un pari réglé, en tête de ligne. */
+.statusWin,
+.statusLoss {
+  margin-right: var(--space-2);
+  font-size: var(--font-size-home-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statusWin {
+  color: var(--color-win);
+}
+
+.statusLoss {
+  color: var(--color-loss);
+}
+
 .detail {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   color: var(--color-text-secondary);
 }
 

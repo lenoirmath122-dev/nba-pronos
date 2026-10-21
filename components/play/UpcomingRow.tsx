@@ -1,16 +1,9 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
-import { createPortal } from "react-dom";
-import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
-import { saveMatchPredictionDraft, validateMatchPrediction } from "@/lib/actions/matches";
+import { useEffect, useState } from "react";
 import type { BetSlotIndicator, UpcomingMatchRow as UpcomingMatchRowData } from "@/lib/queries/play";
 import { TeamLogo } from "@/components/ui/TeamLogo";
-import { InlineBetForm, type InlineBetOwned } from "@/components/bets/InlineBetForm";
-import { FocusTrap } from "@/components/ui/FocusTrap";
-import { Backdrop } from "@/components/ui/Backdrop";
-import { Spinner } from "@/components/ui/Spinner";
-import { useToast } from "@/components/ui/Toast";
+import { InlineBetForm } from "@/components/bets/InlineBetForm";
 import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import { formatPronoRecap } from "@/lib/labels/pronos";
 import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
@@ -19,8 +12,10 @@ import { MarginStepper } from "./MarginStepper";
 import { PronoBug } from "./PronoBug";
 import { ParticipationTrigger } from "./ParticipationTrigger";
 import { ViewBetTrigger } from "./ViewBetTrigger";
+import { remainingBets, toInlineBetOwned } from "./betSlot";
+import { useMatchPronoForm, type ValidatedPick } from "./useMatchPronoForm";
+import { PendingLabel, ValidateConfirmDialog } from "./ValidateConfirmDialog";
 import styles from "./UpcomingRow.module.css";
-import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 
 // Ligne de match pas encore verrouillé — ex-components/matches/MatchRow.tsx,
 // puis fusionné le 19/08/2026 avec l'ex-TeamPicker (sélection du vainqueur
@@ -98,61 +93,53 @@ function triggerLabelFor(betSlot: BetSlotIndicator): string {
   return betSlot.mode === "BINARY" ? "Proposer un pari" : `Proposer un pari · ${betSlot.usedSlots}/${betSlot.totalSlots}`;
 }
 
-// Nombre de paris encore possibles sur ce match, dérivé du même
-// BetSlotIndicator : BINARY autorise 1 pari par match (0 ou 1 restant),
-// SERIES_QUOTA un quota partagé par série (totalSlots − usedSlots).
-function remainingBets(betSlot: BetSlotIndicator): number {
-  return betSlot.mode === "BINARY" ? (betSlot.hasBetOnThisMatch ? 0 : 1) : Math.max(0, betSlot.totalSlots - betSlot.usedSlots);
-}
-
 // Compteur affiché sous l'icône pari (14/09/2026), purement présentation.
 function remainingBetsLabel(betSlot: BetSlotIndicator): string {
   const remaining = remainingBets(betSlot);
   return `${remaining} restant${remaining > 1 ? "s" : ""}`;
 }
 
-/** Un pari DRAFT/SUBMITTED reste éditable (InlineBetForm) ; tout autre statut
- *  existant bascule en lecture seule (BetBlock) — même statuts, y compris
- *  annulé/refusé, restent visibles (décision actée avant la fusion). */
-function toInlineBetOwned(bet: UpcomingMatchRowData["bet"]): InlineBetOwned | null {
-  if (!bet || (bet.status !== "DRAFT" && bet.status !== "SUBMITTED")) return null;
-  return { betId: bet.betId, status: bet.status, description: bet.description };
-}
-
 type UpcomingRowProps = { match: UpcomingMatchRowData };
 
 export function UpcomingRow({ match }: UpcomingRowProps) {
-  const { markDirty, clearDirty } = useUnsavedGuard(match.matchId);
-  const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [showValidateConfirm, setShowValidateConfirm] = useState(false);
-  // Bouton à l'origine de l'appel en cours, pour poser le spinner sur LUI
-  // seul (p3-5) — `isPending` ne dit pas lequel a été touché.
-  const [pendingAction, setPendingAction] = useState<"draft" | "validate" | null>(null);
-  const showToast = useToast();
   const showValidated = useValidatedDialog();
   const [flashing, flash] = useSuccessFlash();
 
-  // Vainqueur ET écart : la carte n'ayant plus d'état ouvert/fermé, ces deux
-  // valeurs vivent directement ici, en permanence — un tap sur une équipe la
-  // sélectionne, le stepper "−"/"+" apparaît à côté de son nom.
-  const [winner, setWinner] = useState<string | null>(match.myWinnerTeamId);
-  const [margin, setMargin] = useState<number | null>(match.myMargin);
-
-  const isReadOnly = match.viewStatus === "VALIDATED";
-  const isComplete = winner !== null && margin !== null;
-  const isUnsaved = winner !== match.myWinnerTeamId || margin !== match.myMargin;
-
-  useEffect(() => {
-    const dirty = winner !== match.myWinnerTeamId || margin !== match.myMargin;
-    if (dirty) markDirty();
-    else clearDirty();
-  }, [winner, margin, match.myWinnerTeamId, match.myMargin, markDirty, clearDirty]);
-
-  function handleSelectTeam(teamId: string) {
-    if (isReadOnly) return;
-    setWinner(teamId);
+  // Popup « Prono validé » (04/10/2026) à la place du toast : elle rappelle
+  // le prono qui vient d'être figé, pas seulement le fait qu'il l'a été.
+  function showValidatedProno({ winnerTeamId, margin: pickedMargin }: ValidatedPick) {
+    const isHomeWinner = winnerTeamId === match.homeTeam.id;
+    const winnerTeam = isHomeWinner ? match.homeTeam : match.awayTeam;
+    const loserTeam = isHomeWinner ? match.awayTeam : match.homeTeam;
+    showValidated({
+      title: "Prono validé",
+      items: [formatPronoRecap(winnerTeam.abbreviation, loserTeam.abbreviation, pickedMargin)],
+    });
   }
+
+  // Vainqueur ET écart : la carte n'ayant plus d'état ouvert/fermé, ces deux
+  // valeurs vivent directement dans le formulaire, en permanence — un tap sur
+  // une équipe la sélectionne, le stepper "−"/"+" apparaît à côté de son nom.
+  const {
+    winner,
+    margin,
+    setMargin,
+    selectTeam: handleSelectTeam,
+    isReadOnly,
+    isComplete,
+    isUnsaved,
+    isPending,
+    pendingAction,
+    error,
+    showValidateConfirm,
+    setShowValidateConfirm,
+    saveDraft: handleSaveDraft,
+    validate: handleValidate,
+    validateDefinitively: handleValidateDefinitively,
+  } = useMatchPronoForm(match, (pick) => {
+    showValidatedProno(pick);
+    flash();
+  });
 
   // Repère de verrouillage — ticking en permanence désormais (plus de ligne
   // "repliée" à économiser depuis la suppression du dépliage) : label grossier
@@ -178,80 +165,6 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
   const readOnlyBet = match.bet && !myBet ? match.bet : null;
   const recap = match.viewStatus === "VALIDATED" ? winnerAbbreviation(match) : null;
   const validatedPick = recap !== null && match.myMargin !== null ? { abbreviation: recap, margin: match.myMargin } : null;
-
-  // Popup « Prono validé » (04/10/2026) à la place du toast : elle rappelle
-  // le prono qui vient d'être figé, pas seulement le fait qu'il l'a été.
-  function showValidatedProno() {
-    const isHomeWinner = winner === match.homeTeam.id;
-    const winnerTeam = isHomeWinner ? match.homeTeam : match.awayTeam;
-    const loserTeam = isHomeWinner ? match.awayTeam : match.homeTeam;
-    showValidated({
-      title: "Prono validé",
-      items: margin === null ? [] : [formatPronoRecap(winnerTeam.abbreviation, loserTeam.abbreviation, margin)],
-    });
-  }
-
-  function handleSaveDraft() {
-    setError(null);
-    setPendingAction("draft");
-    startTransition(async () => {
-      const result = await saveMatchPredictionDraft({
-        matchId: match.matchId,
-        predictedWinnerTeamId: winner,
-        predictedMargin: margin,
-      });
-      if (result.success) {
-        clearDirty();
-        setShowValidateConfirm(false);
-        showToast("Brouillon enregistré");
-      } else {
-        setError(result.error);
-      }
-    });
-  }
-
-  function handleValidate() {
-    setError(null);
-    setPendingAction("validate");
-    startTransition(async () => {
-      const result = await validateMatchPrediction(match.matchId);
-      setShowValidateConfirm(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      clearDirty();
-      showValidatedProno();
-      flash();
-      requestBadgeCheck();
-    });
-  }
-
-  function handleValidateDefinitively() {
-    setError(null);
-    setPendingAction("validate");
-    startTransition(async () => {
-      const saveResult = await saveMatchPredictionDraft({
-        matchId: match.matchId,
-        predictedWinnerTeamId: winner,
-        predictedMargin: margin,
-      });
-      if (!saveResult.success) {
-        setError(saveResult.error);
-        return;
-      }
-      const result = await validateMatchPrediction(match.matchId);
-      setShowValidateConfirm(false);
-      if (!result.success) {
-        setError(result.error);
-        return;
-      }
-      clearDirty();
-      showValidatedProno();
-      flash();
-      requestBadgeCheck();
-    });
-  }
 
   return (
     <div
@@ -406,105 +319,18 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
         </div>
       </div>
 
-      {/* Dialogue de VALIDATION — distinct du dialogue C2 de perte de saisie :
-          wording et déclencheur différents, ne pas fusionner. Portalé vers
-          document.body (20/09/2026) : la carte porte .glass-card, dont le
-          backdrop-filter (thème Photo) crée un contexte d'empilement qui
-          piégeait le backdrop position:fixed à l'intérieur de la carte —
-          même raison/fix que ModalDialog. */}
-      {showValidateConfirm &&
-        createPortal(
-          <Backdrop className={styles.backdrop} onClose={() => setShowValidateConfirm(false)}>
-            <FocusTrap
-              className={styles.dialog}
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby={`validate-title-${match.matchId}`}
-              onClose={() => setShowValidateConfirm(false)}
-            >
-              <p id={`validate-title-${match.matchId}`} className={styles.dialogTitle}>
-                Valider ce prono ?
-              </p>
-              {isUnsaved ? (
-                <>
-                  <p className={styles.dialogBody}>
-                    Attention, ton brouillon n&rsquo;est pas encore enregistré. Une fois validé, le prono
-                    n&rsquo;est plus modifiable — enregistre-le d&rsquo;abord si tu veux pouvoir revenir dessus.
-                  </p>
-                  <div className={styles.dialogActions}>
-                    <button
-                      type="button"
-                      className={styles.dialogCancel}
-                      onClick={() => setShowValidateConfirm(false)}
-                      disabled={isPending}
-                    >
-                      Retour
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.dialogSecondary}
-                      onClick={handleSaveDraft}
-                      disabled={isPending}
-                    >
-                      {isPending && pendingAction === "draft" ? (
-                        <PendingLabel label="Enregistrement…" />
-                      ) : (
-                        "Enregistrer le brouillon"
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.dialogConfirm}
-                      onClick={handleValidateDefinitively}
-                      disabled={isPending}
-                    >
-                      {isPending && pendingAction === "validate" ? (
-                        <PendingLabel label="Validation…" />
-                      ) : (
-                        "Valider définitivement"
-                      )}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <p className={styles.dialogBody}>
-                    Une fois validé, il n&rsquo;est plus modifiable — et tu verras (comme les autres joueurs) les
-                    pronos déjà déposés sur ce match.
-                  </p>
-                  <div className={styles.dialogActions}>
-                    <button
-                      type="button"
-                      className={styles.dialogCancel}
-                      onClick={() => setShowValidateConfirm(false)}
-                      disabled={isPending}
-                    >
-                      Annuler
-                    </button>
-                    <button
-                      type="button"
-                      className={styles.dialogConfirm}
-                      onClick={handleValidate}
-                      disabled={isPending}
-                    >
-                      {isPending && pendingAction === "validate" ? <PendingLabel label="Validation…" /> : "Valider"}
-                    </button>
-                  </div>
-                </>
-              )}
-            </FocusTrap>
-          </Backdrop>,
-          document.body
-        )}
+      {showValidateConfirm && (
+        <ValidateConfirmDialog
+          matchId={match.matchId}
+          isUnsaved={isUnsaved}
+          isPending={isPending}
+          pendingAction={pendingAction}
+          onClose={() => setShowValidateConfirm(false)}
+          onSaveDraft={handleSaveDraft}
+          onValidate={handleValidate}
+          onValidateDefinitively={handleValidateDefinitively}
+        />
+      )}
     </div>
-  );
-}
-
-function PendingLabel({ label }: { label: string }) {
-  return (
-    <span className={styles.pendingLabel}>
-      <Spinner size="sm" />
-      {label}
-    </span>
   );
 }

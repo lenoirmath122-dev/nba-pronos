@@ -16,7 +16,7 @@
 }
 
 .title {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   font-weight: var(--font-weight-semibold);
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -24,7 +24,7 @@
 }
 
 .pill {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   color: var(--color-text-muted);
   background: var(--color-surface-inset);
   border-radius: var(--radius-full);
@@ -56,11 +56,20 @@
   color: var(--color-text-secondary);
 }
 
-/* Évolution de rang : teinte de tendance, jamais vert/rouge (R-COL7). */
-.delta {
+/* Évolution de rang en places gagnées/perdues : vert/rouge, c'est bien un
+   résultat (une hausse ou une baisse), pas une simple tendance de forme. */
+.deltaUp,
+.deltaDown {
   margin-left: var(--space-1);
   font-size: var(--font-size-sm);
-  color: var(--color-trend);
+}
+
+.deltaUp {
+  color: var(--color-win);
+}
+
+.deltaDown {
+  color: var(--color-loss);
 }
 
 .detail {
@@ -69,7 +78,7 @@
 }
 
 .muted {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   color: var(--color-text-muted);
 }
 
@@ -80,7 +89,7 @@
 }
 
 .sectionTitle {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -167,7 +176,7 @@
 }
 
 .distinctionTitle {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   color: var(--color-text-muted);
 }
 
@@ -195,14 +204,12 @@
   font-variant-numeric: tabular-nums;
 }
 
-.link,
 .debrief {
   color: var(--color-accent-rest);
   text-decoration: none;
   font-size: var(--font-size-sm);
 }
 
-.link:focus-visible,
 .debrief:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);

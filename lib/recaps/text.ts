@@ -11,10 +11,12 @@ export function pointsLabel(points: number): string {
   return `${points} pt${points > 1 ? "s" : ""}`;
 }
 
-/** « ▲2 », « ▼1 », ou rien si le rang n'a pas bougé / est inconnu. */
+/** « (+2 places) », « (−1 place) », ou rien si le rang n'a pas bougé / est
+ *  inconnu. */
 export function rankDeltaLabel(delta: number | null): string {
   if (delta === null || delta === 0) return "";
-  return delta > 0 ? `▲${delta}` : `▼${-delta}`;
+  const places = Math.abs(delta);
+  return `(${delta > 0 ? "+" : "−"}${places} place${places > 1 ? "s" : ""})`;
 }
 
 export function joinPseudos(players: { pseudo: string }[]): string {

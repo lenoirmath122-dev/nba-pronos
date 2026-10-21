@@ -64,7 +64,7 @@
 }
 
 .subtitle {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   color: var(--color-text-secondary);
 }
 
@@ -84,7 +84,7 @@
 }
 
 .adminTag {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   font-weight: var(--font-weight-semibold);
   color: var(--color-trend);
   border: 1px solid var(--color-trend);

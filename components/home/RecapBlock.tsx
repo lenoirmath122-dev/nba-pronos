@@ -86,7 +86,11 @@ export function RecapBlock({ view }: RecapBlockProps) {
             {me.rank !== null && (
               <span className={styles.rank}>
                 {ordinal(me.rank)}
-                {rankDeltaLabel(me.rankDelta) && <span className={styles.delta}>{rankDeltaLabel(me.rankDelta)}</span>}
+                {rankDeltaLabel(me.rankDelta) && (
+                  <span className={me.rankDelta !== null && me.rankDelta > 0 ? styles.deltaUp : styles.deltaDown}>
+                    {rankDeltaLabel(me.rankDelta)}
+                  </span>
+                )}
               </span>
             )}
           </p>
@@ -154,16 +158,11 @@ export function RecapBlock({ view }: RecapBlockProps) {
             {view.nightMatches.map((match) => (
               <li key={match.id} className={styles.scoreRow}>
                 <span>{match.label}</span>
-                {match.articleUrl && (
-                  <a href={match.articleUrl} target="_blank" rel="noopener noreferrer" className={styles.link}>
-                    Débrief
-                  </a>
-                )}
               </li>
             ))}
           </ul>
           <a href={view.debriefUrl} target="_blank" rel="noopener noreferrer" className={styles.debrief}>
-            Tout le débrief sur TrashTalk <ExternalLink size={13} aria-hidden="true" />
+            Débrief TrashTalk <ExternalLink size={13} aria-hidden="true" />
           </a>
         </div>
       )}

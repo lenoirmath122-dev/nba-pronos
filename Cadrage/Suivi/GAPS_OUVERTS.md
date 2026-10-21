@@ -308,3 +308,15 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - **3 abonnements Apple dupliqués** sur `Demo_Amis` (Safari iOS recrée un
   abonnement à chaque tentative) — sans conséquence fonctionnelle, pas
   dédupliqué.
+- **Refonte de l'onglet Profil en panneau** (PR #212 mergée 21/10/2026) —
+  reste : recette sur téléphone, pastille « badge non vu » (TODO dans
+  `SettingsDrawer.tsx`).
+- **Accueil : carte « Prochain prono »** (22/10/2026, PR « Accueil : carte
+  Prochain prono ») — recette visuelle à faire sur téléphone (375 px) et
+  desktop ; « À faire aussi » (bracket, paris à finaliser) à vérifier avec de
+  vraies données ; « Résultats de la nuit » volontairement non dépliable, sans
+  compteur.
+- **Récap envoyé à 13h (Paris) au lieu de 8-10h UTC** (demandé 21/10/2026) —
+  objectif : être sûr d'avoir tous les résultats avant l'envoi. Aujourd'hui
+  `/api/recaps` tourne à 08:00/09:00/10:00 UTC (`vercel.json`) ; à revoir en
+  tenant compte de l'heure d'été/hiver (13h Paris = 11h ou 12h UTC).

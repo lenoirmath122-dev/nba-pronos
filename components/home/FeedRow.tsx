@@ -27,6 +27,12 @@ const OUTCOME_ICON_CLASS: Record<FeedItem["outcome"], string> = {
   neutral: styles.iconNeutral,
 };
 
+// Un pari réglé n'est plus une question : « Brunson à 40 pts ce soir ? »
+// devient « Brunson à 40 pts », précédé d'un statut Gagné / Raté.
+function settledLabel(label: string): string {
+  return label.replace(/\s*(ce soir\s*)?\?\s*$/i, "");
+}
+
 export function FeedRow({ item }: FeedRowProps) {
   // Seul le pari statué "neutralisé" (bet_resolved) est barré/grisé — jamais
   // un résultat gagné/perdu, qui reste un rendu de jeu normal (T6c §4).
@@ -40,7 +46,18 @@ export function FeedRow({ item }: FeedRowProps) {
         <Icon size={14} />
       </span>
       <div className={styles.text}>
-        <p className={styles.label}>{item.label}</p>
+        <p className={styles.label}>
+          {item.kind === "bet_scored" ? (
+            <>
+              <span className={item.outcome === "win" ? styles.statusWin : styles.statusLoss}>
+                {item.outcome === "win" ? "Gagné" : "Raté"}
+              </span>
+              {settledLabel(item.label)}
+            </>
+          ) : (
+            item.label
+          )}
+        </p>
         {item.detail && <p className={styles.detail}>{item.detail}</p>}
       </div>
       <span className={`${styles.points} ${OUTCOME_STYLE[item.outcome]}`}>
