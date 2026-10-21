@@ -7,7 +7,7 @@ import styles from "./LeagueScopeChips.module.css";
 // components/bracket/LeagueScopeChips.tsx / components/leaderboard/
 // LeagueScopeChips.tsx : pas d'état client, paramètre d'URL `?ligue=`,
 // une copie dédiée par écran (href en dur) plutôt qu'un composant générique
-// partagé, convention déjà établie dans ce projet. `tab=stats` toujours
+// partagé, convention déjà établie dans ce projet. `tab=comparaison` toujours
 // préservé — ce filtre n'existe que dans cet onglet.
 type LeagueScopeChipsProps = {
   myLeagues: MyLeague[];
@@ -18,9 +18,9 @@ export function LeagueScopeChips({ myLeagues, activeLeagueId }: LeagueScopeChips
   if (myLeagues.length === 0) return null;
 
   function href(leagueId: string | null): string {
-    const params = new URLSearchParams({ tab: "stats" });
+    const params = new URLSearchParams({ tab: "comparaison" });
     if (leagueId) params.set("ligue", leagueId);
-    return `/profile?${params.toString()}`;
+    return `/stats?${params.toString()}`;
   }
 
   return (

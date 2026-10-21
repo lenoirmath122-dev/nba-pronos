@@ -36,7 +36,7 @@ import { toClientError } from "@/lib/actions/errors";
 // avec service_role au lieu du client RLS.
 
 function redirectWithError(message: string): never {
-  redirect(`/profile?tab=compte&profileError=${encodeURIComponent(message)}`);
+  redirect(`/profile/danger?profileError=${encodeURIComponent(message)}`);
 }
 
 export async function deleteAccountFormAction(formData: FormData): Promise<void> {

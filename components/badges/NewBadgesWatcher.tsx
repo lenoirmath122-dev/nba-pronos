@@ -37,7 +37,7 @@ const INITIAL_DELAY_MS = 800;
 const AFTER_ACTION_DELAY_MS = 600;
 const RECHECK_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_DOTS = 8;
-const BADGES_HREF = "/profile?tab=stats#stats-badges";
+const BADGES_HREF = "/stats?tab=badges";
 
 function readSeen(userId: string): SeenBadges {
   try {

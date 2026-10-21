@@ -137,7 +137,7 @@ export function WelcomePanel({ pseudo, pronos, initialResults, initialReminders 
         Voir les matchs
       </Link>
       <p className={styles.linkLine}>
-        <Link href="/profile" className={styles.link}>
+        <Link href="/profile/identifiants" className={styles.link}>
           Créer un mot de passe (facultatif)
         </Link>
       </p>

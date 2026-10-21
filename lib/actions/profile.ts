@@ -23,7 +23,7 @@ const BioSchema = optionalBoundedText(MAX_BIO_LENGTH);
 export async function updateThemePreference(formData: FormData): Promise<void> {
   const themeParsed = ThemePreferenceSchema.safeParse(String(formData.get("theme") ?? ""));
   if (!themeParsed.success) {
-    redirect("/profile?profileError=Th%C3%A8me%20invalide.");
+    redirect("/profile/theme?profileError=Th%C3%A8me%20invalide.");
   }
   const theme = themeParsed.data;
 
@@ -39,11 +39,11 @@ export async function updateThemePreference(formData: FormData): Promise<void> {
     .eq("id", user!.id);
 
   if (error) {
-    redirect(`/profile?profileError=${encodeURIComponent(toClientError("updateThemePreference", error))}`);
+    redirect(`/profile/theme?profileError=${encodeURIComponent(toClientError("updateThemePreference", error))}`);
   }
 
   revalidatePath("/", "layout"); // app/layout.tsx (racine) relit theme_preference
-  redirect("/profile");
+  redirect("/profile/theme");
 }
 
 /** Fond d'écran (§.photo-page) : soumission immédiate, un seul champ, même
@@ -51,7 +51,7 @@ export async function updateThemePreference(formData: FormData): Promise<void> {
 export async function updateBackgroundTheme(formData: FormData): Promise<void> {
   const backgroundThemeParsed = BackgroundThemeSchema.safeParse(String(formData.get("backgroundTheme") ?? ""));
   if (!backgroundThemeParsed.success) {
-    redirect("/profile?profileError=Fond%20d%27%C3%A9cran%20invalide.");
+    redirect("/profile/theme?profileError=Fond%20d%27%C3%A9cran%20invalide.");
   }
   const backgroundTheme = backgroundThemeParsed.data;
 
@@ -67,11 +67,11 @@ export async function updateBackgroundTheme(formData: FormData): Promise<void> {
     .eq("id", user!.id);
 
   if (error) {
-    redirect(`/profile?profileError=${encodeURIComponent(toClientError("updateBackgroundTheme", error))}`);
+    redirect(`/profile/theme?profileError=${encodeURIComponent(toClientError("updateBackgroundTheme", error))}`);
   }
 
   revalidatePath("/", "layout"); // app/layout.tsx (racine) relit background_theme
-  redirect("/profile");
+  redirect("/profile/theme");
 }
 
 /** Équipe favorite + bio (§3) : un seul formulaire, bouton « Enregistrer ». */
@@ -80,7 +80,7 @@ export async function updateProfile(formData: FormData): Promise<void> {
   const favoriteTeamId = favoriteTeamIdRaw === "" ? null : favoriteTeamIdRaw;
   const bioParsed = BioSchema.safeParse(String(formData.get("bio") ?? ""));
   if (!bioParsed.success) {
-    redirect(`/profile?profileError=${encodeURIComponent(`${MAX_BIO_LENGTH} caractères maximum pour la bio.`)}`);
+    redirect(`/profile/preferences?profileError=${encodeURIComponent(`${MAX_BIO_LENGTH} caractères maximum pour la bio.`)}`);
   }
   const bio = bioParsed.data;
 
@@ -96,11 +96,11 @@ export async function updateProfile(formData: FormData): Promise<void> {
     .eq("id", user!.id);
 
   if (error) {
-    redirect(`/profile?profileError=${encodeURIComponent(toClientError("updateProfile", error))}`);
+    redirect(`/profile/preferences?profileError=${encodeURIComponent(toClientError("updateProfile", error))}`);
   }
 
-  revalidatePath("/profile");
-  redirect("/profile");
+  revalidatePath("/profile/preferences");
+  redirect("/profile/preferences");
 }
 
 const MAX_PINNED_BADGES = 3;
@@ -111,7 +111,7 @@ const MAX_PINNED_BADGES = 3;
  *  même patron formulaire natif + redirection que le reste de ce fichier. */
 export async function togglePinnedBadgeFormAction(formData: FormData): Promise<void> {
   const badgeId = String(formData.get("badgeId") ?? "");
-  if (!badgeId) redirect("/profile?tab=stats");
+  if (!badgeId) redirect("/stats?tab=badges");
 
   const supabase = await getServerClient();
   const {
@@ -131,7 +131,7 @@ export async function togglePinnedBadgeFormAction(formData: FormData): Promise<v
     next = current.filter((id) => id !== badgeId);
   } else {
     if (current.length >= MAX_PINNED_BADGES) {
-      redirect(`/profile?tab=stats&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
+      redirect(`/stats?tab=badges&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
     }
     // Défense en profondeur -- BadgeCard ne propose déjà le bouton "épingler"
     // que sur un badge débloqué, cf. commentaire ci-dessus.
@@ -139,16 +139,16 @@ export async function togglePinnedBadgeFormAction(formData: FormData): Promise<v
     const target = badges.categories.flatMap((c) => c.badges).find((b) => b.id === badgeId);
     const unlocked = target ? (target.kind === "tiered" ? target.tier !== null : target.unlocked) : false;
     if (!unlocked) {
-      redirect(`/profile?tab=stats&profileError=${encodeURIComponent("Ce badge n'est pas encore débloqué.")}`);
+      redirect(`/stats?tab=badges&profileError=${encodeURIComponent("Ce badge n'est pas encore débloqué.")}`);
     }
     next = [...current, badgeId];
   }
 
   const { error } = await supabase.from("users").update({ pinned_badge_ids: next }).eq("id", user!.id);
   if (error) {
-    redirect(`/profile?tab=stats&profileError=${encodeURIComponent(toClientError("togglePinnedBadgeFormAction", error))}`);
+    redirect(`/stats?tab=badges&profileError=${encodeURIComponent(toClientError("togglePinnedBadgeFormAction", error))}`);
   }
 
-  revalidatePath("/profile");
-  redirect("/profile?tab=stats");
+  revalidatePath("/stats");
+  redirect("/stats?tab=badges");
 }

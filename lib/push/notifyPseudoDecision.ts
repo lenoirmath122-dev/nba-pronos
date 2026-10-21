@@ -26,7 +26,7 @@ export async function notifyPseudoDecision(input: {
       body: input.approved
         ? `Tu t'appelles désormais « ${input.newPseudo} ».`
         : `Ta demande pour « ${input.newPseudo} » a été refusée.`,
-      url: "/profile",
+      url: "/profile/pseudo",
     });
     if (deadSubscriptionIds.length > 0) {
       await supabase.from("push_subscriptions").delete().in("id", deadSubscriptionIds);

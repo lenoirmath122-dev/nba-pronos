@@ -30,7 +30,7 @@ export async function updateNotificationPreference(
 
   if (error) return { success: false, error: toClientError("updateNotificationPreference", error) };
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/notifications");
   return { success: true };
 }
 
@@ -47,7 +47,7 @@ export async function updateRecapPreference(enabled: boolean): Promise<ActionRes
 
   if (error) return { success: false, error: toClientError("updateRecapPreference", error) };
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/notifications");
   return { success: true };
 }
 
@@ -68,7 +68,7 @@ export async function updateEmailPreference(
 
   if (error) return { success: false, error: toClientError("updateEmailPreference", error) };
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/notifications");
   return { success: true };
 }
 
@@ -85,7 +85,7 @@ export async function updatePopupMentionsOptOut(optOut: boolean): Promise<Action
 
   if (error) return { success: false, error: toClientError("updatePopupMentionsOptOut", error) };
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/notifications");
   return { success: true };
 }
 

@@ -16,8 +16,7 @@ import { normalizePseudo, pseudoLengthError, PSEUDO_RPC_MESSAGES } from "@/lib/p
 const MAX_REASON_LENGTH = 300;
 
 function profileRedirect(params: Record<string, string>): never {
-  const qs = new URLSearchParams({ tab: "compte", ...params });
-  redirect(`/profile?${qs.toString()}`);
+  redirect(`/profile/pseudo?${new URLSearchParams(params).toString()}`);
 }
 
 export async function requestPseudoChangeFormAction(formData: FormData): Promise<void> {
@@ -39,7 +38,7 @@ export async function requestPseudoChangeFormAction(formData: FormData): Promise
     profileRedirect({ pseudoError: PSEUDO_RPC_MESSAGES[code] ?? "Demande impossible pour le moment." });
   }
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/pseudo");
   profileRedirect({ pseudoSent: "1" });
 }
 

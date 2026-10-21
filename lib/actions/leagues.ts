@@ -28,13 +28,13 @@ export async function createLeagueFormAction(formData: FormData): Promise<void> 
     .single<{ id: string; name: string; code: string }>();
 
   if (error || !data) {
-    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(error?.message ?? "Échec de la création.")}`);
+    redirect(`/profile/ligues&leagueError=${encodeURIComponent(error?.message ?? "Échec de la création.")}`);
   }
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/ligues");
   revalidatePath("/leaderboard"); // nouvelle ligue disponible dans le sélecteur de portée
   redirect(
-    `/profile?tab=ligues&newLeagueName=${encodeURIComponent(data.name)}&newLeagueCode=${encodeURIComponent(data.code)}`
+    `/profile/ligues&newLeagueName=${encodeURIComponent(data.name)}&newLeagueCode=${encodeURIComponent(data.code)}`
   );
 }
 
@@ -52,12 +52,12 @@ export async function joinLeagueFormAction(formData: FormData): Promise<void> {
     .single<{ id: string; name: string }>();
 
   if (error || !data) {
-    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(error?.message ?? "Code invalide.")}`);
+    redirect(`/profile/ligues&leagueError=${encodeURIComponent(error?.message ?? "Code invalide.")}`);
   }
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/ligues");
   revalidatePath("/leaderboard");
-  redirect(`/profile?tab=ligues&leagueJoined=${encodeURIComponent(data.name)}`);
+  redirect(`/profile/ligues&leagueJoined=${encodeURIComponent(data.name)}`);
 }
 
 export async function leaveLeagueFormAction(formData: FormData): Promise<void> {
@@ -76,10 +76,10 @@ export async function leaveLeagueFormAction(formData: FormData): Promise<void> {
     .eq("user_id", user!.id);
 
   if (error) {
-    redirect(`/profile?tab=ligues&leagueError=${encodeURIComponent(toClientError("leaveLeagueFormAction", error))}`);
+    redirect(`/profile/ligues&leagueError=${encodeURIComponent(toClientError("leaveLeagueFormAction", error))}`);
   }
 
-  revalidatePath("/profile");
+  revalidatePath("/profile/ligues");
   revalidatePath("/leaderboard");
-  redirect("/profile?tab=ligues");
+  redirect("/profile/ligues");
 }
