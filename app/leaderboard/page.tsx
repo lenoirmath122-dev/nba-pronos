@@ -94,7 +94,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
 
     return (
       <ScreenShell authenticated={user !== null}>
-        <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.page} photo-page photo-page-dim`}>
           <div className={`${styles.header} glass-card`}>
             <div className={styles.titleRow}>
               <p className={styles.title}>Classement</p>
@@ -154,7 +154,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
 
   return (
     <ScreenShell authenticated={user !== null}>
-      <div className={`${styles.page} photo-page`}>
+      <div className={`${styles.page} photo-page photo-page-dim`}>
         {data.competitionId === null ? (
           <>
             <div className={`${styles.header} glass-card`}>
