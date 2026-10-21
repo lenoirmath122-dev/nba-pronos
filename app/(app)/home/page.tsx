@@ -8,7 +8,6 @@ import { EmptyState } from "@/components/home/EmptyState";
 import { CollapsibleCard } from "@/components/home/CollapsibleCard";
 import { MarkFeedSeen } from "@/components/home/MarkFeedSeen";
 import { PushPrompt } from "@/components/home/PushPrompt";
-import { WipDisclaimer } from "@/components/ui/WipDisclaimer";
 import styles from "./page.module.css";
 
 // Message d'attente avant la saison : affiché tant qu'aucun pari n'est ouvert.
@@ -40,7 +39,6 @@ export default async function HomePage() {
           <p className={styles.title}>Accueil</p>
         </div>
         <PushPrompt preference={notificationPreference} />
-        <WipDisclaimer />
         <SeasonNotice />
         <EmptyState title="Aucune compétition en cours" subtitle="La prochaine arrive bientôt." />
       </div>
@@ -54,8 +52,6 @@ export default async function HomePage() {
       {/* Activation des notifications (p3-13) — ne rend rien une fois
           l'appareil abonné, voir PushPrompt.tsx. */}
       <PushPrompt preference={notificationPreference} />
-
-      <WipDisclaimer />
 
       {seriesBets.length === 0 && matchBets.length === 0 && <SeasonNotice />}
 

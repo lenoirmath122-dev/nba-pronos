@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { LoginForm } from "@/components/auth/LoginForm";
-import { WipDisclaimer } from "@/components/ui/WipDisclaimer";
 import styles from "@/components/auth/AuthScreen.module.css";
 
 import { TAGLINE, pageMetadata } from "@/lib/seo";
@@ -14,7 +13,6 @@ export default function LoginPage() {
         <Image src="/brand/logo-horizontal.svg" alt="Panier Ballon" width={256} height={48} unoptimized className={styles.brandLogo} />
         <p className={styles.brandTagline}>{TAGLINE}</p>
       </div>
-      <WipDisclaimer />
       <LoginForm />
     </main>
   );
