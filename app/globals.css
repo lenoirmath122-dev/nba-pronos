@@ -181,6 +181,18 @@ body {
   );
 }
 
+/* Variante plus sombre pour les écrans denses en données (classement) :
+   même fond photo, voile renforcé pour la lisibilité. */
+[data-theme="photo"] .photo-page-dim::after {
+  background: linear-gradient(
+    180deg,
+    rgba(11, 14, 20, 0.5),
+    rgba(11, 14, 20, 0.64) 30%,
+    rgba(11, 14, 20, 0.8) 68%,
+    rgba(11, 14, 20, 0.88)
+  );
+}
+
 /* Repli SOLIDE (Sombre par défaut, [data-theme="light"] en clair) : rendu
    exact des cartes avant ce chantier — mêmes tokens que le reste du site. */
 .glass-card {
