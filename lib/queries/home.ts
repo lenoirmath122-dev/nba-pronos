@@ -7,6 +7,7 @@ import { getRecentChatActivity, type ChatActivity } from "@/lib/queries/chat";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDateKey } from "@/lib/dates/paris";
 import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
+import { assignRanks } from "@/lib/scoring/ranking";
 import { getHomeRecap, type HomeRecap } from "@/lib/recaps/home";
 import { readWeeklyRankingFlag } from "@/lib/weekly/flag";
 import type { CompetitionType } from "@/lib/competitions/types";
@@ -242,9 +243,13 @@ async function getHeader(
   ]);
 
   const rows = scores ?? [];
-  const rankIndex = rows.findIndex((row) => row.user_id === userId);
-  const rank = rankIndex === -1 ? null : rankIndex + 1;
-  const totalPoints = rank === null ? 0 : rows[rankIndex].total_points;
+  // Même règle de rang que le classement, les stats et le panneau Profil
+  // (assignRanks : ex-aequo = rang partagé). Avant, `position + 1` donnait un
+  // rang de plus au 2e d'une égalité (« 8e » ici, « 7e » dans le panneau).
+  const ranks = assignRanks(rows);
+  const ownRow = rows.find((row) => row.user_id === userId);
+  const rank = ownRow ? (ranks.get(userId) ?? null) : null;
+  const totalPoints = ownRow?.total_points ?? 0;
   const leaderPoints = rows.length > 0 ? rows[0].total_points : null;
   // null si leader ou non classé (§3).
   const pointsBehindLeader =
@@ -714,16 +719,32 @@ export type NavBadgeData = {
    *  TabBar selon son repère localStorage (lib/nav/chatSeen.ts). Indépendant
    *  de la compétition : le chat vit aussi sans compétition active. */
   chatActivity: ChatActivity[];
+  /** Menu Réglages de la TabBar : l'entrée « Admin » n'apparaît que pour un admin. */
+  isAdmin: boolean;
 };
 
+async function getIsAdmin(): Promise<boolean> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return false;
+  const { data } = await supabase.from("users").select("role").eq("id", user.id).maybeSingle<{ role: string }>();
+  return data?.role === "ADMIN";
+}
+
 export async function getNavBadgeData(): Promise<NavBadgeData> {
-  const [competitionBadges, chatActivity] = await Promise.all([getCompetitionNavBadges(), getRecentChatActivity()]);
-  return { ...competitionBadges, chatActivity };
+  const [competitionBadges, chatActivity, isAdmin] = await Promise.all([
+    getCompetitionNavBadges(),
+    getRecentChatActivity(),
+    getIsAdmin(),
+  ]);
+  return { ...competitionBadges, chatActivity, isAdmin };
 }
 
 const EMPTY_COMPETITION_NAV_BADGES = { playPendingCount: 0, latestFeedAt: null };
 
-async function getCompetitionNavBadges(): Promise<Omit<NavBadgeData, "chatActivity">> {
+async function getCompetitionNavBadges(): Promise<Omit<NavBadgeData, "chatActivity" | "isAdmin">> {
   const supabase = await getServerClient();
 
   const {

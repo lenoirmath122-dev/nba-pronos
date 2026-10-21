@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useSyncExternalStore } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import {
   HomeIcon,
   PlayIcon,
@@ -14,6 +14,13 @@ import { useGuardedNavigation } from "@/lib/hooks/useUnsavedGuard";
 import { HOME_FEED_SEEN_STORAGE_KEY } from "@/lib/nav/feedSeen";
 import { useUnreadChatCounts } from "@/lib/nav/chatSeen";
 import type { NavBadgeData } from "@/lib/queries/home";
+import { SettingsDrawer } from "@/components/profile/SettingsDrawer";
+import {
+  markInternalNavigation,
+  OPEN_PROFILE_MENU_EVENT,
+  PROFILE_MENU_PARAM,
+  PROFILE_MENU_PARAM_VALUE,
+} from "@/lib/nav/profileMenu";
 import styles from "./TabBar.module.css";
 
 // Barre 5 onglets (Accueil · Jouer · Classement · Chat · Profil) — Chat
@@ -47,6 +54,48 @@ type TabBarProps = {
 
 export function TabBar({ navBadges }: TabBarProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  // Mémorise qu'on a navigué dans l'app : le bouton retour des sous-pages ne
+  // fait `router.back()` que dans ce cas (lib/nav/profileMenu.ts).
+  const initialPathname = useRef(pathname);
+  useEffect(() => {
+    if (pathname !== initialPathname.current) markInternalNavigation();
+  }, [pathname]);
+  // Onglet « Profil » : ouvre un panneau par-dessus l'écran en cours au lieu
+  // de naviguer vers /profile. Ouvrir ajoute une entrée d'historique (même
+  // URL) : le bouton retour du navigateur/Android ferme le panneau, et
+  // revenir sur cette entrée depuis une page ouverte via le panneau le rouvre.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const openSettings = useCallback(() => {
+    if (!window.history.state?.profileMenu) {
+      window.history.pushState({ ...window.history.state, profileMenu: true }, "");
+    }
+    setSettingsOpen(true);
+  }, []);
+  // Fermeture voulue (✕, Échap, voile) : on dépile l'entrée d'historique.
+  const closeSettings = useCallback(() => {
+    if (window.history.state?.profileMenu) window.history.back();
+    else setSettingsOpen(false);
+  }, []);
+  // Fermeture suite à un clic sur un lien du panneau : la navigation suit.
+  const dismissSettings = useCallback(() => setSettingsOpen(false), []);
+  useEffect(() => {
+    const onPopState = (event: PopStateEvent) => setSettingsOpen(Boolean(event.state?.profileMenu));
+    window.addEventListener("popstate", onPopState);
+    window.addEventListener(OPEN_PROFILE_MENU_EVENT, openSettings);
+    return () => {
+      window.removeEventListener("popstate", onPopState);
+      window.removeEventListener(OPEN_PROFILE_MENU_EVENT, openSettings);
+    };
+  }, [openSettings]);
+  // /home?menu=profil (repli du bouton retour des sous-pages, ancienne URL
+  // /profile) : ouvre le panneau puis retire le paramètre de l'URL.
+  const wantsMenu = searchParams.get(PROFILE_MENU_PARAM) === PROFILE_MENU_PARAM_VALUE;
+  useEffect(() => {
+    if (!wantsMenu) return;
+    window.history.replaceState(window.history.state, "", pathname);
+    window.dispatchEvent(new Event(OPEN_PROFILE_MENU_EVENT));
+  }, [wantsMenu, pathname]);
   // Intercepte le changement d'onglet pendant une saisie non enregistrée
   // (C2, écrans pronos/paris/bracket personnel) — inerte tant qu'aucun écran
   // ne déclare de saisie sale (lib/hooks/useUnsavedGuard.tsx).
@@ -71,8 +120,27 @@ export function TabBar({ navBadges }: TabBarProps) {
   for (const count of unreadChat?.values() ?? []) chatUnreadCount += count;
 
   return (
+    <>
     <nav className={styles.bar} aria-label="Navigation principale">
       {TABS.map(({ href, label, Icon }) => {
+        if (href === "/profile") {
+          const settingsActive = settingsOpen || pathname === href || pathname.startsWith(`${href}/`) || pathname === "/stats";
+          return (
+            <button
+              key={href}
+              type="button"
+              className={settingsActive ? styles.tabActive : styles.tab}
+              aria-haspopup="dialog"
+              aria-expanded={settingsOpen}
+              onClick={openSettings}
+            >
+              <span className={settingsActive ? styles.iconWrapActive : styles.iconWrap}>
+                <Icon size={24} />
+              </span>
+              <span className={styles.label}>{label}</span>
+            </button>
+          );
+        }
         const active = pathname === href || pathname.startsWith(`${href}/`);
         const count = href === "/play" ? navBadges.playPendingCount : href === "/chat" ? chatUnreadCount : 0;
         const dot = href === "/home" && hasNewFeed;
@@ -109,5 +177,12 @@ export function TabBar({ navBadges }: TabBarProps) {
         );
       })}
     </nav>
+    <SettingsDrawer
+      open={settingsOpen}
+      onClose={closeSettings}
+      onNavigate={dismissSettings}
+      isAdmin={navBadges.isAdmin}
+    />
+    </>
   );
 }

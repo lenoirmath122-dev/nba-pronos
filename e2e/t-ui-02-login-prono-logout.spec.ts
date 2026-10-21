@@ -64,7 +64,8 @@ test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }, 
     page.getByRole("group", { name: `Mon prono : ${match2.homeTeamAbbreviation} +3` }),
   ).toBeVisible();
 
-  await gotoAndWaitReady(page, "/profile");
+  // Déconnexion : dans le panneau Profil (5e onglet de la TabBar).
+  await page.getByRole("button", { name: "Profil" }).click();
   await page.getByRole("button", { name: "Déconnexion" }).click();
   await expect(page).toHaveURL(/\/login$/);
 });
