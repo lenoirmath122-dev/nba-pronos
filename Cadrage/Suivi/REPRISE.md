@@ -3,7 +3,7 @@
   crons Vercel (#191, #194), Memphis (#192), seuils inclusifs (#195). **Lot 1 CLOS** : S1 (#198), S4 (#200, #202),
   S3 + S8 (#203), « exactement N » + égalité exacte (#205), S2 corrélation entre stats d'un joueur (#206).
   Cloud Run redéployé après #206 (21/10), vérifié en réel : exactement 8 reb = 9,1 %, PRA > 40,5 = 33,7 %.
-- **Session 9** : fond du classement (#209 mergée) ; popup « Depuis ta dernière visite » (#210, **à merger**), vue par capture
+- **Session 9** : fond du classement (#209 mergée) ; popup « Depuis ta dernière visite » (#210 mergée), vue par capture
   fictive seulement : à tester avec un vrai résultat (ouvrir l'appli, faire corriger, rouvrir). Repère par appareil.
 - **Prochaine étape : Lot 2** (S6 « joue seulement N quarts » : vérifier d'abord si un quart non joué donne une
   ligne à 0 ou aucune dans `stats_box_scores_by_period` ; L8 alias de noms), voir
