@@ -375,3 +375,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Lot 1 S3 + S8 livrés (#203) : margin (écart final signé, handicap, tranches) et starter (titulaire/remplaçant), 5 vrais appels IA OK ; Cloud Run à redéployer ; prochaine étape = exactement N / égalité / score exact (21/10/2026)
 
 - Lot 1 clos : exactement N + egalite exacte (#205), S2 correlation (#206), Cloud Run redeploye et verifie en reel ; fantasy et score exact ecartes ; prochaine etape = Lot 2 (21/10/2026)
+- Popup récap « depuis ta dernière visite » (PR #210, à merger) + fond du classement plus sombre (#209 mergée) ; vérifiée par capture avec données fictives, pas encore avec de vrais résultats (21/10/2026)
