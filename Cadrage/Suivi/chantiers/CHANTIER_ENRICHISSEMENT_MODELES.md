@@ -206,3 +206,10 @@
      (`bets.calculability_diagnosis`, étape C3 ci-dessus), estimation IA
      « approximative » pré-remplie, résolution assistée. À instruire dans une
      conversation dédiée.
+
+## Lot 1 — notes de reprise (déplacées de REPRISE.md, 21/10/2026)
+- **Écartés par décision** : score exact du match, fantasy (formule jamais choisie, aucun pari réel vu).
+- **Comment on a fait (Lot 1)** : « exactement N » = combo OVER N-0,5 + UNDER N+0,5 (prompt seul) ; égalité = DIFF_LT
+  seuil 0,5 ; combo : bornes sur une même variable = intersection (`_same_variable_intersections`). Sommes : variance
+  `_player_sum_variance` (ρ sur 20 matchs). Non fait : corrélation entre joueurs/équipes, total cumulé des 2 équipes
+  en « exactement », minutes/pourcentages en « exactement ».

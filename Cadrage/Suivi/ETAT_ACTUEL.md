@@ -236,6 +236,12 @@ des messages des autres joueurs des 14 derniers jours
 conversation). Pas de mise à jour en direct de la pastille hors du chat :
 recalculée au rechargement ou après une action serveur, comme les autres.
 
+Popup « Depuis ta dernière visite » (PR #210) : pronos scorés et paris
+corrigés/neutralisés tombés depuis la dernière ouverture, total de points, bouton
+vers Résultats. Repère `activity-recap-seen-at` en localStorage (par appareil),
+lecture serveur `getActivityRecap` (14 jours / 30 lignes max). Ordre des popups :
+Pari validé, hebdo, récap, badges (`WeeklyPopupProvider`).
+
 ### 4.6 Notifications et rappels
 Web Push (VAPID) pour les rappels ciblés (deadlines de pronostic/bracket
 proches), notifications de chat par canal. Rappels automatisés côté serveur
