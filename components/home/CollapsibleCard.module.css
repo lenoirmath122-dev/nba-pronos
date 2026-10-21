@@ -38,10 +38,10 @@
 }
 
 .count {
-  min-width: 20px;
+  min-width: 22px;
   text-align: center;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
+  font-size: var(--font-size-home-sm);
+  font-weight: var(--font-weight-semibold);
   color: var(--color-text-secondary);
   background: var(--color-surface-inset);
   border-radius: var(--radius-pill);
@@ -49,15 +49,36 @@
   line-height: 1.6;
 }
 
-.dot {
-  width: 8px;
-  height: 8px;
-  border-radius: var(--radius-full);
+/* Du nouveau / à faire : orange, remplace l'ancien point d'alerte séparé. */
+.countAccent {
+  composes: count;
+  color: var(--color-text-on-accent);
   background: var(--color-accent);
 }
 
 .chevron {
-  color: var(--color-text-muted);
-  font-size: var(--font-size-xs);
-  line-height: 1;
+  flex-shrink: 0;
+  color: var(--color-text-secondary);
+  transition: transform 0.15s ease;
+}
+
+.chevronOpen {
+  composes: chevron;
+  transform: rotate(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chevron {
+    transition: none;
+  }
+}
+
+/* Variante non repliable : même gabarit que .header, sans interaction. */
+.headerStatic {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  min-height: var(--tap-target-min);
 }

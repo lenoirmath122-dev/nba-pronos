@@ -13,6 +13,6 @@
 }
 
 .subtitle {
-  font-size: var(--font-size-xs);
+  font-size: var(--font-size-home-sm);
   color: var(--color-text-secondary);
 }

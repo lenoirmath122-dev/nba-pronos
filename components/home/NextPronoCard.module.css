@@ -1,0 +1,182 @@
+/* Surface unique : fond/bordure viennent de .glass-card (posé à côté en
+   className), géométrie identique à .section de page.module.css. */
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin: 0 var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--radius-md);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.kicker {
+  font-size: var(--font-size-home-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-secondary);
+}
+
+.progress {
+  font-size: var(--font-size-home-sm);
+  font-weight: var(--font-weight-semibold);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+
+.question {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.when {
+  margin: calc(var(--space-1) * -1) 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.teams {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-2);
+}
+
+.teamButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 56px;
+  min-width: 0;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-raised);
+  /* ≈ rgba(255,255,255,0.18) en sombre, suit le thème clair. */
+  border: 1px solid color-mix(in srgb, var(--color-text-primary) 18%, transparent);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: 0.02em;
+  color: var(--color-text-primary);
+  cursor: pointer;
+}
+
+.teamButton:hover,
+.teamButton:focus-visible {
+  border-color: var(--color-accent-line);
+}
+
+.teamButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.teamButtonSelected {
+  border-color: var(--color-accent-line);
+  background: var(--color-accent-soft);
+}
+
+.stepperRow {
+  display: flex;
+  justify-content: center;
+}
+
+.error {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-loss);
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  gap: var(--space-2);
+}
+
+.secondary,
+.primary {
+  flex: 1;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.secondary {
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-medium);
+}
+
+.primary {
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.secondary:disabled,
+.primary:disabled {
+  opacity: var(--opacity-disabled-ctrl);
+  cursor: default;
+}
+
+.secondary:focus-visible,
+.primary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Lien texte, aligné à gauche en bas de la carte. */
+.link {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target-min);
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  text-decoration: none;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.link:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+.feedback,
+.done {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-3) 0;
+  text-align: center;
+}
+
+.feedbackTitle,
+.done {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-win);
+}
+
+.feedbackRecap {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
