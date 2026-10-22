@@ -6,10 +6,11 @@ import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
 import styles from "./RecalculateButton.module.css";
 
-// SEULE feuille "use client" du tableau de bord (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1
-// §4) — le reste de l'écran reste composant serveur. Dialogue de
-// confirmation même patron que components/bracket-fill/BracketFillBoard.tsx
-// (déjà le patron cité par la spec).
+// Bouton « Recalculer » de la page Compétitions (carte de la compétition
+// active ; déplacé depuis l'accueil admin lors du rangement par rubriques).
+// Dialogue de confirmation même patron que
+// components/bracket-fill/BracketFillBoard.tsx (cité par la
+// SPEC_ECRAN_ADMIN_DASHBOARD_V0_1 §4).
 
 type RecalculateButtonProps = {
   disabled: boolean;

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getActiveCompetitionSummary } from "@/lib/queries/admin-competitions";
+import { RecalculateButton } from "@/components/admin/RecalculateButton";
 import { CloseCompetitionButton } from "@/components/admin/CloseCompetitionButton";
 import { FreezeWeekButton } from "@/components/admin/FreezeWeekButton";
 import { SendWeeklyRecapButton } from "@/components/admin/SendWeeklyRecapButton";
@@ -17,9 +18,8 @@ export const maxDuration = 300;
 // Gestion des compétitions (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1, VALIDÉ) —
 // lots 1/3 (création) et 3/3 (clôture/archivage, §9). Lien vers
 // /admin/competitions/results (lot 2/3, SPEC_ECRAN_ADMIN_RESULTATS_V0_1).
-// Composant serveur ; CloseCompetitionButton est la SEULE feuille
-// "use client" de l'écran (dialogue de confirmation, même patron que
-// RecalculateButton sur le tableau de bord admin).
+// Composant serveur ; les boutons à dialogue de confirmation
+// (CloseCompetitionButton, RecalculateButton) sont les feuilles "use client".
 
 const TYPE_LABEL: Record<CompetitionType, string> = { PLAYOFFS: "Playoffs", NBA_CUP: "NBA Cup", DAILY_MATCH: "Match du jour" };
 
@@ -36,6 +36,7 @@ export default async function AdminCompetitionsPage() {
           <Link href="/admin/competitions/new" className={styles.createLink}>
             Créer une nouvelle compétition
           </Link>
+          <RecalculateButton disabled />
         </>
       ) : (
         <div className={styles.card}>
@@ -117,6 +118,7 @@ export default async function AdminCompetitionsPage() {
           <Link href="/admin/competitions/results" className={styles.createLink}>
             Saisir les résultats
           </Link>
+          <RecalculateButton disabled={false} />
           <CloseCompetitionButton competitionId={competition.id} />
         </div>
       )}

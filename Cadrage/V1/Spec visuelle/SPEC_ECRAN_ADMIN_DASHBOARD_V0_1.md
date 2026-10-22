@@ -1,5 +1,19 @@
 # NBA Pronos — SPEC ÉCRAN TABLEAU DE BORD ADMIN V0.1
 
+> **Rangement par rubriques (22/10/2026) — remplace la mise en page ci-dessous.**
+> L'accueil `/admin` n'empile plus compteurs, ligues et liens : il affiche
+> 4 cartes « tiroir » (débord à droite, chevron) vers 4 rubriques —
+> `/admin/todo` (À traiter : files non vides + 2 alertes, sinon « Rien à
+> traiter, tout est à jour. »), `/admin/game` (compétitions, nouvelle,
+> résultats, popup, qui manque), `/admin/community` (joueurs + membres par
+> ligue), `/admin/system` (logs, sync, sécurité). Registre unique :
+> `lib/admin/navigation.ts` (rubriques, parents, libellés ; sert aussi au
+> lien retour `AdminBackLink` de l'en-tête). `getAdminDashboardData()` gagne
+> `openBugReportsCount` / `openChatReportsCount`. Le bouton Recalculer est
+> déplacé dans la carte de la compétition active de `/admin/competitions`
+> (désactivé, mais visible, sans compétition). Aucune route d'écran
+> renommée, aucune action serveur ni migration touchée.
+
 > **Statut : VALIDÉ (27/07/2026).** Premier écran du lot « Admin »
 > (`GAPS_OUVERTS.md` : « prochaine étape à confirmer avec l'utilisateur »).
 > Contrairement à Bracket personnel, **les décisions fonctionnelles ET

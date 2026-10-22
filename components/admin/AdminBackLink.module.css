@@ -1,0 +1,31 @@
+.backLink {
+  /* Téléphone : sa propre ligne au-dessus du titre ; ordinateur : à gauche. */
+  flex: 0 0 100%;
+  min-height: var(--tap-target-min);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 0;
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+@media (min-width: 48rem) {
+  .backLink {
+    flex: 0 0 auto;
+  }
+}
+
+.backLink:hover,
+.backLink:focus-visible {
+  color: var(--color-text-primary);
+}
+
+.backLink:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

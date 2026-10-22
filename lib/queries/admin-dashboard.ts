@@ -24,6 +24,9 @@ export type AdminDashboardData = {
   weeklyPopupDoubtful: number;
   /** Demandes de changement de pseudo en attente (indépendant de la compétition). */
   pendingPseudoCount: number;
+  /** Signalements de bug et de message de chat encore ouverts (indépendants de la compétition). */
+  openBugReportsCount: number;
+  openChatReportsCount: number;
   totalPlayers: number;
   leagues: LeagueOverview[];
 };
@@ -49,16 +52,36 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
   // utile (elle affiche quand même les entrées Gestion des joueurs / Logs).
   // Total d'inscrits/ligues indépendants de la compétition -- calculés dans
   // tous les cas, jamais dans le repli "aucune compétition active".
-  const [{ data: competition }, totalPlayers, leagues, { count: pseudoCount }] = await Promise.all([
+  const [
+    { data: competition },
+    totalPlayers,
+    leagues,
+    { count: pseudoCount },
+    { count: bugReportsCount },
+    { count: chatReportsCount },
+  ] = await Promise.all([
     supabase.from("competitions").select("id, name").eq("status", "ACTIVE").maybeSingle<CompetitionRow>(),
     getTotalPlayers(supabase),
     getLeaguesOverview(supabase),
     supabase.from("pseudo_change_requests").select("id", { count: "exact", head: true }).eq("status", "PENDING"),
+    supabase.from("bug_reports").select("id", { count: "exact", head: true }).eq("status", "OPEN"),
+    supabase.from("chat_message_reports").select("id", { count: "exact", head: true }).eq("status", "OPEN"),
   ]);
   const pendingPseudoCount = pseudoCount ?? 0;
+  const openBugReportsCount = bugReportsCount ?? 0;
+  const openChatReportsCount = chatReportsCount ?? 0;
 
   if (!competition) {
-    return { competitionId: null, competitionName: null, ...EMPTY_COUNTS, pendingPseudoCount, totalPlayers, leagues };
+    return {
+      competitionId: null,
+      competitionName: null,
+      ...EMPTY_COUNTS,
+      pendingPseudoCount,
+      openBugReportsCount,
+      openChatReportsCount,
+      totalPlayers,
+      leagues,
+    };
   }
 
   const [
@@ -83,6 +106,8 @@ export async function getAdminDashboardData(): Promise<AdminDashboardData> {
     weeklyPopupPendingCount: popupCounts.pending,
     weeklyPopupDoubtful: popupCounts.doubtful,
     pendingPseudoCount,
+    openBugReportsCount,
+    openChatReportsCount,
     totalPlayers,
     leagues,
   };
@@ -178,4 +203,17 @@ async function getPendingRequestsCount(supabase: SupabaseServerClient): Promise<
     .select("id", { count: "exact", head: true })
     .eq("status", "PENDING");
   return count ?? 0;
+}
+
+/** Total en attente affiché sur la carte « À traiter » de l'accueil (toutes les files de la rubrique). */
+export function getPendingTotal(data: AdminDashboardData): number {
+  return (
+    data.pendingValidationCount +
+    data.pendingResolutionCount +
+    data.pendingRequestsCount +
+    data.pendingPseudoCount +
+    data.weeklyPopupPendingCount +
+    data.openBugReportsCount +
+    data.openChatReportsCount
+  );
 }

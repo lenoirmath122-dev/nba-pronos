@@ -1,99 +1,55 @@
 import Link from "next/link";
-import { getAdminDashboardData } from "@/lib/queries/admin-dashboard";
-import { RecalculateButton } from "@/components/admin/RecalculateButton";
+import { getAdminDashboardData, getPendingTotal } from "@/lib/queries/admin-dashboard";
+import { ADMIN_SECTIONS } from "@/lib/admin/navigation";
 import styles from "./page.module.css";
 
-// Tableau de bord admin (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1, VALIDÉ) : premier
-// écran du lot Admin. Composant SERVEUR — seule la RecalculateButton est
-// "use client" (§4, dialogue de confirmation). Le lot Admin ET le chantier
-// T5 sont entièrement clos ; « Compétitions » (SPEC_ECRAN_ADMIN_
-// COMPETITIONS_V0_1, chantier séparé et postérieur) ajouté en lien simple.
+// Tableau de bord admin (SPEC_ECRAN_ADMIN_DASHBOARD_V0_1) : quatre rubriques
+// en cartes « tiroir » (lib/admin/navigation.ts), le détail vit dans chaque
+// page de rubrique. Composant serveur, sans feuille « use client ».
 
 export default async function AdminDashboardPage() {
   const data = await getAdminDashboardData();
 
-  const queues = [
+  const pendingTotal = getPendingTotal(data);
+  const alertActive = data.unidentifiedPlayerCount > 0 || data.weeklyPopupDoubtful > 0;
+
+  const drawers = [
     {
-      key: "validation",
-      count: data.pendingValidationCount,
-      label: (n: number) => (n > 1 ? "paris à valider" : "pari à valider"),
-      href: "/admin/validation",
+      section: ADMIN_SECTIONS.todo,
+      summary:
+        pendingTotal > 0 ? (
+          <span className={alertActive ? styles.badgeAlert : styles.badge}>{pendingTotal}</span>
+        ) : (
+          <span className={styles.badgeEmpty}>Rien à traiter</span>
+        ),
     },
     {
-      key: "resolution",
-      count: data.pendingResolutionCount,
-      label: (n: number) => (n > 1 ? "paris à résoudre" : "pari à résoudre"),
-      href: "/admin/resolution",
+      section: ADMIN_SECTIONS.game,
+      summary: data.competitionName ?? "Aucune compétition en cours",
     },
     {
-      key: "requests",
-      count: data.pendingRequestsCount,
-      label: (n: number) => (n > 1 ? "requêtes en attente" : "requête en attente"),
-      href: "/admin/requests",
+      section: ADMIN_SECTIONS.community,
+      summary: `${data.totalPlayers} ${data.totalPlayers > 1 ? "inscrits" : "inscrit"} · ${data.leagues.length} ${
+        data.leagues.length > 1 ? "ligues" : "ligue"
+      }`,
     },
-    {
-      key: "pseudo",
-      count: data.pendingPseudoCount,
-      label: (n: number) => (n > 1 ? "changements de pseudo à valider" : "changement de pseudo à valider"),
-      href: "/admin/pseudo",
-    },
-    {
-      key: "popup",
-      count: data.weeklyPopupPendingCount,
-      label: (n: number) => (n > 1 ? "popups hebdo à relire" : "popup hebdo à relire"),
-      href: "/admin/popup",
-    },
-  ] as const;
+    { section: ADMIN_SECTIONS.system, summary: "Logs, synchro, sécurité" },
+  ];
 
   return (
     <div className={styles.page}>
       {!data.competitionId && (
-        <p className={styles.notice}>
-          Aucune compétition en cours. La prochaine arrive bientôt.
-        </p>
+        <p className={styles.notice}>Aucune compétition en cours. La prochaine arrive bientôt.</p>
       )}
 
-      {/* Vue d'ensemble (06/09/2026, demandé par l'utilisateur) : total
-          d'inscrits + membres par ligue -- RLS admin dédiée, voir
-          lib/queries/admin-dashboard.ts. */}
-      <div className={styles.overview}>
-        <h2 className={styles.sectionTitle}>Vue d&apos;ensemble</h2>
-        <ul className={styles.cardList}>
-          <li>
-            <Link href="/admin/players" className={styles.cardLink}>
-              <span className={styles.count}>{data.totalPlayers}</span>
-              <span className={styles.cardLabel}>
-                {data.totalPlayers > 1 ? "joueurs inscrits" : "joueur inscrit"}
+      <ul className={styles.drawerList}>
+        {drawers.map(({ section, summary }) => (
+          <li key={section.slug}>
+            <Link href={section.href} className={styles.drawer}>
+              <span className={styles.drawerText}>
+                <span className={styles.drawerTitle}>{section.label}</span>
+                <span className={styles.drawerSummary}>{summary}</span>
               </span>
-              <span className={styles.chevron} aria-hidden="true">
-                ›
-              </span>
-            </Link>
-          </li>
-        </ul>
-
-        {data.leagues.length > 0 ? (
-          <ul className={styles.leagueList}>
-            {data.leagues.map((league) => (
-              <li key={league.id} className={styles.leagueRow}>
-                <span>{league.name}</span>
-                <span className={styles.leagueMemberCount}>
-                  {league.memberCount > 1 ? `${league.memberCount} membres` : `${league.memberCount} membre`}
-                </span>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className={styles.notice}>Aucune ligue créée pour l&apos;instant.</p>
-        )}
-      </div>
-
-      <ul className={styles.cardList}>
-        {queues.map((queue) => (
-          <li key={queue.key}>
-            <Link href={queue.href} className={styles.cardLink}>
-              <span className={styles.count}>{queue.count}</span>
-              <span className={styles.cardLabel}>{queue.label(queue.count)}</span>
               <span className={styles.chevron} aria-hidden="true">
                 ›
               </span>
@@ -101,109 +57,6 @@ export default async function AdminDashboardPage() {
           </li>
         ))}
       </ul>
-
-      {/* p3-14 : paris calculables dont le joueur n'a jamais été identifié --
-          parmi les paris à résoudre, mis en avant parce que la résolution
-          automatique peut ne jamais les trancher. */}
-      {data.unidentifiedPlayerCount > 0 && (
-        <Link href="/admin/resolution" className={styles.alert}>
-          {data.unidentifiedPlayerCount > 1
-            ? `${data.unidentifiedPlayerCount} paris à résoudre visent un joueur non identifié`
-            : "1 pari à résoudre vise un joueur non identifié"}
-          <span className={styles.chevron} aria-hidden="true">
-            ›
-          </span>
-        </Link>
-      )}
-
-      {/* Popup hebdo (lot 5) : une génération bloquée n'attend pas seule. */}
-      {data.weeklyPopupDoubtful > 0 && (
-        <Link href="/admin/popup" className={styles.alert}>
-          {data.weeklyPopupDoubtful > 1
-            ? `${data.weeklyPopupDoubtful} popups hebdo bloquées : à régénérer ou à rédiger`
-            : "1 popup hebdo bloquée : à régénérer ou à rédiger"}
-          <span className={styles.chevron} aria-hidden="true">
-            ›
-          </span>
-        </Link>
-      )}
-
-      <ul className={styles.linkList}>
-        <li>
-          <Link href="/admin/competitions" className={styles.linkEntryActive}>
-            Compétitions
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/popup" className={styles.linkEntryActive}>
-            Popup hebdo
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/players" className={styles.linkEntryActive}>
-            Gestion des joueurs
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/logs" className={styles.linkEntryActive}>
-            Historique des logs
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/sync-logs" className={styles.linkEntryActive}>
-            Logs de synchronisation
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/missing" className={styles.linkEntryActive}>
-            Qui manque à l&apos;appel
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/bug-reports" className={styles.linkEntryActive}>
-            Signalements
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/chat-reports" className={styles.linkEntryActive}>
-            Signalements de chat
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-        <li>
-          <Link href="/admin/security" className={styles.linkEntryActive}>
-            Sécurité du compte
-            <span className={styles.chevron} aria-hidden="true">
-              ›
-            </span>
-          </Link>
-        </li>
-      </ul>
-
-      <RecalculateButton disabled={!data.competitionId} />
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { getServerClient } from "@/lib/supabase/server";
+import { AdminBackLink } from "@/components/admin/AdminBackLink";
 import styles from "./layout.module.css";
 
 // Hub admin (T6a §3.1/§4.2) : garde de RÔLE, distincte de la garde de
@@ -76,6 +77,7 @@ export default async function AdminLayout({
   return (
     <div className={styles.shell}>
       <header className={styles.header}>
+        <AdminBackLink />
         <span className={styles.tag}>admin</span>
         <h1 className={styles.title}>Administration</h1>
         {/* Remonté par l'utilisateur en testant (30/07/2026) : aucun moyen de
