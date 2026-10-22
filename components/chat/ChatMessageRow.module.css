@@ -59,35 +59,86 @@
   color: var(--color-text-primary);
 }
 
-.actions {
-  display: flex;
+.menu {
+  position: relative;
+  margin-left: auto;
+  align-self: center;
+}
+
+.menuTrigger {
+  display: inline-flex;
   align-items: center;
-  gap: var(--space-3);
-  margin-top: var(--space-1);
+  justify-content: center;
+  min-width: 1.75rem;
+  min-height: 1.75rem;
+  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2)) calc(-1 * var(--space-1)) 0;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-base);
+  line-height: 1;
+  cursor: pointer;
+}
+
+.menuTrigger:hover,
+.menuTrigger[aria-expanded="true"] {
+  color: var(--color-text-primary);
+}
+
+.menuTrigger:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.menuList {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  min-width: 7.5rem;
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-raised);
 }
 
 .deleteForm {
   margin: 0;
 }
 
-.deleteButton {
-  padding: 0;
+.menuItem {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
   border: none;
+  border-radius: var(--radius-md);
   background: none;
-  color: var(--color-loss);
-  font-size: 0.6875rem;
-  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  text-align: left;
   cursor: pointer;
 }
 
-.deleteButton:disabled {
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--color-surface-inset);
+}
+
+.menuItem:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.menuItem:disabled {
   opacity: var(--opacity-disabled-ctrl);
   cursor: default;
 }
 
-.deleteButton:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+.menuItemDanger {
+  color: var(--color-loss);
 }
 
 .error {
