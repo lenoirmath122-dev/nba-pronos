@@ -7,6 +7,7 @@ import { toClientError } from "@/lib/actions/errors";
 import { z } from "zod";
 import { boundedText } from "@/lib/actions/validation";
 import { checkRateLimit } from "@/lib/actions/rateLimit";
+import { isChatReactionEmoji } from "@/lib/chat/reactions";
 
 const ChatScopeSchema = z.enum(["GLOBAL", "LEAGUE"]);
 
@@ -166,5 +167,33 @@ export async function setChatChannelNotifications(
   }
 
   revalidatePath("/chat");
+  return { success: true };
+}
+
+/** Pose, remplace ou retire (`emoji` = null) la réaction du joueur sur un
+ *  message (migration 20261022100000_chat_reactions.sql : une seule réaction
+ *  par joueur et par message). Appelée programmatiquement depuis
+ *  ChatSubscriber (mise à jour optimiste côté client) ; RLS reste l'autorité
+ *  sur la visibilité du message. Pas de revalidatePath : la liste est pilotée
+ *  par l'état local + Realtime. */
+export async function setChatReaction(messageId: string, emoji: string | null): Promise<ActionResult> {
+  if (!messageId) return { success: false, error: "Message introuvable." };
+  if (emoji !== null && !isChatReactionEmoji(emoji)) return { success: false, error: "Réaction inconnue." };
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Session expirée." };
+
+  if (emoji === null) {
+    const { error } = await supabase.from("chat_message_reactions").delete().eq("message_id", messageId).eq("user_id", user.id);
+    if (error) return { success: false, error: toClientError("setChatReaction/remove", error) };
+  } else {
+    const { error } = await supabase
+      .from("chat_message_reactions")
+      .upsert({ message_id: messageId, user_id: user.id, emoji }, { onConflict: "message_id,user_id" });
+    if (error) return { success: false, error: toClientError("setChatReaction/set", error) };
+  }
   return { success: true };
 }
