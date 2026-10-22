@@ -8,8 +8,15 @@ name: CI
 # chargement d'un module) — voir BILAN_GLOBAL_01_09_2026.md.
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch: {}
+
+# Une branche avec PR n'est testée qu'une fois (pull_request) au lieu de deux
+# (push + pull_request), et un nouveau push annule l'exécution en cours.
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   checks:
