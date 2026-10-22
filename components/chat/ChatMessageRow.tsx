@@ -54,7 +54,19 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
   const menuRef = useRef<HTMLDivElement>(null);
   const pickerRef = useRef<HTMLDivElement>(null);
   const pressRef = useRef<{ timer: number; x: number; y: number } | null>(null);
-  const hasActions = canDelete || !isOwn;
+  const [copied, setCopied] = useState(false);
+
+  // Le texte n'est pas sélectionnable (l'appui long ouvre les réactions) :
+  // "Copier" du menu "⋯" prend le relais.
+  async function copyBody() {
+    try {
+      await navigator.clipboard.writeText(message.body);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Presse-papiers refusé (contexte non sécurisé, permission) : rien à faire.
+    }
+  }
 
   useEffect(() => {
     if (!menuOpen && !pickerOpen) return;
@@ -139,53 +151,54 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
           </span>
           <span className={styles.time}>{formatTime(message.createdAt)}</span>
           <div className={styles.tools} ref={menuRef}>
-            {hasActions && (
-              <div className={styles.menu}>
-                <button
-                  type="button"
-                  className={styles.menuTrigger}
-                  onClick={() => {
-                    setPickerOpen(false);
-                    setMenuOpen((open) => !open);
-                  }}
-                  aria-label="Actions sur ce message"
-                  aria-haspopup="menu"
-                  aria-expanded={menuOpen}
-                >
-                  ⋯
-                </button>
-                {menuOpen && (
-                  <div className={styles.menuList} role="menu">
-                    {!isOwn && (
+            <div className={styles.menu}>
+              <button
+                type="button"
+                className={styles.menuTrigger}
+                onClick={() => {
+                  setPickerOpen(false);
+                  setMenuOpen((open) => !open);
+                }}
+                aria-label="Actions sur ce message"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                ⋯
+              </button>
+              {menuOpen && (
+                <div className={styles.menuList} role="menu">
+                  <button type="button" role="menuitem" className={styles.menuItem} onClick={copyBody}>
+                    {copied ? "Copié ✓" : "Copier"}
+                  </button>
+                  {!isOwn && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.menuItem}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setReportOpen(true);
+                      }}
+                    >
+                      Signaler
+                    </button>
+                  )}
+                  {canDelete && (
+                    <form action={formAction} className={styles.deleteForm}>
+                      <input type="hidden" name="messageId" value={message.id} />
                       <button
-                        type="button"
+                        type="submit"
                         role="menuitem"
-                        className={styles.menuItem}
-                        onClick={() => {
-                          setMenuOpen(false);
-                          setReportOpen(true);
-                        }}
+                        disabled={pending}
+                        className={`${styles.menuItem} ${styles.menuItemDanger}`}
                       >
-                        Signaler
+                        Supprimer
                       </button>
-                    )}
-                    {canDelete && (
-                      <form action={formAction} className={styles.deleteForm}>
-                        <input type="hidden" name="messageId" value={message.id} />
-                        <button
-                          type="submit"
-                          role="menuitem"
-                          disabled={pending}
-                          className={`${styles.menuItem} ${styles.menuItemDanger}`}
-                        >
-                          Supprimer
-                        </button>
-                      </form>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         {pickerOpen && (
