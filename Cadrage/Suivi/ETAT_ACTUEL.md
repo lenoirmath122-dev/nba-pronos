@@ -320,8 +320,17 @@ historique des logs, file des signalements de bug (`/admin/bug-reports`),
 file des signalements de messages de chat (`/admin/chat-reports`). Les
 paris à résoudre qui visent un joueur jamais identifié
 (`structured_player_id` vide) portent un badge « Joueur non identifié » dans
-la file de résolution, et le tableau de bord affiche une alerte quand il y en
-a.
+la file de résolution, et la rubrique « À traiter » affiche une alerte quand
+il y en a.
+
+Rangement par rubriques (22/10/2026) : l'accueil `/admin` est 4 cartes
+« tiroir » vers `/admin/todo` (À traiter), `/admin/game` (Jeu),
+`/admin/community` (Joueurs), `/admin/system` (Système). Registre unique
+`lib/admin/navigation.ts` (rubriques, parents, libellés), lu par les pages de
+rubrique et par `AdminBackLink` (« ← parent » dans l'en-tête, masqué sur
+`/admin`). `app/(admin)/admin/template.tsx` anime chaque navigation
+(`--motion-slide-duration`). Le bouton Recalculer vit sur
+`/admin/competitions`.
 
 ### 4.8 RGPD — self-service compte
 Suppression de compte en self-service (`lib/actions/account.ts`,

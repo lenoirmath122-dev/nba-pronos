@@ -378,3 +378,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Popup récap « depuis ta dernière visite » (PR #210 mergée) + fond du classement plus sombre (#209 mergée) ; vérifiée par capture avec données fictives, pas encore avec de vrais résultats (21/10/2026)
 - Accueil : carte « Prochain prono » (formulaire /play intégré, surface unique, « À faire aussi », Résultats de la nuit sans compteur), PR ouverte ; recette visuelle à faire (22/10/2026)
 - Carte /play + Résultats : zone « Mon pari » (saisie dans la carte), bande Mon prono, popup Les autres (paris en italique), migration bet_is_public poussée (22/10/2026) — PR #216
+- Admin rangé en 4 rubriques (À traiter, Jeu, Joueurs, Système) : cartes tiroir, registre lib/admin/navigation.ts, lien retour, animation, Recalculer déplacé ; recette par captures 390/1280 px (22/10/2026)

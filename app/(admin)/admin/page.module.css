@@ -1,8 +1,13 @@
+/* Cartes « tiroir » : chaque carte déborde sur le bord droit de la page
+   (marge négative égale au retrait --drawer-bleed), coins droits carrés,
+   comme un panneau qu'on tirerait. Sur ordinateur : colonne centrée, le
+   débord dépasse la colonne. */
 .page {
+  --drawer-bleed: var(--space-4);
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  padding: var(--space-4);
+  padding: var(--space-4) var(--drawer-bleed);
 }
 
 .notice {
@@ -15,8 +20,7 @@
   text-align: center;
 }
 
-.cardList,
-.linkList {
+.drawerList {
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
@@ -25,68 +29,48 @@
   list-style: none;
 }
 
-.card {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  min-height: var(--tap-target-min);
-  padding: var(--space-3) var(--space-4);
-  border: 1px solid var(--color-border-subtle);
-  border-left: 2px solid var(--color-trend);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-}
-
-.count {
-  font-variant-numeric: tabular-nums;
-  font-size: var(--font-size-lg);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-  min-width: 2ch;
-  text-align: right;
-}
-
-.cardLabel {
-  flex: 1;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-}
-
-.cardLink {
-  composes: card;
-  text-decoration: none;
-}
-
-.cardLink:hover,
-.cardLink:focus-visible {
-  background: var(--color-surface-inset);
-}
-
-.cardLink:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-/* p3-14 : alerte « joueur non identifié », visible seulement quand > 0. */
-.alert {
+.drawer {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--space-3);
   min-height: var(--tap-target-min);
-  padding: var(--space-2) var(--space-3);
-  border: 1px solid var(--color-accent-line);
-  border-radius: var(--radius-md);
-  background: var(--color-accent-soft);
+  margin-right: calc(-1 * var(--drawer-bleed));
+  padding: var(--space-4) var(--drawer-bleed) var(--space-4) var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-right: 0;
+  border-left: 2px solid var(--color-trend);
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+  background: var(--color-surface-raised);
   color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
   text-decoration: none;
 }
 
-.alert:focus-visible {
+.drawer:hover,
+.drawer:focus-visible {
+  background: var(--color-surface-inset);
+}
+
+.drawer:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+.drawerText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.drawerTitle {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+}
+
+.drawerSummary {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
 }
 
 .chevron {
@@ -96,76 +80,39 @@
   line-height: 1;
 }
 
-.linkEntry {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  min-height: var(--tap-target-min);
-  padding: 0 var(--space-4);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-}
-
-.linkEntryActive {
-  composes: linkEntry;
-  text-decoration: none;
-}
-
-.linkEntryActive:hover,
-.linkEntryActive:focus-visible {
-  background: var(--color-surface-inset);
-}
-
-.linkEntryActive:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-.overview {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-}
-
-.sectionTitle {
-  margin: 0;
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-semibold);
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.leagueList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.leagueRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-md);
-  background: var(--color-surface-raised);
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
-}
-
-.leagueMemberCount {
-  flex-shrink: 0;
+.badge,
+.badgeAlert,
+.badgeEmpty {
+  display: inline-block;
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
   font-variant-numeric: tabular-nums;
   font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.6;
+}
+
+.badge {
+  border: 1px solid var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.badgeAlert {
+  border: 1px solid var(--color-accent-line);
+  background: var(--color-accent-soft);
+  color: var(--color-text-primary);
+}
+
+.badgeEmpty {
+  border: 1px solid var(--color-border-subtle);
   color: var(--color-text-muted);
-  white-space: nowrap;
+}
+
+@media (min-width: 48rem) {
+  .page {
+    --drawer-bleed: var(--space-8);
+    max-width: 560px;
+    margin-inline: auto;
+    padding-right: var(--space-4);
+  }
 }

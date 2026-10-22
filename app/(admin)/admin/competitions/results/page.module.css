@@ -18,12 +18,6 @@
   font-size: var(--font-size-sm);
 }
 
-.backLink {
-  align-self: flex-start;
-  font-size: var(--font-size-sm);
-  color: var(--color-accent);
-}
-
 .round {
   display: flex;
   flex-direction: column;

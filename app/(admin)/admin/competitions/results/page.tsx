@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { getAdminResultsData } from "@/lib/queries/admin-results";
 import { SeriesResultsCard } from "@/components/admin/SeriesResultsCard";
 import styles from "./page.module.css";
@@ -23,12 +22,7 @@ export default async function AdminResultsPage({
       <h1 className={styles.title}>Saisie des résultats</h1>
 
       {data.competitionId === null ? (
-        <>
-          <p className={styles.empty}>Aucune compétition en cours.</p>
-          <Link href="/admin/competitions" className={styles.backLink}>
-            Retour à Compétitions
-          </Link>
-        </>
+        <p className={styles.empty}>Aucune compétition en cours.</p>
       ) : data.rounds.length === 0 ? (
         <p className={styles.empty}>Aucune série pour l&rsquo;instant.</p>
       ) : (
