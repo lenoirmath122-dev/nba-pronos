@@ -59,12 +59,12 @@ function formatLockLabel(scheduledAt: string, nowMs: number): string {
   // (demandé par l'utilisateur, 31/08/2026) : jamais plus de 2 niveaux (donc
   // jamais de minutes affichées une fois qu'on est passé en jours).
   if (days > 0) {
-    return hours === 0 ? `match dans ${days} j` : `match dans ${days} j ${hours} h`;
+    return hours === 0 ? `dans ${days} j` : `dans ${days} j ${hours} h`;
   }
   if (hours > 0) {
-    return minutes === 0 ? `match dans ${hours} h` : `match dans ${hours} h ${String(minutes).padStart(2, "0")}`;
+    return minutes === 0 ? `dans ${hours} h` : `dans ${hours} h ${String(minutes).padStart(2, "0")}`;
   }
-  return `match dans ${minutes} min`;
+  return `dans ${minutes} min`;
 }
 
 function formatLiveLockLabel(scheduledAt: string, nowMs: number): string {
@@ -72,7 +72,7 @@ function formatLiveLockLabel(scheduledAt: string, nowMs: number): string {
   const totalSeconds = Math.floor(remainingMs / 1000);
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
-  return `match dans ${minutes}:${String(seconds).padStart(2, "0")}`;
+  return `dans ${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
 function formatKickoff(iso: string): string {
@@ -180,7 +180,9 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
             <span className={styles.dailyTitle}>
               {match.daily.time}
             </span>
-            {match.daily.nightLabel && <span className={styles.dailyNight}>{match.daily.nightLabel}</span>}
+            <span className={styles.dailyNight}>
+              {[match.daily.nightLabel, lockLabel && `(${lockLabel})`].filter(Boolean).join(" ")}
+            </span>
           </time>
         )}
         <div className={styles.topRow}>
@@ -309,9 +311,9 @@ export function UpcomingRow({ match }: UpcomingRowProps) {
         <div className={styles.metaRow}>
           <span className={styles.meta}>
             {!match.daily && <span className={styles.time}>{formatKickoff(match.scheduledAt)}</span>}
-            <span className={styles.lock}>{lockLabel}</span>
+            {!match.daily && lockLabel && <span className={styles.lock}>({lockLabel})</span>}
           </span>
-          {!validatedPick && (
+          {!validatedPick && match.viewStatus !== "TODO" && (
             <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
               {STATUS_LABEL[match.viewStatus]}
             </span>
