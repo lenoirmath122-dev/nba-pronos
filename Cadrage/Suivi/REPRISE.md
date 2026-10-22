@@ -1,11 +1,12 @@
-# Reprise — NBA Pronos (22/10/2026, passation 11)
+# Reprise — NBA Pronos (22/10/2026, passation 12)
 - **Livré** : accueil jouable + invités (#184, #188), e-mails 1B (#185-187), pseudo/onboarding (#176),
   crons Vercel (#191, #194), Memphis (#192), seuils inclusifs (#195). **Lot 1 CLOS** (#198-#206), Cloud Run redéployé, vérifié.
 - **Sessions 9-10** : fond classement (#209), popup « Depuis ta dernière visite » (#210, à tester avec un vrai résultat),
   profil en panneau (#212). Accueil : carte « Prochain prono » (formulaire de /play, un seul cadre, « À faire aussi »),
   PR ouverte, recette téléphone/desktop à faire (GAPS).
-- **Session 11** : /play + Résultats : zone « Mon pari » (#216 mergée, migrations poussées) ; `bet_is_public` ouvre
-  les paris MATCH dès que le mien est soumis.
+- **Sessions 11-12** : /play « Mon pari » (#216, `bet_is_public`). Chat : menu ⋯ (#219), réactions emoji par appui
+  long (#221, migration `chat_message_reactions` poussée en prod), CI sans doublons (#222), « Copier » + texte non
+  sélectionnable (#223, à merger). Réactions non testées avec un 2e compte (Realtime).
 - **Prochaine étape : Lot 2** (S6 « joue seulement N quarts » : vérifier d'abord si un quart non joué donne une
   ligne à 0 ou aucune dans `stats_box_scores_by_period` ; L8 alias de noms), voir
   `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md` (section « Lot 1 — notes de reprise » : choix de conception, écartés). Avant la bêta Cup du 04/12 ; Lots 3 et 4 ensuite.
