@@ -66,3 +66,35 @@
   padding-top: var(--space-2);
   border-top: 1px solid var(--color-border-hair);
 }
+
+.pronoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.pronoBand {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Même gabarit que l'icône « personnes » de la carte Mes pronos
+   (ParticipationTrigger). */
+.othersButton {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 24px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  cursor: pointer;
+}
+
+.othersButton:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

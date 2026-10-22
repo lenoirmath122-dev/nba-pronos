@@ -8,6 +8,7 @@ import { DateStrip } from "@/components/play/DateStrip";
 import { FilterBar } from "@/components/play/FilterBar";
 import { LeagueScopeChips } from "@/components/play/LeagueScopeChips";
 import { LockedRow } from "@/components/play/LockedRow";
+import { maxBetPoints } from "@/components/play/betSlot";
 import { LiveSubscriber } from "@/components/play/LiveSubscriber";
 import { buildResultsPath } from "@/components/play/urls";
 import styles from "./page.module.css";
@@ -102,6 +103,7 @@ export default async function PlayResultsPage({ searchParams }: { searchParams: 
                 key={row.matchId}
                 row={row}
                 returnTo={returnTo}
+                maxBetPoints={maxBetPoints(data.competitionType)}
                 forceOpenPredictionCorrection={sp.correctionMatchId === row.matchId}
                 predictionCorrectionError={sp.correctionMatchId === row.matchId ? sp.correctionError : undefined}
                 forceOpenBetCorrection={Boolean(row.bet && sp.betId === row.bet.betId)}
