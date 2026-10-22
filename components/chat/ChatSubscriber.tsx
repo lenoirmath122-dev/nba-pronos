@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import { markChatChannelSeen } from "@/lib/nav/chatSeen";
-import type { ChatMessage, ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
+import { setChatReaction } from "@/lib/actions/chat";
+import type { ChatMessage, ChatReaction, ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
 import { ChatMessageRow } from "./ChatMessageRow";
 import { ChatComposer } from "./ChatComposer";
 import styles from "./ChatSubscriber.module.css";
@@ -34,6 +35,12 @@ type ChatSubscriberProps = {
   currentUserId: string;
   isCurrentUserAdmin: boolean;
 };
+
+/** Remplace (ou retire si `emoji` est null) la réaction d'un joueur. */
+function withReaction(reactions: ChatReaction[], userId: string, emoji: string | null): ChatReaction[] {
+  const others = reactions.filter((r) => r.userId !== userId);
+  return emoji === null ? others : [...others, { userId, emoji }];
+}
 
 export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUserAdmin }: ChatSubscriberProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(seed);
@@ -78,14 +85,36 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
             isAdmin: author.isAdmin,
             body: row.body,
             createdAt: row.created_at,
+            reactions: [],
           },
         ];
       });
     }
 
+    // Réactions : une par (message, joueur). Idempotent, donc l'écho Realtime
+    // d'une réaction déjà posée en optimiste ne change rien. Les réactions
+    // d'un autre canal (pas de filtre possible côté table) ne trouvent aucun
+    // message à modifier et sont ignorées.
+    function applyReaction(payload: { new: { message_id: string; user_id: string; emoji: string } }) {
+      const { message_id, user_id, emoji } = payload.new;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === message_id ? { ...m, reactions: withReaction(m.reactions, user_id, emoji) } : m))
+      );
+    }
+    function removeReaction(payload: { old: { message_id?: string; user_id?: string } }) {
+      const { message_id, user_id } = payload.old;
+      if (!message_id || !user_id) return;
+      setMessages((prev) =>
+        prev.map((m) => (m.id === message_id ? { ...m, reactions: withReaction(m.reactions, user_id, null) } : m))
+      );
+    }
+
     const channel = supabase
       .channel(channelName)
       .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_messages", filter }, applyInsert)
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "chat_message_reactions" }, applyReaction)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "chat_message_reactions" }, applyReaction)
+      .on("postgres_changes", { event: "DELETE", schema: "public", table: "chat_message_reactions" }, removeReaction)
       .subscribe();
 
     return () => {
@@ -130,6 +159,21 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
   }
 
+  // Mise à jour optimiste ; si l'action échoue on rétablit l'état précédent
+  // de la réaction du joueur.
+  function handleReact(messageId: string, emoji: string | null) {
+    const previous =
+      messages.find((m) => m.id === messageId)?.reactions.find((r) => r.userId === currentUserId)?.emoji ?? null;
+    const apply = (value: string | null) =>
+      setMessages((prev) =>
+        prev.map((m) => (m.id === messageId ? { ...m, reactions: withReaction(m.reactions, currentUserId, value) } : m))
+      );
+    apply(emoji);
+    void setChatReaction(messageId, emoji).then((result) => {
+      if (!result.success) apply(previous);
+    });
+  }
+
   return (
     <div className={styles.wrap}>
       <div className={styles.list} aria-live="polite">
@@ -143,6 +187,8 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
               isOwn={message.userId === currentUserId}
               canDelete={isCurrentUserAdmin}
               onDeleted={handleDeleted}
+              onReact={handleReact}
+              currentUserId={currentUserId}
             />
           ))
         )}

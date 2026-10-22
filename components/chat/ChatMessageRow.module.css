@@ -9,6 +9,8 @@
 }
 
 .bubble {
+  position: relative;
+  -webkit-touch-callout: none;
   max-width: 80%;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-lg);
@@ -59,10 +61,15 @@
   color: var(--color-text-primary);
 }
 
-.menu {
-  position: relative;
+.tools {
+  display: flex;
+  align-items: center;
   margin-left: auto;
   align-self: center;
+}
+
+.menu {
+  position: relative;
 }
 
 .menuTrigger {
@@ -71,7 +78,7 @@
   justify-content: center;
   min-width: 1.75rem;
   min-height: 1.75rem;
-  margin: calc(-1 * var(--space-1)) calc(-1 * var(--space-2)) calc(-1 * var(--space-1)) 0;
+  margin: calc(-1 * var(--space-1)) 0;
   padding: 0;
   border: none;
   border-radius: var(--radius-md);
@@ -139,6 +146,87 @@
 
 .menuItemDanger {
   color: var(--color-loss);
+}
+
+.picker,
+.pickerOwn {
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  z-index: 10;
+  display: flex;
+  gap: var(--space-1);
+  padding: var(--space-1);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+}
+
+.pickerOwn {
+  right: 0;
+  left: auto;
+}
+
+.pickerEmoji,
+.pickerEmojiActive {
+  min-width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-md);
+  background: none;
+  font-size: 1.25rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.pickerEmojiActive {
+  background: var(--color-accent-soft);
+}
+
+.pickerEmoji:hover,
+.pickerEmoji:focus-visible {
+  background: var(--color-surface-inset);
+}
+
+.pickerEmoji:focus-visible,
+.pickerEmojiActive:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.reactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.pill,
+.pillMine {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 1.5rem;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-badge);
+  background: var(--color-surface-raised);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.pillMine {
+  border-color: var(--color-accent);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+}
+
+.pill:focus-visible,
+.pillMine:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 
 .error {
