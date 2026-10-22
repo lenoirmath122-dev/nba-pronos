@@ -24,10 +24,14 @@ import styles from "./ChatMessageRow.module.css";
 // (lisibilité : plus de liens d'action sous chaque message). Le "⋯" n'est
 // rendu que s'il y a au moins une action disponible.
 //
-// Réactions (migration 20261022100000) : bouton « ☺ » à côté du « ⋯ » qui
-// ouvre un sélecteur de 6 emojis fixes ; pastilles (emoji + compteur) sous le
-// texte, la sienne en surbrillance. Une réaction par joueur : retoucher la
-// sienne la retire, en toucher une autre la remplace.
+// Réactions (migration 20261022100000) : appui long sur le message pour
+// ouvrir un sélecteur de 6 emojis fixes (pas de bouton dédié, pour garder la
+// bulle lisible) ; pastilles (emoji + compteur) sous le texte, la sienne en
+// surbrillance. Une réaction par joueur : retoucher la sienne la retire, en
+// toucher une autre la remplace.
+
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_PX = 10;
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -48,6 +52,8 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
   const [pickerOpen, setPickerOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const pressRef = useRef<{ timer: number; x: number; y: number } | null>(null);
   const hasActions = canDelete || !isOwn;
 
   useEffect(() => {
@@ -57,7 +63,9 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
       setPickerOpen(false);
     }
     function onPointerDown(e: PointerEvent) {
-      if (!menuRef.current?.contains(e.target as Node)) close();
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || pickerRef.current?.contains(target)) return;
+      close();
     }
     function onKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") close();
@@ -76,6 +84,34 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
     count: message.reactions.filter((r) => r.emoji === emoji).length,
   })).filter((c) => c.count > 0);
 
+  function cancelPress() {
+    if (pressRef.current) window.clearTimeout(pressRef.current.timer);
+    pressRef.current = null;
+  }
+
+  // Appui long (souris ou doigt) sur la bulle : ouvre le sélecteur. Annulé si
+  // le pointeur bouge (défilement, sélection de texte) ou se relève avant.
+  function handlePressStart(e: React.PointerEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("button, form")) return;
+    cancelPress();
+    pressRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      timer: window.setTimeout(() => {
+        pressRef.current = null;
+        setMenuOpen(false);
+        setPickerOpen(true);
+      }, LONG_PRESS_MS),
+    };
+  }
+
+  function handlePressMove(e: React.PointerEvent<HTMLDivElement>) {
+    const press = pressRef.current;
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > LONG_PRESS_MOVE_PX) cancelPress();
+  }
+
+  useEffect(() => cancelPress, []);
+
   function react(emoji: string) {
     setPickerOpen(false);
     onReact(message.id, emoji === myReaction ? null : emoji);
@@ -88,7 +124,14 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
 
   return (
     <div className={isOwn ? styles.rowOwn : styles.row}>
-      <div className={styles.bubble}>
+      <div
+        className={styles.bubble}
+        onPointerDown={handlePressStart}
+        onPointerMove={handlePressMove}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <div className={styles.meta}>
           <span className={styles.pseudo}>
             {message.pseudo}
@@ -96,36 +139,6 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
           </span>
           <span className={styles.time}>{formatTime(message.createdAt)}</span>
           <div className={styles.tools} ref={menuRef}>
-            <div className={styles.menu}>
-              <button
-                type="button"
-                className={styles.menuTrigger}
-                onClick={() => {
-                  setMenuOpen(false);
-                  setPickerOpen((open) => !open);
-                }}
-                aria-label="Réagir à ce message"
-                aria-haspopup="true"
-                aria-expanded={pickerOpen}
-              >
-                ☺
-              </button>
-              {pickerOpen && (
-                <div className={styles.picker} role="group" aria-label="Choisir une réaction">
-                  {CHAT_REACTION_EMOJIS.map((emoji) => (
-                    <button
-                      key={emoji}
-                      type="button"
-                      className={emoji === myReaction ? styles.pickerEmojiActive : styles.pickerEmoji}
-                      onClick={() => react(emoji)}
-                      aria-pressed={emoji === myReaction}
-                    >
-                      {emoji}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
             {hasActions && (
               <div className={styles.menu}>
                 <button
@@ -175,6 +188,21 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
             )}
           </div>
         </div>
+        {pickerOpen && (
+          <div className={isOwn ? styles.pickerOwn : styles.picker} ref={pickerRef} role="group" aria-label="Choisir une réaction">
+            {CHAT_REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className={emoji === myReaction ? styles.pickerEmojiActive : styles.pickerEmoji}
+                onClick={() => react(emoji)}
+                aria-pressed={emoji === myReaction}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
         <p className={styles.body}>{message.body}</p>
         {counts.length > 0 && (
           <div className={styles.reactions}>
