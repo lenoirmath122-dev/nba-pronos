@@ -4,7 +4,6 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { getNavBadgeData } from "@/lib/queries/home";
 import { getRecentAdminValidatedBets } from "@/lib/queries/bets";
 import { TabBar } from "@/components/nav/TabBar";
-import { BugReportButton } from "@/components/feedback/BugReportButton";
 import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ValidatedDialogProvider } from "@/components/ui/ValidatedDialog";
@@ -60,7 +59,6 @@ export default async function AppLayout({
         <ToastProvider>
           <ValidatedDialogProvider>
             <main className={styles.content}>{children}</main>
-            <BugReportButton />
             <TabBar navBadges={navBadges} />
             <ValidatedBetsWatcher bets={adminValidatedBets} />
             {/* Ordre des popups : « Pari validé », popup hebdo (lot 5), puis

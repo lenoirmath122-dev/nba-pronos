@@ -104,6 +104,28 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
     if (latestAt) markChatChannelSeen(scope.type === "LEAGUE" ? scope.leagueId : "general", latestAt);
   }, [scope, latestAt]);
 
+  // Ouverture au dernier message (page-scroll, cf. ChatSubscriber.module.css) :
+  // saut instantané en bas au montage, puis défilement doux à chaque nouveau
+  // message si le lecteur était déjà proche du bas (ou en est l'auteur), pour
+  // ne pas l'arracher à un historique qu'il est en train de relire.
+  const messageCount = messages.length;
+  const lastUserId = messages.at(-1)?.userId;
+  const prevCountRef = useRef<number | null>(null);
+  useEffect(() => {
+    const el = document.documentElement;
+    const prev = prevCountRef.current;
+    prevCountRef.current = messageCount;
+    if (prev === null) {
+      window.scrollTo({ top: el.scrollHeight });
+      return;
+    }
+    if (messageCount <= prev) return;
+    const nearBottom = el.scrollHeight - window.scrollY - window.innerHeight < 300;
+    if (nearBottom || lastUserId === currentUserId) {
+      window.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    }
+  }, [messageCount, lastUserId, currentUserId]);
+
   function handleDeleted(messageId: string) {
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
   }
