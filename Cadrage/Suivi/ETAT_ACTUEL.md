@@ -581,3 +581,5 @@ audit/        — audit indépendant du 03/09/2026 (rapport, scorecard, plan
 
 e2e/          — suite Playwright (§7).
 ```
+
+- Carte /play et Résultats (22/10/2026) : le pari se saisit dans la carte (`MatchBetZone`, même action `submitBet`) ; `OthersOnMatch` = pronos des autres + pari en italique. Migration `bet_is_public` : un pari MATCH validé/gagné/perdu est lisible avant le coup d'envoi si mon pari sur ce match est soumis.

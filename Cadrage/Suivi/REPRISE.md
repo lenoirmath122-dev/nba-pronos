@@ -1,10 +1,11 @@
-# Reprise — NBA Pronos (22/10/2026, passation 10)
+# Reprise — NBA Pronos (22/10/2026, passation 11)
 - **Livré** : accueil jouable + invités (#184, #188), e-mails 1B (#185-187), pseudo/onboarding (#176),
-  crons Vercel (#191, #194), Memphis (#192), seuils inclusifs (#195). **Lot 1 CLOS** : S1 (#198), S4 (#200, #202),
-  S3 + S8 (#203), « exactement N » + égalité exacte (#205), S2 corrélation entre stats d'un joueur (#206). Cloud Run redéployé après #206, vérifié en réel.
+  crons Vercel (#191, #194), Memphis (#192), seuils inclusifs (#195). **Lot 1 CLOS** (#198-#206), Cloud Run redéployé, vérifié.
 - **Sessions 9-10** : fond classement (#209), popup « Depuis ta dernière visite » (#210, à tester avec un vrai résultat),
   profil en panneau (#212). Accueil : carte « Prochain prono » (formulaire de /play, un seul cadre, « À faire aussi »),
   PR ouverte, recette téléphone/desktop à faire (GAPS).
+- **Session 11** : /play + Résultats : zone « Mon pari » (#216 mergée, migrations poussées) ; `bet_is_public` ouvre
+  les paris MATCH dès que le mien est soumis.
 - **Prochaine étape : Lot 2** (S6 « joue seulement N quarts » : vérifier d'abord si un quart non joué donne une
   ligne à 0 ou aucune dans `stats_box_scores_by_period` ; L8 alias de noms), voir
   `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md` (section « Lot 1 — notes de reprise » : choix de conception, écartés). Avant la bêta Cup du 04/12 ; Lots 3 et 4 ensuite.
