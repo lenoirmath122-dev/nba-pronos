@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteChatMessageFormAction } from "@/lib/actions/chat";
-import { ReportMessageButton } from "./ReportMessageButton";
+import { ReportMessageDialog } from "./ReportMessageDialog";
 import type { ChatMessage } from "@/lib/queries/chat";
 import styles from "./ChatMessageRow.module.css";
 
@@ -18,6 +18,10 @@ import styles from "./ChatMessageRow.module.css";
 // soi-même n'a pas de sens. Contrairement à "Supprimer", visible de tous
 // les joueurs, pas seulement des admins (c'est bien le point du dispositif :
 // laisser un joueur alerter un admin, pas seulement un admin agir).
+//
+// Les deux actions vivent dans un menu "⋯" en haut à droite de la bulle
+// (lisibilité : plus de liens d'action sous chaque message). Le "⋯" n'est
+// rendu que s'il y a au moins une action disponible.
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -32,6 +36,26 @@ type ChatMessageRowProps = {
 
 export function ChatMessageRow({ message, isOwn, canDelete, onDeleted }: ChatMessageRowProps) {
   const [state, formAction, pending] = useActionState(deleteChatMessageFormAction, undefined);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [reportOpen, setReportOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const hasActions = canDelete || !isOwn;
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    function onPointerDown(e: PointerEvent) {
+      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    }
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setMenuOpen(false);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [menuOpen]);
 
   useEffect(() => {
     if (state && !state.error) onDeleted(message.id);
@@ -47,22 +71,56 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted }: ChatMes
             {message.isAdmin && <span className={styles.adminTag}>admin</span>}
           </span>
           <span className={styles.time}>{formatTime(message.createdAt)}</span>
+          {hasActions && (
+            <div className={styles.menu} ref={menuRef}>
+              <button
+                type="button"
+                className={styles.menuTrigger}
+                onClick={() => setMenuOpen((open) => !open)}
+                aria-label="Actions sur ce message"
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+              >
+                ⋯
+              </button>
+              {menuOpen && (
+                <div className={styles.menuList} role="menu">
+                  {!isOwn && (
+                    <button
+                      type="button"
+                      role="menuitem"
+                      className={styles.menuItem}
+                      onClick={() => {
+                        setMenuOpen(false);
+                        setReportOpen(true);
+                      }}
+                    >
+                      Signaler
+                    </button>
+                  )}
+                  {canDelete && (
+                    <form action={formAction} className={styles.deleteForm}>
+                      <input type="hidden" name="messageId" value={message.id} />
+                      <button
+                        type="submit"
+                        role="menuitem"
+                        disabled={pending}
+                        className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                      >
+                        Supprimer
+                      </button>
+                    </form>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <p className={styles.body}>{message.body}</p>
-        {(canDelete || !isOwn) && (
-          <div className={styles.actions}>
-            {canDelete && (
-              <form action={formAction} className={styles.deleteForm}>
-                <input type="hidden" name="messageId" value={message.id} />
-                <button type="submit" disabled={pending} className={styles.deleteButton} aria-label="Supprimer ce message">
-                  Supprimer
-                </button>
-              </form>
-            )}
-            {!isOwn && <ReportMessageButton messageId={message.id} />}
-          </div>
-        )}
       </div>
+      {!isOwn && (
+        <ReportMessageDialog messageId={message.id} isOpen={reportOpen} onClose={() => setReportOpen(false)} />
+      )}
       {state?.error && (
         <p role="alert" className={styles.error}>
           {state.error}

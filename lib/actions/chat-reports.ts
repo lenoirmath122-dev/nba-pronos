@@ -9,7 +9,7 @@ import { requiredBoundedText } from "@/lib/actions/validation";
 // Signalement d'un message de chat vers les admins (03/09/2026, migration
 // 20260903130000, cadrage juridique §2.10 point 7) -- même structure que
 // lib/actions/bug-reports.ts : submitChatMessageReport (joueur, useTransition
-// depuis ReportMessageButton) + resolveChatMessageReportFormAction (admin,
+// depuis ReportMessageDialog) + resolveChatMessageReportFormAction (admin,
 // formulaire natif + redirection).
 
 export type ActionResult = { success: true } | { success: false; error: string };
