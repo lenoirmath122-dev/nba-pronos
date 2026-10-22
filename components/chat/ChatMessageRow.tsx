@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteChatMessageFormAction } from "@/lib/actions/chat";
 import { ReportMessageDialog } from "./ReportMessageDialog";
+import { CHAT_REACTION_EMOJIS } from "@/lib/chat/reactions";
 import type { ChatMessage } from "@/lib/queries/chat";
 import styles from "./ChatMessageRow.module.css";
 
@@ -22,6 +23,15 @@ import styles from "./ChatMessageRow.module.css";
 // Les deux actions vivent dans un menu "⋯" en haut à droite de la bulle
 // (lisibilité : plus de liens d'action sous chaque message). Le "⋯" n'est
 // rendu que s'il y a au moins une action disponible.
+//
+// Réactions (migration 20261022100000) : appui long sur le message pour
+// ouvrir un sélecteur de 6 emojis fixes (pas de bouton dédié, pour garder la
+// bulle lisible) ; pastilles (emoji + compteur) sous le texte, la sienne en
+// surbrillance. Une réaction par joueur : retoucher la sienne la retire, en
+// toucher une autre la remplace.
+
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_PX = 10;
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -32,22 +42,33 @@ type ChatMessageRowProps = {
   isOwn: boolean;
   canDelete: boolean;
   onDeleted: (messageId: string) => void;
+  onReact: (messageId: string, emoji: string | null) => void;
+  currentUserId: string;
 };
 
-export function ChatMessageRow({ message, isOwn, canDelete, onDeleted }: ChatMessageRowProps) {
+export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, currentUserId }: ChatMessageRowProps) {
   const [state, formAction, pending] = useActionState(deleteChatMessageFormAction, undefined);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
+  const pressRef = useRef<{ timer: number; x: number; y: number } | null>(null);
   const hasActions = canDelete || !isOwn;
 
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !pickerOpen) return;
+    function close() {
+      setMenuOpen(false);
+      setPickerOpen(false);
+    }
     function onPointerDown(e: PointerEvent) {
-      if (!menuRef.current?.contains(e.target as Node)) setMenuOpen(false);
+      const target = e.target as Node;
+      if (menuRef.current?.contains(target) || pickerRef.current?.contains(target)) return;
+      close();
     }
     function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape") setMenuOpen(false);
+      if (e.key === "Escape") close();
     }
     document.addEventListener("pointerdown", onPointerDown);
     document.addEventListener("keydown", onKeyDown);
@@ -55,7 +76,46 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted }: ChatMes
       document.removeEventListener("pointerdown", onPointerDown);
       document.removeEventListener("keydown", onKeyDown);
     };
-  }, [menuOpen]);
+  }, [menuOpen, pickerOpen]);
+
+  const myReaction = message.reactions.find((r) => r.userId === currentUserId)?.emoji ?? null;
+  const counts = CHAT_REACTION_EMOJIS.map((emoji) => ({
+    emoji,
+    count: message.reactions.filter((r) => r.emoji === emoji).length,
+  })).filter((c) => c.count > 0);
+
+  function cancelPress() {
+    if (pressRef.current) window.clearTimeout(pressRef.current.timer);
+    pressRef.current = null;
+  }
+
+  // Appui long (souris ou doigt) sur la bulle : ouvre le sélecteur. Annulé si
+  // le pointeur bouge (défilement, sélection de texte) ou se relève avant.
+  function handlePressStart(e: React.PointerEvent<HTMLDivElement>) {
+    if ((e.target as HTMLElement).closest("button, form")) return;
+    cancelPress();
+    pressRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      timer: window.setTimeout(() => {
+        pressRef.current = null;
+        setMenuOpen(false);
+        setPickerOpen(true);
+      }, LONG_PRESS_MS),
+    };
+  }
+
+  function handlePressMove(e: React.PointerEvent<HTMLDivElement>) {
+    const press = pressRef.current;
+    if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > LONG_PRESS_MOVE_PX) cancelPress();
+  }
+
+  useEffect(() => cancelPress, []);
+
+  function react(emoji: string) {
+    setPickerOpen(false);
+    onReact(message.id, emoji === myReaction ? null : emoji);
+  }
 
   useEffect(() => {
     if (state && !state.error) onDeleted(message.id);
@@ -64,59 +124,102 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted }: ChatMes
 
   return (
     <div className={isOwn ? styles.rowOwn : styles.row}>
-      <div className={styles.bubble}>
+      <div
+        className={styles.bubble}
+        onPointerDown={handlePressStart}
+        onPointerMove={handlePressMove}
+        onPointerUp={cancelPress}
+        onPointerCancel={cancelPress}
+        onContextMenu={(e) => e.preventDefault()}
+      >
         <div className={styles.meta}>
           <span className={styles.pseudo}>
             {message.pseudo}
             {message.isAdmin && <span className={styles.adminTag}>admin</span>}
           </span>
           <span className={styles.time}>{formatTime(message.createdAt)}</span>
-          {hasActions && (
-            <div className={styles.menu} ref={menuRef}>
-              <button
-                type="button"
-                className={styles.menuTrigger}
-                onClick={() => setMenuOpen((open) => !open)}
-                aria-label="Actions sur ce message"
-                aria-haspopup="menu"
-                aria-expanded={menuOpen}
-              >
-                ⋯
-              </button>
-              {menuOpen && (
-                <div className={styles.menuList} role="menu">
-                  {!isOwn && (
-                    <button
-                      type="button"
-                      role="menuitem"
-                      className={styles.menuItem}
-                      onClick={() => {
-                        setMenuOpen(false);
-                        setReportOpen(true);
-                      }}
-                    >
-                      Signaler
-                    </button>
-                  )}
-                  {canDelete && (
-                    <form action={formAction} className={styles.deleteForm}>
-                      <input type="hidden" name="messageId" value={message.id} />
+          <div className={styles.tools} ref={menuRef}>
+            {hasActions && (
+              <div className={styles.menu}>
+                <button
+                  type="button"
+                  className={styles.menuTrigger}
+                  onClick={() => {
+                    setPickerOpen(false);
+                    setMenuOpen((open) => !open);
+                  }}
+                  aria-label="Actions sur ce message"
+                  aria-haspopup="menu"
+                  aria-expanded={menuOpen}
+                >
+                  ⋯
+                </button>
+                {menuOpen && (
+                  <div className={styles.menuList} role="menu">
+                    {!isOwn && (
                       <button
-                        type="submit"
+                        type="button"
                         role="menuitem"
-                        disabled={pending}
-                        className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                        className={styles.menuItem}
+                        onClick={() => {
+                          setMenuOpen(false);
+                          setReportOpen(true);
+                        }}
                       >
-                        Supprimer
+                        Signaler
                       </button>
-                    </form>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+                    )}
+                    {canDelete && (
+                      <form action={formAction} className={styles.deleteForm}>
+                        <input type="hidden" name="messageId" value={message.id} />
+                        <button
+                          type="submit"
+                          role="menuitem"
+                          disabled={pending}
+                          className={`${styles.menuItem} ${styles.menuItemDanger}`}
+                        >
+                          Supprimer
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
         </div>
+        {pickerOpen && (
+          <div className={isOwn ? styles.pickerOwn : styles.picker} ref={pickerRef} role="group" aria-label="Choisir une réaction">
+            {CHAT_REACTION_EMOJIS.map((emoji) => (
+              <button
+                key={emoji}
+                type="button"
+                className={emoji === myReaction ? styles.pickerEmojiActive : styles.pickerEmoji}
+                onClick={() => react(emoji)}
+                aria-pressed={emoji === myReaction}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        )}
         <p className={styles.body}>{message.body}</p>
+        {counts.length > 0 && (
+          <div className={styles.reactions}>
+            {counts.map(({ emoji, count }) => (
+              <button
+                key={emoji}
+                type="button"
+                className={emoji === myReaction ? styles.pillMine : styles.pill}
+                onClick={() => react(emoji)}
+                aria-pressed={emoji === myReaction}
+                aria-label={`${emoji} ${count}`}
+              >
+                <span aria-hidden="true">{emoji}</span> {count}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       {!isOwn && (
         <ReportMessageDialog messageId={message.id} isOpen={reportOpen} onClose={() => setReportOpen(false)} />

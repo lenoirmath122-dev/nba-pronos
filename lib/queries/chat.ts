@@ -19,7 +19,11 @@ export type ChatMessage = {
   isAdmin: boolean;
   body: string;
   createdAt: string;
+  /** Une réaction par joueur et par message (chat_message_reactions). */
+  reactions: ChatReaction[];
 };
+
+export type ChatReaction = { userId: string; emoji: string };
 
 export type ChatRosterEntry = { id: string; pseudo: string; avatarUrl: string | null; isAdmin: boolean };
 
@@ -119,6 +123,17 @@ export async function getChatMessages(scope: ChatScope): Promise<ChatMessage[]> 
     (userRows ?? []).map((u) => [u.id as string, u as { id: string; pseudo: string; avatar_url: string | null; role: string }])
   );
 
+  const { data: reactionRows } = await supabase
+    .from("chat_message_reactions")
+    .select("message_id, user_id, emoji")
+    .in("message_id", messages.map((m) => m.id));
+  const reactionsByMessage = new Map<string, ChatReaction[]>();
+  for (const r of (reactionRows ?? []) as { message_id: string; user_id: string; emoji: string }[]) {
+    const list = reactionsByMessage.get(r.message_id) ?? [];
+    list.push({ userId: r.user_id, emoji: r.emoji });
+    reactionsByMessage.set(r.message_id, list);
+  }
+
   // Le plus récent en dernier (ordre de lecture d'un chat), la requête
   // ci-dessus est DESC pour que .limit() garde les 200 DERNIERS et non les
   // 200 premiers de l'historique.
@@ -135,6 +150,7 @@ export async function getChatMessages(scope: ChatScope): Promise<ChatMessage[]> 
         isAdmin: author?.role === "ADMIN",
         body: m.body,
         createdAt: m.created_at,
+        reactions: reactionsByMessage.get(m.id) ?? [],
       };
     });
 }
