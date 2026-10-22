@@ -127,6 +127,8 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 
 ## e2e / cross-browser
 
+- `t-ui-03-custom-bet-status` et `t-err-02-session-expired-submit` ciblent l'ancienne fenêtre « Proposer un pari » (retirée de la carte /play par #216) : non lancés, à adapter.
+
 - **WebKit (Safari) mis de côté pour la suite e2e** (p1-2, 07/09/2026) —
   `playwright.config.ts` n'a que `chromium`/`mobile-chrome` (Pixel 7).
   Essayé sur un projet `mobile-safari` (`devices["iPhone 14"]`) : 2 des 3
