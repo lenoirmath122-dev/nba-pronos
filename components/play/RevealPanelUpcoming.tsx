@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { OtherPrediction } from "@/lib/queries/play";
+import type { BetWithoutProno, OtherPrediction } from "@/lib/queries/play";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./RevealPanelUpcoming.module.css";
 
@@ -16,9 +16,17 @@ type RevealPanelProps = {
   eligibleCount: number;
   others: OtherPrediction[];
   absentees: string[];
+  betsWithoutProno?: BetWithoutProno[];
 };
 
-export function RevealPanelUpcoming({ isRevealed, predictedCount, eligibleCount, others, absentees }: RevealPanelProps) {
+export function RevealPanelUpcoming({
+  isRevealed,
+  predictedCount,
+  eligibleCount,
+  others,
+  absentees,
+  betsWithoutProno = [],
+}: RevealPanelProps) {
   const [showAbsentees, setShowAbsentees] = useState(false);
 
   return (
@@ -30,9 +38,20 @@ export function RevealPanelUpcoming({ isRevealed, predictedCount, eligibleCount,
         ont pronostiqué
       </p>
 
-      {!isRevealed ? (
-        <p className={styles.locked}>Valide ton prono pour voir ceux des autres.</p>
-      ) : (
+      {!isRevealed ? <p className={styles.locked}>Valide ton prono pour voir ceux des autres.</p> : null}
+
+      {betsWithoutProno.length > 0 && (
+        <ul className={styles.list}>
+          {betsWithoutProno.map((b) => (
+            <li key={b.userId} className={styles.item}>
+              <PlayerLink userId={b.userId} pseudo={b.pseudo} className={styles.pseudo} />
+              <span className={styles.bet}>{b.description}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {isRevealed && (
         <>
           {others.length > 0 && (
             <ul className={styles.list}>
@@ -55,6 +74,7 @@ export function RevealPanelUpcoming({ isRevealed, predictedCount, eligibleCount,
                     </span>
                   )}
                   {other.isInactive && <span className={styles.inactiveTag}>inactif</span>}
+                  {other.bet && <span className={styles.bet}>{other.bet}</span>}
                 </li>
               ))}
             </ul>

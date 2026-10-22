@@ -124,3 +124,13 @@
   font-weight: var(--font-weight-semibold);
   color: var(--color-win);
 }
+
+/* Pari du joueur : en italique, décalé, sous la ligne de son prono. */
+.betLine {
+  flex-basis: 100%;
+  padding-left: var(--space-4);
+  font-style: italic;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
+}

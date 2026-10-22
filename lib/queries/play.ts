@@ -38,7 +38,12 @@ export type OtherPrediction = {
   margin: number;
   adminCorrection: AdminCorrection | null;
   isInactive: boolean;
+  /** Énoncé de son pari sur ce match, si visible (mon pari est soumis). */
+  bet: string | null;
 };
+
+/** Pari visible d'un joueur qui n'a pas (encore) de prono visible. */
+export type BetWithoutProno = { userId: string; pseudo: string; description: string };
 
 /** Prono d'un AUTRE joueur APRÈS verrouillage — toujours révélé (§12
  *  SPEC_ECRAN_MES_PRONOS, RLS seule autorité). Forme différente
@@ -162,6 +167,7 @@ export type UpcomingMatchRow = {
   isRevealed: boolean;
   others: OtherPrediction[];
   absentees: string[];
+  betsWithoutProno: BetWithoutProno[];
   betSlot: BetSlotIndicator;
   bet: PlayAssociatedBet | null;
 };
@@ -487,6 +493,30 @@ async function fetchUpcomingWindow(
   const activeUsers = (activeUsersData ?? []) as ActiveUserRow[];
   const eligibleCount = activeUsers.length;
   const isAdmin = Boolean(isAdminData);
+  const pseudoByActiveId = new Map(activeUsers.map((u) => [u.id, u.pseudo]));
+
+  // Paris des autres : la RLS (bet_is_public) ne les expose avant le coup
+  // d'envoi que si MON pari sur ce match est soumis ; statuts publics
+  // seulement (un admin voit tout via la RLS, on filtre donc aussi ici).
+  const submittedBetMatchIds = ownBets
+    .filter((b) => b.match_id && ["SUBMITTED", "VALIDATED", "WON", "LOST"].includes(b.status))
+    .map((b) => b.match_id as string);
+  const { data: otherBetsData } =
+    submittedBetMatchIds.length > 0
+      ? await supabase
+          .from("bets")
+          .select("user_id, match_id, description")
+          .eq("scope", "MATCH")
+          .in("match_id", submittedBetMatchIds)
+          .neq("user_id", userId)
+          .in("status", ["VALIDATED", "WON", "LOST"])
+      : { data: [] as { user_id: string; match_id: string; description: string }[] };
+  const otherBetsByMatch = new Map<string, { user_id: string; description: string }[]>();
+  for (const b of (otherBetsData ?? []) as { user_id: string; match_id: string; description: string }[]) {
+    const list = otherBetsByMatch.get(b.match_id) ?? [];
+    list.push(b);
+    otherBetsByMatch.set(b.match_id, list);
+  }
 
   // predictedCount (X) : fonction SECURITY DEFINER (migration #6) — un simple
   // count() en session joueur sous-compterait tant que l'appelant n'a pas
@@ -516,8 +546,9 @@ async function fetchUpcomingWindow(
 
     // Confidentialité dans la requête, pas dans le rendu (patron getBracket) :
     // others/absentees ne sont même pas demandés tant que isRevealed est faux.
+    const betByUser = new Map((otherBetsByMatch.get(match.id) ?? []).map((b) => [b.user_id, b.description]));
     const { others, absentees } = isRevealed
-      ? await getRevealedContent(supabase, match.id, userId, activeUsers, teams)
+      ? await getRevealedContent(supabase, match.id, userId, activeUsers, teams, betByUser)
       : { others: [] as OtherPrediction[], absentees: [] as string[] };
 
     const homeTeam = match.home_team_id ? teams.get(match.home_team_id) : undefined;
@@ -552,6 +583,11 @@ async function fetchUpcomingWindow(
       isRevealed,
       others,
       absentees,
+      betsWithoutProno: betsWithoutProno(
+        otherBetsByMatch.get(match.id) ?? [],
+        new Set(others.map((o) => o.userId)),
+        pseudoByActiveId
+      ),
       betSlot,
       // targetFinished=false, deadlineOpen=true : garanti par construction,
       // cette ligne vient de la fenêtre scheduled_at > now() (§3.3).
@@ -587,12 +623,24 @@ function deriveViewStatus(own: OwnPredictionRow | undefined): PredictionViewStat
   return fieldsSet === 2 ? "READY" : "INCOMPLETE";
 }
 
+function betsWithoutProno(
+  bets: { user_id: string; description: string }[],
+  withProno: Set<string>,
+  pseudoById: Map<string, string>
+): BetWithoutProno[] {
+  return bets
+    .filter((b) => !withProno.has(b.user_id) && pseudoById.has(b.user_id))
+    .map((b) => ({ userId: b.user_id, pseudo: pseudoById.get(b.user_id)!, description: b.description }))
+    .sort((a, b) => a.pseudo.localeCompare(b.pseudo));
+}
+
 async function getRevealedContent(
   supabase: SupabaseServerClient,
   matchId: string,
   ownUserId: string,
   activeUsers: ActiveUserRow[],
-  teams: Map<string, TeamRef>
+  teams: Map<string, TeamRef>,
+  betByUser: Map<string, string>
 ): Promise<{ others: OtherPrediction[]; absentees: string[] }> {
   const { data: rowsData } = await supabase
     .from("match_predictions")
@@ -632,6 +680,7 @@ async function getRevealedContent(
         margin: row.predicted_margin ?? 0,
         adminCorrection: toAdminCorrection(row.corrected_by_admin_id, row.correction_reason, pseudoById),
         isInactive: profile?.status === "DISABLED",
+        bet: betByUser.get(row.user_id) ?? null,
       };
     })
     .sort((a, b) => a.pseudo.localeCompare(b.pseudo));

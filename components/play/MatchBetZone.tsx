@@ -169,7 +169,7 @@ export function MatchBetZone({
           disabled={isPending}
         />
         <p className={styles.hint}>
-          Un joueur, une stat, un seuil. Les paris des autres sont révélés au coup d&rsquo;envoi.
+          Un joueur, une stat, un seuil. Soumets ton pari pour voir ceux des autres.
         </p>
         {error && (
           <p className={styles.error} role="alert">

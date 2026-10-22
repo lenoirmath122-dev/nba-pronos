@@ -1,9 +1,8 @@
 "use client";
 
-import type { OtherBet, OtherPrediction, RevealedPrediction } from "@/lib/queries/play";
+import type { BetWithoutProno, OtherBet, OtherPrediction, RevealedPrediction } from "@/lib/queries/play";
 import { ModalDialog } from "@/components/ui/ModalDialog";
 import { PlayerLink } from "@/components/ui/PlayerLink";
-import { BetStatusPill, possiblePointsLabel } from "./BetBlock";
 import { RevealPanelUpcoming } from "./RevealPanelUpcoming";
 import styles from "./OthersOnMatch.module.css";
 
@@ -19,7 +18,9 @@ import styles from "./OthersOnMatch.module.css";
 // Contrôlée (open/onClose) depuis le 22/10/2026 : plus de bouton propre, la
 // zone « Mon pari » et l'icône « personnes » des cartes l'ouvrent. Deux modes :
 // match verrouillé (tout est révélé) ou à venir (pronos des autres seulement
-// si mon prono est validé, paris révélés au coup d'envoi).
+// si mon prono est validé). Les paris des autres n'ont plus de section :
+// chacun s'affiche en italique sous le prono du joueur (visibles dès que mon
+// pari est soumis, ou au coup d'envoi).
 type OthersOnMatchProps = { open: boolean; onClose: () => void } & (
   | {
       mode: "locked";
@@ -34,6 +35,7 @@ type OthersOnMatchProps = { open: boolean; onClose: () => void } & (
       eligibleCount: number;
       others: OtherPrediction[];
       absentees: string[];
+      betsWithoutProno: BetWithoutProno[];
     }
 );
 
@@ -52,11 +54,8 @@ export function OthersOnMatch(props: OthersOnMatchProps) {
               eligibleCount={props.eligibleCount}
               others={props.others}
               absentees={props.absentees}
+              betsWithoutProno={props.betsWithoutProno}
             />
-          </section>
-          <section className={styles.section}>
-            <h2 className={styles.sectionTitle}>Paris</h2>
-            <p className={styles.empty}>Les paris des autres seront visibles au coup d&rsquo;envoi.</p>
           </section>
         </div>
       </ModalDialog>
@@ -64,12 +63,15 @@ export function OthersOnMatch(props: OthersOnMatchProps) {
   }
 
   const { others, absenteeCount, bets } = props;
+  const betByUser = new Map(bets.map((b) => [b.userId, b.description]));
+  const withProno = new Set(others.map((o) => o.userId));
+  const betsOnly = bets.filter((b) => !withProno.has(b.userId));
   return (
     <ModalDialog title="Les autres sur ce match" onClose={props.onClose}>
       <div className={styles.content}>
         <section className={styles.section}>
           <h2 className={styles.sectionTitle}>Pronos</h2>
-          {others.length === 0 && absenteeCount === 0 ? (
+          {others.length === 0 && absenteeCount === 0 && betsOnly.length === 0 ? (
             <p className={styles.empty}>Personne d&rsquo;autre n&rsquo;a pronostiqué sur ce match.</p>
           ) : (
             <>
@@ -88,12 +90,25 @@ export function OthersOnMatch(props: OthersOnMatchProps) {
                       <span className={styles.predictionPoints}>
                         {other.points === null ? "—" : `${other.points} pts`}
                       </span>
+                      {betByUser.get(other.userId) && (
+                        <span className={styles.betLine}>{betByUser.get(other.userId)}</span>
+                      )}
                       {other.adminCorrection && (
                         <span className={styles.correctedBadge}>
                           Saisi par {other.adminCorrection.adminName} à la demande de {other.userName}
                           {other.adminCorrection.reason ? ` — ${other.adminCorrection.reason}` : ""}
                         </span>
                       )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {betsOnly.length > 0 && (
+                <ul className={styles.list}>
+                  {betsOnly.map((bet) => (
+                    <li key={bet.userId} className={styles.predictionItem}>
+                      <PlayerLink userId={bet.userId} pseudo={bet.userName} className={styles.pseudo} />
+                      <span className={styles.betLine}>{bet.description}</span>
                     </li>
                   ))}
                 </ul>
@@ -106,45 +121,7 @@ export function OthersOnMatch(props: OthersOnMatchProps) {
             </>
           )}
         </section>
-
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Paris</h2>
-          {bets.length === 0 ? (
-            <p className={styles.empty}>Personne d&rsquo;autre n&rsquo;a parié.</p>
-          ) : (
-            <ul className={styles.list}>
-              {bets.map((bet) => (
-                <OtherBetItem key={bet.userId} bet={bet} />
-              ))}
-            </ul>
-          )}
-        </section>
       </div>
     </ModalDialog>
-  );
-}
-
-function OtherBetItem({ bet }: { bet: OtherBet }) {
-  const possiblePoints = possiblePointsLabel(bet.status, bet.pointsAtStake);
-  const isCancelled = bet.status === "CANCELLED";
-  const wonPoints = bet.status === "WON" ? bet.pointsAwarded : null;
-
-  return (
-    <li className={styles.betItem}>
-      <div className={styles.betHeader}>
-        <PlayerLink userId={bet.userId} pseudo={bet.userName} className={styles.pseudo} />
-        <BetStatusPill status={bet.status} />
-      </div>
-      <p className={isCancelled ? `${styles.betDescription} ${styles.betDescriptionCancelled}` : styles.betDescription}>
-        {bet.description}
-      </p>
-      {(wonPoints !== null || possiblePoints || bet.calculatedProba !== null) && (
-        <p className={styles.betMeta}>
-          {wonPoints !== null && <span className={styles.betPointsWon}>+{wonPoints} pts</span>}
-          {possiblePoints && <span>{possiblePoints}</span>}
-          {bet.calculatedProba !== null && <span>Proba calculée : {Math.round(bet.calculatedProba * 100)}%</span>}
-        </p>
-      )}
-    </li>
   );
 }

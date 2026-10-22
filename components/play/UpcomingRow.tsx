@@ -292,6 +292,7 @@ export function UpcomingRow({ match, maxBetPoints }: UpcomingRowProps) {
         eligibleCount={match.eligibleCount}
         others={match.others}
         absentees={match.absentees}
+        betsWithoutProno={match.betsWithoutProno}
       />
 
       {showValidateConfirm && (
