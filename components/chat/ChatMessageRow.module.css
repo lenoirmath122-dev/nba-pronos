@@ -11,6 +11,8 @@
 .bubble {
   position: relative;
   -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
   max-width: 80%;
   padding: var(--space-2) var(--space-3);
   border-radius: var(--radius-lg);
