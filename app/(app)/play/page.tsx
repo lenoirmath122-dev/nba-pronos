@@ -8,6 +8,7 @@ import { MatchBaremeGrid } from "@/components/regles/MatchBaremeGrid";
 import { ValidateAllBanner } from "@/components/play/ValidateAllBanner";
 import { MatchDayGroup } from "@/components/play/MatchDayGroup";
 import { BeyondWindowSection } from "@/components/play/BeyondWindowSection";
+import { maxBetPoints as maxBetPointsFor } from "@/components/play/betSlot";
 import { LiveTicker } from "@/components/play/LiveTicker";
 import { formatPronoRecap } from "@/lib/labels/pronos";
 import styles from "./page.module.css";
@@ -34,6 +35,7 @@ export default async function PlayUpcomingPage() {
     );
   }
 
+  const maxBetPoints = maxBetPointsFor(data.competitionType);
   const hasUpcoming = data.days.length > 0;
   const hasBeyondWindow = data.daysBeyondWindow.length > 0;
   const isEmpty = !hasUpcoming && !hasBeyondWindow;
@@ -75,10 +77,10 @@ export default async function PlayUpcomingPage() {
           {data.readyCount > 0 && <ValidateAllBanner readyMatches={readyMatches} />}
 
           {data.days.map((day) => (
-            <MatchDayGroup key={day.key} day={day} />
+            <MatchDayGroup key={day.key} day={day} maxBetPoints={maxBetPoints} />
           ))}
 
-          {hasBeyondWindow && <BeyondWindowSection days={data.daysBeyondWindow} />}
+          {hasBeyondWindow && <BeyondWindowSection days={data.daysBeyondWindow} maxBetPoints={maxBetPoints} />}
         </>
       )}
 

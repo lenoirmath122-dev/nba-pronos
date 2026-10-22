@@ -1,5 +1,6 @@
 import type { BetSlotIndicator, UpcomingMatchRow } from "@/lib/queries/play";
 import type { InlineBetOwned } from "@/components/bets/InlineBetForm";
+import { betDifficultyPoints, type CompetitionTypeValue } from "@/lib/scoring/engine";
 
 // Nombre de paris encore possibles sur ce match, dérivé du même
 // BetSlotIndicator : BINARY autorise 1 pari par match (0 ou 1 restant),
@@ -15,4 +16,10 @@ export function remainingBets(betSlot: BetSlotIndicator): number {
 export function toInlineBetOwned(bet: UpcomingMatchRow["bet"]): InlineBetOwned | null {
   if (!bet || (bet.status !== "DRAFT" && bet.status !== "SUBMITTED")) return null;
   return { betId: bet.betId, status: bet.status, description: bet.description };
+}
+
+/** Maximum du barème des paris de la compétition (ex. 25 en Playoffs/Coupe,
+ *  15 en Match du jour) -- affiché « jusqu'à N pts » dans la zone Mon pari. */
+export function maxBetPoints(competitionType: CompetitionTypeValue): number {
+  return Math.max(...Object.values(betDifficultyPoints(competitionType)));
 }

@@ -39,3 +39,13 @@ export function PeopleIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+/** Œil — « voir » (paris des autres, zone Mon pari). */
+export function EyeIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M2.5 12s3.6-6.5 9.5-6.5S21.5 12 21.5 12 17.9 18.5 12 18.5 2.5 12 2.5 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </IconBase>
+  );
+}

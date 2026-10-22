@@ -66,27 +66,34 @@ type BetBlockProps = {
   returnTo: string;
   forceOpenCorrection?: boolean;
   correctionError?: string;
+  /** Masque énoncé, statut et points (déjà affichés par la zone « Mon pari »
+   *  de LockedRow) : ne reste que motif, proba, correction. */
+  hideSummary?: boolean;
 };
 
-export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctionError }: BetBlockProps) {
+export function BetBlock({ bet, returnTo, forceOpenCorrection = false, correctionError, hideSummary = false }: BetBlockProps) {
   const isCancelled = bet.status === "CANCELLED";
   const possiblePoints = possiblePointsLabel(bet.status, bet.pointsAtStake);
 
   return (
     <div className={styles.card}>
-      <p className={isCancelled ? `${styles.description} ${styles.descriptionCancelled}` : styles.description}>
-        {bet.description}
-      </p>
-      {/* Catégorie/difficulté seulement une fois fixées (IA ou admin) : le
-          joueur ne les choisit plus, la valeur « proposée » est neutre. */}
-      {bet.isDifficultyValidated && (
-        <span className={styles.meta}>
-          {CATEGORY_LABEL[bet.category]} · difficulté {bet.difficulty}
-        </span>
+      {!hideSummary && (
+        <>
+          <p className={isCancelled ? `${styles.description} ${styles.descriptionCancelled}` : styles.description}>
+            {bet.description}
+          </p>
+          {/* Catégorie/difficulté seulement une fois fixées (IA ou admin) : le
+              joueur ne les choisit plus, la valeur « proposée » est neutre. */}
+          {bet.isDifficultyValidated && (
+            <span className={styles.meta}>
+              {CATEGORY_LABEL[bet.category]} · difficulté {bet.difficulty}
+            </span>
+          )}
+          <BetStatusPill status={bet.status} />
+          {bet.pointsAwarded !== null && <span className={styles.points}>{bet.pointsAwarded} pts</span>}
+          {possiblePoints && <span className={styles.meta}>{possiblePoints}</span>}
+        </>
       )}
-      <BetStatusPill status={bet.status} />
-      {bet.pointsAwarded !== null && <span className={styles.points}>{bet.pointsAwarded} pts</span>}
-      {possiblePoints && <span className={styles.meta}>{possiblePoints}</span>}
       {bet.isCalculable && bet.status !== "DRAFT" && bet.status !== "SUBMITTED" && bet.calculatedProba !== null && (
         <span className={styles.aiProba}>
           Proba calculée : {Math.round(bet.calculatedProba * 100)}% (palier {bet.suggestedDifficulty})
