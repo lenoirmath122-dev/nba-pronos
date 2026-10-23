@@ -30,27 +30,22 @@ test("soumission d'un pari personnalisé -> statut SOUMIS", async ({ page }, tes
   await gotoAndWaitReady(page, "/play");
 
   const row = matchRow(page, match3.homeTeamName);
-  // La carte n'a plus de dépliage (16/09/2026) : le déclencheur pari est
-  // TOUJOURS monté, mais désormais un par carte -- scopé à `row`, plutôt que
-  // page-level, puisque chaque match affiche le sien simultanément. Le
-  // formulaire lui-même s'ouvre en popup (portalée hors de `row`), donc les
-  // locators qui le ciblent restent page-level (uniques : une seule popup
-  // ouverte à la fois).
-  const trigger = row.getByRole("button", { name: /Proposer un pari/ });
-  await expect(trigger).toBeVisible({ timeout: 10_000 });
-  await trigger.click();
+  // Zone « Mon pari » (MatchBetZone, 22/10/2026) : la saisie se fait
+  // directement sur la carte, plus de popup -- tout reste scopé à `row`.
+  const description = "Pari e2e -- un joueur marque 20+ points";
+  const textarea = row.getByLabel("Mon pari");
+  await expect(textarea).toBeVisible({ timeout: 10_000 });
+  await textarea.fill(description);
+  await row.getByRole("button", { name: "Soumettre", exact: true }).click();
 
-  await page.getByLabel("Énoncé").fill("Pari e2e -- un joueur marque 20+ points");
-  await page.getByRole("button", { name: "Soumettre à validation" }).click();
+  // Succès -> la zone passe en lecture : énoncé affiché, plus de champ de
+  // saisie, accès aux paris des autres.
+  await expect(row.getByText(description, { exact: true })).toBeVisible();
+  await expect(row.getByLabel("Mon pari")).toHaveCount(0);
+  await expect(row.getByRole("button", { name: "Voir les paris des autres" })).toBeVisible();
 
-  // Repli automatique après succès (InlineBetForm) -> le déclencheur redevient
-  // visible, changé de "Proposer un pari" à "Modifier le pari" (myBet existe).
-  const editTrigger = row.getByRole("button", { name: "Modifier le pari" });
-  await expect(editTrigger).toBeVisible();
-
-  // Statut réel : rouvrir montre "Soumettre les modifications" (SUBMITTED),
-  // jamais "Soumettre à validation" (qui redeviendrait affiché pour un DRAFT).
-  await editTrigger.click();
-  await expect(page.getByRole("button", { name: "Soumettre les modifications" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "Soumettre à validation" })).toHaveCount(0);
+  // Statut réel : "En attente" (SUBMITTED, en attente d'un admin), jamais
+  // "Validé" -- sans ANTHROPIC_API_KEY le pari n'est pas auto-validé.
+  await expect(row.getByText("En attente", { exact: true })).toBeVisible();
+  await expect(row.getByText("Validé", { exact: true })).toHaveCount(0);
 });
