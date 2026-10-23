@@ -588,6 +588,8 @@ def build_period_match_dataset(matchs_training: pd.DataFrame, quarter_scores: pd
         part = df[["game_id"] + home_cols + away_cols].copy()
         part["period"] = period
         part["margin"] = (home_cum - away_cum).abs()
+        # Ecart SIGNE cote domicile (TEAM_MARGIN) : positif = domicile mene.
+        part["signed_margin"] = home_cum - away_cum
         part["total_points"] = home_seg + away_seg
         rows.append(part)
     return pd.concat(rows, ignore_index=True)

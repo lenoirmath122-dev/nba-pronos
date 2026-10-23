@@ -6,6 +6,8 @@ que overtime/team_pct, décidé avec l'utilisateur avant de coder) :
 
   - period_margin.joblib          : régression, écart CUMULATIF (depuis le
                                      début du match) à la fin d'une période.
+  - period_signed_margin.joblib   : régression, même écart cumulatif mais SIGNÉ
+                                     (domicile - extérieur), pour TEAM_MARGIN.
   - period_total_points.joblib    : régression, points combinés PENDANT une
                                      période (segment, pas cumulatif).
   - period_quarter_winner.joblib  : classification binaire, l'équipe visée
@@ -166,7 +168,7 @@ def main():
 
     # ---- 1/2. margin (régression, cumulatif) + total_points (régression, segment) ----
     periode_match = pd.read_sql(
-        f"SELECT game_id, period, margin, total_points, {', '.join(FEATURE_COLS)} FROM entrainement_periode_match",
+        f"SELECT game_id, period, margin, signed_margin, total_points, {', '.join(FEATURE_COLS)} FROM entrainement_periode_match",
         conn, dtype={"game_id": str},
     )
     periode_match = periode_match.merge(game_dates, on="game_id", how="left")
@@ -174,6 +176,8 @@ def main():
     feature_cols_match = FEATURE_COLS + PERIOD_ONE_HOT_COLS
 
     train_regressor("period_margin", periode_match, feature_cols_match, "margin", [3, 5, 10, 15, 20])
+    # TEAM_MARGIN : meme cible cumulee mais SIGNEE (domicile - exterieur).
+    train_regressor("period_signed_margin", periode_match, feature_cols_match, "signed_margin", [-10, -5, 0, 5, 10])
     train_regressor("period_total_points", periode_match, feature_cols_match, "total_points", [40, 45, 50, 55, 60])
 
     # ---- 3/4. quarter_winner (classif binaire) + point_share (régression) ----

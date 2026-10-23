@@ -50,7 +50,7 @@ function otherShapes(bet: PopupBetRow, except: keyof PopupBetRow | null): unknow
 
 const present = (value: unknown) => value !== null && value !== undefined;
 
-const PERIOD_TEAM_OUTCOMES = new Set(["MARGIN", "TOTAL_POINTS", "QUARTERS_WON_COUNT"]);
+const PERIOD_TEAM_OUTCOMES = new Set(["MARGIN", "TEAM_MARGIN", "TOTAL_POINTS", "QUARTERS_WON_COUNT"]);
 const AUTOMATIC_REASONS = new Set<string>([
   DNP_RESOLUTION_REASON,
   NOT_IN_MATCH_RESOLUTION_REASON,

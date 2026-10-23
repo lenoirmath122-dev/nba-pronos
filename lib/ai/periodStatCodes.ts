@@ -36,6 +36,7 @@ export type PeriodOutcomeKind =
   | "QUARTERS_WON_COUNT"
   | "LEADS_HALF_RESULT"
   | "MARGIN"
+  | "TEAM_MARGIN"
   | "TOTAL_POINTS"
   | "POINT_SHARE_PCT";
 
@@ -45,6 +46,7 @@ export const PERIOD_OUTCOME_KINDS: PeriodOutcomeKind[] = [
   "QUARTERS_WON_COUNT",
   "LEADS_HALF_RESULT",
   "MARGIN",
+  "TEAM_MARGIN",
   "TOTAL_POINTS",
   "POINT_SHARE_PCT",
 ];
@@ -60,6 +62,7 @@ export const TEAM_TARGETED_PERIOD_OUTCOMES = new Set<PeriodOutcomeKind>([
   "HALF_WINNER",
   "QUARTERS_WON_COUNT",
   "LEADS_HALF_RESULT",
+  "TEAM_MARGIN",
   "POINT_SHARE_PCT",
 ]);
 
@@ -69,6 +72,7 @@ export const PERIOD_OUTCOME_LABELS_FR: Record<PeriodOutcomeKind, string> = {
   QUARTERS_WON_COUNT: "nombre de quarts-temps remportés sur le match entier (period ignoré, toujours les 4)",
   LEADS_HALF_RESULT: "mène à la mi-temps ET le résultat final du match (gagne ou perd)",
   MARGIN: "écart de points entre les 2 équipes à la fin de la période",
+  TEAM_MARGIN: "écart de points SIGNÉ (score de l'équipe visée moins celui de l'adversaire) cumulé jusqu'à la fin de la période : positif = elle mène, négatif = elle est menée",
   TOTAL_POINTS: "total de points combinés des 2 équipes sur la période",
   POINT_SHARE_PCT: "part des points TOTAUX du match marqués par l'équipe sur cette période",
 };

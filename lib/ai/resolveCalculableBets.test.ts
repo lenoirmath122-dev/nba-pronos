@@ -290,6 +290,25 @@ describe("computePeriodTeamOutcome", () => {
     });
   });
 
+  describe("TEAM_MARGIN — écart cumulé signé du point de vue de l'équipe visée", () => {
+    it("H1 : home mène de 9 (53-44) -> +9 pour home, -9 pour away", () => {
+      const m = periodMatch();
+      expect(computePeriodTeamOutcome("TEAM_MARGIN", "H1", true, null, 5, "OVER", m)).toEqual({
+        won: true, detail: "+9 (écart cumulé signé)",
+      });
+      expect(computePeriodTeamOutcome("TEAM_MARGIN", "H1", false, null, -9, "UNDER", m)?.won).toBe(false);
+      // « se prend 9 pts ou plus » inclusif = UNDER -8 (seuil strict).
+      expect(computePeriodTeamOutcome("TEAM_MARGIN", "H1", false, null, -8, "UNDER", m)?.won).toBe(true);
+    });
+
+    it("équipe, période ou seuil manquant → null", () => {
+      const m = periodMatch();
+      expect(computePeriodTeamOutcome("TEAM_MARGIN", "H1", null, null, 5, "OVER", m)).toBeNull();
+      expect(computePeriodTeamOutcome("TEAM_MARGIN", null, true, null, 5, "OVER", m)).toBeNull();
+      expect(computePeriodTeamOutcome("TEAM_MARGIN", "H1", true, null, null, "OVER", m)).toBeNull();
+    });
+  });
+
   describe("TOTAL_POINTS — total du seul segment de la période", () => {
     it("period=Q4 → seulement le 4e quart-temps (30+25=55), pas le match entier", () => {
       const m = periodMatch();
