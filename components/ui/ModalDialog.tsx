@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import { FocusTrap } from "./FocusTrap";
 import { Backdrop } from "./Backdrop";
@@ -22,6 +23,16 @@ type ModalDialogProps = {
 };
 
 export function ModalDialog({ title, onClose, children }: ModalDialogProps) {
+  // La page derrière ne défile plus tant que la popup est ouverte (sinon le
+  // geste de scroll « traverse » la popup, surtout sur mobile).
+  useEffect(() => {
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, []);
+
   return createPortal(
     <Backdrop className={styles.backdrop} onClose={onClose}>
       <FocusTrap

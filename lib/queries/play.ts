@@ -12,6 +12,7 @@ import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES, MATCH_SLOT_CAP } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { CompetitionType } from "@/lib/competitions/types";
+import { loadBetStatLines, type ComboForStatLines } from "@/lib/queries/betStatLines";
 
 // Lecture des 2 onglets de "Jouer" (SPEC_REFONTE_ONGLET_JOUER_V0_1) — fusionne
 // l'ancien lib/queries/matches.ts (matchs à venir) + lib/queries/my-predictions.ts
@@ -102,6 +103,10 @@ export type OtherBet = {
   calculatedProba: number | null;
   /** Points en jeu selon le barème de la compétition (Match du jour : ×0,6). */
   pointsAtStake: number | null;
+  /** Justification du règlement (ex. chiffre réel de la stat), null tant que non réglé. */
+  resolutionReason: string | null;
+  /** Vraies stats des joueurs cités (paris combo réglés), une ligne par joueur. */
+  statLines: string[];
 };
 
 export type BetStatusValue = "DRAFT" | "SUBMITTED" | "VALIDATED" | "REJECTED" | "WON" | "LOST" | "CANCELLED";
@@ -272,6 +277,8 @@ type BetSourceRow = {
   is_calculable: boolean | null;
   calculated_proba: number | null;
   suggested_difficulty: BetDifficulty | null;
+  /** Lu seulement par la requête Résultats (stats réelles des paris combo). */
+  structured_combo?: ComboForStatLines | null;
 };
 
 function teamRef(row: TeamRow): TeamRef {
@@ -899,7 +906,7 @@ async function fetchLockedRows(
     supabase
       .from("bets")
       .select(
-        "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, is_calculable, calculated_proba, suggested_difficulty"
+        "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, is_calculable, calculated_proba, suggested_difficulty, structured_combo"
       )
       .eq("competition_id", competition.id)
       .eq("scope", "MATCH")
@@ -968,6 +975,11 @@ async function fetchLockedRows(
   }
   const betByMatch = new Map(bets.filter((b) => b.user_id === userId).map((b) => [b.match_id as string, b]));
 
+  const statLinesByBetId = await loadBetStatLines(
+    bets
+      .filter((b) => b.user_id !== userId && b.match_id && (b.status === "WON" || b.status === "LOST"))
+      .map((b) => ({ id: b.id, matchId: b.match_id!, combo: b.structured_combo ?? null }))
+  );
   const otherBetsByMatch = new Map<string, OtherBet[]>();
   for (const b of bets) {
     if (b.user_id === userId || !b.match_id) continue;
@@ -982,6 +994,8 @@ async function fetchLockedRows(
       pointsAwarded: b.points_awarded,
       calculatedProba: b.is_calculable ? b.calculated_proba : null,
       pointsAtStake: b.validated_difficulty !== null ? (betDifficultyPoints(competition.type)[b.validated_difficulty] ?? null) : null,
+      resolutionReason: b.resolution_reason,
+      statLines: statLinesByBetId.get(b.id) ?? [],
     });
     otherBetsByMatch.set(b.match_id, list);
   }
