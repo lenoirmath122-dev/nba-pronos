@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Page Badges</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1118}
+a{color:#F2F5FA}a:hover{color:#FF8A54}
+</style>
+</helmet>
+<div style="width: 390px; height: 1900px; position: relative; overflow: hidden; box-sizing: border-box; padding: 16px 16px 0; display: flex; flex-direction: column; gap: 14px; font-family: Sora, system-ui, sans-serif; color: #F2F5FA; background: linear-gradient(180deg, #12161F, #0E1118 30%, #0B0E14)">
+
+  <div style="display: flex; align-items: center; gap: 12px">
+    <a href="#" aria-label="Retour" style="width: 44px; height: 44px; border-radius: 12px; background: #161B25; display: inline-flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+    <h1 style="margin: 0; font-size: 24px; font-weight: 700">Badges</h1>
+  </div>
+
+  <section style="padding: 16px; border-radius: 16px; background: #161B25; border: 1px solid rgba(255,255,255,0.09); display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: baseline; gap: 10px">
+      <span style="font-family: Oswald, sans-serif; font-size: 40px; font-weight: 700; line-height: 1">17<span style="font-size: 22px; color: #7C8798">/35</span></span>
+      <span style="font-size: 14px; color: #B7C0CE">badges débloqués</span>
+    </div>
+    <div style="height: 8px; border-radius: 4px; background: rgba(255,255,255,0.09); overflow: hidden"><div style="width: 48.6%; height: 100%; border-radius: 4px; background: #FF6A2B"></div></div>
+    <span style="font-size: 13px; color: #FF8A54; font-weight: 600">2 nouveaux depuis ta dernière visite</span>
+  </section>
+
+  <section style="padding: 14px 16px 16px; border-radius: 16px; background: #161B25; border: 1px solid rgba(255,106,43,0.35); display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: center; justify-content: space-between">
+      <h2 style="margin: 0; font-size: 15px; font-weight: 700">Ma vitrine</h2>
+      <button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 0; background: rgba(255,106,43,0.16); color: #FF8A54; font: 600 13px Sora, sans-serif">Modifier</button>
+    </div>
+    <div style="display: flex; gap: 10px">
+      <div style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,0.03)">
+        <dc-import name="Emblem" tier="ARGENT" icon="fork" size="34" label="Victorieux (série)" hint-size="34px,39px"></dc-import>
+        <span style="font-size: 11px; font-weight: 600; line-height: 1.25">Victorieux (série)</span>
+      </div>
+      <div style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,0.03)">
+        <dc-import name="Emblem" tier="BRONZE" icon="copy" size="34" label="Visionnaire" hint-size="34px,39px"></dc-import>
+        <span style="font-size: 11px; font-weight: 600; line-height: 1.25">Visionnaire</span>
+      </div>
+      <div style="flex: 1; display: flex; align-items: center; gap: 8px; padding: 8px; border-radius: 12px; background: rgba(255,255,255,0.03)">
+        <dc-import name="Emblem" tier="UNLOCKED" icon="dice" size="34" label="Casse-cou" hint-size="34px,39px"></dc-import>
+        <span style="font-size: 11px; font-weight: 600; line-height: 1.25">Casse-cou</span>
+      </div>
+    </div>
+    <span style="font-size: 12px; color: #7C8798">Le 1er s'affiche à côté de ton pseudo dans le classement.</span>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 8px">
+    <h2 style="margin: 4px 0 2px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #B7C0CE">LE PLUS PROCHE</h2>
+    <sc-for list="{{close}}" as="c" hint-placeholder-count="3">
+      <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: #161B25; border: 1px solid rgba(255,255,255,0.09); text-decoration: none">
+        <dc-import name="Emblem" tier="{{c.tier}}" icon="{{c.icon}}" size="38" label="{{c.name}}" hint-size="38px,44px"></dc-import>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 5px">
+          <span style="font-size: 14px; font-weight: 600">{{c.name}} <span style="{{c.targetStyle}}">→ {{c.target}}</span></span>
+          <span style="height: 5px; border-radius: 3px; background: rgba(255,255,255,0.09); overflow: hidden; display: block"><span style="{{c.barStyle}}"></span></span>
+          <span style="font-size: 12px; color: #B7C0CE">{{c.hint}}</span>
+        </span>
+      </a>
+    </sc-for>
+  </section>
+
+  <div style="display: flex; gap: 8px; flex-wrap: wrap; padding-top: 4px">
+    <button type="button" aria-pressed="true" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: #F2F5FA; color: #0B0E14; font: 600 13px Sora, sans-serif">Tous · 35</button>
+    <button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #B7C0CE; font: 500 13px Sora, sans-serif">Débloqués · 17</button>
+    <button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #B7C0CE; font: 500 13px Sora, sans-serif">À débloquer · 18</button>
+  </div>
+
+  <sc-for list="{{cats}}" as="cat" hint-placeholder-count="3">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 6px 0 0; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #B7C0CE">{{cat.title}}</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+        <sc-for list="{{cat.badges}}" as="b" hint-placeholder-count="4">
+          <button type="button" style="{{b.cardStyle}}">
+            <sc-if value="{{b.vitrine}}" hint-placeholder-val="{{ false }}">
+              <span style="position: absolute; top: 8px; right: 8px; font-size: 10px; font-weight: 700; color: #FF8A54; background: rgba(255,106,43,0.16); border-radius: 999px; padding: 2px 7px">Vitrine</span>
+            </sc-if>
+            <sc-if value="{{b.isNew}}" hint-placeholder-val="{{ false }}">
+              <span style="position: absolute; top: 8px; left: 8px; font-size: 10px; font-weight: 700; color: #0B0E14; background: #FF6A2B; border-radius: 999px; padding: 2px 7px">Nouveau</span>
+            </sc-if>
+            <dc-import name="Emblem" tier="{{b.tier}}" icon="{{b.icon}}" text="{{b.text}}" size="54" label="{{b.name}}" hint-size="54px,62px"></dc-import>
+            <span style="display: flex; gap: 4px" aria-hidden="true">
+              <sc-for list="{{b.pips}}" as="p" hint-placeholder-count="5">
+                <span style="{{p.style}}"></span>
+              </sc-for>
+            </span>
+            <span style="{{b.nameStyle}}">{{b.name}}</span>
+            <span style="{{b.tierStyle}}">{{b.tierLabel}}</span>
+            <span style="width: 100%; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.09); overflow: hidden; display: block; margin-top: 2px"><span style="{{b.barStyle}}"></span></span>
+            <span style="font-size: 11px; color: #B7C0CE">{{b.progress}}</span>
+          </button>
+        </sc-for>
+      </div>
+    </section>
+  </sc-for>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 0; height: 160px; background: linear-gradient(180deg, transparent, #0B0E14 80%)" aria-hidden="true"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var metal = { BRONZE: '#C9793D', ARGENT: '#CBD3DE', OR: '#F5C451', PLATINE: '#CFE6EC', DIAMANT: '#6FA8FF', UNLOCKED: '#FF8A54', LOCKED: '#5E6B7D' };
+    var label = { BRONZE: 'BRONZE', ARGENT: 'ARGENT', OR: 'OR', PLATINE: 'PLATINE', DIAMANT: 'DIAMANT', UNLOCKED: 'DÉBLOQUÉ', LOCKED: 'À DÉBLOQUER' };
+    var rank = { BRONZE: 1, ARGENT: 2, OR: 3, PLATINE: 4, DIAMANT: 5 };
+    function card(name, tier, icon, text, value, next, nextLabel, tiered, opts) {
+      opts = opts || {};
+      var locked = tier === 'LOCKED';
+      var pct = next ? Math.min(100, Math.round(value / next * 100)) : 100;
+      var r = rank[tier] || 0;
+      var pips = [];
+      for (var i = 1; i <= 5; i++) {
+        pips.push({ style: 'width: 6px; height: 6px; border-radius: 50%; background: ' + (tiered && i <= r ? metal[tier] : 'rgba(255,255,255,0.12)') + (tiered ? '' : '; opacity: 0') });
+      }
+      return {
+        name: name, tier: tier, icon: icon, text: text || '', pips: pips,
+        vitrine: !!opts.vitrine, isNew: !!opts.isNew,
+        tierLabel: label[tier],
+        progress: next ? value + '/' + next + ' · ' + nextLabel : (tiered ? 'Palier max' : (locked ? '0/1' : 'Débloqué')),
+        cardStyle: 'position: relative; display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 14px 12px 12px; border-radius: 14px; font: inherit; color: inherit; text-align: center; cursor: pointer; ' + (locked ? 'background: #121720; border: 1px dashed rgba(255,255,255,0.14);' : 'background: #161B25; border: 1px solid ' + (opts.vitrine ? 'rgba(255,106,43,0.45)' : 'rgba(255,255,255,0.09)') + ';'),
+        nameStyle: 'font-size: 13px; font-weight: 600; line-height: 1.25; color: ' + (locked ? '#B7C0CE' : '#F2F5FA'),
+        tierStyle: 'font-size: 10px; font-weight: 700; letter-spacing: 0.07em; color: ' + metal[tier],
+        barStyle: 'display: block; height: 100%; border-radius: 3px; width: ' + pct + '%; background: ' + (locked ? '#7C8798' : metal[tier])
+      };
+    }
+    var close = [
+      ['Machine à pronos', 'ARGENT', 'scroll', 'Or', '#F5C451', 97, 'Plus qu’un prono (34/35)'],
+      ['Métronome', 'BRONZE', 'repeat', 'Argent', '#CBD3DE', 80, '1 bon vainqueur d’affilée de plus que ton record (4/5)'],
+      ['Money-time', 'LOCKED', 'eye', 'Bronze', '#C9793D', 63, '3 écarts proches à trouver (5/8)']
+    ].map(function (c) {
+      return { name: c[0], tier: c[1], icon: c[2], target: c[3], hint: c[6],
+        targetStyle: 'color: ' + c[4] + '; font-weight: 700',
+        barStyle: 'display: block; height: 100%; border-radius: 3px; width: ' + c[5] + '%; background: ' + c[4] };
+    });
+    var cats = [
+      { title: 'PRONOSTICS DE MATCH', badges: [
+        card('Victorieux', 'BRONZE', 'check', '', 15, 25, 'Argent à 25', true),
+        card('Buzzer-beater', 'BRONZE', 'clock', '0.0', 5, 8, 'Argent à 8', true),
+        card('Money-time', 'LOCKED', 'eye', '', 5, 8, 'Bronze à 8', true),
+        card('Métronome', 'BRONZE', 'repeat', '4', 4, 5, 'Argent à 5', true),
+        card('Machine à pronos', 'ARGENT', 'scroll', '', 34, 35, 'Or à 35', true, { isNew: true })
+      ] },
+      { title: 'BRACKET PERSONNEL', badges: [
+        card('Victorieux (série)', 'ARGENT', 'fork', '', 9, 15, 'Or à 15', true, { vitrine: true }),
+        card('Buzzer-beater (série)', 'LOCKED', 'clock', '', 1, 2, 'Bronze à 2', true),
+        card('Visionnaire', 'BRONZE', 'copy', '', 2, 3, 'Argent à 3', true, { vitrine: true }),
+        card('Avant-gardiste', 'UNLOCKED', 'network', '', 0, 0, '', false),
+        card('Sans-faute', 'LOCKED', 'sparkles', '', 0, 1, 'Bronze à 1', true)
+      ] },
+      { title: 'PARIS PERSO', badges: [
+        card('Scout', 'LOCKED', 'binoculars', '', 2, 3, 'Bronze à 3', true),
+        card('Casse-cou', 'UNLOCKED', 'dice', '', 0, 0, '', false, { vitrine: true, isNew: true })
+      ] }
+    ];
+    return { close: close, cats: cats };
+  }
+}
+</script>
+</body>
+</html>

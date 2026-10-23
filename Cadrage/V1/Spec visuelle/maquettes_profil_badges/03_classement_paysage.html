@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Classement — paysage</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1118}
+</style>
+</helmet>
+<div style="width: 844px; height: 390px; overflow: hidden; box-sizing: border-box; padding: 14px 24px 0; font-family: Sora, system-ui, sans-serif; color: #F2F5FA; background: linear-gradient(180deg, #12161F, #0E1118 40%, #0B0E14)">
+  <div style="display: flex; align-items: center; gap: 16px; height: 40px">
+    <h1 style="margin: 0; font-size: 20px; font-weight: 700">Classement</h1>
+    <span style="font-size: 13px; color: #B7C0CE">Saison régulière · Semaine 1</span>
+    <span style="flex: 1"></span>
+    <div style="display: flex; gap: 6px">
+      <button type="button" style="height: 34px; padding: 0 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #B7C0CE; font: 600 13px Sora, sans-serif">Semaine</button>
+      <button type="button" aria-pressed="true" style="height: 34px; padding: 0 16px; border-radius: 8px; border: 0; background: #FF6A2B; color: #0B0E14; font: 700 13px Sora, sans-serif">Général</button>
+    </div>
+  </div>
+  <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr) 66px 66px 66px 66px 66px; align-items: center; height: 32px; margin-top: 6px; font-size: 12px; color: #7C8798; border-bottom: 1px solid rgba(255,255,255,0.09)">
+    <span>Rang</span><span>Joueur · vitrine</span><span style="text-align: center; color: #FF8A54">Total ▾</span><span style="text-align: center">Matchs</span><span style="text-align: center">Bracket</span><span style="text-align: center">Paris</span><span style="text-align: center">Forme</span>
+  </div>
+  <sc-for list="{{rows}}" as="r" hint-placeholder-count="6">
+    <div style="display: grid; grid-template-columns: 52px minmax(0, 1fr) 66px 66px 66px 66px 66px; align-items: center; height: 47px; border-bottom: 1px solid rgba(255,255,255,0.06)">
+      <span style="font-family: Oswald, sans-serif; font-size: 19px; font-weight: 700">{{r.rank}}</span>
+      <span style="display: flex; align-items: center; gap: 10px; min-width: 0">
+        <span style="{{r.avatarStyle}}">{{r.initials}}</span>
+        <span style="font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 190px">{{r.pseudo}}</span>
+        <span style="display: flex; gap: 5px">
+          <sc-for list="{{r.badges}}" as="b" hint-placeholder-count="3">
+            <dc-import name="Emblem" tier="{{b.tier}}" icon="{{b.icon}}" size="22" hint-size="22px,25px"></dc-import>
+          </sc-for>
+        </span>
+      </span>
+      <span style="display: flex; justify-content: center"><span style="min-width: 40px; text-align: center; font-family: Oswald, sans-serif; font-size: 18px; font-weight: 700; background: rgba(255,106,43,0.16); border-radius: 6px; padding: 2px 6px">{{r.total}}</span></span>
+      <span style="text-align: center; font-family: Oswald, sans-serif; font-size: 17px; color: #B7C0CE">{{r.matchs}}</span>
+      <span style="text-align: center; font-family: Oswald, sans-serif; font-size: 17px; color: #B7C0CE">{{r.bracket}}</span>
+      <span style="text-align: center; font-family: Oswald, sans-serif; font-size: 17px; color: #B7C0CE">{{r.paris}}</span>
+      <span style="text-align: center; font-family: Oswald, sans-serif; font-size: 17px; color: #9FC6E0">{{r.forme}}</span>
+    </div>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":844,"height":390}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var neutral = { bg: 'rgba(255,106,43,0.16)', fg: '#FF8A54' };
+    var teams = { LAL: { bg: '#552583', fg: '#FDB927' }, GSW: { bg: '#1D428A', fg: '#FFC72C' } };
+    function b(t, i) { return { tier: t, icon: i }; }
+    var data = [
+      ['1', 'CY', 'cyril535', '36', '36', '0', '0', '36', null, [b('OR', 'check'), b('ARGENT', 'repeat'), b('BRONZE', 'heart')]],
+      ['2', 'VR', 'Vraiflockodu93', '36', '36', '0', '0', '36', null, [b('ARGENT', 'repeat'), b('ARGENT', 'check'), b('BRONZE', 'scroll')]],
+      ['2', 'TH', 'TheAnsw3r', '36', '36', '0', '0', '36', null, [b('ARGENT', 'clock'), b('BRONZE', 'check')]],
+      ['4', 'XA', 'Xav', '33', '33', '0', '0', '33', 'LAL', [b('BRONZE', 'heart'), b('BRONZE', 'check'), b('UNLOCKED', 'network')]],
+      ['5', 'NO', 'nonogrobidou', '25', '13', '0', '12', '25', 'GSW', [b('UNLOCKED', 'dice'), b('BRONZE', 'binoculars'), b('BRONZE', 'calc')]],
+      ['6', 'LH', 'le haricot mystérieux', '24', '24', '0', '0', '24', null, []]
+    ];
+    return {
+      rows: data.map(function (d) {
+        var c = neutral;
+        return {
+          rank: d[0], initials: d[1], pseudo: d[2], total: d[3], matchs: d[4], bracket: d[5], paris: d[6], forme: d[7], badges: d[9],
+          avatarStyle: 'width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: ' + c.bg + '; color: ' + c.fg
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>
