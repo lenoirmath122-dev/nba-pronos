@@ -203,6 +203,23 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   repris depuis.
 - **"LF suite à des fautes personnelles"** — probablement quasi équivalent à
   la stat FT équipe déjà gérée, jamais vérifié.
+- **Écart orienté sur une période** — ex. « Les Jazz se prennent 10 points à
+  la mi-temps » (pari `62bd0e71…`, constaté le 23/10/2026, `SUBMITTED`,
+  `UNKNOWN_TYPE`, match du 24/10 01:30 UTC pas encore joué). `MARGIN`
+  (`structurePeriodBet.ts`) n'existe qu'en version **symétrique**
+  (`team=null`, « l'écart est de 5 points ou moins ») : un écart *d'une
+  équipe donnée* (« X mène/perd de N à la mi-temps ») n'est pas modélisé.
+  Vrai trou de couverture, pas du hors-champ : à trancher (étendre `MARGIN`
+  avec `team` signé, ou le laisser manuel). En attendant, résolution
+  manuelle : vérifier le score à la mi-temps après le match.
+- **Paris hors-terrain (public, célébrités)** — ex. « Il y a au moins 1
+  acteur dans les spectateurs des rangs 1 à 5 » (pari `cec837fa…`, match
+  terminé le 23/10/2026, `VALIDATED`, `is_calculable=false`, diagnostic
+  `COVERAGE / GENERAL / UNKNOWN_TYPE`, « pari fun hors-terrain »). Constaté
+  le 23/10/2026 : **comportement normal**, aucune donnée de box score ne
+  peut le trancher ; la résolution est manuelle par l'admin (WON/LOST à la
+  main). Rien à construire ; à lister ici pour mémoire et pour ne pas le
+  prendre pour un bug de structuration.
 - **Décision TTL cache (5 min) / classify-then-structure** reportée faute de
   données de trafic réel (pause actuelle entre alpha et vraie Cup) — à
   revisiter une fois du trafic réel disponible (~20/09/2026).
