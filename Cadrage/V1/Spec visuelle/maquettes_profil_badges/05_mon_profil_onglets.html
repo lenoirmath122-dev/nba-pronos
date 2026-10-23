@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Profil — mode soi, onglets</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1118}
+a{color:#F2F5FA}a:hover{color:#FF8A54}
+</style>
+</helmet>
+<div style="width: 390px; height: 1000px; position: relative; overflow: hidden; box-sizing: border-box; font-family: Sora, system-ui, sans-serif; color: #F2F5FA; background: linear-gradient(180deg, #12161F, #0E1118 40%, #0B0E14)">
+
+  <div style="position: relative; height: 196px; overflow: hidden">
+    <img src="/_blob/6e3c70a7326dac5543422cf09572ea2e" alt="" style="position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: center 30%; filter: grayscale(1) contrast(1.15) brightness(0.85)">
+    <div style="position: absolute; inset: 0; background: linear-gradient(135deg, #5D76A9 0%, #5D76A9 50%, #F5B112 100%); mix-blend-mode: color" aria-hidden="true"></div>
+    <div style="position: absolute; inset: 0; background: linear-gradient(180deg, rgba(14,17,24,0.15) 0%, rgba(14,17,24,0.35) 55%, #0E1118 100%)" aria-hidden="true"></div>
+    <a href="#" aria-label="Retour" style="position: absolute; top: 14px; left: 14px; width: 44px; height: 44px; border-radius: 12px; background: rgba(14,17,24,0.6); display: inline-flex; align-items: center; justify-content: center">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 6l-6 6 6 6"></path></svg>
+    </a>
+    <a href="#" style="position: absolute; top: 14px; right: 14px; height: 44px; display: inline-flex; align-items: center; gap: 8px; padding: 0 16px; border-radius: 999px; background: rgba(14,17,24,0.6); text-decoration: none; font-size: 13px; font-weight: 600">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"></path></svg>Modifier le profil
+    </a>
+    <span style="position: absolute; bottom: 70px; right: 16px; width: 44px; height: 44px; border-radius: 50%; background: #EDF1F7; display: inline-flex; align-items: center; justify-content: center; font-family: Oswald, sans-serif; font-weight: 700; font-size: 12px; color: #10141D" title="Logo de l'équipe">MEM</span>
+  </div>
+
+  <div style="position: relative; margin-top: -52px; padding: 0 16px; display: flex; flex-direction: column; gap: 10px">
+    <div style="display: flex; align-items: flex-end; gap: 14px">
+      <span style="width: 72px; height: 72px; border-radius: 50%; background: #2A1D18; color: #FF8A54; font-size: 24px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; box-shadow: 0 0 0 4px #0E1118; flex-shrink: 0">RI</span>
+      <div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 2px; min-width: 0">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <h1 style="margin: 0; font-size: 24px; font-weight: 700; line-height: 1.1">Rillettes-31</h1>
+          <dc-import name="Emblem" tier="ARGENT" icon="fork" size="22" label="Victorieux (série), Argent" hint-size="22px,25px"></dc-import>
+        </div>
+        <span style="font-size: 13px; color: #B7C0CE">Memphis Grizzlies · Admin</span>
+      </div>
+    </div>
+    <div style="display: flex; gap: 8px; flex-wrap: wrap">
+      <span style="display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; background: rgba(255,106,43,0.16); color: #FF8A54; font-size: 13px; font-weight: 600"><strong style="font-family: Oswald, sans-serif; font-size: 16px; color: #F2F5FA">#16</strong> · 6 pts</span>
+      <span style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,0.06); color: #B7C0CE; font-size: 13px">17/35 badges</span>
+      <span style="display: inline-flex; align-items: center; height: 30px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,0.06); color: #B7C0CE; font-size: 13px">Meilleur rang #1</span>
+    </div>
+  </div>
+
+  <nav aria-label="Sections du profil" style="margin-top: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-bottom: 1px solid rgba(255,255,255,0.09); background: rgba(14,17,24,0.92)">
+    <a href="#" style="height: 48px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; color: #B7C0CE">Stats</a>
+    <a href="#" aria-current="page" style="height: 48px; display: flex; align-items: center; justify-content: center; gap: 6px; text-decoration: none; font-size: 14px; font-weight: 700; color: #F2F5FA; box-shadow: inset 0 -3px 0 #FF6A2B">Badges<span style="min-width: 18px; height: 18px; border-radius: 9px; background: #FF6A2B; color: #0B0E14; font-size: 11px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center" aria-label="2 nouveaux">2</span></a>
+    <a href="#" style="height: 48px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; color: #B7C0CE">Historique</a>
+    <a href="#" style="height: 48px; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px; color: #B7C0CE">Ligues</a>
+  </nav>
+
+  <div style="padding: 14px 16px 0; display: flex; flex-direction: column; gap: 12px">
+    <section style="padding: 14px 16px 16px; border-radius: 16px; background: #161B25; border: 1px solid rgba(255,106,43,0.35); display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h2 style="margin: 0; font-size: 15px; font-weight: 700">Ma vitrine</h2>
+        <button type="button" style="height: 34px; padding: 0 12px; border-radius: 999px; border: 0; background: rgba(255,106,43,0.16); color: #FF8A54; font: 600 13px Sora, sans-serif">Modifier</button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,0.03)">
+          <dc-import name="Emblem" tier="ARGENT" icon="fork" size="56" glow="true" label="Victorieux (série), Argent" hint-size="56px,64px"></dc-import>
+          <span style="font-size: 12px; font-weight: 600; text-align: center">Victorieux (série)</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,0.03)">
+          <dc-import name="Emblem" tier="BRONZE" icon="copy" size="56" glow="true" label="Visionnaire, Bronze" hint-size="56px,64px"></dc-import>
+          <span style="font-size: 12px; font-weight: 600">Visionnaire</span>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 8px 4px; border-radius: 12px; background: rgba(255,255,255,0.03)">
+          <dc-import name="Emblem" tier="UNLOCKED" icon="dice" size="56" glow="true" label="Casse-cou, débloqué" hint-size="56px,64px"></dc-import>
+          <span style="font-size: 12px; font-weight: 600">Casse-cou</span>
+        </div>
+      </div>
+    </section>
+
+    <h2 style="margin: 4px 0 0; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #B7C0CE">LE PLUS PROCHE</h2>
+    <a href="#" style="display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 14px; background: #161B25; border: 1px solid rgba(255,255,255,0.09); text-decoration: none">
+      <dc-import name="Emblem" tier="ARGENT" icon="scroll" size="38" label="Machine à pronos" hint-size="38px,44px"></dc-import>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 5px">
+        <span style="font-size: 14px; font-weight: 600">Machine à pronos <span style="color: #F5C451; font-weight: 700">→ Or</span></span>
+        <span style="height: 5px; border-radius: 3px; background: rgba(255,255,255,0.09); overflow: hidden; display: block"><span style="display: block; height: 100%; width: 97%; border-radius: 3px; background: #F5C451"></span></span>
+        <span style="font-size: 12px; color: #B7C0CE">Plus qu'un prono (34/35)</span>
+      </span>
+    </a>
+
+    <div style="display: flex; gap: 8px; padding-top: 4px">
+      <button type="button" aria-pressed="true" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 0; background: #F2F5FA; color: #0B0E14; font: 600 13px Sora, sans-serif">Tous · 35</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #B7C0CE; font: 500 13px Sora, sans-serif">Débloqués · 17</button>
+      <button type="button" style="height: 36px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #B7C0CE; font: 500 13px Sora, sans-serif">À débloquer · 18</button>
+    </div>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px">
+      <div style="height: 150px; border-radius: 14px; background: #161B25; border: 1px solid rgba(255,255,255,0.09); display: flex; align-items: flex-start; justify-content: center; padding-top: 14px; box-sizing: border-box">
+        <dc-import name="Emblem" tier="BRONZE" icon="check" size="54" label="Victorieux" hint-size="54px,62px"></dc-import>
+      </div>
+      <div style="height: 150px; border-radius: 14px; background: #161B25; border: 1px solid rgba(255,255,255,0.09); display: flex; align-items: flex-start; justify-content: center; padding-top: 14px; box-sizing: border-box">
+        <dc-import name="Emblem" tier="BRONZE" icon="clock" text="0.0" size="54" label="Buzzer-beater" hint-size="54px,62px"></dc-import>
+      </div>
+    </div>
+  </div>
+
+  <div style="position: absolute; left: 0; right: 0; bottom: 64px; height: 120px; background: linear-gradient(180deg, transparent, #0B0E14 85%)" aria-hidden="true"></div>
+  <nav aria-label="Navigation principale" style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; background: #0E1118; border-top: 1px solid rgba(255,255,255,0.09)">
+    <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #7C8798; text-decoration: none; font-size: 11px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"></path></svg>Accueil</a>
+    <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #7C8798; text-decoration: none; font-size: 11px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3v18"></path></svg>Jouer</a>
+    <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #7C8798; text-decoration: none; font-size: 11px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 20h16M7 20V12M12 20V6M17 20v-5"></path></svg>Classement</a>
+    <a href="#" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #7C8798; text-decoration: none; font-size: 11px"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"></path></svg>Chat</a>
+    <a href="#" aria-current="page" style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #FF6A2B; text-decoration: none; font-size: 11px; font-weight: 600"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>Profil</a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

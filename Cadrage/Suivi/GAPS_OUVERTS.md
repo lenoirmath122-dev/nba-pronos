@@ -16,6 +16,9 @@
 > Chaque chantier a son fichier détaillé, à n'ouvrir que si la session porte
 > dessus. Ici : seulement ce qui reste ouvert et la prochaine étape.
 
+### Profil & badges — [`chantiers/CHANTIER_PROFIL_BADGES.md`](chantiers/CHANTIER_PROFIL_BADGES.md)
+Plan et maquettes (`Cadrage/V1/Spec visuelle/maquettes_profil_badges/`). Branche d'intégration `release/profil-badges`, livraison en prod prévue le 26/10/2026. Prochaine étape : Lot Q.
+
 ### Enrichissement des modèles / types de paris — [`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`](chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md)
 Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md` (scénario A).
 - **Correctif Memphis mergé (#192, 20/10/2026)**. Reste : rejouer le pari `f4f3ebd6…` après
