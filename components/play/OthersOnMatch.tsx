@@ -24,6 +24,9 @@ import styles from "./OthersOnMatch.module.css";
 type OthersOnMatchProps = { open: boolean; onClose: () => void } & (
   | {
       mode: "locked";
+      /** Résultats : deux popups distinctes (icône « personnes » = pronos,
+       *  bouton « Voir les paris des autres » = paris). */
+      view: "pronos" | "bets";
       others: RevealedPrediction[];
       absenteeCount: number;
       bets: OtherBet[];
@@ -63,65 +66,114 @@ export function OthersOnMatch(props: OthersOnMatchProps) {
   }
 
   const { others, absenteeCount, bets } = props;
-  const betByUser = new Map(bets.map((b) => [b.userId, b.description]));
-  const withProno = new Set(others.map((o) => o.userId));
-  const betsOnly = bets.filter((b) => !withProno.has(b.userId));
-  return (
-    <ModalDialog title="Les autres sur ce match" onClose={props.onClose}>
-      <div className={styles.content}>
-        <section className={styles.section}>
-          <h2 className={styles.sectionTitle}>Pronos</h2>
-          {others.length === 0 && absenteeCount === 0 && betsOnly.length === 0 ? (
-            <p className={styles.empty}>Personne d&rsquo;autre n&rsquo;a pronostiqué sur ce match.</p>
+
+  // Paris seuls (bouton « Voir les paris des autres ») : énoncé + résultat
+  // justifié (statut, proba, points, motif de règlement), plus gros gain en haut.
+  if (props.view === "bets") {
+    const sorted = [...bets].sort(byPointsDesc((b) => b.pointsAwarded));
+    return (
+      <ModalDialog title="Paris des autres" onClose={props.onClose}>
+        <div className={styles.content}>
+          {sorted.length === 0 ? (
+            <p className={styles.empty}>Personne d&rsquo;autre n&rsquo;a parié sur ce match.</p>
           ) : (
-            <>
-              {others.length > 0 && (
-                <ul className={styles.list}>
-                  {others.map((other) => (
-                    <li key={other.userId} className={styles.predictionItem}>
-                      <PlayerLink userId={other.userId} pseudo={other.userName} className={styles.pseudo} />
-                      <span className={styles.pick}>
-                        {/* "+" pas "−" : predictedMargin est toujours
-                                l'écart de victoire, jamais un déficit. */}
-                        {other.predictedWinner
-                          ? `${other.predictedWinner.abbreviation} +${other.predictedMargin}`
-                          : "—"}
-                      </span>
-                      <span className={styles.predictionPoints}>
-                        {other.points === null ? "—" : `${other.points} pts`}
-                      </span>
-                      {betByUser.get(other.userId) && (
-                        <span className={styles.betLine}>{betByUser.get(other.userId)}</span>
-                      )}
-                      {other.adminCorrection && (
-                        <span className={styles.correctedBadge}>
-                          Saisi par {other.adminCorrection.adminName} à la demande de {other.userName}
-                          {other.adminCorrection.reason ? ` — ${other.adminCorrection.reason}` : ""}
-                        </span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {betsOnly.length > 0 && (
-                <ul className={styles.list}>
-                  {betsOnly.map((bet) => (
-                    <li key={bet.userId} className={styles.predictionItem}>
-                      <PlayerLink userId={bet.userId} pseudo={bet.userName} className={styles.pseudo} />
-                      <span className={styles.betLine}>{bet.description}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {absenteeCount > 0 && (
-                <p className={styles.empty}>
-                  {absenteeCount} n&rsquo;{absenteeCount > 1 ? "ont" : "a"} pas pronostiqué
-                </p>
-              )}
-            </>
+            <ul className={styles.list}>
+              {sorted.map((bet) => (
+                <li key={bet.userId} className={styles.betItem}>
+                  <div className={styles.betHeader}>
+                    <PlayerLink userId={bet.userId} pseudo={bet.userName} className={styles.pseudo} />
+                  </div>
+                  <p className={bet.status === "CANCELLED" ? styles.betDescriptionCancelled : styles.betDescription}>
+                    {bet.description}
+                  </p>
+                  <p className={styles.betMeta}>{betVerdict(bet)}</p>
+                  {bet.statLines.length > 0 ? (
+                    bet.statLines.map((line) => (
+                      <p key={line} className={styles.betMeta}>
+                        {line}
+                      </p>
+                    ))
+                  ) : (
+                    bet.resolutionReason && <p className={styles.betMeta}>{bet.resolutionReason}</p>
+                  )}
+                </li>
+              ))}
+            </ul>
           )}
-        </section>
+        </div>
+      </ModalDialog>
+    );
+  }
+
+  // Pronos seuls (icône « personnes ») : résultats uniquement, plus gros
+  // nombre de points en haut, non scorés en bas.
+  const sorted = [...others].sort(byPointsDesc((o) => o.points));
+  return (
+    <ModalDialog title="Pronos des autres" onClose={props.onClose}>
+      <div className={styles.content}>
+        {sorted.length === 0 && absenteeCount === 0 ? (
+          <p className={styles.empty}>Personne d&rsquo;autre n&rsquo;a pronostiqué sur ce match.</p>
+        ) : (
+          <>
+            {sorted.length > 0 && (
+              <ul className={styles.list}>
+                {sorted.map((other) => (
+                  <li key={other.userId} className={styles.predictionItem}>
+                    <PlayerLink userId={other.userId} pseudo={other.userName} className={styles.pseudo} />
+                    <span className={styles.pick}>
+                      {/* "+" pas "−" : predictedMargin est toujours
+                              l'écart de victoire, jamais un déficit. */}
+                      {other.predictedWinner
+                        ? `${other.predictedWinner.abbreviation} +${other.predictedMargin}`
+                        : "—"}
+                    </span>
+                    <span className={styles.predictionPoints}>
+                      {other.points === null ? "—" : `${other.points} pts`}
+                    </span>
+                    {other.adminCorrection && (
+                      <span className={styles.correctedBadge}>
+                        Saisi par {other.adminCorrection.adminName} à la demande de {other.userName}
+                        {other.adminCorrection.reason ? ` — ${other.adminCorrection.reason}` : ""}
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {absenteeCount > 0 && (
+              <p className={styles.empty}>
+                {absenteeCount} n&rsquo;{absenteeCount > 1 ? "ont" : "a"} pas pronostiqué
+              </p>
+            )}
+          </>
+        )}
       </div>
     </ModalDialog>
   );
+}
+
+function byPointsDesc<T>(points: (item: T) => number | null) {
+  return (a: T, b: T) => (points(b) ?? -1) - (points(a) ?? -1);
+}
+
+const BET_STATUS_LABEL: Record<OtherBet["status"], string> = {
+  DRAFT: "Brouillon",
+  SUBMITTED: "En attente",
+  VALIDATED: "En cours",
+  REJECTED: "Refusé",
+  WON: "Gagné",
+  LOST: "Perdu",
+  CANCELLED: "Neutralisé",
+};
+
+// « Perdu · 26 % · 3 pts en jeu » / « Gagné · 26 % · +3 pts ».
+function betVerdict(bet: OtherBet): string {
+  const parts = [BET_STATUS_LABEL[bet.status]];
+  if (bet.calculatedProba !== null) {
+    const pct = bet.calculatedProba * 100;
+    parts.push(pct > 0 && pct < 1 ? "< 1 %" : `${Math.round(pct)} %`);
+  }
+  if (bet.status === "WON" && bet.pointsAwarded !== null) parts.push(`+${bet.pointsAwarded} pts`);
+  else if (bet.pointsAtStake !== null) parts.push(`${bet.pointsAtStake} pts${bet.status === "LOST" ? "" : " en jeu"}`);
+  return parts.join(" · ");
 }

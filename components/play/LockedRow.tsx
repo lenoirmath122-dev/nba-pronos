@@ -63,7 +63,7 @@ export function LockedRow({
 }: LockedRowProps) {
   const forceOpenMore = forceOpenPredictionCorrection || forceOpenBetCorrection;
   const [isOpen, setIsOpen] = useState(forceOpenMore);
-  const [othersOpen, setOthersOpen] = useState(false);
+  const [othersView, setOthersView] = useState<"pronos" | "bets" | null>(null);
 
   // Le résumé du pari (énoncé, statut, points) vit dans la zone « Mon pari » ;
   // BetBlock ne reste dans le dépli que pour ce qu'elle n'affiche pas.
@@ -110,10 +110,10 @@ export function LockedRow({
           <button
             type="button"
             className={styles.othersButton}
-            aria-label="Pronos et paris des autres"
+            aria-label="Pronos des autres"
             onClick={(e) => {
               e.stopPropagation();
-              setOthersOpen(true);
+              setOthersView("pronos");
             }}
             onKeyDown={(e) => e.stopPropagation()}
           >
@@ -130,7 +130,7 @@ export function LockedRow({
         locked
         placeholderTeam=""
         maxPoints={maxBetPoints}
-        onViewOthers={() => setOthersOpen(true)}
+        onViewOthers={() => setOthersView("bets")}
       />
 
       {/* Repliés sous la carte cliquable ci-dessus (22/08/2026, remplace le
@@ -168,9 +168,10 @@ export function LockedRow({
       )}
 
       <OthersOnMatch
-        open={othersOpen}
-        onClose={() => setOthersOpen(false)}
+        open={othersView !== null}
+        onClose={() => setOthersView(null)}
         mode="locked"
+        view={othersView ?? "pronos"}
         others={row.others}
         absenteeCount={row.absenteeCount}
         bets={row.otherBets}
