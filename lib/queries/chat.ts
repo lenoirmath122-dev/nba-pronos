@@ -96,6 +96,24 @@ export async function getRecentChatActivity(): Promise<ChatActivity[]> {
   }));
 }
 
+/** Repère « lu » du joueur par canal (table chat_read_status, la source de
+ *  vérité de la pastille — identique sur tous ses appareils). `userId` sert à
+ *  filtrer l'abonnement Realtime de la TabBar. */
+export type ChatReadStatus = { userId: string; seen: Record<string, string> } | null;
+
+export async function getChatReadStatus(): Promise<ChatReadStatus> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data } = await supabase.from("chat_read_status").select("channel, last_read_at").eq("user_id", user.id);
+  const seen: Record<string, string> = {};
+  for (const row of (data ?? []) as { channel: string; last_read_at: string }[]) seen[row.channel] = row.last_read_at;
+  return { userId: user.id, seen };
+}
+
 export async function getChatMessages(scope: ChatScope): Promise<ChatMessage[]> {
   const supabase = await getServerClient();
 

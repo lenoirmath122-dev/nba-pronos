@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   HomeIcon,
   PlayIcon,
@@ -11,8 +11,8 @@ import {
   ProfileIcon,
 } from "@/components/icons/nav-icons";
 import { useGuardedNavigation } from "@/lib/hooks/useUnsavedGuard";
-import { HOME_FEED_SEEN_STORAGE_KEY } from "@/lib/nav/feedSeen";
-import { useUnreadChatCounts } from "@/lib/nav/chatSeen";
+import { FEED_SEEN_KEY, useSeenStateSync, useSeenValue } from "@/lib/seen/store";
+import { useChatReadSync, useUnreadChatCounts, type SeenMap } from "@/lib/nav/chatSeen";
 import type { NavBadgeData } from "@/lib/queries/home";
 import { SettingsDrawer } from "@/components/profile/SettingsDrawer";
 import {
@@ -37,13 +37,8 @@ const TABS = [
   { href: "/profile", label: "Profil", Icon: ProfileIcon },
 ] as const;
 
-function noopSubscribe() {
-  return () => {};
-}
-
-function getServerSnapshot() {
-  return null;
-}
+// Référence stable : un `{}` recréé à chaque rendu relancerait l'effet de synchro.
+const EMPTY_SEEN: SeenMap = {};
 
 type TabBarProps = {
   /** Pastilles « action à faire » / « nouveau résultat » (18/09/2026,
@@ -102,19 +97,19 @@ export function TabBar({ navBadges }: TabBarProps) {
   const guardNavigation = useGuardedNavigation();
 
   // « Nouveaux résultats » : point d'alerte tant que le feed n'a pas été vu
-  // sur CET appareil (même patron que CollapsibleCard.tsx) — le serveur ne
-  // connaît aucun état « vu », d'où la comparaison client-only ici.
-  const lastFeedSeenAt = useSyncExternalStore(
-    noopSubscribe,
-    () => window.localStorage.getItem(HOME_FEED_SEEN_STORAGE_KEY),
-    getServerSnapshot
-  );
+  // par le COMPTE (user_seen_state, synchronisé entre appareils). `undefined` =
+  // pas encore chargé : pas de point, pour éviter un flash à l'hydratation.
+  useSeenStateSync(navBadges.chatReadStatus?.userId ?? "", navBadges.seenState);
+  const lastFeedSeenAt = useSeenValue(FEED_SEEN_KEY);
   const hasNewFeed =
     navBadges.latestFeedAt !== null &&
+    lastFeedSeenAt !== undefined &&
     (lastFeedSeenAt === null || Date.parse(navBadges.latestFeedAt) > Date.parse(lastFeedSeenAt));
 
   // Messages de chat non lus (p3-7) : somme de tous les canaux, se met à
-  // jour dès qu'un canal est ouvert (abonnement dans lib/nav/chatSeen.ts).
+  // jour dès qu'un canal est ouvert, sur cet appareil comme sur les autres du
+  // compte (état en base + Realtime, lib/nav/chatSeen.ts).
+  useChatReadSync(navBadges.chatReadStatus?.userId ?? "", navBadges.chatReadStatus?.seen ?? EMPTY_SEEN);
   const unreadChat = useUnreadChatCounts(navBadges.chatActivity);
   let chatUnreadCount = 0;
   for (const count of unreadChat?.values() ?? []) chatUnreadCount += count;

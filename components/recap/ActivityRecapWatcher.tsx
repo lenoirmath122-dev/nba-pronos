@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { ACTIVITY_RECAP_SEEN_KEY, fetchSeenState, saveSeenState } from "@/lib/seen/store";
 import { ModalDialog } from "@/components/ui/ModalDialog";
 import { useIsValidatedDialogOpen } from "@/components/ui/ValidatedDialog";
 import { useIsWeeklyPopupOpen, useSetRecapOpen } from "@/components/weeklyPopup/WeeklyPopupProvider";
@@ -14,17 +15,17 @@ import styles from "./ActivityRecapCard.module.css";
 // depuis la dernière ouverture sur cet appareil. S'ajoute à la notification et
 // à « Ça vient de tomber » de l'Accueil, ne les remplace pas.
 //
-// « Vu » = état purement client (localStorage, par appareil), même patron que
-// la pastille Accueil (lib/nav/feedSeen.ts) et ValidatedBetsWatcher. Le repère
+// « Vu » = repère du COMPTE en base (user_seen_state, lib/seen/store.ts),
+// identique sur tous les appareils, comme ValidatedBetsWatcher. Le repère
 // avancé est l'instant de LECTURE renvoyé par le serveur, pas l'heure de
 // fermeture : un résultat tombé entre les deux ne serait jamais montré.
 //
-// Premier passage (clé absente) : on retient l'instant présent sans rien
+// Premier passage (repère absent) : on retient l'instant présent sans rien
 // montrer, sinon tout l'historique récent sauterait au visage d'un coup.
 // Ordre des popups : « Pari validé », popup hebdo, ce récap, puis badges
 // (WeeklyPopupProvider).
 
-const SEEN_STORAGE_KEY = "activity-recap-seen-at";
+const LEGACY_LOCAL_KEY = "activity-recap-seen-at";
 // Coupe-circuit posé par les tests e2e (e2e/fixtures.ts) : le fond d'une popup
 // avale les clics.
 const DISABLED_STORAGE_KEY = "activity-recap:disabled";
@@ -40,11 +41,8 @@ function readStorage(key: string): string | null {
 }
 
 function writeSeen(value: string) {
-  try {
-    window.localStorage.setItem(SEEN_STORAGE_KEY, value);
-  } catch {
-    // Stockage indisponible (navigation privée) : le récap reviendra, sans gravité.
-  }
+  // En cas d'échec réseau le récap reviendra, sans gravité.
+  void saveSeenState(ACTIVITY_RECAP_SEEN_KEY, value).catch(() => undefined);
 }
 
 export function ActivityRecapWatcher() {
@@ -62,16 +60,22 @@ export function ActivityRecapWatcher() {
       setRecapOpen(false);
       return;
     }
-    const seenAt = readStorage(SEEN_STORAGE_KEY);
-    if (seenAt === null) {
-      writeSeen(new Date().toISOString());
-      setRecapOpen(false);
-      return;
-    }
-
     inFlightRef.current = true;
     lastCheckRef.current = Date.now();
     try {
+      let seenAt: string | null;
+      try {
+        seenAt = await fetchSeenState(ACTIVITY_RECAP_SEEN_KEY, LEGACY_LOCAL_KEY);
+      } catch {
+        setRecapOpen(false);
+        return;
+      }
+      if (seenAt === null) {
+        writeSeen(new Date().toISOString());
+        setRecapOpen(false);
+        return;
+      }
+
       let result: ActivityRecap | null = null;
       try {
         result = await getActivityRecap(seenAt);

@@ -1,15 +1,14 @@
 "use client";
 
 import { useEffect } from "react";
-import { HOME_FEED_SEEN_STORAGE_KEY } from "@/lib/nav/feedSeen";
+import { FEED_SEEN_KEY, setSeenValue } from "@/lib/seen/store";
 
 // Marque « Ça vient de tomber » comme vu dès l'affichage de l'Accueil, pour
-// éteindre la pastille de l'onglet Accueil (TabBar.tsx) sur cet appareil.
-// N'affiche rien : simple effet de bord côté client (localStorage n'existe
-// pas côté serveur).
+// éteindre la pastille de l'onglet Accueil (TabBar.tsx) sur tous les appareils
+// du compte (user_seen_state). N'affiche rien : simple effet de bord client.
 export function MarkFeedSeen({ latestAt }: { latestAt: string | null }) {
   useEffect(() => {
-    if (latestAt) window.localStorage.setItem(HOME_FEED_SEEN_STORAGE_KEY, latestAt);
+    if (latestAt) setSeenValue(FEED_SEEN_KEY, latestAt);
   }, [latestAt]);
 
   return null;

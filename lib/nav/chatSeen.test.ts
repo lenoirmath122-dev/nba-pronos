@@ -1,5 +1,5 @@
-// Pastilles de messages non lus du chat (p3-7) : calcul pur, le repère
-// localStorage et l'abonnement de la TabBar restent hors de ces tests.
+// Pastilles de messages non lus du chat (p3-7) : calcul pur, le store et l'abonnement Realtime
+// de la TabBar restent hors de ces tests.
 
 import { describe, expect, it } from "vitest";
 import { countUnreadByChannel, formatUnreadCount } from "./chatSeen";
