@@ -1,5 +1,5 @@
+import { StatsTabsNav } from "@/components/stats/StatsTabsNav";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { getProfileStats } from "@/lib/queries/stats";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { getProfileBadges } from "@/lib/queries/badges";
@@ -12,7 +12,6 @@ import { WeeklyPalmares } from "@/components/profile/WeeklyPalmares";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { SubPageShell } from "@/components/ui/SubPageShell";
 import profileStyles from "@/components/profile/profileShared.module.css";
-import styles from "./page.module.css";
 
 // Page Stats dédiée (refonte du menu Profil, 21/10/2026) : les 6 sous-sections
 // qui vivaient dans /profile?tab=stats, en onglets horizontaux. `?tab=` permet
@@ -57,19 +56,7 @@ export default async function StatsPage({
 
   return (
     <SubPageShell title="Stats">
-      <nav className={styles.tabs} aria-label="Sections des stats">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={`/stats?tab=${t.key}`}
-            replace
-            className={t.key === tab ? styles.tabActive : styles.tab}
-            aria-current={t.key === tab ? "page" : undefined}
-          >
-            {t.label}
-          </Link>
-        ))}
-      </nav>
+      <StatsTabsNav tabs={TABS} active={tab} />
 
       {sp.profileError && (
         <p className={profileStyles.error} role="alert">
