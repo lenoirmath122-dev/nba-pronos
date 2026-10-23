@@ -63,7 +63,7 @@ export function BadgeCard({ badge }: { badge: BadgeDisplay }) {
             className={styles.pinButton}
             data-pinned={badge.pinned || undefined}
             aria-pressed={badge.pinned}
-            aria-label={badge.pinned ? `Retirer ${badge.label} du bandeau de profil` : `Épingler ${badge.label} dans le bandeau de profil`}
+            aria-label={badge.pinned ? `Retirer ${badge.label} de la vitrine` : `Mettre ${badge.label} en vitrine`}
           >
             <Pin className={styles.pinIcon} aria-hidden="true" />
           </button>

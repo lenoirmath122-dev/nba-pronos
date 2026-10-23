@@ -249,7 +249,7 @@ export function SettingsDrawer({ open, onClose, onNavigate, isAdmin }: SettingsD
             <span className={styles.statLabel}>Meilleur rang</span>
           </span>
           <span className={styles.statBlock}>
-            <span className={styles.statValue}>{statText(summary, summary?.badgeCount ?? "—")}</span>
+            <span className={styles.statValue}>{statText(summary, summary?.badgeCount != null && summary.badgeTotal != null ? `${summary.badgeCount}/${summary.badgeTotal}` : "—")}</span>
             <span className={styles.statLabel}>Badges</span>
           </span>
         </Link>

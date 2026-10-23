@@ -150,7 +150,9 @@ export const LeaderboardRow = memo(function LeaderboardRow({ row, sortKey, expan
   // HTML, d'où le passage à un conteneur cliquable non-bouton.
   return (
     <div
-      className={row.isInactive ? `${styles.wrapper} ${styles.rowInactive}` : styles.wrapper}
+      className={[styles.wrapper, row.isInactive && styles.rowInactive, row.isCurrentUser && styles.wrapperMe]
+        .filter(Boolean)
+        .join(" ")}
       data-top-rank={topRank}
     >
       <div
