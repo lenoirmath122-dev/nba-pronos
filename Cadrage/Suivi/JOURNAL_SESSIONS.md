@@ -380,3 +380,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Carte /play + Résultats : zone « Mon pari » (saisie dans la carte), bande Mon prono, popup Les autres (paris en italique), migration bet_is_public poussée (22/10/2026) — PR #216
 - Admin rangé en 4 rubriques (À traiter, Jeu, Joueurs, Système) : cartes tiroir, registre lib/admin/navigation.ts, lien retour, animation, Recalculer déplacé ; recette par captures 390/1280 px (22/10/2026)
 - Chat : menu ⋯ (Copier/Signaler/Supprimer), réactions emoji à l'appui long (migration poussée), CI dédoublonnée (22/10/2026) — PR #219, #221, #222, #223
+- Revue des paris non calculables en prod (23/10/2026) : trou réel = écart orienté sur une période (MARGIN symétrique seulement), noté en GAPS et en tête de REPRISE ; hors-terrain = manuel normal ; paris Rillettes-31 sur compétitions archivées
