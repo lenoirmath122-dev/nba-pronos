@@ -382,3 +382,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Chat : menu ⋯ (Copier/Signaler/Supprimer), réactions emoji à l'appui long (migration poussée), CI dédoublonnée (22/10/2026) — PR #219, #221, #222, #223
 - Revue des paris non calculables en prod (23/10/2026) : trou réel = écart orienté sur une période (MARGIN symétrique seulement), noté en GAPS et en tête de REPRISE ; hors-terrain = manuel normal ; paris Rillettes-31 sur compétitions archivées
 - État lu/vu lié au compte : chat_read_status + user_seen_state, Realtime, reprise du localStorage (23/10/2026) — PR #230, migrations à pousser après merge ; reste à trier 7 changements non commités
+- Chantier Profil & badges : plan (#233), release/profil-badges, Lot Q (PR #234, recette OK 23/10/2026) ; prochain Lot 1

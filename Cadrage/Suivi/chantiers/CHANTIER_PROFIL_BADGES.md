@@ -363,7 +363,7 @@ worktree. Tests vitest pour toute logique pure. À la fin : passation
 
 ## 7. Suivi
 
-- [ ] Lot Q — Correctifs rapides
+- [x] Lot Q — Correctifs rapides (23/10, PR #234)
 - [x] Lot 0 — Maquettes, D1–D8 tranchées (23/10)
 - [ ] Lot 1 — Vitrine + état « vu » en base
 - [ ] Lot 2 — Composants d'identité
