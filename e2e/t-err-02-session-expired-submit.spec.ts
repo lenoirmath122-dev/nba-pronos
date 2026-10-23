@@ -14,9 +14,9 @@ import type { E2EBrowserProject } from "./projects";
 // retombe sur le même message ("Tu dois être connecté.") que tout autre
 // appelant non authentifié de ce fichier -- pas une simulation exhaustive du
 // cycle de vie JWT, mais le même point de sortie côté serveur.
-// InlineBetForm (components/bets/InlineBetForm.tsx) ne vide `description`
-// QUE sur succès (`setIsOpen(false)` seulement dans la branche `success`) --
-// une erreur se contente d'un `setError(result.error)`, la saisie reste donc
+// MatchBetZone (components/play/MatchBetZone.tsx) ne passe en lecture QUE
+// sur succès (`setLocal(...)` seulement dans la branche `success`) -- une
+// erreur se contente d'un `setError(result.error)`, la saisie reste donc
 // intacte par construction ; ce test fige ce comportement plutôt que de le
 // découvrir par lecture de code.
 
@@ -33,32 +33,29 @@ test("session expirée pendant la soumission d'un pari -> message d'erreur, sais
 
   await gotoAndWaitReady(page, "/play");
 
-  // La carte n'a plus de dépliage (16/09/2026) : le déclencheur pari est
-  // TOUJOURS monté, mais désormais un par carte -- scopé à `row`, plutôt que
-  // page-level, puisque chaque match affiche le sien simultanément.
+  // Zone « Mon pari » (MatchBetZone, 22/10/2026) : saisie directement sur la
+  // carte, plus de popup -- tout reste scopé à `row`.
   const row = matchRow(page, match4.homeTeamName);
-  const trigger = row.getByRole("button", { name: /Proposer un pari/ });
-  await expect(trigger).toBeVisible({ timeout: 10_000 });
-  await trigger.click();
-
-  const textarea = page.getByLabel("Énoncé");
+  const textarea = row.getByLabel("Mon pari");
+  await expect(textarea).toBeVisible({ timeout: 10_000 });
   await textarea.fill(description);
+  const submit = row.getByRole("button", { name: "Soumettre", exact: true });
 
   // Simule la session qui a expiré/a été invalidée entre le chargement de la
   // page et ce clic -- le prochain appel serveur (Server Action) partira
   // sans aucun cookie de session.
   await page.context().clearCookies();
 
-  await page.getByRole("button", { name: "Soumettre à validation" }).click();
+  await submit.click();
 
   // getByRole("alert") seul matcherait aussi le route-announcer interne de
   // Next.js (`#__next-route-announcer__`, toujours présent et role="alert")
-  // -- filtré ici sur le texte réel du message d'erreur d'InlineBetForm.
-  const alert = page.getByRole("alert").filter({ hasText: "Tu dois être connecté." });
+  // -- filtré ici sur le texte réel du message d'erreur de MatchBetZone.
+  const alert = row.getByRole("alert").filter({ hasText: "Tu dois être connecté." });
   await expect(alert).toBeVisible();
 
-  // La saisie n'a pas disparu -- ni vidée, ni le formulaire refermé (repli
-  // automatique réservé au succès dans InlineBetForm).
+  // La saisie n'a pas disparu -- ni vidée, ni la zone passée en lecture
+  // (réservé au succès dans MatchBetZone).
   await expect(textarea).toHaveValue(description);
-  await expect(page.getByRole("button", { name: "Soumettre à validation" })).toBeVisible();
+  await expect(submit).toBeVisible();
 });

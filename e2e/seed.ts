@@ -18,7 +18,7 @@ type MatchSeed = { id: string; homeTeamName: string; homeTeamAbbreviation: strin
 
 export type E2ESeed = {
   competitionId: string;
-  match1: MatchSeed; // T-UI-01 -- pré-alimenté d'un pari DRAFT à supprimer (jamais confirmé par le test, rejouable par plusieurs projects sans conflit).
+  match1: MatchSeed; // T-UI-01 -- dialogue de validation de prono (jamais confirmé par le test, rejouable par plusieurs projects sans conflit).
   // T-UI-02/03 MUTENT l'état serveur (bet validé / soumis) -- pas rejouables
   // à l'identique par 2 projects Playwright qui partagent le même
   // serveur/DB (workers: 1, un seul webServer, voir playwright.config.ts).
@@ -32,7 +32,6 @@ export type E2ESeed = {
   match4: Record<E2EBrowserProject, MatchSeed>; // T-ERR-02 -- session expirée en cours de soumission (joueur A).
   playerA: { email: string; password: string };
   playerB: { email: string; password: string };
-  preSeededBetId: string;
 };
 
 function serviceClient() {
@@ -161,25 +160,6 @@ export async function seedE2EData(): Promise<E2ESeed> {
     match4[projectName] = await createMatch(nextIndex++, nextSlot++);
   }
 
-  // Pari DRAFT pré-alimenté pour playerA sur match1 (T-UI-01 -- teste la
-  // suppression, pas besoin de d'abord passer par tout le flux de saisie).
-  const { data: bet, error: betError } = await supabase
-    .from("bets")
-    .insert({
-      competition_id: competitionId,
-      user_id: playerA.id,
-      scope: "MATCH",
-      series_id: match1.seriesId,
-      match_id: match1.id,
-      description: "Pari e2e à supprimer",
-      proposed_category: "SCORE_TOTAL",
-      proposed_difficulty: 1,
-      status: "DRAFT",
-    })
-    .select("id")
-    .single();
-  if (betError || !bet) throw new Error(`Pari e2e pré-semé échoué: ${betError?.message}`);
-
   const seed: E2ESeed = {
     competitionId,
     match1: { id: match1.id, homeTeamName: match1.homeTeamName, homeTeamAbbreviation: match1.homeTeamAbbreviation },
@@ -188,7 +168,6 @@ export async function seedE2EData(): Promise<E2ESeed> {
     match4,
     playerA: { email: playerA.email, password: playerA.password },
     playerB: { email: playerB.email, password: playerB.password },
-    preSeededBetId: bet.id as string,
   };
   return seed;
 }
