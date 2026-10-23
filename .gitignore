@@ -66,3 +66,17 @@ __pycache__/
 /test-results/
 /e2e/.auth/
 /e2e/.e2e-seed.json
+
+# verrou local de l'outil headroom
+.claude/.headroom_wrap_settings.lock
+
+# export navigateur de la feuille de route (la source de vérité est l'artifact)
+/Cadrage/Feuille de route 09 sept.html
+/Cadrage/Feuille de route 09 sept_files/
+
+# pack Réel (médias, archives, projets Remotion) : lourd et régénérable ;
+# seuls les documents texte de Cadrage/docs sont versionnés
+/Cadrage/docs/**
+!/Cadrage/docs/
+!/Cadrage/docs/**/
+!/Cadrage/docs/**/*.md
