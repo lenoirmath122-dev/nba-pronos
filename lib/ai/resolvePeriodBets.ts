@@ -127,6 +127,17 @@ export function computePeriodTeamOutcome(
     return { won, detail: `mène à la mi-temps (${homeHalf}-${awayHalf}), ${teamWinsMatch ? "gagne" : "perd"} le match` };
   }
 
+  if (outcomeKind === "TEAM_MARGIN") {
+    if (!period || teamIsHome === null || threshold === null || !comparison) return null;
+    // Même écart cumulé que MARGIN, mais SIGNÉ du point de vue de l'équipe visée.
+    const indices = cumulativeQuarterIndices(period);
+    const homeSum = sumQuarterRange(qs.homeTeam, indices);
+    const awaySum = sumQuarterRange(qs.awayTeam, indices);
+    const actual = teamIsHome ? homeSum - awaySum : awaySum - homeSum;
+    const won = comparison === "UNDER" ? actual < threshold : actual > threshold;
+    return { won, detail: `${actual > 0 ? "+" : ""}${actual} (écart cumulé signé)` };
+  }
+
   if (outcomeKind === "MARGIN" || outcomeKind === "TOTAL_POINTS") {
     if (!period || threshold === null || !comparison) return null;
     // MARGIN = écart CUMULATIF depuis le début du match (cumulativeQuarterIndices).

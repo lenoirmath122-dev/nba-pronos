@@ -935,6 +935,26 @@ def _compute_period_proba_once(
             "detail": f"prédiction moyenne = {pred_mean:.1%} (+/- {scale:.1%}, normale)",
         }
 
+    if outcome_kind == "TEAM_MARGIN":
+        if team_id is None or period is None or seuil is None or comparison is None:
+            raise ValueError("team_id/period/seuil/comparison obligatoires pour TEAM_MARGIN.")
+        bundle = load_model(MODELS_DIR / "period_signed_margin.joblib")
+        base_row = _build_match_feature_row(client, home_team_id, away_team_id, as_of_date, season).iloc[0].to_dict()
+        row = _add_period_one_hot(base_row, period)
+        X = pd.DataFrame([row])[bundle["feature_cols"]]
+        # Le modele predit (domicile - exterieur) ; on se place du point de vue de l'equipe visee.
+        pred_mean = float(bundle["model"].predict(X)[0])
+        if team_id != home_team_id:
+            pred_mean = -pred_mean
+        scale = max(bundle["resid_std"], 0.5)
+        proba_over = 1 - norm.cdf(seuil, loc=pred_mean, scale=scale)
+        proba = proba_over if comparison == "OVER" else 1 - proba_over
+        return {
+            "label": "Écart cumulé signé",
+            "proba": float(proba),
+            "detail": f"écart moyen prédit = {pred_mean:+.1f} (+/- {scale:.1f}, normale)",
+        }
+
     if outcome_kind in ("MARGIN", "TOTAL_POINTS"):
         if period is None or seuil is None or comparison is None:
             raise ValueError("period/seuil/comparison obligatoires pour MARGIN/TOTAL_POINTS.")

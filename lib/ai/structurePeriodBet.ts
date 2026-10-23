@@ -67,7 +67,7 @@ const PeriodBetStructurationSchema = z.object({
       team: z
         .enum(["team1", "team2"])
         .nullable()
-        .describe("Équipe visée par le pari. null pour MARGIN/TOTAL_POINTS (résultat symétrique) ou si `player` est rempli."),
+        .describe("Équipe visée par le pari (pour TEAM_MARGIN : l'équipe dont on décrit l'écart). null pour MARGIN/TOTAL_POINTS (résultat symétrique) ou si `player` est rempli."),
       player: z
         .string()
         .nullable()
@@ -84,7 +84,7 @@ const PeriodBetStructurationSchema = z.object({
         .boolean()
         .nullable()
         .describe("QUARTERS_WON_COUNT uniquement : true si \"exactement N\" quarts-temps, sinon null (seuil normal via threshold/comparison, \"au moins N\")."),
-      threshold: z.number().nullable().describe("null pour QUARTER_WINNER/HALF_WINNER (probabilité directe)."),
+      threshold: z.number().nullable().describe("null pour QUARTER_WINNER/HALF_WINNER (probabilité directe). Négatif possible pour TEAM_MARGIN (équipe menée)."),
       comparison: z
         .enum(["OVER", "UNDER"])
         .nullable()
@@ -133,7 +133,10 @@ function buildStaticSystemText(): string {
     "quarts-temps\" (QUARTERS_WON_COUNT, period=null -- match entier, team=Knicks, threshold=2, comparison=OVER, inclusive=true), " +
     "\"Orlando perd le 3e quart-temps\" (QUARTER_WINNER, period=Q3, team=Orlando adversaire -- décris la proba " +
     "que l'AUTRE équipe gagne ce quart), \"l'écart à la mi-temps est de 5 points ou moins\" (MARGIN, period=H1, " +
-    "team=null, threshold=5, comparison=UNDER, inclusive=true),\"moins de 45 points combinés au 4e quart-temps\" (TOTAL_POINTS, " +
+    "team=null, threshold=5, comparison=UNDER, inclusive=true), \"les Jazz se prennent 10 points à la mi-temps\" / \"les Jazz sont menés de 10 points ou plus à la " +
+    "mi-temps\" (TEAM_MARGIN, period=H1, team=Jazz, threshold=-10, comparison=UNDER, inclusive=true), \"Denver mène de 5 points ou " +
+    "plus à la mi-temps\" (TEAM_MARGIN, period=H1, team=Denver, threshold=5, comparison=OVER, inclusive=true) -- TEAM_MARGIN = écart " +
+    "SIGNÉ, dès que le pari dit QUI mène ou QUI est mené ; MARGIN reste pour un écart sans équipe, \"moins de 45 points combinés au 4e quart-temps\" (TOTAL_POINTS, " +
     "period=Q4, threshold=45, comparison=UNDER, inclusive=false),\"San Antonio marque plus de 60% de ses points totaux en 2ème " +
     "mi-temps\" (POINT_SHARE_PCT, period=H2, team=San Antonio, threshold=0.6, comparison=OVER), \"3 contres en " +
     "1ère mi-temps pour Wembanyama\" (period=H1, player=\"Victor Wembanyama\", player_stat=\"blk\", threshold=3, " +
