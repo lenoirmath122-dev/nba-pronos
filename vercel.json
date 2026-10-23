@@ -20,6 +20,7 @@
     { "path": "/api/heartbeat", "schedule": "0 6 * * *" },
     { "path": "/api/snapshots/leaderboard", "schedule": "0 12 * * *" },
     { "path": "/api/cron/purge-pending", "schedule": "30 4 * * *" },
+    { "path": "/api/cron/credit-balance", "schedule": "0 7 * * *" },
     { "path": "/api/emails?kind=morning", "schedule": "0 8 * * *" },
     { "path": "/api/emails?kind=morning", "schedule": "0 9 * * *" },
     { "path": "/api/emails?kind=morning", "schedule": "0 10 * * *" },
