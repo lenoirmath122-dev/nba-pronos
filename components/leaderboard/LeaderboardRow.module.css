@@ -292,3 +292,11 @@
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
+
+/* Ma ligne (Lot Q, 23/10/2026) : fond d'accent doux + filet à gauche, par-dessus
+   le zébrage. Le filet du top 3 (::before) reste prioritaire visuellement. */
+.wrapperMe,
+.wrapperMe:nth-child(even) {
+  background: var(--color-accent-soft);
+  box-shadow: inset 3px 0 0 var(--color-accent-line);
+}
