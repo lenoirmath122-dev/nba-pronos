@@ -15,6 +15,7 @@ export type ProfileMenuSummary = {
   accuracyPct: number | null;
   bestRank: number | null;
   badgeCount: number | null;
+  badgeTotal: number | null;
 };
 
 export async function getProfileMenuSummary(): Promise<ProfileMenuSummary | null> {
@@ -28,9 +29,8 @@ export async function getProfileMenuSummary(): Promise<ProfileMenuSummary | null
 
   const active = stats?.hasActiveCompetition ? stats : null;
   const ranks = active?.evolution.series.map((p) => p.rank) ?? [];
-  const badgeCount = badges
-    ? badges.categories.flatMap((c) => c.badges).filter((b) => (b.kind === "tiered" ? b.tier !== null : b.unlocked)).length
-    : null;
+  const allBadges = badges ? badges.categories.flatMap((c) => c.badges) : null;
+  const badgeCount = allBadges ? allBadges.filter((b) => (b.kind === "tiered" ? b.tier !== null : b.unlocked)).length : null;
 
   return {
     pseudo: profile.pseudo,
@@ -39,5 +39,6 @@ export async function getProfileMenuSummary(): Promise<ProfileMenuSummary | null
     accuracyPct: active?.accuracy.winnerAccuracyPct ?? null,
     bestRank: ranks.length > 0 ? Math.min(...ranks) : null,
     badgeCount,
+    badgeTotal: allBadges ? allBadges.length : null,
   };
 }
