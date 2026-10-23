@@ -152,7 +152,7 @@ bracket (sans toast, un tap = un enregistrement). Popup « Prono validé » /
 « Pari validé » (coche, rappel de ce qui a été validé, bouton « OK ») à la
 validation d'un prono, sur « Tout valider », quand l'IA auto-valide un pari
 perso, et au chargement suivant quand un admin a validé un pari du joueur
-(dernière validation vue gardée en localStorage, rien en base). Onglet
+(dernière validation vue gardée en base par compte, user_seen_state). Onglet
 Résultats : sur chaque match terminé, un seul bouton « Pronos et paris des
 autres » ouvre une popup avec les pronos des autres (et le nombre
 d'absents) puis leurs paris, chacun avec son statut, ses points gagnés ou
@@ -219,7 +219,7 @@ du palier (`components/badges/BadgeEmblem.tsx`), icônes calées sur
 en débloquer un (prono ou pari envoyé, bracket validé, ligue rejointe ou
 créée : `requestBadgeCheck()`, `lib/badges/checkRequest.ts`), en attendant la
 fermeture de la popup « Pari validé » le cas échéant : badges déjà montrés
-retenus par appareil et par compte (localStorage `badges-seen:<userId>`),
+retenus par compte (user_seen_state, clé `badges-seen`),
 tout l'existant défile au premier passage sur un appareil. Superlatifs de fin de compétition (Nostradamus,
 Sniper, Meilleur bracket, Meilleur 1ᵉʳ tour, Plus grosse remontée),
 calculés une fois à la clôture d'une compétition.
@@ -231,14 +231,15 @@ distinct du panneau `/admin/bug-reports`). Messages non lus (p3-7) : nombre
 sur l'onglet Chat et sur chaque canal de la liste. Le serveur fournit la date
 des messages des autres joueurs des 14 derniers jours
 (`getRecentChatActivity()`, lu avec les pastilles de la TabBar) ; l'état
-« lu » reste sur l'appareil (`lib/nav/chatSeen.ts`, clé localStorage
-`chat-seen-at`, dernier message vu par canal, posé à l'ouverture d'une
-conversation). Pas de mise à jour en direct de la pastille hors du chat :
-recalculée au rechargement ou après une action serveur, comme les autres.
+« lu » est stocké en base par compte (table `chat_read_status`, une ligne par
+canal, RPC `mark_chat_channel_read` appelée à l'ouverture d'une conversation ;
+store en mémoire dans `lib/nav/chatSeen.ts`, synchronisé par Realtime entre
+appareils). Plus de localStorage. Nouveaux messages hors du chat : pastille
+recalculée au rechargement, comme les autres.
 
 Popup « Depuis ta dernière visite » (PR #210) : pronos scorés et paris
 corrigés/neutralisés tombés depuis la dernière ouverture, total de points, bouton
-vers Résultats. Repère `activity-recap-seen-at` en localStorage (par appareil),
+vers Résultats. Repère `activity-recap-seen-at` en base par compte (user_seen_state),
 lecture serveur `getActivityRecap` (14 jours / 30 lignes max). Ordre des popups :
 Pari validé, hebdo, récap, badges (`WeeklyPopupProvider`).
 

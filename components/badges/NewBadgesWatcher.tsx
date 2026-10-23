@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
+import { BADGES_SEEN_KEY, fetchSeenState, saveSeenState } from "@/lib/seen/store";
 import { BadgeEmblem, TierPips } from "./BadgeEmblem";
 import { useIsValidatedDialogOpen } from "@/components/ui/ValidatedDialog";
 import { useIsRecapOpen, useIsWeeklyPopupOpen } from "@/components/weeklyPopup/WeeklyPopupProvider";
@@ -17,8 +18,8 @@ import styles from "./NewBadgesWatcher.module.css";
 // Popup « nouveau badge » (p3-9, retour de l'alpha : « popup à l'ouverture
 // quand un badge a été gagné depuis la dernière visite »). Les badges sont
 // calculés à la volée (aucune date de déblocage en base) : l'appareil retient
-// le palier déjà montré de chaque badge, état purement client comme les
-// non-lus du chat (lib/nav/chatSeen.ts), une clé par compte.
+// le palier déjà montré de chaque badge, le compte retient le palier
+// déjà montré de chaque badge (user_seen_state, lib/seen/store.ts).
 //
 // Premier passage sur un appareil : TOUS les badges déjà gagnés défilent
 // (choix de l'utilisateur, 05/10/2026), avec « Tout passer » pour couper
@@ -28,7 +29,7 @@ import styles from "./NewBadgesWatcher.module.css";
 // la fermeture de la popup « Pari validé » s'il y en a une, plutôt que de
 // s'empiler par-dessus.
 
-const SEEN_STORAGE_PREFIX = "badges-seen:";
+const LEGACY_LOCAL_PREFIX = "badges-seen:";
 // Coupe-circuit posé par les tests e2e (e2e/fixtures.ts) : la popup s'ouvre à
 // un instant non déterministe et son fond avalait des clics en plein scénario.
 const DISABLED_STORAGE_KEY = "badges-popup:disabled";
@@ -39,9 +40,9 @@ const RECHECK_INTERVAL_MS = 5 * 60 * 1000;
 const MAX_DOTS = 8;
 const BADGES_HREF = "/stats?tab=badges";
 
-function readSeen(userId: string): SeenBadges {
+async function readSeen(userId: string): Promise<SeenBadges> {
   try {
-    const raw = window.localStorage.getItem(SEEN_STORAGE_PREFIX + userId);
+    const raw = await fetchSeenState(BADGES_SEEN_KEY, LEGACY_LOCAL_PREFIX + userId);
     const value: unknown = raw ? JSON.parse(raw) : null;
     return value && typeof value === "object" ? (value as SeenBadges) : {};
   } catch {
@@ -57,11 +58,11 @@ function isDisabled(): boolean {
   }
 }
 
-function writeSeen(userId: string, seen: SeenBadges) {
+async function writeSeen(seen: SeenBadges) {
   try {
-    window.localStorage.setItem(SEEN_STORAGE_PREFIX + userId, JSON.stringify(seen));
+    await saveSeenState(BADGES_SEEN_KEY, JSON.stringify(seen));
   } catch {
-    // Stockage indisponible (navigation privée) : la popup reviendra, sans gravité.
+    // Échec réseau : la popup reviendra, sans gravité.
   }
 }
 
@@ -106,7 +107,7 @@ export function NewBadgesWatcher() {
           return;
         }
         if (!result || openRef.current) return;
-        const queue = unseenBadges(result.badges, readSeen(result.userId));
+        const queue = unseenBadges(result.badges, await readSeen(result.userId));
         if (queue.length > 0) {
           openRef.current = true;
           setPending({ userId: result.userId, unlocked: result.badges, queue, index: 0 });
@@ -143,7 +144,10 @@ export function NewBadgesWatcher() {
   // Toute sortie (OK, Tout passer, Voir mes badges, fond, Échap) marque
   // l'ensemble des badges débloqués comme vus.
   const finish = useCallback(() => {
-    if (pending) writeSeen(pending.userId, { ...readSeen(pending.userId), ...seenSnapshot(pending.unlocked) });
+    if (pending) {
+      const { userId, unlocked } = pending;
+      void readSeen(userId).then((seen) => writeSeen({ ...seen, ...seenSnapshot(unlocked) }));
+    }
     openRef.current = false;
     setPending(null);
   }, [pending]);

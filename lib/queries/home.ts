@@ -3,7 +3,8 @@ import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getAllTeams } from "@/lib/queries/teams";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { getRemainingMatchBets } from "@/lib/queries/match-bets";
-import { getRecentChatActivity, type ChatActivity } from "@/lib/queries/chat";
+import { getUserSeenState } from "@/lib/queries/seen";
+import { getChatReadStatus, getRecentChatActivity, type ChatActivity, type ChatReadStatus } from "@/lib/queries/chat";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { parisDateKey } from "@/lib/dates/paris";
 import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
@@ -712,13 +713,17 @@ export type NavBadgeData = {
    *  + matchs à pronostiquer + paris à finaliser + paris disponibles). */
   playPendingCount: number;
   /** Date du plus récent item de « Ça vient de tomber », pour que la TabBar
-   *  (client) la compare à son propre repère localStorage — aucun état
-   *  « vu » n'existe côté serveur (même choix que CollapsibleCard). */
+   *  (client) la compare au repère « vu » du compte (seenState,
+   *  lib/seen/store.ts). */
   latestFeedAt: string | null;
   /** Messages récents des autres joueurs (p3-7), comptés comme non lus par la
-   *  TabBar selon son repère localStorage (lib/nav/chatSeen.ts). Indépendant
-   *  de la compétition : le chat vit aussi sans compétition active. */
+   *  TabBar selon le repère « lu » du compte (chatReadStatus, lib/nav/chatSeen.ts).
+   *  Indépendant de la compétition : le chat vit aussi sans compétition active. */
   chatActivity: ChatActivity[];
+  /** Repère « lu » par canal, stocké en base (chat_read_status). */
+  chatReadStatus: ChatReadStatus;
+  /** Repères « vu / fermé » du compte (pastille Accueil, cartes), user_seen_state. */
+  seenState: Record<string, string>;
   /** Menu Réglages de la TabBar : l'entrée « Admin » n'apparaît que pour un admin. */
   isAdmin: boolean;
 };
@@ -734,17 +739,19 @@ async function getIsAdmin(): Promise<boolean> {
 }
 
 export async function getNavBadgeData(): Promise<NavBadgeData> {
-  const [competitionBadges, chatActivity, isAdmin] = await Promise.all([
+  const [competitionBadges, chatActivity, chatReadStatus, seenState, isAdmin] = await Promise.all([
     getCompetitionNavBadges(),
     getRecentChatActivity(),
+    getChatReadStatus(),
+    getUserSeenState(),
     getIsAdmin(),
   ]);
-  return { ...competitionBadges, chatActivity, isAdmin };
+  return { ...competitionBadges, chatActivity, chatReadStatus, seenState, isAdmin };
 }
 
 const EMPTY_COMPETITION_NAV_BADGES = { playPendingCount: 0, latestFeedAt: null };
 
-async function getCompetitionNavBadges(): Promise<Omit<NavBadgeData, "chatActivity" | "isAdmin">> {
+async function getCompetitionNavBadges(): Promise<Omit<NavBadgeData, "chatActivity" | "chatReadStatus" | "seenState" | "isAdmin">> {
   const supabase = await getServerClient();
 
   const {
