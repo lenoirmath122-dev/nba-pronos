@@ -107,7 +107,7 @@ const MAX_PINNED_BADGES = 3;
 
 /** Badges épinglés dans le bandeau (BACKLOG_V1.md, cadré le 27/08/2026) :
  *  choix manuel du joueur, jusqu'à 3, uniquement parmi les débloqués --
- *  bouton "épingler" sur chaque BadgeCard (components/profile/BadgeCard.tsx),
+ *  bouton « Mettre en vitrine » de la fiche badge (components/badges/BadgesTab.tsx),
  *  même patron formulaire natif + redirection que le reste de ce fichier. */
 export async function togglePinnedBadgeFormAction(formData: FormData): Promise<void> {
   const badgeId = String(formData.get("badgeId") ?? "");
@@ -133,7 +133,7 @@ export async function togglePinnedBadgeFormAction(formData: FormData): Promise<v
     if (current.length >= MAX_PINNED_BADGES) {
       redirect(`/stats?tab=badges&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
     }
-    // Défense en profondeur -- BadgeCard ne propose déjà le bouton "épingler"
+    // Défense en profondeur -- la fiche badge ne propose déjà le bouton
     // que sur un badge débloqué, cf. commentaire ci-dessus.
     const badges = await getProfileBadges();
     const target = badges.categories.flatMap((c) => c.badges).find((b) => b.id === badgeId);

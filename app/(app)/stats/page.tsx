@@ -7,7 +7,7 @@ import { getWeeklyPalmares } from "@/lib/queries/weeklyPalmares";
 import { getServerClient } from "@/lib/supabase/server";
 import { LeagueScopeChips } from "@/components/profile/LeagueScopeChips";
 import { RankEvolutionChart } from "@/components/profile/RankEvolutionChart";
-import { BadgesSection } from "@/components/profile/BadgesSection";
+import { BadgesTab } from "@/components/badges/BadgesTab";
 import { WeeklyPalmares } from "@/components/profile/WeeklyPalmares";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import { SubPageShell } from "@/components/ui/SubPageShell";
@@ -187,7 +187,7 @@ export default async function StatsPage({
 
       {badges && (
         <section className={`${profileStyles.section} glass-card`} aria-label="Badges">
-          <BadgesSection data={badges} />
+          <BadgesTab data={badges} />
         </section>
       )}
     </SubPageShell>
