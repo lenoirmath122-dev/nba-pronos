@@ -103,7 +103,7 @@ ni dans le classement.
 
 | # | Question | Décision |
 |---|---|---|
-| D1 | Que montre la vitrine quand le joueur n'a rien épinglé ? | **Choix auto** : les 3 badges de plus haut palier (à palier égal : le plus récent dans l'ordre du catalogue). Les épinglés passent toujours devant. |
+| D1 | Que montre la vitrine quand le joueur n'a rien épinglé ? | **ABANDONNÉE le 24/10 (PR #241) : rien, seuls les épinglés s'affichent.** Ancienne décision : choix auto : les 3 badges de plus haut palier (à palier égal : le plus récent dans l'ordre du catalogue). Les épinglés passent toujours devant. |
 | D2 | Combien de badges dans une ligne de classement ? | **1 en portrait mobile, 3 en paysage/desktop.** Le n° 1 de la vitrine = le « badge signature ». |
 | D3 | Où vit « mon profil » ? | **Une vraie page « Mon profil » à onglets Stats · Badges · Historique · Ligues**, ouverte en touchant son pseudo dans le panneau (aujourd'hui ça mène au changement de pseudo — contre-intuitif). En-tête commun : bandeau d'équipe, avatar, pseudo + badge signature, rang, « Modifier le profil ». Le changement de pseudo passe dans Compte (« Identifiants et pseudo ») et dans « Modifier le profil ». `/players/[id]` partage le même en-tête, onglets réduits pour les autres (voir Lot 3). |
 | D4 | Ramener le bandeau aux couleurs de l'équipe ? | **Oui, sur l'en-tête de la page profil** (soi et public), avec le rendu validé le 04/08. Rien ne change sans équipe choisie. |
@@ -287,6 +287,16 @@ nouveau à concevoir. Un endroit par PR si ça touche des requêtes.
 sans toucher au reste. Peut avancer en parallèle de tout le chantier, au
 rythme des visuels (prompts déjà prêts : `Cadrage/V1/Spec visuelle/PROMPTS_BADGES_*.md`).
 
+### Lot 8 — Animations (après la livraison du 26/10)
+
+Décidé le 24/10 : aucune animation dans la livraison du 26/10, elles n'ont
+pas été recettées. À faire après les Lots 3 et 6. Pistes : épinglage d'un
+badge (carte et vitrine), déblocage d'un nouveau badge, ouverture du
+pop-over et de la fiche, apparition des écussons dans le classement.
+Contraintes : `prefers-reduced-motion` respecté, aucune nouvelle couleur
+(DA), rien qui ralentisse le classement. Compétence `impeccable` utile.
+**Il faudra repasser par Claude desktop pour ce lot** (décision du 24/10).
+
 ---
 
 ## 4 bis. Livraison groupée (« mise à jour » du lundi 26/10/2026)
@@ -369,6 +379,7 @@ worktree. Tests vitest pour toute logique pure. À la fin : passation
 - [x] Lot 2 — Composants d'identité (24/10, PR #237 ; PlayerIdentity pas encore branché, recette visuelle de /players/[id] à faire sur l'aperçu)
 - [ ] Lot 3 — « Mon profil » à onglets
 - [x] Lot 4 — Onglet Badges (24/10, PR #239 ; un seul composant client `BadgesTab`, pas de bouton « Modifier », épingle directe sur chaque carte ; toujours sur `/stats?tab=badges` jusqu'au Lot 3 ; D7 non utilisée)
-- [ ] Lot 5 — Classement
+- [x] Lot 5 — Classement (24/10, PR #241 ; `getRowShowcases` en une salve, 3 écussons dont 2 masqués en portrait, 1 dans la barre ; recette visuelle et chiffres de chargement à faire sur l'aperçu)
 - [ ] Lot 6 — Ailleurs
 - [ ] Lot 7 — Visuels dessinés
+- [ ] Lot 8 — Animations (après le 26/10)

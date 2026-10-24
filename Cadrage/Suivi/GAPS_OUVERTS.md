@@ -17,7 +17,7 @@
 > dessus. Ici : seulement ce qui reste ouvert et la prochaine étape.
 
 ### Profil & badges — [`chantiers/CHANTIER_PROFIL_BADGES.md`](chantiers/CHANTIER_PROFIL_BADGES.md)
-Plan et maquettes (`Cadrage/V1/Spec visuelle/maquettes_profil_badges/`). Branche d'intégration `release/profil-badges`, livraison en prod prévue le 26/10/2026. Prochaine étape : Lot Q.
+Plan et maquettes (`Cadrage/V1/Spec visuelle/maquettes_profil_badges/`). Branche d'intégration `release/profil-badges`, livraison en prod prévue le 26/10/2026. Lots Q, 1, 2, 4, 5 faits ; reste Lot 3, 6, 7 et Lot 8 (animations, volontairement après la livraison du 26/10, à refaire en passant par Claude desktop).
 
 ### Enrichissement des modèles / types de paris — [`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`](chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md)
 Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md` (scénario A).
