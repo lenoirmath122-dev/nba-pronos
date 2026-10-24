@@ -153,7 +153,22 @@ export function BadgesTab({ data, readOnly = false }: Props) {
           <h3 className={styles.sectionTitle}>{category.title}</h3>
           <ul className={styles.grid}>
             {category.badges.map((badge) => (
-              <li key={badge.id}>
+              <li key={badge.id} className={styles.item}>
+                {!readOnly && isBadgeUnlocked(badge) && (
+                  <form action={togglePinnedBadgeFormAction} className={styles.pinForm}>
+                    <input type="hidden" name="badgeId" value={badge.id} />
+                    <button
+                      type="submit"
+                      className={styles.pinToggle}
+                      data-pinned={badge.pinned || undefined}
+                      aria-pressed={badge.pinned}
+                      disabled={!badge.pinned && data.pinnedBadges.length >= SHOWCASE_SLOTS}
+                      aria-label={badge.pinned ? `Retirer ${badge.label} de la vitrine` : `Mettre ${badge.label} en vitrine`}
+                    >
+                      <Pin aria-hidden="true" />
+                    </button>
+                  </form>
+                )}
                 <button
                   type="button"
                   className={styles.card}
@@ -161,7 +176,7 @@ export function BadgesTab({ data, readOnly = false }: Props) {
                   aria-label={`${badge.label}, ${statusLabel(badge)}`}
                   onClick={() => setSelected(badge)}
                 >
-                  {badge.pinned && (
+                  {readOnly && badge.pinned && (
                     <span className={styles.pinned} role="img" aria-label="En vitrine">
                       <Pin aria-hidden="true" />
                     </span>

@@ -245,6 +245,56 @@
   height: 1rem;
 }
 
+/* Épingle cliquable (hors lecture seule) : frère de la carte, deux <button> ne
+   s'imbriquent pas. Cochée = remplie et accentuée. */
+.item {
+  position: relative;
+}
+
+.pinForm {
+  position: absolute;
+  top: 0;
+  right: 0;
+  z-index: 1;
+}
+
+.pinToggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.pinToggle svg {
+  width: 1.125rem;
+  height: 1.125rem;
+}
+
+.pinToggle[data-pinned] {
+  color: var(--color-accent-rest);
+}
+
+.pinToggle[data-pinned] svg {
+  fill: currentColor;
+}
+
+.pinToggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pinToggle:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-md);
+}
+
 .fresh {
   position: absolute;
   top: var(--space-2);
