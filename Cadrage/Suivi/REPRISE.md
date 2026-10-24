@@ -9,8 +9,7 @@
   SSO Vercel, base de PROD). Recette à faire : `/players/[id]` d'un joueur avec badges épinglés, taper un écusson (375 px,
   desktop, clair/sombre). `PlayerIdentity` pas encore branché (classement = Lot 5, en-tête = Lot 3).
 - **Ensuite** : Lot 4 (onglet Badges), 5 (classement), 3 (Mon profil). **Pièges du chantier** : aucune nouvelle couleur (DA) ; avatar jamais teinté équipe ; connexion sur `*.vercel.app`
-  (Turnstile, redirections Supabase) non vérifiée ; worktree = junction `node_modules` vers `C:\dev
-ba-pronos`.
+  (Turnstile, redirections Supabase) non vérifiée ; worktree = junction `node_modules` vers le dépôt principal.
 - **État lu/vu lié au compte (PR #230)** : si mergée, **`supabase db push`** (`20261023090000`, `20261023100000`) puis
   `supabase migration list`.
 - **Enrichissement Lot 2** : S6 « N quarts », L8 alias ; `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`.
