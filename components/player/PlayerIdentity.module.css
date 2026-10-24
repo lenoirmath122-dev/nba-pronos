@@ -49,3 +49,17 @@
   font-size: var(--font-size-xl);
   white-space: normal;
 }
+
+.identity[data-size="row"] .pseudo,
+.identity[data-size="bar"] .pseudo {
+  font-size: var(--font-size-sm);
+}
+
+/* D2 : la vitrine du classement montre 3 écussons en paysage/desktop, 1 seul
+   (le badge signature) en portrait mobile. Le serveur en rend toujours 3 ; la
+   rangée d'écussons est le dernier enfant, chaque écusson un bouton. */
+@media (orientation: portrait) and (max-width: 767px) {
+  .identity[data-size="row"] > :last-child > :nth-child(n + 2) {
+    display: none;
+  }
+}

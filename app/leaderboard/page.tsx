@@ -1,5 +1,7 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { getLeaderboard, type SortDirection, type SortKey } from "@/lib/queries/leaderboard";
+import { getRowShowcases } from "@/lib/queries/badges";
+import { PlayerIdentity } from "@/components/player/PlayerIdentity";
 import { getWeeklyLeaderboard } from "@/lib/queries/weeklyLeaderboard";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { parseView } from "@/lib/leaderboard/href";
@@ -91,6 +93,8 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
     });
     const showStickyBar = weekly.rankedCount > 20 && weekly.currentUserRank !== null;
     const currentUserRow = weekly.rows.find((row) => row.isCurrentUser);
+    // Une seule salve pour toute la liste (pas une requête par ligne).
+    const showcases = await getRowShowcases(weekly.rows.map((row) => row.userId), 3);
 
     return (
       <ScreenShell authenticated={user !== null}>
@@ -133,12 +137,25 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               subtitle="Le classement s'affichera dès les premiers pronos."
             />
           ) : (
-            <WeeklyLeaderboardList rows={weekly.rows} tiebreakAvailable={weekly.tiebreakAvailable} />
+            <WeeklyLeaderboardList rows={weekly.rows} showcases={showcases} tiebreakAvailable={weekly.tiebreakAvailable} />
           )}
         </div>
 
         {showStickyBar && currentUserRow && (
-          <StickyMeBar rank={currentUserRow.rank} pseudo={currentUserRow.pseudo} totalPoints={currentUserRow.points} />
+          <StickyMeBar
+            rank={currentUserRow.rank}
+            identity={
+              <PlayerIdentity
+                userId={currentUserRow.userId}
+                pseudo={currentUserRow.pseudo}
+                size="bar"
+                linkToProfile={false}
+                showcase={showcases.get(currentUserRow.userId)}
+                maxBadges={1}
+              />
+            }
+            totalPoints={currentUserRow.points}
+          />
         )}
       </ScreenShell>
     );
@@ -151,6 +168,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
 
   const showStickyBar = data.rankedCount > 20 && data.currentUserRank !== null;
   const currentUserRow = data.rows.find((row) => row.isCurrentUser);
+  const showcases = await getRowShowcases(data.rows.map((row) => row.userId), 3);
 
   return (
     <ScreenShell authenticated={user !== null}>
@@ -201,6 +219,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             ) : (
               <LeaderboardTable
                 rows={data.rows}
+                showcases={showcases}
                 sortKey={sortKey}
                 sortDirection={data.sortDirection}
                 leagueId={data.scopeLeagueId}
@@ -214,7 +233,16 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
       {showStickyBar && currentUserRow && (
         <StickyMeBar
           rank={currentUserRow.rank}
-          pseudo={currentUserRow.pseudo}
+          identity={
+            <PlayerIdentity
+              userId={currentUserRow.userId}
+              pseudo={currentUserRow.pseudo}
+              size="bar"
+              linkToProfile={false}
+              showcase={showcases.get(currentUserRow.userId)}
+              maxBadges={1}
+            />
+          }
           totalPoints={currentUserRow.totalPoints}
         />
       )}

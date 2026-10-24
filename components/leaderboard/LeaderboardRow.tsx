@@ -1,10 +1,8 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import type { LeaderboardRow as RowData, RankTrend, SortKey } from "@/lib/queries/leaderboard";
-import { PlayerLink } from "@/components/ui/PlayerLink";
 import { clickableRowProps } from "@/lib/hooks/clickableRow";
-import { getInitials } from "@/lib/player/initials";
 import styles from "./LeaderboardRow.module.css";
 
 // Une ligne du classement (§6/§7). Composant CONTRÔLÉ depuis LeaderboardRowList
@@ -16,6 +14,8 @@ import styles from "./LeaderboardRow.module.css";
 // repris pour le badge de tendance de rang (13/08/2026, ci-dessous).
 type LeaderboardRowProps = {
   row: RowData;
+  /** Avatar + pseudo + vitrine, rendus côté serveur (PlayerIdentity size="row"). */
+  identity: ReactNode;
   sortKey: SortKey;
   expanded: boolean;
   onToggle: (userId: string) => void;
@@ -121,7 +121,7 @@ function TrendBadge({ trend }: { trend: RankTrend }) {
 // `expanded`/`sortKey` n'ont pas changé ne se re-rend plus quand une AUTRE
 // ligne est dépliée/repliée (avant : les 2 re-rendaient tout l'accordéon,
 // closure inline recréée à chaque clic).
-export const LeaderboardRow = memo(function LeaderboardRow({ row, sortKey, expanded, onToggle }: LeaderboardRowProps) {
+export const LeaderboardRow = memo(function LeaderboardRow({ row, identity, sortKey, expanded, onToggle }: LeaderboardRowProps) {
   const correctionTitle =
     row.adminCorrectionsCount > 0
       ? `${plural(row.adminCorrectionsCount, "élément")} corrigé${row.adminCorrectionsCount > 1 ? "s" : ""} par un admin, sur requête`
@@ -157,15 +157,17 @@ export const LeaderboardRow = memo(function LeaderboardRow({ row, sortKey, expan
         </span>
 
         <span className={styles.colPlayer}>
-          <span className={styles.avatar} aria-hidden="true">
-            {getInitials(row.pseudo)}
-          </span>
-          <PlayerLink
-            userId={row.userId}
-            pseudo={row.pseudo}
-            className={styles.pseudo}
+          {/* Le pseudo (lien) et les écussons (pop-over, rendu en portail mais
+              remonté par React) ne doivent ni déplier la ligne au clic ni
+              l'activer à Entrée/Espace. */}
+          <span
+            role="presentation"
+            className={styles.identity}
             onClick={(event) => event.stopPropagation()}
-          />
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            {identity}
+          </span>
           {row.isInactive && <span className={styles.inactiveTag}>inactif</span>}
           {row.adminCorrectionsCount > 0 && (
             <span className={styles.correctionBadge} title={correctionTitle} aria-hidden="true" />

@@ -117,30 +117,10 @@
   min-width: 0;
 }
 
-/* --- Avatar-initiales (13/08/2026) --- */
-/* Pas d'opacité propre : .rowInactive (posée sur .wrapper, un ancêtre) fait
-   déjà baisser l'opacité de toute la ligne, avatar compris — l'appliquer une
-   2e fois ici la ferait doublement s'estomper. */
-.avatar {
-  flex-shrink: 0;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: var(--radius-full);
-  background: var(--color-accent-soft);
-  color: var(--color-accent);
-  font-size: 0.625rem;
-  font-weight: var(--font-weight-semibold);
+/* L'avatar, le pseudo et la vitrine vivent dans PlayerIdentity (size="row"). */
+.identity {
+  min-width: 0;
   display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pseudo {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: var(--font-size-sm);
-  color: var(--color-text-primary);
 }
 
 .inactiveTag {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import styles from "./StickyMeBar.module.css";
 
 // Barre « toi » collante (§3) : SEULE responsabilité — IntersectionObserver
@@ -11,11 +11,12 @@ import styles from "./StickyMeBar.module.css";
 // est vraie.
 type StickyMeBarProps = {
   rank: number;
-  pseudo: string;
+  /** Avatar + pseudo + écusson, rendus côté serveur (PlayerIdentity size="bar"). */
+  identity: ReactNode;
   totalPoints: number;
 };
 
-export function StickyMeBar({ rank, pseudo, totalPoints }: StickyMeBarProps) {
+export function StickyMeBar({ rank, identity, totalPoints }: StickyMeBarProps) {
   // Masquée tant que la ligne "toi" n'a pas été observée hors du viewport
   // (pas de flash au premier rendu).
   const [outOfView, setOutOfView] = useState(false);
@@ -34,10 +35,15 @@ export function StickyMeBar({ rank, pseudo, totalPoints }: StickyMeBarProps) {
   if (!outOfView) return null;
 
   return (
-    <a href="#me-row" className={styles.bar}>
-      <span className={styles.rank}>#{rank}</span>
-      <span className={styles.pseudo}>{pseudo}</span>
+    // Un lien ne peut pas contenir les boutons des écussons : le lien « retour à
+    // ma ligne » s'étire sur toute la barre (::after) et la vitrine passe
+    // au-dessus pour rester cliquable.
+    <div className={styles.bar}>
+      <a href="#me-row" className={styles.jump} aria-label={`Aller à ma ligne, ${rank}e`}>
+        <span className={styles.rank}>#{rank}</span>
+      </a>
+      <span className={styles.identity}>{identity}</span>
       <span className={styles.total}>{totalPoints} pts</span>
-    </a>
+    </div>
   );
 }
