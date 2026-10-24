@@ -6,7 +6,7 @@
   aperçu : https://nba-pronos-git-feat-pb-lot-5-lenoir-nba.vercel.app (derrière SSO Vercel). **Recette visuelle pas faite** :
   375 px portrait/paysage, 24 joueurs, ligues, tri, barre « Ta place » (> 20 joueurs), temps de chargement avant/après
   à noter dans la PR. L'utilisateur la merge dans release.
-- **Lot 5, choix** : `getRowShowcases` (1 salve, sans chunking : à surveiller au-delà de quelques centaines de joueurs) ;
+- **Lot 5, choix** : **D1 abandonnée : vitrine = épinglés seulement, plus de choix auto** ; `getRowShowcases` (1 salve, sans chunking : à surveiller au-delà de quelques centaines de joueurs) ;
   3 écussons rendus, 2 masqués en CSS en portrait < 768 px, 1 dans `StickyMeBar` (lien étiré, plus de bouton dans un lien) ;
   bandeau champion hebdo laissé en texte ; visiteur non connecté : badges absents si la RLS les bloque (non vérifié).
 - **Ensuite** : Lot 3 (Mon profil, 2 PR si besoin ; redirection de `togglePinnedBadgeFormAction` à revoir), puis 6.

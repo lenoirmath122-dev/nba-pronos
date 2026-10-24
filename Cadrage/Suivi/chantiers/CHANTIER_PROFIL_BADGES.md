@@ -103,7 +103,7 @@ ni dans le classement.
 
 | # | Question | Décision |
 |---|---|---|
-| D1 | Que montre la vitrine quand le joueur n'a rien épinglé ? | **Choix auto** : les 3 badges de plus haut palier (à palier égal : le plus récent dans l'ordre du catalogue). Les épinglés passent toujours devant. |
+| D1 | Que montre la vitrine quand le joueur n'a rien épinglé ? | **ABANDONNÉE le 24/10 (PR #241) : rien, seuls les épinglés s'affichent.** Ancienne décision : choix auto : les 3 badges de plus haut palier (à palier égal : le plus récent dans l'ordre du catalogue). Les épinglés passent toujours devant. |
 | D2 | Combien de badges dans une ligne de classement ? | **1 en portrait mobile, 3 en paysage/desktop.** Le n° 1 de la vitrine = le « badge signature ». |
 | D3 | Où vit « mon profil » ? | **Une vraie page « Mon profil » à onglets Stats · Badges · Historique · Ligues**, ouverte en touchant son pseudo dans le panneau (aujourd'hui ça mène au changement de pseudo — contre-intuitif). En-tête commun : bandeau d'équipe, avatar, pseudo + badge signature, rang, « Modifier le profil ». Le changement de pseudo passe dans Compte (« Identifiants et pseudo ») et dans « Modifier le profil ». `/players/[id]` partage le même en-tête, onglets réduits pour les autres (voir Lot 3). |
 | D4 | Ramener le bandeau aux couleurs de l'équipe ? | **Oui, sur l'en-tête de la page profil** (soi et public), avec le rendu validé le 04/08. Rien ne change sans équipe choisie. |
