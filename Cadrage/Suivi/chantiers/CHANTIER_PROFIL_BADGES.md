@@ -295,6 +295,7 @@ badge (carte et vitrine), déblocage d'un nouveau badge, ouverture du
 pop-over et de la fiche, apparition des écussons dans le classement.
 Contraintes : `prefers-reduced-motion` respecté, aucune nouvelle couleur
 (DA), rien qui ralentisse le classement. Compétence `impeccable` utile.
+**Il faudra repasser par Claude desktop pour ce lot** (décision du 24/10).
 
 ---
 
