@@ -11,6 +11,7 @@ import {
 } from "@/lib/badges/thresholds";
 import { BADGE_CATEGORIES, BADGE_LABELS, BADGE_DESCRIPTIONS, type BadgeCategoryId } from "@/lib/badges/labels";
 import type { BetCategory } from "@/lib/labels/bets";
+import { resolveShowcase } from "@/lib/badges/showcase";
 
 // Onglet Stats > Badges (SPEC_BADGES_PERMANENTS_V0_1.md, phases 1+2+3 —
 // catalogue de base complet, Métronome/Fidèle inclus ; seul Grimpeur reste
@@ -299,6 +300,18 @@ export async function getShowcaseBadges(
       badges: categories.flatMap((category) => category.badges),
       pinnedIds: profile?.pinned_badge_ids ?? [],
     });
+  }
+  return result;
+}
+
+/** Vitrine résolue (resolveShowcase) de chaque joueur d'une liste : une seule
+ *  salve de requêtes pour tout le classement, pas une par ligne. `max` = nombre
+ *  d'écussons à garder (3 : la CSS en masque 2 en portrait mobile, D2). */
+export async function getRowShowcases(userIds: string[], max: number): Promise<Map<string, BadgeDisplay[]>> {
+  const raw = await getShowcaseBadges(userIds);
+  const result = new Map<string, BadgeDisplay[]>();
+  for (const [userId, { badges, pinnedIds }] of raw) {
+    result.set(userId, resolveShowcase(badges, pinnedIds, max));
   }
   return result;
 }

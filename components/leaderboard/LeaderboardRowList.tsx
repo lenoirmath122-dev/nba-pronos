@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import type { LeaderboardRow as RowData, SortKey } from "@/lib/queries/leaderboard";
 import { LeaderboardRow } from "./LeaderboardRow";
 
 type LeaderboardRowListProps = {
   rows: RowData[];
+  /** Identité de chaque joueur (serveur), par userId. */
+  identities: Record<string, ReactNode>;
   sortKey: SortKey;
 };
 
@@ -14,7 +16,7 @@ type LeaderboardRowListProps = {
 // contrôlé, cf. son commentaire d'en-tête), plutôt que dans LeaderboardTable
 // qui reste un composant serveur (T6a). Seul module client ajouté par ce
 // changement.
-export function LeaderboardRowList({ rows, sortKey }: LeaderboardRowListProps) {
+export function LeaderboardRowList({ rows, identities, sortKey }: LeaderboardRowListProps) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // p1-29 (feuille de route Phase 1) : référence STABLE entre re-renders
@@ -33,6 +35,7 @@ export function LeaderboardRowList({ rows, sortKey }: LeaderboardRowListProps) {
         <LeaderboardRow
           key={row.userId}
           row={row}
+          identity={identities[row.userId]}
           sortKey={sortKey}
           expanded={row.userId === expandedUserId}
           onToggle={handleToggle}

@@ -87,6 +87,7 @@ export function BadgePopover({ badges, ownerName, badgesHref }: BadgePopoverProp
           aria-label={`Badge ${item.label}`}
           aria-haspopup="dialog"
           aria-expanded={open?.badge.id === item.id}
+          onKeyDown={(event) => event.stopPropagation()}
           onClick={(event) => {
             // Dans une ligne cliquable (classement) : ne déplie pas la ligne.
             event.stopPropagation();

@@ -1,5 +1,6 @@
 import type { WeeklyLeaderboardRow } from "@/lib/queries/weeklyLeaderboard";
-import { PlayerLink } from "@/components/ui/PlayerLink";
+import { PlayerIdentity } from "@/components/player/PlayerIdentity";
+import type { BadgeDisplay } from "@/lib/queries/badges";
 import styles from "./WeeklyLeaderboardList.module.css";
 
 // Classement de la semaine en cours (lot 2 du classement hebdo). Ordre et rang
@@ -8,6 +9,7 @@ import styles from "./WeeklyLeaderboardList.module.css";
 // sur la ligne du joueur connecté, pour StickyMeBar.
 type WeeklyLeaderboardListProps = {
   rows: WeeklyLeaderboardRow[];
+  showcases: Map<string, BadgeDisplay[]>;
   tiebreakAvailable: boolean;
 };
 
@@ -21,7 +23,7 @@ function formatPoints(points: number): string {
   return points < 0 ? `−${Math.abs(points)}` : String(points);
 }
 
-export function WeeklyLeaderboardList({ rows, tiebreakAvailable }: WeeklyLeaderboardListProps) {
+export function WeeklyLeaderboardList({ rows, showcases, tiebreakAvailable }: WeeklyLeaderboardListProps) {
   return (
     <div className={styles.table} role="table" aria-label="Classement de la semaine">
       <div className={styles.headerRow} role="row">
@@ -54,7 +56,7 @@ export function WeeklyLeaderboardList({ rows, tiebreakAvailable }: WeeklyLeaderb
             {row.rank}
           </span>
           <span className={styles.colPlayer} role="cell">
-            <PlayerLink userId={row.userId} pseudo={row.pseudo} className={styles.pseudo} />
+            <PlayerIdentity userId={row.userId} pseudo={row.pseudo} size="row" showcase={showcases.get(row.userId)} maxBadges={3} />
             {row.isInactive && <span className={styles.inactiveTag}>inactif</span>}
             {tiebreakAvailable && row.correctMatchWinners !== null && row.exactMargins !== null && (
               <span className={styles.detail}>
