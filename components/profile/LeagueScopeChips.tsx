@@ -18,9 +18,9 @@ export function LeagueScopeChips({ myLeagues, activeLeagueId }: LeagueScopeChips
   if (myLeagues.length === 0) return null;
 
   function href(leagueId: string | null): string {
-    const params = new URLSearchParams({ tab: "comparaison" });
+    const params = new URLSearchParams({ tab: "stats", section: "comparaison" });
     if (leagueId) params.set("ligue", leagueId);
-    return `/stats?${params.toString()}`;
+    return `/profile?${params.toString()}`;
   }
 
   return (

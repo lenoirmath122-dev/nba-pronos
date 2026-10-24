@@ -44,17 +44,17 @@ const SECTIONS: Section[] = [
     key: "jeu",
     title: "Mon jeu",
     rows: [
-      { key: "stats", label: "Stats", href: "/stats", Icon: StatsIcon },
-      { key: "badges", label: "Badges", href: "/stats?tab=badges", Icon: BadgeMedalIcon },
-      { key: "historique", label: "Historique", href: "/profile/historique", Icon: HistoryIcon },
-      { key: "ligues", label: "Ligues", href: "/profile/ligues", Icon: PeopleIcon },
+      { key: "stats", label: "Stats", href: "/profile?tab=stats", Icon: StatsIcon },
+      { key: "badges", label: "Badges", href: "/profile?tab=badges", Icon: BadgeMedalIcon },
+      { key: "historique", label: "Historique", href: "/profile?tab=historique", Icon: HistoryIcon },
+      { key: "ligues", label: "Ligues", href: "/profile?tab=ligues", Icon: PeopleIcon },
     ],
   },
   {
     key: "compte",
     title: "Compte",
     rows: [
-      { key: "identifiants", label: "Identifiants", href: "/profile/identifiants", Icon: KeyIcon },
+      { key: "identifiants", label: "Identifiants et pseudo", href: "/profile/identifiants", Icon: KeyIcon },
       { key: "donnees", label: "Mes données", href: "/profile/donnees", Icon: DownloadIcon },
     ],
   },
@@ -91,7 +91,7 @@ const DANGER_ROW: Row = {
   tone: "danger",
 };
 
-const IDENTITY_HREF = "/profile/pseudo";
+const IDENTITY_HREF = "/profile";
 
 function formatRank(rank: number | null): string {
   if (rank === null) return "—";
@@ -231,10 +231,10 @@ export function SettingsDrawer({ open, onClose, onNavigate, isAdmin }: SettingsD
         </Link>
 
         <Link
-          href="/stats"
+          href="/profile?tab=stats"
           className={styles.statsCard}
           aria-label="Voir mes stats"
-          onNavigate={(event) => guardNavigation(event, "/stats")}
+          onNavigate={(event) => guardNavigation(event, "/profile?tab=stats")}
           onClick={onNavigate}
         >
           <span className={styles.statBlock}>

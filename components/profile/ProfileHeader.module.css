@@ -1,0 +1,116 @@
+.header {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+}
+
+.withTeam {
+  border: 1px solid var(--color-border-subtle);
+  background: var(--color-surface-raised);
+}
+
+/* Bandeau : photo du hero désaturée puis recolorée en 2 tons de l'équipe
+   (mode de fusion « color »), fondu vers la carte en bas pour que le texte
+   reste lisible dans les deux thèmes. */
+.banner {
+  position: relative;
+  height: 112px;
+  isolation: isolate;
+}
+
+.banner::before,
+.banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.banner::before {
+  background: var(--hero-image) center 30% / cover no-repeat;
+  filter: grayscale(1) contrast(1.15) brightness(0.95);
+}
+
+.banner::after {
+  background:
+    linear-gradient(180deg, transparent 40%, var(--color-surface-raised) 100%),
+    linear-gradient(135deg, var(--team-primary) 0%, var(--team-secondary) 100%);
+  background-blend-mode: normal, color;
+}
+
+.crest {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  z-index: 1;
+}
+
+.body {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+}
+
+.withTeam .body {
+  margin-top: calc(-1 * var(--space-6));
+}
+
+.subtitle,
+.bio {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.bio {
+  font-style: italic;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.chip,
+.chipAccent {
+  display: inline-flex;
+  align-items: center;
+  min-height: 1.875rem;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  background: var(--color-surface-inset);
+  color: var(--color-text-secondary);
+}
+
+.chipAccent {
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
+.edit {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap-target-min);
+  margin-left: auto;
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  text-decoration: none;
+  border: 1px solid var(--color-border-subtle);
+}
+
+.edit:hover {
+  color: var(--color-accent);
+}
+
+.edit:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
