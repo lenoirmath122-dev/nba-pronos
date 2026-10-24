@@ -111,7 +111,7 @@ const MAX_PINNED_BADGES = 3;
  *  même patron formulaire natif + redirection que le reste de ce fichier. */
 export async function togglePinnedBadgeFormAction(formData: FormData): Promise<void> {
   const badgeId = String(formData.get("badgeId") ?? "");
-  if (!badgeId) redirect("/stats?tab=badges");
+  if (!badgeId) redirect("/profile?tab=badges");
 
   const supabase = await getServerClient();
   const {
@@ -131,7 +131,7 @@ export async function togglePinnedBadgeFormAction(formData: FormData): Promise<v
     next = current.filter((id) => id !== badgeId);
   } else {
     if (current.length >= MAX_PINNED_BADGES) {
-      redirect(`/stats?tab=badges&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
+      redirect(`/profile?tab=badges&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
     }
     // Défense en profondeur -- la fiche badge ne propose déjà le bouton
     // que sur un badge débloqué, cf. commentaire ci-dessus.
@@ -139,16 +139,16 @@ export async function togglePinnedBadgeFormAction(formData: FormData): Promise<v
     const target = badges.categories.flatMap((c) => c.badges).find((b) => b.id === badgeId);
     const unlocked = target ? (target.kind === "tiered" ? target.tier !== null : target.unlocked) : false;
     if (!unlocked) {
-      redirect(`/stats?tab=badges&profileError=${encodeURIComponent("Ce badge n'est pas encore débloqué.")}`);
+      redirect(`/profile?tab=badges&profileError=${encodeURIComponent("Ce badge n'est pas encore débloqué.")}`);
     }
     next = [...current, badgeId];
   }
 
   const { error } = await supabase.from("users").update({ pinned_badge_ids: next }).eq("id", user!.id);
   if (error) {
-    redirect(`/stats?tab=badges&profileError=${encodeURIComponent(toClientError("togglePinnedBadgeFormAction", error))}`);
+    redirect(`/profile?tab=badges&profileError=${encodeURIComponent(toClientError("togglePinnedBadgeFormAction", error))}`);
   }
 
-  revalidatePath("/stats");
-  redirect("/stats?tab=badges");
+  revalidatePath("/profile");
+  redirect("/profile?tab=badges");
 }

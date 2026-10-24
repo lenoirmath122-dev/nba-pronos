@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import Link from "next/link";
-import styles from "@/app/(app)/stats/page.module.css";
+import styles from "./StatsTabsNav.module.css";
 
 // Lot Q (23/10/2026) : les onglets de /stats défilent horizontalement, l'onglet
 // actif (ex. « Badges ») pouvait être hors écran à 375 px. On le recentre au
@@ -11,9 +11,12 @@ import styles from "@/app/(app)/stats/page.module.css";
 export function StatsTabsNav({
   tabs,
   active,
+  basePath,
 }: {
   tabs: readonly { key: string; label: string }[];
   active: string;
+  /** Début de l'URL d'une section, la clé s'ajoute au bout (ex. `/profile?tab=stats&section=`). */
+  basePath: string;
 }) {
   const activeRef = useRef<HTMLAnchorElement>(null);
 
@@ -27,7 +30,7 @@ export function StatsTabsNav({
         <Link
           key={t.key}
           ref={t.key === active ? activeRef : undefined}
-          href={`/stats?tab=${t.key}`}
+          href={`${basePath}${t.key}`}
           replace
           className={t.key === active ? styles.tabActive : styles.tab}
           aria-current={t.key === active ? "page" : undefined}

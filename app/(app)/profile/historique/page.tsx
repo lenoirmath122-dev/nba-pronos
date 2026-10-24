@@ -1,12 +1,6 @@
-import { getCompetitionHistory } from "@/lib/queries/history";
-import { SubPageShell } from "@/components/ui/SubPageShell";
-import { HistorySection } from "@/components/profile/HistorySection";
+import { redirect } from "next/navigation";
 
-export default async function HistoryPage() {
-  const history = await getCompetitionHistory();
-  return (
-    <SubPageShell title="Historique">
-      <HistorySection history={history} />
-    </SubPageShell>
-  );
+// Absorbée par l'onglet Historique de « Mon profil » (Lot 3a).
+export default function HistoryPage() {
+  redirect("/profile?tab=historique");
 }
