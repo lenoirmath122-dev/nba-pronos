@@ -95,11 +95,7 @@ export async function getProfileBadges(targetUserId?: string): Promise<ProfileBa
 
   const [{ data: badgeRow }, { data: profileRow }, { data: streakRows }] = await Promise.all([
     supabase.from("user_badges_lifetime").select("*").eq("user_id", userId).maybeSingle<UserBadgesLifetimeRow>(),
-    supabase
-      .from("users")
-      .select("created_at, pinned_badge_ids")
-      .eq("id", userId)
-      .single<{ created_at: string; pinned_badge_ids: string[] }>(),
+    supabase.from("users").select("created_at, pinned_badge_ids").eq("id", userId).single<NonNullable<ProfileRow>>(),
     supabase
       .from("user_competition_streaks")
       .select("user_id, competition_id, metronome_streak, fidele_streak")
@@ -107,6 +103,19 @@ export async function getProfileBadges(targetUserId?: string): Promise<ProfileBa
       .returns<UserCompetitionStreakRow[]>(),
   ]);
 
+  return buildProfileBadges(userId, badgeRow, profileRow, streakRows ?? []);
+}
+
+type ProfileRow = { created_at: string; pinned_badge_ids: string[] } | null;
+
+// Calcul des paliers partagé par la page Badges (un joueur) et la vitrine du
+// classement (getShowcaseBadges, plusieurs joueurs) : une seule définition.
+function buildProfileBadges(
+  userId: string,
+  badgeRow: UserBadgesLifetimeRow | null,
+  profileRow: ProfileRow,
+  streakRows: UserCompetitionStreakRow[]
+): ProfileBadgesData {
   // Aucune ligne dans la vue = joueur sans aucune activité à vie (jamais
   // pronostiqué/parié/rempli de bracket) — tous les compteurs à 0, pas une
   // erreur (même repli que les vues user_scores/user_recent_form ailleurs).
@@ -139,8 +148,8 @@ export async function getProfileBadges(targetUserId?: string): Promise<ProfileBa
     ? Math.floor((Date.now() - new Date(profileRow.created_at).getTime()) / MS_PER_DAY)
     : 0;
 
-  const metronomeRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.metronome_streak), 0);
-  const fideleRecord = (streakRows ?? []).reduce((max, r) => Math.max(max, r.fidele_streak), 0);
+  const metronomeRecord = streakRows.reduce((max, r) => Math.max(max, r.metronome_streak), 0);
+  const fideleRecord = streakRows.reduce((max, r) => Math.max(max, r.fidele_streak), 0);
 
   const pinnedIds = profileRow?.pinned_badge_ids ?? [];
   const isPinned = (id: BadgeId) => pinnedIds.includes(id);
@@ -240,4 +249,56 @@ export async function getProfileBadges(targetUserId?: string): Promise<ProfileBa
     // devrait jamais arriver, les tiers ne régressent jamais.
     pinnedBadges: pinnedIds.map((id) => badgeById.get(id as BadgeId)).filter((b): b is BadgeDisplay => b !== undefined),
   };
+}
+
+/** Badges de plusieurs joueurs d'un coup (vitrine du classement) : une requête
+ *  par source, filtrée par `in(user_id, ...)`, au lieu d'une lecture par joueur.
+ *  Les mêmes vues `security_invoker = false` que getProfileBadges (agrégats
+ *  seuls). Renvoie, pour chaque id demandé, tous ses badges à plat dans l'ordre
+ *  du catalogue, prêts pour `resolveShowcase` ; l'ordre d'épinglage est dans
+ *  `pinnedIds`. */
+export async function getShowcaseBadges(
+  userIds: string[]
+): Promise<Map<string, { badges: BadgeDisplay[]; pinnedIds: string[] }>> {
+  const result = new Map<string, { badges: BadgeDisplay[]; pinnedIds: string[] }>();
+  if (userIds.length === 0) return result;
+  const supabase = await getServerClient();
+
+  const [{ data: badgeRows }, { data: profileRows }, { data: streakRows }] = await Promise.all([
+    supabase.from("user_badges_lifetime").select("*").in("user_id", userIds).returns<UserBadgesLifetimeRow[]>(),
+    supabase
+      .from("users")
+      .select("id, created_at, pinned_badge_ids")
+      .in("id", userIds)
+      .returns<(NonNullable<ProfileRow> & { id: string })[]>(),
+    supabase
+      .from("user_competition_streaks")
+      .select("user_id, competition_id, metronome_streak, fidele_streak")
+      .in("user_id", userIds)
+      .returns<UserCompetitionStreakRow[]>(),
+  ]);
+
+  const badgeByUser = new Map((badgeRows ?? []).map((row) => [row.user_id, row]));
+  const profileByUser = new Map((profileRows ?? []).map((row) => [row.id, row]));
+  const streaksByUser = new Map<string, UserCompetitionStreakRow[]>();
+  for (const row of streakRows ?? []) {
+    const list = streaksByUser.get(row.user_id) ?? [];
+    list.push(row);
+    streaksByUser.set(row.user_id, list);
+  }
+
+  for (const userId of userIds) {
+    const profile = profileByUser.get(userId) ?? null;
+    const { categories } = buildProfileBadges(
+      userId,
+      badgeByUser.get(userId) ?? null,
+      profile,
+      streaksByUser.get(userId) ?? []
+    );
+    result.set(userId, {
+      badges: categories.flatMap((category) => category.badges),
+      pinnedIds: profile?.pinned_badge_ids ?? [],
+    });
+  }
+  return result;
 }
