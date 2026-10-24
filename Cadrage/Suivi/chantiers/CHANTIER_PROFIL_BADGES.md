@@ -287,6 +287,15 @@ nouveau à concevoir. Un endroit par PR si ça touche des requêtes.
 sans toucher au reste. Peut avancer en parallèle de tout le chantier, au
 rythme des visuels (prompts déjà prêts : `Cadrage/V1/Spec visuelle/PROMPTS_BADGES_*.md`).
 
+### Lot 8 — Animations (après la livraison du 26/10)
+
+Décidé le 24/10 : aucune animation dans la livraison du 26/10, elles n'ont
+pas été recettées. À faire après les Lots 3 et 6. Pistes : épinglage d'un
+badge (carte et vitrine), déblocage d'un nouveau badge, ouverture du
+pop-over et de la fiche, apparition des écussons dans le classement.
+Contraintes : `prefers-reduced-motion` respecté, aucune nouvelle couleur
+(DA), rien qui ralentisse le classement. Compétence `impeccable` utile.
+
 ---
 
 ## 4 bis. Livraison groupée (« mise à jour » du lundi 26/10/2026)
@@ -372,3 +381,4 @@ worktree. Tests vitest pour toute logique pure. À la fin : passation
 - [x] Lot 5 — Classement (24/10, PR #241 ; `getRowShowcases` en une salve, 3 écussons dont 2 masqués en portrait, 1 dans la barre ; recette visuelle et chiffres de chargement à faire sur l'aperçu)
 - [ ] Lot 6 — Ailleurs
 - [ ] Lot 7 — Visuels dessinés
+- [ ] Lot 8 — Animations (après le 26/10)
