@@ -146,3 +146,14 @@
   font-weight: var(--font-weight-semibold);
   text-decoration: none;
 }
+
+/* Feuille mobile : collée au bord bas, pleine largeur, coins hauts arrondis. */
+.sheet {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  max-height: 80vh;
+  padding-bottom: calc(var(--space-4) + env(safe-area-inset-bottom, 0px));
+  border-bottom: 0;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
