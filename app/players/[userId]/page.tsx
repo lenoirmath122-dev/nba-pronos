@@ -4,7 +4,7 @@ import { getPlayerProfile } from "@/lib/queries/player-profile";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import { EmptyState } from "@/components/home/EmptyState";
 import { TeamLogo } from "@/components/ui/TeamLogo";
-import { PinnedBadges } from "@/components/profile/PinnedBadges";
+import { BadgeStrip } from "@/components/badges/BadgeStrip";
 import { WeeklyPalmares, hasWeeklyPalmaresToShow } from "@/components/profile/WeeklyPalmares";
 import { getWeeklyPalmares } from "@/lib/queries/weeklyPalmares";
 import styles from "./page.module.css";
@@ -46,7 +46,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
         <header className={`${styles.header} hero-banner glass-card`}>
           <p className={styles.pseudo}>
             {profile.pseudo}
-            <PinnedBadges badges={profile.pinnedBadges} />
+            <BadgeStrip badges={profile.pinnedBadges} ownerName={profile.pseudo} />
           </p>
           <div className={styles.badges}>
             {profile.isAdmin && <span className={styles.badge}>Admin</span>}

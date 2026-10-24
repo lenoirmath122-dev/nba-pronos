@@ -1,0 +1,51 @@
+.identity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+.pseudo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.identity[data-size="bar"] .avatar {
+  width: 2rem;
+  height: 2rem;
+  font-size: var(--font-size-xs);
+}
+
+.identity[data-size="header"] {
+  gap: var(--space-3);
+}
+
+.identity[data-size="header"] .avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: var(--font-size-md);
+}
+
+.identity[data-size="header"] .pseudo {
+  font-size: var(--font-size-xl);
+  white-space: normal;
+}

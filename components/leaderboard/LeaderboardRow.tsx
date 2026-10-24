@@ -4,6 +4,7 @@ import { memo } from "react";
 import type { LeaderboardRow as RowData, RankTrend, SortKey } from "@/lib/queries/leaderboard";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import { clickableRowProps } from "@/lib/hooks/clickableRow";
+import { getInitials } from "@/lib/player/initials";
 import styles from "./LeaderboardRow.module.css";
 
 // Une ligne du classement (§6/§7). Composant CONTRÔLÉ depuis LeaderboardRowList
@@ -56,17 +57,6 @@ function betsSuccessLine(attempted: number, won: number, avgDifficulty: number |
 
 function ordinal(rank: number): string {
   return rank === 1 ? "1er" : `${rank}e`;
-}
-
-// Initiales avatar (13/08/2026) : repère visuel rapide, propre à cet écran
-// (pas ajouté à PlayerLink lui-même, utilisé sur d'autres écrans où ça n'a
-// pas été demandé). Coupe sur le 1er séparateur usuel (_, -, espace) si
-// présent, sinon les 2 premiers caractères — les pseudos de ce projet ne
-// suivent aucune convention "Prénom Nom".
-function getInitials(pseudo: string): string {
-  const parts = pseudo.split(/[\s_-]+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return pseudo.slice(0, 2).toUpperCase();
 }
 
 // Préfixe temporel (16/08/2026, bug d'audit corrigé) : le dernier snapshot
