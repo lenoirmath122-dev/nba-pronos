@@ -385,3 +385,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Chantier Profil & badges : plan (#233), release/profil-badges, Lot Q (PR #234, recette OK 23/10/2026) ; prochain Lot 1
 - Chantier Profil & badges : Lot 1 vitrine + lecture groupée (#236, mergé), Lot 2 composants d'identité (#237, ouverte) (24/10/2026) ; D5 couvert par user_seen_state, D7 à trancher
 - Chantier Profil & badges : Lot 2 mergé (#237), Lot 4 onglet Badges (#239, recette OK, épingle sur carte) (24/10/2026) ; D7 toujours ouverte ; prochain Lot 5 classement
+- Chantier Profil & badges : Lot 5 classement (PlayerIdentity + vitrine dans lignes, barre « Ta place », vue hebdo), PR #241, CI verte, recette visuelle à faire (24/10/2026) ; prochain Lot 3

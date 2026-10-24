@@ -369,6 +369,6 @@ worktree. Tests vitest pour toute logique pure. À la fin : passation
 - [x] Lot 2 — Composants d'identité (24/10, PR #237 ; PlayerIdentity pas encore branché, recette visuelle de /players/[id] à faire sur l'aperçu)
 - [ ] Lot 3 — « Mon profil » à onglets
 - [x] Lot 4 — Onglet Badges (24/10, PR #239 ; un seul composant client `BadgesTab`, pas de bouton « Modifier », épingle directe sur chaque carte ; toujours sur `/stats?tab=badges` jusqu'au Lot 3 ; D7 non utilisée)
-- [ ] Lot 5 — Classement
+- [x] Lot 5 — Classement (24/10, PR #241 ; `getRowShowcases` en une salve, 3 écussons dont 2 masqués en portrait, 1 dans la barre ; recette visuelle et chiffres de chargement à faire sur l'aperçu)
 - [ ] Lot 6 — Ailleurs
 - [ ] Lot 7 — Visuels dessinés
