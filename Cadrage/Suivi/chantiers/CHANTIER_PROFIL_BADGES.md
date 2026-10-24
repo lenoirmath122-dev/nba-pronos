@@ -365,8 +365,8 @@ worktree. Tests vitest pour toute logique pure. À la fin : passation
 
 - [x] Lot Q — Correctifs rapides (23/10, PR #234)
 - [x] Lot 0 — Maquettes, D1–D8 tranchées (23/10)
-- [ ] Lot 1 — Vitrine + état « vu » en base
-- [ ] Lot 2 — Composants d'identité
+- [x] Lot 1 — Vitrine + lecture groupée (24/10, PR #236 ; D5 couvert par `user_seen_state` de #230, pas de colonne `badges_seen` ; D7 dates de déblocage reste à trancher, avant le Lot 4)
+- [x] Lot 2 — Composants d'identité (24/10, PR #237 ; PlayerIdentity pas encore branché, recette visuelle de /players/[id] à faire sur l'aperçu)
 - [ ] Lot 3 — « Mon profil » à onglets
 - [ ] Lot 4 — Onglet Badges
 - [ ] Lot 5 — Classement
