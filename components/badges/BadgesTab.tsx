@@ -99,7 +99,7 @@ export function BadgesTab({ data, readOnly = false }: Props) {
             <h3 className={styles.sectionTitle}>Le plus proche</h3>
             <ul className={styles.closestList}>
               {closest.map(({ badge, remaining, target }) => (
-                <li key={badge.id}>
+                <li key={badge.id} className={styles.item}>
                   <button type="button" className={styles.closestItem} onClick={() => setSelected(badge)}>
                     <BadgeEmblem badge={badge} size="sm" />
                     <span className={styles.closestText}>
@@ -135,7 +135,7 @@ export function BadgesTab({ data, readOnly = false }: Props) {
           ))}
         </ul>
         {!readOnly && (
-          <p className={styles.hint}>Touche un badge débloqué, puis « Mettre en vitrine ». {SHOWCASE_SLOTS} maximum.</p>
+          <p className={styles.hint}>Touche l’épingle d’un badge débloqué pour le mettre en vitrine. {SHOWCASE_SLOTS} maximum.</p>
         )}
       </section>
 
@@ -161,7 +161,7 @@ export function BadgesTab({ data, readOnly = false }: Props) {
                   aria-label={`${badge.label}, ${statusLabel(badge)}`}
                   onClick={() => setSelected(badge)}
                 >
-                  {badge.pinned && (
+                  {(readOnly || !isBadgeUnlocked(badge)) && badge.pinned && (
                     <span className={styles.pinned} role="img" aria-label="En vitrine">
                       <Pin aria-hidden="true" />
                     </span>
@@ -172,6 +172,23 @@ export function BadgesTab({ data, readOnly = false }: Props) {
                   <span className={styles.cardLabel}>{badge.label}</span>
                   <span className={styles.cardStatus}>{statusLabel(badge)}</span>
                 </button>
+                {/* Épingle directe (sans ouvrir la fiche) : frère du bouton de la
+                    carte, un bouton ne pouvant pas en contenir un autre. */}
+                {!readOnly && isBadgeUnlocked(badge) && (
+                  <form action={togglePinnedBadgeFormAction} className={styles.pinForm}>
+                    <input type="hidden" name="badgeId" value={badge.id} />
+                    <button
+                      type="submit"
+                      className={styles.pinQuick}
+                      data-on={badge.pinned || undefined}
+                      disabled={!badge.pinned && data.pinnedBadges.length >= SHOWCASE_SLOTS}
+                      aria-pressed={badge.pinned}
+                      aria-label={`${badge.pinned ? "Retirer de" : "Mettre en"} la vitrine : ${badge.label}`}
+                    >
+                      <Pin aria-hidden="true" />
+                    </button>
+                  </form>
+                )}
               </li>
             ))}
           </ul>
