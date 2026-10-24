@@ -99,7 +99,7 @@ export function BadgesTab({ data, readOnly = false }: Props) {
             <h3 className={styles.sectionTitle}>Le plus proche</h3>
             <ul className={styles.closestList}>
               {closest.map(({ badge, remaining, target }) => (
-                <li key={badge.id} className={styles.item}>
+                <li key={badge.id}>
                   <button type="button" className={styles.closestItem} onClick={() => setSelected(badge)}>
                     <BadgeEmblem badge={badge} size="sm" />
                     <span className={styles.closestText}>
@@ -153,7 +153,7 @@ export function BadgesTab({ data, readOnly = false }: Props) {
           <h3 className={styles.sectionTitle}>{category.title}</h3>
           <ul className={styles.grid}>
             {category.badges.map((badge) => (
-              <li key={badge.id}>
+              <li key={badge.id} className={styles.item}>
                 <button
                   type="button"
                   className={styles.card}
