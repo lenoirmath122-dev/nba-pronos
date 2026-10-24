@@ -1,5 +1,6 @@
 "use client";
 
+import { getInitials } from "@/lib/player/initials";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { logout } from "@/lib/auth/actions";
@@ -101,10 +102,6 @@ function formatRank(rank: number | null): string {
 // puis la valeur (ou « — » quand la donnée n'existe pas).
 function statText(summary: ProfileMenuSummary | null, value: string | number): ReactNode {
   return summary ? value : <span className={`${styles.skeleton} ${styles.skeletonStat}`} aria-hidden="true" />;
-}
-
-function initials(pseudo: string): string {
-  return pseudo.trim().slice(0, 2).toUpperCase() || "?";
 }
 
 type SettingsDrawerProps = {
@@ -211,7 +208,7 @@ export function SettingsDrawer({ open, onClose, onNavigate, isAdmin }: SettingsD
           onClick={onNavigate}
         >
           <span className={styles.avatar} aria-hidden="true">
-            {summary ? initials(summary.pseudo) : null}
+            {summary ? getInitials(summary.pseudo) : null}
           </span>
           <span className={styles.identityText}>
             {summary ? (
