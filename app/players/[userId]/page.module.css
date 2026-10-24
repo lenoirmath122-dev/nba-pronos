@@ -5,53 +5,6 @@
   padding: var(--space-4);
 }
 
-.header {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-  padding: var(--space-5) var(--space-4);
-}
-
-.pseudo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  margin: 0;
-  font-size: var(--font-size-xl);
-  font-weight: var(--font-weight-bold);
-  color: var(--color-text-primary);
-}
-
-.badges {
-  display: flex;
-  gap: var(--space-2);
-}
-
-.badge {
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-full);
-  background: var(--color-accent-soft);
-  border: 1px solid var(--color-accent-line);
-  color: var(--color-text-primary);
-  font-size: var(--font-size-xs);
-  font-weight: var(--font-weight-medium);
-  width: fit-content;
-}
-
-.favoriteTeam {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.bio {
-  margin: 0;
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
 .section {
   display: flex;
   flex-direction: column;

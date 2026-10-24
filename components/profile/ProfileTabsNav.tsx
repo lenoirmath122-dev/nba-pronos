@@ -17,13 +17,21 @@ export function parseProfileTab(value: string | undefined): ProfileTab {
   return PROFILE_TABS.find((t) => t.key === value)?.key ?? "stats";
 }
 
-export function ProfileTabsNav({ active }: { active: ProfileTab }) {
+type TabsNavProps = {
+  active: string;
+  /** Onglets affichés ; par défaut les 4 de « Mon profil ». */
+  tabs?: readonly { key: string; label: string }[];
+  /** Début de l'URL d'un onglet, la clé s'ajoute au bout. */
+  basePath?: string;
+};
+
+export function ProfileTabsNav({ active, tabs = PROFILE_TABS, basePath = "/profile?tab=" }: TabsNavProps) {
   return (
-    <nav className={styles.tabs} aria-label="Sections du profil">
-      {PROFILE_TABS.map((t) => (
+    <nav className={styles.tabs} style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }} aria-label="Sections du profil">
+      {tabs.map((t) => (
         <Link
           key={t.key}
-          href={`/profile?tab=${t.key}`}
+          href={`${basePath}${t.key}`}
           replace
           className={t.key === active ? styles.tabActive : styles.tab}
           aria-current={t.key === active ? "page" : undefined}
