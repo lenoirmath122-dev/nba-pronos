@@ -14,8 +14,7 @@
 - **Pièges du chantier** : aperçu Vercel derrière le SSO et sur la base de PROD ; aucune nouvelle couleur (DA) ; connexion
   sur `*.vercel.app` (Turnstile) non vérifiée ; worktree = junction `node_modules` vers un autre worktree.
 - **PR #230 (état lu/vu)** : si mergée, **`supabase db push`** (`20261023090000`, `20261023100000`) puis `migration list`.
-- **Enrichissement Lot 2** : S6 « N quarts », L8 alias ; `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`.
-- **Pièges généraux** : `structureBet` AU PLAFOND de grammaire ; schéma/prompt = vrais appels ; une branche + un worktree
+- **Enrichissement Lot 2** (S6, L8 : `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`). **Pièges généraux** : `structureBet` AU PLAFOND de grammaire ; schéma/prompt = vrais appels ; une branche + un worktree
   par PR ; le classificateur bloque merges/reset/écritures prod.
 - **Ouvert** : 983 `stats_box_scores.pf` vides ; « Hauser ou Pritchard » ; pari Memphis `f4f3ebd6…` (coût IA, demander) ;
   poller VM (dryRun → réel) ; probas instables ; `stash@{0}`. **Échéances** : figement hebdo + livraison 26/10 ; bêta Cup 04/12.
