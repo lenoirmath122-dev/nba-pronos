@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { runEmails, type EmailKind } from "@/lib/email/run";
+import { runWeeklyPopupEmail } from "@/lib/weeklyPopup/email";
 
 // E-mails planifiés (1B). Crons Vercel (vercel.json) :
 //  - `?kind=morning` à 8h, 9h et 10h UTC : résultat du matin puis relance, à
@@ -11,6 +12,8 @@ import { runEmails, type EmailKind } from "@/lib/email/run";
 // `force=1` ignore la plage horaire, `dry_run=1` calcule sans envoyer ni
 // journaliser, `only_owner=1` limite au compte du propriétaire (OWNER_USER_ID,
 // jamais un identifiant passé en paramètre : le mode ne peut que restreindre).
+// `kind=popup` (aussi ajouté aux passages morning et evening) : finit l'e-mail
+// de la popup hebdo publiée, sans doublon (journal par popup et par joueur).
 // Garde d'authentification : Bearer SYNC_SECRET ou CRON_SECRET.
 export const maxDuration = 300;
 export const runtime = "nodejs";
@@ -23,13 +26,17 @@ const KINDS: Record<string, EmailKind[]> = {
   reminder: ["REMINDER"],
 };
 
+const POPUP_KINDS = new Set(["morning", "evening", "popup"]);
+
 async function handle(request: Request): Promise<Response> {
   if (!isAuthorizedCronRequest(request)) {
     return NextResponse.json({ error: "Non autorisé." }, { status: 401 });
   }
   const params = new URL(request.url).searchParams;
-  const kinds = KINDS[params.get("kind") ?? ""];
-  if (!kinds) return NextResponse.json({ error: "kind inconnu." }, { status: 400 });
+  const kindParam = params.get("kind") ?? "";
+  const kinds = KINDS[kindParam];
+  const withPopup = POPUP_KINDS.has(kindParam);
+  if (!kinds && !withPopup) return NextResponse.json({ error: "kind inconnu." }, { status: 400 });
 
   let onlyUserId: string | undefined;
   if (params.get("only_owner") === "1") {
@@ -43,10 +50,17 @@ async function handle(request: Request): Promise<Response> {
 
   // Chaque type est isolé : l'un qui plante ne bloque pas l'autre.
   const results: Record<string, unknown> = {};
-  for (const kind of kinds) {
+  for (const kind of kinds ?? []) {
     results[kind] = await runEmails(kind, Date.now(), options).catch((error: unknown) => ({
       error: error instanceof Error ? error.message : "Erreur inconnue.",
     }));
+  }
+  if (withPopup) {
+    results.POPUP = await runWeeklyPopupEmail({
+      dryRun: options.dryRun,
+      onlyUserId,
+      deadlineMs: Date.now() + (maxDuration - 30) * 1000,
+    }).catch((error: unknown) => ({ error: error instanceof Error ? error.message : "Erreur inconnue." }));
   }
   const failed = Object.values(results).some((value) => typeof value === "object" && value !== null && "error" in value);
   return NextResponse.json(results, { status: failed ? 500 : 200 });

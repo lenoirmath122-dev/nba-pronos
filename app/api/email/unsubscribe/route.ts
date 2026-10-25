@@ -8,7 +8,7 @@ import { verifyUnsubscribeToken } from "@/lib/email/unsubscribe";
 export const runtime = "nodejs";
 
 const COLUMN = { results: "email_results_enabled", reminders: "email_reminders_enabled" } as const;
-const LABEL = { results: "les e-mails de résultats", reminders: "les rappels du soir" } as const;
+const LABEL = { results: "les e-mails de résultats et le récap hebdo", reminders: "les rappels du soir" } as const;
 
 function page(body: string, status = 200): Response {
   const html = `<!doctype html><html lang="fr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Désinscription · Panier Ballon</title></head><body style="font-family:system-ui,sans-serif;max-width:28rem;margin:3rem auto;padding:0 1rem;line-height:1.5">${body}</body></html>`;
