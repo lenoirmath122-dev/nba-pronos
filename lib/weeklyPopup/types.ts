@@ -201,6 +201,12 @@ export interface PopupUserRow {
 }
 
 /** Tout ce que la génération lit pour une semaine. */
+/** HISTORIQUE du rédacteur v6 : formules déjà publiées, à ne pas reprendre. */
+export interface RecentPhrasing {
+  titres: string[];
+  cta: string[];
+}
+
 export interface WeekData {
   competitionId: string;
   weekEnd: string;
@@ -214,6 +220,8 @@ export interface WeekData {
   matchLabels: ReadonlyMap<string, string>;
   champions: { userId: string; points: number }[];
   recentlyFeaturedIds: ReadonlySet<string>;
+  /** Titres et cta des dernières popups publiées, anonymisés (prompt v6). */
+  recentPhrasing: RecentPhrasing;
   publishedFallbackCount: number;
   /** Plafond de lecture atteint : la liste des paris est incomplète. */
   truncated: boolean;

@@ -13,8 +13,8 @@ function promptOf(file: string): string {
 }
 
 describe("prompts", () => {
-  it("le rédacteur égale prompt_redacteur_v5.md, mot pour mot", () => {
-    expect(REDACTEUR_SYSTEM_PROMPT).toBe(promptOf("prompt_redacteur_v5.md"));
+  it("le rédacteur égale prompt_redacteur_v6.md, mot pour mot", () => {
+    expect(REDACTEUR_SYSTEM_PROMPT).toBe(promptOf("prompt_redacteur_v6.md"));
   });
   it("le classifieur égale prompt_classifieur_v1.md, mot pour mot", () => {
     expect(CLASSIFIER_SYSTEM_PROMPT).toBe(promptOf("prompt_classifieur_v1.md"));
