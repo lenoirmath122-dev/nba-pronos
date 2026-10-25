@@ -5,6 +5,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { logAdminAction } from "@/lib/actions/audit";
 import { weekEndFor } from "@/lib/weekly/standings";
+import { addDays } from "@/lib/recaps/period";
 import { deadlineFrom } from "@/lib/weeklyPopup/config";
 import { toDisplayedPopup, type DisplayedPopup } from "@/lib/weeklyPopup/display";
 import {
@@ -466,12 +467,16 @@ export async function generateWeeklyPopupNow(): Promise<PopupActionResult> {
 // --- Essai (décision 13) -------------------------------------------------------
 
 /**
- * Exécute le pipeline sur la dernière semaine close sans figement ni écriture
- * dans `weekly_popups` : seul moyen de tester avant le premier figement réel.
- * **Chaque appel est payant** (jusqu'à 3 appels LLM) ; coût journalisé dans
- * `ai_usage_logs` et compté dans le plafond du jour.
+ * Exécute le pipeline sans figement ni écriture dans `weekly_popups` : seul
+ * moyen de tester avant le premier figement réel. Par défaut sur la dernière
+ * semaine close ; `week: "current"` vise la semaine en cours (paris résolus
+ * depuis le lundi 10 h jusqu'à maintenant, sans champion puisqu'elle n'est pas
+ * figée). **Chaque appel est payant** (jusqu'à 3 appels LLM) ; coût journalisé
+ * dans `ai_usage_logs` et compté dans le plafond du jour.
  */
-export async function generateWeeklyPopupTrial(): Promise<PopupTrialResult> {
+export async function generateWeeklyPopupTrial(
+  opts: { week?: "closed" | "current" } = {},
+): Promise<PopupTrialResult> {
   const startedMs = Date.now();
   const session = await requireAdmin();
   if (isFailure(session)) return { success: false, error: session.error };
@@ -486,7 +491,8 @@ export async function generateWeeklyPopupTrial(): Promise<PopupTrialResult> {
     if (competitionError) return { success: false, error: competitionError.message };
     if (!competition) return { success: false, error: "Aucune compétition active." };
 
-    const weekEnd = weekEndFor(startedMs);
+    const closedWeekEnd = weekEndFor(startedMs);
+    const weekEnd = opts.week === "current" ? addDays(closedWeekEnd, 7) : closedWeekEnd;
     const outcome = await runWeeklyPopupGeneration("essai", "essai", {
       deadlineMs: deadlineFrom(startedMs),
       trigger: "ADMIN_GENERATE",
@@ -520,7 +526,7 @@ export async function generateWeeklyPopupTrial(): Promise<PopupTrialResult> {
       action: "WEEKLY_POPUP_TRIAL",
       targetType: "competition",
       targetId: competition.id,
-      after: { weekEnd, status: outcome.status, doubtCode: outcome.doubtCode ?? null, costUsd: outcome.costUsd },
+      after: { weekEnd, week: opts.week ?? "closed", status: outcome.status, doubtCode: outcome.doubtCode ?? null, costUsd: outcome.costUsd },
     });
     revalidate();
 

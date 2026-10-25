@@ -79,18 +79,19 @@ export function WeeklyPopupTrial({ weekEnd }: { weekEnd: string }) {
   const [message, setMessage] = useState<Feedback>(null);
   const [isPending, startTransition] = useTransition();
 
-  function launch() {
+  function launch(week: "closed" | "current") {
     const label = `${weekEnd.slice(8, 10)}/${weekEnd.slice(5, 7)}`;
+    const target = week === "current" ? "la semaine en cours (jusqu'à maintenant)" : `la semaine close le ${label}`;
     if (
       !window.confirm(
-        `Lancer un essai sur la semaine close le ${label} ? Appel payant (jusqu'à 3 appels), rien n'est enregistré ni publié.`,
+        `Lancer un essai sur ${target} ? Appel payant (jusqu'à 3 appels), rien n'est enregistré ni publié.`,
       )
     ) {
       return;
     }
     setMessage(null);
     startTransition(async () => {
-      const result = await generateWeeklyPopupTrial();
+      const result = await generateWeeklyPopupTrial({ week });
       if (result.success) {
         setTrial(result.trial);
         setMessage({ ok: true, text: result.message });
@@ -104,8 +105,11 @@ export function WeeklyPopupTrial({ weekEnd }: { weekEnd: string }) {
   return (
     <div className={styles.editor}>
       <div className={styles.actions}>
-        <button type="button" className={styles.secondary} disabled={isPending} onClick={launch}>
+        <button type="button" className={styles.secondary} disabled={isPending} onClick={() => launch("closed")}>
           {isPending ? "Essai en cours…" : "Générer un essai (payant)"}
+        </button>
+        <button type="button" className={styles.secondary} disabled={isPending} onClick={() => launch("current")}>
+          {isPending ? "Essai en cours…" : "Essai sur la semaine en cours (payant)"}
         </button>
       </div>
       {message && (
@@ -116,7 +120,8 @@ export function WeeklyPopupTrial({ weekEnd }: { weekEnd: string }) {
       {trial && (
         <div className={styles.editor}>
           <p className={styles.hint}>
-            Semaine close le {trial.weekEnd.slice(8, 10)}/{trial.weekEnd.slice(5, 7)} ·{" "}
+            {trial.weekEnd > weekEnd ? "Semaine en cours, close le" : "Semaine close le"} {trial.weekEnd.slice(8, 10)}/
+            {trial.weekEnd.slice(5, 7)} ·{" "}
             {trial.status === "DOUBTFUL" ? "brouillon douteux" : trial.kind === "FALLBACK" ? "texte de repli" : "brouillon"}{" "}
             · {trial.candidateCount} candidat(s), {trial.blockedCount} bloqué(s) · {trial.costUsd.toFixed(3)} $
           </p>
