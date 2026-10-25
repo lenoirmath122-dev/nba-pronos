@@ -430,3 +430,52 @@
   width: 1rem;
   height: 1rem;
 }
+
+/* Épingle directe sur la carte (coin haut droit, zone de tap 2.75 rem). */
+.item {
+  position: relative;
+}
+
+.pinForm {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 0;
+}
+
+.pinQuick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.pinQuick svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.pinQuick[data-on] {
+  color: var(--color-accent-rest);
+}
+
+.pinQuick[data-on] svg {
+  fill: currentColor;
+}
+
+.pinQuick:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pinQuick:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-md);
+}
