@@ -121,7 +121,8 @@ export function NextPronoCard({ matches }: NextPronoCardProps) {
         title: "Prono validé",
         items: [formatPronoRecap(winnerTeam.abbreviation, loserTeam.abbreviation, pick.margin)],
         note: "Tu peux aussi tenter un pari perso sur ce match.",
-        action: { label: "Faire un pari perso", href: `/play/bets/new?matchId=${match.matchId}` },
+        // Ancre vers la carte du match dans /play (zone « Mon pari » dessus).
+        action: { label: "Faire un pari perso", href: `/play#match-${match.matchId}` },
       });
     }
     setFeedback({ recap: formatPronoRecap(winnerTeam.abbreviation, loserTeam.abbreviation, pick.margin) });
