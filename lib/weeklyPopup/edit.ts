@@ -18,7 +18,7 @@ import type {
   WeeklyPopupWarning,
 } from "./types";
 
-export const EDITABLE_FIELDS = ["titre", "champion", "top", "flop", "refuse", "cta"] as const;
+export const EDITABLE_FIELDS = ["titre", "champion", "classement", "top", "flop", "refuse", "cta"] as const;
 export type EditableField = (typeof EDITABLE_FIELDS)[number];
 export type EditorFields = Record<EditableField, string>;
 
@@ -71,6 +71,7 @@ export function toEditorFields(
   return {
     titre: field(content?.titre),
     champion: field(content?.champion),
+    classement: field(content?.classement),
     top: field(content?.top),
     flop: field(content?.flop),
     refuse: field(content?.refuse),
@@ -90,6 +91,7 @@ export function fromEditorFields(fields: Partial<Record<EditableField, string>>)
   return {
     titre: clean(fields.titre) as string,
     champion: clean(fields.champion),
+    classement: clean(fields.classement),
     top: clean(fields.top),
     flop: clean(fields.flop),
     refuse: clean(fields.refuse),
@@ -126,7 +128,7 @@ export function buildValidationContext(
     if (u) closed.set(userId.toLowerCase(), { userId, pseudo: u.pseudo });
   };
 
-  const keptBets = kept.filter((c) => c.bloc !== "champion");
+  const keptBets = kept.filter((c) => c.bloc !== "champion" && c.bloc !== "classement");
   const keptChampions = kept.filter((c) => c.bloc === "champion" && citable(c.user_id));
   for (const c of kept) add(c.user_id);
 
@@ -139,10 +141,14 @@ export function buildValidationContext(
 
   const idsFor = (bloc: "top" | "flop" | "refuse") =>
     new Set(keptBets.filter((c) => c.bloc === bloc).map((c) => c.short_id));
+  // Classement (v6) : présent s'il a été fourni au rédacteur (candidats k..),
+  // ou, pour un contenu édité d'une ancienne génération, s'il est déjà rempli.
+  const hasRanking = kept.some((c) => c.bloc === "classement") || !!content?.classement;
   return {
     closedSet: [...closed.values()],
     idsByBloc: { top: idsFor("top"), flop: idsFor("flop"), refuse: idsFor("refuse") },
     hasChampion,
+    hasRanking,
   };
 }
 
@@ -218,7 +224,16 @@ export function featuredUserIds(content: WeeklyPopupContent): string[] {
 /** Tous les joueurs cités par un contenu (pour lire leurs pseudos). */
 export function citedUserIds(content: WeeklyPopupContent | null): string[] {
   if (!content) return [];
-  const all = [content.titre, content.champion, content.top, content.flop, content.refuse, content.repli, content.cta]
+  const all = [
+    content.titre,
+    content.champion,
+    content.classement,
+    content.top,
+    content.flop,
+    content.refuse,
+    content.repli,
+    content.cta,
+  ]
     .filter((v): v is string => typeof v === "string")
     .join("\n");
   return extractTokenUserIds(all);

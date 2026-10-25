@@ -39,6 +39,7 @@ export function assignShortIds(
   selected: { top: Preselected[]; flop: Preselected[]; refuse: Preselected[] },
   champions: readonly { userId: string; points: number }[],
   ctx: ShortIdContext,
+  rankingUserIds: readonly string[] = [],
 ): WeeklyPopupCandidate[] {
   const out: WeeklyPopupCandidate[] = [];
   const prefix = { top: "t", flop: "f", refuse: "r" } as const;
@@ -76,6 +77,17 @@ export function assignShortIds(
       input_hash: inputHash(pseudoOf(ctx.users, champion.userId), ""),
     });
   });
+  // Joueurs du bloc classement (v6) : classés sur le seul pseudo, comme le champion.
+  rankingUserIds.forEach((userId, index) => {
+    out.push({
+      short_id: `k${index + 1}`,
+      bloc: "classement",
+      bet_id: null,
+      user_id: userId,
+      texte: "",
+      input_hash: inputHash(pseudoOf(ctx.users, userId), ""),
+    });
+  });
   return out;
 }
 
@@ -99,12 +111,13 @@ export function buildRedacteurInput(
   okCandidates: readonly WeeklyPopupCandidate[],
   champion: { pseudos: string[]; points: number } | null,
   users: ReadonlyMap<string, PopupUserRow>,
+  rankingLine: string = "null",
 ): string {
   const championLine = champion
     ? JSON.stringify({ pseudos: champion.pseudos.map((p) => `@${p}`), points: champion.points })
     : "null";
   const lines = okCandidates
-    .filter((c) => c.bloc !== "champion")
+    .filter((c) => c.bloc !== "champion" && c.bloc !== "classement")
     .map((c) =>
       JSON.stringify({
         id: c.short_id,
@@ -120,5 +133,5 @@ export function buildRedacteurInput(
         cite_recemment: c.cite_recemment === true,
       }),
     );
-  return `CHAMPION: ${championLine}\nCANDIDATS:\n${lines.join("\n")}`;
+  return `CHAMPION: ${championLine}\nCLASSEMENT: ${rankingLine}\nCANDIDATS:\n${lines.join("\n")}`;
 }

@@ -191,7 +191,7 @@ export async function getAdminWeeklyPopupPage(requestedWeek?: string): Promise<A
   const cited = new Set(
     row.content
       ? extractTokenUserIds(
-          [row.content.champion, row.content.top, row.content.flop, row.content.refuse]
+          [row.content.champion, row.content.classement, row.content.top, row.content.flop, row.content.refuse]
             .filter((v): v is string => typeof v === "string")
             .join("\n"),
         )

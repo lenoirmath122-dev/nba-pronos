@@ -19,6 +19,7 @@ import { assignShortIds, buildClassifierInput, buildRedacteurInput } from "./for
 import { loadWeekData } from "./load";
 import { notifyAdminsOfDraft } from "./notify";
 import { preselect } from "./preselect";
+import { filterRankingFacts, loadRankingFacts, rankingInputLine, rankingUserIds, type LoadedRanking } from "./ranking";
 import { CLASSIFIER_SYSTEM_PROMPT, REDACTEUR_SYSTEM_PROMPT } from "./prompts";
 import {
   ClassifierOutputSchema,
@@ -74,6 +75,11 @@ export type GenerateDeps = {
   client?: Client;
   call?: typeof callClaudeJson;
   load?: typeof loadWeekData;
+  /**
+   * Faits du bloc classement (v6). Défaut : lecture réelle, sauf quand `load`
+   * est injecté sans lui (tests d'avant la v6) : aucun classement.
+   */
+  loadRanking?: typeof loadRankingFacts;
   notify?: typeof notifyAdminsOfDraft;
   now?: () => number;
   sleep?: (ms: number) => Promise<void>;
@@ -164,6 +170,8 @@ async function generate(
   const client = deps.client ?? getServiceClient();
   const call = deps.call ?? callClaudeJson;
   const load = deps.load ?? loadWeekData;
+  const loadRanking: typeof loadRankingFacts =
+    deps.loadRanking ?? (deps.load ? async () => ({ facts: null, users: new Map() }) : loadRankingFacts);
   const notify = deps.notify ?? notifyAdminsOfDraft;
   const now = deps.now ?? Date.now;
   const model = popupModel();
@@ -298,11 +306,24 @@ async function generate(
     const data = await load(row.competition_id, weekEnd, { client });
     if (data.truncated) warnings.push({ code: "chargement_tronque" });
 
+    // Bloc classement (v6) : une erreur de lecture n'empêche pas la popup.
+    let ranking: LoadedRanking = { facts: null, users: new Map() };
+    try {
+      ranking = await loadRanking(client, row.competition_id, weekEnd);
+    } catch {
+      warnings.push({ code: "classement_indisponible", bloc: "classement" });
+    }
+
     const retained = data.champions.filter((c) => {
       const u = data.users.get(c.userId);
       return u && u.status === "ACTIVE" && !u.popup_mentions_opt_out;
     });
-    const users = data.users as ReadonlyMap<string, PopupUserRow>;
+    const users: ReadonlyMap<string, PopupUserRow> = new Map([...ranking.users, ...data.users]);
+    const citableNow = (userId: string) => {
+      const u = users.get(userId);
+      return !!u && u.status === "ACTIVE" && !u.popup_mentions_opt_out && u.pseudo.length > 0;
+    };
+    const rankingFacts = filterRankingFacts(ranking.facts, citableNow);
 
     // Niveau 1 : semaine pauvre, aucun appel (le champion n'est pas classé :
     // avertissement, la publication reste manuelle).
@@ -341,7 +362,7 @@ async function generate(
       users,
       matchLabels: data.matchLabels,
       recentlyFeaturedIds: data.recentlyFeaturedIds,
-    });
+    }, rankingUserIds(rankingFacts));
     candidates = reuseVerdicts(candidates, row.candidates ?? []);
     latestCandidates = candidates;
 
@@ -448,7 +469,9 @@ async function generate(
     }
 
     const keptChampions = kept.filter((c) => c.bloc === "champion");
-    const keptBets = kept.filter((c) => c.bloc !== "champion");
+    const keptBets = kept.filter((c) => c.bloc !== "champion" && c.bloc !== "classement");
+    const keptRankingIds = new Set(kept.filter((c) => c.bloc === "classement").map((c) => c.user_id));
+    const rankingOk = filterRankingFacts(rankingFacts, (id) => keptRankingIds.has(id));
     const championsOk = retained.filter((c) => keptChampions.some((k) => k.user_id === c.userId));
 
     // Niveau 2 : plus rien à raconter après exclusions et blocages.
@@ -482,6 +505,7 @@ async function generate(
       closedSet: [...closed.values()],
       idsByBloc: { top: idsFor("top"), flop: idsFor("flop"), refuse: idsFor("refuse") },
       hasChampion: championsOk.length > 0,
+      hasRanking: rankingOk !== null,
     };
     const championInput =
       championsOk.length > 0
@@ -490,7 +514,12 @@ async function generate(
             points: championsOk[0].points,
           }
         : null;
-    const userInput = buildRedacteurInput(keptBets, championInput, users);
+    const userInput = buildRedacteurInput(
+      keptBets,
+      championInput,
+      users,
+      rankingInputLine(rankingOk, (id) => users.get(id)?.pseudo ?? ""),
+    );
 
     const drafted = await withRetries<RedactionResult>(
       async (attempt) => {

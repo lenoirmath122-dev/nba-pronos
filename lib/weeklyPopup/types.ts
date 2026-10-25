@@ -37,11 +37,11 @@ export type GenerationTrigger = "CRON" | "ADMIN_FREEZE" | "ADMIN_GENERATE" | "AD
  */
 export type Sens = "plus de" | "au moins" | "moins de" | "au plus" | "exactement";
 
-export type WeeklyPopupBlock = "top" | "flop" | "refuse" | "champion";
+export type WeeklyPopupBlock = "top" | "flop" | "refuse" | "champion" | "classement";
 
 /** Une entrée de `weekly_popups.candidates`. Le pseudo n'est jamais stocké. */
 export interface WeeklyPopupCandidate {
-  /** Identifiant court vu par le LLM : t1.., f1.., r1.. (+ champion). */
+  /** Identifiant court vu par le LLM : t1.., f1.., r1.. (+ c1.. champion, k1.. classement). */
   short_id: string;
   bloc: WeeklyPopupBlock;
   bet_id: string | null;
@@ -77,6 +77,8 @@ export interface WeeklyPopupCandidate {
 export interface WeeklyPopupContent {
   titre: string;
   champion: string | null;
+  /** Prompt v6 : analyse du classement. Absent des contenus v5. */
+  classement?: string | null;
   top: string | null;
   flop: string | null;
   refuse: string | null;

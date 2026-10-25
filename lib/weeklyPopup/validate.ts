@@ -24,6 +24,8 @@ export interface ValidationContext {
   idsByBloc: Record<PopupBloc, ReadonlySet<string>>;
   /** Un champion est fourni au rédacteur. */
   hasChampion: boolean;
+  /** Des faits de classement sont fournis au rédacteur (v6). Absent = non. */
+  hasRanking?: boolean;
 }
 
 export type ValidationError = WeeklyPopupWarning;
@@ -37,8 +39,8 @@ export interface TextValidation {
 
 const EMOJI_RE = /\p{Extended_Pictographic}/u;
 
-type Field = "titre" | "champion" | "top" | "flop" | "refuse" | "cta";
-const FIELDS: readonly Field[] = ["titre", "champion", "top", "flop", "refuse", "cta"];
+type Field = "titre" | "champion" | "classement" | "top" | "flop" | "refuse" | "cta";
+const FIELDS: readonly Field[] = ["titre", "champion", "classement", "top", "flop", "refuse", "cta"];
 
 /**
  * Contrôles qui ne dépendent que du texte et du contexte (réutilisables à la
@@ -54,6 +56,7 @@ export function validateText(
   const tokenized: WeeklyPopupContent = {
     titre: "",
     champion: null,
+    classement: null,
     top: null,
     flop: null,
     refuse: null,
@@ -112,6 +115,8 @@ export function validateText(
 
   if (content.champion && !ctx.hasChampion) errors.push({ code: "champion_invente", bloc: "champion" });
   if (!content.champion && ctx.hasChampion) warnings.push({ code: "champion_absent", bloc: "champion" });
+  if (content.classement && !ctx.hasRanking) errors.push({ code: "classement_invente", bloc: "classement" });
+  if (!content.classement && ctx.hasRanking) warnings.push({ code: "classement_absent", bloc: "classement" });
   for (const bloc of BLOCS) {
     if (content[bloc] === null && ctx.idsByBloc[bloc].size > 0) {
       warnings.push({ code: "bloc_vide_avec_candidats", bloc });
@@ -147,7 +152,15 @@ export interface OutputValidation {
  */
 export function validateOutput(out: RedacteurOutput, ctx: ValidationContext): OutputValidation {
   const text = validateText(
-    { titre: out.titre, champion: out.champion, top: out.top, flop: out.flop, refuse: out.refuse, cta: out.cta },
+    {
+      titre: out.titre,
+      champion: out.champion,
+      classement: out.classement ?? null,
+      top: out.top,
+      flop: out.flop,
+      refuse: out.refuse,
+      cta: out.cta,
+    },
     ctx,
   );
   const errors = [...text.errors];

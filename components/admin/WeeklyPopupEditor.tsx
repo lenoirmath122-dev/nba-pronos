@@ -21,6 +21,7 @@ import styles from "./WeeklyPopupEditor.module.css";
 const FIELD_LABEL: Record<EditableField, string> = {
   titre: "Titre",
   champion: "En tête (champion)",
+  classement: "Le classement",
   top: "Le coup de la semaine",
   flop: "Raté de peu",
   refuse: "Refusé",

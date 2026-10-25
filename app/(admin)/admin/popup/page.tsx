@@ -32,6 +32,7 @@ const BLOC_LABEL: Record<string, string> = {
   flop: "Flop",
   refuse: "Refusé",
   champion: "Champion",
+  classement: "Classement",
 };
 
 const frenchDate = (dateKey: string) => `${dateKey.slice(8, 10)}/${dateKey.slice(5, 7)}`;

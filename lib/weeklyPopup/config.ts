@@ -8,7 +8,7 @@ export function popupModel(): string {
 }
 
 /** Version des prompts, stockée dans `weekly_popups.prompt_version`. */
-export const PROMPT_VERSION = "redacteur-v5/classifieur-v1";
+export const PROMPT_VERSION = "redacteur-v6/classifieur-v1";
 
 export const ROLES = {
   classifier: { callSite: "popupClassifier", effort: "low", maxTokens: 8_000, timeoutMs: 25_000 },
@@ -47,9 +47,17 @@ export const POOR_WEEK_MIN_BETS = 3;
 export const LOAD_PAGE_SIZE = 300;
 export const LOAD_MAX_ROWS = 3_000;
 
-/** Limites de mots par bloc (v5) ; avertissement à +20 %, erreur à +50 %. */
-export const WORD_LIMITS = { titre: 8, champion: 30, top: 45, flop: 50, refuse: 40, cta: 15 } as const;
-export const TOTAL_WORD_LIMIT = 180;
+/** Limites de mots par bloc (v6) ; avertissement à +20 %, erreur à +50 %. */
+export const WORD_LIMITS = {
+  titre: 8,
+  champion: 35,
+  classement: 80,
+  top: 70,
+  flop: 70,
+  refuse: 45,
+  cta: 15,
+} as const;
+export const TOTAL_WORD_LIMIT = 330;
 export const WORD_WARN_RATIO = 1.2;
 export const WORD_ERROR_RATIO = 1.5;
 

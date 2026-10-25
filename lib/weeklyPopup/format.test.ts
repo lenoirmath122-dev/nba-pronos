@@ -90,7 +90,8 @@ describe("entrées LLM", () => {
     expect(input).not.toContain(U1);
     expect(input).not.toContain("bet-");
     expect(input).not.toContain("refusal_reason");
-    const lines = input.split("\n").slice(2);
+    expect(input).toContain("\nCLASSEMENT: null\n");
+    const lines = input.split("\n").slice(3);
     expect(lines).toHaveLength(3);
     const refuse = JSON.parse(lines[2]);
     expect(refuse.raison).toBeNull();
@@ -99,7 +100,7 @@ describe("entrées LLM", () => {
   });
 
   it("sans champion : CHAMPION: null", () => {
-    expect(buildRedacteurInput([], null, users).startsWith("CHAMPION: null\nCANDIDATS:")).toBe(true);
+    expect(buildRedacteurInput([], null, users).startsWith("CHAMPION: null\nCLASSEMENT: null\nCANDIDATS:")).toBe(true);
   });
 });
 

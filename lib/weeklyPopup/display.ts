@@ -5,7 +5,7 @@
 import { detokenize, extractTokenUserIds, type TokenUserInfo } from "./tokens";
 import type { WeeklyPopupContent } from "./types";
 
-export type PopupSectionKey = "champion" | "top" | "flop" | "refuse";
+export type PopupSectionKey = "champion" | "classement" | "top" | "flop" | "refuse";
 
 export interface PopupSection {
   key: PopupSectionKey;
@@ -17,6 +17,7 @@ export interface PopupSection {
 /** Ordre d'affichage et sous-titres fixes (plan §5.2). */
 const SECTIONS: ReadonlyArray<{ key: PopupSectionKey; heading: string }> = [
   { key: "champion", heading: "En tête" },
+  { key: "classement", heading: "Le classement" },
   { key: "top", heading: "Le coup de la semaine" },
   { key: "flop", heading: "Raté de peu" },
   { key: "refuse", heading: "Refusé" },
@@ -32,7 +33,16 @@ export interface DisplayedPopup {
 
 /** Identifiants cités par tous les champs texte du contenu. */
 export function userIdsInContent(content: WeeklyPopupContent): string[] {
-  const all = [content.titre, content.champion, content.top, content.flop, content.refuse, content.repli, content.cta]
+  const all = [
+    content.titre,
+    content.champion,
+    content.classement,
+    content.top,
+    content.flop,
+    content.refuse,
+    content.repli,
+    content.cta,
+  ]
     .filter((v): v is string => typeof v === "string")
     .join("\n");
   return extractTokenUserIds(all);

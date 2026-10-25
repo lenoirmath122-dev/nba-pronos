@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 // Schémas Zod des sorties LLM de la popup hebdomadaire (lot 5, plan §3.7-3.8).
-// Miroirs de `Cadrage/Fonctionnel/popup_hebdo/schema_sortie_v5.json` et
+// Miroirs de `Cadrage/Fonctionnel/popup_hebdo/schema_sortie_v6.json` et
 // `schema_classifieur_v1.json`. Ne couvrent que la STRUCTURE ; les contrôles
 // qui dépendent des candidats (ids connus, mentions, blocs null, seuils de
 // mots) sont dans `validateOutput` (PR 3), et la cohérence verdict/catégorie
@@ -19,10 +19,12 @@ const citedIds = z
 export const RedacteurOutputSchema = z
   .object({
     titre: z.string().min(1).max(100),
-    champion: nullableText(300),
-    top: nullableText(450),
-    flop: nullableText(500),
-    refuse: nullableText(400),
+    champion: nullableText(350),
+    // v6 ; absent toléré (vaut null) pour ne pas relancer un appel pour si peu.
+    classement: nullableText(800).optional(),
+    top: nullableText(700),
+    flop: nullableText(700),
+    refuse: nullableText(450),
     cta: z.string().min(1).max(150),
     paris_cites: z
       .object({ top: citedIds, flop: citedIds, refuse: citedIds })

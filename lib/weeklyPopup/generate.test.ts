@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { LlmCallResult } from "@/lib/ai/claudeJson";
 import { runWeeklyPopupGeneration, type GenerateDeps } from "./generate";
-import { U1, U2, bet, user, usersMap } from "./testFixtures";
+import { U1, U2, U3, bet, user, usersMap } from "./testFixtures";
 import { fakeClient, type Call } from "./testSupabase";
 import type { PopupBetRow, WeekData, WeeklyPopupCandidate, WeeklyPopupRow } from "./types";
 
@@ -116,6 +116,7 @@ function setup(
     finalMatches?: boolean;
     trigger?: "CRON" | "ADMIN_FREEZE" | "ADMIN_GENERATE";
     load?: GenerateDeps["load"];
+    loadRanking?: GenerateDeps["loadRanking"];
     deadlineMs?: number;
     preview?: { competitionId: string; weekEnd: string };
   } = {},
@@ -138,6 +139,7 @@ function setup(
     call: call as never,
     load: load as never,
     notify: notify as never,
+    loadRanking: options.loadRanking,
     now: () => NOW,
     sleep: async () => {},
   };
@@ -157,6 +159,76 @@ function defaultCall(opts: CallOpts): LlmCallResult<unknown> {
 
 const lastWrite = (writes: Call[]) => writes[writes.length - 1].payload as Record<string, unknown>;
 
+describe("bloc classement (v6)", () => {
+  const facts = {
+    inProgress: false,
+    players: 6,
+    podium: [{ userId: U1, rank: 1, points: 30 }],
+    climb: null,
+    drop: null,
+    last: { userIds: [U3], points: 0, tied: 1 },
+  };
+  const loadRanking = vi.fn(async () => ({
+    facts,
+    users: usersMap(user(U3, "Lanterne"), user(U1, PSEUDOS[U1])),
+  }));
+
+  it("joueurs du classement classés, ligne CLASSEMENT transmise, bloc tokenisé", async () => {
+    const { run, call, writes } = setup({
+      loadRanking,
+      call: (opts) =>
+        opts.callSite === "popupClassifier"
+          ? okClassifier(opts)
+          : llm("ok", {
+              data: {
+                ...(okRedacteur().data as object),
+                classement: `@${PSEUDOS[U1]} mène, @Lanterne ferme la marche : on y croit.`,
+              },
+            }),
+    });
+    const outcome = await run();
+    expect(outcome.status).toBe("READY");
+    const [classifier, redacteur] = call.mock.calls.map(([o]) => o.user);
+    expect(classifier).toContain('"id":"k2"');
+    expect(classifier).toContain("@Lanterne");
+    expect(redacteur).toContain('"lanterne_rouge":{"pseudos":["@Lanterne"]');
+    const content = lastWrite(writes).content as { classement: string };
+    expect(content.classement).toBe(`{{u:${U1}}} mène, {{u:${U3}}} ferme la marche : on y croit.`);
+  });
+
+  it("joueur du classement bloqué : retiré, lanterne anonyme", async () => {
+    const { run, call } = setup({
+      loadRanking,
+      call: (opts) => {
+        if (opts.callSite !== "popupClassifier") return okRedacteur();
+        return llm("ok", {
+          data: {
+            verdicts: idsOf(opts.user).map((id) =>
+              id === "k2"
+                ? { id, verdict: "bloque" as const, categorie: "doute" as const }
+                : { id, verdict: "ok" as const, categorie: null },
+            ),
+          },
+        });
+      },
+    });
+    await run();
+    const redacteur = call.mock.calls[1][0].user;
+    expect(redacteur).not.toContain("Lanterne");
+    expect(redacteur).toContain('"lanterne_rouge":{"pseudos":[],"points_semaine":0,"ex_aequo":1}');
+  });
+
+  it("lecture du classement en échec : avertissement, popup quand même", async () => {
+    const { run, writes } = setup({
+      loadRanking: async () => {
+        throw new Error("boom");
+      },
+    });
+    expect((await run()).status).toBe("READY");
+    expect(lastWrite(writes).warnings).toContainEqual({ code: "classement_indisponible", bloc: "classement" });
+  });
+});
+
 describe("génération nominale", () => {
   it("classifieur puis rédacteur : READY, contenu tokenisé, notification admin", async () => {
     const { run, call, notify, writes } = setup();
@@ -170,7 +242,7 @@ describe("génération nominale", () => {
     expect(content.top).toBe(`{{u:${U1}}} a vu juste.`);
     expect(content.flop).toBe(`{{u:${U2}}} a raté de peu.`);
     expect(payload.generated_content).toEqual(payload.content);
-    expect(payload.prompt_version).toBe("redacteur-v5/classifieur-v1");
+    expect(payload.prompt_version).toBe("redacteur-v6/classifieur-v1");
     expect(payload.generation_count).toBe(1);
     expect(payload.raw_output).toBeNull();
     expect(notify).toHaveBeenCalledWith(POPUP_ID, expect.objectContaining({ status: "READY" }), expect.anything());

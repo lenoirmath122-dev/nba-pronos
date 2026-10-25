@@ -72,14 +72,27 @@ describe("validateOutput", () => {
     expect(codes(validateOutput(output(), { ...ctx, hasChampion: false }))).toContain("champion_invente");
   });
 
-  it("longueurs : avertissement de +20 % à +50 %, erreur au-delà, total 180", () => {
-    const warn = validateOutput(output({ top: words(55) }), ctx);
+  it("longueurs : avertissement de +20 % à +50 %, erreur au-delà, total 330", () => {
+    const warn = validateOutput(output({ top: words(85) }), ctx);
     expect(warn.ok).toBe(true);
-    expect(warn.warnings).toContainEqual({ code: "mots_bloc", bloc: "top", detail: "55/45" });
-    const err = validateOutput(output({ top: words(68) }), ctx);
+    expect(warn.warnings).toContainEqual({ code: "mots_bloc", bloc: "top", detail: "85/70" });
+    const err = validateOutput(output({ top: words(106) }), ctx);
     expect(codes(err)).toContain("mots_bloc");
-    const total = validateOutput(output({ top: words(54), flop: words(60), refuse: words(48), champion: words(36) }), ctx);
+    const total = validateOutput(
+      output({ top: words(80), flop: words(80), refuse: words(50), champion: words(40), classement: words(90) }),
+      { ...ctx, hasRanking: true },
+    );
     expect(codes(total)).toContain("mots_total");
+  });
+
+  it("classement : inventé sans données = erreur ; absent avec données = avertissement", () => {
+    expect(codes(validateOutput(output({ classement: "@Nico grimpe." }), ctx))).toContain("classement_invente");
+    const absent = validateOutput(output(), { ...ctx, hasRanking: true });
+    expect(absent.ok).toBe(true);
+    expect(absent.warnings.map((w) => w.code)).toContain("classement_absent");
+    const ok = validateOutput(output({ classement: "@Alix remonte de 12 à 5." }), { ...ctx, hasRanking: true });
+    expect(ok.ok).toBe(true);
+    expect(ok.content?.classement).toBe(`{{u:${U2}}} remonte de 12 à 5.`);
   });
 
   it("avertissements : argent, emoji, champion absent, bloc vide avec candidats", () => {
