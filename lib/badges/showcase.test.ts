@@ -38,15 +38,15 @@ describe("resolveShowcase", () => {
     sociable(true),
   ];
 
-  it("choisit les plus hauts paliers quand rien n'est épinglé, à égalité le plus tardif du catalogue", () => {
-    expect(ids(resolveShowcase(catalogue, [], 3))).toEqual(["HORLOGER", "OEIL_DE_LYNX", "CHIRURGIEN"]);
+  it("ne montre rien quand rien n'est épinglé", () => {
+    expect(resolveShowcase(catalogue, [], 3)).toEqual([]);
   });
 
-  it("met un seul épinglé devant, puis complète", () => {
-    expect(ids(resolveShowcase(catalogue, ["METRONOME"], 3))).toEqual(["METRONOME", "HORLOGER", "OEIL_DE_LYNX"]);
+  it("montre un seul épinglé sans compléter", () => {
+    expect(ids(resolveShowcase(catalogue, ["METRONOME"], 3))).toEqual(["METRONOME"]);
   });
 
-  it("respecte l'ordre des 3 épinglés et ne complète pas", () => {
+  it("respecte l'ordre des 3 épinglés", () => {
     expect(ids(resolveShowcase(catalogue, ["SOCIABLE", "CHIRURGIEN", "METRONOME"], 3))).toEqual([
       "SOCIABLE",
       "CHIRURGIEN",
@@ -55,10 +55,7 @@ describe("resolveShowcase", () => {
   });
 
   it("ignore un épinglé devenu invalide (inconnu ou non débloqué) et un doublon", () => {
-    expect(ids(resolveShowcase(catalogue, ["MACHINE_A_PRONOS", "NOPE", "HORLOGER", "HORLOGER"], 2))).toEqual([
-      "HORLOGER",
-      "OEIL_DE_LYNX",
-    ]);
+    expect(ids(resolveShowcase(catalogue, ["MACHINE_A_PRONOS", "NOPE", "HORLOGER", "HORLOGER"], 2))).toEqual(["HORLOGER"]);
   });
 
   it("tronque aux `max` premiers épinglés", () => {

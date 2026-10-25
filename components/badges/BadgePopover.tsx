@@ -21,13 +21,25 @@ const GAP_PX = 10;
 const EDGE_PX = 16;
 const MAX_WIDTH_PX = 352;
 
-type Placement = { top: number; left: number; width: number };
+// Mobile : feuille ancrée en bas de l'écran (jamais de débordement, quelle que
+// soit la hauteur de la ligne tapée). Desktop : carte sous l'écusson, ou au-
+// dessus quand il n'y a pas la place dessous.
+const SHEET_BREAKPOINT_PX = 768;
+const CARD_ESTIMATED_HEIGHT_PX = 300;
+
+type Placement =
+  | { kind: "sheet" }
+  | { kind: "card"; left: number; width: number; top?: number; bottom?: number };
 
 function placementFor(trigger: HTMLElement): Placement {
+  if (window.innerWidth < SHEET_BREAKPOINT_PX) return { kind: "sheet" };
   const rect = trigger.getBoundingClientRect();
   const width = Math.min(MAX_WIDTH_PX, window.innerWidth - 2 * EDGE_PX);
   const left = Math.min(Math.max(rect.left + rect.width / 2 - width / 2, EDGE_PX), window.innerWidth - width - EDGE_PX);
-  return { top: rect.bottom + GAP_PX, left, width };
+  const fitsBelow = rect.bottom + GAP_PX + CARD_ESTIMATED_HEIGHT_PX <= window.innerHeight - EDGE_PX;
+  return fitsBelow
+    ? { kind: "card", left, width, top: rect.bottom + GAP_PX }
+    : { kind: "card", left, width, bottom: window.innerHeight - rect.top + GAP_PX };
 }
 
 function progress(badge: BadgeDisplay): { ratio: number; left: string; right: string } | null {
@@ -103,8 +115,17 @@ export function BadgePopover({ badges, ownerName, badgesHref }: BadgePopoverProp
         createPortal(
           <Backdrop className={styles.backdrop} onClose={close}>
             <FocusTrap
-              className={styles.card}
-              style={{ top: open.placement.top, left: open.placement.left, width: open.placement.width }}
+              className={open.placement.kind === "sheet" ? `${styles.card} ${styles.sheet}` : styles.card}
+              style={
+                open.placement.kind === "card"
+                  ? {
+                      top: open.placement.top,
+                      bottom: open.placement.bottom,
+                      left: open.placement.left,
+                      width: open.placement.width,
+                    }
+                  : undefined
+              }
               role="dialog"
               aria-modal="true"
               aria-label={`Badge ${badge.label}`}
