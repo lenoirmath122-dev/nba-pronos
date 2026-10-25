@@ -30,6 +30,14 @@ type NextPronoCardProps = {
   matches: UpcomingMatchRow[];
 };
 
+// Match du jour : même libellé que /play (jour NY, heure de Paris, puis
+// « dans la nuit du … au … »), sinon la date de Paris trompe sur le jour.
+function kickoffLabel(match: UpcomingMatchRow): string {
+  const { daily } = match;
+  if (!daily) return formatKickoff(match.scheduledAt);
+  return `${daily.dayLabel} · ${daily.time}${daily.nightLabel ? ` (${daily.nightLabel})` : ""}`;
+}
+
 function formatKickoff(iso: string): string {
   const parts = new Intl.DateTimeFormat("fr-FR", {
     timeZone: "Europe/Paris",
@@ -189,7 +197,7 @@ function NextPronoForm({ match, position, total, nowMs, onValidated }: NextProno
       </div>
       <p className={styles.question}>Qui gagne ?</p>
       <p className={styles.when}>
-        <time dateTime={match.scheduledAt}>{formatKickoff(match.scheduledAt)}</time>
+        <time dateTime={match.scheduledAt}>{kickoffLabel(match)}</time>
         {nowMs !== null && ` · ${formatRelative(match.scheduledAt, nowMs)}`}
       </p>
 
