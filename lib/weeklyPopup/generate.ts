@@ -490,7 +490,7 @@ async function generate(
             points: championsOk[0].points,
           }
         : null;
-    const userInput = buildRedacteurInput(keptBets, championInput, users);
+    const userInput = buildRedacteurInput(keptBets, championInput, users, data.recentPhrasing);
 
     const drafted = await withRetries<RedactionResult>(
       async (attempt) => {

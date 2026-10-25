@@ -181,6 +181,15 @@
   activer `weekly_popup` sur la compétition réelle, premier essai payant avec
   accord. Dette notée : purge des `candidates` à l'archivage d'une
   compétition, dans aucune PR.
+- **Popup hebdo, prompt rédacteur v6 (25/10/2026, non essayé)** :
+  `popup_hebdo/prompt_redacteur_v6.md` (le v5 reste intact), `PROMPT_VERSION`
+  `redacteur-v6/classifieur-v1`. Décidé par l'utilisateur : objectif « une du
+  lundi », ton plus trash (vulgarité, joueurs NBA interpellés) **sans insulte
+  directe d'un joueur de l'appli**, format long (~140 mots, limites
+  inchangées), section ÉCRITURE contre les maximes plaquées, et HISTORIQUE des
+  titres et cta des 4 dernières popups publiées (`history.ts`
+  `recentPhrasing`, mentions remplacées par `[joueur]`). **Reste** : essai réel
+  avec accord (cas limites 18 à 20 du v6), relecture du premier brouillon v6.
 - **Popup hebdo, points ouverts après la PR 3** :
   - **Vérifier sur preview la durée réelle** de `/admin/competitions` : le
     layout admin déclare 60 s, la page 300 s, la doc locale ne dit pas

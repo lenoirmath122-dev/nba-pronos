@@ -31,7 +31,16 @@ function handlerFor(options: {
     if (call.table === "teams") return { data: [{ id: "t1", abbreviation: "BOS" }, { id: "t2", abbreviation: "NYK" }] };
     if (call.table === "weekly_popups" && call.head) return { count: 3 };
     if (call.table === "weekly_popups") {
-      return { data: [{ week_end_date: "2026-10-19", status: "PUBLISHED", featured_user_ids: [U1] }] };
+      return {
+        data: [
+          {
+            week_end_date: "2026-10-19",
+            status: "PUBLISHED",
+            featured_user_ids: [U1],
+            content: { titre: `{{u:${U1}}} règne`, cta: "Reviens parier." },
+          },
+        ],
+      };
     }
     return { data: [] };
   };
@@ -98,6 +107,7 @@ describe("loadWeekData", () => {
     const data = await loadWeekData("comp", WEEK_END, { client });
     expect(data.matchLabels.get("match-1")).toBe("BOS - NYK");
     expect(data.recentlyFeaturedIds.has(U1)).toBe(true);
+    expect(data.recentPhrasing).toEqual({ titres: ["[joueur] règne"], cta: ["Reviens parier."] });
     expect(data.users.get(U2)?.popup_mentions_opt_out).toBe(true);
   });
 

@@ -8,7 +8,7 @@ export function popupModel(): string {
 }
 
 /** Version des prompts, stockée dans `weekly_popups.prompt_version`. */
-export const PROMPT_VERSION = "redacteur-v5/classifieur-v1";
+export const PROMPT_VERSION = "redacteur-v6/classifieur-v1";
 
 export const ROLES = {
   classifier: { callSite: "popupClassifier", effort: "low", maxTokens: 8_000, timeoutMs: 25_000 },

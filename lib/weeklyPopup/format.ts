@@ -6,7 +6,7 @@
 import { TEXT_MAX_CHARS } from "./config";
 import { inputHash } from "./verdicts";
 import type { Preselected } from "./preselect";
-import type { PopupUserRow, WeeklyPopupCandidate } from "./types";
+import type { PopupUserRow, RecentPhrasing, WeeklyPopupCandidate } from "./types";
 
 /** « BOS - NYK » ; « ? » pour une équipe inconnue ; null si pas de match. */
 export function matchLabel(home?: string | null, away?: string | null): string | null {
@@ -92,13 +92,15 @@ export function buildClassifierInput(
 }
 
 /**
- * Entrée du rédacteur : champion + candidats « ok » du top, flop et refusé.
+ * Entrée du rédacteur : champion, HISTORIQUE (titres et cta déjà publiés,
+ * prompt v6) + candidats « ok » du top, flop et refusé.
  * Ni `user_id`, ni `bet_id`, ni `refusal_reason`.
  */
 export function buildRedacteurInput(
   okCandidates: readonly WeeklyPopupCandidate[],
   champion: { pseudos: string[]; points: number } | null,
   users: ReadonlyMap<string, PopupUserRow>,
+  history: RecentPhrasing = { titres: [], cta: [] },
 ): string {
   const championLine = champion
     ? JSON.stringify({ pseudos: champion.pseudos.map((p) => `@${p}`), points: champion.points })
@@ -120,5 +122,6 @@ export function buildRedacteurInput(
         cite_recemment: c.cite_recemment === true,
       }),
     );
-  return `CHAMPION: ${championLine}\nCANDIDATS:\n${lines.join("\n")}`;
+  const historyLine = JSON.stringify({ titres: history.titres, cta: history.cta });
+  return `CHAMPION: ${championLine}\nHISTORIQUE: ${historyLine}\nCANDIDATS:\n${lines.join("\n")}`;
 }
