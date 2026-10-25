@@ -34,6 +34,24 @@ describe("buildRankingFacts", () => {
     expect(rankingUserIds(facts)).toEqual(["e", "f", "c", "b"]);
   });
 
+  it("nouveaux inscrits : rangs recalculés entre joueurs présents aux deux dates", () => {
+    // n1..n4 arrivent pendant la semaine et passent devant tout le monde.
+    const late = [row("n1", 1, 90), row("n2", 2, 89), row("n3", 3, 88), row("n4", 4, 87)];
+    const endWithLate = [...late, ...end.map((r) => ({ ...r, rank: r.rank + 4 }))];
+    const facts = buildRankingFacts(start, endWithLate, false);
+    expect(facts?.climb).toEqual({ userId: "e", from: 5, to: 1 });
+    expect(facts?.drop).toEqual({ userId: "b", from: 2, to: 6 });
+    const noMove = buildRankingFacts(start, [...late, ...start.map((r) => ({ ...r, rank: r.rank + 4 }))], false);
+    expect(noMove?.drop).toBeNull();
+  });
+
+  it("départ à 0 point (ex aequo 1ers) : aucun mouvement", () => {
+    const zeros = ["a", "b", "c", "d", "e", "f"].map((id) => row(id, 1, 0));
+    const facts = buildRankingFacts(zeros, end, false);
+    expect(facts?.climb).toBeNull();
+    expect(facts?.drop).toBeNull();
+  });
+
   it("aucun snapshot : null ; mouvement d'une seule place ignoré", () => {
     expect(buildRankingFacts([], end, false)).toBeNull();
     const small = buildRankingFacts([row("a", 1, 10), row("b", 2, 5)], [row("b", 1, 20), row("a", 2, 11)], true);

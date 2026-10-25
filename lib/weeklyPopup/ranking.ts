@@ -22,7 +22,7 @@ export interface RankingFacts {
   players: number;
   /** Rangs 1 à 3 de la semaine (ex aequo compris, 5 au plus), points > 0. */
   podium: { userId: string; rank: number; points: number }[];
-  /** Plus gros gain de places au général (au moins 2 places). */
+  /** Plus gros gain de places au général (au moins 2 places), rangs parmi les joueurs présents aux deux dates. */
   climb: { userId: string; from: number; to: number } | null;
   /** Plus grosse perte de places au général (au moins 2 places). */
   drop: { userId: string; from: number; to: number } | null;
@@ -33,6 +33,8 @@ export interface RankingFacts {
 const PODIUM_MAX = 5;
 const LAST_MAX_NAMED = 3;
 const MOVE_MIN = 2;
+/** Joueurs présents aux deux snapshots en dessous desquels on ne parle pas de mouvements. */
+const MOVE_MIN_PLAYERS = 4;
 /** En dessous, pas de lanterne rouge (elle serait sur le podium). */
 const LAST_MIN_PLAYERS = 5;
 
@@ -50,12 +52,28 @@ export function buildRankingFacts(
     .slice(0, PODIUM_MAX)
     .map((s) => ({ userId: s.userId, rank: s.rank, points: s.points }));
 
-  const startRank = new Map(start.map((r) => [r.user_id, r.rank]));
+  // Mouvements au général : rangs recalculés parmi les seuls joueurs présents
+  // aux deux snapshots. Sinon un joueur inscrit en cours de semaine fait
+  // « chuter » tous ceux qu'il dépasse (25/10 : 6 joueurs au départ, 16 à la
+  // fin, un 1er de 6 devenait « 14e »).
+  // Un joueur à 0 point au départ n'avait pas de vraie place (19/10 : les 6
+  // inscrits ex aequo 1ers à 0 point) : il ne compte pas dans les mouvements.
+  const inEnd = new Set(end.map((r) => r.user_id));
+  const common = start.filter((r) => inEnd.has(r.user_id) && r.total_points > 0).map((r) => r.user_id);
+  const commonSet = new Set(common);
+  const relativeRanks = (rows: readonly RankingSnapshotRow[]): Map<string, number> => {
+    const kept = rows.filter((r) => commonSet.has(r.user_id));
+    return new Map(kept.map((r) => [r.user_id, 1 + kept.filter((o) => o.rank < r.rank).length]));
+  };
+  const startRank = relativeRanks(start);
+  const endRank = relativeRanks(end);
   let climb: RankingFacts["climb"] = null;
   let drop: RankingFacts["drop"] = null;
-  for (const row of end) {
-    const from = startRank.get(row.user_id);
-    if (from === undefined) continue;
+  for (const userId of common.length >= MOVE_MIN_PLAYERS ? common : []) {
+    const from = startRank.get(userId);
+    const to = endRank.get(userId);
+    if (from === undefined || to === undefined) continue;
+    const row = { user_id: userId, rank: to };
     const gain = from - row.rank;
     if (gain >= MOVE_MIN && (!climb || gain > climb.from - climb.to)) climb = { userId: row.user_id, from, to: row.rank };
     if (-gain >= MOVE_MIN && (!drop || -gain > drop.to - drop.from)) drop = { userId: row.user_id, from, to: row.rank };
