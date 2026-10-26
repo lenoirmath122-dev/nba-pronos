@@ -171,7 +171,7 @@ describe("génération nominale", () => {
     expect(content.top).toBe(`{{u:${U1}}} a vu juste.`);
     expect(content.flop).toBe(`{{u:${U2}}} a raté de peu.`);
     expect(payload.generated_content).toEqual(payload.content);
-    expect(payload.prompt_version).toBe("redacteur-v6/classifieur-v1");
+    expect(payload.prompt_version).toBe("redacteur-v6.1/classifieur-v1");
     expect(payload.generation_count).toBe(1);
     expect(payload.raw_output).toBeNull();
     expect(notify).toHaveBeenCalledWith(POPUP_ID, expect.objectContaining({ status: "READY" }), expect.anything());
