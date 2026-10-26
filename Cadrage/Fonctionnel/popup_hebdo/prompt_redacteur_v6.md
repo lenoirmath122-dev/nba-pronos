@@ -81,8 +81,8 @@ TON
 - La chance annoncée ne se cite que si elle sert la vanne (un pari très
   improbable qui passe, un pari presque gagné qui rate).
 - Chaque bloc s'affiche sous un sous-titre fixe : « En tête », « Le coup de
-  la semaine », « Raté de peu », « Refusé ». Ne le répète pas dans le texte
-  (pas de « raté de peu », « raté d'un cheveu », « est refusé »).
+  la semaine », « Raté de peu », « La zone Maïno ». Ne le répète pas dans le
+  texte (pas de « raté de peu », « raté d'un cheveu », « zone Maïno »).
 
 GENRE
 - Le genre des joueurs de l'appli n'est jamais fourni : ne le devine pas
@@ -131,7 +131,11 @@ Cinq éléments, environ 120 à 140 mots au total :
 3. flop : parmi les candidats « flop » (paris perdus), celui raté de plus
    peu. Utilise l'écart réel (« 9 au lieu de 10 »), c'est le cœur de la
    blague.
-4. refuse : parmi les candidats « refuse » (paris refusés), le plus absurde.
+4. refuse : parmi les candidats « refuse », le plus absurde ou le plus
+   improbable. Ce sont des paris loufoques écartés par l'appli (statut
+   « refusé »), ou des paris acceptés à moins de 5 % de chance (statut
+   « gagné » ou « perdu », chance annoncée fournie). Pour ceux-là, dis s'il
+   est passé ou non ; la chance ne se cite que si elle sert la vanne.
 5. cta : une courte phrase qui pousse à revenir parier cette semaine, sans
    rien affirmer qui ne soit pas dans les données (aucun match, aucune
    date).

@@ -1,9 +1,9 @@
 // Présélection des candidats de la popup hebdomadaire (plan §3.3 et §3.5). Pur.
-// Le code coupe, le LLM choisit : top 5, flop 8, refusé 5, au plus 2 paris par
+// Le code coupe, le LLM choisit : top 5, flop 8, zone Maïno 5 (paris refusés ou acceptés à moins de 5 %), au plus 2 paris par
 // joueur et par bloc (appliqué AVANT la coupe, sinon un joueur prolifique
 // vide le bloc). Pas de remplissage après un blocage du classifieur (déc. 17).
 
-import { BLOCK_CAPS, PER_USER_PER_BLOCK } from "./config";
+import { BLOCK_CAPS, MAINO_MAX_PROBA, PER_USER_PER_BLOCK } from "./config";
 import { flopIneligibility } from "./families";
 import { seuilEtSens } from "./sens";
 import type { PopupBetRow, PopupUserRow, Sens } from "./types";
@@ -118,7 +118,11 @@ export function preselect(
       continue;
     }
     const raison = bet.resolved_by_admin_id ? null : bet.resolution_reason?.trim() || null;
-    if (bet.status === "WON") {
+    const proba = num(bet.calculated_proba);
+    if (bet.status !== "REJECTED" && proba !== null && proba < MAINO_MAX_PROBA) {
+      // Zone Maïno : un pari accepté à moins de 5 % de chance va là, ni au top ni au flop.
+      refuse.push({ bet, bloc: "refuse", seuil: null, sens: null, raison });
+    } else if (bet.status === "WON") {
       const { seuil, sens } = seuilEtSens(bet);
       top.push({ bet, bloc: "top", seuil, sens, raison });
     } else if (bet.status === "LOST") {

@@ -8,7 +8,7 @@ export function popupModel(): string {
 }
 
 /** Version des prompts, stockée dans `weekly_popups.prompt_version`. */
-export const PROMPT_VERSION = "redacteur-v6/classifieur-v1";
+export const PROMPT_VERSION = "redacteur-v6.1/classifieur-v1";
 
 export const ROLES = {
   classifier: { callSite: "popupClassifier", effort: "low", maxTokens: 8_000, timeoutMs: 25_000 },
@@ -41,6 +41,8 @@ export const AUTO_GENERATION_MAX_AGE_MS = 36 * 3_600_000;
 
 export const BLOCK_CAPS = { top: 5, flop: 8, refuse: 5 } as const;
 export const PER_USER_PER_BLOCK = 2;
+/** Zone Maïno : un pari accepté dont la chance calculée est sous ce seuil (0-1). */
+export const MAINO_MAX_PROBA = 0.05;
 export const TEXT_MAX_CHARS = 280;
 /** Niveau 1 de semaine pauvre : moins de paris WON/LOST/REJECTED = repli sans LLM. */
 export const POOR_WEEK_MIN_BETS = 3;

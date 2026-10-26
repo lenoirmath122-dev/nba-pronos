@@ -56,7 +56,7 @@ export function assignShortIds(
         match: bet.match_id ? (ctx.matchLabels.get(bet.match_id) ?? null) : null,
         statut: STATUT_FR[bet.status as keyof typeof STATUT_FR] ?? null,
         chance_pct:
-          bloc === "refuse" || proba === null || !Number.isFinite(proba) ? null : Math.round(proba * 100),
+          (bloc === "refuse" && bet.status === "REJECTED") || proba === null || !Number.isFinite(proba) ? null : Math.round(proba * 100),
         raison: item.raison,
         seuil: bloc === "flop" ? item.seuil : null,
         sens: bloc === "flop" ? item.sens : null,
@@ -116,7 +116,7 @@ export function buildRedacteurInput(
         texte: c.texte,
         statut: c.statut ?? null,
         chance_annoncee_pct: c.chance_pct ?? null,
-        raison: c.bloc === "refuse" ? null : (c.raison ?? null),
+        raison: c.statut === "refusé" ? null : (c.raison ?? null),
         seuil: c.seuil ?? null,
         sens: c.sens ?? null,
         cite_recemment: c.cite_recemment === true,

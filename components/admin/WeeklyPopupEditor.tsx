@@ -23,7 +23,7 @@ const FIELD_LABEL: Record<EditableField, string> = {
   champion: "En tête (champion)",
   top: "Le coup de la semaine",
   flop: "Raté de peu",
-  refuse: "Refusé",
+  refuse: "La zone Maïno",
   cta: "Appel à l'action",
 };
 

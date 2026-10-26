@@ -131,3 +131,22 @@ describe("refusés", () => {
     expect(preselect(bets, users).refuse.map((p) => p.bet.id)).toEqual(["r1", "r2", "r3"]);
   });
 });
+
+describe("zone Maïno : paris acceptés sous 5 %", () => {
+  it("un pari gagné ou perdu à moins de 5 % va dans refuse, pas dans top ni flop", () => {
+    const bets = [
+      won({ id: "w-rare", user_id: U1, calculated_proba: 0.04 }),
+      won({ id: "w-ok", user_id: U2, calculated_proba: 0.05 }),
+      bet({ id: "l-rare", user_id: U3, status: "LOST", calculated_proba: 0.01, description: "Utah gagne les 4 quarts temps" }),
+    ];
+    const result = preselect(bets, users);
+    expect(result.refuse.map((p) => p.bet.id).sort()).toEqual(["l-rare", "w-rare"]);
+    expect(result.top.map((p) => p.bet.id)).toEqual(["w-ok"]);
+    expect(result.flop).toHaveLength(0);
+  });
+  it("garde la raison d'un pari accepté, pas d'un refusé", () => {
+    const result = preselect([won({ id: "w", calculated_proba: 0.02 }), rejected({ id: "r" })], users);
+    expect(result.refuse.find((p) => p.bet.id === "w")?.raison).toBe("Gagné.");
+    expect(result.refuse.find((p) => p.bet.id === "r")?.raison).toBeNull();
+  });
+});
