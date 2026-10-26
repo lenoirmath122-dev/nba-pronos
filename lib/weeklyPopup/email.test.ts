@@ -56,13 +56,13 @@ describe("runWeeklyPopupEmail", () => {
     ]);
   });
 
-  it("destinataires : comptes ACTIVE qui reçoivent les résultats, hors déjà servis", async () => {
+  it("destinataires : tous les comptes ACTIVE (préférence résultats ignorée), hors déjà servis", async () => {
     const { client, calls } = fakeClient(handler({ logged: [{ user_id: "u1" }] }));
     const send = vi.fn().mockResolvedValue("m1");
     await runWeeklyPopupEmail({}, { client, send, address: async () => "a@b.fr" });
     const users = calls.find((c) => c.table === "users");
     expect(users?.filters).toContainEqual(["eq", "status", "ACTIVE"]);
-    expect(users?.filters).toContainEqual(["eq", "email_results_enabled", true]);
+    expect(users?.filters.some((f) => f[1] === "email_results_enabled")).toBe(false);
     expect(send).toHaveBeenCalledTimes(1);
     expect(send.mock.calls[0][1]).toEqual({ userId: "u2", scope: "results" });
   });

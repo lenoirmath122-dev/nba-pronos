@@ -13,8 +13,9 @@ import type { WeeklyPopupContent } from "./types";
 // interrompu. Journal `weekly_popup_email_log` : une ligne (popup, joueur) est
 // RÉSERVÉE avant l'envoi puis supprimée si l'envoi échoue, comme `email_log` ;
 // deux passages simultanés ne peuvent donc pas envoyer deux fois.
-// Destinataires : comptes ACTIVE qui reçoivent les e-mails de résultats (même
-// préférence, même lien de désinscription : « results »).
+// Destinataires : tous les comptes ACTIVE ayant une adresse, même si les e-mails
+// de résultats sont décochés (décision du 26/10/2026, cercle d'amis). Le lien de
+// désinscription reste « results ».
 
 /** Une popup publiée il y a plus longtemps n'est plus envoyée par un rattrapage. */
 const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
@@ -85,8 +86,7 @@ export async function runWeeklyPopupEmail(
   let usersQuery = service
     .from("users")
     .select("id, pseudo")
-    .eq("status", "ACTIVE")
-    .eq("email_results_enabled", true);
+    .eq("status", "ACTIVE");
   if (options.onlyUserId) usersQuery = usersQuery.eq("id", options.onlyUserId);
   const [{ data: usersData }, { data: loggedData }] = await Promise.all([
     usersQuery,
