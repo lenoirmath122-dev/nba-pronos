@@ -77,6 +77,18 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - À faire par l'utilisateur : activer `weekly_ranking` (puis `weekly_popup`)
   sur la compétition réelle ; vérifier que Vercel autorise 3 crons ;
   contrôler le premier figement du **lundi 26/10**.
+- **E-mails applicatifs bloqués en production (26/10/2026)** : Resend
+  refuse `RESEND_API_KEY` (400 « API key is invalid »). `email_log` est vide :
+  aucun e-mail applicatif (résultats, relances, rappels, popup) n'est jamais
+  parti. La popup du 26/10 est publiée, son mail n'est pas envoyé. À faire :
+  clé Resend valide + `EMAIL_FROM` sur un domaine vérifié dans Vercel
+  (Production), redéploiement, test `/api/emails?kind=popup&only_owner=1`
+  (Bearer `SYNC_SECRET`). Chantier mis en pause par l'utilisateur.
+- **Mail de la popup envoyé à tous les comptes actifs, case « résultats »
+  ignorée (PR #252, décision du 26/10/2026, cercle d'amis)** : à revoir
+  avant d'ouvrir à d'autres joueurs (RGPD, p2-9). Les crons reprennent toute
+  popup publiée depuis moins de 7 jours : une clé corrigée avant le 02/11
+  déclenche l'envoi sans clic.
 
 ## Retours de l'alpha (03/10/2026)
 
