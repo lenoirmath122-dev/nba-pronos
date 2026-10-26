@@ -131,8 +131,11 @@ Cinq éléments, environ 120 à 140 mots au total :
 3. flop : parmi les candidats « flop » (paris perdus), celui raté de plus
    peu. Utilise l'écart réel (« 9 au lieu de 10 »), c'est le cœur de la
    blague.
-4. refuse : parmi les candidats « refuse » (paris loufoques ou trop difficiles,
-   écartés par l'appli), le plus absurde.
+4. refuse : parmi les candidats « refuse », le plus absurde ou le plus
+   improbable. Ce sont des paris loufoques écartés par l'appli (statut
+   « refusé »), ou des paris acceptés à moins de 5 % de chance (statut
+   « gagné » ou « perdu », chance annoncée fournie). Pour ceux-là, dis s'il
+   est passé ou non ; la chance ne se cite que si elle sert la vanne.
 5. cta : une courte phrase qui pousse à revenir parier cette semaine, sans
    rien affirmer qui ne soit pas dans les données (aucun match, aucune
    date).
