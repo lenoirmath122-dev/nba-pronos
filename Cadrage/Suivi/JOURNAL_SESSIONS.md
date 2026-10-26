@@ -388,3 +388,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Chantier Profil & badges : Lot 5 classement (PlayerIdentity + vitrine dans lignes, barre « Ta place », vue hebdo), PR #241, CI verte, recette visuelle à faire (24/10/2026) ; prochain Lot 3
 - Chantier Profil & badges : Lots 3a/3b mergés (#243, #244) ; épingle et vitrine épinglés seulement manquaient dans la release, reportés par #245 (25/10/2026) ; à merger puis recetter
 - Popup hebdo : prompt rédacteur v6 (une du lundi, ton trash sans insulte perso, pas de maxime plaquée) + HISTORIQUE titres/cta des 4 dernières popups (25/10/2026) ; non essayé
+- Popup hebdo : bloc « La zone Maïno » (#251, paris rejetés + acceptés sous 5 %), mail à tous les comptes actifs (#252) ; envoi impossible, clé Resend invalide en prod (26/10/2026), chantier mis en pause
