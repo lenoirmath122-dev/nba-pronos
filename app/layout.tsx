@@ -11,6 +11,7 @@ import {
   SITE_URL,
   TWITTER_CARD,
 } from "@/lib/seo";
+import { UtmCapture } from "@/components/funnel/UtmCapture";
 import "./globals.css";
 
 // Police unique pour tout le texte de lecture (--font-ui), auto-hébergée par
@@ -102,6 +103,7 @@ export default async function RootLayout({
       className={`${sora.variable} ${oswald.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
+        <UtmCapture />
         {children}
         {/* D4/PERF (11-performances.md §5) : Web Vitals réels jamais mesurés
             faute d'accès navigateur en audit — RUM via Vercel (déploiement

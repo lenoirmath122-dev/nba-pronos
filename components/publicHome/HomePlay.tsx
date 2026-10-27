@@ -225,7 +225,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
           <span className={styles.barCount}>
             {basket.length} {basket.length > 1 ? "pronos prêts" : "prono prêt"}
           </span>
-          <Link href={saveHref} className={styles.barButton} onClick={() => trackFunnel("save_opened")}>
+          <Link href={saveHref} className={styles.barButton}>
             Enregistrer
           </Link>
         </div>

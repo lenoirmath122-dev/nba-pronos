@@ -7,6 +7,8 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { checkAnonRateLimit } from "@/lib/auth/anonRateLimit";
 import { normalizePseudo, pseudoLengthError } from "@/lib/pseudo/rules";
 import type { BasketItem } from "@/lib/publicHome/basket";
+import { FUNNEL_VID_META } from "@/lib/funnel/events";
+import { currentVisitorId, trackAccountCreated } from "@/lib/funnel/record";
 import { buildPredictionRows, registrationError, type MatchForBasket } from "@/lib/publicHome/register";
 
 // Parcours « jouer d'abord, s'inscrire ensuite » (plan d'attractivité, §1.6) :
@@ -64,10 +66,12 @@ export async function registerPronos(input: {
   if (!(await checkAnonRateLimit("guest_register", 10, 3600))) return { ok: false, error: RATE_LIMIT_ERROR };
 
   const service = getServiceClient();
+  // Le visiteur suit le compte jusqu'à la validation du lien (autre navigateur possible), puis est retiré.
+  const visitor = await currentVisitorId();
   const { data: created, error } = await service.auth.admin.createUser({
     email,
     email_confirm: false,
-    user_metadata: { pseudo, pending_validation: "true" },
+    user_metadata: { pseudo, pending_validation: "true", ...(visitor ? { [FUNNEL_VID_META]: visitor } : {}) },
   });
 
   if (error || !created.user) {
@@ -83,6 +87,7 @@ export async function registerPronos(input: {
     return { ok: false, error: "Impossible de créer le compte. Réessaie." };
   }
 
+  await trackAccountCreated();
   await insertPredictions(created.user.id, input.items);
   return (await sendLoginLink(email)) ? SENT_OK : { ok: false, error: SEND_ERROR };
 }

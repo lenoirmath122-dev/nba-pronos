@@ -3,7 +3,9 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { getServerClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { getServiceClient } from "@/lib/supabase/service";
-import { VISITOR_COOKIE } from "@/lib/funnel/events";
+import { FUNNEL_VID_META, UTM_COOKIE, VISITOR_COOKIE, isValidVisitorId, parseUtmCookie } from "@/lib/funnel/events";
+import { insertFunnelEvent, trackAccountCreated } from "@/lib/funnel/record";
+import { detectInAppBrowser } from "@/lib/auth/inAppBrowser";
 
 // Retour des liens de connexion (plan d'attractivité, §1.6) : lien magique reçu
 // par e-mail et retour de Google. Deux formes :
@@ -48,8 +50,17 @@ export async function GET(request: NextRequest) {
     .eq("id", user.id)
     .maybeSingle<{ status: string; age_confirmed_at: string | null }>();
 
+  const cookieStore = await cookies();
+  // Entonnoir (§1.13) : le lien peut s'ouvrir dans un autre navigateur, sans le cookie ;
+  // le visiteur gardé à la création du compte le remplace (puis est retiré des métadonnées).
+  const metaVisitor = user.user_metadata?.[FUNNEL_VID_META];
+  const cookieVisitor = cookieStore.get(VISITOR_COOKIE)?.value;
+  const visitor = isValidVisitorId(cookieVisitor) ? cookieVisitor : isValidVisitorId(metaVisitor) ? metaVisitor : null;
+
   if (profile?.status === "PENDING") {
     if (profile.age_confirmed_at === null) {
+      // Premier retour Google : le compte vient d'être créé (le pseudo se choisit ensuite).
+      await trackAccountCreated();
       return NextResponse.redirect(new URL("/choisir-pseudo", request.url));
     }
     const { data: activated } = await service
@@ -58,11 +69,17 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .eq("status", "PENDING")
       .select("id");
-    // Entonnoir (§1.13) : le lien s'ouvre parfois dans un autre navigateur, sans le cookie.
-    const visitor = (await cookies()).get(VISITOR_COOKIE)?.value;
     if (activated?.length && visitor) {
-      await service.from("funnel_events").insert({ visitor_id: visitor, event: "account_validated" });
+      await insertFunnelEvent({
+        visitorId: visitor,
+        event: "account_validated",
+        utm: parseUtmCookie(cookieStore.get(UTM_COOKIE)?.value),
+        inAppBrowser: detectInAppBrowser(request.headers.get("user-agent")),
+      });
     }
+  }
+  if (metaVisitor !== undefined) {
+    await service.auth.admin.updateUserById(user.id, { user_metadata: { [FUNNEL_VID_META]: null } });
   }
 
   return NextResponse.redirect(new URL("/bienvenue", request.url));

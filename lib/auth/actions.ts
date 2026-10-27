@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { checkAnonRateLimit } from "@/lib/auth/anonRateLimit";
 import { passwordPolicyError } from "@/lib/auth/passwordPolicy";
+import { trackAccountCreated } from "@/lib/funnel/record";
 
 export type AuthFormState = { error: string } | undefined;
 
@@ -144,6 +145,8 @@ export async function signup(
   if (signUpData.user?.identities?.length === 0) {
     return { error: "Un compte existe déjà avec cet email." };
   }
+
+  await trackAccountCreated();
 
   // Temps 3a — Confirm email actif en prod (bug trouvé le 18/08/2026) :
   // `!session` seul ne veut PAS dire "compte existant" — un compte tout
