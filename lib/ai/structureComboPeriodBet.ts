@@ -22,7 +22,7 @@ const COMBO_PERIOD_STAT_CODES = [...new Set([...STAT_CODES, ...TEAM_STAT_CODES, 
 
 const ComboPeriodConditionSchema = z.object({
   kind: z.enum(["PLAYER", "team1", "team2"]).describe("PLAYER pour un/des joueur(s), team1/team2 pour une équipe."),
-  players: z.array(z.string()).describe("Uniquement si kind=PLAYER : 1 nom, ou 2+ noms si leurs stats se cumulent. Tableau vide sinon."),
+  players: z.array(z.string()).describe("Uniquement si kind=PLAYER : 1 nom, ou 2+ noms UNIQUEMENT si le texte demande un cumul explicite (« combinés », « cumulés », « à eux deux », « ensemble », « le total de »). Sans ce mot, « A et B ont au moins N » = CHACUN : une condition par joueur, jamais une condition à 2 noms. Tableau vide sinon."),
   stats: z
     .array(z.enum(COMBO_PERIOD_STAT_CODES as [string, ...string[]]))
     .describe(
