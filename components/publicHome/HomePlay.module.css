@@ -1,5 +1,6 @@
 /* Blocs 2 à 5 de l'accueil public : match, écart, prochains matchs, barre « Mes pronos ». */
 
+.promise,
 .featured,
 .next,
 .live,
@@ -16,6 +17,41 @@
   text-align: center;
 }
 
+/* Promesse du premier écran : compacte, pour que les boutons d'équipe restent
+   visibles dans la hauteur utile du navigateur d'Instagram (≈ 520 px). */
+.promise {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  text-align: center;
+  line-height: 1.3;
+}
+
+.promiseTitle {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.promiseList {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0 var(--space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.promiseList li::before {
+  content: "✓ ";
+  color: var(--color-accent-rest);
+}
+
 .kicker {
   margin: 0;
   font-size: var(--font-size-sm);
@@ -28,7 +64,8 @@
 
 .title {
   margin: 0;
-  font-size: var(--font-size-xl);
+  font-size: var(--font-size-lg);
+  line-height: 1.25;
   font-weight: var(--font-weight-bold);
   color: var(--color-text-primary);
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
@@ -36,8 +73,10 @@
 
 .countdown {
   margin: 0;
-  min-height: 1.5em;
+  min-height: 1.25em;
+  margin-bottom: var(--space-1);
   font-size: var(--font-size-sm);
+  line-height: 1.25;
   color: var(--color-text-secondary);
   text-shadow: 0 2px 12px rgba(0, 0, 0, 0.5);
 }
@@ -103,7 +142,7 @@
 }
 
 .cardBig {
-  padding: var(--space-4);
+  padding: var(--space-3);
   box-shadow: var(--elevation-arena);
 }
 
@@ -154,7 +193,27 @@
   font-weight: var(--font-weight-semibold);
 }
 
+.when {
+  margin: 0;
+  min-height: 1.25em;
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-rest);
+}
+
+.stakes {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.stakes strong {
+  color: var(--color-text-primary);
+}
+
 .margin {
+  /* Hauteur de la barre « Mes pronos » fixe en bas d'écran. */
+  scroll-margin-bottom: 10rem;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -267,10 +326,10 @@
   right: 0;
   bottom: 0;
   z-index: 20;
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  justify-content: space-between;
-  gap: var(--space-3);
+  gap: var(--space-2) var(--space-3);
   padding: var(--space-3) var(--space-4);
   padding-bottom: max(var(--space-3), env(safe-area-inset-bottom));
   background: var(--color-surface-raised);
@@ -279,11 +338,27 @@
 }
 
 .barCount {
+  margin: 0;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }
 
+.barHints {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.barHints p {
+  margin: 0;
+  font-size: var(--font-size-xs);
+  line-height: 1.3;
+  color: var(--color-text-secondary);
+}
+
 .barButton {
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;

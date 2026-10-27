@@ -43,3 +43,29 @@ export function remainingLabel(ms: number): string {
   if (h > 0) return `${h} h ${String(m).padStart(2, "0")} min`;
   return `${m} min`;
 }
+
+// Les matchs de nuit (avant 6 h) comptent pour la soirée qui les précède : « Ce soir 1h00 ».
+const NIGHT_END_HOUR = 6;
+
+function eveningKey(ms: number): string {
+  return parisDateKey(ms - NIGHT_END_HOUR * 3600_000);
+}
+
+function weekdayShort(ms: number): string {
+  const day = new Intl.DateTimeFormat("fr-FR", { timeZone: TZ, weekday: "short" }).format(new Date(ms));
+  return `${day.charAt(0).toUpperCase()}${day.slice(1)}`;
+}
+
+/** Jour et heure de Paris d'une carte de match : « Ce soir 1h00 », « Jeu. 3h30 ». */
+export function dayTimeLabel(scheduledAt: string, nowMs: number): string {
+  const at = Date.parse(scheduledAt);
+  const day = eveningKey(at) === parisDateKey(nowMs) ? "Ce soir" : weekdayShort(at);
+  return `${day} ${frenchTime(at)}`;
+}
+
+/** Échéance d'enregistrement affichée dans la barre « Mes pronos » : « 1h00 » dans les 24 h, sinon « jeu. 3h30 ». */
+export function deadlineLabel(scheduledAt: string, nowMs: number): string {
+  const at = Date.parse(scheduledAt);
+  if (at - nowMs <= 24 * 3600_000) return frenchTime(at);
+  return `${weekdayShort(at).toLowerCase()} ${frenchTime(at)}`;
+}

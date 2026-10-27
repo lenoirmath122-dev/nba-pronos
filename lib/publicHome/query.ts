@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { matchKicker } from "./labels";
-import { selectHomeMatches, voteSplit, MIN_VOTES_TO_SHOW, type HomeMatchRow, type VoteSplit } from "./select";
+import { selectHomeMatches, voteSplit, SOCIAL_PROOF_MIN, type HomeMatchRow, type VoteSplit } from "./select";
 
 // Lectures de l'accueil public (plan d'attractivité, §1.7). Client anonyme sans
 // cookie : la page peut être mise en cache (revalidate = 60). Tables lues sous
@@ -24,7 +24,7 @@ export type HomeMatch = {
 
 export type LastResult = {
   match: HomeMatch;
-  /** null sous le seuil de 10 pronos : seul le score est affiché. */
+  /** null sous SOCIAL_PROOF_MIN.resultPlayers pronos : seul le score est affiché. */
   stats: { total: number; correctWinners: number; exactPseudo: string | null } | null;
 };
 
@@ -157,7 +157,7 @@ export async function getPublicHomeData(nowMs: number = Date.now()): Promise<Pub
     ? {
         match: lastMatch,
         stats:
-          stat && stat.total >= MIN_VOTES_TO_SHOW
+          stat && stat.total >= SOCIAL_PROOF_MIN.resultPlayers
             ? { total: stat.total, correctWinners: stat.correct_winners, exactPseudo: stat.exact_pseudo }
             : null,
       }
