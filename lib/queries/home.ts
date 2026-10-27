@@ -11,6 +11,7 @@ import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
 import { assignRanks } from "@/lib/scoring/ranking";
 import { getHomeRecap, type HomeRecap } from "@/lib/recaps/home";
 import { readWeeklyRankingFlag } from "@/lib/weekly/flag";
+import { getWeeklyLeaderboard, type WeeklyLeaderboardData } from "@/lib/queries/weeklyLeaderboard";
 import type { CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran Accueil (composants serveur uniquement), SPEC_ECRAN_ACCUEIL
@@ -28,6 +29,8 @@ export type HomeHeader = {
   pseudo: string;
   competitionName: string;
   rank: number | null;
+  /** true : rang/points/écart sont ceux de la semaine en cours (classement hebdo actif). */
+  weekly: boolean;
   totalPoints: number;
   pointsBehindLeader: number | null;
   recentFormPoints: number;
@@ -150,15 +153,24 @@ export async function getHomeData(): Promise<HomeData> {
     return { ...EMPTY_HOME_DATA, notificationPreference };
   }
 
+  // Classement hebdo actif : rang et points de l'en-tête, rang du récap de la
+  // nuit sont ceux de la semaine en cours, pas du général. Lu une seule fois.
+  const weeklyPromise = readWeeklyRankingFlag(supabase, competition.id).then(async (weeklyRanking) => ({
+    weeklyRanking,
+    board: weeklyRanking
+      ? await getWeeklyLeaderboard(supabase, { competitionId: competition.id, leagueId: null, userId: user.id })
+      : null,
+  }));
+
   const [header, todo, adminTodo, seriesBets, matchBets, feed, recap] = await Promise.all([
-    getHeader(supabase, competition, user.id),
+    weeklyPromise.then(({ board }) => getHeader(supabase, competition, user.id, board)),
     getTodo(supabase, competition, user.id),
     getAdminTodo(supabase, competition.id),
     getSeriesBetsTodo(supabase, user.id, competition),
     getMatchBetsTodo(supabase, user.id, competition),
     getFeed(supabase, competition.id, user.id),
-    readWeeklyRankingFlag(supabase, competition.id).then((weeklyRanking) =>
-      getHomeRecap(supabase, competition.id, user.id, Date.now(), { weeklyRanking }),
+    weeklyPromise.then(async ({ weeklyRanking, board }) =>
+      withWeeklyRank(await getHomeRecap(supabase, competition.id, user.id, Date.now(), { weeklyRanking }), board),
     ),
   ]);
 
@@ -222,7 +234,8 @@ async function getMatchBetsTodo(
 async function getHeader(
   supabase: SupabaseServerClient,
   competition: CompetitionRow,
-  userId: string
+  userId: string,
+  weekly: WeeklyLeaderboardData | null
 ): Promise<HomeHeader> {
   const [{ data: profile }, { data: scores }, { data: form }] = await Promise.all([
     supabase.from("users").select("pseudo").eq("id", userId).single(),
@@ -258,14 +271,47 @@ async function getHeader(
       ? null
       : leaderPoints - totalPoints;
 
+  if (weekly?.state === "ok") {
+    const weeklyRows = weekly.rows;
+    const weeklyRank = weekly.currentUserRank;
+    const weeklyPoints = weeklyRows.find((row) => row.isCurrentUser)?.points ?? 0;
+    const weeklyLeader = weeklyRows.length > 0 ? weeklyRows[0].points : null;
+    return {
+      pseudo: profile?.pseudo ?? "",
+      competitionName: competition.name,
+      weekly: true,
+      rank: weeklyRank,
+      totalPoints: weeklyPoints,
+      pointsBehindLeader:
+        weeklyRank === null || weeklyRank === 1 || weeklyLeader === null ? null : weeklyLeader - weeklyPoints,
+      recentFormPoints: form?.recent_form_points ?? 0,
+      rankMovement: null,
+    };
+  }
+
   return {
     pseudo: profile?.pseudo ?? "",
     competitionName: competition.name,
+    weekly: false,
     rank,
     totalPoints,
     pointsBehindLeader,
     recentFormPoints: form?.recent_form_points ?? 0,
     rankMovement: null, // TOUJOURS null en V1 (§3)
+  };
+}
+
+// Récap de la nuit en classement hebdo : le rang affiché est celui de la
+// semaine ; le mouvement de rang et les « passes devant » se calculent sur le
+// général, on les retire plutôt que de les mélanger.
+function withWeeklyRank(recap: HomeRecap, weekly: WeeklyLeaderboardData | null): HomeRecap {
+  if (weekly?.state !== "ok" || !recap.daily?.me) return recap;
+  return {
+    ...recap,
+    daily: {
+      ...recap.daily,
+      me: { ...recap.daily.me, rank: weekly.currentUserRank, rankDelta: null, passed: [] },
+    },
   };
 }
 
