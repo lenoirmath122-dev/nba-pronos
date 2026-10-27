@@ -213,3 +213,13 @@
   seuil 0,5 ; combo : bornes sur une même variable = intersection (`_same_variable_intersections`). Sommes : variance
   `_player_sum_variance` (ρ sur 20 matchs). Non fait : corrélation entre joueurs/équipes, total cumulé des 2 équipes
   en « exactement », minutes/pourcentages en « exactement ».
+
+## Combo « A et B ont au moins N » — somme à tort (27/10/2026, PR #255)
+- **Symptôme** : proba de 0,979 pour « A et B ont au moins 20 pts ». Le calcul Python était juste : la structuration
+  mettait 2 noms dans UNE condition, que `_condition_proba` (chemin « SOMME ») traite comme P(pts A + pts B > 19).
+- **Règle** : 2+ noms dans une condition = cumul explicite seulement (« combinés », « cumulés », « à eux deux »,
+  « ensemble », « le total de »). Sinon une condition par joueur (P = P(A)·P(B), ici 0,69 × 0,64 = 0,44).
+- **Vérifié** par appel réel de `structureBet` (3 formulations). Aucun test unitaire ajouté (comportement du prompt).
+- **Données** : seul 1 pari sur 8 combos était touché, corrigé en base (structure, proba, difficulté 3). Les deux
+  autres paris multi-joueurs sont de vrais cumuls. La résolution relit `structured_combo` : sans correction, le pari
+  aurait été jugé sur la somme.

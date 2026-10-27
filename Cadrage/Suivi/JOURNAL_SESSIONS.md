@@ -389,3 +389,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Chantier Profil & badges : Lots 3a/3b mergés (#243, #244) ; épingle et vitrine épinglés seulement manquaient dans la release, reportés par #245 (25/10/2026) ; à merger puis recetter
 - Popup hebdo : prompt rédacteur v6 (une du lundi, ton trash sans insulte perso, pas de maxime plaquée) + HISTORIQUE titres/cta des 4 dernières popups (25/10/2026) ; non essayé
 - Popup hebdo : bloc « La zone Maïno » (#251, paris rejetés + acceptés sous 5 %), mail à tous les comptes actifs (#252) ; envoi impossible, clé Resend invalide en prod (26/10/2026), chantier mis en pause
+- Combo « A et B ont au moins N » : le prompt structurait en somme de 2 joueurs (proba 0,98 au lieu de 0,44) ; règle « chacun sauf cumul explicite » (#255) + pari touché corrigé en base (27/10/2026)

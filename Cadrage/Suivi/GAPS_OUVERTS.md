@@ -27,6 +27,9 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   encodés `OVER N` alors que le calcul est strict. `inclusiveThreshold.ts` convertit en code
   (enum `AT_LEAST`/`AT_MOST` dans `structureBet`, booléen `inclusive` ailleurs). Vérifié par appels
   réels. Reste : « Hauser ou Pritchard » (COMPARISON/OR) non vérifié ; rejouer d'anciens paris ?
+- **« A et B ont au moins N » = chacun (PR #255, 27/10/2026)** : l'IA structurait ce texte en 1 condition à 2
+  joueurs (somme des points, ~98 % au lieu de ~44 %). Prompt corrigé dans les 3 schémas : 2+ noms seulement si cumul
+  explicite. Pari touché corrigé en base. Reste : à merger ; pas de garde-fou côté TypeScript (le prompt seul tient).
 - **Lot 1 clos (21/10/2026)**. Reste : Lots 2 à 4 (S6 + L8, puis play-by-play, puis séries) avant la bêta Cup du 04/12 / playoffs d'avril.
 - **À part, conversation dédiée** : instabilité des probas (3 valeurs pour 20
   appels identiques, avec ou sans cache).
