@@ -66,6 +66,10 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - **1B e-mails** livrée (PR #185 à #187 mergées le 19/10, migration `email_log`
   appliquée, Resend en place). **Reste** : essai réel (dry-run puis envoi) et
   recette Gmail/Outlook/iCloud, spam, désinscription, 1 relance, ≤ 1 mail/jour.
+- **Mesure de l'entonnoir fiabilisée** (branche `feat/funnel-utm`, PR à merger) : UTM, navigateur
+  intégré, filtre robots/hors-prod, `account_created`. **À faire après merge** : valider le texte de
+  `/confidentialite`, appliquer la migration `20261027090000_funnel_utm.sql`, lancer
+  `scripts/sql/funnel_report.sql`. Le `.env.local` local pointe sur la base de PROD (pas de base de dev).
   Deux flags coexistent : `recap_enabled` (push) et `email_results_enabled` (mail).
 - Refonte UI/UX : à refaire de zéro plus tard (branche locale `refonte-ux`
   non poussée, à supprimer).
