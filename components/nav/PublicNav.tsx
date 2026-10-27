@@ -1,11 +1,12 @@
 import Link from "next/link";
 import Image from "next/image";
+import { PublicNavAccount } from "./PublicNavAccount";
 import styles from "./PublicNav.module.css";
 
 // Nav réduite du visiteur non connecté (0.2.9 §3, T6a §3.1) : Classement,
 // Bracket, Règles (ajouté 20/08/2026, même patron dual-nav que les 2
-// précédents), CTA discret « Se connecter ». Aucun état interne →
-// composant serveur, partagé entre (public)/layout.tsx et les enveloppes
+// précédents), CTA discret « Se connecter » (« J'ai un compte » sur l'accueil,
+// voir PublicNavAccount). Aucun état interne → composant serveur, partagé entre (public)/layout.tsx et les enveloppes
 // fines /leaderboard, /bracket, /regles (T6a §3.2/§8.1).
 //
 // Nom "Panier Ballon" + logo (27/08/2026, provisoire -- ni l'un ni l'autre
@@ -30,9 +31,7 @@ export function PublicNav() {
           <Link href="/regles" className={styles.link}>
             Règles
           </Link>
-          <Link href="/login" className={styles.linkCta}>
-            Se connecter
-          </Link>
+          <PublicNavAccount />
         </div>
       </nav>
       {/* Rangée secondaire distincte de la nav réduite ci-dessus (0.2.9 §3,

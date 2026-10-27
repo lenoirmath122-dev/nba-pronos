@@ -22,10 +22,11 @@ export const metadata: Metadata = {
   twitter: { ...base.twitter, title: HOME_TITLE },
 };
 
+// Version compacte (3 lignes) : le bloc remonte juste sous le match de la nuit.
 const STEPS = [
-  "Choisis le vainqueur et l'écart de points avant le coup d'envoi.",
-  "Gagne des points à chaque bon prono, sans argent réel.",
-  "Grimpe au classement, gagne des badges, chambre tes potes.",
+  "Choisis le vainqueur et l'écart.",
+  "Gagne des points, sans argent réel.",
+  "Grimpe au classement, chambre tes potes.",
 ];
 
 const MORE = [
@@ -72,6 +73,18 @@ export default async function LandingPage() {
         next={data.next}
         splits={data.splits}
         featuredKicker={data.featuredKicker}
+        afterFeatured={
+          <section className={`${styles.steps} glass-card`} aria-labelledby="how-title">
+            <h2 id="how-title" className={styles.stepsTitle}>
+              Comment ça marche
+            </h2>
+            <ol className={styles.stepList}>
+              {STEPS.map((text) => (
+                <li key={text}>{text}</li>
+              ))}
+            </ol>
+          </section>
+        }
       />
 
       {data.lastResult ? <LastResultBlock result={data.lastResult} /> : null}
@@ -95,17 +108,6 @@ export default async function LandingPage() {
           </Link>
         </section>
       ) : null}
-
-      <section className={styles.steps} aria-labelledby="how-title">
-        <h2 id="how-title" className={styles.stepsTitle}>
-          Comment ça marche
-        </h2>
-        <ol className={styles.stepList}>
-          {STEPS.map((text) => (
-            <li key={text}>{text}</li>
-          ))}
-        </ol>
-      </section>
 
       <section className={styles.features}>
         {MORE.map((f) => (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { HomeMatch, HomeTeam } from "@/lib/publicHome/query";
@@ -16,7 +16,8 @@ import {
   type OpenMatch,
 } from "@/lib/publicHome/basket";
 import { trackFunnel } from "@/lib/funnel/track";
-import { remainingLabel } from "@/lib/publicHome/labels";
+import { dayTimeLabel, deadlineLabel, remainingLabel } from "@/lib/publicHome/labels";
+import { stakesLine } from "@/lib/publicHome/stakes";
 import styles from "./HomePlay.module.css";
 
 // Blocs 2 à 5 de l'accueil public (plan d'attractivité, §1.4) : match de la
@@ -36,7 +37,13 @@ type Props = {
   featuredKicker: string | null;
   /** Écran d'enregistrement (tâche 5) ; /enregistrer. */
   saveHref?: string;
+  /** Bloc inséré juste sous le match de la nuit (« Comment ça marche », rendu côté serveur). */
+  afterFeatured?: ReactNode;
 };
+
+// Promesse du premier écran (27/10/2026) : trois mentions courtes, sans « paris »
+// donc sans obligation « sans argent réel » (vigilance ANJ, décision du 05/10).
+const PROMISES = ["100 % gratuit", "0 € en jeu", "Pas besoin de compte pour jouer"];
 
 type Draft = { matchId: string; winnerTeamId: string; margin: number };
 
@@ -56,7 +63,7 @@ function writeStorage(items: BasketItem[]) {
   }
 }
 
-export function HomePlay({ live, featured, next, splits, featuredKicker, saveHref = "/enregistrer" }: Props) {
+export function HomePlay({ live, featured, next, splits, featuredKicker, saveHref = "/enregistrer", afterFeatured }: Props) {
   const open = useMemo(() => [featured, ...next].filter((m): m is HomeMatch => m !== null), [featured, next]);
   const openMatches: OpenMatch[] = useMemo(
     () => open.map((m) => ({ id: m.id, scheduledAt: m.scheduledAt, homeTeamId: m.home.id, awayTeamId: m.away.id })),
@@ -121,6 +128,13 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
     return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [draftMatchId]);
 
+  // Le curseur et la ligne « C'est noté » s'ouvrent sous les boutons : sans ce
+  // défilement, la barre « Mes pronos » (fixe, en bas) les masque sur mobile.
+  useEffect(() => {
+    if (!draftMatchId) return;
+    document.getElementById(`margin-${draftMatchId}`)?.parentElement?.scrollIntoView({ block: "nearest" });
+  }, [draftMatchId]);
+
   const saveProno = (match: HomeMatch, winnerTeamId: string, margin: number) => {
     commit(
       upsertItem(basket, {
@@ -166,8 +180,26 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
     onCancel: cancelProno,
   };
 
+  // Premier coup d'envoi du panier : échéance d'enregistrement affichée dans la barre.
+  const firstKickoff = useMemo(() => {
+    const times = basket
+      .map((i) => open.find((m) => m.id === i.matchId)?.scheduledAt)
+      .filter((t): t is string => t !== undefined)
+      .sort((a, b) => Date.parse(a) - Date.parse(b));
+    return times[0] ?? null;
+  }, [basket, open]);
+
   return (
     <>
+      <header className={styles.promise}>
+        <p className={styles.promiseTitle}>Panier Ballon, les pronos NBA entre potes</p>
+        <ul className={styles.promiseList} aria-label="Ce qu'il faut savoir">
+          {PROMISES.map((text) => (
+            <li key={text}>{text}</li>
+          ))}
+        </ul>
+      </header>
+
       {live ? (
         <section className={`${styles.live} glass-card`} aria-label="Match en cours">
           <span className={styles.liveBadge}>En cours</span>
@@ -203,6 +235,8 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
         </section>
       )}
 
+      {afterFeatured}
+
       {notice ? (
         <p className={styles.notice} role="status">
           {notice}
@@ -215,19 +249,28 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
             Les prochains matchs
           </h2>
           {next.map((m) => (
-            <MatchCard key={m.id} match={m} {...cardProps} />
+            <MatchCard key={m.id} match={m} when={now !== null ? dayTimeLabel(m.scheduledAt, now) : null} {...cardProps} />
           ))}
         </section>
       ) : null}
 
       {loaded && basket.length > 0 ? (
         <div className={styles.bar} role="region" aria-label="Mes pronos">
-          <span className={styles.barCount}>
+          <p className={styles.barCount}>
             {basket.length} {basket.length > 1 ? "pronos prêts" : "prono prêt"}
-          </span>
+          </p>
           <Link href={saveHref} className={styles.barButton}>
-            Enregistrer
+            Garder mes pronos
           </Link>
+          <div className={styles.barHints}>
+            {firstKickoff && now !== null ? (
+              <p>
+                Enregistre-{basket.length > 1 ? "les" : "le"} avant {deadlineLabel(firstKickoff, now)} (heure de Paris) pour
+                entrer au classement.
+              </p>
+            ) : null}
+            {basket.length === 1 ? <p>Un prono non enregistré reste sur ce téléphone et ne compte pas au classement.</p> : null}
+          </div>
         </div>
       ) : null}
     </>
@@ -237,6 +280,8 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
 type CardProps = {
   match: HomeMatch;
   big?: boolean;
+  /** Jour et heure de Paris (cartes « prochains matchs »), null avant montage. */
+  when?: string | null;
   basket: BasketItem[];
   draft: Draft | null;
   splits: Record<string, Split>;
@@ -246,7 +291,7 @@ type CardProps = {
   onCancel: (matchId: string) => void;
 };
 
-function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin, onCancel }: CardProps) {
+function MatchCard({ match, big = false, when, basket, draft, splits, onPick, onMargin, onCancel }: CardProps) {
   const saved = basket.find((i) => i.matchId === match.id) ?? null;
   const drafting = draft?.matchId === match.id ? draft : null;
   const chosenTeamId = drafting?.winnerTeamId ?? saved?.winnerTeamId ?? null;
@@ -256,6 +301,7 @@ function MatchCard({ match, big = false, basket, draft, splits, onPick, onMargin
 
   return (
     <article data-match-id={match.id} className={`${styles.card} ${big ? styles.cardBig : ""} glass-card`}>
+      {when !== undefined ? <p className={styles.when}>{when ?? " "}</p> : null}
       <div className={styles.teams} role="group" aria-label={`${match.home.name} contre ${match.away.name}`}>
         {teams.map((team) => (
           <button
@@ -347,6 +393,9 @@ function MarginPanel({
         className={styles.slider}
         onChange={(e) => onMargin(Number(e.target.value))}
       />
+      <p className={styles.stakes}>
+        <strong>C&apos;est noté.</strong> En jeu : {stakesLine()}.
+      </p>
       <p className={styles.rulesHint}>
         <Link href="/regles">Voir le barème</Link>
       </p>
