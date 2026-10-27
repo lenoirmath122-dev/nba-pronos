@@ -11,6 +11,10 @@ export type BasketItem = {
   winnerTeamId: string;
   margin: number;
   addedAt: number;
+  /** Affichage du récap sur /enregistrer ; absents des paniers enregistrés avant le 27/10/2026. */
+  winnerName?: string;
+  opponentName?: string;
+  scheduledAt?: string;
 };
 
 /** Ce que l'accueil sait d'un match encore ouvert : de quoi valider un item. */
@@ -34,6 +38,24 @@ function isItem(x: unknown): x is BasketItem {
   );
 }
 
+const DISPLAY_MAX = 60;
+
+function displayText(x: unknown): string | undefined {
+  return typeof x === "string" && x.length > 0 && x.length <= DISPLAY_MAX ? x : undefined;
+}
+
+/** Garde les champs d'affichage valides, jamais d'invalide : un ancien panier reste lisible tel quel. */
+function normalizeItem(i: BasketItem): BasketItem {
+  const { winnerName, opponentName, scheduledAt, ...core } = i;
+  const at = displayText(scheduledAt);
+  return {
+    ...core,
+    ...(displayText(winnerName) && { winnerName: displayText(winnerName) }),
+    ...(displayText(opponentName) && { opponentName: displayText(opponentName) }),
+    ...(at && Number.isFinite(Date.parse(at)) && { scheduledAt: at }),
+  };
+}
+
 /** Tolérant : un stockage corrompu ou vide donne un panier vide, jamais d'erreur. */
 export function parseBasket(raw: string | null): BasketItem[] {
   if (!raw) return [];
@@ -41,7 +63,10 @@ export function parseBasket(raw: string | null): BasketItem[] {
     const data: unknown = JSON.parse(raw);
     if (!Array.isArray(data)) return [];
     const seen = new Set<string>();
-    return data.filter(isItem).filter((i) => !seen.has(i.matchId) && seen.add(i.matchId));
+    return data
+      .filter(isItem)
+      .filter((i) => !seen.has(i.matchId) && seen.add(i.matchId))
+      .map(normalizeItem);
   } catch {
     return [];
   }

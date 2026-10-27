@@ -15,6 +15,7 @@ import {
   type BasketItem,
   type OpenMatch,
 } from "@/lib/publicHome/basket";
+import { HomeFocus } from "./HomeFocus";
 import { trackFunnel } from "@/lib/funnel/track";
 import { dayTimeLabel, deadlineLabel, remainingLabel } from "@/lib/publicHome/labels";
 import { stakesLine } from "@/lib/publicHome/stakes";
@@ -136,6 +137,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
   }, [draftMatchId]);
 
   const saveProno = (match: HomeMatch, winnerTeamId: string, margin: number) => {
+    const [winner, opponent] = winnerTeamId === match.home.id ? [match.home, match.away] : [match.away, match.home];
     commit(
       upsertItem(basket, {
         matchId: match.id,
@@ -143,6 +145,9 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
         winnerTeamId,
         margin,
         addedAt: Date.now(),
+        winnerName: winner.name,
+        opponentName: opponent.name,
+        scheduledAt: match.scheduledAt,
       }),
     );
   };
@@ -191,6 +196,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
 
   return (
     <>
+      <HomeFocus hasMatch={featured !== null} />
       <header className={styles.promise}>
         <p className={styles.promiseTitle}>Panier Ballon, les pronos NBA entre potes</p>
         <ul className={styles.promiseList} aria-label="Ce qu'il faut savoir">
@@ -212,7 +218,7 @@ export function HomePlay({ live, featured, next, splits, featuredKicker, saveHre
       ) : null}
 
       {featured ? (
-        <section className={styles.featured} aria-labelledby="featured-title">
+        <section id="prono-du-soir" className={styles.featured} aria-labelledby="featured-title">
           {featuredKicker ? <p className={styles.kicker}>{featuredKicker}</p> : null}
           <h1 id="featured-title" className={styles.title}>
             {featured.home.name} ou {featured.away.name} ? Fais ton prono.
