@@ -258,6 +258,8 @@ explicatifs en feed, Stories pour le compte à rebours. Cadence : 1-2 Reels/sema
 bêta, 3+/semaine en mars-avril. Aucun besoin d'apparaître à l'écran — l'interface
 elle-même (fond sombre, flash orange en direct) est un sujet visuel suffisant.
 
+**Lien à mettre dans un Reel** (27/10/2026) : `panierballon.fr/?utm_source=instagram&utm_medium=reel&utm_campaign=<nom-du-reel>&utm_content=<focus>`, avec `<focus>` = `paris-perso`, `bracket` ou `classement` (même valeur via `?focus=`, prioritaire sur `utm_content`). L'accueil reprend alors la promesse du Reel au-dessus du match de la nuit ; une autre valeur ou aucune laisse l'accueil inchangé.
+
 **Hashtags** : stratégie complète dans `Cadrage/DA/instagram/
 strategie-hashtags-instagram-panier-ballon.md` (28/08/2026) — 3 à 5 par post,
 mix propriétaire/niche/moyen/large (`#PanierBallon` systématique, 1 seul

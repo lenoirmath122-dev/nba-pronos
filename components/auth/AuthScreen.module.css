@@ -62,6 +62,51 @@
   color: var(--color-text-primary);
 }
 
+/* Variante resserrée de /enregistrer : le bouton d'envoi doit tenir dans la
+   hauteur utile du navigateur d'Instagram (≈ 520 px, menu compris). */
+.pageCompact {
+  gap: var(--space-2);
+  padding-top: var(--space-1);
+  padding-bottom: var(--space-4);
+}
+
+.cardCompact {
+  gap: var(--space-2);
+  padding: var(--space-3);
+}
+
+.titleCompact {
+  font-size: var(--font-size-base);
+  line-height: 1.25;
+}
+
+.fieldNote {
+  font-weight: var(--font-weight-regular);
+  color: var(--color-text-muted);
+}
+
+.formCompact {
+  gap: var(--space-2);
+}
+
+/* Récap des pronos du panier sur /enregistrer. */
+.recap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-text-primary);
+}
+
+.recap li::before {
+  content: "✓ ";
+  color: var(--color-accent-rest);
+}
+
 .form {
   display: flex;
   flex-direction: column;

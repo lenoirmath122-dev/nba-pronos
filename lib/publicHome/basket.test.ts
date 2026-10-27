@@ -53,3 +53,22 @@ describe("isValidMargin", () => {
     expect([0, 1, 50, 51, 2.5, NaN].map(isValidMargin)).toEqual([false, true, true, false, false, false]);
   });
 });
+
+describe("parseBasket, champs d'affichage", () => {
+  const base = { matchId: "m1", competitionId: "c", winnerTeamId: "h", margin: 7, addedAt: 1 };
+
+  it("lit un panier enregistré avant l'ajout des noms", () => {
+    expect(parseBasket(JSON.stringify([base]))).toEqual([base]);
+  });
+
+  it("garde les noms et l'heure du match", () => {
+    const full = { ...base, winnerName: "Knicks", opponentName: "Celtics", scheduledAt: "2026-10-28T00:00:00Z" };
+    expect(parseBasket(JSON.stringify([full]))).toEqual([full]);
+  });
+
+  it("écarte un champ d'affichage invalide sans perdre le prono", () => {
+    const bad = { ...base, winnerName: 42, opponentName: "", scheduledAt: "pas une date" };
+    expect(parseBasket(JSON.stringify([bad]))).toEqual([base]);
+  });
+});
+
