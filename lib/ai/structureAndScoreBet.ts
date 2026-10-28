@@ -829,8 +829,8 @@ export async function structureAndScoreBet(
    *  structureSuperlativeBet.ts. MATCH uniquement, même limite que les
    *  autres branches. Appelée UNIQUEMENT quand SUPERLATIVE_KEYWORD_REGEX
    *  matche (cf. try ci-dessous). */
-  async function handleSuperlativeBet(teamNames: [string, string] | null): Promise<void> {
-    const structuration = await structureSuperlativeBet(description, teamNames);
+  async function handleSuperlativeBet(teamNames: [string, string] | null, rosters: KnownRosters | null): Promise<void> {
+    const structuration = await structureSuperlativeBet(description, teamNames, rosters);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "SUPERLATIVE") {
       await markNotCalculable(aiFailureReason(structuration, "SUPERLATIVE"), structuration);
       return;
@@ -969,8 +969,8 @@ export async function structureAndScoreBet(
    *  25/08/2026, GAPS_OUVERTS.md) -- cf. structureLastBasketBet.ts. MATCH
    *  uniquement, même limite que les autres branches. Appelée UNIQUEMENT
    *  quand LAST_BASKET_KEYWORD_REGEX matche (cf. try ci-dessous). */
-  async function handleLastBasketBet(teamNames: [string, string] | null): Promise<void> {
-    const structuration = await structureLastBasketBet(description, teamNames);
+  async function handleLastBasketBet(teamNames: [string, string] | null, rosters: KnownRosters | null): Promise<void> {
+    const structuration = await structureLastBasketBet(description, teamNames, rosters);
     if (!structuration || !structuration.calculable || structuration.bet_subject !== "LAST_BASKET" || !structuration.player) {
       await markNotCalculable(aiFailureReason(structuration, "LAST_BASKET"), structuration);
       return;
@@ -1024,8 +1024,8 @@ export async function structureAndScoreBet(
    *  structureBlockOnPlayerBet.ts. MATCH uniquement, même limite que les
    *  autres branches. Appelée UNIQUEMENT quand BLOCK_ON_PLAYER_KEYWORD_REGEX
    *  matche (cf. try ci-dessous). */
-  async function handleBlockOnPlayerBet(teamNames: [string, string] | null): Promise<void> {
-    const structuration = await structureBlockOnPlayerBet(description, teamNames);
+  async function handleBlockOnPlayerBet(teamNames: [string, string] | null, rosters: KnownRosters | null): Promise<void> {
+    const structuration = await structureBlockOnPlayerBet(description, teamNames, rosters);
     if (
       !structuration ||
       !structuration.calculable ||
@@ -1329,10 +1329,10 @@ export async function structureAndScoreBet(
         case "PERIOD": await handlePeriodBet(teamNames, rosters); return true;
         case "ROSTER_COUNT": await handleRosterCountBet(teamNames); return true;
         case "ROSTER_SPLIT": await handleRosterSplitBet(teamNames); return true;
-        case "SUPERLATIVE": await handleSuperlativeBet(teamNames); return true;
+        case "SUPERLATIVE": await handleSuperlativeBet(teamNames, rosters); return true;
         case "TECHNICAL_FOULS_COUNT": await handleTechnicalFoulsCountBet(teamNames); return true;
-        case "LAST_BASKET": await handleLastBasketBet(teamNames); return true;
-        case "BLOCK_ON_PLAYER": await handleBlockOnPlayerBet(teamNames); return true;
+        case "LAST_BASKET": await handleLastBasketBet(teamNames, rosters); return true;
+        case "BLOCK_ON_PLAYER": await handleBlockOnPlayerBet(teamNames, rosters); return true;
         case "COMBO_NESTED_OR": await handleComboNestedBet(teamNames); return true;
         case "GENERAL": return false;
       }

@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { z } from "zod";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { recordAnthropicUsage } from "./usageTracking";
+import { rosterPromptLines, PLAYER_NAME_RULE, type KnownRosters } from "./roster";
 
 // Chantier "événements granulaires" (étape 6 du plan de reprise post-audit,
 // 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de structureBet.ts, même
@@ -26,8 +27,8 @@ const BlockOnPlayerBetStructurationSchema = z.object({
     .enum(["BLOCK_ON_PLAYER"])
     .nullable()
     .describe("\"BLOCK_ON_PLAYER\" si calculable=true, sinon null."),
-  blocker: z.string().nullable().describe("Nom du joueur qui contre, exactement comme écrit dans le texte. Rempli seulement si calculable=true."),
-  victim: z.string().nullable().describe("Nom du joueur visé par le contre, exactement comme écrit dans le texte. Rempli seulement si calculable=true."),
+  blocker: z.string().nullable().describe("Nom du joueur qui contre. " + PLAYER_NAME_RULE + " Rempli seulement si calculable=true."),
+  victim: z.string().nullable().describe("Nom du joueur visé par le contre. " + PLAYER_NAME_RULE + " Rempli seulement si calculable=true."),
   reasoning: z
     .string()
     .describe("Explication TRÈS COURTE (10-15 mots), pour trace/debug admin, pas pour le joueur."),
@@ -51,9 +52,9 @@ function buildStaticSystemText(): string {
   );
 }
 
-function buildDynamicSystemText(teamNames: [string, string] | null): string {
+function buildDynamicSystemText(teamNames: [string, string] | null, rosters: KnownRosters | null): string {
   if (!teamNames) return "";
-  return `\n\nCe pari concerne un match entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**.`;
+  return `\n\nCe pari concerne un match entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**.` + rosterPromptLines(rosters);
 }
 
 /** Même contrat/patron que structureSuperlativeBet() (modèle, cache de
@@ -63,6 +64,7 @@ function buildDynamicSystemText(teamNames: [string, string] | null): string {
 export async function structureBlockOnPlayerBet(
   description: string,
   teamNames: [string, string] | null = null,
+  rosters: KnownRosters | null = null,
   model = "claude-sonnet-5",
 ): Promise<BlockOnPlayerBetStructuration | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -78,7 +80,7 @@ export async function structureBlockOnPlayerBet(
       max_tokens: 2048,
       system: [
         { type: "text", text: buildStaticSystemText(), cache_control: { type: "ephemeral" } },
-        { type: "text", text: buildDynamicSystemText(teamNames) },
+        { type: "text", text: buildDynamicSystemText(teamNames, rosters) },
       ],
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(BlockOnPlayerBetStructurationSchema) },
