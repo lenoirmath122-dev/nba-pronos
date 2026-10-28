@@ -57,6 +57,22 @@ async function getTeamRoster(supabase: SupabaseServiceClient, nbaTeamId: number)
 
 export type KnownRosters = { team1: string[]; team2: string[] };
 
+/** Lignes ROSTER du prompt dynamique, même format que structureBet.ts.
+ *  Ajouté le 28/10/2026 pour les schémas qui nomment un joueur
+ *  (superlatif, dernier panier, contre) : sans liste, « Wenbenyama » partait
+ *  tel quel au service de stats, qui ne trouvait aucun joueur. */
+export function rosterPromptLines(rosters: KnownRosters | null): string {
+  if (!rosters) return "";
+  const team1List = rosters.team1.join(", ") || "aucun trouvé";
+  const team2List = rosters.team2.join(", ") || "aucun trouvé";
+  return `\nROSTER team1 : ${team1List}.\nROSTER team2 : ${team2List}.`;
+}
+
+/** Consigne de nom de joueur partagée par ces mêmes schémas. */
+export const PLAYER_NAME_RULE =
+  "Nom du joueur corrigé vers son orthographe NBA standard (le texte peut contenir des fautes de frappe ; " +
+  "aide-toi du ROSTER s'il est fourni).";
+
 /** Effectifs connus des 2 équipes d'un match/série, à injecter dans le
  *  prompt de structuration IA (lib/ai/structureBet.ts, structurePeriodBet.ts)
  *  pour donner à Claude une donnée réelle plutôt que sa seule mémoire
