@@ -390,3 +390,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Popup hebdo : prompt rédacteur v6 (une du lundi, ton trash sans insulte perso, pas de maxime plaquée) + HISTORIQUE titres/cta des 4 dernières popups (25/10/2026) ; non essayé
 - Popup hebdo : bloc « La zone Maïno » (#251, paris rejetés + acceptés sous 5 %), mail à tous les comptes actifs (#252) ; envoi impossible, clé Resend invalide en prod (26/10/2026), chantier mis en pause
 - Entonnoir accueil : UTM (cookie pb_utm), navigateur intégré, filtre robots + hors-prod + admins, account_created côté serveur, rapport SQL ; PR feat/funnel-utm, migration non appliquée (27/10/2026)
+- Paris persos : revue des 28 paris admin, aiguillage élargi + seconde chance Haiku, question de précision, orthographe joueurs (#260 mergé), estimation IA Sonnet (#261 ouverte) ; lot 5 à faire en Opus (28/10/2026)

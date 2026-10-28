@@ -213,3 +213,18 @@
   seuil 0,5 ; combo : bornes sur une même variable = intersection (`_same_variable_intersections`). Sommes : variance
   `_player_sum_variance` (ρ sur 20 matchs). Non fait : corrélation entre joueurs/équipes, total cumulé des 2 équipes
   en « exactement », minutes/pourcentages en « exactement ».
+
+## Revue du 28/10/2026 — les 28 paris validés ou résolus par l'admin
+Cause principale : l'aiguillage par mots-clés (avant tout appel IA), pas les modèles. Classement des 17 paris à traiter :
+A routage trop étroit (6), B type absent d'un script (3), C panne stats (1), D hors modèles (5), E trop vague (2).
+- **Livré** : lot 1 aiguillage élargi + seconde chance Haiku (`suggestBetRoute.ts`, route `GENERAL>X`) ; lot 2 question
+  « Tu peux préciser ton pari ? » (`VagueBetConfirm`, retour en brouillon) ; lot 4 effectifs + correction d'orthographe dans
+  les schémas superlatif / dernier panier / contre (« Wenbenyama » ne trouvait aucun joueur) : tout dans #260, mergé.
+  Lot 3 estimation Sonnet 5.5 sans web (`estimateBetProbability.ts`, informative, jamais auto-validée) : PR #261.
+- **Reste (lot 5, Opus)** : famille B. Enchaînements de quarts-temps (« gagne Q1, Q2, perd Q3, gagne Q4 ») composables depuis
+  `QUARTER_WINNER` (attention corrélation) ; points d'UNE équipe sur une mi-temps = seul cas qui justifierait un nouveau modèle
+  (aucun kind `TEAM_POINTS` par période) ; « 5 majeur 2× plus que 5 majeur adverse » = estimation IA.
+- **Limites connues** : pari vague aiguillé vers un schéma dédié (ex. « +5 au 2e quart temps ») va toujours à l'admin ;
+  pas de réutilisation d'une estimation pour un pari identique (empreinte) ; seconde chance et estimation jamais testées
+  contre la vraie API (regarder `GENERAL>X` et `Estimation IA` dans la file admin) ; probas à 0 en intersaison (LeBron +25,
+  Brunson +15) sans garde-fou.
