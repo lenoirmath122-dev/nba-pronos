@@ -345,7 +345,11 @@ async function resolveMatchTeams(
  *  joueur visé ne joue pour aucune des 2 équipes et le joueur n'a pas encore
  *  confirmé -- RIEN n'a été écrit, submitBet() repasse le pari en brouillon
  *  et le client demande confirmation. */
-export type StructureAndScoreOutcome = { playerNotInMatch: string | null };
+export type StructureAndScoreOutcome = {
+  playerNotInMatch: string | null;
+  /** Question à poser au joueur : pari trop vague, rien n'a été écrit. */
+  vagueBet?: string | null;
+};
 
 const NOTHING_TO_CONFIRM: StructureAndScoreOutcome = { playerNotInMatch: null };
 
@@ -355,7 +359,7 @@ export async function structureAndScoreBet(
   seriesId: string,
   scope: "MATCH" | "SERIES" = "MATCH",
   matchId: string | null = null,
-  options: { confirmPlayerNotInMatch?: boolean } = {},
+  options: { confirmPlayerNotInMatch?: boolean; confirmVagueBet?: boolean } = {},
 ): Promise<StructureAndScoreOutcome> {
   const supabase = await getServerClient();
   /** Route notée dans le diagnostic ; "GENERAL>X" après une seconde chance. */
@@ -1346,9 +1350,15 @@ export async function structureAndScoreBet(
     // ci-dessus : le coût reste borné aux paris déjà en échec.
     if (structuration && !structuration.calculable) {
       const suggested = await suggestBetRoute(description);
-      if (suggested && suggested !== "GENERAL") {
-        diagnosisRoute = `GENERAL>${suggested}`;
-        await runSpecializedRoute(suggested);
+      // Pari trop vague (lot 2, même patron que p3-14) : rien n'est écrit,
+      // submitBet() repasse le pari en brouillon et le client montre la
+      // question. « Envoyer quand même » le renvoie avec confirmVagueBet.
+      if (suggested?.clarification && !options.confirmVagueBet) {
+        return { playerNotInMatch: null, vagueBet: suggested.clarification };
+      }
+      if (suggested && suggested.route !== "GENERAL") {
+        diagnosisRoute = `GENERAL>${suggested.route}`;
+        await runSpecializedRoute(suggested.route);
         return NOTHING_TO_CONFIRM;
       }
     }

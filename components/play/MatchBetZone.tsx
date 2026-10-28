@@ -10,6 +10,7 @@ import { useToast } from "@/components/ui/Toast";
 import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import { EyeIcon } from "@/components/icons/play-icons";
 import { PlayerNotInMatchConfirm } from "@/components/bets/PlayerNotInMatchConfirm";
+import { VagueBetConfirm } from "@/components/bets/VagueBetConfirm";
 import { validatedBetDialog, PENDING_ADMIN_TOAST } from "@/components/bets/validatedBetDialog";
 import { possiblePointsLabel } from "./BetBlock";
 import styles from "./MatchBetZone.module.css";
@@ -87,6 +88,7 @@ export function MatchBetZone({
   const [description, setDescription] = useState(draft?.description ?? "");
   const [error, setError] = useState<string | null>(null);
   const [notInMatch, setNotInMatch] = useState<string | null>(null);
+  const [vagueBet, setVagueBet] = useState<string | null>(null);
   const [draftBetId, setDraftBetId] = useState<string | null>(draft?.betId ?? null);
   // Soumission réussie pas encore reflétée par les données serveur : la carte
   // passe tout de suite à l'état « soumis » sans attendre le rafraîchissement.
@@ -107,7 +109,7 @@ export function MatchBetZone({
 
   useEffect(() => () => clearDirty(), [clearDirty]);
 
-  function handleSubmit(confirmPlayerNotInMatch = false) {
+  function handleSubmit(confirmPlayerNotInMatch = false, confirmVagueBet = false) {
     setError(null);
     startTransition(async () => {
       const payload = {
@@ -117,14 +119,21 @@ export function MatchBetZone({
         matchId,
         description,
       };
-      const result = await submitBet({ ...payload, confirmPlayerNotInMatch });
+      const result = await submitBet({ ...payload, confirmPlayerNotInMatch, confirmVagueBet });
       if (result.success && "playerNotInMatch" in result) {
         clearDirty();
         setDraftBetId(result.betId);
         setNotInMatch(result.playerNotInMatch);
         return;
       }
+      if (result.success && "vagueBet" in result) {
+        clearDirty();
+        setDraftBetId(result.betId);
+        setVagueBet(result.vagueBet);
+        return;
+      }
       setNotInMatch(null);
+      setVagueBet(null);
       if (!result.success) {
         setError(result.error);
         return;
@@ -182,9 +191,21 @@ export function MatchBetZone({
             isPending={isPending}
             onEdit={() => {
               setNotInMatch(null);
+              setVagueBet(null);
               document.getElementById(fieldId)?.focus();
             }}
             onConfirm={() => handleSubmit(true)}
+          />
+        ) : vagueBet ? (
+          <VagueBetConfirm
+            question={vagueBet}
+            isPending={isPending}
+            onEdit={() => {
+              setNotInMatch(null);
+              setVagueBet(null);
+              document.getElementById(fieldId)?.focus();
+            }}
+            onConfirm={() => handleSubmit(false, true)}
           />
         ) : (
           <button type="button" className={styles.primary} onClick={() => handleSubmit()} disabled={isPending || empty}>

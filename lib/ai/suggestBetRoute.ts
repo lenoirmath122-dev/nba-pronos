@@ -27,7 +27,16 @@ const SuggestedRouteSchema = z.object({
       "GENERAL",
     ])
     .describe("Famille du pari, GENERAL si aucune autre ne correspond clairement."),
+  clarification: z
+    .string()
+    .nullable()
+    .describe(
+      "Question COURTE au joueur, en le tutoyant, quand le pari est trop vague pour être tranché (ex. aucun " +
+        "joueur ni équipe nommé alors que la statistique l'exige). null sinon.",
+    ),
 });
+
+export type SuggestedRoute = { route: BetRoutingDecision; clarification: string | null };
 
 const SYSTEM_TEXT =
   "Tu classes des paris personnalisés NBA écrits en texte libre (fautes de frappe fréquentes) dans UNE famille :\n" +
@@ -42,14 +51,20 @@ const SYSTEM_TEXT =
   "- COMBO_NESTED_OR : plusieurs conditions mêlant \"et\" et \"ou\".\n" +
   "- GENERAL : tout le reste (un joueur nommé, une équipe sur le match entier, le score total, une " +
   "comparaison simple, ou un pari hors statistiques comme une blessure).\n" +
-  "En cas de doute, réponds GENERAL.";
+  "En cas de doute, réponds GENERAL.\n\n" +
+  "clarification : remplis-la SEULEMENT si on ne peut pas savoir sur quoi porte le pari, par exemple " +
+  "\"Plus de 10 rebonds\" (quel joueur ou quelle équipe ?) -> \"Qui doit prendre plus de 10 rebonds : un " +
+  "joueur ou une équipe ?\". Jamais pour un pari clair mais hors statistiques (blessure, spectateur, homme du " +
+  "match) : celui-là est traité à la main, null.";
 
-/** null = IA indisponible ou en erreur : l'appelant garde le non-calcul déjà
+/** `clarification` non nul = pari trop vague, à faire préciser au joueur
+ *  avant tout envoi en file admin (lot 2 de la revue du 28/10/2026).
+ *  null = IA indisponible ou en erreur : l'appelant garde le non-calcul déjà
  *  décidé, comme pour toute autre panne IA. */
 export async function suggestBetRoute(
   description: string,
   model = "claude-haiku-5-5",
-): Promise<BetRoutingDecision | null> {
+): Promise<SuggestedRoute | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
     return null;
@@ -66,7 +81,10 @@ export async function suggestBetRoute(
       output_config: { format: zodOutputFormat(SuggestedRouteSchema) },
     });
     await recordAnthropicUsage("suggestBetRoute", model, response.usage);
-    return response.parsed_output?.route ?? null;
+    const parsed = response.parsed_output;
+    if (!parsed) return null;
+    const clarification = parsed.clarification?.trim() || null;
+    return { route: parsed.route, clarification };
   } catch {
     return null;
   }
