@@ -2,6 +2,7 @@ import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
 import { suggestBetRoute } from "./suggestBetRoute";
+import { estimateBetProbability } from "./estimateBetProbability";
 import { structurePeriodBet } from "./structurePeriodBet";
 import { structureRosterSplitBet } from "./structureRosterSplitBet";
 import { structureRosterCountBet } from "./structureRosterCountBet";
@@ -364,6 +365,17 @@ export async function structureAndScoreBet(
   const supabase = await getServerClient();
   /** Route notée dans le diagnostic ; "GENERAL>X" après une seconde chance. */
   let diagnosisRoute: string = routeBetDescription(description);
+  /** Posé quand le contexte du match est résolu ; null = pas d'estimation IA. */
+  let estimateContext: { teamNames: [string, string] | null; rosters: KnownRosters | null; scope: "MATCH" | "SERIES" } | null = null;
+  /** Motifs où une estimation a du sens : le pari est compris mais hors des modèles. */
+  const ESTIMATE_ELIGIBLE_REASONS = new Set<NotCalculableReason>([
+    "UNKNOWN_TYPE",
+    "ROUTE_MISMATCH",
+    "SERIES_SCOPE_UNSUPPORTED",
+    "UNSUPPORTED_STAT",
+    "AI_INCOMPLETE",
+    "TEAM_UNRESOLVED",
+  ]);
 
   /** Motif quand l'IA n'a pas produit une structuration exploitable pour la
    *  famille `expected` (null = schéma général, qui accepte tout bet_subject).
@@ -399,6 +411,23 @@ export async function structureAndScoreBet(
    *  période sans le mot 'temps'" ; branche `else` de la RPC étendue par
    *  la migration 20260906110000). */
   async function writeNotCalculable(reason: NotCalculableReason, proba: number | null, ai?: AiTrace): Promise<void> {
+    // Lot 3 (28/10/2026) : aucun script ne sait calculer ce pari -> Sonnet
+    // estime une proba INFORMATIVE pour l'admin. Jamais sur une panne
+    // (opérationnel) ni quand une estimation existe déjà ; le pari reste
+    // non calculable, donc jamais auto-validé sur cette base.
+    if (proba === null && ESTIMATE_ELIGIBLE_REASONS.has(reason) && estimateContext) {
+      try {
+        if ((await getTodaySpendUsd()) < DAILY_COST_CAP_USD) {
+          const estimate = await estimateBetProbability(description, estimateContext);
+          if (estimate) {
+            proba = estimate.proba;
+            ai = { bet_subject: ai?.bet_subject ?? null, reasoning: `Estimation IA (Sonnet, sans web) : ${estimate.reasoning}` };
+          }
+        }
+      } catch {
+        // Best-effort : sans estimation, le pari part en file admin comme avant.
+      }
+    }
     try {
       const params = {
         p_bet_id: betId,
@@ -1300,6 +1329,7 @@ export async function structureAndScoreBet(
     // fautes techniques, contre-sur-joueur, combo) ne font aujourd'hui
     // aucune vérification de ce type, rien à y brancher pour l'instant.
     const rosters = await resolveKnownRostersForSeries(supabase, seriesId);
+    estimateContext = { teamNames, rosters, scope };
 
     // Routage PERIOD par mot-clé (24/08/2026, GAPS_OUVERTS.md) -- PAS un 7e
     // bet_subject dans le schéma structureBet.ts : testé en conditions
