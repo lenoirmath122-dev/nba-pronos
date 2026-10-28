@@ -11,7 +11,7 @@
   bloque merges / reset / écritures prod ; vérifier `supabase migration list` après un merge avec migration ; CLI
   `supabase` absente de cette machine (requêtes prod en lecture via le MCP Supabase) ; `tsc` signale des erreurs connues
   dans `Cadrage/docs/reel-v2-pack` (Remotion), sans rapport.
-- **Autres chantiers** (Profil & badges, entonnoir UTM, popup hebdo, mail Resend) : état dans `JOURNAL_SESSIONS.md` (5 dernières
+- **Autres chantiers** (Profil & badges, entonnoir UTM, popup hebdo) : état dans `JOURNAL_SESSIONS.md` (5 dernières
   lignes) et `GAPS_OUVERTS.md`.
 - **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; « Hauser ou Pritchard » ; pari Memphis `f4f3ebd6…` à rejouer
   (coût IA, demander d'abord) ; Booker « 40 % au tir en 1re mi-temps » = `STATS_NO_PREDICTION` ; poller VM (dryRun → réel) ;
