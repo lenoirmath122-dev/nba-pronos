@@ -1,6 +1,7 @@
 import "server-only";
 import { getServerClient } from "@/lib/supabase/server";
 import { structureBet } from "./structureBet";
+import { suggestBetRoute } from "./suggestBetRoute";
 import { structurePeriodBet } from "./structurePeriodBet";
 import { structureRosterSplitBet } from "./structureRosterSplitBet";
 import { structureRosterCountBet } from "./structureRosterCountBet";
@@ -132,9 +133,14 @@ async function resolveKnownRostersForSeries(
  *  volontairement laissé de côté) et exclut explicitement "quart de
  *  finale" (vocabulaire NBA Cup, aucun rapport avec un quart-temps) --
  *  validé sans régression sur les 167 paris réels de
- *  types_de_paris_playoffs_2026.md avant d'être élargi. */
+ *  types_de_paris_playoffs_2026.md avant d'être élargi.
+ *
+ *  Fautes de frappe (28/10/2026, revue des paris passés par l'admin) :
+ *  "mi-tempw" (dernière lettre libre) et "à la li temps" (1re lettre libre
+ *  après "la") sont deux vrais paris partis vers le schéma général. Les
+ *  autres variantes sont rattrapées par la seconde chance (suggestBetRoute.ts). */
 const PERIOD_KEYWORD_REGEX =
-  /quart[s]?[\s-]?temps|mi[e]?[\s-]?temps|\bqt\d*\b|\bmt\d*\b|\b(?:\d{1,2}\s*(?:e|è|er|ère|ème|eme|éme)?|premier|première|deuxi[eè]me|troisi[eè]me|quatri[eè]me|dernier|derni[eè]re)\s+quarts?\b(?!\s+de\s+finale)/i;
+  /quart[s]?[\s-]?temps|mi[e]?[\s-]?temp[a-z]?\b|\bla\s+[a-z]i[\s-]?temps\b|\bqt\d*\b|\bmt\d*\b|\b(?:\d{1,2}\s*(?:e|è|er|ère|ème|eme|éme)?|premier|première|deuxi[eè]me|troisi[eè]me|quatri[eè]me|dernier|derni[eè]re)\s+quarts?\b(?!\s+de\s+finale)/i;
 
 /** Détecte un texte "de forme" pari 5 majeur/banc AVANT tout appel Claude
  *  (24/08/2026, GAPS_OUVERTS.md, chantier "5 majeur/banc") -- même
@@ -163,9 +169,14 @@ const ROSTER_SPLIT_KEYWORD_REGEX = /cinq\s*majeur|5\s*majeur|titulaires?|\bbancs
  *  <équipe>" est un comptage "au moins 1 joueur de cette équipe" (scope =
  *  équipe, min_players=1) -- ancrée en début de texte pour ne pas capter un
  *  joueur nommé en apposition ("Ja Morant, un joueur de Memphis, marque...")
- *  ni "plus de points que n'importe quel joueur de Memphis". */
+ *  ni "plus de points que n'importe quel joueur de Memphis".
+ *  Ajouts du 28/10/2026 (revue des paris passés par l'admin), mêmes
+ *  précautions : un texte qui COMMENCE par un nombre (chiffres ou lettres)
+ *  de joueurs ("Trois joueurs en double-double", "Deux joueurs des Suns
+ *  marquent..."), "N joueurs ou plus" n'importe où, et un texte qui COMMENCE
+ *  par "aucun joueur" (count_relation=FEWER_THAN, min_players=1). */
 const ROSTER_COUNT_KEYWORD_REGEX =
-  /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b|^\s*(?:un|n['’]importe quel)\s+joueur\s+(?:de|du|des|d['’])\s*\S/i;
+  /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b|^\s*(?:un|n['’]importe quel)\s+joueur\s+(?:de|du|des|d['’])\s*\S|^\s*(?:\d{1,2}|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+joueurs?\b|\b(?:\d{1,2}|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+joueurs?\s+ou\s+plus\b|^\s*aucun\s+joueur\b/i;
 
 /** Détecte un texte "de forme" superlatif implicite ("meilleur marqueur")
  *  AVANT tout appel Claude (étape 4 du plan de reprise post-audit,
@@ -347,6 +358,8 @@ export async function structureAndScoreBet(
   options: { confirmPlayerNotInMatch?: boolean } = {},
 ): Promise<StructureAndScoreOutcome> {
   const supabase = await getServerClient();
+  /** Route notée dans le diagnostic ; "GENERAL>X" après une seconde chance. */
+  let diagnosisRoute: string = routeBetDescription(description);
 
   /** Motif quand l'IA n'a pas produit une structuration exploitable pour la
    *  famille `expected` (null = schéma général, qui accepte tout bet_subject).
@@ -408,7 +421,7 @@ export async function structureAndScoreBet(
       const diagnosis = buildCalculabilityDiagnosis({
         reason,
         rawText: description,
-        route: routeBetDescription(description),
+        route: diagnosisRoute,
         ai,
       });
       const first = await supabase.rpc("update_bet_structuration", { ...params, p_calculability_diagnosis: diagnosis });
@@ -1306,41 +1319,39 @@ export async function structureAndScoreBet(
     // handler dédié (schéma structureBet.ts déjà au plafond de complexité
     // API, "compiled grammar is too large" sinon) -- jamais deux appels,
     // jamais de repli automatique de l'un vers l'autre.
-    const routing = routeBetDescription(description);
-    if (routing === "PERIOD") {
-      await handlePeriodBet(teamNames, rosters);
-      return NOTHING_TO_CONFIRM;
+    /** false = route GENERAL, rien n'a été appelé. */
+    async function runSpecializedRoute(route: BetRoutingDecision): Promise<boolean> {
+      switch (route) {
+        case "PERIOD": await handlePeriodBet(teamNames, rosters); return true;
+        case "ROSTER_COUNT": await handleRosterCountBet(teamNames); return true;
+        case "ROSTER_SPLIT": await handleRosterSplitBet(teamNames); return true;
+        case "SUPERLATIVE": await handleSuperlativeBet(teamNames); return true;
+        case "TECHNICAL_FOULS_COUNT": await handleTechnicalFoulsCountBet(teamNames); return true;
+        case "LAST_BASKET": await handleLastBasketBet(teamNames); return true;
+        case "BLOCK_ON_PLAYER": await handleBlockOnPlayerBet(teamNames); return true;
+        case "COMBO_NESTED_OR": await handleComboNestedBet(teamNames); return true;
+        case "GENERAL": return false;
+      }
     }
-    if (routing === "ROSTER_COUNT") {
-      await handleRosterCountBet(teamNames);
-      return NOTHING_TO_CONFIRM;
-    }
-    if (routing === "ROSTER_SPLIT") {
-      await handleRosterSplitBet(teamNames);
-      return NOTHING_TO_CONFIRM;
-    }
-    if (routing === "SUPERLATIVE") {
-      await handleSuperlativeBet(teamNames);
-      return NOTHING_TO_CONFIRM;
-    }
-    if (routing === "TECHNICAL_FOULS_COUNT") {
-      await handleTechnicalFoulsCountBet(teamNames);
-      return NOTHING_TO_CONFIRM;
-    }
-    if (routing === "LAST_BASKET") {
-      await handleLastBasketBet(teamNames);
-      return NOTHING_TO_CONFIRM;
-    }
-    if (routing === "BLOCK_ON_PLAYER") {
-      await handleBlockOnPlayerBet(teamNames);
-      return NOTHING_TO_CONFIRM;
-    }
-    if (routing === "COMBO_NESTED_OR") {
-      await handleComboNestedBet(teamNames);
+
+    if (await runSpecializedRoute(routeBetDescription(description))) {
       return NOTHING_TO_CONFIRM;
     }
 
     const structuration = await structureBet(description, teamNames, undefined, rosters);
+    // Seconde chance (28/10/2026, suggestBetRoute.ts) : le schéma général
+    // a tranché "non calculable" -- peut-être un pari d'une famille dédiée
+    // dont la tournure a échappé aux mots-clés. Un seul essai, seulement sur
+    // ce motif (pas sur une panne IA). Exception assumée au "jamais de repli"
+    // ci-dessus : le coût reste borné aux paris déjà en échec.
+    if (structuration && !structuration.calculable) {
+      const suggested = await suggestBetRoute(description);
+      if (suggested && suggested !== "GENERAL") {
+        diagnosisRoute = `GENERAL>${suggested}`;
+        await runSpecializedRoute(suggested);
+        return NOTHING_TO_CONFIRM;
+      }
+    }
     if (!structuration || !structuration.calculable || !structuration.bet_subject) {
       await markNotCalculable(aiFailureReason(structuration, null), structuration);
       return NOTHING_TO_CONFIRM;

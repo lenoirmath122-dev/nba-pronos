@@ -83,6 +83,28 @@ describe("routeBetDescription — « un joueur de <équipe> » (correctif Memphi
   });
 });
 
+describe("routeBetDescription — paris réels passés par l'admin (revue du 28/10/2026)", () => {
+  it.each([
+    ["Trois joueurs en double double", "ROSTER_COUNT"],
+    ["Aucun joueur ne réalise de triple double", "ROSTER_COUNT"],
+    ["3 joueur ou plus des celtics a minimum 10 point", "ROSTER_COUNT"],
+    ["Deux joueurs des Suns mettent plus de 15 points.", "ROSTER_COUNT"],
+    ["SAS marque plus de 50 pts à la mi-tempw", "PERIOD"],
+    ["Les jazz se prenne 10 points a la li temps", "PERIOD"],
+  ])("%s -> %s", (description, expected) => {
+    expect(routeBetDescription(description)).toBe(expected);
+  });
+
+  it.each([
+    // Nombre de joueurs en milieu de phrase sans "ou plus" : pas capté.
+    "Les Knicks gagnent avec deux joueurs à plus de 30 points.",
+    "Jalen Brunson marque plus de 30 points.",
+    "Les Pistons gagnent de plus de 10 points.",
+  ])("%s -> reste hors ROSTER_COUNT", (description) => {
+    expect(routeBetDescription(description)).not.toBe("ROSTER_COUNT");
+  });
+});
+
 describe("routeBetDescription — GENERAL par défaut", () => {
   it("aucun mot-clé reconnu -> GENERAL (repli vers le schéma partagé structureBet.ts)", () => {
     expect(routeBetDescription("Paolo Banchero réalise un triple-double.")).toBe("GENERAL");
