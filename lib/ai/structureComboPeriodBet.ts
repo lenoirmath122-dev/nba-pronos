@@ -41,8 +41,8 @@ const ComboPeriodBetStructurationSchema = z.object({
     .boolean()
     .describe(
       "true si ce texte est un ET de plusieurs conditions dont AU MOINS UNE porte sur une période (quarts-temps " +
-        "remportés ou remporte un quart/une mi-temps) et une autre sur le match entier. false sinon -- ne force " +
-        "jamais une extraction incertaine.",
+        "remportés ou remporte un quart/une mi-temps) et une autre sur le match entier OU sur une autre période " +
+        "(enchaînement de quarts-temps). false sinon -- ne force jamais une extraction incertaine.",
     ),
   bet_subject: z.enum(["COMBO"]).nullable().describe("\"COMBO\" si calculable=true, sinon null."),
   conditions: z
@@ -62,13 +62,18 @@ function buildStaticSystemText(): string {
     "pour un calcul de probabilité automatique. On t'a déjà présélectionné ce texte comme un pari COMBO (ET de " +
     "plusieurs conditions) mêlant une condition de PÉRIODE (quarts-temps remportés, ou remporte un quart-temps/" +
     "une mi-temps) et au moins une autre condition (stat d'équipe ou de joueur sur le match entier, vainqueur du " +
-    "match). TOUJOURS pour UN match précis. Confirme et structure, ou rejette (calculable=false).\n\n" +
+    "match, ou résultat d'une AUTRE période). TOUJOURS pour UN match précis. Confirme et structure, ou rejette " +
+    "(calculable=false).\n\n" +
     "Exemples calculable=true : \"Les Knicks tirent à plus de 32% à 3 points et remportent les 4 quarts-temps\" -> " +
     "2 groupes : [team Knicks, stats=[\"fg3\"], threshold=0.32, OVER, inclusive=false], [team Knicks, " +
     "stats=[\"qwon\"], threshold=4, OVER, inclusive=true] (« les 4 » = au moins 4). \"Boston remporte le 1er " +
     "quart-temps et le match\" -> [team Boston stats=[\"win_q1\"] threshold=null OVER], [team Boston " +
     "stats=[\"win\"] threshold=null OVER]. \"Denver gagne au moins 2 quarts-temps et Jokic fait un triple-double\" " +
-    "-> [qwon threshold=2 OVER inclusive=true], [PLAYER Jokic stats=[\"td\"] threshold=null].\n\n" +
+    "-> [qwon threshold=2 OVER inclusive=true], [PLAYER Jokic stats=[\"td\"] threshold=null]. Enchaînement de " +
+    "quarts-temps, un groupe par quart : \"Minnesota gagne les deux premiers quarts-temps, perd le troisième mais " +
+    "gagne le dernier\" -> [Minnesota win_q1 OVER], [Minnesota win_q2 OVER], [Minnesota win_q3 UNDER], [Minnesota " +
+    "win_q4 OVER] (perd = UNDER, threshold=null). \"Milwaukee ne gagne que le premier quart-temps\" -> win_q1 OVER, " +
+    "puis win_q2, win_q3, win_q4 UNDER (« ne gagne que » = gagne celui-là ET aucun autre).\n\n" +
     "Exemples calculable=false : un pari sans aucune condition de période ; \"Minnesota mène à la mi-temps et " +
     "Denver gagne le match\" (un seul résultat « mène puis perd », traité ailleurs) ; une formulation vague. " +
     "N'invente jamais une condition absente du texte ; ne structure jamais seulement une moitié du pari."
