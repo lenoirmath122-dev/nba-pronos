@@ -30,8 +30,9 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - **Lot 1 clos (21/10/2026)**. Reste : Lots 2 à 4 (S6 + L8, puis play-by-play, puis séries) avant la bêta Cup du 04/12 / playoffs d'avril.
 - **À part, conversation dédiée** : instabilité des probas (3 valeurs pour 20
   appels identiques, avec ou sans cache).
-- **Revue des 28 paris traités par l'admin (28/10/2026)** : lots 1, 2, 4 mergés (#260), lot 3 en PR (#261). Détail et
-  reste (lot 5, famille B) dans `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`, section « Revue du 28/10/2026 ».
+- **Revue des 28 paris traités par l'admin (28/10/2026)** : lots 1 à 4 mergés (#260, #261), lot 5 réduit à
+  l'aiguillage (#263). Reste : premier essai réel de `GENERAL>X`, question de précision, Estimation IA et combos de
+  quarts. Détail dans `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`, section « Revue du 28/10/2026 ».
 - Après le plan A : outil admin pour les paris non calculables (non cadré).
 
 ### Communication et Match du jour — [`chantiers/CHANTIER_COMMUNICATION.md`](chantiers/CHANTIER_COMMUNICATION.md)

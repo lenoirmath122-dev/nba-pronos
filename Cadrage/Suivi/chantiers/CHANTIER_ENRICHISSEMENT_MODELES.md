@@ -224,6 +224,10 @@ A routage trop étroit (6), B type absent d'un script (3), C panne stats (1), D 
 - **Reste (lot 5, Opus)** : famille B. Enchaînements de quarts-temps (« gagne Q1, Q2, perd Q3, gagne Q4 ») composables depuis
   `QUARTER_WINNER` (attention corrélation) ; points d'UNE équipe sur une mi-temps = seul cas qui justifierait un nouveau modèle
   (aucun kind `TEAM_POINTS` par période) ; « 5 majeur 2× plus que 5 majeur adverse » = estimation IA.
+- **Lot 5 fait (28/10, #263), réduit à l'aiguillage** après mesure en prod (106 paris : 2 enchaînements de quarts,
+  0 pari points d'équipe par période, 1 « 5 majeur 2× ») : enchaînement de quarts précis → `mixed_combo` →
+  `structureComboPeriodBet` (jambes `win_q1..q4` OVER/UNDER, déjà calculées et résolues). Pas de kind `TEAM_POINTS`.
+  Jambes supposées indépendantes (proba d'un enchaînement probablement un peu sous-estimée).
 - **Limites connues** : pari vague aiguillé vers un schéma dédié (ex. « +5 au 2e quart temps ») va toujours à l'admin ;
   pas de réutilisation d'une estimation pour un pari identique (empreinte) ; seconde chance et estimation jamais testées
   contre la vraie API (regarder `GENERAL>X` et `Estimation IA` dans la file admin) ; probas à 0 en intersaison (LeBron +25,
