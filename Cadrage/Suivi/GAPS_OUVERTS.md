@@ -56,11 +56,16 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   du soir, `heartbeat`, `snapshot-leaderboard`, `reminder-bracket` (20/10/2026,
   workflows GitHub supprimés ; plus d'issue `cron-failure` automatique pour
   ces trois-là). Les autres workflows planifiés (`sync-*`, watchdogs,
-  health-check) n'ont pas été réexaminés.
-- Poller des résultats sur la VM : PR C mergée (#149) ; à confirmer : VM à
-  jour, 2 soirs en dryRun, passage en réel, puis activer le watchdog.
-- Import des box scores sur la VM : observer une semaine à la reprise,
-  vérifier la facturation IPv4, la correspondance des tricodes.
+  health-check) n'ont pas été réexaminés. Au 28/10, `daily-match-draw.yml`,
+  `recaps.yml` et `reminder-matches.yml` sont encore actifs côté GitHub (secours ?).
+- **Constat prod du 28/10/2026 : la chaîne tourne seule.** Poller VM en écriture
+  réelle (c'est lui qui pose `FINISHED`, Highlightly lui laisse le match), watchdog
+  du poller actif et vert, import des box scores sans échec depuis le 18/10 (56 matchs
+  de saison), tous les paris des matchs finis résolus, tricodes alignés sur les 30
+  équipes, calendrier Highlightly complet sur 10-27/11 (5 dates sondées).
+- Reste : vérifier la facturation de l'IPv4 de la VM (SSH par `--tunnel-through-iap`) ;
+  983 `stats_box_scores.pf` vides ; 38 matchs de compétitions de test bloqués en
+  `SCHEDULED` (à archiver).
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 
 ### Accueil jouable et pronos invités — [`chantiers/CHANTIER_ACCUEIL_INVITES.md`](chantiers/CHANTIER_ACCUEIL_INVITES.md)

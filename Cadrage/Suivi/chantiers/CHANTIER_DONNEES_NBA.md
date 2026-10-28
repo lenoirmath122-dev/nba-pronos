@@ -6,6 +6,13 @@
 > prochaine étape restent dans `GAPS_OUVERTS.md` ; quand un point est
 > traité, le retirer ici ET là-bas.
 
+- **État constaté en prod le 28/10/2026** (les points datés plus bas sont
+  l'historique) : poller VM passé en réel (les `FINISHED` viennent de lui,
+  `sync-results` Highlightly les lui laisse), `watchdog-results-poll.yml` actif
+  et vert, import des box scores réussi à chaque passage depuis le 18/10, tous
+  les paris des matchs finis résolus, `teams.abbreviation` = `stats_equipes.tricode`
+  pour les 30 équipes. Reste : facturation IPv4 de la VM, `pf` vides.
+
 - **Crons GitHub Actions systématiquement en retard (09/10/2026)** : aucun
   récap reçu le 09/10 à 10h. Constat : `recaps.yml` (prévu 8h/9h UTC) a tourné
   vers 15h UTC les 06, 07 et 08/10 (la route répond « trop tard dans la
@@ -117,7 +124,8 @@
   `entity_mappings` accepte déjà plusieurs sources (nouveau `source_type`).
   *Gains* : une seule source (fin de la correspondance Highlightly ↔
   `nba_api`, tricodes compris), plus de quota ni de calendrier Highlightly
-  incomplet (vide du 10/11 au 27/11 au sondage du 06/10), résultats plus
+  incomplet (vide du 10/11 au 27/11 au sondage du 06/10, comblé au sondage du
+  28/10 : 5 à 12 matchs NBA sur les 5 dates testées), résultats plus
   rapides. *Risques* : `nba_api` non officielle, sans garantie, endpoints
   modifiables ou bloquables sans préavis ; blocage par IP déjà constaté
   (GitHub, Cloud Run) et une seule VM = point de défaillance unique pour
