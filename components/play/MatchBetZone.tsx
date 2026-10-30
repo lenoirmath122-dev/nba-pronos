@@ -244,6 +244,10 @@ export function MatchBetZone({
       : local?.points != null
         ? `${local.points} pts en jeu`
         : null;
+    const reason =
+      serverSubmitted && ["WON", "LOST", "CANCELLED"].includes(serverSubmitted.status)
+        ? serverSubmitted.resolutionReason
+        : null;
     const statusClass =
       status.kind === "win" ? styles.tagWin : status.kind === "loss" ? styles.tagLoss : styles.tagDashed;
 
@@ -255,6 +259,7 @@ export function MatchBetZone({
         </div>
         <div className={styles.submitted}>
           <p className={styles.statement}>{statement}</p>
+          {reason && <p className={styles.reason}>{reason}</p>}
           <div className={styles.tags}>
             {levelTag && <span className={styles.tag}>{levelTag}</span>}
             {points && <span className={styles.tag}>{points}</span>}
