@@ -54,7 +54,12 @@ export function markChatChannelSeen(channel: ChatChannelKey, at: string) {
   const previous = seenSnapshot?.[channel];
   if (previous && Date.parse(previous) >= Date.parse(at)) return;
   mergeSeen({ [channel]: at });
-  void getBrowserClient().rpc("mark_chat_channel_read", { p_channel: channel });
+  // Le builder supabase-js est paresseux : sans .then() la requête ne part pas.
+  void getBrowserClient()
+    .rpc("mark_chat_channel_read", { p_channel: channel })
+    .then(({ error }) => {
+      if (error) console.error("mark_chat_channel_read", error.message);
+    });
 }
 
 type ChatReadRow = { channel: string; last_read_at: string };

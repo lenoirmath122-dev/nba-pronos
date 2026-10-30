@@ -63,8 +63,11 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   du poller actif et vert, import des box scores sans échec depuis le 18/10 (56 matchs
   de saison), tous les paris des matchs finis résolus, tricodes alignés sur les 30
   équipes, calendrier Highlightly complet sur 10-27/11 (5 dates sondées).
-- Reste : vérifier la facturation de l'IPv4 de la VM (SSH par `--tunnel-through-iap`) ;
-  983 `stats_box_scores.pf` vides ; 38 matchs de compétitions de test bloqués en
+- **Facturation GCP vérifiée le 28/10/2026** : aucune SKU d'IP externe (IPv4 non facturée),
+  total d'octobre 0,00 € (coût 2,18 € couvert par des remises 1,37 € + crédits promo 0,81 €).
+  Le crédit « Free Trial » (261,62 € restants) **expire le 20/11/2026** : revérifier la
+  facture début décembre (ce qu'il couvrait, ~0,8 €/mois, pourrait devenir payant).
+- Reste : 983 `stats_box_scores.pf` vides ; 38 matchs de compétitions de test bloqués en
   `SCHEDULED` (à archiver).
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 

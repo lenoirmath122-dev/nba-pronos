@@ -11,7 +11,9 @@
   `sync-results` Highlightly les lui laisse), `watchdog-results-poll.yml` actif
   et vert, import des box scores réussi à chaque passage depuis le 18/10, tous
   les paris des matchs finis résolus, `teams.abbreviation` = `stats_equipes.tricode`
-  pour les 30 équipes. Reste : facturation IPv4 de la VM, `pf` vides.
+  pour les 30 équipes. IPv4 non facturée (aucune SKU d'IP externe, total
+  d'octobre 0,00 €) ; crédit Free Trial à échéance le 20/11/2026, facture à
+  revérifier début décembre. Reste : `pf` vides.
 
 - **Crons GitHub Actions systématiquement en retard (09/10/2026)** : aucun
   récap reçu le 09/10 à 10h. Constat : `recaps.yml` (prévu 8h/9h UTC) a tourné
