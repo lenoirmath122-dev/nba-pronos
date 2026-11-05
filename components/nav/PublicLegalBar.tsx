@@ -8,13 +8,13 @@ import styles from "./PublicNav.module.css";
 export function PublicLegalBar() {
   return (
     <div className={styles.legalBar} aria-label="Informations légales">
-      <Link href="/mentions-legales" className={styles.legalLink}>
+      <Link href="/mentions-legales" prefetch={false} className={styles.legalLink}>
         Mentions légales
       </Link>
-      <Link href="/confidentialite" className={styles.legalLink}>
+      <Link href="/confidentialite" prefetch={false} className={styles.legalLink}>
         Confidentialité
       </Link>
-      <Link href="/cgu" className={styles.legalLink}>
+      <Link href="/cgu" prefetch={false} className={styles.legalLink}>
         CGU
       </Link>
     </div>

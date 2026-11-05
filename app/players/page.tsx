@@ -35,7 +35,7 @@ export default async function PlayersDirectoryPage() {
           <ul className={`${styles.list} glass-card`}>
             {players.map((player) => (
               <li key={player.userId}>
-                <Link href={`/players/${player.userId}`} className={styles.row}>
+                <Link href={`/players/${player.userId}`} prefetch={false} className={styles.row}>
                   {player.favoriteTeam ? (
                     <TeamLogo abbreviation={player.favoriteTeam.abbreviation} alt={player.favoriteTeam.name} size={28} />
                   ) : (
