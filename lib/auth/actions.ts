@@ -6,6 +6,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { checkAnonRateLimit } from "@/lib/auth/anonRateLimit";
 import { passwordPolicyError } from "@/lib/auth/passwordPolicy";
 import { trackAccountCreated } from "@/lib/funnel/record";
+import { clearThemeCookie } from "@/lib/theme/server";
 
 export type AuthFormState = { error: string } | undefined;
 
@@ -194,5 +195,6 @@ export async function requestPasswordReset(
 export async function logout() {
   const supabase = await getServerClient();
   await supabase.auth.signOut();
+  await clearThemeCookie();
   redirect("/login");
 }

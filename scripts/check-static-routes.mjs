@@ -17,13 +17,22 @@ import path from "node:path";
 
 const MANIFEST_PATH = path.join(process.cwd(), ".next", "prerender-manifest.json");
 
-// Assets techniques uniquement -- AUCUNE page de l'app (app/(app)/**,
-// app/(auth)/**, les pages légales) n'a sa place ici : toutes dépendent
-// potentiellement de la session (cookies Supabase lus dans le layout racine,
-// voir app/layout.tsx) même quand leur contenu semble "public" au premier
-// abord (ex. /cgu, /mentions-legales -- servies par le même layout).
+// Assets techniques, puis (depuis #277, 05/11/2026) les rares pages publiques
+// sans aucune donnée de session. Le layout racine ne lit plus ni cookies ni
+// session (le thème passe par le cookie pb-theme, lu côté navigateur) : une
+// page n'est statique que si elle ne lit AUCUNE donnée de requête, ce que Next
+// impose (cookies()/headers() la rendent dynamique). AUCUNE page de l'app
+// connectée (app/(app)/**) ni page lisant la session n'a sa place ici.
 const ALLOWED_STATIC_ROUTES = new Set([
   "/_global-error", // page d'erreur générique interne à Next.js, jamais liée à une session.
+  "/_not-found", // 404 : plus de lecture de session dans le layout racine (#277).
+  "/", // accueil public : client anonyme sans cookie, revalidate = 60 (#277).
+  "/login", // formulaires publics : aucune donnée de session au rendu (#277).
+  "/signup",
+  "/enregistrer",
+  "/email-confirmed",
+  "/verify-email",
+  "/reset-password",
   "/apple-icon.png",
   "/favicon.ico",
   "/manifest.webmanifest",

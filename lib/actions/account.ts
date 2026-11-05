@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { toClientError } from "@/lib/actions/errors";
+import { clearThemeCookie } from "@/lib/theme/server";
 
 // Suppression de compte en self-service (§8.2 conseils_juridiques_
 // deploiement_application.md, cadré le 03/09/2026) — reprend l'ordre de
@@ -106,5 +107,6 @@ export async function deleteAccountFormAction(formData: FormData): Promise<void>
   }
 
   await supabase.auth.signOut();
+  await clearThemeCookie();
   redirect("/login?accountDeleted=1");
 }

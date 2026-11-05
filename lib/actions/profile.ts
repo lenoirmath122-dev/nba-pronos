@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { getProfileBadges } from "@/lib/queries/badges";
 import { toClientError } from "@/lib/actions/errors";
+import { setThemeCookie } from "@/lib/theme/server";
+import type { BackgroundTheme, ThemePreference } from "@/lib/theme/cookie";
 import { ThemePreferenceSchema, BackgroundThemeSchema, optionalBoundedText } from "@/lib/actions/validation";
 
 const MAX_BIO_LENGTH = 2000;
@@ -33,16 +35,21 @@ export async function updateThemePreference(formData: FormData): Promise<void> {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from("users")
     .update({ theme_preference: theme })
-    .eq("id", user!.id);
+    .eq("id", user!.id)
+    .select("theme_preference, background_theme")
+    .single<{ theme_preference: ThemePreference; background_theme: BackgroundTheme }>();
 
   if (error) {
     redirect(`/profile/theme?profileError=${encodeURIComponent(toClientError("updateThemePreference", error))}`);
   }
 
-  revalidatePath("/", "layout"); // app/layout.tsx (racine) relit theme_preference
+  // Cookie lu avant le premier rendu sur toutes les pages (lib/theme/cookie.ts).
+  await setThemeCookie(saved!.theme_preference, saved!.background_theme);
+
+  revalidatePath("/", "layout"); // app/(app)/layout.tsx relit le thème (<ThemeSync>)
   redirect("/profile/theme");
 }
 
@@ -61,16 +68,20 @@ export async function updateBackgroundTheme(formData: FormData): Promise<void> {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const { error } = await supabase
+  const { data: saved, error } = await supabase
     .from("users")
     .update({ background_theme: backgroundTheme })
-    .eq("id", user!.id);
+    .eq("id", user!.id)
+    .select("theme_preference, background_theme")
+    .single<{ theme_preference: ThemePreference; background_theme: BackgroundTheme }>();
 
   if (error) {
     redirect(`/profile/theme?profileError=${encodeURIComponent(toClientError("updateBackgroundTheme", error))}`);
   }
 
-  revalidatePath("/", "layout"); // app/layout.tsx (racine) relit background_theme
+  await setThemeCookie(saved!.theme_preference, saved!.background_theme);
+
+  revalidatePath("/", "layout"); // app/(app)/layout.tsx relit le thème (<ThemeSync>)
   redirect("/profile/theme");
 }
 
