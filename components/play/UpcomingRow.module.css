@@ -360,12 +360,10 @@
   gap: var(--space-2);
 }
 
-/* Aide aux débutants (lot 4) : forme des deux équipes + bouton de détail.
-   Habillage provisoire, à refaire en session visuel. */
-.insights {
+/* Bouton « Détail des équipes » (compact) + statut, en haut à droite. */
+.kickoffRight {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-end;
   gap: var(--space-2);
-  margin-top: var(--space-2);
 }
