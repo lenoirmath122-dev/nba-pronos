@@ -4,9 +4,8 @@ import { getMyLeagues } from "@/lib/queries/leagues";
 import { getWeeklyPalmares } from "@/lib/queries/weeklyPalmares";
 import { getServerClient } from "@/lib/supabase/server";
 import { LeagueScopeChips } from "@/components/profile/LeagueScopeChips";
-import { RankEvolutionChart } from "@/components/profile/RankEvolutionChart";
 import { BetHistory } from "@/components/profile/BetHistory";
-import { WeeklyPointsEvolution } from "@/components/profile/WeeklyPointsEvolution";
+import { EvolutionChart } from "@/components/profile/EvolutionChart";
 import { getMyBetHistory } from "@/lib/queries/betHistory";
 import { getPointsEvolution } from "@/lib/queries/pointsEvolution";
 import { WeeklyPalmares } from "@/components/profile/WeeklyPalmares";
@@ -113,25 +112,10 @@ export async function StatsPanel({ userId, section, ligue }: { userId: string; s
         </section>
       )}
 
-      {stats?.hasActiveCompetition && tab === "evolution" && (
-        <section className={`${profileStyles.section} glass-card`} aria-label="Évolution du classement">
-          {stats.evolution.series.length >= 2 ? (
-            <>
-              <div className={profileStyles.chartWrapper}>
-                <RankEvolutionChart series={stats.evolution.series} />
-              </div>
-              <p className={profileStyles.chartCaption}>Courbe du rang en classement général.</p>
-            </>
-          ) : (
-            <p className={profileStyles.fieldLabel}>Reviens dans quelques jours pour voir ta courbe d&rsquo;évolution.</p>
-          )}
-        </section>
-      )}
-
       {stats?.hasActiveCompetition && tab === "evolution" && pointsEvolution && (
-        <section className={`${profileStyles.section} glass-card`} aria-label="Points par semaine">
+        <section className={`${profileStyles.section} glass-card`} aria-label="Évolution">
           <LeagueScopeChips myLeagues={statsLeagues} activeLeagueId={ligue ?? null} section="evolution" />
-          <WeeklyPointsEvolution data={pointsEvolution} />
+          <EvolutionChart data={pointsEvolution} />
         </section>
       )}
 
