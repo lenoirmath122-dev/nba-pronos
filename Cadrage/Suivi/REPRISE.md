@@ -3,13 +3,13 @@
   #277 (thème en cookie) mergés. **PR ouverte : `perf/cache-donnees-communes`** (cache serveur des lectures COMMUNES).
 - **Fait** : `lib/cache/commonData.ts` (unstable_cache, client anon, tags `common-*`, repli sur le client de la requête).
   Cachés : compétition active (10 min), séries DAILY (5 min), matchs à venir (5 min, coupe à l'instant exact en mémoire),
-  scores live (1 min), `user_scores` du classement général (5 min). Invalidation `expire: 0` depuis `api/sync/*`,
+  scores live (1 min), `user_scores` du classement général (1 h, invalidé aussi à l activation et à la suppression de compte). Invalidation `expire: 0` depuis `api/sync/*`,
   `daily-match/draw`, `snapshots/leaderboard`, `recompute*`, `resolveAllCalculableBets`, `logAdminAction` (toute action admin).
 - **Non caché, signalé dans la PR** : `count_committed_predictions`, pronos des autres après coup d'envoi, bets du
   classement, résultats terminés (/play/results), séries du bracket, classement hebdo, ligues, tout le personnel.
 - **À vérifier sur le preview** : `user_scores` lisible par la clé anon (sinon repli silencieux, donc aucun gain mais aucun
   bug) ; un score synchronisé apparaît sans attendre le TTL ; un nouveau joueur apparaît au classement au plus 5 min plus tard.
-- **Ensuite** : lire le CPU actif par route (Vercel Observability) avant/après merge pour décider d'allonger les durées
+- **Ensuite** : MESURE à faire (le MCP Vercel renvoie 400 sans détail sur observability/query ; CLI `vercel metrics` ou tableau de bord Observability) avant/après merge pour décider d'allonger les durées
   (règle : court d'abord, puis allonger) et de cacher résultats terminés + séries du bracket.
 - **Aide aux débutants** : #274 (bouton « Détail des équipes » compact) à merger ; captures du réel (Docker + Supabase
   local : **demander avant**) ; L1-4, L1-5, L5 voir `chantiers/CHANTIER_AIDE_DEBUTANTS.md`.
