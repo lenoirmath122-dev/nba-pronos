@@ -395,3 +395,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Aide aux débutants : cadrage + lots 1-4 codés (données prod appliquées #267, refresh VM #268, API/cache #269, popup et indicateur #270), e2e/captures et visuel restants (05/11/2026)
 - Aide aux débutants : refonte carte de prono (traits de forme dans les boutons, popup à 3 onglets, bug date du bandeau) #273 mergé, bouton compact en haut à droite #274 ouvert, captures restantes (05/11/2026)
 - Quota Vercel (alerte 90 % Fluid Active CPU) : proxy.ts allégé (pas d'appel Supabase sans cookie de session, api/, _vercel/ et statiques hors matcher) + tests (05/11/2026) — PR #276
+- Quota Vercel : thème lu via un cookie (theme-init.js + ThemeSync) au lieu du layout racine, qui ne lit plus la session ; pages publiques cachables (05/11/2026) — PR perf/layout-statique

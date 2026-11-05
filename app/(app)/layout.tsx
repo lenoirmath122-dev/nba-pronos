@@ -13,6 +13,8 @@ import { OnboardingGuide } from "@/components/onboarding/OnboardingGuide";
 import { WeeklyPopupProvider } from "@/components/weeklyPopup/WeeklyPopupProvider";
 import { WeeklyPopupWatcher } from "@/components/weeklyPopup/WeeklyPopupWatcher";
 import { ActivityRecapWatcher } from "@/components/recap/ActivityRecapWatcher";
+import { ThemeSync } from "@/components/theme/ThemeSync";
+import type { BackgroundTheme, ThemePreference } from "@/lib/theme/cookie";
 import styles from "./layout.module.css";
 
 // Zone joueur connecté (T6a §3.1) : garde de session + nav 4 onglets.
@@ -36,9 +38,14 @@ export default async function AppLayout({
   // son inscription plutôt que d'afficher des écrans vides.
   const { data: profile } = await getServiceClient()
     .from("users")
-    .select("status, age_confirmed_at")
+    .select("status, age_confirmed_at, theme_preference, background_theme")
     .eq("id", user.id)
-    .maybeSingle<{ status: string; age_confirmed_at: string | null }>();
+    .maybeSingle<{
+      status: string;
+      age_confirmed_at: string | null;
+      theme_preference: ThemePreference;
+      background_theme: BackgroundTheme;
+    }>();
   if (profile?.status === "PENDING") {
     redirect(profile.age_confirmed_at === null ? "/choisir-pseudo" : "/login");
   }
@@ -60,6 +67,12 @@ export default async function AppLayout({
           <ValidatedDialogProvider>
             <main className={styles.content}>{children}</main>
             <TabBar navBadges={navBadges} />
+            {/* Thème lu ici (même requête que le statut) depuis que le layout
+                racine ne lit plus la session -- voir lib/theme/cookie.ts. */}
+            <ThemeSync
+              theme={profile?.theme_preference ?? "DARK"}
+              background={profile?.background_theme ?? "MURAL"}
+            />
             <ValidatedBetsWatcher bets={adminValidatedBets} />
             {/* Ordre des popups : « Pari validé », popup hebdo (lot 5), puis
                 badges. Chaque watcher charge ses données lui-même après
