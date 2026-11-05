@@ -1,0 +1,77 @@
+/* Habillage provisoire (lot 4), à refaire en session visuel. */
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm);
+}
+
+.section h3 {
+  margin: 0;
+  font-size: var(--font-size-md, 1rem);
+}
+
+.section p {
+  margin: 0;
+}
+
+.note {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.tag {
+  color: var(--color-text-secondary);
+  font-weight: normal;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-xs);
+}
+
+.table caption {
+  text-align: left;
+  font-weight: var(--font-weight-bold);
+  padding: var(--space-2) 0;
+}
+
+.table th,
+.table td {
+  padding: 4px 6px;
+  text-align: right;
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.table th:first-child {
+  text-align: left;
+  font-weight: normal;
+}
+
+.table thead th {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-bold);
+}
+
+.legend {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin: 0;
+}
+
+.legend div {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.legend dt {
+  min-width: 4.5rem;
+  font-weight: var(--font-weight-bold);
+}
+
+.legend dd {
+  margin: 0;
+  color: var(--color-text-secondary);
+}
