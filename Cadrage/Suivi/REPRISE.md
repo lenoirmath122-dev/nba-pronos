@@ -8,7 +8,7 @@
   zone de toucher à agrandir si besoin).
 - **Quota Vercel** : alerte 90 % Fluid Active CPU (4 h/mois, plan Hobby, quota partagé par les 6 projets) le 05/11 ;
   PR #276 ouverte (proxy sans appel Supabase pour les anonymes, `api/`, `_vercel/`, statiques hors matcher). Suivre la page Usage.
-- **Quota Vercel (suite)** : PR perf/layout-statique : thème déplacé vers un cookie `pb-theme` (`public/theme-init.js` + `<ThemeSync>`
+- **Quota Vercel (suite)** : PR #277 ouverte : thème déplacé vers un cookie `pb-theme` (`public/theme-init.js` + `<ThemeSync>`
   dans le layout (app)), layout racine sans session -> `/` réellement en cache 60 s. Étape suivante proposée : cache des données communes.
 - **Non fait** : captures d'écran du réel (§8 : script Playwright `scripts/reel-captures/`, seed, `CAPTURES.md`) et
   vérification navigateur 375 px / desktop : demandent Docker + Supabase local, **demander avant de lancer**.
