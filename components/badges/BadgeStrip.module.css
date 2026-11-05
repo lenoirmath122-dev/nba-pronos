@@ -1,0 +1,27 @@
+.row {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.more {
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+}
+
+/* Lot 8 — les écussons des lignes de classement apparaissent en fondu court,
+   sans décalage ni translation (rien qui retarde la lecture du classement). */
+.row {
+  animation: strip-in 240ms ease-out backwards;
+}
+
+@keyframes strip-in {
+  from { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row {
+    animation: none;
+  }
+}

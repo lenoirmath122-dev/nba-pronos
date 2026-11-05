@@ -119,7 +119,7 @@ export function TabBar({ navBadges }: TabBarProps) {
     <nav className={styles.bar} aria-label="Navigation principale">
       {TABS.map(({ href, label, Icon }) => {
         if (href === "/profile") {
-          const settingsActive = settingsOpen || pathname === href || pathname.startsWith(`${href}/`) || pathname === "/stats";
+          const settingsActive = settingsOpen || pathname === href || pathname.startsWith(`${href}/`);
           return (
             <button
               key={href}

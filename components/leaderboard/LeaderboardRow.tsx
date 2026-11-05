@@ -1,8 +1,7 @@
 "use client";
 
-import { memo } from "react";
+import { memo, type ReactNode } from "react";
 import type { LeaderboardRow as RowData, RankTrend, SortKey } from "@/lib/queries/leaderboard";
-import { PlayerLink } from "@/components/ui/PlayerLink";
 import { clickableRowProps } from "@/lib/hooks/clickableRow";
 import styles from "./LeaderboardRow.module.css";
 
@@ -15,6 +14,10 @@ import styles from "./LeaderboardRow.module.css";
 // repris pour le badge de tendance de rang (13/08/2026, ci-dessous).
 type LeaderboardRowProps = {
   row: RowData;
+  /** Avatar + pseudo + vitrine, rendus côté serveur (PlayerIdentity size="row"). */
+  identity: ReactNode;
+  /** Vitrine (PlayerBadges), à gauche des points. */
+  badges?: ReactNode;
   sortKey: SortKey;
   expanded: boolean;
   onToggle: (userId: string) => void;
@@ -56,17 +59,6 @@ function betsSuccessLine(attempted: number, won: number, avgDifficulty: number |
 
 function ordinal(rank: number): string {
   return rank === 1 ? "1er" : `${rank}e`;
-}
-
-// Initiales avatar (13/08/2026) : repère visuel rapide, propre à cet écran
-// (pas ajouté à PlayerLink lui-même, utilisé sur d'autres écrans où ça n'a
-// pas été demandé). Coupe sur le 1er séparateur usuel (_, -, espace) si
-// présent, sinon les 2 premiers caractères — les pseudos de ce projet ne
-// suivent aucune convention "Prénom Nom".
-function getInitials(pseudo: string): string {
-  const parts = pseudo.split(/[\s_-]+/).filter(Boolean);
-  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-  return pseudo.slice(0, 2).toUpperCase();
 }
 
 // Préfixe temporel (16/08/2026, bug d'audit corrigé) : le dernier snapshot
@@ -131,7 +123,7 @@ function TrendBadge({ trend }: { trend: RankTrend }) {
 // `expanded`/`sortKey` n'ont pas changé ne se re-rend plus quand une AUTRE
 // ligne est dépliée/repliée (avant : les 2 re-rendaient tout l'accordéon,
 // closure inline recréée à chaque clic).
-export const LeaderboardRow = memo(function LeaderboardRow({ row, sortKey, expanded, onToggle }: LeaderboardRowProps) {
+export const LeaderboardRow = memo(function LeaderboardRow({ row, identity, badges, sortKey, expanded, onToggle }: LeaderboardRowProps) {
   const correctionTitle =
     row.adminCorrectionsCount > 0
       ? `${plural(row.adminCorrectionsCount, "élément")} corrigé${row.adminCorrectionsCount > 1 ? "s" : ""} par un admin, sur requête`
@@ -150,7 +142,9 @@ export const LeaderboardRow = memo(function LeaderboardRow({ row, sortKey, expan
   // HTML, d'où le passage à un conteneur cliquable non-bouton.
   return (
     <div
-      className={row.isInactive ? `${styles.wrapper} ${styles.rowInactive}` : styles.wrapper}
+      className={[styles.wrapper, row.isInactive && styles.rowInactive, row.isCurrentUser && styles.wrapperMe]
+        .filter(Boolean)
+        .join(" ")}
       data-top-rank={topRank}
     >
       <div
@@ -165,20 +159,33 @@ export const LeaderboardRow = memo(function LeaderboardRow({ row, sortKey, expan
         </span>
 
         <span className={styles.colPlayer}>
-          <span className={styles.avatar} aria-hidden="true">
-            {getInitials(row.pseudo)}
-          </span>
-          <PlayerLink
-            userId={row.userId}
-            pseudo={row.pseudo}
-            className={styles.pseudo}
+          {/* Le pseudo (lien) et les écussons (pop-over, rendu en portail mais
+              remonté par React) ne doivent ni déplier la ligne au clic ni
+              l'activer à Entrée/Espace. */}
+          <span
+            role="presentation"
+            className={styles.identity}
             onClick={(event) => event.stopPropagation()}
-          />
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            {identity}
+          </span>
           {row.isInactive && <span className={styles.inactiveTag}>inactif</span>}
           {row.adminCorrectionsCount > 0 && (
             <span className={styles.correctionBadge} title={correctionTitle} aria-hidden="true" />
           )}
         </span>
+
+        {badges && (
+          <span
+            role="presentation"
+            className={styles.colBadges}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            {badges}
+          </span>
+        )}
 
         <span
           className={sortKey === "total" ? `${styles.colTotal} ${styles.totalBand}` : styles.colTotal}

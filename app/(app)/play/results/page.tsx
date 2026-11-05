@@ -1,3 +1,5 @@
+import { ShowcaseProvider } from "@/components/badges/ShowcaseProvider";
+import { getRowShowcases } from "@/lib/queries/badges";
 import Link from "next/link";
 import { getPlayResults, DEFAULT_RESULTS_LIMIT } from "@/lib/queries/play";
 import { getMyLeagues } from "@/lib/queries/leagues";
@@ -52,6 +54,13 @@ export default async function PlayResultsPage({ searchParams }: { searchParams: 
     );
   }
 
+  const otherUserIds = new Set<string>();
+  for (const row of data.rows) {
+    for (const other of row.others) otherUserIds.add(other.userId);
+    for (const bet of row.otherBets) otherUserIds.add(bet.userId);
+  }
+  const showcases = Object.fromEntries(await getRowShowcases([...otherUserIds], 1).catch(() => new Map()));
+
   const filter = { date: sp.date ?? null, seriesId: sp.series ?? null };
   const hasFilter = Boolean(filter.date || filter.seriesId);
 
@@ -60,6 +69,7 @@ export default async function PlayResultsPage({ searchParams }: { searchParams: 
   const returnTo = buildResultsPath({ date: filter.date, seriesId: filter.seriesId, limit, leagueId: data.scopeLeagueId });
 
   return (
+    <ShowcaseProvider showcases={showcases}>
     <div className={`${styles.page} photo-page`}>
       <div className={`${styles.header} glass-card`}>
         <h1 className={styles.title}>Jouer</h1>
@@ -128,5 +138,6 @@ export default async function PlayResultsPage({ searchParams }: { searchParams: 
         </Link>
       )}
     </div>
+    </ShowcaseProvider>
   );
 }

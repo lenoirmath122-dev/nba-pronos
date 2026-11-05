@@ -1,0 +1,11 @@
+.badges {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+}
+
+@media (orientation: portrait) and (max-width: 767px) {
+  .badges > :first-child > :nth-child(n + 2) {
+    display: none;
+  }
+}

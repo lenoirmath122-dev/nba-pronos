@@ -1,5 +1,6 @@
 "use client";
 
+import { getInitials } from "@/lib/player/initials";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { logout } from "@/lib/auth/actions";
@@ -43,17 +44,17 @@ const SECTIONS: Section[] = [
     key: "jeu",
     title: "Mon jeu",
     rows: [
-      { key: "stats", label: "Stats", href: "/stats", Icon: StatsIcon },
-      { key: "badges", label: "Badges", href: "/stats?tab=badges", Icon: BadgeMedalIcon },
-      { key: "historique", label: "Historique", href: "/profile/historique", Icon: HistoryIcon },
-      { key: "ligues", label: "Ligues", href: "/profile/ligues", Icon: PeopleIcon },
+      { key: "stats", label: "Stats", href: "/profile?tab=stats", Icon: StatsIcon },
+      { key: "badges", label: "Badges", href: "/profile?tab=badges", Icon: BadgeMedalIcon },
+      { key: "historique", label: "Historique", href: "/profile?tab=historique", Icon: HistoryIcon },
+      { key: "ligues", label: "Ligues", href: "/profile?tab=ligues", Icon: PeopleIcon },
     ],
   },
   {
     key: "compte",
     title: "Compte",
     rows: [
-      { key: "identifiants", label: "Identifiants", href: "/profile/identifiants", Icon: KeyIcon },
+      { key: "identifiants", label: "Identifiants et pseudo", href: "/profile/identifiants", Icon: KeyIcon },
       { key: "donnees", label: "Mes données", href: "/profile/donnees", Icon: DownloadIcon },
     ],
   },
@@ -90,7 +91,7 @@ const DANGER_ROW: Row = {
   tone: "danger",
 };
 
-const IDENTITY_HREF = "/profile/pseudo";
+const IDENTITY_HREF = "/profile";
 
 function formatRank(rank: number | null): string {
   if (rank === null) return "—";
@@ -101,10 +102,6 @@ function formatRank(rank: number | null): string {
 // puis la valeur (ou « — » quand la donnée n'existe pas).
 function statText(summary: ProfileMenuSummary | null, value: string | number): ReactNode {
   return summary ? value : <span className={`${styles.skeleton} ${styles.skeletonStat}`} aria-hidden="true" />;
-}
-
-function initials(pseudo: string): string {
-  return pseudo.trim().slice(0, 2).toUpperCase() || "?";
 }
 
 type SettingsDrawerProps = {
@@ -211,7 +208,7 @@ export function SettingsDrawer({ open, onClose, onNavigate, isAdmin }: SettingsD
           onClick={onNavigate}
         >
           <span className={styles.avatar} aria-hidden="true">
-            {summary ? initials(summary.pseudo) : null}
+            {summary ? getInitials(summary.pseudo) : null}
           </span>
           <span className={styles.identityText}>
             {summary ? (
@@ -234,10 +231,10 @@ export function SettingsDrawer({ open, onClose, onNavigate, isAdmin }: SettingsD
         </Link>
 
         <Link
-          href="/stats"
+          href="/profile?tab=stats"
           className={styles.statsCard}
           aria-label="Voir mes stats"
-          onNavigate={(event) => guardNavigation(event, "/stats")}
+          onNavigate={(event) => guardNavigation(event, "/profile?tab=stats")}
           onClick={onNavigate}
         >
           <span className={styles.statBlock}>
@@ -249,7 +246,7 @@ export function SettingsDrawer({ open, onClose, onNavigate, isAdmin }: SettingsD
             <span className={styles.statLabel}>Meilleur rang</span>
           </span>
           <span className={styles.statBlock}>
-            <span className={styles.statValue}>{statText(summary, summary?.badgeCount ?? "—")}</span>
+            <span className={styles.statValue}>{statText(summary, summary?.badgeCount != null && summary.badgeTotal != null ? `${summary.badgeCount}/${summary.badgeTotal}` : "—")}</span>
             <span className={styles.statLabel}>Badges</span>
           </span>
         </Link>

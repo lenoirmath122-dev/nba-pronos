@@ -12,15 +12,17 @@ import styles from "./LeagueScopeChips.module.css";
 type LeagueScopeChipsProps = {
   myLeagues: MyLeague[];
   activeLeagueId: string | null;
+  /** Section de l'onglet Stats à conserver (par défaut la comparaison). */
+  section?: "comparaison" | "evolution";
 };
 
-export function LeagueScopeChips({ myLeagues, activeLeagueId }: LeagueScopeChipsProps) {
+export function LeagueScopeChips({ myLeagues, activeLeagueId, section = "comparaison" }: LeagueScopeChipsProps) {
   if (myLeagues.length === 0) return null;
 
   function href(leagueId: string | null): string {
-    const params = new URLSearchParams({ tab: "comparaison" });
+    const params = new URLSearchParams({ tab: "stats", section });
     if (leagueId) params.set("ligue", leagueId);
-    return `/stats?${params.toString()}`;
+    return `/profile?${params.toString()}`;
   }
 
   return (

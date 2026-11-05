@@ -1,0 +1,65 @@
+.identity {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.avatar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-size: 0.625rem;
+  font-weight: var(--font-weight-semibold);
+}
+
+.pseudo {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.identity[data-size="bar"] .avatar {
+  width: 2rem;
+  height: 2rem;
+  font-size: var(--font-size-xs);
+}
+
+.identity[data-size="header"] {
+  gap: var(--space-3);
+}
+
+.identity[data-size="header"] .avatar {
+  width: 3.5rem;
+  height: 3.5rem;
+  font-size: var(--font-size-md);
+}
+
+.identity[data-size="header"] .pseudo {
+  font-size: var(--font-size-xl);
+  white-space: normal;
+}
+
+.identity[data-size="row"] .pseudo,
+.identity[data-size="bar"] .pseudo {
+  font-size: var(--font-size-sm);
+}
+
+/* D2 : la vitrine du classement montre 3 écussons en paysage/desktop, 1 seul
+   (le badge signature) en portrait mobile. Le serveur en rend toujours 3 ; la
+   rangée d'écussons est le dernier enfant, chaque écusson un bouton. */
+@media (orientation: portrait) and (max-width: 767px) {
+  .identity[data-size="row"] > :last-child > :nth-child(n + 2) {
+    display: none;
+  }
+}

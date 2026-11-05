@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { BetWithoutProno, OtherPrediction } from "@/lib/queries/play";
+import { ShowcaseChip } from "@/components/badges/ShowcaseProvider";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import styles from "./RevealPanelUpcoming.module.css";
 
@@ -45,6 +46,7 @@ export function RevealPanelUpcoming({
           {betsWithoutProno.map((b) => (
             <li key={b.userId} className={styles.item}>
               <PlayerLink userId={b.userId} pseudo={b.pseudo} className={styles.pseudo} />
+              <ShowcaseChip userId={b.userId} />
               <span className={styles.bet}>{b.description}</span>
             </li>
           ))}
@@ -61,6 +63,7 @@ export function RevealPanelUpcoming({
                   className={other.isInactive ? `${styles.item} ${styles.itemInactive}` : styles.item}
                 >
                   <PlayerLink userId={other.userId} pseudo={other.pseudo} className={styles.pseudo} />
+                  <ShowcaseChip userId={other.userId} />
                   <span className={styles.pick}>
                     {/* "+" pas "−" (22/08/2026, même correctif que
                         PredictionSummary.tsx) : margin est toujours l'écart

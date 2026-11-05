@@ -2,6 +2,7 @@
 
 import type { BetWithoutProno, OtherBet, OtherPrediction, RevealedPrediction } from "@/lib/queries/play";
 import { ModalDialog } from "@/components/ui/ModalDialog";
+import { ShowcaseChip } from "@/components/badges/ShowcaseProvider";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import { RevealPanelUpcoming } from "./RevealPanelUpcoming";
 import styles from "./OthersOnMatch.module.css";
@@ -82,6 +83,7 @@ export function OthersOnMatch(props: OthersOnMatchProps) {
                 <li key={bet.userId} className={styles.betItem}>
                   <div className={styles.betHeader}>
                     <PlayerLink userId={bet.userId} pseudo={bet.userName} className={styles.pseudo} />
+                    <ShowcaseChip userId={bet.userId} />
                   </div>
                   <p className={bet.status === "CANCELLED" ? styles.betDescriptionCancelled : styles.betDescription}>
                     {bet.description}
@@ -120,6 +122,7 @@ export function OthersOnMatch(props: OthersOnMatchProps) {
                 {sorted.map((other) => (
                   <li key={other.userId} className={styles.predictionItem}>
                     <PlayerLink userId={other.userId} pseudo={other.userName} className={styles.pseudo} />
+                    <ShowcaseChip userId={other.userId} />
                     <span className={styles.pick}>
                       {/* "+" pas "−" : predictedMargin est toujours
                               l'écart de victoire, jamais un déficit. */}

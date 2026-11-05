@@ -118,11 +118,19 @@ const MAX_PINNED_BADGES = 3;
 
 /** Badges épinglés dans le bandeau (BACKLOG_V1.md, cadré le 27/08/2026) :
  *  choix manuel du joueur, jusqu'à 3, uniquement parmi les débloqués --
- *  bouton "épingler" sur chaque BadgeCard (components/profile/BadgeCard.tsx),
+ *  bouton « Mettre en vitrine » de la fiche badge (components/badges/BadgesTab.tsx),
  *  même patron formulaire natif + redirection que le reste de ce fichier. */
+/** Retour après une action de vitrine : seulement une page « Mon profil »
+ *  (jamais une URL arbitraire venue du formulaire). */
+function profileReturnTo(formData: FormData): string {
+  const value = String(formData.get("returnTo") ?? "");
+  return /^\/profile(\?[\w=&-]*)?$/.test(value) ? value : "/profile?tab=badges";
+}
+
 export async function togglePinnedBadgeFormAction(formData: FormData): Promise<void> {
   const badgeId = String(formData.get("badgeId") ?? "");
-  if (!badgeId) redirect("/stats?tab=badges");
+  const back = profileReturnTo(formData);
+  if (!badgeId) redirect("/profile?tab=badges");
 
   const supabase = await getServerClient();
   const {
@@ -142,24 +150,63 @@ export async function togglePinnedBadgeFormAction(formData: FormData): Promise<v
     next = current.filter((id) => id !== badgeId);
   } else {
     if (current.length >= MAX_PINNED_BADGES) {
-      redirect(`/stats?tab=badges&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
+      redirect(`/profile?tab=badges&profileError=${encodeURIComponent(`${MAX_PINNED_BADGES} badges épinglés maximum.`)}`);
     }
-    // Défense en profondeur -- BadgeCard ne propose déjà le bouton "épingler"
+    // Défense en profondeur -- la fiche badge ne propose déjà le bouton
     // que sur un badge débloqué, cf. commentaire ci-dessus.
     const badges = await getProfileBadges();
     const target = badges.categories.flatMap((c) => c.badges).find((b) => b.id === badgeId);
     const unlocked = target ? (target.kind === "tiered" ? target.tier !== null : target.unlocked) : false;
     if (!unlocked) {
-      redirect(`/stats?tab=badges&profileError=${encodeURIComponent("Ce badge n'est pas encore débloqué.")}`);
+      redirect(`/profile?tab=badges&profileError=${encodeURIComponent("Ce badge n'est pas encore débloqué.")}`);
     }
     next = [...current, badgeId];
   }
 
   const { error } = await supabase.from("users").update({ pinned_badge_ids: next }).eq("id", user!.id);
   if (error) {
-    redirect(`/stats?tab=badges&profileError=${encodeURIComponent(toClientError("togglePinnedBadgeFormAction", error))}`);
+    redirect(`/profile?tab=badges&profileError=${encodeURIComponent(toClientError("togglePinnedBadgeFormAction", error))}`);
   }
 
-  revalidatePath("/stats");
-  redirect("/stats?tab=badges");
+  revalidatePath("/profile");
+  redirect(back);
+}
+
+/** Met un badge débloqué dans un emplacement précis de la vitrine (0 à 2),
+ *  depuis la fenêtre de choix de l'en-tête du profil : remplace l'occupant de
+ *  l'emplacement, ou s'ajoute en fin de liste si l'emplacement est libre. Un
+ *  badge déjà en vitrine change simplement de place. */
+export async function setShowcaseBadgeFormAction(formData: FormData): Promise<void> {
+  const badgeId = String(formData.get("badgeId") ?? "");
+  const slot = Number(formData.get("slot"));
+  const back = profileReturnTo(formData);
+  const fail = (message: string) => redirect(`${back}${back.includes("?") ? "&" : "?"}profileError=${encodeURIComponent(message)}`);
+  if (!badgeId || !Number.isInteger(slot) || slot < 0 || slot >= MAX_PINNED_BADGES) redirect(back);
+
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login");
+
+  const badges = await getProfileBadges();
+  const target = badges.categories.flatMap((c) => c.badges).find((b) => b.id === badgeId);
+  const unlocked = target ? (target.kind === "tiered" ? target.tier !== null : target.unlocked) : false;
+  if (!unlocked) fail("Ce badge n'est pas encore débloqué.");
+
+  const { data: row } = await supabase
+    .from("users")
+    .select("pinned_badge_ids")
+    .eq("id", user!.id)
+    .single<{ pinned_badge_ids: string[] }>();
+  const current = row?.pinned_badge_ids ?? [];
+  const without = current.filter((id) => id !== badgeId);
+  const next = [...without];
+  next.splice(Math.min(slot, without.length), current[slot] && current[slot] !== badgeId ? 1 : 0, badgeId);
+
+  const { error } = await supabase.from("users").update({ pinned_badge_ids: next.slice(0, MAX_PINNED_BADGES) }).eq("id", user!.id);
+  if (error) fail(toClientError("setShowcaseBadgeFormAction", error));
+
+  revalidatePath("/profile");
+  redirect(back);
 }

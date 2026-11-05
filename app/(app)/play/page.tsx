@@ -1,3 +1,5 @@
+import { ShowcaseProvider } from "@/components/badges/ShowcaseProvider";
+import { getRowShowcases } from "@/lib/queries/badges";
 import Link from "next/link";
 import { getPlayUpcoming } from "@/lib/queries/play";
 import { EmptyState } from "@/components/home/EmptyState";
@@ -36,6 +38,12 @@ export default async function PlayUpcomingPage() {
   }
 
   const maxBetPoints = maxBetPointsFor(data.competitionType);
+  const otherUserIds = new Set<string>();
+  for (const match of [...data.days, ...data.daysBeyondWindow].flatMap((day) => day.matches)) {
+    for (const other of match.others) otherUserIds.add(other.userId);
+    for (const bet of match.betsWithoutProno) otherUserIds.add(bet.userId);
+  }
+  const showcases = Object.fromEntries(await getRowShowcases([...otherUserIds], 1).catch(() => new Map()));
   const hasUpcoming = data.days.length > 0;
   const hasBeyondWindow = data.daysBeyondWindow.length > 0;
   const isEmpty = !hasUpcoming && !hasBeyondWindow;
@@ -54,6 +62,7 @@ export default async function PlayUpcomingPage() {
     }));
 
   return (
+    <ShowcaseProvider showcases={showcases}>
     <div className={`${styles.page} photo-page`}>
       <div className={`${styles.header} glass-card`}>
         <div className={styles.titleRow}>
@@ -86,5 +95,6 @@ export default async function PlayUpcomingPage() {
 
       <LiveTicker liveScores={data.liveScores} days={data.days} />
     </div>
+    </ShowcaseProvider>
   );
 }
