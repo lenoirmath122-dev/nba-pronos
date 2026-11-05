@@ -7,6 +7,8 @@ import { nyDateString } from "@/lib/dates/newyork";
 import { dailyKickoffLabel, type DailyKickoffLabel } from "@/lib/labels/dailyMatch";
 import { betDifficultyPoints } from "@/lib/scoring/engine";
 import type { TeamRef } from "@/lib/queries/matches";
+import { getTeamFormBySeason } from "@/lib/queries/teamInsights";
+import type { TeamFormSummary } from "@/lib/teamInsights/types";
 import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES, MATCH_SLOT_CAP } from "@/lib/labels/bets";
@@ -164,6 +166,9 @@ export type UpcomingMatchRow = {
   daily: DailyKickoffLabel | null;
   homeTeam: TeamRef;
   awayTeam: TeamRef;
+  /** Forme récente (aide aux débutants) ; null = pas de donnée, rien à afficher. */
+  homeForm: TeamFormSummary | null;
+  awayForm: TeamFormSummary | null;
   myWinnerTeamId: string | null;
   myMargin: number | null;
   viewStatus: PredictionViewStatus;
@@ -546,6 +551,8 @@ async function fetchUpcomingWindow(
 
   const isDailyMatch = competition.type === "DAILY_MATCH";
   const cards: UpcomingMatchRow[] = [];
+  // Lue une seule fois (≤ 30 lignes, en cache) ; ne casse jamais l'écran.
+  const formByTricode = await getTeamFormBySeason().catch(() => new Map<string, TeamFormSummary>());
   for (const match of matches) {
     const own = ownPredictionByMatch.get(match.id);
     const viewStatus = deriveViewStatus(own);
@@ -582,6 +589,8 @@ async function fetchUpcomingWindow(
       daily: isDailyMatch ? dailyKickoffLabel(match.scheduled_at) : null,
       homeTeam,
       awayTeam,
+      homeForm: formByTricode.get(homeTeam.abbreviation) ?? null,
+      awayForm: formByTricode.get(awayTeam.abbreviation) ?? null,
       myWinnerTeamId: own?.predicted_winner_team_id ?? null,
       myMargin: own?.predicted_margin ?? null,
       viewStatus,
