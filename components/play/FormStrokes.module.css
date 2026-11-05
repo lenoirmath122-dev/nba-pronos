@@ -1,0 +1,20 @@
+.root {
+  display: inline-flex;
+  justify-content: center;
+  gap: 3px;
+}
+
+.stroke {
+  display: block;
+  width: 16px;
+  height: 4px;
+  border-radius: 2px;
+}
+
+.win {
+  background: var(--color-win);
+}
+
+.loss {
+  background: var(--color-loss);
+}

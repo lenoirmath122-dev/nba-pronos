@@ -53,7 +53,11 @@ export function LiveTicker({ liveScores, days }: LiveTickerProps) {
           kind: "deadline",
           key: nextToPredict.matchId,
           matchup: `${nextToPredict.homeTeam.abbreviation} – ${nextToPredict.awayTeam.abbreviation}`,
-          when: TIME_FORMATTER.format(new Date(nextToPredict.scheduledAt)),
+          // Match du jour : jour NY de la carte (« Match du 05/11 »), pas la
+          // date de Paris qui tombe le lendemain pour un coup d'envoi de nuit.
+          when: nextToPredict.daily
+            ? `${nextToPredict.daily.dayLabel.replace(/^Match du /, "")} ${nextToPredict.daily.time}`
+            : TIME_FORMATTER.format(new Date(nextToPredict.scheduledAt)),
         },
       ]
     : [];
