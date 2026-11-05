@@ -394,3 +394,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Paris persos : lot 5 mesuré en prod (2 enchaînements de quarts / 106, 0 points d'équipe par période), réduit à l'aiguillage vers les combos de période, pas de modèle TEAM_POINTS (#263 ouverte) ; #261 et #262 mergées (28/10/2026)
 - Aide aux débutants : cadrage + lots 1-4 codés (données prod appliquées #267, refresh VM #268, API/cache #269, popup et indicateur #270), e2e/captures et visuel restants (05/11/2026)
 - Aide aux débutants : refonte carte de prono (traits de forme dans les boutons, popup à 3 onglets, bug date du bandeau) #273 mergé, bouton compact en haut à droite #274 ouvert, captures restantes (05/11/2026)
+- Quota Vercel (alerte 90 % Fluid Active CPU) : proxy.ts allégé (pas d'appel Supabase sans cookie de session, api/, _vercel/ et statiques hors matcher) + tests (05/11/2026) — PR perf/proxy-cpu

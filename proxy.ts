@@ -16,8 +16,25 @@ const ADMIN_ZONE_PREFIX = "/admin";
 // la page d'accueil publique (socle SEO, 05/10/2026).
 const AUTH_PAGES = ["/", "/login", "/signup"];
 
+// Cookie de session posé par @supabase/ssr : `sb-<ref>-auth-token`, éventuellement
+// découpé en `.0`, `.1`… (le cookie PKCE `…-auth-token-code-verifier` matche aussi,
+// volontairement : dans le doute on interroge Supabase).
+function hasSupabaseSessionCookie(request: NextRequest) {
+  return request.cookies
+    .getAll()
+    .some(({ name }) => name.startsWith("sb-") && name.includes("-auth-token"));
+}
+
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
+
+  // Économie de CPU Vercel (alerte quota Fluid Active CPU du 05/11/2026) : un
+  // visiteur sans cookie de session n'a rien à rafraîchir et getUser()
+  // renverrait null de toute façon -- on saute la création du client et
+  // l'appel Supabase Auth. Les redirections de zone restent appliquées.
+  if (!hasSupabaseSessionCookie(request)) {
+    return routeGuard(request, response, null);
+  }
 
   // Client SERVEUR en session (T6a §2.4), lié aux cookies de la requête/réponse
   // du proxy — seul endroit où on manipule les cookies "à la main" (hors
@@ -49,6 +66,14 @@ export async function proxy(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser();
 
+  return routeGuard(request, response, user);
+}
+
+function routeGuard(
+  request: NextRequest,
+  response: NextResponse,
+  user: unknown
+): NextResponse {
   // Un appel de Server Action (header `next-action`, posé par le runtime
   // Next.js côté client) vers une page de zone protégée n'est PAS une
   // navigation -- une redirection ici renvoie une réponse HTTP que le
@@ -84,8 +109,15 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// Exclusions (économie de CPU, 05/11/2026) :
+// - `api/` : crons Vercel + workflows GitHub (~150 appels/jour) authentifiés par
+//   secret, jamais par session ; les deux routes en session (teams/insights,
+//   account/export) passent par getServerClient, qui peut écrire les cookies
+//   dans un route handler -- le rafraîchissement de session y reste assuré.
+// - `_vercel/` : balises Web Analytics / Speed Insights envoyées à chaque page vue.
+// - fichiers statiques (dont `sw.js`, polices, manifestes).
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!api/|_vercel/|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|sw.js|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|js|css|map|txt|xml|json|woff2?|ttf|mp4|webm)$).*)",
   ],
 };
