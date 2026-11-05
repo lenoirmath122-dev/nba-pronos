@@ -16,6 +16,9 @@
 > Chaque chantier a son fichier détaillé, à n'ouvrir que si la session porte
 > dessus. Ici : seulement ce qui reste ouvert et la prochaine étape.
 
+### Aide aux débutants (forme des équipes, détail des effectifs) — [`chantiers/CHANTIER_AIDE_DEBUTANTS.md`](chantiers/CHANTIER_AIDE_DEBUTANTS.md)
+Lots 1-4 codés (L1 mergé en prod, L2 #268, L3 #269, L4 #270 à merger dans l'ordre). Restent : MAJ de la VM après #268, L1-4 (bilans vs classement NBA), L1-5 (titulaires C), test e2e + captures du réel (Docker, sur demande), L5 session visuel, points ouverts §11 (blessures, playoffs).
+
 ### Profil & badges — [`chantiers/CHANTIER_PROFIL_BADGES.md`](chantiers/CHANTIER_PROFIL_BADGES.md)
 Plan et maquettes (`Cadrage/V1/Spec visuelle/maquettes_profil_badges/`). Branche d'intégration `release/profil-badges`, livraison en prod prévue le 26/10/2026. Lots Q, 1, 2, 4, 5 faits ; reste Lot 3, 6, 7 et Lot 8 (animations, volontairement après la livraison du 26/10, à refaire en passant par Claude desktop).
 

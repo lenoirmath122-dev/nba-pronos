@@ -392,3 +392,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Entonnoir accueil : UTM (cookie pb_utm), navigateur intégré, filtre robots + hors-prod + admins, account_created côté serveur, rapport SQL ; PR feat/funnel-utm, migration non appliquée (27/10/2026)
 - Paris persos : revue des 28 paris admin, aiguillage élargi + seconde chance Haiku, question de précision, orthographe joueurs (#260 mergé), estimation IA Sonnet (#261 ouverte) ; lot 5 à faire en Opus (28/10/2026)
 - Paris persos : lot 5 mesuré en prod (2 enchaînements de quarts / 106, 0 points d'équipe par période), réduit à l'aiguillage vers les combos de période, pas de modèle TEAM_POINTS (#263 ouverte) ; #261 et #262 mergées (28/10/2026)
+- Aide aux débutants : cadrage + lots 1-4 codés (données prod appliquées #267, refresh VM #268, API/cache #269, popup et indicateur #270), e2e/captures et visuel restants (05/11/2026)
