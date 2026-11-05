@@ -75,6 +75,12 @@ function toMatch(r: MatchRow): HomeMatch | null {
 }
 
 export async function getPublicHomeData(nowMs: number = Date.now()): Promise<PublicHomeData> {
+  // Build sans variables Supabase (job « build » de la CI : aucun secret) : la
+  // page est pré-rendue vide au lieu de faire échouer le build. Sur Vercel les
+  // variables existent : une vraie panne de lecture continue de lever, et la
+  // régénération échouée laisse en place la dernière version valide (ISR).
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return EMPTY;
+
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
