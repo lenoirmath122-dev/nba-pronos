@@ -17,7 +17,7 @@ function leaderGapLabel(rank: number | null, behind: number): string {
 }
 
 export function HomeHeader({ header }: HomeHeaderProps) {
-  const { pseudo, competitionName, rank, totalPoints, pointsBehindLeader, recentFormPoints } =
+  const { pseudo, competitionName, weekly, rank, totalPoints, pointsBehindLeader, recentFormPoints } =
     header;
 
   return (
@@ -34,11 +34,11 @@ export function HomeHeader({ header }: HomeHeaderProps) {
           comme secondaire. */}
       <div className={styles.stats}>
         <div className={styles.stat}>
-          <span className={styles.statLabel}>Rang</span>
+          <span className={styles.statLabel}>{weekly ? "Rang semaine" : "Rang"}</span>
           <span className={styles.statValue}>{rank === null ? "-" : ordinal(rank)}</span>
         </div>
         <div className={styles.stat}>
-          <span className={styles.statLabel}>Points</span>
+          <span className={styles.statLabel}>{weekly ? "Points semaine" : "Points"}</span>
           <span className={styles.statValue}>{pointsLabel(totalPoints)}</span>
         </div>
       </div>
@@ -48,7 +48,7 @@ export function HomeHeader({ header }: HomeHeaderProps) {
 
       {rank === null ? (
         <p className={styles.hint}>Fais ton premier prono pour entrer au classement.</p>
-      ) : (
+      ) : weekly ? null : (
         <p className={styles.form}>
           {recentFormPoints > 0 ? `+${pointsLabel(recentFormPoints)}` : pointsLabel(recentFormPoints)} cette semaine
         </p>

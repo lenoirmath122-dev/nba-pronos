@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Classement — tap sur un badge</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0E1118}
+a{color:#FF8A54}a:hover{color:#FF6A2B}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; position: relative; overflow: hidden; box-sizing: border-box; font-family: Sora, system-ui, sans-serif; color: #F2F5FA; background: radial-gradient(120% 60% at 50% 0%, rgba(255,106,43,0.07), transparent 60%), linear-gradient(180deg, #12161F, #0E1118 40%, #0B0E14)">
+
+  <div style="padding: 20px 16px 12px; display: flex; flex-direction: column; gap: 4px">
+    <h1 style="margin: 0; font-size: 24px; font-weight: 700">Classement</h1>
+    <p style="margin: 0; font-size: 14px; color: #B7C0CE">Saison régulière · Semaine 1</p>
+  </div>
+  <div style="display: flex; gap: 8px; padding: 0 16px">
+    <button type="button" style="flex: 1; height: 44px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.15); background: transparent; color: #B7C0CE; font: 600 15px Sora, sans-serif">Semaine</button>
+    <button type="button" aria-pressed="true" style="flex: 1; height: 44px; border-radius: 10px; border: 0; background: #FF6A2B; color: #0B0E14; font: 700 15px Sora, sans-serif">Général</button>
+  </div>
+  <div style="display: flex; align-items: center; height: 34px; margin-top: 12px; padding: 0 12px 0 14px; font-size: 12px; color: #7C8798; border-bottom: 1px solid rgba(255,255,255,0.09)">
+    <span style="width: 44px">Rang</span><span style="flex: 1">Joueur</span><span style="width: 58px; text-align: center">Total</span><span style="width: 18px"></span>
+  </div>
+
+  <sc-for list="{{rows}}" as="r" hint-placeholder-count="9">
+    <div style="display: flex; align-items: center; height: 50px; padding: 0 12px 0 14px; border-bottom: 1px solid rgba(255,255,255,0.06)">
+      <span style="width: 44px; font-family: Oswald, sans-serif; font-size: 19px; font-weight: 700">{{r.rank}}</span>
+      <span style="flex: 1; min-width: 0; display: flex; align-items: center; gap: 9px">
+        <span style="{{r.avatarStyle}}">{{r.initials}}</span>
+        <span style="min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 15px; font-weight: 600">{{r.pseudo}}</span>
+        <sc-if value="{{r.hasBadge}}" hint-placeholder-val="{{ true }}">
+          <dc-import name="Emblem" tier="{{r.tier}}" icon="{{r.icon}}" size="20" hint-size="20px,23px"></dc-import>
+        </sc-if>
+      </span>
+      <span style="width: 58px; display: flex; justify-content: center">
+        <span style="min-width: 40px; text-align: center; font-family: Oswald, sans-serif; font-size: 18px; font-weight: 700; background: rgba(255,106,43,0.16); border-radius: 6px; padding: 2px 6px">{{r.total}}</span>
+      </span>
+      <span style="width: 18px"></span>
+    </div>
+  </sc-for>
+
+  <div style="position: absolute; inset: 0; background: rgba(11,14,20,0.62)" aria-hidden="true"></div>
+
+  <div style="position: absolute; left: 14px; top: 226px; right: 14px; height: 50px; display: flex; align-items: center; padding: 0 12px 0 14px; background: #161B25; border-radius: 10px; box-shadow: 0 0 0 1px rgba(255,255,255,0.12)">
+    <span style="width: 30px; font-family: Oswald, sans-serif; font-size: 19px; font-weight: 700">2</span>
+    <span style="flex: 1; display: flex; align-items: center; gap: 9px">
+      <span style="width: 32px; height: 32px; border-radius: 50%; background: rgba(255,106,43,0.16); color: #FF8A54; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">VR</span>
+      <span style="font-size: 15px; font-weight: 600">Vraiflockodu93</span>
+      <span style="display: inline-flex; padding: 3px; border-radius: 8px; box-shadow: 0 0 0 2px #FF6A2B">
+        <dc-import name="Emblem" tier="ARGENT" icon="repeat" size="20" hint-size="20px,23px"></dc-import>
+      </span>
+    </span>
+    <span style="min-width: 40px; text-align: center; font-family: Oswald, sans-serif; font-size: 18px; font-weight: 700; background: rgba(255,106,43,0.16); border-radius: 6px; padding: 2px 6px">36</span>
+  </div>
+
+  <div role="dialog" aria-label="Badge Métronome" style="position: absolute; left: 16px; right: 16px; top: 290px; background: #161B25; border: 1px solid rgba(255,255,255,0.15); border-radius: 16px; box-shadow: 0 18px 40px rgba(0,0,0,0.55); padding: 16px; display: flex; flex-direction: column; gap: 14px">
+    <span style="position: absolute; top: -8px; left: 196px; width: 14px; height: 14px; background: #161B25; border-left: 1px solid rgba(255,255,255,0.15); border-top: 1px solid rgba(255,255,255,0.15); transform: rotate(45deg)" aria-hidden="true"></span>
+    <div style="display: flex; gap: 14px; align-items: center">
+      <dc-import name="Emblem" tier="ARGENT" icon="repeat" text="6" size="64" glow="true" label="Métronome, palier Argent" hint-size="64px,74px"></dc-import>
+      <div style="flex: 1; display: flex; flex-direction: column; gap: 4px">
+        <div style="display: flex; align-items: center; gap: 8px">
+          <span style="font-size: 18px; font-weight: 700">Métronome</span>
+          <span style="font-size: 11px; font-weight: 700; letter-spacing: 0.06em; color: #CBD3DE">ARGENT</span>
+        </div>
+        <span style="font-size: 13px; color: #B7C0CE; line-height: 1.45">Record de bons vainqueurs d'affilée</span>
+      </div>
+      <button type="button" aria-label="Fermer" style="align-self: flex-start; width: 32px; height: 32px; border-radius: 50%; border: 0; background: rgba(255,255,255,0.06); color: #B7C0CE; display: inline-flex; align-items: center; justify-content: center">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+      </button>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; justify-content: space-between; font-size: 12px; color: #B7C0CE">
+        <span>Record : <strong style="color: #F2F5FA">6 d'affilée</strong></span>
+        <span>Or à 8</span>
+      </div>
+      <div style="height: 6px; border-radius: 3px; background: rgba(255,255,255,0.09); overflow: hidden">
+        <div style="width: 75%; height: 100%; background: #CBD3DE; border-radius: 3px"></div>
+      </div>
+    </div>
+    <a href="#" style="display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 14px; border-radius: 10px; background: rgba(255,255,255,0.04); text-decoration: none; font-size: 14px; font-weight: 600">
+      <span>Voir les badges de Vraiflockodu93</span>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg>
+    </a>
+  </div>
+
+  <nav aria-label="Navigation principale" style="position: absolute; left: 0; right: 0; bottom: 0; height: 64px; display: flex; background: #0E1118; border-top: 1px solid rgba(255,255,255,0.09); opacity: 0.4">
+    <span style="flex: 1"></span>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var neutral = { bg: 'rgba(255,106,43,0.16)', fg: '#FF8A54' };
+    var teams = { LAL: { bg: '#552583', fg: '#FDB927' }, GSW: { bg: '#1D428A', fg: '#FFC72C' }, NYK: { bg: '#006BB6', fg: '#F58426' }, BOS: { bg: '#007A33', fg: '#E8D7A8' } };
+    var data = [
+      ['1', 'CY', 'cyril535', '36', 'OR', 'check', null],
+      ['2', 'VR', 'Vraiflockodu93', '36', 'ARGENT', 'repeat', null],
+      ['2', 'TH', 'TheAnsw3r', '36', 'ARGENT', 'clock', null],
+      ['4', 'XA', 'Xav', '33', 'BRONZE', 'heart', 'LAL'],
+      ['5', 'NO', 'nonogrobidou', '25', 'UNLOCKED', 'dice', 'GSW'],
+      ['6', 'LH', 'le haricot mystérieu', '24', null, null, null],
+      ['7', 'PT', 'PtitzgegGrandreve', '23', 'BRONZE', 'copy', null],
+      ['7', 'CW', 'CWEBB', '23', 'ARGENT', 'scroll', 'NYK'],
+      ['9', 'BA', 'Batz', '22', 'BRONZE', 'check', null],
+      ['10', 'LE', 'Leopoldinho', '15', 'BRONZE', 'binoculars', 'BOS'],
+      ['11', 'BB', 'Big ball', '13', null, null, null]
+    ];
+    return {
+      rows: data.map(function (d) {
+        var c = neutral;
+        return {
+          rank: d[0], initials: d[1], pseudo: d[2], total: d[3], tier: d[4], icon: d[5], hasBadge: !!d[4],
+          avatarStyle: 'width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; background: ' + c.bg + '; color: ' + c.fg
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

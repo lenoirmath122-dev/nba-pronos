@@ -24,6 +24,7 @@ export * from "./resolveBlockOnPlayerBets";
 export * from "./resolveNotInMatchBets";
 
 import { resolveCalculableBets } from "./resolveMatchBets";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { resolveCalculableSeriesBets } from "./resolveSeriesBets";
 import { resolveCalculableMatchTotalBets } from "./resolveMatchTotalBets";
 import { resolveCalculableTeamStatBets } from "./resolveTeamStatBets";
@@ -45,6 +46,15 @@ import type { ResolveBetsSummary } from "./resolveBetsShared";
  *  dupliquer la liste (l'auto-révélation de l'Alpha NBA Cup s'en servait
  *  aussi, retirée le 04/10/2026 après la clôture de l'alpha). */
 export async function resolveAllCalculableBets(): Promise<ResolveBetsSummary> {
+  try {
+    return await resolveAllCalculableBetsImpl();
+  } finally {
+    // Paris résolus → points et classement changent (lecture commune en cache).
+    invalidateCommonData(COMMON_TAGS.leaderboard);
+  }
+}
+
+async function resolveAllCalculableBetsImpl(): Promise<ResolveBetsSummary> {
   const summaries = await Promise.all([
     resolveCalculableBets(),
     resolveCalculableSeriesBets(),

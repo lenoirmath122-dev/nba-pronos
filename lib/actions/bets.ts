@@ -29,6 +29,9 @@ export type SubmitBetResult =
   // repassé en brouillon, le client demande confirmation avant de renvoyer
   // avec `confirmPlayerNotInMatch`.
   | { success: true; betId: string; playerNotInMatch: string }
+  // Lot 2 (28/10/2026) : pari trop vague selon l'IA -- même retour en
+  // brouillon, le client affiche la question et renvoie avec `confirmVagueBet`.
+  | { success: true; betId: string; vagueBet: string }
   | { success: false; error: string };
 export type SimpleActionResult = { success: true } | { success: false; error: string };
 
@@ -46,6 +49,8 @@ type SaveBetInput = {
 type SubmitBetInput = SaveBetInput & {
   /** Le joueur a vu l'avertissement « joueur absent du match » et envoie quand même (p3-14). */
   confirmPlayerNotInMatch?: boolean;
+  /** Le joueur a vu la demande de précision et envoie quand même (lot 2). */
+  confirmVagueBet?: boolean;
 };
 
 async function callSaveBet(input: SaveBetInput, submit: boolean): Promise<ActionResult> {
@@ -109,12 +114,13 @@ export async function saveDraftBet(input: SaveBetInput): Promise<ActionResult> {
  *  revalidatePath rappelé APRÈS (pas seulement dans callSaveBet) --
  *  l'auto-validation change le statut du pari après le 1er appel. */
 export async function submitBet(input: SubmitBetInput): Promise<SubmitBetResult> {
-  const { confirmPlayerNotInMatch, ...saveInput } = input;
+  const { confirmPlayerNotInMatch, confirmVagueBet, ...saveInput } = input;
   const result = await callSaveBet(saveInput, true);
   if (!result.success) return result;
 
   const outcome = await structureAndScoreBet(result.betId, input.description, input.seriesId, input.scope, input.matchId, {
     confirmPlayerNotInMatch,
+    confirmVagueBet,
   });
   const supabase = await getServerClient();
 
@@ -123,12 +129,13 @@ export async function submitBet(input: SubmitBetInput): Promise<SubmitBetResult>
   // plutôt qu'une auto-validation à 0 % que le joueur ne pourrait plus
   // supprimer. Si ce retour échoue, le pari reste soumis non structuré et
   // part dans la file admin, comme toute autre panne de structuration.
-  if (outcome.playerNotInMatch) {
+  if (outcome.playerNotInMatch || outcome.vagueBet) {
     const { error } = await supabase.rpc("withdraw_bet", { p_bet_id: result.betId });
     revalidatePath("/play");
     revalidatePath("/play/results");
     revalidatePath("/home");
-    if (!error) return { success: true, betId: result.betId, playerNotInMatch: outcome.playerNotInMatch };
+    if (!error && outcome.playerNotInMatch) return { success: true, betId: result.betId, playerNotInMatch: outcome.playerNotInMatch };
+    if (!error && outcome.vagueBet) return { success: true, betId: result.betId, vagueBet: outcome.vagueBet };
     return { success: true, betId: result.betId, outcome: "PENDING_ADMIN" };
   }
 

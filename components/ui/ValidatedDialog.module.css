@@ -102,9 +102,40 @@
   cursor: pointer;
 }
 
-.ok:focus-visible {
+.ok:focus-visible,
+.action:focus-visible,
+.okSecondary:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+/* Avec une action : le lien devient le bouton principal, « Plus tard » ferme. */
+.action {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: var(--tap-target-min);
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  background: var(--color-accent);
+  color: var(--color-text-on-accent);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+}
+
+.okSecondary {
+  width: 100%;
+  min-height: var(--tap-target-min);
+  padding: var(--space-2) var(--space-4);
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
 }
 
 @keyframes validated-fade-in {

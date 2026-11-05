@@ -16,6 +16,12 @@
 > Chaque chantier a son fichier détaillé, à n'ouvrir que si la session porte
 > dessus. Ici : seulement ce qui reste ouvert et la prochaine étape.
 
+### Aide aux débutants (forme des équipes, détail des effectifs) — [`chantiers/CHANTIER_AIDE_DEBUTANTS.md`](chantiers/CHANTIER_AIDE_DEBUTANTS.md)
+Lots 1-4 codés (L1 mergé en prod, L2 #268, L3 #269, L4 #270 à merger dans l'ordre). Restent : MAJ de la VM après #268, L1-4 (bilans vs classement NBA), L1-5 (titulaires C), test e2e + captures du réel (Docker, sur demande), L5 session visuel, points ouverts §11 (blessures, playoffs).
+
+### Profil & badges — [`chantiers/CHANTIER_PROFIL_BADGES.md`](chantiers/CHANTIER_PROFIL_BADGES.md)
+Plan et maquettes (`Cadrage/V1/Spec visuelle/maquettes_profil_badges/`). Branche d'intégration `release/profil-badges`, livraison en prod prévue le 26/10/2026. Lots Q, 1, 2, 4, 5 faits ; reste Lot 3, 6, 7 et Lot 8 (animations, volontairement après la livraison du 26/10, à refaire en passant par Claude desktop).
+
 ### Enrichissement des modèles / types de paris — [`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`](chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md)
 Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md` (scénario A).
 - **Correctif Memphis mergé (#192, 20/10/2026)**. Reste : rejouer le pari `f4f3ebd6…` après
@@ -27,6 +33,9 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - **Lot 1 clos (21/10/2026)**. Reste : Lots 2 à 4 (S6 + L8, puis play-by-play, puis séries) avant la bêta Cup du 04/12 / playoffs d'avril.
 - **À part, conversation dédiée** : instabilité des probas (3 valeurs pour 20
   appels identiques, avec ou sans cache).
+- **Revue des 28 paris traités par l'admin (28/10/2026)** : lots 1 à 4 mergés (#260, #261), lot 5 réduit à
+  l'aiguillage (#263). Reste : premier essai réel de `GENERAL>X`, question de précision, Estimation IA et combos de
+  quarts. Détail dans `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`, section « Revue du 28/10/2026 ».
 - Après le plan A : outil admin pour les paris non calculables (non cadré).
 
 ### Communication et Match du jour — [`chantiers/CHANTIER_COMMUNICATION.md`](chantiers/CHANTIER_COMMUNICATION.md)
@@ -50,11 +59,19 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   du soir, `heartbeat`, `snapshot-leaderboard`, `reminder-bracket` (20/10/2026,
   workflows GitHub supprimés ; plus d'issue `cron-failure` automatique pour
   ces trois-là). Les autres workflows planifiés (`sync-*`, watchdogs,
-  health-check) n'ont pas été réexaminés.
-- Poller des résultats sur la VM : PR C mergée (#149) ; à confirmer : VM à
-  jour, 2 soirs en dryRun, passage en réel, puis activer le watchdog.
-- Import des box scores sur la VM : observer une semaine à la reprise,
-  vérifier la facturation IPv4, la correspondance des tricodes.
+  health-check) n'ont pas été réexaminés. Au 28/10, `daily-match-draw.yml`,
+  `recaps.yml` et `reminder-matches.yml` sont encore actifs côté GitHub (secours ?).
+- **Constat prod du 28/10/2026 : la chaîne tourne seule.** Poller VM en écriture
+  réelle (c'est lui qui pose `FINISHED`, Highlightly lui laisse le match), watchdog
+  du poller actif et vert, import des box scores sans échec depuis le 18/10 (56 matchs
+  de saison), tous les paris des matchs finis résolus, tricodes alignés sur les 30
+  équipes, calendrier Highlightly complet sur 10-27/11 (5 dates sondées).
+- **Facturation GCP vérifiée le 28/10/2026** : aucune SKU d'IP externe (IPv4 non facturée),
+  total d'octobre 0,00 € (coût 2,18 € couvert par des remises 1,37 € + crédits promo 0,81 €).
+  Le crédit « Free Trial » (261,62 € restants) **expire le 20/11/2026** : revérifier la
+  facture début décembre (ce qu'il couvrait, ~0,8 €/mois, pourrait devenir payant).
+- Reste : 983 `stats_box_scores.pf` vides ; 38 matchs de compétitions de test bloqués en
+  `SCHEDULED` (à archiver).
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 
 ### Accueil jouable et pronos invités — [`chantiers/CHANTIER_ACCUEIL_INVITES.md`](chantiers/CHANTIER_ACCUEIL_INVITES.md)
@@ -63,6 +80,10 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - **1B e-mails** livrée (PR #185 à #187 mergées le 19/10, migration `email_log`
   appliquée, Resend en place). **Reste** : essai réel (dry-run puis envoi) et
   recette Gmail/Outlook/iCloud, spam, désinscription, 1 relance, ≤ 1 mail/jour.
+- **Mesure de l'entonnoir fiabilisée** (branche `feat/funnel-utm`, PR à merger) : UTM, navigateur
+  intégré, filtre robots/hors-prod, `account_created`. **À faire après merge** : valider le texte de
+  `/confidentialite`, appliquer la migration `20261027090000_funnel_utm.sql`, lancer
+  `scripts/sql/funnel_report.sql`. Le `.env.local` local pointe sur la base de PROD (pas de base de dev).
   Deux flags coexistent : `recap_enabled` (push) et `email_results_enabled` (mail).
 - Refonte UI/UX : à refaire de zéro plus tard (branche locale `refonte-ux`
   non poussée, à supprimer).
@@ -74,6 +95,18 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - À faire par l'utilisateur : activer `weekly_ranking` (puis `weekly_popup`)
   sur la compétition réelle ; vérifier que Vercel autorise 3 crons ;
   contrôler le premier figement du **lundi 26/10**.
+- **E-mails applicatifs bloqués en production (26/10/2026)** : Resend
+  refuse `RESEND_API_KEY` (400 « API key is invalid »). `email_log` est vide :
+  aucun e-mail applicatif (résultats, relances, rappels, popup) n'est jamais
+  parti. La popup du 26/10 est publiée, son mail n'est pas envoyé. À faire :
+  clé Resend valide + `EMAIL_FROM` sur un domaine vérifié dans Vercel
+  (Production), redéploiement, test `/api/emails?kind=popup&only_owner=1`
+  (Bearer `SYNC_SECRET`). Chantier mis en pause par l'utilisateur.
+- **Mail de la popup envoyé à tous les comptes actifs, case « résultats »
+  ignorée (PR #252, décision du 26/10/2026, cercle d'amis)** : à revoir
+  avant d'ouvrir à d'autres joueurs (RGPD, p2-9). Les crons reprennent toute
+  popup publiée depuis moins de 7 jours : une clé corrigée avant le 02/11
+  déclenche l'envoi sans clic.
 
 ## Retours de l'alpha (03/10/2026)
 

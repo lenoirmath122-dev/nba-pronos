@@ -156,7 +156,7 @@ const BetStructurationSchema = z.object({
         .array(
           z.object({
             kind: z.enum(["PLAYER", "team1", "team2"]).describe("PLAYER pour un/des joueur(s), team1/team2 pour une équipe."),
-            players: z.array(z.string()).describe("Uniquement si kind=PLAYER : 1 nom, ou 2+ noms si leurs stats se cumulent. Tableau vide sinon."),
+            players: z.array(z.string()).describe("Uniquement si kind=PLAYER : 1 nom, ou 2+ noms UNIQUEMENT si le texte demande un cumul explicite (« combinés », « cumulés », « à eux deux », « ensemble », « le total de »). Sans ce mot, « A et B ont au moins N » = CHACUN : une condition par joueur, jamais une condition à 2 noms. Tableau vide sinon."),
             stats: z
               .array(z.enum(COMBO_STAT_CODES as [string, ...string[]]))
               .describe(
@@ -258,7 +258,7 @@ function buildStaticSystemText(): string {
     "Exemples : \"Cunningham marque plus de 25 points et réalise plus de 5 passes\" (2 conditions, même joueur, " +
     "stats différentes), \"Wembanyama réalise au moins 25 points, 12 rebonds et 8 passes\" (1 condition, 3 stats " +
     "sommées pour Wembanyama), \"le cumul des points de Castle et Harper est supérieur à 40\" (1 condition, 2 " +
-    "joueurs, 1 stat sommée), \"Sengun marque au moins 23 points et prend au moins 13 rebonds\" (2 conditions), " +
+    "joueurs, 1 stat sommée -- cumul EXPLICITE), \"Brunson et Cunningham ont au moins 20 points\" (SANS mot de cumul = CHACUN : 2 conditions, une par joueur, JAMAIS 1 condition à 2 joueurs), \"Sengun marque au moins 23 points et prend au moins 13 rebonds\" (2 conditions), " +
     "\"Minnesota marque entre 101 et 110 points inclus\" (2 conditions SUR LA MÊME équipe/stat : threshold=101 " +
     "AT_LEAST et threshold=110 AT_MOST -- une fourchette est toujours 2 conditions, jamais un seul seuil). " +
     "Le VAINQUEUR du match est une condition comme une autre : stats=[\"win\"], kind=team1/team2, threshold=null, " +

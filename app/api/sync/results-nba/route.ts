@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { getServiceClient } from "@/lib/supabase/service";
 import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
 import { writeSyncLog } from "@/lib/sync/logging";
@@ -48,6 +49,9 @@ export async function POST(request: Request): Promise<Response> {
 
   try {
     const result = await syncResultsFromNba(payload);
+    if (!result.dryRun && (result.changed > 0 || result.skipped.length > 0)) {
+      invalidateCommonData(COMMON_TAGS.matches, COMMON_TAGS.series);
+    }
     // Pas une ligne par passage (~480/jour) : seulement s'il s'est passé quelque chose.
     if (result.changed > 0 || result.skipped.length > 0) {
       const summary =
@@ -70,6 +74,8 @@ export async function POST(request: Request): Promise<Response> {
     }
     return NextResponse.json(result);
   } catch (error) {
+    // Écritures partielles possibles avant l'échec : on invalide quand même.
+    invalidateCommonData(COMMON_TAGS.matches, COMMON_TAGS.series);
     const message = error instanceof Error ? error.message : "Erreur inconnue.";
     await writeSyncLog(supabase, { syncType: "RESULTS", endpoint, success: false, summary: message, requestsRemaining: null });
     return NextResponse.json({ error: toClientError("sync/results-nba", { message }) }, { status: 502 });

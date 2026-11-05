@@ -21,7 +21,7 @@ type PlayerLinkProps = {
 
 export function PlayerLink({ userId, pseudo, className, onClick }: PlayerLinkProps) {
   return (
-    <Link href={`/players/${userId}`} className={className} onClick={onClick}>
+    <Link href={`/players/${userId}`} prefetch={false} className={className} onClick={onClick}>
       {pseudo}
     </Link>
   );

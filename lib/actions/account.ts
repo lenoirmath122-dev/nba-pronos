@@ -1,9 +1,11 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { getServerClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { toClientError } from "@/lib/actions/errors";
+import { clearThemeCookie } from "@/lib/theme/server";
 
 // Suppression de compte en self-service (§8.2 conseils_juridiques_
 // deploiement_application.md, cadré le 03/09/2026) — reprend l'ordre de
@@ -105,6 +107,10 @@ export async function deleteAccountFormAction(formData: FormData): Promise<void>
     redirectWithError(toClientError("deleteAccountFormAction", error instanceof Error ? error : { message: String(error) }));
   }
 
+  // Les lignes du joueur disparaissent de user_scores : plus de ligne fantôme au classement.
+  invalidateCommonData(COMMON_TAGS.leaderboard);
+
   await supabase.auth.signOut();
+  await clearThemeCookie();
   redirect("/login?accountDeleted=1");
 }

@@ -24,6 +24,8 @@ const PRICE_PER_MTOK_USD: Record<
   // réel le 11/10/2026. Surestimation sans danger pour un coupe-circuit ; à
   // ajuster une fois le coût réel lu.
   "claude-sonnet-5-5": { input: 2.0, output: 10.0, cacheWrite: 2.5, cacheRead: 0.2 },
+  // Seconde chance d'aiguillage (suggestBetRoute.ts, 28/10/2026).
+  "claude-haiku-5-5": { input: 0.1, output: 0.5, cacheWrite: 0.125, cacheRead: 0.01 },
 };
 // Modèle inconnu : tarif connu le plus cher (jamais sous-estimer un plafond).
 const FALLBACK_PRICE = Object.values(PRICE_PER_MTOK_USD).reduce((max, p) =>

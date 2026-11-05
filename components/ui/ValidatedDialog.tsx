@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useState } from "react";
 import { createPortal } from "react-dom";
+import Link from "next/link";
 import { FocusTrap } from "./FocusTrap";
 import { Backdrop } from "./Backdrop";
 import styles from "./ValidatedDialog.module.css";
@@ -25,6 +26,9 @@ export type ValidatedDialogContent = {
   title: string;
   items: string[];
   note?: string;
+  /** Lien d'appel à l'action sous les éléments (ex. proposer un pari perso
+   *  dans la foulée d'un prono) ; « OK » reste le geste de fermeture. */
+  action?: { label: string; href: string };
 };
 
 type ShowValidatedDialog = (content: ValidatedDialogContent) => void;
@@ -85,8 +89,13 @@ export function ValidatedDialogProvider({ children }: { children: React.ReactNod
                 </ul>
               )}
               {current.note && <p className={styles.note}>{current.note}</p>}
-              <button type="button" className={styles.ok} onClick={close}>
-                OK
+              {current.action && (
+                <Link href={current.action.href} className={styles.action} onClick={close}>
+                  {current.action.label}
+                </Link>
+              )}
+              <button type="button" className={current.action ? styles.okSecondary : styles.ok} onClick={close}>
+                {current.action ? "Plus tard" : "OK"}
               </button>
             </FocusTrap>
           </Backdrop>,

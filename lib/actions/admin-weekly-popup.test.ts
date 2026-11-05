@@ -30,6 +30,10 @@ vi.mock("@/lib/supabase/service", () => ({
 const audit = vi.fn();
 vi.mock("@/lib/actions/audit", () => ({ logAdminAction: (...args: unknown[]) => audit(...args) }));
 vi.mock("next/cache", () => ({ revalidatePath: vi.fn() }));
+const runEmail = vi.fn().mockResolvedValue({});
+const afterCallbacks: Array<() => unknown> = [];
+vi.mock("next/server", () => ({ after: (callback: () => unknown) => afterCallbacks.push(callback) }));
+vi.mock("@/lib/weeklyPopup/email", () => ({ runWeeklyPopupEmail: (...args: unknown[]) => runEmail(...args) }));
 vi.mock("@/lib/weeklyPopup/ensure", () => ({ ensureWeeklyPopupDraft: vi.fn(), reserveRegeneration: vi.fn() }));
 vi.mock("@/lib/weeklyPopup/generate", () => ({ runWeeklyPopupGeneration: vi.fn() }));
 vi.mock("@/lib/weeklyPopup/notify", () => ({ doubtReason: (c: string | null) => c ?? "motif inconnu" }));
@@ -108,6 +112,8 @@ beforeEach(() => {
   signedIn = true;
   calls = [];
   audit.mockClear();
+  runEmail.mockClear();
+  afterCallbacks.length = 0;
 });
 
 describe("garde d'accès", () => {
@@ -139,7 +145,12 @@ describe("publishWeeklyPopup", () => {
     expect(payload).toMatchObject({ status: "PUBLISHED", raw_output: null, published_by: "admin-1" });
     expect((payload.featured_user_ids as string[]).sort()).toEqual([U1, U2].sort());
     expect(typeof payload.published_at).toBe("string");
+    expect(typeof payload.email_requested_at).toBe("string");
     expect(hasFilter(writes[0], "eq", "status", "READY")).toBe(true);
+    // L'e-mail part après la réponse, pas avant.
+    expect(runEmail).not.toHaveBeenCalled();
+    await afterCallbacks[0]();
+    expect(runEmail).toHaveBeenCalledOnce();
     expect(audit).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ action: "WEEKLY_POPUP_PUBLISH" }));
   });
 
@@ -147,6 +158,7 @@ describe("publishWeeklyPopup", () => {
     const writes = backend(row({ status }));
     expect(await publishWeeklyPopup(POPUP_ID)).toMatchObject({ success: false });
     expect(writes).toHaveLength(0);
+    expect(afterCallbacks).toHaveLength(0);
   });
 
   it("refuse un brouillon sans texte", async () => {

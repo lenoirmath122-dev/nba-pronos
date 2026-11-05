@@ -1,5 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
-import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
+import { hiddenSeriesIds } from "@/lib/queries/dailyVisibility";
+import { getActiveCompetition, getLiveScoreRows, getUpcomingMatches } from "@/lib/cache/commonData";
 import { getAllTeams } from "@/lib/queries/teams";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { DAILY_WINDOW_DAYS, parisDayBoundsUtc, parisDateKey } from "@/lib/dates/paris";
@@ -7,6 +8,8 @@ import { nyDateString } from "@/lib/dates/newyork";
 import { dailyKickoffLabel, type DailyKickoffLabel } from "@/lib/labels/dailyMatch";
 import { betDifficultyPoints } from "@/lib/scoring/engine";
 import type { TeamRef } from "@/lib/queries/matches";
+import { getTeamFormBySeason } from "@/lib/queries/teamInsights";
+import type { TeamFormSummary } from "@/lib/teamInsights/types";
 import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorrection";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES, MATCH_SLOT_CAP } from "@/lib/labels/bets";
@@ -164,6 +167,9 @@ export type UpcomingMatchRow = {
   daily: DailyKickoffLabel | null;
   homeTeam: TeamRef;
   awayTeam: TeamRef;
+  /** Forme récente (aide aux débutants) ; null = pas de donnée, rien à afficher. */
+  homeForm: TeamFormSummary | null;
+  awayForm: TeamFormSummary | null;
   myWinnerTeamId: string | null;
   myMargin: number | null;
   viewStatus: PredictionViewStatus;
@@ -368,15 +374,10 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, type")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const competition = await getActiveCompetition(supabase);
   if (!competition) return null;
 
   const nowMs = Date.now();
-  const nowIso = new Date(nowMs).toISOString();
   // Match du jour : fenêtre glissante de 7 jours, tous les matchs publiés sont
   // dépliés (et couverts par « Tout valider ») ; +1 jour pour couvrir un coup
   // d'envoi après minuit NY du dernier jour publié.
@@ -387,7 +388,7 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   // (réglé ou non) vit dans Résultats ; seul le ticker garde un oeil sur les
   // matchs EN DIRECT, via une requête légère.
   const [{ days, daysBeyondWindow, readyCount }, liveScores, quotas] = await Promise.all([
-    fetchUpcomingWindow(supabase, user.id, competition, nowIso, windowEndMs, nowMs),
+    fetchUpcomingWindow(supabase, user.id, competition, windowEndMs, nowMs),
     fetchLiveScores(supabase, competition.id),
     getQuotas(supabase, user.id, competition),
   ]);
@@ -404,20 +405,7 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
 }
 
 async function fetchLiveScores(supabase: SupabaseServerClient, competitionId: string): Promise<LiveScore[]> {
-  const { data } = await supabase
-    .from("matches")
-    .select("id, home_team_id, away_team_id, home_score, away_score")
-    .eq("competition_id", competitionId)
-    .eq("status", "IN_PROGRESS")
-    .not("scheduled_at", "is", null)
-    .order("scheduled_at", { ascending: false });
-  const rows = (data ?? []) as {
-    id: string;
-    home_team_id: string;
-    away_team_id: string;
-    home_score: number | null;
-    away_score: number | null;
-  }[];
+  const rows = await getLiveScoreRows(supabase, competitionId);
   if (rows.length === 0) return [];
 
   const abbrevById = new Map(((await getAllTeams()) as TeamRow[]).map((t) => [t.id, t.abbreviation]));
@@ -434,7 +422,6 @@ async function fetchUpcomingWindow(
   supabase: SupabaseServerClient,
   userId: string,
   competition: CompetitionRow,
-  nowIso: string,
   windowEndMs: number,
   nowMs: number
 ): Promise<{ days: MatchDay[]; daysBeyondWindow: MatchDay[]; readyCount: number }> {
@@ -450,17 +437,12 @@ async function fetchUpcomingWindow(
   // Cup alpha) n'apparaissait NULLE PART avant J-3, pas même dans un repli.
   // Sans effet en saison réelle (l'horizon de synchro s'arrête à 4 jours,
   // ce select ne ramenait déjà quasiment jamais rien au-delà de la fenêtre).
-  const hiddenSeries = await hiddenSeriesFilter(supabase);
-  const { data: matchesData } = await supabase
-    .from("matches")
-    .select("id, series_id, scheduled_at, home_team_id, away_team_id")
-    .eq("competition_id", competition.id)
-    .not("series_id", "in", hiddenSeries) // Match du jour : jours non publiés masqués
-    .not("scheduled_at", "is", null)
-    .gt("scheduled_at", nowIso)
-    .order("scheduled_at", { ascending: true });
-
-  const matches = (matchesData ?? []) as UpcomingMatchDbRow[];
+  // Programme commun mis en cache (tag « matches ») ; le masquage des jours
+  // non publiés est appliqué ici avec l'heure courante, jamais mis en cache.
+  const hiddenIds = new Set(await hiddenSeriesIds(supabase, nowMs));
+  const matches: UpcomingMatchDbRow[] = (await getUpcomingMatches(supabase, competition.id, nowMs)).filter(
+    (m) => !hiddenIds.has(m.series_id)
+  );
   if (matches.length === 0) return { days: [], daysBeyondWindow: [], readyCount: 0 };
 
   const matchIds = matches.map((m) => m.id);
@@ -546,6 +528,8 @@ async function fetchUpcomingWindow(
 
   const isDailyMatch = competition.type === "DAILY_MATCH";
   const cards: UpcomingMatchRow[] = [];
+  // Lue une seule fois (≤ 30 lignes, en cache) ; ne casse jamais l'écran.
+  const formByTricode = await getTeamFormBySeason().catch(() => new Map<string, TeamFormSummary>());
   for (const match of matches) {
     const own = ownPredictionByMatch.get(match.id);
     const viewStatus = deriveViewStatus(own);
@@ -582,6 +566,8 @@ async function fetchUpcomingWindow(
       daily: isDailyMatch ? dailyKickoffLabel(match.scheduled_at) : null,
       homeTeam,
       awayTeam,
+      homeForm: formByTricode.get(homeTeam.abbreviation) ?? null,
+      awayForm: formByTricode.get(awayTeam.abbreviation) ?? null,
       myWinnerTeamId: own?.predicted_winner_team_id ?? null,
       myMargin: own?.predicted_margin ?? null,
       viewStatus,
@@ -1072,11 +1058,7 @@ export async function getPlayResults(params: {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, type")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const competition = await getActiveCompetition(supabase);
   if (!competition) return null;
 
   const scopeResolved = await resolveLeagueScope(supabase, params.leagueId);

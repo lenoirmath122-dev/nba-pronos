@@ -12,6 +12,7 @@ import { MATCH_SLOT_CAP } from "@/lib/labels/bets";
 import type { BetFormBootstrap, EditableBet, MatchOption, NewBetContext, SeriesOption } from "@/lib/queries/bets";
 import { saveDraftBet, submitBet, withdrawBet } from "@/lib/actions/bets";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
+import { VagueBetConfirm } from "./VagueBetConfirm";
 import { validatedBetDialog, PENDING_ADMIN_TOAST } from "./validatedBetDialog";
 import styles from "./BetForm.module.css";
 import { allowsSeriesBets } from "@/lib/competitions/types";
@@ -67,6 +68,7 @@ export function BetForm(props: BetFormProps) {
   // attente de confirmation -- `draftBetId` évite de recréer un pari aux
   // envois suivants.
   const [notInMatch, setNotInMatch] = useState<string | null>(null);
+  const [vagueBet, setVagueBet] = useState<string | null>(null);
   const [draftBetId, setDraftBetId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   // Toast posé AVANT router.back() (p3-5) : il vit dans la coquille de la
@@ -102,6 +104,7 @@ export function BetForm(props: BetFormProps) {
 
   function handleScopeChange(next: "SERIES" | "MATCH") {
     setNotInMatch(null);
+    setVagueBet(null);
     setScope(next);
     setMatchId(null);
     setIsExpanded(false);
@@ -109,6 +112,7 @@ export function BetForm(props: BetFormProps) {
 
   function handleSeriesSelect(series: SeriesOption) {
     setNotInMatch(null);
+    setVagueBet(null);
     setSeriesId(series.seriesId);
     setMatchId(null);
     setIsExpanded(false);
@@ -116,6 +120,7 @@ export function BetForm(props: BetFormProps) {
 
   function handleMatchSelect(match: MatchOption) {
     setNotInMatch(null);
+    setVagueBet(null);
     setMatchId(match.matchId);
     setIsExpanded(false);
   }
@@ -147,17 +152,23 @@ export function BetForm(props: BetFormProps) {
     });
   }
 
-  function handleSubmit(confirmPlayerNotInMatch = false) {
+  function handleSubmit(confirmPlayerNotInMatch = false, confirmVagueBet = false) {
     setError(null);
     startTransition(async () => {
       const payload = targetPayload();
-      const result = await submitBet({ ...payload, confirmPlayerNotInMatch });
+      const result = await submitBet({ ...payload, confirmPlayerNotInMatch, confirmVagueBet });
       if (result.success && "playerNotInMatch" in result) {
         setDraftBetId(result.betId);
         setNotInMatch(result.playerNotInMatch);
         return;
       }
+      if (result.success && "vagueBet" in result) {
+        setDraftBetId(result.betId);
+        setVagueBet(result.vagueBet);
+        return;
+      }
       setNotInMatch(null);
+      setVagueBet(null);
       if (result.success) {
         requestBadgeCheck();
         // Validé par l'IA (file admin sautée) : popup « Pari validé : x % de
@@ -344,9 +355,21 @@ export function BetForm(props: BetFormProps) {
               isPending={isPending}
               onEdit={() => {
                 setNotInMatch(null);
+                setVagueBet(null);
                 document.getElementById(descriptionId)?.focus();
               }}
               onConfirm={() => handleSubmit(true)}
+            />
+          ) : vagueBet ? (
+            <VagueBetConfirm
+              question={vagueBet}
+              isPending={isPending}
+              onEdit={() => {
+                setNotInMatch(null);
+                setVagueBet(null);
+                document.getElementById(descriptionId)?.focus();
+              }}
+              onConfirm={() => handleSubmit(false, true)}
             />
           ) : (
             <div className={styles.actions}>

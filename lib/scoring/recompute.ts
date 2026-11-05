@@ -1,4 +1,5 @@
 import { getServiceClient } from "@/lib/supabase/service";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { writeSeriesOutcome } from "@/lib/sync/writeSeriesOutcome";
 import {
   deriveSeriesOutcome,
@@ -86,7 +87,7 @@ function isPredictionFrozen(row: PredictionRow): boolean {
 /** §10.1, étape 1-3 : score les pronos d'un match, re-dérive sa série,
  *  écrit series.official_* SI l'agrégat a changé, puis cascade sur
  *  recomputeSeries. */
-export async function recomputeMatch(matchId: string): Promise<void> {
+async function recomputeMatchImpl(matchId: string): Promise<void> {
   const supabase = getServiceClient();
 
   const { data: matchRow, error: matchErr } = await supabase
@@ -191,7 +192,7 @@ type BracketPickRow = {
 /** §10.1, étape 4 : score tous les picks de bracket d'UNE série, contre son
  *  agrégat officiel actuel (déjà en base — écrit par writeSeriesOutcome,
  *  par la synchro T4, ou par une résolution admin A2, peu importe qui). */
-export async function recomputeSeries(seriesId: string): Promise<void> {
+async function recomputeSeriesImpl(seriesId: string): Promise<void> {
   const supabase = getServiceClient();
 
   const { data: seriesRow, error: seriesErr } = await supabase
@@ -279,7 +280,7 @@ type BetRow = { id: string; status: string; validated_difficulty: number | null;
 
 /** §10.1 : un pari résolu par l'admin (chemin B, §2) — mapping pur
  *  statut+difficulté → points, aucune dépendance série/match. */
-export async function recomputeBet(betId: string): Promise<void> {
+async function recomputeBetImpl(betId: string): Promise<void> {
   const supabase = getServiceClient();
 
   const { data: betRow, error } = await supabase
@@ -323,7 +324,7 @@ export async function recomputeBet(betId: string): Promise<void> {
  *  TOUT le barème d'une compétition. Idempotent, ordre de parcours sans
  *  effet sur le résultat (§10.2). Boucles séquentielles (pas de
  *  parallélisation) — filet de sécurité, pas un chemin chaud. */
-export async function recomputeCompetition(competitionId: string): Promise<void> {
+async function recomputeCompetitionImpl(competitionId: string): Promise<void> {
   const supabase = getServiceClient();
 
   const { data: matches } = await supabase.from("matches").select("id").eq("competition_id", competitionId);
@@ -339,5 +340,44 @@ export async function recomputeCompetition(competitionId: string): Promise<void>
   const { data: bets } = await supabase.from("bets").select("id").eq("competition_id", competitionId);
   for (const bet of bets ?? []) {
     await recomputeBet(bet.id);
+  }
+}
+
+// Les écritures de scoring changent classement, séries et résultats : on
+// invalide les lectures communes mises en cache (lib/cache/commonData.ts)
+// APRÈS l'écriture, même en cas d'échec partiel (finally).
+function invalidateAfterScoring(): void {
+  invalidateCommonData(COMMON_TAGS.leaderboard, COMMON_TAGS.matches, COMMON_TAGS.series);
+}
+
+export async function recomputeMatch(matchId: string): Promise<void> {
+  try {
+    await recomputeMatchImpl(matchId);
+  } finally {
+    invalidateAfterScoring();
+  }
+}
+
+export async function recomputeSeries(seriesId: string): Promise<void> {
+  try {
+    await recomputeSeriesImpl(seriesId);
+  } finally {
+    invalidateAfterScoring();
+  }
+}
+
+export async function recomputeBet(betId: string): Promise<void> {
+  try {
+    await recomputeBetImpl(betId);
+  } finally {
+    invalidateAfterScoring();
+  }
+}
+
+export async function recomputeCompetition(competitionId: string): Promise<void> {
+  try {
+    await recomputeCompetitionImpl(competitionId);
+  } finally {
+    invalidateAfterScoring();
   }
 }

@@ -16,6 +16,12 @@ Avant l'import, un « secours » (scoreboard_backup) rejoue les scoreboards NBA 
 derniers jours vers /api/sync/results-nba, au cas où le poller des résultats
 (poll_results.py) aurait été arrêté ; il ne change jamais le code de sortie.
 
+Après l'import, `refresh_stats_aide_debutants()` (RPC Supabase) recalcule la forme des
+équipes et les stats des joueurs de l'aide aux débutants, puis invalide le cache Next
+(POST /api/revalidate/team-insights). Confort, pas bloquant : un échec est tracé dans
+sync_logs mais ne change jamais le code de sortie. Ordre : import -> rafraîchissement
+-> revalidation -> résolution des paris.
+
 Variables d'environnement : SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SYNC_SECRET,
 APP_URL (défaut https://nba-pronos.vercel.app), RESULTS_POLL_DRYRUN (secours).
 
@@ -38,6 +44,7 @@ import refresh_daily as rd
 
 DEFAULT_APP_URL = "https://nba-pronos.vercel.app"
 RESOLVE_TIMEOUT_SECONDS = 120
+REVALIDATE_TIMEOUT_SECONDS = 15
 
 
 def resolve_bets(trigger: str) -> bool:
@@ -66,6 +73,40 @@ def resolve_bets(trigger: str) -> bool:
     if not response.ok:
         _log_failure(f"[{trigger}] resolve-bets : HTTP {response.status_code}")
         return False
+    return True
+
+
+def revalidate_team_insights() -> None:
+    """Invalide le cache Next des détails d'équipes. Échec seulement journalisé : le
+    cache expire de toute façon au bout d'1 h."""
+    app_url = os.environ.get("APP_URL", DEFAULT_APP_URL).rstrip("/")
+    secret = os.environ.get("SYNC_SECRET")
+    if not secret:
+        print("SYNC_SECRET manquante : cache team-insights non invalidé.")
+        return
+    try:
+        response = requests.post(
+            f"{app_url}/api/revalidate/team-insights",
+            headers={"Authorization": f"Bearer {secret}"},
+            timeout=REVALIDATE_TIMEOUT_SECONDS,
+            allow_redirects=False,
+        )
+        print(f"revalidate team-insights : HTTP {response.status_code}")
+    except requests.RequestException as exc:
+        print(f"revalidate team-insights : appel échoué ({type(exc).__name__})")
+
+
+def refresh_aide_debutants(trigger: str) -> bool:
+    """Recalcule stats_team_form / stats_player_season via la fonction SQL, puis
+    invalide le cache. True si le calcul a réussi. Ne lève jamais."""
+    try:
+        result = rd.get_supabase_client().rpc("refresh_stats_aide_debutants", {}).execute()
+        print(f"aide-debutants : {result.data}")
+    except BaseException as exc:  # noqa: BLE001 -- confort : jamais bloquant (y compris SystemExit)
+        print(f"aide-debutants : échec ({type(exc).__name__})")
+        _log_failure(f"[{trigger}] aide-debutants : {type(exc).__name__}")
+        return False
+    revalidate_team_insights()
     return True
 
 
@@ -110,6 +151,8 @@ def main(argv=None) -> int:
         # État inconnu (déjà tracé par rd.run) : on ne résout pas à l'aveugle.
         print(f"Import en exception : {exc!r}")
         return 1
+
+    refresh_aide_debutants(args.trigger)  # n'influe pas sur le code de sortie
 
     resolve_ok = resolve_bets(args.trigger)
     return 0 if (import_ok and resolve_ok) else 1

@@ -6,6 +6,8 @@ import type { UpcomingMatchRow } from "@/lib/queries/play";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import { formatPronoRecap } from "@/lib/labels/pronos";
 import { MarginStepper } from "@/components/play/MarginStepper";
+import { remainingBets } from "@/components/play/betSlot";
+import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import { useMatchPronoForm, type ValidatedPick } from "@/components/play/useMatchPronoForm";
 import { PendingLabel, ValidateConfirmDialog } from "@/components/play/ValidateConfirmDialog";
 import styles from "./NextPronoCard.module.css";
@@ -29,6 +31,14 @@ type NextPronoCardProps = {
   /** Matchs à venir NON validés (brouillon compris), triés par coup d'envoi. */
   matches: UpcomingMatchRow[];
 };
+
+// Match du jour : même libellé que /play (jour NY, heure de Paris, puis
+// « dans la nuit du … au … »), sinon la date de Paris trompe sur le jour.
+function kickoffLabel(match: UpcomingMatchRow): string {
+  const { daily } = match;
+  if (!daily) return formatKickoff(match.scheduledAt);
+  return `${daily.dayLabel} · ${daily.time}${daily.nightLabel ? ` (${daily.nightLabel})` : ""}`;
+}
 
 function formatKickoff(iso: string): string {
   const parts = new Intl.DateTimeFormat("fr-FR", {
@@ -70,6 +80,7 @@ export function NextPronoCard({ matches }: NextPronoCardProps) {
   const [validatedIds, setValidatedIds] = useState<string[]>([]);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
   const feedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showValidated = useValidatedDialog();
 
   // Horloge client uniquement (jamais au rendu serveur : pas de décalage
   // d'hydratation) — sert à l'affichage relatif ET à écarter un match qui
@@ -104,6 +115,16 @@ export function NextPronoCard({ matches }: NextPronoCardProps) {
     const winnerTeam = isHomeWinner ? match.homeTeam : match.awayTeam;
     const loserTeam = isHomeWinner ? match.awayTeam : match.homeTeam;
     setValidatedIds((ids) => [...ids, match.matchId]);
+    // Pari perso encore possible sur ce match : on le propose dans la foulée.
+    if (!match.bet && remainingBets(match.betSlot) > 0) {
+      showValidated({
+        title: "Prono validé",
+        items: [formatPronoRecap(winnerTeam.abbreviation, loserTeam.abbreviation, pick.margin)],
+        note: "Tu peux aussi tenter un pari perso sur ce match.",
+        // Ancre vers la carte du match dans /play (zone « Mon pari » dessus).
+        action: { label: "Faire un pari perso", href: `/play#match-${match.matchId}` },
+      });
+    }
     setFeedback({ recap: formatPronoRecap(winnerTeam.abbreviation, loserTeam.abbreviation, pick.margin) });
     if (feedbackTimer.current) clearTimeout(feedbackTimer.current);
     feedbackTimer.current = setTimeout(() => setFeedback(null), FEEDBACK_MS);
@@ -189,7 +210,7 @@ function NextPronoForm({ match, position, total, nowMs, onValidated }: NextProno
       </div>
       <p className={styles.question}>Qui gagne ?</p>
       <p className={styles.when}>
-        <time dateTime={match.scheduledAt}>{formatKickoff(match.scheduledAt)}</time>
+        <time dateTime={match.scheduledAt}>{kickoffLabel(match)}</time>
         {nowMs !== null && ` · ${formatRelative(match.scheduledAt, nowMs)}`}
       </p>
 

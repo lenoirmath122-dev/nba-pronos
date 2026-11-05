@@ -382,3 +382,18 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Chat : menu ⋯ (Copier/Signaler/Supprimer), réactions emoji à l'appui long (migration poussée), CI dédoublonnée (22/10/2026) — PR #219, #221, #222, #223
 - Revue des paris non calculables en prod (23/10/2026) : trou réel = écart orienté sur une période (MARGIN symétrique seulement), noté en GAPS et en tête de REPRISE ; hors-terrain = manuel normal ; paris Rillettes-31 sur compétitions archivées
 - État lu/vu lié au compte : chat_read_status + user_seen_state, Realtime, reprise du localStorage (23/10/2026) — PR #230, migrations à pousser après merge ; reste à trier 7 changements non commités
+- Chantier Profil & badges : plan (#233), release/profil-badges, Lot Q (PR #234, recette OK 23/10/2026) ; prochain Lot 1
+- Chantier Profil & badges : Lot 1 vitrine + lecture groupée (#236, mergé), Lot 2 composants d'identité (#237, ouverte) (24/10/2026) ; D5 couvert par user_seen_state, D7 à trancher
+- Chantier Profil & badges : Lot 2 mergé (#237), Lot 4 onglet Badges (#239, recette OK, épingle sur carte) (24/10/2026) ; D7 toujours ouverte ; prochain Lot 5 classement
+- Chantier Profil & badges : Lot 5 classement (PlayerIdentity + vitrine dans lignes, barre « Ta place », vue hebdo), PR #241, CI verte, recette visuelle à faire (24/10/2026) ; prochain Lot 3
+- Chantier Profil & badges : Lots 3a/3b mergés (#243, #244) ; épingle et vitrine épinglés seulement manquaient dans la release, reportés par #245 (25/10/2026) ; à merger puis recetter
+- Popup hebdo : prompt rédacteur v6 (une du lundi, ton trash sans insulte perso, pas de maxime plaquée) + HISTORIQUE titres/cta des 4 dernières popups (25/10/2026) ; non essayé
+- Popup hebdo : bloc « La zone Maïno » (#251, paris rejetés + acceptés sous 5 %), mail à tous les comptes actifs (#252) ; envoi impossible, clé Resend invalide en prod (26/10/2026), chantier mis en pause
+- Entonnoir accueil : UTM (cookie pb_utm), navigateur intégré, filtre robots + hors-prod + admins, account_created côté serveur, rapport SQL ; PR feat/funnel-utm, migration non appliquée (27/10/2026)
+- Paris persos : revue des 28 paris admin, aiguillage élargi + seconde chance Haiku, question de précision, orthographe joueurs (#260 mergé), estimation IA Sonnet (#261 ouverte) ; lot 5 à faire en Opus (28/10/2026)
+- Paris persos : lot 5 mesuré en prod (2 enchaînements de quarts / 106, 0 points d'équipe par période), réduit à l'aiguillage vers les combos de période, pas de modèle TEAM_POINTS (#263 ouverte) ; #261 et #262 mergées (28/10/2026)
+- Aide aux débutants : cadrage + lots 1-4 codés (données prod appliquées #267, refresh VM #268, API/cache #269, popup et indicateur #270), e2e/captures et visuel restants (05/11/2026)
+- Aide aux débutants : refonte carte de prono (traits de forme dans les boutons, popup à 3 onglets, bug date du bandeau) #273 mergé, bouton compact en haut à droite #274 ouvert, captures restantes (05/11/2026)
+- Quota Vercel CPU : cache serveur des données communes (compétition, séries, matchs, live, classement), invalidation par tags depuis sync/recompute/admin, 16 tests ajoutés, PR perf/cache-donnees-communes ouverte (05/11/2026)
+- Quota Vercel (alerte 90 % Fluid Active CPU) : proxy.ts allégé (pas d'appel Supabase sans cookie de session, api/, _vercel/ et statiques hors matcher) + tests (05/11/2026) — PR #276
+- Quota Vercel : thème lu via un cookie (theme-init.js + ThemeSync) au lieu du layout racine, qui ne lit plus la session ; pages publiques cachables (05/11/2026) — PR #277

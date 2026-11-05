@@ -3,6 +3,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { getServerClient } from "@/lib/supabase/server";
 import { AdminBackLink } from "@/components/admin/AdminBackLink";
+import { InternalVisitorMark } from "@/components/funnel/InternalVisitorMark";
 import styles from "./layout.module.css";
 
 // Hub admin (T6a §3.1/§4.2) : garde de RÔLE, distincte de la garde de
@@ -76,6 +77,7 @@ export default async function AdminLayout({
 
   return (
     <div className={styles.shell}>
+      <InternalVisitorMark />
       <header className={styles.header}>
         <AdminBackLink />
         <span className={styles.tag}>admin</span>

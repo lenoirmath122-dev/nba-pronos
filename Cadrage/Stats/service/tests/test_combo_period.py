@@ -51,3 +51,11 @@ def test_combo_stat_match_entier_et_quarts():
         None, [[_cond("domicile", "fg3", 0.32)], [_cond("domicile", "qwon", 3)]], HOME, AWAY, "d"
     )
     assert out["proba"] == pytest.approx(0.4 * 0.07)
+
+
+def test_combo_enchainement_de_quarts_sans_condition_match_entier():
+    # « gagne Q1 et Q2, perd Q3, gagne Q4 » : que des periodes, aucun leg match entier.
+    legs = [[_cond("domicile", s, comparison=c)] for s, c in
+            [("win_q1", "OVER"), ("win_q2", "OVER"), ("win_q3", "UNDER"), ("win_q4", "OVER")]]
+    out = sc._compute_combo_proba_once(None, legs, HOME, AWAY, "d")
+    assert out["proba"] == pytest.approx(0.55 ** 3 * 0.45)

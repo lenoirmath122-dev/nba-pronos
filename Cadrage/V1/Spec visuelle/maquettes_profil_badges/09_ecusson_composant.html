@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Écusson de badge</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;700&amp;family=Sora:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+</style>
+</helmet>
+<span style="{{wrapStyle}}" role="img" aria-label="{{label}}">
+  <span style="{{shieldStyle}}">
+    <span style="{{innerStyle}}">
+      <sc-if value="{{showText}}" hint-placeholder-val="{{ false }}">
+        <span style="{{textStyle}}">{{text}}</span>
+      </sc-if>
+      <sc-if value="{{ic.check}}" hint-placeholder-val="{{ true }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M8 12.5l3 3 5-6"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.eye}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+      </sc-if>
+      <sc-if value="{{ic.heart}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20s-7.5-4.6-7.5-10.2A4.3 4.3 0 0 1 12 7.2a4.3 4.3 0 0 1 7.5 2.6C19.5 15.4 12 20 12 20z"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.dice}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"></rect><circle cx="8.5" cy="8.5" r="1.2" fill="currentColor"></circle><circle cx="12" cy="12" r="1.2" fill="currentColor"></circle><circle cx="15.5" cy="15.5" r="1.2" fill="currentColor"></circle></svg>
+      </sc-if>
+      <sc-if value="{{ic.clock}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"></circle><path d="M12 9v4l2.5 2M9 2h6M12 2v3"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.copy}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M4 16V6a2 2 0 0 1 2-2h10M11 14l2 2 4-4"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.fork}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5" r="2"></circle><circle cx="18" cy="5" r="2"></circle><circle cx="12" cy="19" r="2"></circle><path d="M6 7v2a3 3 0 0 0 3 3h6a3 3 0 0 0 3-3V7M12 12v5"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.scroll}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20h9a3 3 0 0 0 3-3v-1H11v1a3 3 0 0 1-3 3 3 3 0 0 1-3-3V5a1 1 0 0 0-1-1h12a2 2 0 0 1 2 2v10M10 8h5M10 12h5"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.binoculars}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6.5" cy="15.5" r="3.5"></circle><circle cx="17.5" cy="15.5" r="3.5"></circle><path d="M9 6l-2 7M15 6l2 7M10 13h4M9 6h2M13 6h2"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.repeat}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 2l3 3-3 3M4 11V9a4 4 0 0 1 4-4h12M7 22l-3-3 3-3M20 13v2a4 4 0 0 1-4 4H4"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.gem}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 4h12l3 5-9 11L3 9zM3 9h18M10 4l2 16 2-16"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.calc}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"></rect><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.sparkles}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8zM19 16l.8 2.2L22 19l-2.2.8L19 22l-.8-2.2L16 19l2.2-.8z"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.network}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="2" width="6" height="5" rx="1"></rect><rect x="3" y="17" width="6" height="5" rx="1"></rect><rect x="15" y="17" width="6" height="5" rx="1"></rect><path d="M12 7v5M6 17v-2a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v2"></path></svg>
+      </sc-if>
+      <sc-if value="{{ic.knight}}" hint-placeholder-val="{{ false }}">
+        <svg width="{{iconSize}}" height="{{iconSize}}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="{{sw}}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 21h10M8 21v-3c0-3 3-4 3-7l-3 1-2-2 4-6h3c3 0 5 3 5 7v10"></path></svg>
+      </sc-if>
+    </span>
+  </span>
+</span>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"tier":{"editor":"enum","options":["BRONZE","ARGENT","OR","PLATINE","DIAMANT","UNLOCKED","LOCKED"],"default":"OR"},"icon":{"editor":"enum","options":["check","eye","heart","dice","clock","copy","fork","scroll","binoculars","repeat","gem","calc","sparkles","network","knight"],"default":"check"},"text":{"editor":"text","default":""},"size":{"editor":"int","default":120,"min":16,"max":200},"glow":{"editor":"boolean","default":true},"label":{"editor":null,"default":"Badge"},"$preview":{"width":160,"height":184}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var metals = { BRONZE: '#C9793D', ARGENT: '#CBD3DE', OR: '#F5C451', PLATINE: '#CFE6EC', DIAMANT: '#6FA8FF', UNLOCKED: '#FF6A2B', LOCKED: '#3A4557' };
+    var tier = this.props.tier || 'OR';
+    var t = metals[tier] || metals.LOCKED;
+    var w = Number(this.props.size) || 120;
+    var h = Math.round(w * 1.15);
+    var rim = Math.max(2, Math.round(w * 0.055));
+    var clip = 'clip-path: polygon(50% 0, 100% 13%, 100% 60%, 50% 100%, 0 60%, 0 13%);';
+    var locked = tier === 'LOCKED';
+    var glow = this.props.glow === true || this.props.glow === 'true';
+    var icon = this.props.icon || 'check';
+    var text = this.props.text || '';
+    var ic = {};
+    ['check', 'eye', 'heart', 'dice', 'clock', 'copy', 'fork', 'scroll', 'binoculars', 'repeat', 'gem', 'calc', 'sparkles', 'network', 'knight'].forEach(function (k) { ic[k] = false; });
+    var showText = !!text && w >= 40 && !locked;
+    if (!showText) ic[icon] = true;
+    return {
+      ic: ic,
+      text: text,
+      showText: showText,
+      label: this.props.label || 'Badge',
+      iconSize: Math.round(w * 0.46),
+      sw: w < 40 ? 2.4 : 1.9,
+      wrapStyle: 'display: inline-flex; flex-shrink: 0; width: ' + w + 'px; height: ' + h + 'px;' + (glow && !locked ? ' filter: drop-shadow(0 0 ' + Math.round(w * 0.18) + 'px color-mix(in srgb, ' + t + ' 45%, transparent));' : ''),
+      shieldStyle: 'display: block; width: 100%; height: 100%; padding: ' + rim + 'px; box-sizing: border-box; ' + clip + ' background: linear-gradient(155deg, color-mix(in srgb, ' + t + ' 45%, white), ' + t + ' 40%, color-mix(in srgb, ' + t + ' 50%, black));',
+      innerStyle: 'display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; padding-bottom: 14%; box-sizing: border-box; ' + clip + ' background: linear-gradient(180deg, #1E2531, #0B0E14); color: ' + (locked ? '#5E6B7D' : t) + ';',
+      textStyle: 'font-family: Oswald, sans-serif; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; font-size: ' + Math.round(w * (text.length > 2 ? 0.3 : 0.42)) + 'px; text-shadow: 0 0 ' + Math.round(w * 0.1) + 'px ' + t + ';'
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -73,7 +73,6 @@ export function LockedRow({
     (bet !== null &&
       (bet.isForgottenResolution ||
         bet.refusalReason !== null ||
-        bet.resolutionReason !== null ||
         bet.reproposeHref !== null ||
         bet.isAdminCorrected ||
         (bet.isCalculable && bet.calculatedProba !== null && bet.status !== "DRAFT" && bet.status !== "SUBMITTED")));

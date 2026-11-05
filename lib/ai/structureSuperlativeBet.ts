@@ -5,6 +5,7 @@ import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { STAT_LABELS_FR } from "./statCodes";
 import { COMPARISON_PLAYER_STAT_CODES } from "./comparisonCodes";
 import { recordAnthropicUsage } from "./usageTracking";
+import { rosterPromptLines, PLAYER_NAME_RULE, type KnownRosters } from "./roster";
 
 // Chantier "meilleur marqueur" / superlatif implicite (étape 4 du plan de
 // reprise post-audit, 25/08/2026, GAPS_OUVERTS.md) -- schéma SÉPARÉ de
@@ -37,7 +38,7 @@ const SuperlativeBetStructurationSchema = z.object({
     .describe("\"SUPERLATIVE\" si calculable=true, sinon null."),
   superlative_bet: z
     .object({
-      player: z.string().describe("Nom du joueur visé, exactement comme écrit dans le texte."),
+      player: z.string().describe("Nom du joueur visé. " + PLAYER_NAME_RULE),
       stat: z
         .enum(COMPARISON_PLAYER_STAT_CODES as [string, ...string[]])
         .describe("Stat comparée contre tous les autres joueurs du match."),
@@ -74,9 +75,9 @@ function buildStaticSystemText(): string {
   );
 }
 
-function buildDynamicSystemText(teamNames: [string, string] | null): string {
+function buildDynamicSystemText(teamNames: [string, string] | null, rosters: KnownRosters | null): string {
   if (!teamNames) return "";
-  return `\n\nCe pari concerne un match entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**.`;
+  return `\n\nCe pari concerne un match entre **team1 = ${teamNames[0]}** et **team2 = ${teamNames[1]}**.` + rosterPromptLines(rosters);
 }
 
 /** Même contrat/patron que structureBet()/structureRosterCountBet() (modèle,
@@ -86,6 +87,7 @@ function buildDynamicSystemText(teamNames: [string, string] | null): string {
 export async function structureSuperlativeBet(
   description: string,
   teamNames: [string, string] | null = null,
+  rosters: KnownRosters | null = null,
   model = "claude-sonnet-5",
 ): Promise<SuperlativeBetStructuration | null> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
@@ -101,7 +103,7 @@ export async function structureSuperlativeBet(
       max_tokens: 2048,
       system: [
         { type: "text", text: buildStaticSystemText(), cache_control: { type: "ephemeral" } },
-        { type: "text", text: buildDynamicSystemText(teamNames) },
+        { type: "text", text: buildDynamicSystemText(teamNames, rosters) },
       ],
       messages: [{ role: "user", content: `Pari à structurer : "${description}"` }],
       output_config: { format: zodOutputFormat(SuperlativeBetStructurationSchema) },

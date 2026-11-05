@@ -169,6 +169,40 @@ export function relanceEmail(input: RelanceEmailInput): EmailContent {
   };
 }
 
+export type WeeklyPopupEmailInput = {
+  pseudo: string;
+  titre: string;
+  /** Blocs déjà résolus (jetons remplacés par les pseudos), dans l'ordre d'affichage. */
+  sections: { heading: string; text: string }[];
+  /** Texte de repli (popup FALLBACK) : remplace les blocs. */
+  repli: string | null;
+  cta: string;
+  playUrl: string;
+  unsubscribeUrl: string;
+};
+
+export function weeklyPopupEmail(input: WeeklyPopupEmailInput): EmailContent {
+  const paragraphs = [`Salut ${input.pseudo}, le récap de la semaine est là.`];
+  if (input.repli) paragraphs.push(input.repli);
+  const rows = input.repli ? [] : input.sections.map((section) => `${section.heading} : ${section.text}`);
+  if (input.cta) paragraphs.push(input.cta);
+  const buttonLabel = "Faire mon prono de ce soir";
+  const what = "tes résultats par e-mail";
+  return {
+    subject: input.titre,
+    html: layout({
+      preheader: input.titre,
+      title: input.titre,
+      paragraphs,
+      rows,
+      buttonLabel,
+      buttonUrl: input.playUrl,
+      footer: footer(input.unsubscribeUrl, what),
+    }),
+    text: plain([...paragraphs, "", ...rows], buttonLabel, input.playUrl, input.unsubscribeUrl),
+  };
+}
+
 export type ReminderEmailInput = {
   pseudo: string;
   matchLabel: string;

@@ -9,6 +9,9 @@ import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
 import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { MarginStepper } from "./MarginStepper";
 import { PronoBug } from "./PronoBug";
+import { FormStrokes } from "./FormStrokes";
+import { last5AriaLabel } from "@/lib/teamInsights/display";
+import { TeamDetailsButton } from "./TeamDetailsButton";
 import { ParticipationTrigger } from "./ParticipationTrigger";
 import { MatchAffiche } from "./MatchAffiche";
 import { MatchBetZone } from "./MatchBetZone";
@@ -45,6 +48,12 @@ const STATUS_CLASS: Record<UpcomingMatchRowData["viewStatus"], string> = {
   READY: styles.statusReady,
   VALIDATED: styles.statusValidated,
 };
+
+// « 05/11 · 04:00 » : jour de la convention de la carte (jour NY pour un match du jour).
+function kickoffSummary(match: UpcomingMatchRowData): string {
+  if (match.daily) return `${match.daily.dayLabel.replace(/^Match du /, "")} · ${match.daily.time}`;
+  return formatKickoff(match.scheduledAt);
+}
 
 function formatLockLabel(scheduledAt: string, nowMs: number): string {
   const remainingMs = Math.max(0, Date.parse(scheduledAt) - nowMs);
@@ -189,15 +198,23 @@ export function UpcomingRow({ match, maxBetPoints }: UpcomingRowProps) {
               {[match.daily?.nightLabel, lockLabel && `(${lockLabel})`].filter(Boolean).join(" ")}
             </span>
           </time>
-          {validatedPick ? (
-            <MatchAffiche home={match.homeTeam} away={match.awayTeam} />
-          ) : (
-            (match.viewStatus === "INCOMPLETE" || match.viewStatus === "READY") && (
-              <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
-                {STATUS_LABEL[match.viewStatus]}
-              </span>
-            )
-          )}
+          <div className={styles.kickoffRight}>
+            {(match.homeForm || match.awayForm) && (
+              <TeamDetailsButton
+                teamIds={[match.homeTeam.id, match.awayTeam.id]}
+                subtitle={`${match.homeTeam.abbreviation} – ${match.awayTeam.abbreviation} · ${kickoffSummary(match)}`}
+              />
+            )}
+            {validatedPick ? (
+              <MatchAffiche home={match.homeTeam} away={match.awayTeam} />
+            ) : (
+              (match.viewStatus === "INCOMPLETE" || match.viewStatus === "READY") && (
+                <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
+                  {STATUS_LABEL[match.viewStatus]}
+                </span>
+              )
+            )}
+          </div>
         </div>
 
         {validatedPick ? (
@@ -216,7 +233,10 @@ export function UpcomingRow({ match, maxBetPoints }: UpcomingRowProps) {
                 de l'équipe sélectionnée vit sur sa propre rangée, sous les 2
                 boutons, centré entre eux. */}
             <div className={styles.teams}>
-              {[match.homeTeam, match.awayTeam].map((team) => (
+              {[
+                { team: match.homeTeam, form: match.homeForm },
+                { team: match.awayTeam, form: match.awayForm },
+              ].map(({ team, form }) => (
                 <button
                   key={team.id}
                   type="button"
@@ -226,10 +246,13 @@ export function UpcomingRow({ match, maxBetPoints }: UpcomingRowProps) {
                   onClick={() => handleSelectTeam(team.id)}
                   disabled={isReadOnly}
                   aria-pressed={winner === team.id}
-                  aria-label={team.name}
+                  aria-label={form && form.last5.length > 0 ? `${team.name}, ${last5AriaLabel(form.last5)}` : team.name}
                 >
-                  <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={32} />
-                  {team.abbreviation}
+                  <span className={styles.teamButtonMain}>
+                    <TeamLogo abbreviation={team.abbreviation} alt={team.name} size={32} />
+                    {team.abbreviation}
+                  </span>
+                  {form && <FormStrokes last5={form.last5} />}
                 </button>
               ))}
             </div>

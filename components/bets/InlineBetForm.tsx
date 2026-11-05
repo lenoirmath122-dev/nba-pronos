@@ -14,6 +14,7 @@ import { RuleHelpButton } from "@/components/regles/RuleHelpButton";
 import { BetWritingTips } from "@/components/regles/BetWritingTips";
 import { DeleteBetButton } from "./DeleteBetButton";
 import { PlayerNotInMatchConfirm } from "./PlayerNotInMatchConfirm";
+import { VagueBetConfirm } from "./VagueBetConfirm";
 import { validatedBetDialog, PENDING_ADMIN_TOAST } from "./validatedBetDialog";
 import styles from "./InlineBetForm.module.css";
 import { requestBadgeCheck } from "@/lib/badges/checkRequest";
@@ -92,6 +93,7 @@ export function InlineBetForm({
   // attente de confirmation. `draftBetId` sert aux envois suivants même si
   // `myBet` n'a pas encore été rafraîchi (sinon un 2e pari serait créé).
   const [notInMatch, setNotInMatch] = useState<string | null>(null);
+  const [vagueBet, setVagueBet] = useState<string | null>(null);
   const [draftBetId, setDraftBetId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const showToast = useToast();
@@ -198,18 +200,25 @@ export function InlineBetForm({
     });
   }
 
-  function handleSubmit(confirmPlayerNotInMatch = false) {
+  function handleSubmit(confirmPlayerNotInMatch = false, confirmVagueBet = false) {
     setError(null);
     startTransition(async () => {
       const payload = targetPayload();
-      const result = await submitBet({ ...payload, confirmPlayerNotInMatch });
+      const result = await submitBet({ ...payload, confirmPlayerNotInMatch, confirmVagueBet });
       if (result.success && "playerNotInMatch" in result) {
         clearDirty();
         setDraftBetId(result.betId);
         setNotInMatch(result.playerNotInMatch);
         return;
       }
+      if (result.success && "vagueBet" in result) {
+        clearDirty();
+        setDraftBetId(result.betId);
+        setVagueBet(result.vagueBet);
+        return;
+      }
       setNotInMatch(null);
+      setVagueBet(null);
       if (result.success) {
         clearDirty();
         requestBadgeCheck();
@@ -284,9 +293,21 @@ export function InlineBetForm({
           isPending={isPending}
           onEdit={() => {
             setNotInMatch(null);
+            setVagueBet(null);
             document.getElementById(descriptionId)?.focus();
           }}
           onConfirm={() => handleSubmit(true)}
+        />
+      ) : vagueBet ? (
+        <VagueBetConfirm
+          question={vagueBet}
+          isPending={isPending}
+          onEdit={() => {
+            setNotInMatch(null);
+            setVagueBet(null);
+            document.getElementById(descriptionId)?.focus();
+          }}
+          onConfirm={() => handleSubmit(false, true)}
         />
       ) : (
         <div className={styles.actions}>

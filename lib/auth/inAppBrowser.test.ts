@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isInAppBrowser } from "./inAppBrowser";
+import { detectInAppBrowser, isInAppBrowser } from "./inAppBrowser";
 
 describe("isInAppBrowser", () => {
   it("reconnaît les navigateurs intégrés d'Instagram et de Facebook", () => {
@@ -10,5 +10,20 @@ describe("isInAppBrowser", () => {
   it("laisse passer Safari et Chrome", () => {
     expect(isInAppBrowser("Mozilla/5.0 (iPhone) AppleWebKit Version/17.0 Mobile Safari/604.1")).toBe(false);
     expect(isInAppBrowser("Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36")).toBe(false);
+  });
+});
+
+describe("detectInAppBrowser", () => {
+  it("classe chaque navigateur intégré", () => {
+    expect(detectInAppBrowser("Mozilla/5.0 (iPhone) Mobile/15E148 Instagram 300.0.0")).toBe("instagram");
+    expect(detectInAppBrowser("Mozilla/5.0 (Linux; Android 14) [FB_IAB/FB4A;FBAV/450.0]")).toBe("facebook");
+    expect(detectInAppBrowser("Mozilla/5.0 (iPhone) musical_ly_32.0.0")).toBe("tiktok");
+    expect(detectInAppBrowser("Mozilla/5.0 (iPhone) Snapchat/12.0")).toBe("snapchat");
+    expect(detectInAppBrowser("Mozilla/5.0 (Linux; Android 14) Line/13.0")).toBe("autre");
+  });
+
+  it("renvoie null pour un navigateur ordinaire ou un User-Agent absent", () => {
+    expect(detectInAppBrowser("Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36")).toBeNull();
+    expect(detectInAppBrowser(null)).toBeNull();
   });
 });

@@ -101,7 +101,8 @@ const PeriodBetStructurationSchema = z.object({
     .describe(
       "true UNIQUEMENT si le pari est un ET qui mêle une condition sur une période/un résultat de quarts-temps ET " +
         "une AUTRE condition indépendante (stat d'équipe ou de joueur sur le match entier, vainqueur du match, autre " +
-        "période) -- ex. \"tirent à plus de 32% à 3 points ET remportent les 4 quarts-temps\". Dans ce cas " +
+        "période) -- ex. \"tirent à plus de 32% à 3 points ET remportent les 4 quarts-temps\", ou \"gagne Q1 et Q2, " +
+        "perd Q3, gagne Q4\" (enchaînement de périodes précises). Dans ce cas " +
         "calculable=false (un autre service le structure). false pour tout le reste, y compris \"mène à la mi-temps " +
         "ET gagne/perd le match\" (un seul LEADS_HALF_RESULT, calculable=true).",
     ),
@@ -149,8 +150,12 @@ function buildStaticSystemText(): string {
     "une stat ; un total cumulé sur plusieurs matchs d'une série ; une formulation trop vague ou hors-terrain ; " +
     "un pari COMPOSÉ mélangeant un seuil de stat ET un résultat de période (ex. \"Les Knicks tirent à plus de " +
     "32% à 3 points ET remportent les 4 quarts-temps\") -- ne structure JAMAIS seulement une moitié de ce genre " +
-    "de pari : calculable=false ET mixed_combo=true (un autre service prend le relais). Ne mets mixed_combo=true " +
-    "que pour ce genre de mélange, jamais pour un pari période simple ni pour un LEADS_HALF_RESULT." +
+    "de pari : calculable=false ET mixed_combo=true (un autre service prend le relais). Même chose pour un " +
+    "ENCHAÎNEMENT de résultats sur plusieurs périodes PRÉCISES (ex. \"Minnesota gagne les deux premiers quarts-temps, " +
+    "perd le troisième mais gagne le dernier\", \"Milwaukee ne gagne que le premier quart-temps\") : calculable=false " +
+    "ET mixed_combo=true. Ne mets mixed_combo=true que pour ces deux cas, jamais pour un pari période simple, ni " +
+    "pour un LEADS_HALF_RESULT, ni pour un simple NOMBRE de quarts-temps remportés (QUARTERS_WON_COUNT, ex. \"gagne " +
+    "les 4 quarts-temps\", \"au moins 2 quarts-temps\")." +
     // Règle de vérification de présence déplacée ici (03/09/2026, optimisation
     // coût, même geste que structureBet.ts) -- texte identique à chaque
     // appel, donc mis en cache plutôt que payé en clair à chaque appel.

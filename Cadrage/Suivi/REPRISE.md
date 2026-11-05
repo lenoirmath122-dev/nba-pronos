@@ -1,19 +1,20 @@
-# Reprise — NBA Pronos (23/10/2026, passation 14)
-- **Livré** : Lot 1 CLOS (#198-#206), popup « Depuis ta dernière visite » (#210), /play « Mon pari » (#216), chat menu +
-  réactions (#221, non testées à 2 comptes) + Copier (#223), écart orienté sur une période (#227).
-- **Session 14** : état lu/vu lié au compte (**PR #230**, l'utilisateur la merge et teste Chrome → Firefox/privé).
-  **Après merge : `supabase db push`** (`20261023090000` chat_read_status, `20261023100000` user_seen_state), puis
-  `supabase migration list`. Laissés en local exprès : PushPrompt, OnboardingGuide, panier invité.
-- **D'abord à la prochaine session : trier 7 changements non commités** (tous `??`), un lot par sujet, branche + PR :
-  `Cadrage/Business/panier_ballon_instagram_octobre_novembre.md` + `panier_ballon_x_lancement_octobre.md` ;
-  `Cadrage/docs/` (pack Réel V2 : PNG, plan, mp3, lourd, décider quoi versionner) ; `Cadrage/Feuille de route 09 sept.html`
-  + `_files/` (export, probablement à ignorer) ; `scripts/stats-service-smoke.py` (relire avant) ;
-  `.claude/.headroom_wrap_settings.lock` (verrou local : `.gitignore`, ne pas commiter).
-- **Puis Lot 2** : S6 « joue seulement N quarts » (un quart non joué = ligne à 0 ou absente de
-  `stats_box_scores_by_period` ?), L8 alias de noms ; voir `chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`.
-- **Pièges** : `structureBet` AU PLAFOND de grammaire (élargir un enum, pas de champ) ; changement de schéma/prompt =
-  vrais appels (vitest jetable, `usageTracking` mocké) ; une branche + un worktree par PR ; le classificateur bloque
-  merges/reset/écritures prod (`!`). Essai réel 1B : `/api/emails?kind=reminder&only_owner=1&force=1&dry_run=1`.
-- **Ouvert** : 983 lignes `stats_box_scores.pf` vides ; « Hauser ou Pritchard » ; rejouer pari Memphis `f4f3ebd6…`
-  (coût IA, demander) ; poller VM (dryRun → réel) ; instabilité des probas ; `stash@{0}`.
-  **Échéances** : figement hebdo 26/10 ; bêta Cup 04/12.
+# Reprise — NBA Pronos (05/11/2026, passation 24)
+- **Chantier quota Vercel « Fluid Active CPU »** (alerte 90 % le 05/11) : #276 (proxy sans Supabase pour les anonymes) et
+  #277 (thème en cookie, accueil pré-rendu) mergés. **PR ouvertes** : #278 `perf/cache-donnees-communes` (cache serveur des
+  lectures COMMUNES) et #279 `perf/desactiver-prefetch-liens` (`prefetch={false}` sur PlayerLink, annuaire, liens légaux).
+- **#278** : `lib/cache/commonData.ts` (unstable_cache, client anon, tags `common-*`, repli sur le client de la requête).
+  Cachés : compétition (10 min), séries DAILY (5 min), matchs à venir (5 min), scores live (1 min), `user_scores` (1 h,
+  invalidé aussi à l'activation et à la suppression de compte). Invalidation `expire: 0` depuis `api/sync/*`, `daily-match/draw`,
+  `snapshots/leaderboard`, `recompute*`, `resolveAllCalculableBets`, `logAdminAction`.
+- **Non caché (signalé dans la PR)** : `count_committed_predictions`, pronos des autres, bets du classement, résultats terminés,
+  séries du bracket, classement hebdo, ligues, tout le personnel.
+- **À vérifier sur le preview** : `user_scores` lisible par la clé anon (sinon repli silencieux) ; un score synchronisé
+  apparaît sans attendre le TTL.
+- **Ensuite** : noter « Fluid Active CPU » (page Usage) avant/après merge ; décider d'allonger les durées ou de cacher résultats
+  terminés + séries du bracket. Mesure par route impossible sur Hobby.
+- **Aide aux débutants** : #274 (bouton « Détail des équipes » compact) à merger ; captures du réel (Docker + Supabase
+  local : **demander avant**) ; voir `chantiers/CHANTIER_AIDE_DEBUTANTS.md`.
+- **Pièges** : fichiers en CRLF ; heredoc bash avec apostrophes échoue (Write) ; `tsc`/`eslint` : erreurs connues dans
+  `Cadrage/docs/reel*` et `.next/dev/types` ; une branche par PR ; le classificateur bloque merges / écritures prod.
+- **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; pari Memphis `f4f3ebd6…` à rejouer (coût IA, demander) ; poller VM
+  (dryRun → réel) ; probas instables. **Échéances** : bêta Cup 04/12.

@@ -3,8 +3,8 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { addDays, recapBoundaryIso } from "@/lib/recaps/period";
 import { LOAD_MAX_ROWS, LOAD_PAGE_SIZE, POOR_WEEK_MIN_BETS } from "./config";
 import { matchLabel } from "./format";
-import { recentlyFeatured } from "./history";
-import type { PopupBetRow, PopupUserRow, WeekData } from "./types";
+import { PHRASING_DEPTH, recentlyFeatured, recentPhrasing } from "./history";
+import type { PopupBetRow, PopupUserRow, WeekData, WeeklyPopupContent } from "./types";
 
 // Lecture des données d'une semaine pour la génération (plan §3.2).
 // service_role : la RLS ne laisse pas lire les paris des autres.
@@ -221,24 +221,25 @@ export async function loadWeekData(
     }
   }
 
-  // 6. Historique (2 dernières popups publiées) et compteur de replis.
+  // 6. Historique (4 dernières popups publiées : cités récents sur les 2
+  // premières, titres et cta sur les 4) et compteur de replis.
   const history = await supabase
     .from("weekly_popups")
-    .select("week_end_date, status, featured_user_ids")
+    .select("week_end_date, status, featured_user_ids, content")
     .eq("competition_id", competitionId)
     .eq("status", "PUBLISHED")
     .lt("week_end_date", weekEnd)
     .order("week_end_date", { ascending: false })
-    .limit(2);
+    .limit(PHRASING_DEPTH);
   if (history.error) fail("Lecture de l'historique des popups", history.error);
-  const recentlyFeaturedIds = recentlyFeatured(
-    (history.data ?? []).map((r) => ({
-      week_end_date: String(r.week_end_date),
-      status: r.status,
-      featured_user_ids: (r.featured_user_ids ?? []) as string[],
-    })),
-    weekEnd,
-  );
+  const historyRows = (history.data ?? []).map((r) => ({
+    week_end_date: String(r.week_end_date),
+    status: r.status,
+    featured_user_ids: (r.featured_user_ids ?? []) as string[],
+    content: (r.content ?? null) as WeeklyPopupContent | null,
+  }));
+  const recentlyFeaturedIds = recentlyFeatured(historyRows, weekEnd);
+  const phrasing = recentPhrasing(historyRows, weekEnd);
   const fallbacks = await supabase
     .from("weekly_popups")
     .select("id", { count: "exact", head: true })
@@ -258,6 +259,7 @@ export async function loadWeekData(
     matchLabels,
     champions,
     recentlyFeaturedIds,
+    recentPhrasing: phrasing,
     publishedFallbackCount: fallbacks.count ?? 0,
     truncated,
   };

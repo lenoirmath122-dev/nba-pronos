@@ -5,8 +5,29 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-6);
-  padding: var(--space-6) var(--space-4);
+  gap: var(--space-4);
+  /* Haut resserré : la promesse + le match + les boutons d'équipe doivent tenir
+     dans les ~520 px utiles du navigateur d'Instagram. */
+  padding: var(--space-2) var(--space-4) var(--space-6);
+}
+
+/* La barre « Mes pronos » est fixe : on laisse de quoi faire défiler sous elle. */
+.page:has([role="region"][aria-label="Mes pronos"]) {
+  padding-bottom: 10rem;
+}
+
+/* Lisibilité sur la photo (contraste AA 4,5:1, tokens existants) : voile plus
+   sombre qu'ailleurs pour le texte posé directement sur l'image, et cartes en
+   fond uni (--color-surface-raised) au lieu du verre translucide.
+   main.page :global(.glass-card) l'emporte sur .force-photo .glass-card. */
+main.page:global(.force-photo)::after {
+  background: linear-gradient(180deg, rgba(11, 14, 20, 0.68), rgba(11, 14, 20, 0.76) 40%, rgba(11, 14, 20, 0.84));
+}
+
+main.page :global(.glass-card) {
+  background: var(--color-surface-raised);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
 }
 
 .hero {
@@ -71,10 +92,12 @@
 .steps {
   width: 100%;
   max-width: 32rem;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
 }
 
 .stepsTitle {
-  margin: 0 0 var(--space-3);
+  margin: 0 0 var(--space-2);
   font-size: var(--font-size-lg);
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
@@ -84,7 +107,8 @@
   margin: 0;
   padding-left: var(--space-5);
   display: grid;
-  gap: var(--space-2);
+  gap: var(--space-1);
+  font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
 }
 

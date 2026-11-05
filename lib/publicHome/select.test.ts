@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { selectHomeMatches, voteSplit, isOpenForPronos, type HomeMatchRow } from "./select";
+import { selectHomeMatches, voteSplit, isOpenForPronos, SOCIAL_PROOF_MIN, type HomeMatchRow } from "./select";
 
 const NOW = Date.parse("2026-10-20T12:00:00Z");
 const m = (id: string, at: string | null, status: HomeMatchRow["status"] = "SCHEDULED"): HomeMatchRow => ({
@@ -53,8 +53,12 @@ describe("isOpenForPronos", () => {
 });
 
 describe("voteSplit", () => {
-  it("masque les chiffres sous 10 pronos", () => {
-    expect(voteSplit(9, 5)).toBeNull();
+  it("fixe les seuils de preuve sociale validés le 27/10/2026", () => {
+    expect(SOCIAL_PROOF_MIN).toEqual({ resultPlayers: 30, splitVotes: 20 });
+  });
+  it("masque les chiffres sous le seuil, les affiche au seuil", () => {
+    expect(voteSplit(SOCIAL_PROOF_MIN.splitVotes - 1, 5)).toBeNull();
+    expect(voteSplit(SOCIAL_PROOF_MIN.splitVotes, 10)).toEqual({ total: 20, homePercent: 50, awayPercent: 50 });
   });
   it("calcule des pourcentages qui font 100", () => {
     expect(voteSplit(23, 14)).toEqual({ total: 23, homePercent: 61, awayPercent: 39 });

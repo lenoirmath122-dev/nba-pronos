@@ -6,7 +6,7 @@
 import { TEXT_MAX_CHARS } from "./config";
 import { inputHash } from "./verdicts";
 import type { Preselected } from "./preselect";
-import type { PopupUserRow, WeeklyPopupCandidate } from "./types";
+import type { PopupUserRow, RecentPhrasing, WeeklyPopupCandidate } from "./types";
 
 /** « BOS - NYK » ; « ? » pour une équipe inconnue ; null si pas de match. */
 export function matchLabel(home?: string | null, away?: string | null): string | null {
@@ -56,7 +56,7 @@ export function assignShortIds(
         match: bet.match_id ? (ctx.matchLabels.get(bet.match_id) ?? null) : null,
         statut: STATUT_FR[bet.status as keyof typeof STATUT_FR] ?? null,
         chance_pct:
-          bloc === "refuse" || proba === null || !Number.isFinite(proba) ? null : Math.round(proba * 100),
+          (bloc === "refuse" && bet.status === "REJECTED") || proba === null || !Number.isFinite(proba) ? null : Math.round(proba * 100),
         raison: item.raison,
         seuil: bloc === "flop" ? item.seuil : null,
         sens: bloc === "flop" ? item.sens : null,
@@ -92,13 +92,15 @@ export function buildClassifierInput(
 }
 
 /**
- * Entrée du rédacteur : champion + candidats « ok » du top, flop et refusé.
+ * Entrée du rédacteur : champion, HISTORIQUE (titres et cta déjà publiés,
+ * prompt v6) + candidats « ok » du top, flop et refusé.
  * Ni `user_id`, ni `bet_id`, ni `refusal_reason`.
  */
 export function buildRedacteurInput(
   okCandidates: readonly WeeklyPopupCandidate[],
   champion: { pseudos: string[]; points: number } | null,
   users: ReadonlyMap<string, PopupUserRow>,
+  history: RecentPhrasing = { titres: [], cta: [] },
 ): string {
   const championLine = champion
     ? JSON.stringify({ pseudos: champion.pseudos.map((p) => `@${p}`), points: champion.points })
@@ -114,11 +116,12 @@ export function buildRedacteurInput(
         texte: c.texte,
         statut: c.statut ?? null,
         chance_annoncee_pct: c.chance_pct ?? null,
-        raison: c.bloc === "refuse" ? null : (c.raison ?? null),
+        raison: c.statut === "refusé" ? null : (c.raison ?? null),
         seuil: c.seuil ?? null,
         sens: c.sens ?? null,
         cite_recemment: c.cite_recemment === true,
       }),
     );
-  return `CHAMPION: ${championLine}\nCANDIDATS:\n${lines.join("\n")}`;
+  const historyLine = JSON.stringify({ titres: history.titres, cta: history.cta });
+  return `CHAMPION: ${championLine}\nHISTORIQUE: ${historyLine}\nCANDIDATS:\n${lines.join("\n")}`;
 }

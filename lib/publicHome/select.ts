@@ -7,8 +7,14 @@ export type HomeMatchRow = {
   status: "SCHEDULED" | "IN_PROGRESS" | "FINISHED" | "POSTPONED" | "CANCELLED";
 };
 
-/** Règle des petits nombres : sous ce seuil, ni compteur ni pourcentage. */
-export const MIN_VOTES_TO_SHOW = 10;
+/**
+ * Règle des petits nombres (décision du 27/10/2026) : sous ces seuils, un
+ * chiffre d'accueil dessert la confiance plus qu'il ne la crée, on ne l'affiche pas.
+ * `resultPlayers` : « X joueurs sur Y avaient le bon vainqueur » (Y = pronostiqueurs
+ * du dernier match). `splitVotes` : « N joueurs ont déjà pronostiqué » et la
+ * répartition en pourcentages (N = pronos du match).
+ */
+export const SOCIAL_PROOF_MIN = { resultPlayers: 30, splitVotes: 20 } as const;
 
 export type MatchSelection<T extends HomeMatchRow> = {
   /** Match commencé et pas fini : affiché « En cours ». */
@@ -43,7 +49,7 @@ export type VoteSplit = { total: number; homePercent: number; awayPercent: numbe
 
 /** null sous le seuil : l'accueil affiche « Sois parmi les premiers ». */
 export function voteSplit(total: number, homeVotes: number): VoteSplit {
-  if (total < MIN_VOTES_TO_SHOW) return null;
+  if (total < SOCIAL_PROOF_MIN.splitVotes) return null;
   const homePercent = Math.round((homeVotes / total) * 100);
   return { total, homePercent, awayPercent: 100 - homePercent };
 }

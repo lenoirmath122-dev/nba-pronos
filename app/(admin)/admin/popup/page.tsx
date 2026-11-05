@@ -30,7 +30,7 @@ const STATUS_LABEL: Record<WeeklyPopupStatus, string> = {
 const BLOC_LABEL: Record<string, string> = {
   top: "Top",
   flop: "Flop",
-  refuse: "Refusé",
+  refuse: "La zone Maïno",
   champion: "Champion",
 };
 

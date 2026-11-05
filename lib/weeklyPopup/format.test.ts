@@ -90,7 +90,7 @@ describe("entrées LLM", () => {
     expect(input).not.toContain(U1);
     expect(input).not.toContain("bet-");
     expect(input).not.toContain("refusal_reason");
-    const lines = input.split("\n").slice(2);
+    const lines = input.split("\n").slice(3);
     expect(lines).toHaveLength(3);
     const refuse = JSON.parse(lines[2]);
     expect(refuse.raison).toBeNull();
@@ -99,7 +99,21 @@ describe("entrées LLM", () => {
   });
 
   it("sans champion : CHAMPION: null", () => {
-    expect(buildRedacteurInput([], null, users).startsWith("CHAMPION: null\nCANDIDATS:")).toBe(true);
+    expect(buildRedacteurInput([], null, users).startsWith("CHAMPION: null\nHISTORIQUE:")).toBe(true);
+  });
+
+  it("HISTORIQUE : vide par défaut, puis titres et cta transmis tels quels (v6)", () => {
+    const empty = buildRedacteurInput([], null, users).split("\n");
+    expect(empty[1]).toBe('HISTORIQUE: {"titres":[],"cta":[]}');
+    expect(empty[2]).toBe("CANDIDATS:");
+    const filled = buildRedacteurInput([], null, users, {
+      titres: ['Lundi "sans" titre'],
+      cta: ["Fais mieux que [joueur]."],
+    }).split("\n");
+    expect(JSON.parse(filled[1].slice("HISTORIQUE: ".length))).toEqual({
+      titres: ['Lundi "sans" titre'],
+      cta: ["Fais mieux que [joueur]."],
+    });
   });
 });
 

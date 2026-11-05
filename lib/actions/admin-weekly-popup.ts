@@ -1,11 +1,13 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getServerClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { logAdminAction } from "@/lib/actions/audit";
 import { weekEndFor } from "@/lib/weekly/standings";
 import { deadlineFrom } from "@/lib/weeklyPopup/config";
+import { runWeeklyPopupEmail } from "@/lib/weeklyPopup/email";
 import { toDisplayedPopup, type DisplayedPopup } from "@/lib/weeklyPopup/display";
 import {
   buildValidationContext,
@@ -170,6 +172,7 @@ export async function saveWeeklyPopupDraft(
 // --- Publier ------------------------------------------------------------------
 
 export async function publishWeeklyPopup(popupId: string): Promise<PopupActionResult> {
+  const startMs = Date.now();
   const session = await requireAdmin();
   if (isFailure(session)) return { success: false, error: session.error };
 
@@ -196,6 +199,9 @@ export async function publishWeeklyPopup(popupId: string): Promise<PopupActionRe
         content: check.tokenized,
         featured_user_ids: featuredUserIds(check.tokenized),
         published_at: new Date().toISOString(),
+        // L'e-mail hebdo suit la publication (geste manuel) ; les crons e-mails
+        // finissent l'envoi s'il est interrompu.
+        email_requested_at: new Date().toISOString(),
         published_by: session.userId,
         raw_output: null,
       })
@@ -214,8 +220,16 @@ export async function publishWeeklyPopup(popupId: string): Promise<PopupActionRe
       before: { status: row.status },
       after: { status: "PUBLISHED", kind: row.kind, weekEnd: row.week_end_date },
     });
+    after(() =>
+      runWeeklyPopupEmail({ deadlineMs: deadlineFrom(startMs) }).catch((error: unknown) => {
+        console.error("publishWeeklyPopup : e-mail hebdo en échec —", error instanceof Error ? error.message : error);
+      }),
+    );
     revalidate();
-    return { success: true, message: "Popup publiée : les joueurs la verront à leur prochaine ouverture." };
+    return {
+      success: true,
+      message: "Popup publiée : les joueurs la verront à leur prochaine ouverture, l'e-mail part en parallèle.",
+    };
   } catch (error) {
     return { success: false, error: errorMessage(error) };
   }

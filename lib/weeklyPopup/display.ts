@@ -19,7 +19,7 @@ const SECTIONS: ReadonlyArray<{ key: PopupSectionKey; heading: string }> = [
   { key: "champion", heading: "En tête" },
   { key: "top", heading: "Le coup de la semaine" },
   { key: "flop", heading: "Raté de peu" },
-  { key: "refuse", heading: "Refusé" },
+  { key: "refuse", heading: "La zone Maïno" },
 ];
 
 export interface DisplayedPopup {
