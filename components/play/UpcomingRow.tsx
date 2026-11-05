@@ -198,15 +198,23 @@ export function UpcomingRow({ match, maxBetPoints }: UpcomingRowProps) {
               {[match.daily?.nightLabel, lockLabel && `(${lockLabel})`].filter(Boolean).join(" ")}
             </span>
           </time>
-          {validatedPick ? (
-            <MatchAffiche home={match.homeTeam} away={match.awayTeam} />
-          ) : (
-            (match.viewStatus === "INCOMPLETE" || match.viewStatus === "READY") && (
-              <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
-                {STATUS_LABEL[match.viewStatus]}
-              </span>
-            )
-          )}
+          <div className={styles.kickoffRight}>
+            {(match.homeForm || match.awayForm) && (
+              <TeamDetailsButton
+                teamIds={[match.homeTeam.id, match.awayTeam.id]}
+                subtitle={`${match.homeTeam.abbreviation} – ${match.awayTeam.abbreviation} · ${kickoffSummary(match)}`}
+              />
+            )}
+            {validatedPick ? (
+              <MatchAffiche home={match.homeTeam} away={match.awayTeam} />
+            ) : (
+              (match.viewStatus === "INCOMPLETE" || match.viewStatus === "READY") && (
+                <span className={`${styles.status} ${STATUS_CLASS[match.viewStatus]}`}>
+                  {STATUS_LABEL[match.viewStatus]}
+                </span>
+              )
+            )}
+          </div>
         </div>
 
         {validatedPick ? (
@@ -256,15 +264,6 @@ export function UpcomingRow({ match, maxBetPoints }: UpcomingRowProps) {
                 <MarginStepper value={margin} onChange={setMargin} />
               </div>
             )}
-          </div>
-        )}
-
-        {(match.homeForm || match.awayForm) && (
-          <div className={styles.insights}>
-            <TeamDetailsButton
-              teamIds={[match.homeTeam.id, match.awayTeam.id]}
-              subtitle={`${match.homeTeam.abbreviation} – ${match.awayTeam.abbreviation} · ${kickoffSummary(match)}`}
-            />
           </div>
         )}
 
