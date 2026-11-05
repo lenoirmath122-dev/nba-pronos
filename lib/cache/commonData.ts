@@ -34,7 +34,7 @@ export const COMMON_TTL = {
   matches: 300,
   liveScores: 60,
   series: 300,
-  leaderboard: 300,
+  leaderboard: 3600,
 } as const;
 
 type SupabaseServerClient = Awaited<ReturnType<typeof getServerClient>>;
