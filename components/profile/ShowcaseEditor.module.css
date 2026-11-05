@@ -1,6 +1,7 @@
 .slots {
-  display: flex;
-  gap: var(--space-3);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
   margin: 0;
   padding: 0;
   list-style: none;
@@ -13,9 +14,9 @@
   align-items: center;
   justify-content: center;
   gap: var(--space-1);
-  width: 4.75rem;
-  height: 5.75rem;
-  padding: 0;
+  width: 100%;
+  min-height: 7rem;
+  padding: var(--space-1);
   border-radius: var(--radius-md);
   cursor: pointer;
 }
@@ -45,6 +46,14 @@
 .plus {
   width: 1.4rem;
   height: 1.4rem;
+}
+
+.slotName {
+  max-width: 100%;
+  font-size: var(--font-size-xs);
+  text-align: center;
+  color: var(--color-text-secondary);
+  overflow-wrap: anywhere;
 }
 
 .slotHint {

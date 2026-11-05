@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { BadgeStrip } from "@/components/badges/BadgeStrip";
+import { BadgePopover } from "@/components/badges/BadgePopover";
 import { PlayerIdentity } from "@/components/player/PlayerIdentity";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { BadgeDisplay } from "@/lib/queries/badges";
@@ -50,19 +50,33 @@ export function ProfileHeader({
 
   return (
     <header className={`${styles.header} glass-card`}>
-      {favoriteTeam && (
-        <span className={styles.crest} aria-hidden="true">
-          <TeamLogo abbreviation={favoriteTeam.abbreviation} alt="" size={44} />
-        </span>
-      )}
       <div className={styles.body}>
-        <PlayerIdentity
-          userId={userId}
-          pseudo={pseudo}
-          size="header"
-          linkToProfile={false}
-          showBadges={false}
-        />
+        <div className={styles.top}>
+          <div className={styles.identity}>
+            <PlayerIdentity userId={userId} pseudo={pseudo} size="header" linkToProfile={false} showBadges={false} />
+          </div>
+          {editHref && (
+            <Link href={editHref} className={styles.edit}>
+              Modifier le profil
+            </Link>
+          )}
+          {favoriteTeam && (
+            <span className={styles.crest} aria-hidden="true">
+              <TeamLogo abbreviation={favoriteTeam.abbreviation} alt="" size={44} />
+            </span>
+          )}
+        </div>
+        {showcaseSlot ??
+          (showcase.length > 0 && (
+            <ul className={styles.showcase} aria-label="Vitrine">
+              {showcase.slice(0, 3).map((badge) => (
+                <li key={badge.id} className={styles.showcaseItem}>
+                  <BadgePopover badges={[badge]} ownerName={pseudo} badgesHref={badgesHref} size="md" />
+                  <span className={styles.showcaseName}>{badge.label}</span>
+                </li>
+              ))}
+            </ul>
+          ))}
         {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         {bio && <p className={styles.bio}>{bio}</p>}
         <div className={styles.chips}>
@@ -71,18 +85,7 @@ export function ProfileHeader({
               {chip.label}
             </span>
           ))}
-          {editHref && (
-            <Link href={editHref} className={styles.edit}>
-              Modifier le profil
-            </Link>
-          )}
         </div>
-        {showcaseSlot ??
-          (showcase.length > 0 && (
-            <div className={styles.showcase}>
-              <BadgeStrip badges={showcase} ownerName={pseudo} badgesHref={badgesHref} max={3} size="md" />
-            </div>
-          ))}
       </div>
     </header>
   );

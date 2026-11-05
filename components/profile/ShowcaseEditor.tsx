@@ -53,7 +53,10 @@ export function ShowcaseEditor({ pinned, unlocked, returnTo }: Props) {
                 onClick={() => setSlot(index)}
               >
                 {badge ? (
-                  <BadgeEmblem badge={badge} size="md" />
+                  <>
+                    <BadgeEmblem badge={badge} size="md" />
+                    <span className={styles.slotName}>{badge.label}</span>
+                  </>
                 ) : (
                   <>
                     <Plus aria-hidden="true" className={styles.plus} />
