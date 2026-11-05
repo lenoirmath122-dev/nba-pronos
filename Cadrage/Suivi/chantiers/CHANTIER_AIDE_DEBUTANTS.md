@@ -345,7 +345,7 @@ Un tableau mis à jour à chaque passage du script, avec les colonnes : fichier 
 
 ## 9. Découpage en lots et critères d'acceptation
 
-- [ ] **L1 — Socle données** (`feat/aide-debutants-donnees`) — appliqué en prod le 05/11 (version 20261105085229) : L1-2, L1-3, L1-6 (69 ms), L1-7 OK ; restent L1-4 (bilans vs classement NBA) et L1-5 (titulaires C)
+- [x] **L1 — Socle données** (mergé #267) (`feat/aide-debutants-donnees`) — appliqué en prod le 05/11 (version 20261105085229) : L1-2, L1-3, L1-6 (69 ms), L1-7 OK ; restent L1-4 (bilans vs classement NBA) et L1-5 (titulaires C)
   - L1-1 Migration §5 (index, 2 tables, fonction, droits, premier remplissage).
   - L1-2 Après application : 30 lignes dans `stats_team_form` pour `2026-27`, et ~450 dans `stats_player_season`.
   - L1-3 Contrôle de cohérence : pour chaque équipe, `wins + losses = games_played` ; somme des `wins` = somme des `losses` = nombre de matchs de saison régulière de la saison.
@@ -354,9 +354,9 @@ Un tableau mis à jour à chaque passage du script, avec les colonnes : fichier 
   - L1-6 `refresh_stats_aide_debutants()` < 2 s en prod (mesurer avec `explain analyze` sur une copie ou mesurer `duration_ms`).
   - L1-7 Un appel avec la clé `anon` ou `authenticated` est refusé (droits).
   - **Application en prod** : par l'utilisateur ou avec son accord explicite, via le MCP Supabase (CLI absente de la machine), puis `supabase migration list` réaligné (piège noté dans `REPRISE.md`).
-- [ ] **L2 — Rafraîchissement VM** (`feat/aide-debutants-refresh`) : §6, tests pytest verts dans le job CI `python-import`. Après merge : mise à jour de la VM par l'utilisateur, puis contrôle de `computed_at` après le passage de 12h ou de 16h.
-- [ ] **L3 — Lecture et API** (`feat/aide-debutants-api`) : §7.1 (données seulement, pas d'affichage), §7.2, §7.3, tests vitest verts, `npm run lint` et `tsc` sans nouvelle erreur (erreurs connues dans `Cadrage/docs/reel-v2-pack`, hors sujet).
-- [ ] **L4 — Composants fonctionnels + captures** (`feat/aide-debutants-ui`) : §7.4 + §8. Le test e2e d'ouverture de la popup et de piège du focus passe. Captures 1 à 12 et `CAPTURES.md` dans la PR.
+- [ ] **L2 — Rafraîchissement VM** — PR #268 ouverte (`feat/aide-debutants-refresh`) : §6, tests pytest verts dans le job CI `python-import`. Après merge : mise à jour de la VM par l'utilisateur, puis contrôle de `computed_at` après le passage de 12h ou de 16h.
+- [ ] **L3 — Lecture et API** — PR #269 ouverte (`feat/aide-debutants-api`) : §7.1 (données seulement, pas d'affichage), §7.2, §7.3, tests vitest verts, `npm run lint` et `tsc` sans nouvelle erreur (erreurs connues dans `Cadrage/docs/reel-v2-pack`, hors sujet).
+- [ ] **L4 — Composants fonctionnels + captures** — PR #270 ouverte, ciblée sur la branche du L3 (`feat/aide-debutants-ui`) ; **test e2e et captures §8 non faits** (Docker non lancé, décision du 05/11 : pas nécessaire pour l'instant) : §7.4 + §8. Le test e2e d'ouverture de la popup et de piège du focus passe. Captures 1 à 12 et `CAPTURES.md` dans la PR.
 - [ ] **L5 — Session visuel** (à cadrer plus tard) : rendu définitif de l'indicateur et de la popup selon `SPEC_VISUELS_INSTAGRAM.md` et les tokens de l'appli, puis captures refaites.
 
 ## 10. Pièges connus (à relire avant chaque lot)

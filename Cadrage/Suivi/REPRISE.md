@@ -1,18 +1,16 @@
-# Reprise — NBA Pronos (28/10/2026, passation 21)
-- **Chantier paris persos non calculables : code terminé** (`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`, section
-  « Revue du 28/10/2026 »). Lots 1 à 4 mergés (#260, #261). **Lot 5 : PR #263 ouverte** (`fix/aiguillage-enchainements-quarts`,
-  contient aussi cette passation), à merger ; aucune migration.
-- **Lot 5 réduit à l'aiguillage** (mesure prod : 2 enchaînements de quarts sur 106 paris, 0 pari points d'équipe par période) :
-  pas de modèle `TEAM_POINTS`. Les enchaînements passent par `mixed_combo` → `structureComboPeriodBet`.
-- **À faire ensuite** : dans la file admin, regarder le premier passage réel de `GENERAL>X`, de la question de précision,
-  de l'« Estimation IA » et d'un combo de quarts (aucun n'a tourné contre la vraie API). Option : rejouer le pari Minnesota
-  W-W-L-W (coût IA, demander d'abord).
-- **Pièges** : `structureBet` AU PLAFOND de grammaire (ne pas ajouter de champs) ; une branche par PR ; le classificateur
-  bloque merges / reset / écritures prod ; vérifier `supabase migration list` après un merge avec migration ; CLI
-  `supabase` absente de cette machine (requêtes prod en lecture via le MCP Supabase) ; `tsc` signale des erreurs connues
-  dans `Cadrage/docs/reel-v2-pack` (Remotion), sans rapport.
-- **Autres chantiers** (Profil & badges, entonnoir UTM, popup hebdo) : état dans `JOURNAL_SESSIONS.md` (5 dernières
-  lignes) et `GAPS_OUVERTS.md`.
+# Reprise — NBA Pronos (05/11/2026, passation 22)
+- **Chantier aide aux débutants** (`chantiers/CHANTIER_AIDE_DEBUTANTS.md`) : forme des équipes sur la carte de match +
+  popup « Détail des équipes ». Lots 1-4 codés, **L5 (visuel) à cadrer plus tard**.
+- **État** : L1 mergé et appliqué en prod (#267, 30 équipes / 452 joueurs, 69 ms). **PR ouvertes à merger dans l'ordre** :
+  #268 (L2, job VM) → #269 (L3, API + cache) → #270 (L4, composants, ciblée sur la branche du L3).
+- **À faire ensuite** : après #268, mettre à jour la VM (`git pull` + `install.sh`, `Cadrage/Stats/vm/DEPLOIEMENT_VM.md`)
+  puis contrôler `computed_at` de `stats_team_form` après 12h/16h. Après #269+#270, regarder la popup en vrai sur un preview.
+- **Non fait** : test e2e de la popup et captures d'écran du réel (§8) — demandent Docker/Supabase local, à lancer
+  seulement sur demande ; L1-4 (5 bilans vs classement NBA : PHI 8-1, DET 6-2, BOS 6-2 en tête de l'Est) ; L1-5 (titulaires C).
+- **Pièges** : `structureBet` AU PLAFOND de grammaire ; une branche par PR ; le classificateur bloque merges / reset /
+  écritures prod ; migration via MCP = version horodatée par le MCP, renommer le fichier local pour l'aligner ; CLI
+  `supabase` absente (requêtes prod via le MCP) ; `tsc` signale des erreurs connues dans `Cadrage/docs/reel-v2-pack`.
+- **Autres chantiers** : paris persos non calculables (code terminé, premier passage réel en file admin à observer),
+  Profil & badges, entonnoir UTM, popup hebdo : voir `JOURNAL_SESSIONS.md` (5 dernières lignes) et `GAPS_OUVERTS.md`.
 - **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; « Hauser ou Pritchard » ; pari Memphis `f4f3ebd6…` à rejouer
-  (coût IA, demander d'abord) ; Booker « 40 % au tir en 1re mi-temps » = `STATS_NO_PREDICTION` ; poller VM (dryRun → réel) ;
-  probas instables. **Échéances** : bêta Cup 04/12.
+  (coût IA, demander d'abord) ; poller VM (dryRun → réel) ; probas instables. **Échéances** : bêta Cup 04/12.
