@@ -9,6 +9,8 @@ import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
 import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import { MarginStepper } from "./MarginStepper";
 import { PronoBug } from "./PronoBug";
+import { TeamFormIndicator } from "./TeamFormIndicator";
+import { TeamDetailsButton } from "./TeamDetailsButton";
 import { ParticipationTrigger } from "./ParticipationTrigger";
 import { MatchAffiche } from "./MatchAffiche";
 import { MatchBetZone } from "./MatchBetZone";
@@ -241,6 +243,24 @@ export function UpcomingRow({ match, maxBetPoints }: UpcomingRowProps) {
                 <MarginStepper value={margin} onChange={setMargin} />
               </div>
             )}
+          </div>
+        )}
+
+        {(match.homeForm || match.awayForm) && (
+          <div className={styles.insights}>
+            <div className={styles.insightsForms}>
+              <TeamFormIndicator
+                teamName={match.homeTeam.name}
+                abbreviation={match.homeTeam.abbreviation}
+                form={match.homeForm}
+              />
+              <TeamFormIndicator
+                teamName={match.awayTeam.name}
+                abbreviation={match.awayTeam.abbreviation}
+                form={match.awayForm}
+              />
+            </div>
+            <TeamDetailsButton teamIds={[match.homeTeam.id, match.awayTeam.id]} />
           </div>
         )}
 
