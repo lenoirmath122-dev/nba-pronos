@@ -1,4 +1,5 @@
 import { after, NextResponse } from "next/server";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { getServiceClient } from "@/lib/supabase/service";
 import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
 import { writeSyncLog } from "@/lib/sync/logging";
@@ -27,6 +28,7 @@ async function handle(request: Request): Promise<Response> {
 
   try {
     const result = await syncResults(referenceDate);
+    invalidateCommonData(COMMON_TAGS.matches, COMMON_TAGS.series);
     const summary =
       `${result.changed} changé(s), ${result.unchanged} inchangé(s).` +
       (result.skipped.length > 0
@@ -63,6 +65,8 @@ async function handle(request: Request): Promise<Response> {
     }
     return NextResponse.json(result);
   } catch (error) {
+    // Écritures partielles possibles avant l'échec : on invalide quand même.
+    invalidateCommonData(COMMON_TAGS.matches, COMMON_TAGS.series);
     const message =
       error instanceof HighlightlyApiError || error instanceof Error ? error.message : "Erreur inconnue.";
     await writeSyncLog(supabase, {

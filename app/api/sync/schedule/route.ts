@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { getServiceClient } from "@/lib/supabase/service";
 import { isAuthorizedSyncRequest } from "@/lib/sync/auth";
 import { writeSyncLog } from "@/lib/sync/logging";
@@ -24,6 +25,7 @@ async function handle(request: Request): Promise<Response> {
 
   try {
     const result = await syncSchedule(referenceDate);
+    invalidateCommonData(COMMON_TAGS.matches, COMMON_TAGS.series, COMMON_TAGS.competition);
     const summary =
       `${result.created} créé(s), ${result.updated} mis à jour.` +
       (result.skipped.length > 0
@@ -49,6 +51,7 @@ async function handle(request: Request): Promise<Response> {
     });
     return NextResponse.json(result);
   } catch (error) {
+    invalidateCommonData(COMMON_TAGS.matches, COMMON_TAGS.series, COMMON_TAGS.competition);
     const message =
       error instanceof HighlightlyApiError || error instanceof Error ? error.message : "Erreur inconnue.";
     await writeSyncLog(supabase, {

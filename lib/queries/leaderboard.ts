@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getActiveCompetition, getUserScoreRows } from "@/lib/cache/commonData";
 import { assignRanks } from "@/lib/scoring/ranking";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { parisDateKey } from "@/lib/dates/paris";
@@ -113,8 +114,6 @@ function computeRankTrend(currentRank: number, previousRank: number | undefined,
   return { kind: "flat", previousRank, daysAgo };
 }
 
-type CompetitionRow = { id: string; name: string };
-
 type ScoreRow = {
   user_id: string;
   total_points: number;
@@ -146,11 +145,7 @@ export async function getLeaderboard(
   } = await supabase.auth.getUser();
 
   // Une seule compétition ACTIVE à la fois → aucune active = état vide global (§2).
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, name")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const competition = await getActiveCompetition(supabase);
 
   if (!competition) {
     // Le sélecteur de ligue reste affiché même sans compétition active
@@ -174,14 +169,9 @@ export async function getLeaderboard(
   // de partir de la table des joueurs. Vue security_invoker=false (migration #5,
   // 23/07/2026) : le classement agrégé est visible de tous, indépendamment de la
   // confidentialité par match/pari/pick qui reste inchangée sur les tables sources.
-  const { data: scores } = await supabase
-    .from("user_scores")
-    .select(
-      "user_id, total_points, matches_points, bracket_points, bets_points, correct_match_winners, exact_margins, admin_corrections_count"
-    )
-    .eq("competition_id", competition.id);
-
-  const allScoreRows = (scores ?? []) as ScoreRow[];
+  // Lignes brutes du classement général : lecture commune mise en cache
+  // (tag « leaderboard », invalidé par la résolution/les recomputes).
+  const allScoreRows: ScoreRow[] = await getUserScoreRows(supabase, competition.id);
   // Portée ligue : intersection avec les membres — rang recalculé PLUS BAS
   // (assignRanks tourne sur ce sous-ensemble, jamais sur le classement entier).
   const scoreRows = scopeUserIds

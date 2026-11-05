@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { runLeaderboardSnapshot } from "@/lib/snapshots/leaderboardSnapshot";
 
@@ -20,6 +21,7 @@ async function handle(request: Request): Promise<Response> {
   try {
     const force = new URL(request.url).searchParams.get("force") === "1";
     const result = await runLeaderboardSnapshot(Date.now(), { force });
+    invalidateCommonData(COMMON_TAGS.leaderboard);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : "Erreur inconnue.";

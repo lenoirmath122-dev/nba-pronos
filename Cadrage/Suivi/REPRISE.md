@@ -1,20 +1,20 @@
-# Reprise — NBA Pronos (05/11/2026, passation 23)
-- **Chantier aide aux débutants** (`chantiers/CHANTIER_AIDE_DEBUTANTS.md`, refonte : `chantiers/cadrage-refonte-prono.md`) :
-  L1-L4 mergés (#267-#270, #272). **Refonte de la carte de prono mergée (#273)** : 5 traits de forme dans les boutons
-  d'équipe, popup « Détail des équipes » à 3 onglets (Face à face, Effectif triable, Joueurs à surveiller), bandeau
-  « Prochain à pronostiquer » aligné sur le jour NY de la carte.
-- **PR ouverte** : #274 (bouton « Détail des équipes » compact, en haut à droite de la carte, en face de l'heure).
-  À merger ; regarder le rendu sur le preview (heure + bouton peuvent se serrer sur petit écran ; cible tactile 32 px < 44 px,
-  zone de toucher à agrandir si besoin).
-- **Non fait** : captures d'écran du réel (§8 : script Playwright `scripts/reel-captures/`, seed, `CAPTURES.md`) et
-  vérification navigateur 375 px / desktop : demandent Docker + Supabase local, **demander avant de lancer**.
-  Aucun serveur de test n'est lancé.
-- **À faire ensuite** : contrôler `computed_at` de `stats_team_form` après 12h/16h (VM à jour après #268) ;
-  L1-4 (5 bilans vs classement NBA : PHI 8-1, DET 6-2, BOS 6-2) ; L1-5 (titulaires C) ; L5 (visuel) à cadrer.
-- **Pièges** : `structureBet` AU PLAFOND de grammaire ; une branche par PR (jamais main) ; le classificateur bloque
-  merges / reset / écritures prod ; Python absent (utiliser node) ; heredoc bash avec apostrophes peut échouer (utiliser
-  Write) ; `tsc` signale des erreurs connues dans `Cadrage/docs/reel-v2-pack` et `.next/dev/types`.
-- **Autres chantiers** : paris persos non calculables, Profil & badges, entonnoir UTM, popup hebdo : voir
-  `JOURNAL_SESSIONS.md` (5 dernières lignes) et `GAPS_OUVERTS.md`.
-- **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; « Hauser ou Pritchard » ; pari Memphis `f4f3ebd6…` à rejouer
-  (coût IA, demander d'abord) ; poller VM (dryRun → réel) ; probas instables. **Échéances** : bêta Cup 04/12.
+# Reprise — NBA Pronos (05/11/2026, passation 24)
+- **Chantier quota Vercel « Fluid Active CPU »** (alerte 90 % le 05/11) : #276 (proxy sans Supabase pour les anonymes) et
+  #277 (thème en cookie) mergés. **PR ouverte : `perf/cache-donnees-communes`** (cache serveur des lectures COMMUNES).
+- **Fait** : `lib/cache/commonData.ts` (unstable_cache, client anon, tags `common-*`, repli sur le client de la requête).
+  Cachés : compétition active (10 min), séries DAILY (5 min), matchs à venir (5 min, coupe à l'instant exact en mémoire),
+  scores live (1 min), `user_scores` du classement général (5 min). Invalidation `expire: 0` depuis `api/sync/*`,
+  `daily-match/draw`, `snapshots/leaderboard`, `recompute*`, `resolveAllCalculableBets`, `logAdminAction` (toute action admin).
+- **Non caché, signalé dans la PR** : `count_committed_predictions`, pronos des autres après coup d'envoi, bets du
+  classement, résultats terminés (/play/results), séries du bracket, classement hebdo, ligues, tout le personnel.
+- **À vérifier sur le preview** : `user_scores` lisible par la clé anon (sinon repli silencieux, donc aucun gain mais aucun
+  bug) ; un score synchronisé apparaît sans attendre le TTL ; un nouveau joueur apparaît au classement au plus 5 min plus tard.
+- **Ensuite** : lire le CPU actif par route (Vercel Observability) avant/après merge pour décider d'allonger les durées
+  (règle : court d'abord, puis allonger) et de cacher résultats terminés + séries du bracket.
+- **Aide aux débutants** : #274 (bouton « Détail des équipes » compact) à merger ; captures du réel (Docker + Supabase
+  local : **demander avant**) ; L1-4, L1-5, L5 voir `chantiers/CHANTIER_AIDE_DEBUTANTS.md`.
+- **Pièges** : fichiers en CRLF (scripts d'édition : normaliser) ; heredoc bash avec apostrophes échoue (utiliser Write) ;
+  `tsc`/`eslint` signalent des erreurs connues dans `Cadrage/docs/reel*` et `.next/dev/types` ; une branche par PR ;
+  le classificateur bloque merges / écritures prod ; tests d'intégration (Docker) non lancés.
+- **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; pari Memphis `f4f3ebd6…` à rejouer (coût IA, demander) ; poller VM
+  (dryRun → réel) ; probas instables. **Échéances** : bêta Cup 04/12.

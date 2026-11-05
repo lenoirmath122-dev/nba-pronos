@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/nextjs";
+import { invalidateAllCommonData } from "@/lib/cache/commonData";
 import { getServerClient } from "@/lib/supabase/server";
 
 // Journalisation admin partagée (T6b §6, SPEC_ECRAN_ADMIN_VALIDATION_V0_1
@@ -29,6 +30,11 @@ export async function logAdminAction(
     before_value: input.before ?? null,
     after_value: input.after ?? null,
   });
+
+  // Toute action admin peut toucher une lecture commune mise en cache
+  // (compétition, programme, séries, classement) : on les invalide toutes, quel
+  // que soit le résultat de l'insertion d'audit. Les actions admin sont rares.
+  invalidateAllCommonData();
 
   // Best-effort (§4 de la spec validation) : la transition métier est déjà
   // posée au moment où logAdminAction est appelée, on ne l'annule pas pour

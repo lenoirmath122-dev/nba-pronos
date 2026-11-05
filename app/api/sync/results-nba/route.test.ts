@@ -4,6 +4,7 @@ const syncResultsFromNba = vi.fn();
 const resolveAll = vi.fn();
 const writeSyncLog = vi.fn();
 let authorized = true;
+const invalidate = vi.fn();
 let afterCallbacks: Array<() => Promise<void>> = [];
 
 vi.mock("next/server", async (importActual) => ({
@@ -16,7 +17,13 @@ vi.mock("@/lib/supabase/service", () => ({ getServiceClient: () => ({}) }));
 vi.mock("@/lib/sync/resultsNba", () => ({ syncResultsFromNba: (p: unknown) => syncResultsFromNba(p) }));
 vi.mock("@/lib/ai/resolveCalculableBets", () => ({ resolveAllCalculableBets: () => resolveAll() }));
 
+vi.mock("@/lib/cache/commonData", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/cache/commonData")>()),
+  invalidateCommonData: (...tags: unknown[]) => invalidate(...tags),
+}));
+
 import { POST } from "./route";
+import { COMMON_TAGS } from "@/lib/cache/commonData";
 
 const validBody = {
   source: "NBA_CDN_SCOREBOARD",
@@ -39,6 +46,7 @@ beforeEach(() => {
   authorized = true;
   afterCallbacks = [];
   syncResultsFromNba.mockReset();
+  invalidate.mockReset();
   resolveAll.mockReset();
   writeSyncLog.mockReset();
   syncResultsFromNba.mockResolvedValue({ changed: 0, unchanged: 0, unmapped: 0, skipped: [], finishedNow: [], dryRun: false, dryRunDiffs: [], noActiveCompetition: false });
@@ -97,5 +105,22 @@ describe("POST /api/sync/results-nba", () => {
     const res = await POST(req(JSON.stringify({ ...validBody, dryRun: true })));
     expect(res.status).toBe(200);
     expect(writeSyncLog).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({ summary: expect.stringContaining("Écarts : 0012600001 IN_PROGRESS>FINISHED [status,home_score]") }));
+  });
+
+  it("invalide matchs et séries quand des matchs ont changé", async () => {
+    syncResultsFromNba.mockResolvedValue({ changed: 1, unchanged: 0, unmapped: 0, skipped: [], finishedNow: [], dryRun: false, dryRunDiffs: [], noActiveCompetition: false });
+    await POST(req(JSON.stringify(validBody)));
+    expect(invalidate).toHaveBeenCalledWith(COMMON_TAGS.matches, COMMON_TAGS.series);
+  });
+
+  it("n'invalide rien quand rien n'a changé", async () => {
+    await POST(req(JSON.stringify(validBody)));
+    expect(invalidate).not.toHaveBeenCalled();
+  });
+
+  it("n'invalide rien en dryRun (rien n'est écrit)", async () => {
+    syncResultsFromNba.mockResolvedValue({ changed: 2, unchanged: 0, unmapped: 0, skipped: [], finishedNow: [], dryRun: true, dryRunDiffs: [], noActiveCompetition: false });
+    await POST(req(JSON.stringify(validBody)));
+    expect(invalidate).not.toHaveBeenCalled();
   });
 });

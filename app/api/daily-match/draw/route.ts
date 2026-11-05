@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import { invalidateAllCommonData } from "@/lib/cache/commonData";
 import { NextResponse } from "next/server";
 import { isAuthorizedCronRequest } from "@/lib/sync/auth";
 import { getServiceClient } from "@/lib/supabase/service";
@@ -91,8 +92,10 @@ async function handle(request: Request): Promise<Response> {
         );
       }
     }
+    if (!dryRun) invalidateAllCommonData();
     return NextResponse.json({ mode: manual ? "manual" : "cron", dryRun, days, ...result });
   } catch (error) {
+    invalidateAllCommonData();
     const message = error instanceof Error ? error.message : "Erreur inconnue.";
     return NextResponse.json({ error: message }, { status: 500 });
   }
