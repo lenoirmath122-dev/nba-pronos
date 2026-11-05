@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Sora, Oswald } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
-import { getServerClient } from "@/lib/supabase/server";
 import {
   DEFAULT_DESCRIPTION,
   HOME_TITLE,
@@ -55,53 +54,31 @@ export const metadata: Metadata = {
   },
 };
 
-type SitePreferences = {
-  theme: "LIGHT" | "DARK" | "PHOTO";
-  backgroundTheme: "MURAL" | "HOOP" | "HK";
-};
-
-// Thème Sombre/Clair/Photo (SPEC_ECRAN_PROFIL_V0_1 §4, 3e valeur ajoutée le
-// 06/08/2026 — cf. migrations 20260806100000/20260806110000) : câblage
-// explicitement laissé en attente par app/tokens.css pour le thème (« la
-// bascule est un lot séparé »). Lus ENSEMBLE ICI (racine, hors des deux
-// route groups, une seule requête) car [data-theme="..."] et [data-bg="..."]
-// s'appliquent à TOUT le site, visiteur non connecté inclus (/login,
-// /leaderboard...). Un visiteur sans session reste sur les défauts
-// (DARK / MURAL, mêmes valeurs que les défauts colonne ET CSS sur :root) —
-// aucune préférence à lire pour lui.
-async function getSitePreferences(): Promise<SitePreferences> {
-  const DEFAULTS: SitePreferences = { theme: "DARK", backgroundTheme: "MURAL" };
-
-  const supabase = await getServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return DEFAULTS;
-
-  const { data } = await supabase
-    .from("users")
-    .select("theme_preference, background_theme")
-    .eq("id", user.id)
-    .single<{ theme_preference: "LIGHT" | "DARK" | "PHOTO"; background_theme: "MURAL" | "HOOP" | "HK" }>();
-
-  if (!data) return DEFAULTS;
-  return { theme: data.theme_preference, backgroundTheme: data.background_theme };
-}
-
-export default async function RootLayout({
+// Thème Sombre/Clair/Photo (SPEC_ECRAN_PROFIL_V0_1 §4) : [data-theme] et
+// [data-bg] s'appliquent à TOUT le site. Jusqu'au 05/11/2026 ils étaient lus
+// ICI en base, ce qui imposait cookies + getUser() à chaque rendu et rendait
+// tout le site dynamique (page d'accueil publique incluse, malgré son
+// `revalidate`). Désormais : cookie pb-theme appliqué avant le premier rendu
+// par public/theme-init.js, resynchronisé par <ThemeSync> dans le layout (app)
+// -- voir lib/theme/cookie.ts. Ce layout ne lit plus aucune donnée de requête.
+// `suppressHydrationWarning` : le script pose les attributs avant l'hydratation.
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const { theme, backgroundTheme } = await getSitePreferences();
-
   return (
     <html
       lang="fr"
-      data-theme={theme === "LIGHT" ? "light" : theme === "PHOTO" ? "photo" : undefined}
-      data-bg={theme === "PHOTO" && backgroundTheme !== "MURAL" ? backgroundTheme.toLowerCase() : undefined}
+      suppressHydrationWarning
       className={`${sora.variable} ${oswald.variable} h-full antialiased`}
     >
+      <head>
+        {/* Bloquant volontairement (petit fichier, même origine, CSP 'self') :
+            le thème doit être posé avant le premier affichage. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
+        <script src="/theme-init.js" />
+      </head>
       <body className="min-h-full flex flex-col">
         <UtmCapture />
         {children}
