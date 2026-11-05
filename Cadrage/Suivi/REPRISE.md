@@ -6,6 +6,8 @@
 - **PR ouverte** : #274 (bouton « Détail des équipes » compact, en haut à droite de la carte, en face de l'heure).
   À merger ; regarder le rendu sur le preview (heure + bouton peuvent se serrer sur petit écran ; cible tactile 32 px < 44 px,
   zone de toucher à agrandir si besoin).
+- **Quota Vercel** : alerte 90 % Fluid Active CPU (4 h/mois, plan Hobby, quota partagé par les 6 projets) le 05/11 ;
+  PR #276 ouverte (proxy sans appel Supabase pour les anonymes, `api/`, `_vercel/`, statiques hors matcher). Suivre la page Usage.
 - **Non fait** : captures d'écran du réel (§8 : script Playwright `scripts/reel-captures/`, seed, `CAPTURES.md`) et
   vérification navigateur 375 px / desktop : demandent Docker + Supabase local, **demander avant de lancer**.
   Aucun serveur de test n'est lancé.
