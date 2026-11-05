@@ -2,17 +2,16 @@
 
 import { useState } from "react";
 import { track } from "@vercel/analytics";
-import { ModalDialog } from "@/components/ui/ModalDialog";
 import type { TeamInsightsResponse } from "@/lib/teamInsights/types";
-import { TeamDetailsContent } from "./TeamDetailsContent";
+import { TeamDetailsDialog } from "./TeamDetailsDialog";
 import styles from "./TeamDetailsButton.module.css";
 
-// Bouton « Détail des équipes » d'une carte de match : popup avec résumé de
-// saison et effectif des deux équipes. Même patron que
-// components/regles/RuleHelpButton.tsx (ModalDialog portée vers document.body,
-// focus piégé et rendu au bouton à la fermeture par FocusTrap). Un seul
-// appel réseau, au premier clic : le résultat reste en mémoire du composant.
-type Props = { teamIds: [string, string] };
+// Bouton « Détail des équipes » d'une carte de match : popup à onglets (Face à
+// face, Effectif, Joueurs à surveiller). Le dialogue n'est monté que pendant
+// l'ouverture (FocusTrap : focus piégé, rendu au bouton à la fermeture), donc
+// il rouvre toujours sur Face à face. Un seul appel réseau, au premier clic :
+// le résultat reste en mémoire de ce composant.
+type Props = { teamIds: [string, string]; subtitle: string };
 
 type State =
   | { status: "idle" }
@@ -20,7 +19,7 @@ type State =
   | { status: "error" }
   | { status: "ready"; data: TeamInsightsResponse };
 
-export function TeamDetailsButton({ teamIds }: Props) {
+export function TeamDetailsButton({ teamIds, subtitle }: Props) {
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useState<State>({ status: "idle" });
 
@@ -52,20 +51,13 @@ export function TeamDetailsButton({ teamIds }: Props) {
         Détail des équipes
       </button>
       {isOpen && (
-        <ModalDialog title="Détail des équipes" onClose={() => setIsOpen(false)}>
-          <div className={styles.content}>
-            {(state.status === "idle" || state.status === "loading") && <p role="status">Chargement…</p>}
-            {state.status === "error" && (
-              <div role="alert">
-                <p>Impossible de charger le détail, réessaie plus tard.</p>
-                <button type="button" className={styles.retry} onClick={() => void load()}>
-                  Réessayer
-                </button>
-              </div>
-            )}
-            {state.status === "ready" && <TeamDetailsContent data={state.data} />}
-          </div>
-        </ModalDialog>
+        <TeamDetailsDialog
+          subtitle={subtitle}
+          teamIds={teamIds}
+          state={state}
+          onRetry={() => void load()}
+          onClose={() => setIsOpen(false)}
+        />
       )}
     </>
   );
