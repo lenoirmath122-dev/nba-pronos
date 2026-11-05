@@ -18,9 +18,31 @@ class FakeResponse:
         self.status_code, self.text, self.ok = status, "{}", 200 <= status < 300
 
 
+class FakeClient:
+    def __init__(self, calls):
+        self.calls = calls
+
+    def rpc(self, name, params):
+        self.calls["order"].append("refresh")
+        self.calls["rpc"].append(name)
+        error = self.calls.get("rpc_error")
+
+        class Q:
+            def execute(_self):
+                if error:
+                    raise error
+                return type("R", (), {"data": {"teams": 30}})()
+
+        return Q()
+
+
+def resolve_calls(calls):
+    return [c for c in calls["post"] if c[0].endswith("/api/resolve-bets")]
+
+
 @pytest.fixture
 def wiring(monkeypatch):
-    calls = {"post": [], "logs": [], "backup": [], "order": []}
+    calls = {"post": [], "logs": [], "backup": [], "order": [], "rpc": []}
     monkeypatch.delenv("RESULTS_POLL_DRYRUN", raising=False)
 
     # Le secours ne doit JAMAIS faire de réseau dans ces tests (le fetch nba_api ne
@@ -35,16 +57,16 @@ def wiring(monkeypatch):
     monkeypatch.setattr(pr, "run", fake_backup)
     monkeypatch.setenv("SYNC_SECRET", "secret-de-test")
     monkeypatch.setenv("APP_URL", "https://exemple.test")
-    monkeypatch.setattr(rd, "get_supabase_client", lambda: object())
+    monkeypatch.setattr(rd, "get_supabase_client", lambda: FakeClient(calls))
     monkeypatch.setattr(rd, "write_sync_log", lambda client, success, summary: calls["logs"].append((success, summary)))
-    monkeypatch.setattr(job.requests, "post", lambda url, **kw: calls["post"].append((url, kw)) or calls.get("response", FakeResponse(200)))
+    monkeypatch.setattr(job.requests, "post", lambda url, **kw: calls["post"].append((url, kw)) or (calls.get("response", FakeResponse(200)) if url.endswith("/api/resolve-bets") else FakeResponse(200)))
     return calls
 
 
 def test_tout_va_bien(wiring, monkeypatch):
     monkeypatch.setattr(rd, "run", lambda *a, **k: None)
     assert job.main(["--season", "2026-27"]) == 0
-    url, kw = wiring["post"][0]
+    url, kw = resolve_calls(wiring)[0]
     assert url == "https://exemple.test/api/resolve-bets"
     assert kw["headers"] == {"Authorization": "Bearer secret-de-test"}
     assert kw["allow_redirects"] is False
@@ -56,7 +78,7 @@ def test_import_incomplet_resout_quand_meme_mais_sort_en_erreur(wiring, monkeypa
 
     monkeypatch.setattr(rd, "run", incomplet)
     assert job.main(["--season", "2026-27"]) == 1
-    assert len(wiring["post"]) == 1  # la résolution a bien eu lieu
+    assert len(resolve_calls(wiring)) == 1  # la résolution a bien eu lieu
 
 
 def test_exception_pendant_limport_ne_resout_pas(wiring, monkeypatch):
@@ -65,7 +87,7 @@ def test_exception_pendant_limport_ne_resout_pas(wiring, monkeypatch):
 
     monkeypatch.setattr(rd, "run", plante)
     assert job.main(["--season", "2026-27"]) == 1
-    assert wiring["post"] == []
+    assert resolve_calls(wiring) == []
 
 
 def test_resolve_bets_http_500_sort_en_erreur_et_trace(wiring, monkeypatch):
@@ -79,13 +101,13 @@ def test_secret_manquant(wiring, monkeypatch):
     monkeypatch.setattr(rd, "run", lambda *a, **k: None)
     monkeypatch.delenv("SYNC_SECRET")
     assert job.main(["--season", "2026-27"]) == 1
-    assert wiring["post"] == []
+    assert resolve_calls(wiring) == []
 
 
 def test_secours_lance_avant_l_import_avec_les_trois_derniers_jours_ny(wiring, monkeypatch):
     monkeypatch.setattr(rd, "run", lambda *a, **k: wiring["order"].append("import"))
     assert job.main(["--season", "2026-27"]) == 0
-    assert wiring["order"] == ["backup", "import"]
+    assert wiring["order"][:2] == ["backup", "import"]
     (dates, dry_run), = wiring["backup"]
     assert len(dates) == 3 and dates == sorted(dates)
     assert dry_run is True  # variable absente -> dryRun
@@ -103,7 +125,7 @@ def test_une_exception_du_secours_ne_change_rien(wiring, monkeypatch, capsys):
     monkeypatch.setattr(rd, "run", lambda *a, **k: ran.append("import"))
     wiring["backup_error"] = RuntimeError("secret-de-test dans le message")
     assert job.main(["--season", "2026-27"]) == 0
-    assert ran == ["import"] and len(wiring["post"]) == 1  # import et résolution ont bien eu lieu
+    assert ran == ["import"] and len(resolve_calls(wiring)) == 1  # import et résolution ont bien eu lieu
     out = capsys.readouterr().out
     assert "RuntimeError" in out and "secret-de-test" not in out
 
@@ -115,3 +137,50 @@ def test_le_secours_s_execute_meme_si_l_import_plante(wiring, monkeypatch):
     monkeypatch.setattr(rd, "run", plante)
     assert job.main(["--season", "2026-27"]) == 1
     assert len(wiring["backup"]) == 1
+
+
+def test_ordre_import_rafraichissement_revalidation_resolution(wiring, monkeypatch):
+    monkeypatch.setattr(rd, "run", lambda *a, **k: wiring["order"].append("import"))
+    monkeypatch.setattr(job.requests, "post", lambda url, **kw: wiring["order"].append(url.rsplit("/", 1)[-1]) or FakeResponse(200))
+    assert job.main(["--season", "2026-27"]) == 0
+    assert wiring["order"] == ["backup", "import", "refresh", "team-insights", "resolve-bets"]
+
+
+def test_echec_du_rpc_ne_change_pas_la_sortie_et_resout_quand_meme(wiring, monkeypatch):
+    monkeypatch.setattr(rd, "run", lambda *a, **k: None)
+    wiring["rpc_error"] = RuntimeError("boom")
+    assert job.main(["--season", "2026-27", "--trigger", "vm-manuel"]) == 0
+    assert wiring["logs"] == [(False, "[vm-manuel] aide-debutants : RuntimeError")]
+    assert len(resolve_calls(wiring)) == 1
+    assert not [c for c in wiring["post"] if c[0].endswith("/team-insights")]  # pas de revalidation
+
+
+def test_exception_d_import_ni_rafraichissement_ni_resolution(wiring, monkeypatch):
+    def plante(*a, **k):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(rd, "run", plante)
+    assert job.main(["--season", "2026-27"]) == 1
+    assert wiring["rpc"] == [] and resolve_calls(wiring) == []
+
+
+def test_import_incomplet_rafraichit_et_resout(wiring, monkeypatch):
+    def incomplet(*a, **k):
+        raise SystemExit(1)
+
+    monkeypatch.setattr(rd, "run", incomplet)
+    assert job.main(["--season", "2026-27"]) == 1
+    assert wiring["rpc"] == ["refresh_stats_aide_debutants"] and len(resolve_calls(wiring)) == 1
+
+
+def test_echec_de_la_revalidation_est_ignore(wiring, monkeypatch):
+    monkeypatch.setattr(rd, "run", lambda *a, **k: None)
+
+    def post(url, **kw):
+        if url.endswith("/team-insights"):
+            raise job.requests.ConnectionError("down")
+        return FakeResponse(200)
+
+    monkeypatch.setattr(job.requests, "post", post)
+    assert job.main(["--season", "2026-27"]) == 0
+    assert wiring["logs"] == []
