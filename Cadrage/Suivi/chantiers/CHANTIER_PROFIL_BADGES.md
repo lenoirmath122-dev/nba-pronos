@@ -377,9 +377,10 @@ worktree. Tests vitest pour toute logique pure. À la fin : passation
 - [x] Lot 0 — Maquettes, D1–D8 tranchées (23/10)
 - [x] Lot 1 — Vitrine + lecture groupée (24/10, PR #236 ; D5 couvert par `user_seen_state` de #230, pas de colonne `badges_seen` ; D7 dates de déblocage reste à trancher, avant le Lot 4)
 - [x] Lot 2 — Composants d'identité (24/10, PR #237 ; PlayerIdentity pas encore branché, recette visuelle de /players/[id] à faire sur l'aperçu)
-- [ ] Lot 3 — « Mon profil » à onglets
+- [x] Lot 3 — « Mon profil » à onglets (25/10, PR #243 et #244 : 3a = Mon profil, 3b = profil des autres ; #245 reporte épingle directe et vitrine épinglés seulement)
 - [x] Lot 4 — Onglet Badges (24/10, PR #239 ; un seul composant client `BadgesTab`, pas de bouton « Modifier », épingle directe sur chaque carte ; toujours sur `/stats?tab=badges` jusqu'au Lot 3 ; D7 non utilisée)
 - [x] Lot 5 — Classement (24/10, PR #241 ; `getRowShowcases` en une salve, 3 écussons dont 2 masqués en portrait, 1 dans la barre ; recette visuelle et chiffres de chargement à faire sur l'aperçu)
-- [ ] Lot 6 — Ailleurs
-- [ ] Lot 7 — Visuels dessinés
-- [ ] Lot 8 — Animations (après le 26/10)
+- [x] Lot 6 — Ailleurs (05/11, branche feat/pb-lots-6-7-8 : écusson signature statique via `ShowcaseProvider`/`ShowcaseChip` dans le chat et les pop-up pronos/paris des autres, `BadgeStrip` dans la bannière du champion hebdo ; pas de badge dans la pop-up hebdo elle-même)
+- [x] Lot 7 — Visuels dessinés (05/11, 35 SVG sur mesure dans `lib/badges/icons.tsx`, trait + masse à 28 %, même contrat que lucide ; **recette visuelle à faire sur l'aperçu**, non vérifiés à l'écran)
+- [x] Lot 8 — Animations (05/11, CSS seul : pop-over et fiche qui s'ouvrent, épingle qui se plante, fondu des écussons du classement ; `prefers-reduced-motion` respecté ; le déblocage animé existait déjà)
+- [ ] **Livraison : `release/profil-badges` n'a jamais été mergée dans `main`** (constat 05/11 : 24 commits en avance, 96 en retard ; merge d'essai sans conflit). Recette sur l'aperçu, puis merge.

@@ -20,7 +20,7 @@
 Lots 1-4 codés (L1 mergé en prod, L2 #268, L3 #269, L4 #270 à merger dans l'ordre). Restent : MAJ de la VM après #268, L1-4 (bilans vs classement NBA), L1-5 (titulaires C), test e2e + captures du réel (Docker, sur demande), L5 session visuel, points ouverts §11 (blessures, playoffs).
 
 ### Profil & badges — [`chantiers/CHANTIER_PROFIL_BADGES.md`](chantiers/CHANTIER_PROFIL_BADGES.md)
-Plan et maquettes (`Cadrage/V1/Spec visuelle/maquettes_profil_badges/`). Branche d'intégration `release/profil-badges`, livraison en prod prévue le 26/10/2026. Lots Q, 1, 2, 4, 5 faits ; reste Lot 3, 6, 7 et Lot 8 (animations, volontairement après la livraison du 26/10, à refaire en passant par Claude desktop).
+Plan et maquettes (`Cadrage/V1/Spec visuelle/maquettes_profil_badges/`). Branche d'intégration `release/profil-badges`, livraison en prod prévue le 26/10/2026. Tous les lots (Q, 0 à 8) sont faits au 05/11/2026. **Reste la livraison** : `release/profil-badges` n'a jamais été mergée dans `main` ; recette visuelle sur l'aperçu (icônes dessinées du Lot 7 non vues à l'écran), puis merge.
 
 ### Enrichissement des modèles / types de paris — [`chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md`](chantiers/CHANTIER_ENRICHISSEMENT_MODELES.md)
 Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.md` (scénario A).

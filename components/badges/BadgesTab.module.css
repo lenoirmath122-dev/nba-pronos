@@ -479,3 +479,43 @@
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-md);
 }
+
+/* Lot 8 — animations : fiche qui monte (mobile) ou s'ouvre (desktop),
+   épingle qui « se plante » quand un badge entre en vitrine. */
+.backdrop {
+  animation: tab-fade 160ms ease-out;
+}
+
+.sheet {
+  animation: tab-sheet 240ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+.pinQuick[data-on] svg {
+  animation: tab-pin 320ms cubic-bezier(0.2, 0, 0, 1.4);
+}
+
+.pinAction[aria-pressed="true"] svg {
+  animation: tab-pin 320ms cubic-bezier(0.2, 0, 0, 1.4);
+}
+
+@keyframes tab-fade {
+  from { opacity: 0; }
+}
+
+@keyframes tab-sheet {
+  from { opacity: 0; transform: translateY(1.5rem); }
+}
+
+@keyframes tab-pin {
+  0% { transform: translateY(-0.4rem) rotate(-25deg) scale(1.35); }
+  100% { transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .sheet,
+  .pinQuick[data-on] svg,
+  .pinAction[aria-pressed="true"] svg {
+    animation: none;
+  }
+}
