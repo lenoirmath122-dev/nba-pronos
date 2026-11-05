@@ -397,5 +397,6 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Quota Vercel CPU : cache serveur des données communes (compétition, séries, matchs, live, classement), invalidation par tags depuis sync/recompute/admin, 16 tests ajoutés, PR perf/cache-donnees-communes ouverte (05/11/2026)
 - Quota Vercel (alerte 90 % Fluid Active CPU) : proxy.ts allégé (pas d'appel Supabase sans cookie de session, api/, _vercel/ et statiques hors matcher) + tests (05/11/2026) — PR #276
 - Quota Vercel : thème lu via un cookie (theme-init.js + ThemeSync) au lieu du layout racine, qui ne lit plus la session ; pages publiques cachables (05/11/2026) — PR #277
+- Quota Vercel : #278 (cache serveur des données communes) et #279 (prefetch désactivé) mergés, user_scores lisible en anon vérifié, mesure CPU avant/après à suivre (05/11/2026)
 - Profil & badges : Lots 6, 7, 8 faits (écusson dans chat/pop-up/champion, 35 SVG dessinés, animations CSS) ; release/profil-badges jamais mergée dans main, synchronisée (05/11/2026) ; recette sur l'aperçu à faire
 - Profil & badges, retours preview 1 : en-tête sans dégradé + vitrine 3 emplacements cliquables (choix du badge en popup), historique complet des paris triable, points par semaine général/ligue, écussons à gauche des points au classement, onglets Pronos/Paris/Badges sur le profil des autres (05/11/2026) ; PR #281
