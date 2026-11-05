@@ -4,44 +4,10 @@
   border-radius: var(--radius-lg);
 }
 
-.withTeam {
-  border: 1px solid var(--color-border-subtle);
-  background: var(--color-surface-raised);
-}
-
-/* Bandeau : photo du hero désaturée puis recolorée en 2 tons de l'équipe
-   (mode de fusion « color »), fondu vers la carte en bas pour que le texte
-   reste lisible dans les deux thèmes. */
-.banner {
-  position: relative;
-  height: 112px;
-  isolation: isolate;
-}
-
-.banner::before,
-.banner::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-}
-
-.banner::before {
-  background: var(--hero-image) center 30% / cover no-repeat;
-  filter: grayscale(1) contrast(1.15) brightness(0.95);
-}
-
-.banner::after {
-  background:
-    linear-gradient(180deg, transparent 40%, var(--color-surface-raised) 100%),
-    linear-gradient(135deg, var(--team-primary) 0%, var(--team-secondary) 100%);
-  background-blend-mode: normal, color;
-}
-
 .crest {
   position: absolute;
   top: var(--space-3);
   right: var(--space-3);
-  z-index: 1;
 }
 
 .body {
@@ -50,10 +16,6 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-4);
-}
-
-.withTeam .body {
-  margin-top: calc(-1 * var(--space-6));
 }
 
 .subtitle,
@@ -113,4 +75,10 @@
 .edit:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
+}
+
+.showcase {
+  display: flex;
+  align-items: center;
+  margin-top: var(--space-1);
 }

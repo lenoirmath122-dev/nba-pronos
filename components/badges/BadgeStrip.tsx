@@ -12,16 +12,17 @@ type BadgeStripProps = {
   badgesHref?: string;
   max?: number;
   showOverflow?: boolean;
+  size?: "sm" | "md";
 };
 
-export function BadgeStrip({ badges, ownerName, badgesHref, max, showOverflow = false }: BadgeStripProps) {
+export function BadgeStrip({ badges, ownerName, badgesHref, max, showOverflow = false, size = "sm" }: BadgeStripProps) {
   if (badges.length === 0) return null;
   const visible = max === undefined ? badges : badges.slice(0, max);
   const hidden = badges.length - visible.length;
 
   return (
     <span className={styles.row}>
-      <BadgePopover badges={visible} ownerName={ownerName} badgesHref={badgesHref} />
+      <BadgePopover badges={visible} ownerName={ownerName} badgesHref={badgesHref} size={size} />
       {showOverflow && hidden > 0 && (
         <span className={styles.more} aria-label={`${hidden} autres badges`}>
           +{hidden}

@@ -280,3 +280,11 @@
   background: var(--color-accent-soft);
   box-shadow: inset 3px 0 0 var(--color-accent-line);
 }
+
+/* Vitrine à gauche des points : largeur propre, .colPlayer (flex:1) absorbe
+   la différence, l'en-tête reste donc aligné. */
+.colBadges {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+}

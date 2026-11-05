@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { LeaderboardRow as RowData, SortDirection, SortKey } from "@/lib/queries/leaderboard";
 import { leaderboardHref, type LeaderboardView } from "@/lib/leaderboard/href";
 import { PlayerIdentity } from "@/components/player/PlayerIdentity";
+import { PlayerBadges } from "@/components/player/PlayerBadges";
 import type { BadgeDisplay } from "@/lib/queries/badges";
 import { LeaderboardRowList } from "./LeaderboardRowList";
 import { MobileSortSelect } from "./MobileSortSelect";
@@ -64,10 +65,12 @@ function Caret({ direction }: { direction: SortDirection }) {
 
 export function LeaderboardTable({ rows, showcases, sortKey, sortDirection, leagueId, vue }: LeaderboardTableProps) {
   const identities: Record<string, ReactNode> = {};
+  const badges: Record<string, ReactNode> = {};
   for (const row of rows) {
     identities[row.userId] = (
-      <PlayerIdentity userId={row.userId} pseudo={row.pseudo} size="row" showcase={showcases.get(row.userId)} maxBadges={3} />
+      <PlayerIdentity userId={row.userId} pseudo={row.pseudo} size="row" showBadges={false} />
     );
+    badges[row.userId] = <PlayerBadges userId={row.userId} pseudo={row.pseudo} showcase={showcases.get(row.userId)} />;
   }
 
   return (
@@ -130,7 +133,7 @@ export function LeaderboardTable({ rows, showcases, sortKey, sortDirection, leag
           <span className={styles.chevronSpace} aria-hidden="true" />
         </div>
 
-        <LeaderboardRowList rows={rows} identities={identities} sortKey={sortKey} />
+        <LeaderboardRowList rows={rows} identities={identities} badges={badges} sortKey={sortKey} />
       </div>
     </>
   );

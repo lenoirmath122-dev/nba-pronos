@@ -67,9 +67,11 @@ type BadgePopoverProps = {
   ownerName: string;
   /** Destination du lien ; sans lui, le pop-over n'en montre pas. */
   badgesHref?: string;
+  /** Taille de l'écusson cliquable (sm : classement ; md : en-tête de profil). */
+  size?: "sm" | "md";
 };
 
-export function BadgePopover({ badges, ownerName, badgesHref }: BadgePopoverProps) {
+export function BadgePopover({ badges, ownerName, badgesHref, size = "sm" }: BadgePopoverProps) {
   const [open, setOpen] = useState<{ badge: BadgeDisplay; placement: Placement } | null>(null);
 
   const close = useCallback(() => setOpen(null), []);
@@ -106,7 +108,7 @@ export function BadgePopover({ badges, ownerName, badgesHref }: BadgePopoverProp
             setOpen({ badge: item, placement: placementFor(event.currentTarget) });
           }}
         >
-          <BadgeEmblem badge={item} size="sm" />
+          <BadgeEmblem badge={item} size={size} />
         </button>
       ))}
 

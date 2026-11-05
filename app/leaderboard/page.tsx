@@ -2,6 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { getLeaderboard, type SortDirection, type SortKey } from "@/lib/queries/leaderboard";
 import { getRowShowcases } from "@/lib/queries/badges";
 import { PlayerIdentity } from "@/components/player/PlayerIdentity";
+import { PlayerBadges } from "@/components/player/PlayerBadges";
 import { getWeeklyLeaderboard } from "@/lib/queries/weeklyLeaderboard";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { parseView } from "@/lib/leaderboard/href";
@@ -153,8 +154,15 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
                 pseudo={currentUserRow.pseudo}
                 size="bar"
                 linkToProfile={false}
+                showBadges={false}
+              />
+            }
+            badges={
+              <PlayerBadges
+                userId={currentUserRow.userId}
+                pseudo={currentUserRow.pseudo}
                 showcase={showcases.get(currentUserRow.userId)}
-                maxBadges={1}
+                max={1}
               />
             }
             totalPoints={currentUserRow.points}
@@ -242,8 +250,15 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               pseudo={currentUserRow.pseudo}
               size="bar"
               linkToProfile={false}
+              showBadges={false}
+            />
+          }
+          badges={
+            <PlayerBadges
+              userId={currentUserRow.userId}
+              pseudo={currentUserRow.pseudo}
               showcase={showcases.get(currentUserRow.userId)}
-              maxBadges={1}
+              max={1}
             />
           }
           totalPoints={currentUserRow.totalPoints}

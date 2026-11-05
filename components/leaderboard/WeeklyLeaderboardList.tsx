@@ -1,5 +1,6 @@
 import type { WeeklyLeaderboardRow } from "@/lib/queries/weeklyLeaderboard";
 import { PlayerIdentity } from "@/components/player/PlayerIdentity";
+import { PlayerBadges } from "@/components/player/PlayerBadges";
 import type { BadgeDisplay } from "@/lib/queries/badges";
 import styles from "./WeeklyLeaderboardList.module.css";
 
@@ -56,7 +57,7 @@ export function WeeklyLeaderboardList({ rows, showcases, tiebreakAvailable }: We
             {row.rank}
           </span>
           <span className={styles.colPlayer} role="cell">
-            <PlayerIdentity userId={row.userId} pseudo={row.pseudo} size="row" showcase={showcases.get(row.userId)} maxBadges={3} />
+            <PlayerIdentity userId={row.userId} pseudo={row.pseudo} size="row" showBadges={false} />
             {row.isInactive && <span className={styles.inactiveTag}>inactif</span>}
             {tiebreakAvailable && row.correctMatchWinners !== null && row.exactMargins !== null && (
               <span className={styles.detail}>
@@ -64,6 +65,9 @@ export function WeeklyLeaderboardList({ rows, showcases, tiebreakAvailable }: We
                 {plural(row.exactMargins, "écart exact", "écarts exacts")}
               </span>
             )}
+          </span>
+          <span className={styles.colBadges} role="cell">
+            <PlayerBadges userId={row.userId} pseudo={row.pseudo} showcase={showcases.get(row.userId)} />
           </span>
           <span className={styles.colPoints} role="cell">
             {formatPoints(row.points)}

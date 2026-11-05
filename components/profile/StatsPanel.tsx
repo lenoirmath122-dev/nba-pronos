@@ -5,6 +5,10 @@ import { getWeeklyPalmares } from "@/lib/queries/weeklyPalmares";
 import { getServerClient } from "@/lib/supabase/server";
 import { LeagueScopeChips } from "@/components/profile/LeagueScopeChips";
 import { RankEvolutionChart } from "@/components/profile/RankEvolutionChart";
+import { BetHistory } from "@/components/profile/BetHistory";
+import { WeeklyPointsEvolution } from "@/components/profile/WeeklyPointsEvolution";
+import { getMyBetHistory } from "@/lib/queries/betHistory";
+import { getPointsEvolution } from "@/lib/queries/pointsEvolution";
 import { WeeklyPalmares } from "@/components/profile/WeeklyPalmares";
 import { ProgressBar } from "@/components/bracket/ProgressBar";
 import profileStyles from "@/components/profile/profileShared.module.css";
@@ -34,7 +38,9 @@ export async function StatsPanel({ userId, section, ligue }: { userId: string; s
   // compétitions, `stats` est scopée à la compétition ACTIVE.
   const needsStats = tab === "precision" || tab === "comparaison" || tab === "evolution" || tab === "paris";
   const stats = needsStats ? await getProfileStats(ligue) : null;
-  const statsLeagues = tab === "comparaison" ? await getMyLeagues() : [];
+  const statsLeagues = tab === "comparaison" || tab === "evolution" ? await getMyLeagues() : [];
+  const pointsEvolution = tab === "evolution" ? await getPointsEvolution(ligue) : null;
+  const betHistory = tab === "paris" ? await getMyBetHistory() : null;
   const palmares = tab === "palmares" ? await getWeeklyPalmares(await getServerClient(), userId) : null;
 
   return (
@@ -114,11 +120,18 @@ export async function StatsPanel({ userId, section, ligue }: { userId: string; s
               <div className={profileStyles.chartWrapper}>
                 <RankEvolutionChart series={stats.evolution.series} />
               </div>
-              <p className={profileStyles.chartCaption}>Toujours en classement général.</p>
+              <p className={profileStyles.chartCaption}>Courbe du rang en classement général.</p>
             </>
           ) : (
             <p className={profileStyles.fieldLabel}>Reviens dans quelques jours pour voir ta courbe d&rsquo;évolution.</p>
           )}
+        </section>
+      )}
+
+      {stats?.hasActiveCompetition && tab === "evolution" && pointsEvolution && (
+        <section className={`${profileStyles.section} glass-card`} aria-label="Points par semaine">
+          <LeagueScopeChips myLeagues={statsLeagues} activeLeagueId={ligue ?? null} section="evolution" />
+          <WeeklyPointsEvolution data={pointsEvolution} />
         </section>
       )}
 
@@ -152,6 +165,17 @@ export async function StatsPanel({ userId, section, ligue }: { userId: string; s
                 </div>
               )}
             </>
+          )}
+        </section>
+      )}
+
+      {betHistory && (
+        <section className={`${profileStyles.section} glass-card`} aria-label="Historique des paris">
+          <h2 className={profileStyles.fieldLabel}>Historique de tous mes paris</h2>
+          {betHistory.length === 0 ? (
+            <p className={profileStyles.fieldLabel}>Aucun pari résolu pour l&rsquo;instant.</p>
+          ) : (
+            <BetHistory items={betHistory} />
           )}
         </section>
       )}

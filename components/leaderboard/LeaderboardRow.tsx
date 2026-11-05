@@ -16,6 +16,8 @@ type LeaderboardRowProps = {
   row: RowData;
   /** Avatar + pseudo + vitrine, rendus côté serveur (PlayerIdentity size="row"). */
   identity: ReactNode;
+  /** Vitrine (PlayerBadges), à gauche des points. */
+  badges?: ReactNode;
   sortKey: SortKey;
   expanded: boolean;
   onToggle: (userId: string) => void;
@@ -121,7 +123,7 @@ function TrendBadge({ trend }: { trend: RankTrend }) {
 // `expanded`/`sortKey` n'ont pas changé ne se re-rend plus quand une AUTRE
 // ligne est dépliée/repliée (avant : les 2 re-rendaient tout l'accordéon,
 // closure inline recréée à chaque clic).
-export const LeaderboardRow = memo(function LeaderboardRow({ row, identity, sortKey, expanded, onToggle }: LeaderboardRowProps) {
+export const LeaderboardRow = memo(function LeaderboardRow({ row, identity, badges, sortKey, expanded, onToggle }: LeaderboardRowProps) {
   const correctionTitle =
     row.adminCorrectionsCount > 0
       ? `${plural(row.adminCorrectionsCount, "élément")} corrigé${row.adminCorrectionsCount > 1 ? "s" : ""} par un admin, sur requête`
@@ -173,6 +175,17 @@ export const LeaderboardRow = memo(function LeaderboardRow({ row, identity, sort
             <span className={styles.correctionBadge} title={correctionTitle} aria-hidden="true" />
           )}
         </span>
+
+        {badges && (
+          <span
+            role="presentation"
+            className={styles.colBadges}
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            {badges}
+          </span>
+        )}
 
         <span
           className={sortKey === "total" ? `${styles.colTotal} ${styles.totalBand}` : styles.colTotal}

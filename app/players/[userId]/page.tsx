@@ -23,12 +23,13 @@ import type { Metadata } from "next";
 
 // Profil d'un autre joueur (Lot 3b) : seulement ce qui est public.
 const PLAYER_TABS = [
-  { key: "pronos", label: "Pronos & paris" },
+  { key: "pronos", label: "Pronos" },
+  { key: "paris", label: "Paris" },
   { key: "badges", label: "Badges" },
 ] as const;
 
-function parsePlayerTab(value: string | undefined): "pronos" | "badges" {
-  return value === "badges" ? "badges" : "pronos";
+function parsePlayerTab(value: string | undefined): "pronos" | "paris" | "badges" {
+  return value === "badges" || value === "paris" ? value : "pronos";
 }
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
@@ -183,29 +184,34 @@ export default async function PlayerProfilePage({
                     </ul>
                   )}
                 </section>
-
-                <section className={`${styles.section} glass-card`}>
-                  <h2 className={styles.sectionTitle}>Paris</h2>
-                  {profile.bets.length === 0 ? (
-                    <p className={styles.muted}>Aucun pari résolu pour l&apos;instant.</p>
-                  ) : (
-                    <ul className={styles.betList}>
-                      {profile.bets.map((bet) => (
-                        <li key={bet.betId} className={styles.betRow}>
-                          <span className={styles.betDescription}>{bet.description}</span>
-                          <span className={styles.mutedInline}>
-                            {bet.categoryLabel} · {bet.difficultyLabel}
-                          </span>
-                          {bet.points !== null && <span className={styles.pickPoints}>{bet.points} pts</span>}
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </section>
               </>
             )}
           </>
         )}
+
+        {tab === "paris" &&
+          (profile.competitionId === null ? (
+            <EmptyState title="Aucune compétition en cours" subtitle="Rien à montrer pour l'instant." />
+          ) : (
+            <section className={`${styles.section} glass-card`}>
+              <h2 className={styles.sectionTitle}>Paris</h2>
+              {profile.bets.length === 0 ? (
+                <p className={styles.muted}>Aucun pari résolu pour l&apos;instant.</p>
+              ) : (
+                <ul className={styles.betList}>
+                  {profile.bets.map((bet) => (
+                    <li key={bet.betId} className={styles.betRow}>
+                      <span className={styles.betDescription}>{bet.description}</span>
+                      <span className={styles.mutedInline}>
+                        {bet.categoryLabel} · {bet.difficultyLabel}
+                      </span>
+                      {bet.points !== null && <span className={styles.pickPoints}>{bet.points} pts</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
       </div>
     </ScreenShell>
   );

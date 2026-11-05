@@ -1,26 +1,27 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import Link from "next/link";
+import { BadgeStrip } from "@/components/badges/BadgeStrip";
 import { PlayerIdentity } from "@/components/player/PlayerIdentity";
 import { TeamLogo } from "@/components/ui/TeamLogo";
-import { TEAM_COLORS } from "@/lib/labels/teamColors";
 import type { BadgeDisplay } from "@/lib/queries/badges";
 import type { TeamRef } from "@/lib/queries/matches";
 import styles from "./ProfileHeader.module.css";
 
 // En-tête commun des pages profil (Lot 3 du chantier Profil & badges) : « Mon
-// profil » et, au Lot 3b, /players/[id]. Bandeau photo recoloré aux couleurs
-// de l'équipe favorite (D4, rendu du 04/08 repris — seul endroit où la couleur
-// d'équipe est permise), puis avatar + pseudo + badge signature, puces, et en
-// mode soi le bouton « Modifier le profil ». Sans équipe : simple carte, rien
-// ne change. Composant serveur.
+// profil » et /players/[id]. Carte simple (plus de bandeau photo ni de dégradé
+// aux couleurs de l'équipe) : avatar + pseudo, puces, vitrine de badges, et en
+// mode soi le bouton « Modifier le profil ». L'équipe favorite se résume à son
+// logo en haut à droite. Composant serveur.
 type ProfileHeaderProps = {
   userId: string;
   pseudo: string;
   favoriteTeam: TeamRef | null;
   isAdmin?: boolean;
   isInactive?: boolean;
-  /** Vitrine résolue ; seul le premier écusson (badge signature) est affiché. */
+  /** Vitrine résolue (jusqu'à 3 écussons), affichée sous les puces. */
   showcase: BadgeDisplay[];
+  /** Remplace la vitrine en lecture seule (mode soi : emplacements modifiables). */
+  showcaseSlot?: ReactNode;
   /** Puces sous le pseudo (rang, badges, meilleur rang...). */
   chips: { label: ReactNode; accent?: boolean }[];
   bio?: string;
@@ -37,37 +38,30 @@ export function ProfileHeader({
   isAdmin,
   isInactive,
   showcase,
+  showcaseSlot,
   chips,
   bio,
   editHref,
   badgesHref,
 }: ProfileHeaderProps) {
-  const colors = favoriteTeam ? TEAM_COLORS[favoriteTeam.abbreviation] : undefined;
-  const bannerStyle = colors
-    ? ({ "--team-primary": colors.primary, "--team-secondary": colors.secondary } as CSSProperties)
-    : undefined;
   const subtitle = [favoriteTeam?.name, isAdmin ? "Admin" : null, isInactive ? "Compte désactivé" : null]
     .filter(Boolean)
     .join(" · ");
 
   return (
-    <header className={`${styles.header} ${colors ? styles.withTeam : "glass-card"}`} style={bannerStyle}>
-      {colors && favoriteTeam && (
-        <div className={styles.banner} aria-hidden="true">
-          <span className={styles.crest}>
-            <TeamLogo abbreviation={favoriteTeam.abbreviation} alt="" size={44} />
-          </span>
-        </div>
+    <header className={`${styles.header} glass-card`}>
+      {favoriteTeam && (
+        <span className={styles.crest} aria-hidden="true">
+          <TeamLogo abbreviation={favoriteTeam.abbreviation} alt="" size={44} />
+        </span>
       )}
       <div className={styles.body}>
         <PlayerIdentity
           userId={userId}
           pseudo={pseudo}
           size="header"
-          showcase={showcase}
-          maxBadges={1}
           linkToProfile={false}
-          badgesHref={badgesHref}
+          showBadges={false}
         />
         {subtitle && <p className={styles.subtitle}>{subtitle}</p>}
         {bio && <p className={styles.bio}>{bio}</p>}
@@ -83,6 +77,12 @@ export function ProfileHeader({
             </Link>
           )}
         </div>
+        {showcaseSlot ??
+          (showcase.length > 0 && (
+            <div className={styles.showcase}>
+              <BadgeStrip badges={showcase} ownerName={pseudo} badgesHref={badgesHref} max={3} size="md" />
+            </div>
+          ))}
       </div>
     </header>
   );

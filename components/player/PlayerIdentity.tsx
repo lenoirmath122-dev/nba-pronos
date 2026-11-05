@@ -23,6 +23,8 @@ type PlayerIdentityProps = {
   /** Destination du lien « Voir les badges de … » du pop-over. */
   badgesHref?: string;
   onPseudoClick?: MouseEventHandler<HTMLAnchorElement>;
+  /** Faux : pas d'écussons à côté du pseudo (le classement les met à gauche des points). */
+  showBadges?: boolean;
 };
 
 export function PlayerIdentity({
@@ -34,6 +36,7 @@ export function PlayerIdentity({
   linkToProfile = true,
   badgesHref,
   onPseudoClick,
+  showBadges = true,
 }: PlayerIdentityProps) {
   return (
     <span className={styles.identity} data-size={size}>
@@ -45,6 +48,7 @@ export function PlayerIdentity({
       ) : (
         <span className={styles.pseudo}>{pseudo}</span>
       )}
+      {showBadges && (
       <BadgeStrip
         badges={showcase}
         ownerName={pseudo}
@@ -52,6 +56,7 @@ export function PlayerIdentity({
         max={maxBadges}
         showOverflow={size === "header"}
       />
+      )}
     </span>
   );
 }

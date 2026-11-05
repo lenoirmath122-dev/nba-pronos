@@ -13,10 +13,12 @@ type StickyMeBarProps = {
   rank: number;
   /** Avatar + pseudo + écusson, rendus côté serveur (PlayerIdentity size="bar"). */
   identity: ReactNode;
+  /** Écusson (PlayerBadges), à gauche des points. */
+  badges?: ReactNode;
   totalPoints: number;
 };
 
-export function StickyMeBar({ rank, identity, totalPoints }: StickyMeBarProps) {
+export function StickyMeBar({ rank, identity, badges, totalPoints }: StickyMeBarProps) {
   // Masquée tant que la ligne "toi" n'a pas été observée hors du viewport
   // (pas de flash au premier rendu).
   const [outOfView, setOutOfView] = useState(false);
@@ -43,6 +45,7 @@ export function StickyMeBar({ rank, identity, totalPoints }: StickyMeBarProps) {
         <span className={styles.rank}>#{rank}</span>
       </a>
       <span className={styles.identity}>{identity}</span>
+      {badges}
       <span className={styles.total}>{totalPoints} pts</span>
     </div>
   );

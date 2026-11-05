@@ -8,6 +8,8 @@ type LeaderboardRowListProps = {
   rows: RowData[];
   /** Identité de chaque joueur (serveur), par userId. */
   identities: Record<string, ReactNode>;
+  /** Vitrines, rendues à gauche des points. */
+  badges: Record<string, ReactNode>;
   sortKey: SortKey;
 };
 
@@ -16,7 +18,7 @@ type LeaderboardRowListProps = {
 // contrôlé, cf. son commentaire d'en-tête), plutôt que dans LeaderboardTable
 // qui reste un composant serveur (T6a). Seul module client ajouté par ce
 // changement.
-export function LeaderboardRowList({ rows, identities, sortKey }: LeaderboardRowListProps) {
+export function LeaderboardRowList({ rows, identities, badges, sortKey }: LeaderboardRowListProps) {
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // p1-29 (feuille de route Phase 1) : référence STABLE entre re-renders
@@ -36,6 +38,7 @@ export function LeaderboardRowList({ rows, identities, sortKey }: LeaderboardRow
           key={row.userId}
           row={row}
           identity={identities[row.userId]}
+          badges={badges[row.userId]}
           sortKey={sortKey}
           expanded={row.userId === expandedUserId}
           onToggle={handleToggle}

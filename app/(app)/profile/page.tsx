@@ -8,6 +8,8 @@ import { getCompetitionHistory } from "@/lib/queries/history";
 import { getMyLeagues } from "@/lib/queries/leagues";
 import { getProfileMenuSummary } from "@/lib/actions/profileMenu";
 import { SubPageShell } from "@/components/ui/SubPageShell";
+import { isBadgeUnlocked } from "@/lib/badges/display";
+import { ShowcaseEditor } from "@/components/profile/ShowcaseEditor";
 import { ProfileHeader } from "@/components/profile/ProfileHeader";
 import { ProfileTabsNav, parseProfileTab } from "@/components/profile/ProfileTabsNav";
 import { StatsPanel, parseStatsSection } from "@/components/profile/StatsPanel";
@@ -48,20 +50,21 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
   const tab = parseProfileTab(sp.tab);
 
   // En-tête : rang, meilleur rang et nombre de badges comme dans le panneau.
-  const [summary, showcases] = await Promise.all([
+  const [summary, showcases, badges] = await Promise.all([
     getProfileMenuSummary().catch(() => null),
     getRowShowcases([user.id], 3).catch(() => new Map()),
+    getProfileBadges().catch(() => null),
   ]);
+  const unlockedBadges = badges ? badges.categories.flatMap((category) => category.badges).filter(isBadgeUnlocked) : [];
   const chips = [
     ...(summary?.rank != null ? [{ label: `#${summary.rank} · ${summary.points ?? 0} pts`, accent: true }] : []),
     ...(summary?.badgeCount != null && summary.badgeTotal != null
-      ? [{ label: `${summary.badgeCount}/${summary.badgeTotal} badges` }]
+      ? [{ label: `${summary.badgeCount} badge${summary.badgeCount > 1 ? "s" : ""} débloqué${summary.badgeCount > 1 ? "s" : ""} sur ${summary.badgeTotal}` }]
       : []),
     ...(summary?.bestRank != null ? [{ label: `Meilleur rang #${summary.bestRank}` }] : []),
   ];
 
   // Une seule lecture par onglet affiché.
-  const badges = tab === "badges" ? await getProfileBadges() : null;
   const history = tab === "historique" ? await getCompetitionHistory() : null;
   const leagues = tab === "ligues" ? await getMyLeagues() : null;
 
@@ -74,6 +77,11 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
         isAdmin={profile.isAdmin}
         bio={profile.bio}
         showcase={showcases.get(user.id) ?? []}
+        showcaseSlot={
+          badges && (
+            <ShowcaseEditor pinned={badges.pinnedBadges} unlocked={unlockedBadges} returnTo={`/profile?tab=${tab}`} />
+          )
+        }
         chips={chips}
         editHref="/profile/preferences"
         badgesHref="/profile?tab=badges"
@@ -87,7 +95,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       )}
 
       {tab === "stats" && <StatsPanel userId={user.id} section={parseStatsSection(sp.section)} ligue={sp.ligue} />}
-      {badges && (
+      {tab === "badges" && badges && (
         <section className={`${profileStyles.section} glass-card`} aria-label="Badges">
           <BadgesTab data={badges} />
         </section>

@@ -38,9 +38,9 @@ const FILTERS: { id: Filter; label: string }[] = [
 function statusLabel(badge: BadgeDisplay): string {
   if (badge.kind === "tiered") {
     if (badge.tier) return TIER_LABELS[badge.tier];
-    return badge.nextThreshold ? `${badge.value}/${badge.nextThreshold}` : "Verrouillé";
+    return badge.nextThreshold ? `${badge.value} sur ${badge.nextThreshold}` : "Verrouillé";
   }
-  if (badge.kind === "ladderStep") return badge.unlocked ? "Débloqué" : `${badge.value}/${badge.threshold}`;
+  if (badge.kind === "ladderStep") return badge.unlocked ? "Débloqué" : `${badge.value} sur ${badge.threshold}`;
   return badge.unlocked ? "Débloqué" : "Verrouillé";
 }
 
@@ -92,7 +92,7 @@ export function BadgesTab({ data, readOnly = false }: Props) {
     <div className={styles.wrapper}>
       <header className={styles.summary}>
         <p className={styles.count}>
-          <strong>{unlockedCount}</strong>/{all.length} débloqués
+          <strong>{unlockedCount}</strong> badge{unlockedCount > 1 ? "s" : ""} débloqué{unlockedCount > 1 ? "s" : ""} sur {all.length}
         </p>
         {closest.length > 0 && (
           <div className={styles.closest}>
