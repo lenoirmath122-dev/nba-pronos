@@ -56,7 +56,6 @@
 
 .pseudo {
   color: var(--color-text-primary);
-  flex: 1;
 }
 
 .predictionItem {
@@ -68,6 +67,7 @@
 }
 
 .pick {
+  margin-inline-start: auto;
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
 }

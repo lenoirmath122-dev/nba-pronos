@@ -25,3 +25,9 @@
   font-variant-numeric: tabular-nums;
   color: var(--color-text-secondary);
 }
+
+.badge {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-inline-start: var(--space-1);
+}

@@ -94,7 +94,10 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
     const showStickyBar = weekly.rankedCount > 20 && weekly.currentUserRank !== null;
     const currentUserRow = weekly.rows.find((row) => row.isCurrentUser);
     // Une seule salve pour toute la liste (pas une requête par ligne).
-    const showcases = await getRowShowcases(weekly.rows.map((row) => row.userId), 3);
+    const [showcases, championShowcases] = await Promise.all([
+      getRowShowcases(weekly.rows.map((row) => row.userId), 3),
+      getRowShowcases(weekly.lastChampions?.champions.map((champion) => champion.userId) ?? [], 1).catch(() => new Map()),
+    ]);
 
     return (
       <ScreenShell authenticated={user !== null}>
@@ -122,7 +125,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             <p className={styles.period}>Compteurs partis du {formatDayLabel(weekly.startSnapshotDate)}.</p>
           )}
 
-          <WeeklyChampionBanner lastChampions={weekly.lastChampions} />
+          <WeeklyChampionBanner lastChampions={weekly.lastChampions} showcases={championShowcases} />
 
           {weekly.state === "error" ? (
             <EmptyState title="Classement de la semaine indisponible" subtitle="Réessaie dans un instant." />

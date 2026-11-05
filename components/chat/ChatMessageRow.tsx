@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteChatMessageFormAction } from "@/lib/actions/chat";
+import { ShowcaseChip } from "@/components/badges/ShowcaseProvider";
 import { ReportMessageDialog } from "./ReportMessageDialog";
 import { CHAT_REACTION_EMOJIS } from "@/lib/chat/reactions";
 import type { ChatMessage } from "@/lib/queries/chat";
@@ -147,6 +148,7 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
         <div className={styles.meta}>
           <span className={styles.pseudo}>
             {message.pseudo}
+            <ShowcaseChip userId={message.userId} />
             {message.isAdmin && <span className={styles.adminTag}>admin</span>}
           </span>
           <span className={styles.time}>{formatTime(message.createdAt)}</span>

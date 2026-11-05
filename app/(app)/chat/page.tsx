@@ -1,3 +1,5 @@
+import { ShowcaseProvider } from "@/components/badges/ShowcaseProvider";
+import { getRowShowcases } from "@/lib/queries/badges";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { getServerClient } from "@/lib/supabase/server";
@@ -57,6 +59,9 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   }
 
   const messages = await getChatMessages(scope);
+  const showcases = Object.fromEntries(
+    await getRowShowcases([...new Set(messages.map((m) => m.userId))], 1).catch(() => new Map())
+  );
   const currentUserRole = roster.find((u) => u.id === user!.id);
   const isCurrentUserAdmin = currentUserRole?.isAdmin ?? false;
 
@@ -69,6 +74,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
         <h1 className={styles.title}>{channelName}</h1>
       </div>
 
+      <ShowcaseProvider showcases={showcases}>
       <ChatSubscriber
         key={scope.type === "LEAGUE" ? scope.leagueId : "GLOBAL"}
         seed={messages}
@@ -77,6 +83,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
         currentUserId={user!.id}
         isCurrentUserAdmin={isCurrentUserAdmin}
       />
+      </ShowcaseProvider>
     </div>
   );
 }
