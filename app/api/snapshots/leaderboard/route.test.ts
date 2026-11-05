@@ -2,13 +2,20 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const runLeaderboardSnapshot = vi.fn();
 let authorized = true;
+const invalidate = vi.fn();
 
 vi.mock("@/lib/sync/auth", () => ({ isAuthorizedCronRequest: () => authorized }));
 vi.mock("@/lib/snapshots/leaderboardSnapshot", () => ({
   runLeaderboardSnapshot: (...a: unknown[]) => runLeaderboardSnapshot(...a),
 }));
 
+vi.mock("@/lib/cache/commonData", async (importActual) => ({
+  ...(await importActual<typeof import("@/lib/cache/commonData")>()),
+  invalidateCommonData: (...tags: unknown[]) => invalidate(...tags),
+}));
+
 import { POST } from "./route";
+import { COMMON_TAGS } from "@/lib/cache/commonData";
 
 const req = (qs = "") =>
   new Request(`http://localhost/api/snapshots/leaderboard${qs}`, { method: "POST" });
@@ -16,6 +23,7 @@ const req = (qs = "") =>
 beforeEach(() => {
   authorized = true;
   runLeaderboardSnapshot.mockReset();
+  invalidate.mockReset();
   runLeaderboardSnapshot.mockResolvedValue({ snapshotted: 2 });
 });
 
@@ -38,5 +46,16 @@ describe("POST /api/snapshots/leaderboard", () => {
     const res = await POST(req());
     expect(res.status).toBe(500);
     expect(await res.json()).toEqual({ error: "column not found" });
+  });
+
+  it("invalide le classement mis en cache après le snapshot", async () => {
+    await POST(req());
+    expect(invalidate).toHaveBeenCalledWith(COMMON_TAGS.leaderboard);
+  });
+
+  it("n'invalide rien sans autorisation", async () => {
+    authorized = false;
+    await POST(req());
+    expect(invalidate).not.toHaveBeenCalled();
   });
 });

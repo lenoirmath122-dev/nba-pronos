@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getActiveCompetition } from "@/lib/cache/commonData";
 import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
@@ -53,7 +54,6 @@ export type PlayHubData = {
   bets: PlayHubBetsCard;
 };
 
-type CompetitionRow = { id: string };
 type TeamRow = { id: string; abbreviation: string };
 
 async function getMatchesCard(
@@ -212,11 +212,7 @@ export async function getPlayHubData(): Promise<PlayHubData> {
     return { matches: emptyMatches(), predictions: emptyPredictions(), bracket, bets: emptyBets() };
   }
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const competition = await getActiveCompetition(supabase);
 
   const predictions = await getPredictionsCard(supabase, user.id);
 

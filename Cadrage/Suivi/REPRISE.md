@@ -1,24 +1,20 @@
-# Reprise — NBA Pronos (05/11/2026, passation 23)
-- **Chantier aide aux débutants** (`chantiers/CHANTIER_AIDE_DEBUTANTS.md`, refonte : `chantiers/cadrage-refonte-prono.md`) :
-  L1-L4 mergés (#267-#270, #272). **Refonte de la carte de prono mergée (#273)** : 5 traits de forme dans les boutons
-  d'équipe, popup « Détail des équipes » à 3 onglets (Face à face, Effectif triable, Joueurs à surveiller), bandeau
-  « Prochain à pronostiquer » aligné sur le jour NY de la carte.
-- **PR ouverte** : #274 (bouton « Détail des équipes » compact, en haut à droite de la carte, en face de l'heure).
-  À merger ; regarder le rendu sur le preview (heure + bouton peuvent se serrer sur petit écran ; cible tactile 32 px < 44 px,
-  zone de toucher à agrandir si besoin).
-- **Quota Vercel** : alerte 90 % Fluid Active CPU (4 h/mois, plan Hobby, quota partagé par les 6 projets) le 05/11 ;
-  PR #276 ouverte (proxy sans appel Supabase pour les anonymes, `api/`, `_vercel/`, statiques hors matcher). Suivre la page Usage.
-- **Quota Vercel (suite)** : PR #277 ouverte : thème déplacé vers un cookie `pb-theme` (`public/theme-init.js` + `<ThemeSync>`
-  dans le layout (app)), layout racine sans session -> `/` réellement en cache 60 s. Étape suivante proposée : cache des données communes.
-- **Non fait** : captures d'écran du réel (§8 : script Playwright `scripts/reel-captures/`, seed, `CAPTURES.md`) et
-  vérification navigateur 375 px / desktop : demandent Docker + Supabase local, **demander avant de lancer**.
-  Aucun serveur de test n'est lancé.
-- **À faire ensuite** : contrôler `computed_at` de `stats_team_form` après 12h/16h (VM à jour après #268) ;
-  L1-4 (5 bilans vs classement NBA : PHI 8-1, DET 6-2, BOS 6-2) ; L1-5 (titulaires C) ; L5 (visuel) à cadrer.
-- **Pièges** : `structureBet` AU PLAFOND de grammaire ; une branche par PR (jamais main) ; le classificateur bloque
-  merges / reset / écritures prod ; Python absent (utiliser node) ; heredoc bash avec apostrophes peut échouer (utiliser
-  Write) ; `tsc` signale des erreurs connues dans `Cadrage/docs/reel-v2-pack` et `.next/dev/types`.
-- **Autres chantiers** : paris persos non calculables, Profil & badges, entonnoir UTM, popup hebdo : voir
-  `JOURNAL_SESSIONS.md` (5 dernières lignes) et `GAPS_OUVERTS.md`.
-- **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; « Hauser ou Pritchard » ; pari Memphis `f4f3ebd6…` à rejouer
-  (coût IA, demander d'abord) ; poller VM (dryRun → réel) ; probas instables. **Échéances** : bêta Cup 04/12.
+# Reprise — NBA Pronos (05/11/2026, passation 24)
+- **Chantier quota Vercel « Fluid Active CPU »** (alerte 90 % le 05/11) : #276 (proxy sans Supabase pour les anonymes) et
+  #277 (thème en cookie, accueil pré-rendu) mergés. **PR ouvertes** : #278 `perf/cache-donnees-communes` (cache serveur des
+  lectures COMMUNES) et #279 `perf/desactiver-prefetch-liens` (`prefetch={false}` sur PlayerLink, annuaire, liens légaux).
+- **#278** : `lib/cache/commonData.ts` (unstable_cache, client anon, tags `common-*`, repli sur le client de la requête).
+  Cachés : compétition (10 min), séries DAILY (5 min), matchs à venir (5 min), scores live (1 min), `user_scores` (1 h,
+  invalidé aussi à l'activation et à la suppression de compte). Invalidation `expire: 0` depuis `api/sync/*`, `daily-match/draw`,
+  `snapshots/leaderboard`, `recompute*`, `resolveAllCalculableBets`, `logAdminAction`.
+- **Non caché (signalé dans la PR)** : `count_committed_predictions`, pronos des autres, bets du classement, résultats terminés,
+  séries du bracket, classement hebdo, ligues, tout le personnel.
+- **À vérifier sur le preview** : `user_scores` lisible par la clé anon (sinon repli silencieux) ; un score synchronisé
+  apparaît sans attendre le TTL.
+- **Ensuite** : noter « Fluid Active CPU » (page Usage) avant/après merge ; décider d'allonger les durées ou de cacher résultats
+  terminés + séries du bracket. Mesure par route impossible sur Hobby.
+- **Aide aux débutants** : #274 (bouton « Détail des équipes » compact) à merger ; captures du réel (Docker + Supabase
+  local : **demander avant**) ; voir `chantiers/CHANTIER_AIDE_DEBUTANTS.md`.
+- **Pièges** : fichiers en CRLF ; heredoc bash avec apostrophes échoue (Write) ; `tsc`/`eslint` : erreurs connues dans
+  `Cadrage/docs/reel*` et `.next/dev/types` ; une branche par PR ; le classificateur bloque merges / écritures prod.
+- **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; pari Memphis `f4f3ebd6…` à rejouer (coût IA, demander) ; poller VM
+  (dryRun → réel) ; probas instables. **Échéances** : bêta Cup 04/12.

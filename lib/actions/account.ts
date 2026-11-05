@@ -1,6 +1,7 @@
 "use server";
 
 import { redirect } from "next/navigation";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { getServerClient } from "@/lib/supabase/server";
 import { getServiceClient } from "@/lib/supabase/service";
 import { toClientError } from "@/lib/actions/errors";
@@ -105,6 +106,9 @@ export async function deleteAccountFormAction(formData: FormData): Promise<void>
   } catch (error) {
     redirectWithError(toClientError("deleteAccountFormAction", error instanceof Error ? error : { message: String(error) }));
   }
+
+  // Les lignes du joueur disparaissent de user_scores : plus de ligne fantôme au classement.
+  invalidateCommonData(COMMON_TAGS.leaderboard);
 
   await supabase.auth.signOut();
   await clearThemeCookie();

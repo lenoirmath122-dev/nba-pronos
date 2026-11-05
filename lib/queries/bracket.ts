@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getActiveCompetition } from "@/lib/cache/commonData";
 import { getAllTeams } from "@/lib/queries/teams";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
@@ -152,12 +153,6 @@ const CUP_ROUNDS = ["CUP_QUARTERS", "CUP_SEMIS", "CUP_FINAL"] as const;
 
 const CONFERENCE_RANK: Record<string, number> = { EAST: 0, WEST: 1 };
 
-type CompetitionRow = {
-  id: string;
-  type: CompetitionType;
-  bracket_deadline: string | null;
-};
-
 type SeriesRow = {
   id: string;
   round: string;
@@ -203,11 +198,7 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
   const scopeLeagueId = scope?.id ?? null;
   const scopeLeagueName = scope?.name ?? null;
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, type, bracket_deadline")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const competition = await getActiveCompetition(supabase);
 
   if (!competition) {
     return emptyData(scopeLeagueId, scopeLeagueName);

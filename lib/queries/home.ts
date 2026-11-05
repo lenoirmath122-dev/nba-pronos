@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getActiveCompetition } from "@/lib/cache/commonData";
 import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { getAllTeams } from "@/lib/queries/teams";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
@@ -135,12 +136,8 @@ export async function getHomeData(): Promise<HomeData> {
 
   // Une seule compétition ACTIVE à la fois (contrainte d'unicité en base) —
   // aucune active → état vide global (§2).
-  const [{ data: competition }, { data: prefRow }] = await Promise.all([
-    supabase
-      .from("competitions")
-      .select("id, name, type, bracket_deadline")
-      .eq("status", "ACTIVE")
-      .maybeSingle<CompetitionRow>(),
+  const [competition, { data: prefRow }] = await Promise.all([
+    getActiveCompetition(supabase),
     supabase
       .from("users")
       .select("notification_preference")
@@ -735,11 +732,7 @@ export async function getResultsSince(since: string, maxItems: number): Promise<
   } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id")
-    .eq("status", "ACTIVE")
-    .maybeSingle<{ id: string }>();
+  const competition = await getActiveCompetition(supabase);
   if (!competition) return [];
 
   return getFeed(supabase, competition.id, user.id, { since, maxItems });
@@ -805,11 +798,7 @@ async function getCompetitionNavBadges(): Promise<Omit<NavBadgeData, "chatActivi
   } = await supabase.auth.getUser();
   if (!user) return EMPTY_COMPETITION_NAV_BADGES;
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, name, type, bracket_deadline")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const competition = await getActiveCompetition(supabase);
 
   if (!competition) return EMPTY_COMPETITION_NAV_BADGES;
 

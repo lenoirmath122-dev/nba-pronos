@@ -7,6 +7,8 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { logAdminAction } from "./audit";
 
 vi.mock("@sentry/nextjs", () => ({ captureException: vi.fn() }));
+const invalidateAll = vi.fn();
+vi.mock("@/lib/cache/commonData", () => ({ invalidateAllCommonData: () => invalidateAll() }));
 
 import * as Sentry from "@sentry/nextjs";
 
@@ -37,5 +39,20 @@ describe("logAdminAction", () => {
     const [error, context] = vi.mocked(Sentry.captureException).mock.calls[0];
     expect((error as Error).message).toContain("panne");
     expect(context).toMatchObject({ extra: { targetId: "bet-1", action: "VALIDATE_BET" } });
+  });
+});
+
+describe("logAdminAction : invalidation du cache commun", () => {
+  beforeEach(() => invalidateAll.mockClear());
+
+  it("toute action admin invalide les lectures communes", async () => {
+    await logAdminAction(fakeSupabase(null), baseInput);
+    expect(invalidateAll).toHaveBeenCalledTimes(1);
+  });
+
+  it("invalide aussi quand l'insertion d'audit échoue", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await logAdminAction(fakeSupabase({ message: "rls" }), baseInput);
+    expect(invalidateAll).toHaveBeenCalledTimes(1);
   });
 });

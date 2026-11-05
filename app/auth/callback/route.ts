@@ -3,6 +3,7 @@ import type { EmailOtpType } from "@supabase/supabase-js";
 import { getServerClient } from "@/lib/supabase/server";
 import { cookies } from "next/headers";
 import { getServiceClient } from "@/lib/supabase/service";
+import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { FUNNEL_VID_META, UTM_COOKIE, VISITOR_COOKIE, isValidVisitorId, parseUtmCookie } from "@/lib/funnel/events";
 import { insertFunnelEvent, trackAccountCreated } from "@/lib/funnel/record";
 import { detectInAppBrowser } from "@/lib/auth/inAppBrowser";
@@ -69,6 +70,8 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .eq("status", "PENDING")
       .select("id");
+    // Un compte activé peut déjà avoir des pronos invités : il entre au classement.
+    if (activated?.length) invalidateCommonData(COMMON_TAGS.leaderboard);
     if (activated?.length && visitor) {
       await insertFunnelEvent({
         visitorId: visitor,

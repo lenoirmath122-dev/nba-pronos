@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getActiveCompetition } from "@/lib/cache/commonData";
 import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
@@ -153,7 +154,6 @@ export function computeCandidateTeamIds(
   return result;
 }
 
-type CompetitionRow = { id: string; type: CompetitionType; bracket_deadline: string | null };
 
 type SeriesRow = CascadeSeriesRow & { conference: "EAST" | "WEST" | null; slot_index: number };
 
@@ -184,11 +184,7 @@ export async function getBracketFillData(): Promise<BracketFillData> {
   } = await supabase.auth.getUser();
   if (!user) return emptyData();
 
-  const { data: competition } = await supabase
-    .from("competitions")
-    .select("id, type, bracket_deadline")
-    .eq("status", "ACTIVE")
-    .maybeSingle<CompetitionRow>();
+  const competition = await getActiveCompetition(supabase);
   if (!competition) return emptyData();
 
   const deadline = competition.bracket_deadline;

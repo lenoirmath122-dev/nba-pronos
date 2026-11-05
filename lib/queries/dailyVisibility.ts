@@ -1,5 +1,6 @@
 import type { getServerClient } from "@/lib/supabase/server";
 import { isDailyDayPublished, slotToNyDay } from "@/lib/dates/paris";
+import { getDailySeriesRows } from "@/lib/cache/commonData";
 
 // Masquage côté joueur des matchs du « Match du jour » dont le jour NY n'est
 // pas encore publié (fenêtre glissante : 10h Paris le D-6, voir
@@ -22,9 +23,14 @@ export function unpublishedDailySeriesIds(rows: { id: string; slot_index: number
 /** Valeur `(id1,id2,...)` pour `.not("series_id", "in", <valeur>)` : exclut les
  *  matchs des jours non publiés. Une requête légère (≤ ~40 séries DAILY). */
 export async function hiddenSeriesFilter(supabase: SupabaseServerClient, nowMs: number = Date.now()): Promise<string> {
-  const { data } = await supabase.from("series").select("id, slot_index").eq("round", "DAILY");
-  const ids = unpublishedDailySeriesIds((data ?? []) as { id: string; slot_index: number }[], nowMs);
-  return `(${[NIL_UUID, ...ids].join(",")})`;
+  return `(${[NIL_UUID, ...(await hiddenSeriesIds(supabase, nowMs))].join(",")})`;
+}
+
+/** Ids des séries DAILY non publiées. Les séries sont lues via le cache commun
+ *  (tag « series ») ; le calcul « publié ou non » reste fait ici avec l'heure
+ *  courante, jamais mis en cache. */
+export async function hiddenSeriesIds(supabase: SupabaseServerClient, nowMs: number = Date.now()): Promise<string[]> {
+  return unpublishedDailySeriesIds(await getDailySeriesRows(supabase), nowMs);
 }
 
 /** Vrai si ce match appartient à un jour DAILY non publié (garde des actions). */
