@@ -2,10 +2,12 @@
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { deleteChatMessageFormAction } from "@/lib/actions/chat";
+import { PlayerLink } from "@/components/ui/PlayerLink";
 import { ShowcaseChip } from "@/components/badges/ShowcaseProvider";
 import { ReportMessageDialog } from "./ReportMessageDialog";
 import { CHAT_REACTION_EMOJIS } from "@/lib/chat/reactions";
-import type { ChatMessage } from "@/lib/queries/chat";
+import { splitMentions } from "@/lib/chat/mentions";
+import type { ChatMessage, ChatRosterEntry } from "@/lib/queries/chat";
 import styles from "./ChatMessageRow.module.css";
 
 // Une ligne de message (SPEC_CHAT_V0_1.md §5) : bouton "Supprimer" visible
@@ -33,6 +35,8 @@ import styles from "./ChatMessageRow.module.css";
 
 const LONG_PRESS_MS = 450;
 const LONG_PRESS_MOVE_PX = 10;
+// « Qui a réagi » (appui long sur une pastille) : au-delà, on coupe avec « … ».
+const MAX_REACTORS_SHOWN = 3;
 
 function formatTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
@@ -45,9 +49,10 @@ type ChatMessageRowProps = {
   onDeleted: (messageId: string) => void;
   onReact: (messageId: string, emoji: string | null) => void;
   currentUserId: string;
+  roster: ChatRosterEntry[];
 };
 
-export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, currentUserId }: ChatMessageRowProps) {
+export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, currentUserId, roster }: ChatMessageRowProps) {
   const [state, formAction, pending] = useActionState(deleteChatMessageFormAction, undefined);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -56,6 +61,12 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
   const pickerRef = useRef<HTMLDivElement>(null);
   const pressRef = useRef<{ timer: number; x: number; y: number } | null>(null);
   const [copied, setCopied] = useState(false);
+  // Pastille dont on affiche les auteurs (appui long) ; `suppressClickRef`
+  // avale le clic qui suit un appui long pour ne pas poser/retirer la réaction.
+  const [whoEmoji, setWhoEmoji] = useState<string | null>(null);
+  const pillPressRef = useRef<number | null>(null);
+  const suppressClickRef = useRef(false);
+  const whoRef = useRef<HTMLDivElement>(null);
 
   // Le texte n'est pas sélectionnable (l'appui long ouvre les réactions) :
   // "Copier" du menu "⋯" prend le relais.
@@ -91,6 +102,53 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
     };
   }, [menuOpen, pickerOpen]);
 
+  useEffect(() => {
+    if (!whoEmoji) return;
+    function onPointerDown(e: PointerEvent) {
+      if (whoRef.current?.contains(e.target as Node)) return;
+      setWhoEmoji(null);
+    }
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [whoEmoji]);
+
+  const rosterById = new Map(roster.map((u) => [u.id, u]));
+  const bodySegments = splitMentions(
+    message.body,
+    roster.map((u) => ({ id: u.id, pseudo: u.pseudo }))
+  );
+
+  function reactorNames(emoji: string): string {
+    const names = message.reactions
+      .filter((r) => r.emoji === emoji)
+      .map((r) => (r.userId === currentUserId ? "Toi" : (rosterById.get(r.userId)?.pseudo ?? "Joueur")));
+    const shown = names.slice(0, MAX_REACTORS_SHOWN).join(", ");
+    return names.length > MAX_REACTORS_SHOWN ? `${shown}…` : shown;
+  }
+
+  function startPillPress(emoji: string) {
+    if (pillPressRef.current) window.clearTimeout(pillPressRef.current);
+    pillPressRef.current = window.setTimeout(() => {
+      pillPressRef.current = null;
+      suppressClickRef.current = true;
+      setWhoEmoji(emoji);
+    }, LONG_PRESS_MS);
+  }
+
+  function endPillPress() {
+    if (pillPressRef.current) window.clearTimeout(pillPressRef.current);
+    pillPressRef.current = null;
+  }
+
+  function handlePillClick(emoji: string) {
+    if (suppressClickRef.current) {
+      suppressClickRef.current = false;
+      return;
+    }
+    setWhoEmoji(null);
+    react(emoji);
+  }
+
   const myReaction = message.reactions.find((r) => r.userId === currentUserId)?.emoji ?? null;
   const counts = CHAT_REACTION_EMOJIS.map((emoji) => ({
     emoji,
@@ -105,7 +163,7 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
   // Appui long (souris ou doigt) sur la bulle : ouvre le sélecteur. Annulé si
   // le pointeur bouge (défilement, sélection de texte) ou se relève avant.
   function handlePressStart(e: React.PointerEvent<HTMLDivElement>) {
-    if ((e.target as HTMLElement).closest("button, form")) return;
+    if ((e.target as HTMLElement).closest("button, form, a")) return;
     cancelPress();
     pressRef.current = {
       x: e.clientX,
@@ -123,7 +181,13 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
     if (press && Math.hypot(e.clientX - press.x, e.clientY - press.y) > LONG_PRESS_MOVE_PX) cancelPress();
   }
 
-  useEffect(() => cancelPress, []);
+  useEffect(
+    () => () => {
+      cancelPress();
+      endPillPress();
+    },
+    []
+  );
 
   function react(emoji: string) {
     setPickerOpen(false);
@@ -147,7 +211,7 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
       >
         <div className={styles.meta}>
           <span className={styles.pseudo}>
-            {message.pseudo}
+            <PlayerLink userId={message.userId} pseudo={message.pseudo} className={styles.pseudoLink} />
             <ShowcaseChip userId={message.userId} />
             {message.isAdmin && <span className={styles.adminTag}>admin</span>}
           </span>
@@ -218,7 +282,20 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
             ))}
           </div>
         )}
-        <p className={styles.body}>{message.body}</p>
+        <p className={styles.body}>
+          {bodySegments.map((segment, index) =>
+            segment.type === "mention" ? (
+              <PlayerLink
+                key={index}
+                userId={segment.userId}
+                pseudo={segment.text}
+                className={segment.userId === currentUserId ? styles.mentionMe : styles.mention}
+              />
+            ) : (
+              <span key={index}>{segment.text}</span>
+            )
+          )}
+        </p>
         {counts.length > 0 && (
           <div className={styles.reactions}>
             {counts.map(({ emoji, count }) => (
@@ -226,13 +303,22 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
                 key={emoji}
                 type="button"
                 className={emoji === myReaction ? styles.pillMine : styles.pill}
-                onClick={() => react(emoji)}
+                onClick={() => handlePillClick(emoji)}
+                onPointerDown={() => startPillPress(emoji)}
+                onPointerUp={endPillPress}
+                onPointerLeave={endPillPress}
+                onPointerCancel={endPillPress}
                 aria-pressed={emoji === myReaction}
-                aria-label={`${emoji} ${count}`}
+                aria-label={`${emoji} ${count} : ${reactorNames(emoji)}`}
               >
                 <span aria-hidden="true">{emoji}</span> {count}
               </button>
             ))}
+            {whoEmoji && (
+              <div className={styles.who} ref={whoRef} role="status">
+                <span aria-hidden="true">{whoEmoji}</span> {reactorNames(whoEmoji)}
+              </div>
+            )}
           </div>
         )}
       </div>
