@@ -189,11 +189,12 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
               onDeleted={handleDeleted}
               onReact={handleReact}
               currentUserId={currentUserId}
+              roster={roster}
             />
           ))
         )}
       </div>
-      <ChatComposer scope={scope} />
+      <ChatComposer scope={scope} roster={roster} currentUserId={currentUserId} />
     </div>
   );
 }
