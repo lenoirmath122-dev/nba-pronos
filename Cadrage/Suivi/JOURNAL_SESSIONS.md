@@ -400,3 +400,5 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Quota Vercel : #278 (cache serveur des données communes) et #279 (prefetch désactivé) mergés, user_scores lisible en anon vérifié, mesure CPU avant/après à suivre (05/11/2026)
 - Profil & badges : Lots 6, 7, 8 faits (écusson dans chat/pop-up/champion, 35 SVG dessinés, animations CSS) ; release/profil-badges jamais mergée dans main, synchronisée (05/11/2026) ; recette sur l'aperçu à faire
 - Profil & badges, retours preview 1 : en-tête sans dégradé + vitrine 3 emplacements cliquables (choix du badge en popup), historique complet des paris triable, points par semaine général/ligue, écussons à gauche des points au classement, onglets Pronos/Paris/Badges sur le profil des autres (05/11/2026) ; PR #281
+- Chat : qui a réagi (appui long), pseudo cliquable vers le profil, mentions @pseudo avec autocomplétion (08/11/2026) — PR #283
+- 10/11/2026 : bouton admin « Import des box scores » (PR #284 mergée, page /admin/stats-import, déclenche run-stats-import-vm via API GitHub). Reste : jeton GITHUB_DISPATCH_TOKEN dans Vercel + redéploiement + test réel.
