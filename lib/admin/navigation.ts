@@ -40,6 +40,7 @@ export const ADMIN_SCREENS: Record<string, { label: string; parent: string }> = 
   "/admin/logs": { label: "Historique des logs", parent: "/admin/system" },
   "/admin/sync-logs": { label: "Logs de synchronisation", parent: "/admin/system" },
   "/admin/security": { label: "Sécurité du compte", parent: "/admin/system" },
+  "/admin/stats-import": { label: "Import des box scores", parent: "/admin/system" },
 };
 
 // Écrans listés par rubrique, dans l'ordre d'affichage. « À traiter » est
@@ -63,7 +64,7 @@ export const ADMIN_SECTION_SCREENS: Record<AdminSectionSlug, string[]> = {
     "/admin/missing",
   ],
   community: ["/admin/players"],
-  system: ["/admin/logs", "/admin/sync-logs", "/admin/security"],
+  system: ["/admin/logs", "/admin/sync-logs", "/admin/stats-import", "/admin/security"],
 };
 
 export function screenLabel(href: string): string {
