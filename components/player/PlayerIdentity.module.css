@@ -13,6 +13,7 @@
   width: 1.5rem;
   height: 1.5rem;
   border-radius: var(--radius-full);
+  overflow: hidden;
   background: var(--color-accent-soft);
   color: var(--color-accent);
   font-size: 0.625rem;
@@ -62,4 +63,49 @@
   .identity[data-size="row"] > :last-child > :nth-child(n + 2) {
     display: none;
   }
+}
+
+.avatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.avatarTeam {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Classement : la bulle prend toute la hauteur de la ligne. */
+.identity[data-size="row"] .avatar {
+  width: var(--leaderboard-avatar-size);
+  height: var(--leaderboard-avatar-size);
+  font-size: var(--font-size-xs);
+}
+
+.text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}
+
+.avatarLink {
+  display: flex;
+  flex-shrink: 0;
+  border-radius: var(--radius-full);
+}
+
+/* Logo d'équipe en repli : fond clair pour faire ressortir les logos sombres ou non pleins (Spurs, Grizzlies...). */
+.avatarOnTeam {
+  background: #fff;
+  box-shadow: inset 0 0 0 1px var(--color-border-subtle);
 }

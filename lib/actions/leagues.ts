@@ -83,3 +83,29 @@ export async function leaveLeagueFormAction(formData: FormData): Promise<void> {
   revalidatePath("/leaderboard");
   redirect("/profile?tab=ligues");
 }
+
+export type CreateLeagueResult =
+  | { ok: true; id: string; name: string; code: string }
+  | { ok: false; error: string };
+
+// Variante SANS redirection pour la pop-up « Créer une ligue » du Chat
+// (même RPC create_league que createLeagueFormAction) : le client affiche
+// ensuite le lien d'invitation et le code sans quitter l'écran.
+export async function createLeagueAction(name: string): Promise<CreateLeagueResult> {
+  const supabase = await getServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, error: "Connecte-toi pour créer une ligue." };
+
+  const { data, error } = await supabase
+    .rpc("create_league", { p_name: name.trim() })
+    .single<{ id: string; name: string; code: string }>();
+
+  if (error || !data) return { ok: false, error: error?.message ?? "Échec de la création." };
+
+  revalidatePath("/chat");
+  revalidatePath("/profile");
+  revalidatePath("/leaderboard");
+  return { ok: true, id: data.id, name: data.name, code: data.code };
+}

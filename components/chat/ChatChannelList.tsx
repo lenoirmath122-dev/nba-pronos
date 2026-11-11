@@ -3,6 +3,7 @@ import type { MyLeague } from "@/lib/queries/leagues";
 import type { ChatActivity, MutedChannels } from "@/lib/queries/chat";
 import { ChatNotificationToggle } from "./ChatNotificationToggle";
 import { ChatUnreadBadge } from "./ChatUnreadBadge";
+import { CreateLeagueCard } from "./CreateLeagueCard";
 import styles from "./ChatChannelList.module.css";
 
 // Liste de canaux (addendum SPEC_CHAT_V0_1.md, 27/08/2026 -- demande
@@ -33,6 +34,10 @@ export function ChatChannelList({ myLeagues, muted, activity }: ChatChannelListP
       {myLeagues.map((league) => (
         <div key={league.id} className={`${styles.row} glass-card`}>
           <Link href={`/chat?canal=${league.id}`} className={styles.rowLink}>
+            {league.logoUrl && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={league.logoUrl} alt="" width={32} height={32} className={styles.logo} />
+            )}
             {league.name}
             <ChatUnreadBadge channel={league.id} activity={activity} />
           </Link>
@@ -42,6 +47,7 @@ export function ChatChannelList({ myLeagues, muted, activity }: ChatChannelListP
           />
         </div>
       ))}
+      <CreateLeagueCard />
     </div>
   );
 }

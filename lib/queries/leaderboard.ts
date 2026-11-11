@@ -1,4 +1,5 @@
 import { getServerClient } from "@/lib/supabase/server";
+import { getAllTeams } from "@/lib/queries/teams";
 import { getActiveCompetition, getUserScoreRows } from "@/lib/cache/commonData";
 import { assignRanks } from "@/lib/scoring/ranking";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
@@ -42,6 +43,9 @@ export type RankTrend =
 export type LeaderboardRow = {
   userId: string;
   pseudo: string;
+  avatarUrl: string | null;
+  /** Équipe favorite, repli de l'avatar quand il n'y a pas de photo. */
+  teamAbbreviation: string | null;
   rank: number; // TOUJOURS calculé sur Total ; ex-aequo = même rang (1,2,2,4)
   totalPoints: number;
   matchesPoints: number;
@@ -208,7 +212,7 @@ export async function getLeaderboard(
         .maybeSingle<{ snapshot_date: string }>();
 
   const [{ data: profiles }, { data: forms }, { data: betsRows }, lastSnapshotDateResult] = await Promise.all([
-    supabase.from("users").select("id, pseudo, status").in("id", userIds),
+    supabase.from("users").select("id, pseudo, status, avatar_url, favorite_team_id").in("id", userIds),
     supabase
       .from("user_recent_form")
       .select("user_id, recent_form_points")
@@ -241,10 +245,16 @@ export async function getLeaderboard(
     betStatsByUser.set(userId, stat);
   }
 
+  const teamAbbrById = new Map((await getAllTeams()).map((team) => [team.id, team.abbreviation]));
   const profileById = new Map(
     (profiles ?? []).map((row) => [
       row.id as string,
-      { pseudo: row.pseudo as string, isInactive: row.status === "DISABLED" },
+      {
+        pseudo: row.pseudo as string,
+        isInactive: row.status === "DISABLED",
+        avatarUrl: (row.avatar_url as string | null) ?? null,
+        teamAbbreviation: teamAbbrById.get(row.favorite_team_id as string) ?? null,
+      },
     ])
   );
   const formByUser = new Map(
@@ -277,6 +287,8 @@ export async function getLeaderboard(
     return {
       userId: row.user_id,
       pseudo: profile?.pseudo ?? "",
+      avatarUrl: profile?.avatarUrl ?? null,
+      teamAbbreviation: profile?.teamAbbreviation ?? null,
       rank,
       totalPoints: row.total_points,
       matchesPoints: row.matches_points,

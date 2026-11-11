@@ -5,7 +5,10 @@ import { PlayerIdentity } from "@/components/player/PlayerIdentity";
 import { PlayerBadges } from "@/components/player/PlayerBadges";
 import { getWeeklyLeaderboard } from "@/lib/queries/weeklyLeaderboard";
 import { getMyLeagues } from "@/lib/queries/leagues";
-import { parseView } from "@/lib/leaderboard/href";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { LAST_SCOPE_COOKIE } from "@/lib/leaderboard/lastScope";
+import { leaderboardHref, parseView } from "@/lib/leaderboard/href";
 import { readWeeklyRankingFlag } from "@/lib/weekly/flag";
 import { formatDayLabel } from "@/lib/weekly/currentWeek";
 import { ScreenShell } from "@/components/nav/ScreenShell";
@@ -86,6 +89,22 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
   const weeklyActive = activeCompetition ? await readWeeklyRankingFlag(supabase, activeCompetition.id) : false;
   const view = parseView(vue, tri, ordre, weeklyActive);
 
+  // Sans ligue dans l'URL, on rouvre la dernière ligue consultée (cookie).
+  // Sans ligue ou sans cookie : Général, comme avant.
+  if (user && !leagueId) {
+    const lastScope = (await cookies()).get(LAST_SCOPE_COOKIE)?.value;
+    if (lastScope && myLeagues.some((league) => league.id === lastScope)) {
+      redirect(
+        leaderboardHref({
+          vue: vue === "semaine" || vue === "general" ? vue : undefined,
+          tri: typeof tri === "string" ? tri : undefined,
+          ordre: ordre === "asc" ? "asc" : undefined,
+          ligue: lastScope,
+        }),
+      );
+    }
+  }
+
   if (activeCompetition && view === "semaine") {
     const weekly = await getWeeklyLeaderboard(supabase, {
       competitionId: activeCompetition.id,
@@ -152,6 +171,8 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
               <PlayerIdentity
                 userId={currentUserRow.userId}
                 pseudo={currentUserRow.pseudo}
+                avatarUrl={currentUserRow.avatarUrl}
+                teamAbbreviation={currentUserRow.teamAbbreviation}
                 size="bar"
                 linkToProfile={false}
                 showBadges={false}
@@ -248,6 +269,8 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
             <PlayerIdentity
               userId={currentUserRow.userId}
               pseudo={currentUserRow.pseudo}
+              avatarUrl={currentUserRow.avatarUrl}
+              teamAbbreviation={currentUserRow.teamAbbreviation}
               size="bar"
               linkToProfile={false}
               showBadges={false}

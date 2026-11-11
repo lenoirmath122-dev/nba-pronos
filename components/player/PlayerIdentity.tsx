@@ -1,4 +1,5 @@
-import type { MouseEventHandler } from "react";
+import Link from "next/link";
+import type { MouseEventHandler, ReactNode } from "react";
 import { BadgeStrip } from "@/components/badges/BadgeStrip";
 import { PlayerLink } from "@/components/ui/PlayerLink";
 import { getInitials } from "@/lib/player/initials";
@@ -25,6 +26,12 @@ type PlayerIdentityProps = {
   onPseudoClick?: MouseEventHandler<HTMLAnchorElement>;
   /** Faux : pas d'écussons à côté du pseudo (le classement les met à gauche des points). */
   showBadges?: boolean;
+  /** Photo du joueur (sinon : initiales). */
+  avatarUrl?: string | null;
+  /** Équipe favorite : repli de la photo, avant les initiales. */
+  teamAbbreviation?: string | null;
+  /** Ligne secondaire sous le pseudo (classement hebdo : bons vainqueurs, écarts exacts). */
+  detail?: ReactNode;
 };
 
 export function PlayerIdentity({
@@ -37,17 +44,48 @@ export function PlayerIdentity({
   badgesHref,
   onPseudoClick,
   showBadges = true,
+  avatarUrl,
+  teamAbbreviation,
+  detail,
 }: PlayerIdentityProps) {
+  const avatar = (
+      <span className={!avatarUrl && teamAbbreviation ? `${styles.avatar} ${styles.avatarOnTeam}` : styles.avatar} aria-hidden="true">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={avatarUrl} alt="" className={styles.avatarImg} />
+        ) : teamAbbreviation ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`/logos/teams/${teamAbbreviation}.svg`} alt="" className={styles.avatarTeam} />
+        ) : (
+          getInitials(pseudo)
+        )}
+      </span>
+  );
   return (
     <span className={styles.identity} data-size={size}>
-      <span className={styles.avatar} aria-hidden="true">
-        {getInitials(pseudo)}
-      </span>
+      {linkToProfile ? (
+        // Le pseudo reste le lien accessible : celui de la bulle est redondant pour le clavier.
+        <Link
+          href={`/players/${userId}`}
+          prefetch={false}
+          className={styles.avatarLink}
+          tabIndex={-1}
+          aria-hidden="true"
+          onClick={onPseudoClick}
+        >
+          {avatar}
+        </Link>
+      ) : (
+        avatar
+      )}
+      <span className={styles.text}>
       {linkToProfile ? (
         <PlayerLink userId={userId} pseudo={pseudo} className={styles.pseudo} onClick={onPseudoClick} />
       ) : (
         <span className={styles.pseudo}>{pseudo}</span>
       )}
+      {detail && <span className={styles.detail}>{detail}</span>}
+      </span>
       {showBadges && (
       <BadgeStrip
         badges={showcase}

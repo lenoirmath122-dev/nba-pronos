@@ -73,6 +73,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
       <ProfileHeader
         userId={user.id}
         pseudo={profile.pseudo}
+        avatarUrl={profile.avatarUrl}
         favoriteTeam={profile.favoriteTeam}
         isAdmin={profile.isAdmin}
         bio={profile.bio}
@@ -83,7 +84,7 @@ export default async function ProfilePage({ searchParams }: { searchParams: Prom
           )
         }
         chips={chips}
-        editHref="/profile/preferences"
+        editHref="/profile/modifier"
         badgesHref="/profile?tab=badges"
       />
       <ProfileTabsNav active={tab} />

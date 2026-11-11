@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import Link from "next/link";
 import { BadgePopover } from "@/components/badges/BadgePopover";
 import { PlayerIdentity } from "@/components/player/PlayerIdentity";
+import { GearIcon } from "@/components/icons/menu-icons";
 import { TeamLogo } from "@/components/ui/TeamLogo";
 import type { BadgeDisplay } from "@/lib/queries/badges";
 import type { TeamRef } from "@/lib/queries/matches";
@@ -14,6 +15,7 @@ import styles from "./ProfileHeader.module.css";
 // logo en haut à droite. Composant serveur.
 type ProfileHeaderProps = {
   userId: string;
+  avatarUrl?: string | null;
   pseudo: string;
   favoriteTeam: TeamRef | null;
   isAdmin?: boolean;
@@ -33,6 +35,7 @@ type ProfileHeaderProps = {
 
 export function ProfileHeader({
   userId,
+  avatarUrl,
   pseudo,
   favoriteTeam,
   isAdmin,
@@ -53,11 +56,11 @@ export function ProfileHeader({
       <div className={styles.body}>
         <div className={styles.top}>
           <div className={styles.identity}>
-            <PlayerIdentity userId={userId} pseudo={pseudo} size="header" linkToProfile={false} showBadges={false} />
+            <PlayerIdentity userId={userId} pseudo={pseudo} avatarUrl={avatarUrl} size="header" linkToProfile={false} showBadges={false} />
           </div>
           {editHref && (
-            <Link href={editHref} className={styles.edit}>
-              Modifier le profil
+            <Link href={editHref} className={styles.edit} aria-label="Modifier le profil" title="Modifier le profil">
+              <GearIcon size={18} />
             </Link>
           )}
           {favoriteTeam && (

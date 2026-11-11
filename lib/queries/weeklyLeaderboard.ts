@@ -1,4 +1,5 @@
 import type { getServerClient } from "@/lib/supabase/server";
+import { getAllTeams } from "@/lib/queries/teams";
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { computeWeeklyStandings, weekEndFor, type WeeklySnapshotRow } from "@/lib/weekly/standings";
 import {
@@ -24,6 +25,8 @@ type SupabaseServerClient = Awaited<ReturnType<typeof getServerClient>>;
 export type WeeklyLeaderboardRow = {
   userId: string;
   pseudo: string;
+  avatarUrl: string | null;
+  teamAbbreviation: string | null;
   rank: number;
   /** Points de la semaine ; négatif possible (correction admin rétroactive). */
   points: number;
@@ -161,10 +164,11 @@ export async function getWeeklyLeaderboard(
   const userIds = [...new Set([...endRows.map((row) => row.user_id), ...championIds])];
   const { data: profiles } =
     userIds.length > 0
-      ? await supabase.from("users").select("id, pseudo, status").in("id", userIds)
-      : { data: [] as { id: string; pseudo: string; status: string }[] };
+      ? await supabase.from("users").select("id, pseudo, status, avatar_url, favorite_team_id").in("id", userIds)
+      : { data: [] as { id: string; pseudo: string; status: string; avatar_url: string | null; favorite_team_id: string | null }[] };
+  const teamAbbrById = new Map((await getAllTeams()).map((team) => [team.id, team.abbreviation]));
   const profileById = new Map(
-    (profiles ?? []).map((row) => [row.id as string, { pseudo: row.pseudo as string, isInactive: row.status === "DISABLED" }]),
+    (profiles ?? []).map((row) => [row.id as string, { pseudo: row.pseudo as string, isInactive: row.status === "DISABLED", avatarUrl: (row.avatar_url as string | null) ?? null, teamAbbreviation: teamAbbrById.get(row.favorite_team_id as string) ?? null }]),
   );
 
   const lastChampions: LastWeekChampions =
@@ -227,6 +231,8 @@ export async function getWeeklyLeaderboard(
     return {
       userId: standing.userId,
       pseudo: profile?.pseudo ?? "",
+      avatarUrl: profile?.avatarUrl ?? null,
+      teamAbbreviation: profile?.teamAbbreviation ?? null,
       rank: standing.rank,
       points: standing.points,
       correctMatchWinners: standing.correctMatchWinners,

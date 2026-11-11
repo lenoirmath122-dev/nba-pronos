@@ -75,6 +75,7 @@ export default async function PlayerProfilePage({
         <ProfileHeader
           userId={profile.userId}
           pseudo={profile.pseudo}
+          avatarUrl={profile.avatarUrl}
           favoriteTeam={profile.favoriteTeam}
           isAdmin={profile.isAdmin}
           isInactive={profile.isInactive}

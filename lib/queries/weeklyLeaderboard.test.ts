@@ -59,6 +59,7 @@ function query(table: string) {
 }
 
 vi.mock("@/lib/supabase/server", () => ({ getServerClient: vi.fn() }));
+vi.mock("@/lib/queries/teams", () => ({ getAllTeams: async () => [] }));
 
 import { getWeeklyLeaderboard } from "./weeklyLeaderboard";
 

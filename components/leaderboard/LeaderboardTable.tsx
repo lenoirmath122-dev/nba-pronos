@@ -68,7 +68,7 @@ export function LeaderboardTable({ rows, showcases, sortKey, sortDirection, leag
   const badges: Record<string, ReactNode> = {};
   for (const row of rows) {
     identities[row.userId] = (
-      <PlayerIdentity userId={row.userId} pseudo={row.pseudo} size="row" showBadges={false} />
+      <PlayerIdentity userId={row.userId} pseudo={row.pseudo} avatarUrl={row.avatarUrl} teamAbbreviation={row.teamAbbreviation} size="row" showBadges={false} />
     );
     badges[row.userId] = <PlayerBadges userId={row.userId} pseudo={row.pseudo} showcase={showcases.get(row.userId)} />;
   }

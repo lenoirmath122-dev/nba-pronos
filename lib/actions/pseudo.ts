@@ -16,7 +16,7 @@ import { normalizePseudo, pseudoLengthError, PSEUDO_RPC_MESSAGES } from "@/lib/p
 const MAX_REASON_LENGTH = 300;
 
 function profileRedirect(params: Record<string, string>): never {
-  redirect(`/profile/pseudo?${new URLSearchParams(params).toString()}`);
+  redirect(`/profile/modifier?${new URLSearchParams(params).toString()}`);
 }
 
 export async function requestPseudoChangeFormAction(formData: FormData): Promise<void> {

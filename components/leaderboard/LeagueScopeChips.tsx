@@ -1,9 +1,11 @@
 "use client";
 
+import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import type { SortDirection, SortKey } from "@/lib/queries/leaderboard";
 import type { MyLeague } from "@/lib/queries/leagues";
 import { leaderboardHref, type LeaderboardView } from "@/lib/leaderboard/href";
+import { GENERAL_SCOPE, LAST_SCOPE_COOKIE } from "@/lib/leaderboard/lastScope";
 import styles from "./LeagueScopeChips.module.css";
 
 // Sélecteur de portée (BACKLOG_V1.md « Système de ligue », migration #16) :
@@ -26,12 +28,20 @@ type LeagueScopeChipsProps = {
   vue?: LeaderboardView;
 };
 
+function rememberScope(leagueId: string | null) {
+  document.cookie = `${LAST_SCOPE_COOKIE}=${leagueId ?? GENERAL_SCOPE}; path=/; max-age=31536000; samesite=lax`;
+}
+
 export function LeagueScopeChips({ myLeagues, activeLeagueId, sortKey, sortDirection = "desc", vue }: LeagueScopeChipsProps) {
   const router = useRouter();
+  useEffect(() => {
+    rememberScope(activeLeagueId);
+  }, [activeLeagueId]);
   if (myLeagues.length === 0) return null;
 
   function handleChange(event: React.ChangeEvent<HTMLSelectElement>) {
     const leagueId = event.target.value === GENERAL_VALUE ? null : event.target.value;
+    rememberScope(leagueId);
     const keepSort = vue !== "semaine";
     router.push(
       leaderboardHref({

@@ -68,8 +68,10 @@
   display: inline-flex;
   align-items: center;
   flex: 0 0 auto;
-  min-height: 1.75rem;
-  padding: 0 var(--space-2);
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  padding: 0;
   border-radius: var(--radius-pill);
   font-size: var(--font-size-xs);
   font-weight: var(--font-weight-semibold);

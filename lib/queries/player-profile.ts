@@ -64,6 +64,7 @@ export type PlayerProfileBet = {
 export type PlayerProfileData = {
   userId: string;
   pseudo: string;
+  avatarUrl: string | null;
   isAdmin: boolean;
   isInactive: boolean;
   favoriteTeam: TeamRef | null;
@@ -87,11 +88,12 @@ export async function getPlayerProfile(userId: string): Promise<PlayerProfileDat
 
   const { data: profile } = await supabase
     .from("users")
-    .select("id, pseudo, role, status, favorite_team_id, bio")
+    .select("id, pseudo, avatar_url, role, status, favorite_team_id, bio")
     .eq("id", userId)
     .maybeSingle<{
       id: string;
       pseudo: string;
+      avatar_url: string | null;
       role: "PLAYER" | "ADMIN";
       status: "ACTIVE" | "DISABLED";
       favorite_team_id: string | null;
@@ -107,6 +109,7 @@ export async function getPlayerProfile(userId: string): Promise<PlayerProfileDat
   const base = {
     userId: profile.id,
     pseudo: profile.pseudo,
+    avatarUrl: profile.avatar_url,
     isAdmin: profile.role === "ADMIN",
     isInactive: profile.status === "DISABLED",
     favoriteTeam,
