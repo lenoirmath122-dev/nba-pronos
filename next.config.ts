@@ -62,6 +62,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // sharp (binaire natif) doit rester hors du bundle serveur.
   serverExternalPackages: ["sharp"],
+  // Le traçage de Vercel oubliait la lib partagée libvips (ERR_DLOPEN_FAILED en prod,
+  // 11/11/2026) : on force l'inclusion des binaires linux de sharp dans les fonctions.
+  outputFileTracingIncludes: {
+    "/*": ["./node_modules/@img/sharp-libvips-linux-x64/**/*", "./node_modules/@img/sharp-linux-x64/**/*"],
+  },
   // Racine forcée : un package.json/package-lock.json parasites dans
   // C:\dev\ (dossier parent partagé avec d'autres projets) faisaient
   // remonter Turbopack jusque là pour détecter la racine du projet,
