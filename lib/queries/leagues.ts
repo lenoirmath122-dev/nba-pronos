@@ -42,6 +42,10 @@ export type MyLeague = {
   name: string;
   code: string; // affiché pour inviter d'autres amis — connu de tout membre
   memberCount: number;
+  /** Logo personnalisé (PNG importé par le créateur), sinon null. */
+  logoUrl: string | null;
+  /** Le joueur courant a créé la ligue : seul à pouvoir changer le logo. */
+  isCreator: boolean;
 };
 
 export async function getMyLeagues(): Promise<MyLeague[]> {
@@ -61,7 +65,7 @@ export async function getMyLeagues(): Promise<MyLeague[]> {
   if (leagueIds.length === 0) return [];
 
   const [{ data: leagueRows }, { data: secretRows }, { data: memberRows }] = await Promise.all([
-    supabase.from("leagues").select("id, name").in("id", leagueIds),
+    supabase.from("leagues").select("id, name, logo_url, created_by_user_id").in("id", leagueIds),
     supabase.from("league_secrets").select("league_id, code").in("league_id", leagueIds),
     supabase.from("league_memberships").select("league_id").in("league_id", leagueIds),
   ]);
@@ -81,6 +85,8 @@ export async function getMyLeagues(): Promise<MyLeague[]> {
       name: row.name as string,
       code: codeByLeague.get(row.id as string) ?? "",
       memberCount: memberCountByLeague.get(row.id as string) ?? 0,
+      logoUrl: (row.logo_url as string | null) ?? null,
+      isCreator: row.created_by_user_id === user.id,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }

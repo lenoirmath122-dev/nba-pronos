@@ -1,5 +1,4 @@
 # Journal des sessions — NBA Pronos
-
 > **Nature** : vivant — append-only. **Une entrée = une ligne de 300
 > caractères maximum** : `- Titre-résumé (JJ/MM/AAAA) — PR #n`. Le détail
 > (fichiers, commandes, vérifications) vit dans `git log` et les PR, pas ici.
@@ -11,15 +10,11 @@
 > (entrées d'octobre ramenées à leur titre, texte intégral dans
 > `archive/JOURNAL_SESSIONS_archive_jusquau_2026-10-12.md`).
 ---
-
 ## Sessions antérieures au 16/07/2026
-
 Reconstruites a posteriori depuis `git log` et l'ancien
 `ETAT_DEVELOPPEMENT_PROTOTYPE.md` — frontières exactes entre sessions non
 fiables au-delà de ce qui est explicitement noté dans l'archive.
-
 ## Juillet 2026
-
 - Session du 16/07/2026
 - Session du 18/07/2026 (dépôt neuf + T1/T2/T3 + migrations 1-4)
 - Session du 18/07/2026 (suite — T4 : spec technique synchro API)
@@ -93,9 +88,7 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 - Filtre par ligue sur Mes pronos + Bracket, replis "Plus d'options" (30/07/2026, fin de session)
 - Tutoriel joueur (31/07/2026)
 - Création de compétition NBA Cup + dry-run réel de la synchro (31/07/2026, suite)
-
 ## Août 2026
-
 - Commit/push du chantier NBA Cup (02/08/2026)
 - Stepper d'écart repensé sous l'équipe vainqueur, écran Matchs (02/08/2026, suite)
 - Bug « Paris séries » Accueil/hub Jouer : affiches du bracket personnel au lieu des vraies affiches (04/08/2026)
@@ -262,9 +255,7 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 - 2 bugs réels trouvés en testant sur mobile + confirmation du mot de passe (28/08/2026)
 - Audit de sécurité complet + remédiation critique/élevé/moyen (29-30/08/2026)
 - Bandeau LiveTicker épinglé au-dessus de la TabBar (30/08/2026)
-
 ## Septembre 2026
-
 - Bilan global + démarrage du chantier fiabilité & QA (01/09/2026)
 - Reprise du projet : bilan de reprise, hyperparamètres commités, auto-révélation NBA Cup alpha, bug déploiement Cloud Run (02/09/2026)
 - Rafraîchissement quotidien Supabase en échec depuis le 29/08 -- clé service_role legacy jamais tournée dans un secret CI (06/09/2026)
@@ -273,9 +264,7 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 - Derniers 2 gaps "paris personnalisés IA" -- paris composés + formulation période (06/09/2026)
 - Phase 0 de la feuille de route + rotation de clé Resend qui révèle 3 bugs réels sans rapport (07/09/2026)
 - Phase 0 close : rotation SYNC_SECRET, redéploiement Cloud Run, Sentry (07/09/2026)
-
 ## Octobre 2026
-
 - Retrait volontaire du skill `task-observer` (03/10/2026) — PR #92
 - Retours de l'alpha NBA Cup rangés et confrontés à l'avancement (03/10/2026)
 - Notifications app fermée
@@ -354,9 +343,7 @@ fiables au-delà de ce qui est explicitement noté dans l'archive.
 - Classement hebdo : lot 5, PR 3 pipeline de la popup hebdo (12/10/2026)
 - Instagram : Reel de clôture du test (v3, 30 s, texte animé, chiffres lus en base, enjeux de saison) et légende, prêts à publier (12/10/2026)
 - Accueil jouable et pronos invités : plan d'attractivité repris, tâches 1 à 3 (vérifications, migrations `PENDING`/préférences/agrégats, requêtes de l'accueil), branche locale non poussée (19/10/2026)
-
 ## Référence
-
 Détail complet de chaque session (contexte, échanges avec l'utilisateur,
 code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 `archive/JOURNAL_SESSIONS_archive_jusquau_2026-09-18.md` ; jusqu'au 12/10/2026 :
@@ -366,14 +353,10 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Crons heartbeat/snapshot/bracket sur Vercel (#191) et correctif Memphis (#192) constatés mergés ; passation ; prochaine étape = essai réel e-mails 1B puis enrichissement des modèles (20/10/2026)
 - Seuils inclusifs (#195) : « au moins N » converti en code, schéma structureBet au plafond de grammaire (enum AT_LEAST/AT_MOST) ; crons Vercel (#194) ; prochaine étape = Lot 1 (S1 d'abord) (20/10/2026)
 - Branche fix/cron-bracket-hobby constatée doublon de #194 et supprimée ; passation ; prochaine étape = Lot 1 enrichissement modèles (S1 d'abord) (20/10/2026)
-
 - Lot 1 S1 livré (#198) : pf (modèle, migration, backfill prod) + dreb/fgm/ftm/fta composés ; Cloud Run redéployé, 5 stats testées en réel ; prochaine étape = S4 (20/10/2026)
 - Lot 1 S4 partiel livré (#200) : stat win (vainqueur) dans le combo, corrélation vainqueur × points d'équipe corrigée ; reste combo période + match entier ; Cloud Run à redéployer (20/10/2026)
-
 - Lot 1 S4 fin (PR #202) : combo match entier + période (qwon, win_q1..h2, mixed_combo, vrais appels OK) ; Cloud Run à redéployer après merge ; prochaine étape = S3 + S8 (20/10/2026)
-
 - Lot 1 S3 + S8 livrés (#203) : margin (écart final signé, handicap, tranches) et starter (titulaire/remplaçant), 5 vrais appels IA OK ; Cloud Run à redéployer ; prochaine étape = exactement N / égalité / score exact (21/10/2026)
-
 - Lot 1 clos : exactement N + egalite exacte (#205), S2 correlation (#206), Cloud Run redeploye et verifie en reel ; fantasy et score exact ecartes ; prochaine etape = Lot 2 (21/10/2026)
 - Popup récap « depuis ta dernière visite » (PR #210 mergée) + fond du classement plus sombre (#209 mergée) ; vérifiée par capture avec données fictives, pas encore avec de vrais résultats (21/10/2026)
 - Accueil : carte « Prochain prono » (formulaire /play intégré, surface unique, « À faire aussi », Résultats de la nuit sans compteur), PR ouverte ; recette visuelle à faire (22/10/2026)
@@ -402,3 +385,5 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Profil & badges, retours preview 1 : en-tête sans dégradé + vitrine 3 emplacements cliquables (choix du badge en popup), historique complet des paris triable, points par semaine général/ligue, écussons à gauche des points au classement, onglets Pronos/Paris/Badges sur le profil des autres (05/11/2026) ; PR #281
 - Chat : qui a réagi (appui long), pseudo cliquable vers le profil, mentions @pseudo avec autocomplétion (08/11/2026) — PR #283
 - 10/11/2026 : bouton admin « Import des box scores » (PR #284 mergée, page /admin/stats-import, déclenche run-stats-import-vm via API GitHub). Reste : jeton GITHUB_DISPATCH_TOKEN dans Vercel + redéploiement + test réel.
+- Passation 28 (11/11/2026) — Chat : cartes plus hautes, carte « Créer une ligue » (pop-up, lien/code), page /rejoindre/[code] ; branche feat/chat-creer-ligue non commitée. Reste : reprise auto après inscription (PR auth), Classement, Profil
+2026-11-11 | passation 29 | PR unique chat/reprise auto/classement/profil : cookies pb_join et pb_lb_scope, /profile/modifier, avatars + logos de ligue (migration buckets), avatars au classement.

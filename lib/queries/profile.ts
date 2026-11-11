@@ -9,6 +9,7 @@ import type { TeamRef } from "@/lib/queries/matches";
 export type ProfileData = {
   userId: string;
   pseudo: string;
+  avatarUrl: string | null;
   isAdmin: boolean;
   favoriteTeamId: string | null;
   /** Résolu en plus de favoriteTeamId (même patron que
@@ -53,11 +54,12 @@ export async function getProfileData(): Promise<ProfileData | null> {
   const { data, error } = await supabase
     .from("users")
     .select(
-      "pseudo, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, recap_enabled, popup_mentions_opt_out, email_results_enabled, email_reminders_enabled"
+      "pseudo, avatar_url, role, favorite_team_id, bio, theme_preference, background_theme, notification_preference, recap_enabled, popup_mentions_opt_out, email_results_enabled, email_reminders_enabled"
     )
     .eq("id", user.id)
     .single<{
       pseudo: string;
+      avatar_url: string | null;
       role: "PLAYER" | "ADMIN";
       favorite_team_id: string | null;
       bio: string | null;
@@ -77,6 +79,7 @@ export async function getProfileData(): Promise<ProfileData | null> {
   return {
     userId: user.id,
     pseudo: data.pseudo,
+    avatarUrl: data.avatar_url,
     isAdmin: data.role === "ADMIN",
     favoriteTeamId: data.favorite_team_id,
     favoriteTeam,

@@ -91,7 +91,7 @@ export async function updateProfile(formData: FormData): Promise<void> {
   const favoriteTeamId = favoriteTeamIdRaw === "" ? null : favoriteTeamIdRaw;
   const bioParsed = BioSchema.safeParse(String(formData.get("bio") ?? ""));
   if (!bioParsed.success) {
-    redirect(`/profile/preferences?profileError=${encodeURIComponent(`${MAX_BIO_LENGTH} caractères maximum pour la bio.`)}`);
+    redirect(`/profile/modifier?profileError=${encodeURIComponent(`${MAX_BIO_LENGTH} caractères maximum pour la bio.`)}`);
   }
   const bio = bioParsed.data;
 
@@ -107,11 +107,11 @@ export async function updateProfile(formData: FormData): Promise<void> {
     .eq("id", user!.id);
 
   if (error) {
-    redirect(`/profile/preferences?profileError=${encodeURIComponent(toClientError("updateProfile", error))}`);
+    redirect(`/profile/modifier?profileError=${encodeURIComponent(toClientError("updateProfile", error))}`);
   }
 
   revalidatePath("/profile/preferences");
-  redirect("/profile/preferences");
+  redirect("/profile/modifier");
 }
 
 const MAX_PINNED_BADGES = 3;

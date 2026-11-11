@@ -57,14 +57,20 @@ export function WeeklyLeaderboardList({ rows, showcases, tiebreakAvailable }: We
             {row.rank}
           </span>
           <span className={styles.colPlayer} role="cell">
-            <PlayerIdentity userId={row.userId} pseudo={row.pseudo} size="row" showBadges={false} />
+            <PlayerIdentity
+              userId={row.userId}
+              pseudo={row.pseudo}
+              avatarUrl={row.avatarUrl}
+              teamAbbreviation={row.teamAbbreviation}
+              size="row"
+              showBadges={false}
+              detail={
+                tiebreakAvailable && row.correctMatchWinners !== null && row.exactMargins !== null
+                  ? `${plural(row.correctMatchWinners, "bon vainqueur", "bons vainqueurs")} · ${plural(row.exactMargins, "écart exact", "écarts exacts")}`
+                  : undefined
+              }
+            />
             {row.isInactive && <span className={styles.inactiveTag}>inactif</span>}
-            {tiebreakAvailable && row.correctMatchWinners !== null && row.exactMargins !== null && (
-              <span className={styles.detail}>
-                {plural(row.correctMatchWinners, "bon vainqueur", "bons vainqueurs")} ·{" "}
-                {plural(row.exactMargins, "écart exact", "écarts exacts")}
-              </span>
-            )}
           </span>
           <span className={styles.colBadges} role="cell">
             <PlayerBadges userId={row.userId} pseudo={row.pseudo} showcase={showcases.get(row.userId)} />

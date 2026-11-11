@@ -1,16 +1,18 @@
-# Reprise — NBA Pronos (10/11/2026, passation 27)
-- **Bouton admin « Import des box scores »** — PR #284 mergée. Page `/admin/stats-import` (Admin > Système) : action serveur
-  `lib/actions/admin-stats-import.ts` -> API GitHub `workflow_dispatch` de `run-stats-import-vm.yml` sur `main`
-  (WIF de la VM limité à `main`). Composant `components/admin/StatsImportButton.tsx`. Journal admin : `TRIGGER_STATS_IMPORT`.
-- **À FAIRE PAR L'UTILISATEUR (sinon le bouton affiche « non configuré »)** : jeton GitHub fine-grained (dépôt nba-pronos,
-  Actions : Read and write, durée limitée -> noter l'expiration), ajouté dans Vercel (Production) sous `GITHUB_DISPATCH_TOKEN`,
-  puis redéployer la prod. Ensuite tester le bouton et vérifier le run dans l'onglet Actions. Pas testé en réel.
-- **Chat #283 mergé** (réacteurs, pseudo cliquable, mentions @). Prochaine étape possible : push dédié à la personne taguée
-  (`lib/push/notifyChatMessage.ts`, même en sourdine), pas tranché.
-- **Quota Vercel « Fluid Active CPU »** : #276-#279 mergés le 05/11. Noter la valeur avant/après ; décider d'allonger les
-  durées de cache ou de cacher résultats terminés + séries du bracket.
-- **Aide aux débutants** : #274 à merger ; captures du réel (Docker + Supabase local : **demander avant**).
-- **Pièges** : fichiers en CRLF ; `tsc`/`eslint` : erreurs connues dans `Cadrage/docs/reel*` ; une branche par PR ; ne jamais
-  lancer l'import pendant le timer VM de 12h/16h Paris.
-- **Ouvert, hérité** : 983 `stats_box_scores.pf` vides ; pari Memphis `f4f3ebd6…` à rejouer (coût IA, demander) ; poller VM
-  (dryRun -> réel) ; probas instables. **Échéances** : bêta Cup 04/12.
+# Reprise — NBA Pronos (11/11/2026, passation 29)
+- **PR unique « Chat / reprise auto / Classement / Profil »** (branche `feat/chat-creer-ligue`) : carte « Créer une ligue »
+  + `/rejoindre/[code]` ; reprise auto après inscription (cookie `pb_join`, `lib/auth/pendingLeague.ts`, consommé à la
+  connexion, à l'inscription avec session et au retour du lien magique/Google ; limites : e-mail confirmé sur un autre
+  appareil, 1er compte Google) ; Classement rouvre la dernière ligue vue (cookie `pb_lb_scope`) ; Profil : roue crantée
+  -> `/profile/modifier` (photo, pseudo, équipe, bio), logo de ligue importable par le créateur ; avatars au classement
+  (photo > logo d'équipe sur fond blanc > initiales), bulle cliquable vers le profil.
+- **Migration `20261111090000_avatars_league_logos.sql`** (buckets `avatars`/`league-logos`, `leagues.logo_url`) : à
+  vérifier avec `supabase migration list` ; le code lit `logo_url`, donc la migration doit être déployée AVEC la PR.
+- **Pas de limite** au nombre de ligues créables (décidé 11/11).
+- **À faire** : avatars dans le Chat (pas encore) ; logo de ligue réservé au créateur (à confirmer) ; tester à la main
+  upload avatar/logo et le parcours `/rejoindre` en visiteur.
+- **Bouton admin import box scores** (PR #284) : jeton GitHub `GITHUB_DISPATCH_TOKEN` dans Vercel Prod à poser par
+  l'utilisateur, redéployer, tester.
+- **Quota Vercel Fluid Active CPU** : noter la valeur, décider d'allonger les caches. **Aide débutants** : #274 à merger.
+- **Pièges** : fichiers en CRLF ; erreurs tsc/eslint connues dans `Cadrage/docs/reel*` ; une branche par PR ; pas
+  d'import pendant le timer VM 12h/16h Paris. **Hérité** : 983 `stats_box_scores.pf` vides ; pari Memphis à rejouer
+  (demander) ; poller VM dryRun -> réel ; probas instables. **Échéance** : bêta Cup 04/12.

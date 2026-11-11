@@ -6,6 +6,7 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { COMMON_TAGS, invalidateCommonData } from "@/lib/cache/commonData";
 import { FUNNEL_VID_META, UTM_COOKIE, VISITOR_COOKIE, isValidVisitorId, parseUtmCookie } from "@/lib/funnel/events";
 import { insertFunnelEvent, trackAccountCreated } from "@/lib/funnel/record";
+import { consumePendingLeague } from "@/lib/auth/pendingLeague";
 import { detectInAppBrowser } from "@/lib/auth/inAppBrowser";
 
 // Retour des liens de connexion (plan d'attractivité, §1.6) : lien magique reçu
@@ -84,6 +85,9 @@ export async function GET(request: NextRequest) {
   if (metaVisitor !== undefined) {
     await service.auth.admin.updateUserById(user.id, { user_metadata: { [FUNNEL_VID_META]: null } });
   }
+
+  // Invité dans une ligue avant de créer son compte : on la rejoint (compte actif ici).
+  await consumePendingLeague(supabase);
 
   return NextResponse.redirect(new URL("/bienvenue", request.url));
 }

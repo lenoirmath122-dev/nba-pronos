@@ -34,6 +34,10 @@
    COUCHE 1 — PRIMITIFS (palette brute, hors thème, jamais lue par un écran)
    ========================================================================== */
 :root {
+  /* Hauteur d'une ligne de classement = diamètre de la bulle d'avatar. */
+  --leaderboard-row-height: 3.5rem;
+  /* Bulle d'avatar : la ligne moins une petite marge (0.25rem) en haut et en bas. */
+  --leaderboard-avatar-size: calc(var(--leaderboard-row-height) - 0.5rem);
   /* Neutres bleu-nuit d'arène (§3.1) */
   --c-navy-950: #0B0E14;  --c-navy-900: #10141D;  --c-navy-800: #141924;
   --c-navy-700: #1E2531;  --c-navy-600: #2A3341;  --c-navy-500: #3A4557;

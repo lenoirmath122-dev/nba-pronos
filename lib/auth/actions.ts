@@ -6,6 +6,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { checkAnonRateLimit } from "@/lib/auth/anonRateLimit";
 import { passwordPolicyError } from "@/lib/auth/passwordPolicy";
 import { trackAccountCreated } from "@/lib/funnel/record";
+import { consumePendingLeague } from "@/lib/auth/pendingLeague";
 import { clearThemeCookie } from "@/lib/theme/server";
 
 export type AuthFormState = { error: string } | undefined;
@@ -42,7 +43,8 @@ export async function login(
     return { error: "Email ou mot de passe incorrect." };
   }
 
-  redirect("/home");
+  const leagueId = await consumePendingLeague(supabase);
+  redirect(leagueId ? `/chat?canal=${leagueId}` : "/home");
 }
 
 export async function signup(
@@ -161,7 +163,8 @@ export async function signup(
 
   // Temps 3b — compte ACTIVE immédiat + session ouverte (C4, quand Confirm
   // email est désactivé).
-  redirect("/home");
+  const leagueId = await consumePendingLeague(supabase);
+  redirect(leagueId ? `/chat?canal=${leagueId}` : "/home");
 }
 
 // Demande de reset-password (p1-12, feuille de route Phase 1) -- SEUL le
