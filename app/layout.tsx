@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Sora, Oswald } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import {
   DEFAULT_DESCRIPTION,
@@ -10,7 +9,8 @@ import {
   SITE_URL,
   TWITTER_CARD,
 } from "@/lib/seo";
-import { UtmCapture } from "@/components/funnel/UtmCapture";
+import { VisitTracker } from "@/components/funnel/VisitTracker";
+import { VercelAnalytics } from "@/components/funnel/VercelAnalytics";
 import "./globals.css";
 
 // Police unique pour tout le texte de lecture (--font-ui), auto-hébergée par
@@ -80,15 +80,16 @@ export default function RootLayout({
         <script src="/theme-init.js" />
       </head>
       <body className="min-h-full flex flex-col">
-        <UtmCapture />
+        <VisitTracker />
         {children}
         {/* D4/PERF (11-performances.md §5) : Web Vitals réels jamais mesurés
             faute d'accès navigateur en audit — RUM via Vercel (déploiement
             existant), aucun code de collecte à maintenir. */}
         <SpeedInsights />
         {/* Visites / pages vues (Vercel Web Analytics) : sans cookie, donc pas de
-            bandeau de consentement. À activer aussi côté dashboard Vercel. */}
-        <Analytics />
+            bandeau de consentement. À activer aussi côté dashboard Vercel. Les
+            navigateurs admins (cookie pb_internal) ne sont pas comptés. */}
+        <VercelAnalytics />
       </body>
     </html>
   );

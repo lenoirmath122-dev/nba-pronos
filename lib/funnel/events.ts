@@ -1,6 +1,8 @@
 // Événements de l'entonnoir de l'accueil (plan d'attractivité, §1.13).
 
 export const FUNNEL_EVENTS = [
+  // Une par visiteur et par jour (heure de Paris), sur n'importe quelle page : base des visiteurs uniques.
+  "visit",
   "home_view",
   "team_picked",
   "prono_added",
@@ -19,6 +21,10 @@ export const VISITOR_COOKIE = "pb_vid";
 export const UTM_COOKIE = "pb_utm";
 /** Posé sur le navigateur d'un admin : ses visites ne sont pas mesurées. */
 export const INTERNAL_COOKIE = "pb_internal";
+/** localStorage : jour (Paris, AAAA-MM-JJ) de la dernière « visit » envoyée par ce navigateur. */
+export const VISIT_DAY_KEY = "pb_visit_day";
+/** Durée de vie de pb_vid : 1 an, fixée à la création et jamais prolongée (recommandation CNIL, 13 mois max). */
+export const VISITOR_COOKIE_MAX_AGE = 31536000;
 /** Clé de user_metadata qui garde le visiteur jusqu'à la validation du lien (retirée ensuite). */
 export const FUNNEL_VID_META = "funnel_vid";
 
@@ -128,4 +134,14 @@ export function parseFunnelPayload(raw: unknown): FunnelPayload | null {
     }
   }
   return { visitorId: r.visitorId, event: r.event as FunnelEvent, matchId, referrer, utm: cleanUtm(r.utm) };
+}
+
+/** Jour calendaire à Paris, au format AAAA-MM-JJ. */
+export function parisDay(date: Date = new Date()): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Paris",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(date);
 }
