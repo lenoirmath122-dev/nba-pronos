@@ -386,4 +386,4 @@ code, SQL, vérifications empiriques pas à pas) jusqu'au 18/09/2026 :
 - Chat : qui a réagi (appui long), pseudo cliquable vers le profil, mentions @pseudo avec autocomplétion (08/11/2026) — PR #283
 - 10/11/2026 : bouton admin « Import des box scores » (PR #284 mergée, page /admin/stats-import, déclenche run-stats-import-vm via API GitHub). Reste : jeton GITHUB_DISPATCH_TOKEN dans Vercel + redéploiement + test réel.
 - Passation 28 (11/11/2026) — Chat : cartes plus hautes, carte « Créer une ligue » (pop-up, lien/code), page /rejoindre/[code] ; branche feat/chat-creer-ligue non commitée. Reste : reprise auto après inscription (PR auth), Classement, Profil
-2026-11-11 | passation 29 | PR unique chat/reprise auto/classement/profil : cookies pb_join et pb_lb_scope, /profile/modifier, avatars + logos de ligue (migration buckets), avatars au classement.
+- Passation 29 (11/11/2026) — PR #286 mergée : Chat (créer une ligue, /rejoindre), reprise auto (cookie pb_join), Classement sur la dernière ligue (pb_lb_scope), Profil (roue crantée, /profile/modifier, avatar, logo de ligue), avatars au classement ; migration buckets appliquée en prod. Reste : avatars dans le Chat.

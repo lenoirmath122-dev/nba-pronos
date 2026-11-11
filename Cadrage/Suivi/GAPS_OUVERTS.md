@@ -372,3 +372,6 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   objectif : être sûr d'avoir tous les résultats avant l'envoi. Aujourd'hui
   `/api/recaps` tourne à 08:00/09:00/10:00 UTC (`vercel.json`) ; à revoir en
   tenant compte de l'heure d'été/hiver (13h Paris = 11h ou 12h UTC).
+
+- **Politique de stockage `tmp_upload_instagram_recaps`** (migration `20261027125048`, bucket public `instagram-recaps`) — autorise l'upload ANONYME pour les chemins `2026-10-27/%`. Temporaire à l'origine : à vérifier en prod et supprimer si encore active.
+- **Upload avatar / logo de ligue et parcours `/rejoindre` en visiteur** (PR #286) — jamais testés à la main.
