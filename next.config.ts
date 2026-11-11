@@ -60,6 +60,8 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+  // sharp (binaire natif) doit rester hors du bundle serveur.
+  serverExternalPackages: ["sharp"],
   // Racine forcée : un package.json/package-lock.json parasites dans
   // C:\dev\ (dossier parent partagé avec d'autres projets) faisaient
   // remonter Turbopack jusque là pour détecter la racine du projet,

@@ -17,7 +17,8 @@ export async function processImage(file: File, kind: ImageKind): Promise<{ ok: t
   let sharp: typeof import("sharp").default;
   try {
     sharp = (await import("sharp")).default;
-  } catch {
+  } catch (e) {
+    console.error("[processImage] chargement de sharp impossible", e);
     return { ok: false, error: "Traitement d'image indisponible pour le moment." };
   }
   try {
