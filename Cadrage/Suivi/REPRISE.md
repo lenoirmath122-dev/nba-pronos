@@ -1,8 +1,11 @@
-# Reprise — NBA Pronos (11/11/2026, passation 29)
+# Reprise — NBA Pronos (11/11/2026, passation 30)
 - **PROCHAIN CHANTIER : avatars dans le Chat.** Les données existent déjà : `ChatRosterEntry.avatarUrl` et le champ
   `avatarUrl` des messages (`lib/queries/chat.ts`, `ChatSubscriber.tsx`) ne sont pas encore rendus. Réutiliser
   `PlayerIdentity`/la logique de repli du classement : photo > logo d'équipe sur fond blanc (`.avatarOnTeam`) > initiales ;
   clic sur l'avatar = profil du joueur. Penser aux messages en temps réel (roster à enrichir de l'équipe favorite).
+- **Visiteurs uniques** (branche `feat/visiteurs-uniques`, PR à merger) : événement `visit` 1x/jour/navigateur, pb_vid posé
+  par le serveur (limite 7 j de Safari sur les cookies JS), Vercel Analytics ignore pb_internal, compteur dans Admin > Joueurs.
+  **Ordre** : `supabase db push --remote` (migration 20261111230000) PUIS merger. Rapport : `scripts/sql/visiteurs_uniques.sql`.
 - **PR #286 mergée** (Chat créer une ligue + /rejoindre, reprise auto cookie `pb_join`, Classement sur la dernière ligue
   cookie `pb_lb_scope`, Profil : roue crantée -> `/profile/modifier`, avatar, logo de ligue réservé au créateur).
   Migration `20261111090000` (buckets avatars/league-logos, `leagues.logo_url`) appliquée en prod. Pas de limite de ligues.

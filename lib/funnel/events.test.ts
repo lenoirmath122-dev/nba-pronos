@@ -3,6 +3,7 @@ import {
   BOT_UA_PATTERNS,
   cleanUtmValue,
   isBotUserAgent,
+  parisDay,
   parseFunnelPayload,
   parseUtmCookie,
   serializeUtm,
@@ -96,5 +97,19 @@ describe("isBotUserAgent", () => {
       "Mozilla/5.0 (Linux; Android 14; Cubot P80) AppleWebKit/537.36 Chrome/120.0 Mobile Safari/537.36",
     ];
     for (const ua of humans) expect(isBotUserAgent(ua), ua).toBe(false);
+  });
+});
+
+describe("visit et parisDay", () => {
+  it("accepte l'événement quotidien 'visit'", () => {
+    expect(parseFunnelPayload({ ...base, event: "visit" })?.event).toBe("visit");
+  });
+
+  it("donne le jour calendaire de Paris, pas celui d'UTC", () => {
+    // 23h30 UTC le 11/11 = 00h30 à Paris le 12/11 (heure d'hiver, UTC+1).
+    expect(parisDay(new Date("2026-11-11T23:30:00Z"))).toBe("2026-11-12");
+    expect(parisDay(new Date("2026-11-11T22:30:00Z"))).toBe("2026-11-11");
+    // Heure d'été (UTC+2) : 22h30 UTC le 01/07 = 00h30 à Paris le 02/07.
+    expect(parisDay(new Date("2026-07-01T22:30:00Z"))).toBe("2026-07-02");
   });
 });

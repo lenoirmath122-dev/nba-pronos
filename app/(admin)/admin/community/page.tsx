@@ -1,12 +1,19 @@
 import Link from "next/link";
 import { getAdminDashboardData } from "@/lib/queries/admin-dashboard";
+import { getVisitorCounts } from "@/lib/queries/admin-visitors";
 import styles from "@/components/admin/AdminHub.module.css";
 
 // Rubrique « Joueurs » : total d'inscrits (lien vers la gestion des joueurs)
 // et membres par ligue -- RLS admin dédiée, voir lib/queries/admin-dashboard.ts.
+// Visiteurs uniques : mesure interne (lib/queries/admin-visitors.ts).
+
+const plural = (n: number) => (n > 1 ? `${n} visiteurs` : `${n} visiteur`);
+
+const formatDay = (iso: string) =>
+  new Intl.DateTimeFormat("fr-FR", { timeZone: "Europe/Paris", day: "numeric", month: "long" }).format(new Date(iso));
 
 export default async function AdminCommunityPage() {
-  const data = await getAdminDashboardData();
+  const [data, visitors] = await Promise.all([getAdminDashboardData(), getVisitorCounts()]);
 
   return (
     <div className={styles.page}>
@@ -23,6 +30,32 @@ export default async function AdminCommunityPage() {
           </Link>
         </li>
       </ul>
+
+      <div className={styles.overview}>
+        <h3 className={styles.sectionTitle}>Visiteurs uniques</h3>
+        {visitors ? (
+          <>
+            <ul className={styles.leagueList}>
+              {[
+                { label: "Aujourd'hui", count: visitors.today },
+                { label: "7 derniers jours", count: visitors.last7Days },
+                { label: "30 derniers jours", count: visitors.last30Days },
+              ].map(({ label, count }) => (
+                <li key={label} className={styles.leagueRow}>
+                  <span>{label}</span>
+                  <span className={styles.leagueMemberCount}>{plural(count)}</span>
+                </li>
+              ))}
+            </ul>
+            <p className={styles.notice}>
+              Un visiteur = un navigateur (téléphone et ordinateur comptent pour deux). Tes visites ne comptent pas.
+              {visitors.firstVisitAt ? ` Mesuré depuis le ${formatDay(visitors.firstVisitAt)}.` : " Pas encore de visite mesurée."}
+            </p>
+          </>
+        ) : (
+          <p className={styles.notice}>Mesure indisponible pour l&apos;instant.</p>
+        )}
+      </div>
 
       <div className={styles.overview}>
         <h3 className={styles.sectionTitle}>Ligues</h3>

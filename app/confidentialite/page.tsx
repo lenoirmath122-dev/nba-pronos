@@ -176,8 +176,9 @@ export default async function ConfidentialitePage() {
           </p>
           <p className={styles.body}>
             Nous ne faisons appel à aucun service externe de mesure d&apos;audience, de publicité, ni de paiement.
-            Nous mesurons en interne, de façon anonyme, le parcours des visiteurs de la page d&apos;accueil
-            (match choisi, pronos ajoutés, inscription), ainsi que la source de la visite (paramètres du lien
+            Nous mesurons en interne, de façon anonyme, la fréquentation du site (une visite par appareil et
+            par jour) et le parcours des visiteurs de la page d&apos;accueil (match choisi, pronos ajoutés,
+            inscription), ainsi que la source de la visite (paramètres du lien
             suivi, site d&apos;origine) et le type de navigateur utilisé (par exemple celui d&apos;Instagram), sans
             enregistrer votre adresse IP ni votre User-Agent. Les mesures conservées ne contiennent aucun
             identifiant de compte ; seul l&apos;identifiant de visiteur est gardé temporairement avec votre

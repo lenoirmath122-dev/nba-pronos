@@ -2,30 +2,48 @@ import {
   INTERNAL_COOKIE,
   UTM_COOKIE,
   VISITOR_COOKIE,
+  VISIT_DAY_KEY,
+  parisDay,
   parseUtmCookie,
   serializeUtm,
   utmFromSearch,
   type FunnelEvent,
 } from "./events";
 
-// Côté navigateur : identifiant de visiteur aléatoire en cookie (1 an, sans
-// donnée personnelle), source de la visite (UTM, 30 jours) et envoi d'un
-// événement sans attendre la réponse.
+// Côté navigateur : identifiant de visiteur aléatoire (sans donnée personnelle),
+// source de la visite (UTM, 30 jours) et envoi d'un événement sans attendre la
+// réponse.
+//
+// pb_vid est posé par le SERVEUR (réponse de /api/funnel), pas ici : Safari et
+// tous les navigateurs iOS (dont celui d'Instagram) limitent à 7 jours un cookie
+// écrit en JavaScript, ce qui recompterait chaque iPhone comme un nouveau
+// visiteur toutes les semaines. Tant que le cookie n'existe pas encore, on
+// envoie un identifiant gardé en mémoire, que le serveur reprend dans son cookie.
 
 function readCookie(name: string): string | undefined {
   const hit = document.cookie.split("; ").find((c) => c.startsWith(`${name}=`));
   return hit?.slice(name.length + 1);
 }
 
+let pendingVisitorId: string | null = null;
+
 function visitorId(): string | null {
   try {
     const existing = readCookie(VISITOR_COOKIE);
     if (existing) return existing;
-    const id = crypto.randomUUID();
-    document.cookie = `${VISITOR_COOKIE}=${id}; Max-Age=31536000; Path=/; SameSite=Lax`;
-    return id;
+    pendingVisitorId ??= crypto.randomUUID();
+    return pendingVisitorId;
   } catch {
     return null;
+  }
+}
+
+/** Navigateur marqué admin (cookie pb_internal posé par le hub admin) : rien n'est mesuré. */
+export function isInternalVisitor(): boolean {
+  try {
+    return Boolean(readCookie(INTERNAL_COOKIE));
+  } catch {
+    return false;
   }
 }
 
@@ -46,7 +64,7 @@ export function captureUtm(): void {
 
 export function trackFunnel(event: FunnelEvent, matchId?: string): void {
   try {
-    if (readCookie(INTERNAL_COOKIE)) return;
+    if (isInternalVisitor()) return;
     captureUtm();
     const id = visitorId();
     if (!id) return;
@@ -65,4 +83,20 @@ export function trackFunnel(event: FunnelEvent, matchId?: string): void {
   } catch {
     // Mesure facultative : jamais d'erreur visible.
   }
+}
+
+/**
+ * Une « visit » par navigateur et par jour (heure de Paris), quelle que soit la page :
+ * c'est ce qui permet de compter les visiteurs uniques sur 7 ou 30 jours.
+ */
+export function trackDailyVisit(): void {
+  try {
+    if (isInternalVisitor()) return;
+    const today = parisDay();
+    if (localStorage.getItem(VISIT_DAY_KEY) === today) return;
+    localStorage.setItem(VISIT_DAY_KEY, today);
+  } catch {
+    // localStorage indisponible : on envoie quand même, le décompte reste par visiteur distinct.
+  }
+  trackFunnel("visit");
 }
