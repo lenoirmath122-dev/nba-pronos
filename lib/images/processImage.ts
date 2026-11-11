@@ -1,9 +1,9 @@
-import sharp from "sharp";
-
 // Traitement serveur des images envoyées (avatar, logo de ligue) : on ne fait
 // jamais confiance au fichier reçu. sharp le décode (rejette tout ce qui n'est
 // pas PNG/JPEG/WebP), le recadre/redimensionne et le réencode en WebP, ce qui
 // retire aussi les métadonnées (EXIF, GPS).
+// sharp est chargé À LA DEMANDE : un import statique ici fait planter toute page qui
+// importe les actions d'images (dont /profile) si la bibliothèque native ne se charge pas.
 export const MAX_UPLOAD_BYTES = 2 * 1024 * 1024;
 const ACCEPTED_FORMATS = new Set(["png", "jpeg", "webp"]);
 
@@ -14,6 +14,12 @@ export async function processImage(file: File, kind: ImageKind): Promise<{ ok: t
   if (file.size > MAX_UPLOAD_BYTES) return { ok: false, error: "Image trop lourde (2 Mo maximum)." };
 
   const input = Buffer.from(await file.arrayBuffer());
+  let sharp: typeof import("sharp").default;
+  try {
+    sharp = (await import("sharp")).default;
+  } catch {
+    return { ok: false, error: "Traitement d'image indisponible pour le moment." };
+  }
   try {
     const meta = await sharp(input).metadata();
     if (!meta.format || !ACCEPTED_FORMATS.has(meta.format)) return { ok: false, error: "Format accepté : PNG, JPEG ou WebP." };
