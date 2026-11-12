@@ -175,9 +175,12 @@ const ROSTER_SPLIT_KEYWORD_REGEX = /cinq\s*majeur|5\s*majeur|titulaires?|\bbancs
  *  précautions : un texte qui COMMENCE par un nombre (chiffres ou lettres)
  *  de joueurs ("Trois joueurs en double-double", "Deux joueurs des Suns
  *  marquent..."), "N joueurs ou plus" n'importe où, et un texte qui COMMENCE
- *  par "aucun joueur" (count_relation=FEWER_THAN, min_players=1). */
+ *  par "aucun joueur" (count_relation=FEWER_THAN, min_players=1).
+ *  Bilan des probas du 12/11/2026 : "un joueur" en début de texte SANS
+ *  équipe ("Un joueur met plus de 15 points") est aussi un comptage, sur
+ *  tout le match (min_players=1) -- il partait en GENERAL, non calculable. */
 const ROSTER_COUNT_KEYWORD_REGEX =
-  /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b|^\s*(?:un|n['’]importe quel)\s+joueur\s+(?:de|du|des|d['’])\s*\S|^\s*(?:\d{1,2}|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+joueurs?\b|\b(?:\d{1,2}|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+joueurs?\s+ou\s+plus\b|^\s*aucun\s+joueur\b/i;
+  /(?:au moins|plus de|moins de|exactement)\s+\S+\s+joueurs?\b|\bjoueurs?\b[^.!?]{0,40}\bchacune?\b|\bDNP\b|^\s*(?:un|n['’]importe quel)\s+joueur\b|^\s*(?:\d{1,2}|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+joueurs?\b|\b(?:\d{1,2}|deux|trois|quatre|cinq|six|sept|huit|neuf|dix)\s+joueurs?\s+ou\s+plus\b|^\s*aucun\s+joueur\b/i;
 
 /** Détecte un texte "de forme" superlatif implicite ("meilleur marqueur")
  *  AVANT tout appel Claude (étape 4 du plan de reprise post-audit,
