@@ -71,15 +71,22 @@ ${rows ? `<tr><td style="padding:0 24px 8px;font-family:Arial,Helvetica,sans-ser
 </table></td></tr></table></body></html>`;
 }
 
-function footer(unsubscribeUrl: string | null, what: string): string {
+/** Rappel du réglage dans l'app, pour les e-mails qu'il pilote (résultats,
+ *  rappel du soir). Pas pour la popup hebdo : elle part à tous les comptes
+ *  actifs, réglage ou non (décision du 26/10/2026). */
+const SETTINGS_HINT = "Tu peux aussi le désactiver dans l'app : Profil › Notifications.";
+
+function footer(unsubscribeUrl: string | null, what: string, settingsHint = false): string {
   const base = "Panier Ballon · Gratuit, que des points, aucun argent réel · 15 ans et plus.";
   if (!unsubscribeUrl) return base;
-  return `${base}<br>Tu reçois cet e-mail parce que tu as demandé ${escapeHtml(what)}. <a href="${escapeHtml(unsubscribeUrl)}" style="color:${MUTED}">Me désinscrire</a>`;
+  const hint = settingsHint ? ` ${escapeHtml(SETTINGS_HINT)}` : "";
+  return `${base}<br>Tu reçois cet e-mail parce que tu as demandé ${escapeHtml(what)}. <a href="${escapeHtml(unsubscribeUrl)}" style="color:${MUTED}">Me désinscrire</a>${hint}`;
 }
 
-function plain(parts: string[], buttonLabel: string, buttonUrl: string, unsubscribeUrl: string | null): string {
+function plain(parts: string[], buttonLabel: string, buttonUrl: string, unsubscribeUrl: string | null, settingsHint = false): string {
   const lines = [...parts, "", `${buttonLabel} : ${buttonUrl}`];
   if (unsubscribeUrl) lines.push("", `Me désinscrire : ${unsubscribeUrl}`);
+  if (unsubscribeUrl && settingsHint) lines.push(SETTINGS_HINT);
   return lines.join("\n");
 }
 
@@ -134,9 +141,9 @@ export function resultEmail(input: ResultEmailInput): EmailContent {
       rows,
       buttonLabel,
       buttonUrl: input.playUrl,
-      footer: footer(input.unsubscribeUrl, what),
+      footer: footer(input.unsubscribeUrl, what, true),
     }),
-    text: plain([...paragraphs, "", ...rows], buttonLabel, input.playUrl, input.unsubscribeUrl),
+    text: plain([...paragraphs, "", ...rows], buttonLabel, input.playUrl, input.unsubscribeUrl, true),
   };
 }
 
@@ -236,8 +243,8 @@ export function reminderEmail(input: ReminderEmailInput): EmailContent {
       paragraphs,
       buttonLabel,
       buttonUrl: input.playUrl,
-      footer: footer(input.unsubscribeUrl, what),
+      footer: footer(input.unsubscribeUrl, what, true),
     }),
-    text: plain(paragraphs, buttonLabel, input.playUrl, input.unsubscribeUrl),
+    text: plain(paragraphs, buttonLabel, input.playUrl, input.unsubscribeUrl, true),
   };
 }
