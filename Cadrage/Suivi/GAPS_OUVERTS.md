@@ -184,8 +184,10 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 
 - **Grosses perfs des stars sous-estimées (bilan du 12/11/2026)** — sur 137 paris persos, SGA 30+
   à 24 % (46 % réel cette saison), Luka +35 à 31 % (54 %), Jokic triple-double à 13 % (25 %).
-  Cause 1 (présaison dans le contexte) corrigée par la PR #295. Cause 2 supposée : la forêt
-  aléatoire tasse les moyennes des stars (SGA prédit 26,8 pour 30,5 réel), backtest à faire.
+  Cause 1 (présaison dans le contexte) corrigée par la PR #295, déployée le 12/11. Cause 2
+  (tassement par la forêt) quasi écartée par backtest : biais ≈ -0,85 pt au-dessus de 25 de
+  moyenne, P(30+/35+/40+) calibrées ; seul le début de saison 2025-26 sous-estime (1 à 3 pts,
+  joueurs moyens compris, n faible). Reste : re-mesurer sur les paris 2026-27 vers fin novembre.
 - **« Meilleur marqueur » trop bas** — Giannis 39 % (49 % réel), Doncic 55 % (71 %). Indépendance
   entre ~29 joueurs, loi normale aux queues trop épaisses pour les remplaçants, bassin de 15 joueurs
   par équipe incluant les blessés. Piste : Monte-Carlo sur les joueurs à vraies minutes, calé sur
