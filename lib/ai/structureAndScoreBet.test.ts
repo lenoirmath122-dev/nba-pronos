@@ -91,6 +91,8 @@ describe("routeBetDescription — paris réels passés par l'admin (revue du 28/
     ["Deux joueurs des Suns mettent plus de 15 points.", "ROSTER_COUNT"],
     ["SAS marque plus de 50 pts à la mi-tempw", "PERIOD"],
     ["Les jazz se prenne 10 points a la li temps", "PERIOD"],
+    // Bilan des probas du 12/11/2026 : "un joueur" sans équipe = comptage sur le match.
+    ["Un joueur met plus de 15 points ", "ROSTER_COUNT"],
   ])("%s -> %s", (description, expected) => {
     expect(routeBetDescription(description)).toBe(expected);
   });

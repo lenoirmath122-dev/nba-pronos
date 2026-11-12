@@ -1,20 +1,19 @@
-# Reprise — NBA Pronos (11/11/2026, passation 30)
-- **PROCHAIN CHANTIER : avatars dans le Chat.** Les données existent déjà : `ChatRosterEntry.avatarUrl` et le champ
-  `avatarUrl` des messages (`lib/queries/chat.ts`, `ChatSubscriber.tsx`) ne sont pas encore rendus. Réutiliser
-  `PlayerIdentity`/la logique de repli du classement : photo > logo d'équipe sur fond blanc (`.avatarOnTeam`) > initiales ;
-  clic sur l'avatar = profil du joueur. Penser aux messages en temps réel (roster à enrichir de l'équipe favorite).
-- **Visiteurs uniques** (PR #293 mergée) : événement `visit` 1x/jour/navigateur, pb_vid posé
-  par le serveur (limite 7 j de Safari sur les cookies JS), Vercel Analytics ignore pb_internal, compteur dans Admin > Joueurs.
-  Migration 20261111223822 appliquée en prod (MCP), PR mergée. Rapport : `scripts/sql/visiteurs_uniques.sql`.
-- **PR #286 mergée** (Chat créer une ligue + /rejoindre, reprise auto cookie `pb_join`, Classement sur la dernière ligue
-  cookie `pb_lb_scope`, Profil : roue crantée -> `/profile/modifier`, avatar, logo de ligue réservé au créateur).
-  Migration `20261111090000` (buckets avatars/league-logos, `leagues.logo_url`) appliquée en prod. Pas de limite de ligues.
-- **Migrations** : `supabase db push --remote` marche maintenant (migration 20261027125048 rapatriée). Taper la commande
-  soi-même avec `!` si le classifieur la refuse.
+# Reprise — NBA Pronos (12/11/2026, passation 31)
+- **PROCHAIN CHANTIER : étape 3 du bilan des probas** = vérifier que la forêt aléatoire tasse les stars. Backtest sur le
+  début de saison 2026-27 : moyenne prédite vs réelle par tranche de moyenne joueur (pts surtout). Indice : SGA prédit
+  26,8 pts au 22/10 alors qu'il tournait à 30,5 ; Luka +35 à 31 % pour 36 pts de moyenne. Si confirmé : calibration
+  après coup ou moyenne de saison en feature. Modèles locaux dans `Cadrage/Stats/models/` (63 joblib).
+- **Bilan du 12/11** (137 paris persos depuis le 01/10) : calibration globale correcte (Brier 0,149) mais grosses perfs
+  des stars sous-estimées, « meilleur marqueur » trop bas (Giannis 39 % vs 49 % réel). Ordre retenu : 1 présaison,
+  2 aiguillage, 3 tassement RF, 4 superlatif (Monte-Carlo, bassin réel, loi réaliste), 5 paris par période (points/écart
+  à la MT, suites de QT), 6 grille de difficulté (palier 5 = toute proba < 25 %, 2 gagnés sur 42).
+- **PR #295 (étapes 1+2)** : présaison/All-Star exclus des lectures `stats_box_scores` du service (`_nba_games_only`),
+  « Un joueur met plus de 15 points » -> ROSTER_COUNT. **Après merge : lancer le workflow deploy-stats-service** (manuel).
+- **En attente** : avatars dans le Chat (`ChatRosterEntry.avatarUrl`, `ChatSubscriber.tsx`, repli de `PlayerIdentity`).
 - **À tester à la main** : upload avatar/logo, `/rejoindre` en visiteur. **Sécurité** : politique `tmp_upload_instagram_recaps`
   (upload anonyme) à vérifier/supprimer, voir GAPS_OUVERTS.
-- **Bouton admin import box scores** (#284) : jeton `GITHUB_DISPATCH_TOKEN` à poser par l'utilisateur dans Vercel Prod, redéployer.
+- **Bouton admin import box scores** (#284) : jeton `GITHUB_DISPATCH_TOKEN` à poser dans Vercel Prod, redéployer.
 - **Quota Vercel Fluid Active CPU** : noter la valeur, décider d'allonger les caches. **Aide débutants** : #274 à merger.
-- **Pièges** : fichiers en CRLF ; erreurs tsc/eslint connues dans `Cadrage/docs/reel*` ; une branche par PR ; pas d'import
-  pendant le timer VM 12h/16h Paris. **Hérité** : 983 `stats_box_scores.pf` vides ; pari Memphis à rejouer (demander) ;
-  poller VM dryRun -> réel ; probas instables. **Échéance** : bêta Cup 04/12.
+- **Pièges** : fichiers en CRLF ; une branche par PR ; pas d'import pendant le timer VM 12h/16h Paris ; migrations via
+  `supabase db push --remote`. **Hérité** : 983 lignes de présaison dans `stats_box_scores` (= les `pf` vides) ; pari
+  Memphis à rejouer (demander) ; poller VM dryRun -> réel ; probas instables. **Échéance** : bêta Cup 04/12.

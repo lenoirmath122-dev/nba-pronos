@@ -75,6 +75,24 @@ def fetch_all_rows(query_builder) -> list:
         start += PAGE_SIZE
 
 
+# Bilan des probas du 12/11/2026 : stats_box_scores contient aussi des matchs
+# de PRESAISON (game_id "001...", importes a la main pour tester la resolution
+# des paris) et potentiellement du All-Star ("003..."), ranges dans la saison
+# reguliere. Sans ce filtre, les 10 derniers matchs d'un joueur en debut de
+# saison incluaient des matchs a 15 minutes (Zion 20+ : 11 % le 22/10, 44 % le
+# 09/11) et le bassin _team_rotation se remplissait de joueurs du camp.
+# Les modeles sont entraines sans ces matchs : on les exclut de TOUTES les
+# lectures de stats_box_scores du service.
+NON_NBA_GAME_ID_PREFIXES = ("001", "003")
+
+
+def _nba_games_only(query):
+    """Exclut presaison et All-Star d'une requete stats_box_scores (apres .select())."""
+    for prefix in NON_NBA_GAME_ID_PREFIXES:
+        query = query.filter("game_id", "not.like", f"{prefix}*")
+    return query
+
+
 def find_player(client, query: str) -> tuple:
     # Bug reel corrige le 22/08/2026 (signale par l'utilisateur -- "Zaccharie
     # Risacher" jamais trouve malgre l'orthographe correcte en base) : sans
@@ -125,9 +143,9 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     contexte, meme fenetre de 10 derniers matchs REELEMENT connus) -- source
     Supabase (stats_box_scores) au lieu de nba.db local."""
     rows = (
-        client.table("stats_box_scores")
+        _nba_games_only(client.table("stats_box_scores")
         .select("game_date, minutes, pts, reb, ast, fg3m, stl, blk, plus_minus, "
-                 "ftm, fta, fgm, fga, fg3a, oreb, tov, pf, ts_pct, usg_pct, games_played_season_avant")
+                 "ftm, fta, fgm, fga, fg3a, oreb, tov, pf, ts_pct, usg_pct, games_played_season_avant"))
         .eq("player_id", player_id)
         .order("game_date", desc=True)
         .limit(10)
@@ -178,8 +196,8 @@ def build_context(client, player_id: int, opponent_id, is_home: int, rest_days: 
     # colonne unique avant ce changement.
     if opponent_id is not None:
         vs_adv = (
-            client.table("stats_box_scores")
-            .select(", ".join(VS_ADVERSAIRE_STATS))
+            _nba_games_only(client.table("stats_box_scores")
+            .select(", ".join(VS_ADVERSAIRE_STATS)))
             .eq("player_id", player_id)
             .eq("opponent_team_id", opponent_id)
             .execute()
@@ -255,8 +273,8 @@ def _team_roster_continuity(client, team_id: int, season: str, seasons_known) ->
         return np.nan
 
     rows = fetch_all_rows(
-        lambda start, end: client.table("stats_box_scores")
-        .select("player_id, minutes, season")
+        lambda start, end: _nba_games_only(client.table("stats_box_scores")
+        .select("player_id, minutes, season"))
         .eq("team_id", team_id)
         .in_("season", [prior, season])
         .range(start, end)
@@ -325,11 +343,11 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     # rebonds d'equipe), ast/fg3m/stl/blk generalises dans la foulee, MEME
     # patron que "pts" a chaque fois (memes colonnes deja dans stats_box_scores).
     own_rows = fetch_all_rows(
-        lambda start, end: client.table("stats_box_scores")
+        lambda start, end: _nba_games_only(client.table("stats_box_scores")
         .select(
             "game_id, game_date, season, opponent_team_id, "
             f"{', '.join(TEAM_COUNTING_STATS)}, off_rating, def_rating, net_rating, pace"
-        )
+        ))
         .eq("team_id", team_id)
         .range(start, end)
     )
@@ -357,8 +375,8 @@ def build_team_context(client, team_id: int, opponent_id: int, as_of_date, seaso
     team_games["game_date"] = pd.to_datetime(team_games["game_date"])
 
     opp_rows = fetch_all_rows(
-        lambda start, end: client.table("stats_box_scores")
-        .select(f"game_id, {', '.join(TEAM_COUNTING_STATS)}")
+        lambda start, end: _nba_games_only(client.table("stats_box_scores")
+        .select(f"game_id, {', '.join(TEAM_COUNTING_STATS)}"))
         .eq("opponent_team_id", team_id)
         .range(start, end)
     )
@@ -1222,8 +1240,8 @@ def _player_current_team_id(client, player_id: int) -> int:
     connait pas forcement a l'avance (contrairement a un pari PLAYER
     simple, ou player_team est deja resolu par l'IA)."""
     rows = (
-        client.table("stats_box_scores")
-        .select("team_id, game_date")
+        _nba_games_only(client.table("stats_box_scores")
+        .select("team_id, game_date"))
         .eq("player_id", player_id)
         .order("game_date", desc=True)
         .limit(1)
@@ -1246,8 +1264,8 @@ def _team_starters(client, team_id: int, as_of_date, n_recent_games: int = 10) -
     de cette equipe avant as_of_date. Les 5 PLUS FREQUENTS, pas les 5 plus
     recents seuls -- resiste a une sortie/blessure ponctuelle d'un match."""
     rows = (
-        client.table("stats_box_scores")
-        .select("player_id, position, game_date")
+        _nba_games_only(client.table("stats_box_scores")
+        .select("player_id, position, game_date"))
         .eq("team_id", team_id)
         .lt("game_date", str(as_of_date))
         .neq("position", "")
@@ -1272,8 +1290,8 @@ def _player_start_rate(client, player_id: int, team_id: int, as_of_date, n_recen
     echantillon ; moins de 3 matchs = trop peu d'historique (ValueError ->
     calculable=false cote TypeScript)."""
     rows = (
-        client.table("stats_box_scores")
-        .select("position, game_date")
+        _nba_games_only(client.table("stats_box_scores")
+        .select("position, game_date"))
         .eq("player_id", player_id)
         .eq("team_id", team_id)
         .lt("game_date", str(as_of_date))
@@ -1311,8 +1329,8 @@ def _team_rotation(client, team_id: int, as_of_date, n_recent_games: int = 15, t
     n'existait pas, plutot que force a une proba de DNP artificiellement
     haute."""
     rows = (
-        client.table("stats_box_scores")
-        .select("player_id, game_date")
+        _nba_games_only(client.table("stats_box_scores")
+        .select("player_id, game_date"))
         .eq("team_id", team_id)
         .lt("game_date", str(as_of_date))
         .order("game_date", desc=True)
@@ -1348,7 +1366,7 @@ def _player_sum_variance(client, player_id: int, stats: list[str], scales: list[
     if len(stats) < 2 or any(st not in _CORRELATION_COLUMNS for st in stats):
         return independent
     cols = list(dict.fromkeys(_CORRELATION_COLUMNS[st] for st in stats))
-    query = client.table("stats_box_scores").select(", ".join(cols)).eq("player_id", player_id)
+    query = _nba_games_only(client.table("stats_box_scores").select(", ".join(cols))).eq("player_id", player_id)
     if as_of_date is not None:
         query = query.lt("game_date", str(as_of_date))
     rows = query.order("game_date", desc=True).limit(CORRELATION_WINDOW).execute().data
