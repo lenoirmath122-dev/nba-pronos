@@ -26,6 +26,8 @@ describe("resultEmail", () => {
     expect(mail.subject).not.toContain("rapporté");
     expect(mail.text).toContain("A 1 - 2 B : raté · +0 pt");
     expect(mail.html).toContain("Me désinscrire");
+    expect(mail.html).toContain("Profil › Notifications");
+    expect(mail.text).toContain("Profil › Notifications");
   });
 
   it("échappe le pseudo dans le HTML", () => {
@@ -72,6 +74,10 @@ describe("reminderEmail", () => {
 
   it("omet la répartition sous le seuil", () => {
     expect(reminderEmail({ ...base, homeSharePercent: null }).text).not.toContain("%");
+  });
+
+  it("rappelle le réglage dans l'app", () => {
+    expect(reminderEmail(base).text).toContain("Profil › Notifications");
   });
 });
 
