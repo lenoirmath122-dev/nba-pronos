@@ -188,12 +188,16 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   (tassement par la forêt) quasi écartée par backtest : biais ≈ -0,85 pt au-dessus de 25 de
   moyenne, P(30+/35+/40+) calibrées ; seul le début de saison 2025-26 sous-estime (1 à 3 pts,
   joueurs moyens compris, n faible). Reste : re-mesurer sur les paris 2026-27 vers fin novembre.
-- **« Meilleur marqueur » trop bas** — Giannis 39 % (49 % réel), Doncic 55 % (71 %). Indépendance
-  entre ~29 joueurs, loi normale aux queues trop épaisses pour les remplaçants, bassin de 15 joueurs
-  par équipe incluant les blessés. Piste : Monte-Carlo sur les joueurs à vraies minutes, calé sur
-  le taux réel de meilleur marqueur sur 2 saisons.
-- **Grille de difficulté calibrée sur données simulées (21/08)** — palier 5 = toute proba < 25 % :
-  42 des 106 paris résolus, 2 gagnés. À recaler sur les vrais paris.
+- **« Meilleur marqueur » : formule saine, moyennes en cause (12/11)** — backtest 3 saisons : la
+  méthode (normales indépendantes, joueurs de rotation) est calibrée (Giannis 50 % prédit / 49 %
+  réel) ; queues des remplaçants sans effet ; l'adversaire est déjà pris en compte (Giannis 39 %
+  vs Utah, 23 % vs Lakers). Restent : Doncic sous-estimé (55 % / 65 %), moyennes des stars basses
+  en début de saison (étape 3). Pistes laissées de côté : absents du soir, rythme du match,
+  concentration des points sur la star.
+- **Proba 0 % sur un remplaçant** — « Isaiah Joe meilleur marqueur » (03/11) calculé à 0 %, palier 5.
+  Cause non cherchée (historique vide ? arrondi ?).
+- **Grille de difficulté** — paliers 3/4 abaissés à 35/20 % (PR #296, 12/11). À revoir fin novembre :
+  le palier 2 (53-66 %) gagne ~80 % du temps pour ~59 % annoncé -> abaisser le palier 1 vers 60 % ?
 
 - **Calibration Poisson/normale jamais revérifiée à l'échelle PÉRIODE** —
   `train_player_period_model.py` réutilise `POISSON_STATS` tel quel depuis
