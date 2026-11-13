@@ -3,22 +3,21 @@
 import { useState } from "react";
 import { track } from "@vercel/analytics";
 import { boxScorePath, boxScoreSheetSchema, boxScoreUrl } from "@/lib/boxScores/schema";
-import { BoxScoreDialog, type BoxScoreLoadState } from "./BoxScoreDialog";
-import styles from "./TeamDetailsButton.module.css";
+import type { BoxScoreLoadState } from "./BoxScoreDialog";
+import styles from "./BoxScoreButton.module.css";
 
-// Bouton « Feuille de match » d'un match terminé (onglet Résultats). Le JSON est
-// lu directement sur le CDN de Supabase Storage (bucket public box-scores, écrit
+// Feuille de match d'un match terminé (onglet Résultats). Le JSON est lu
+// directement sur le CDN de Supabase Storage (bucket public box-scores, écrit
 // par la VM quelques minutes après le buzzer) : aucune route Next, aucune requête
-// en base. Un seul appel au premier clic, gardé en mémoire ; « pas encore
+// en base. Un seul appel à la première ouverture, gardé en mémoire ; « pas encore
 // disponible » (404) est redemandé à la réouverture suivante.
-type Props = {
-  scheduledAt: string;
-  homeAbbr: string;
-  awayAbbr: string;
-  subtitle: string;
-};
+//
+// Bouton et popup séparés : le bouton vit dans la bande du prono, DANS la carte
+// cliquable de LockedRow, alors que la popup est montée à côté (comme
+// OthersOnMatch) -- les événements d'un portail React remontent l'arbre des
+// composants, une popup montée sous le bouton replierait la carte à chaque clic.
 
-export function BoxScoreButton({ scheduledAt, homeAbbr, awayAbbr, subtitle }: Props) {
+export function useBoxScore(scheduledAt: string, homeAbbr: string, awayAbbr: string) {
   const [isOpen, setIsOpen] = useState(false);
   const [state, setState] = useState<BoxScoreLoadState | null>(null);
 
@@ -54,20 +53,34 @@ export function BoxScoreButton({ scheduledAt, homeAbbr, awayAbbr, subtitle }: Pr
     if (state === null || state.status === "missing" || state.status === "error") void load();
   }
 
+  return {
+    isOpen,
+    state: state ?? ({ status: "loading" } as const),
+    open,
+    close: () => setIsOpen(false),
+    retry: () => void load(),
+  };
+}
+
+/** Bouton de la bande du prono : stopPropagation, il est dans la carte cliquable. */
+export function BoxScoreBandButton({ onOpen }: { onOpen: () => void }) {
   return (
-    <>
-      <button type="button" className={styles.button} onClick={open}>
+    <button
+      type="button"
+      className={styles.button}
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpen();
+      }}
+      onKeyDown={(e) => e.stopPropagation()}
+      aria-label="Feuille de match"
+    >
+      <span className={styles.full} aria-hidden="true">
         Feuille de match
-      </button>
-      {isOpen && (
-        <BoxScoreDialog
-          subtitle={subtitle}
-          firstTricode={homeAbbr}
-          state={state ?? { status: "loading" }}
-          onRetry={() => void load()}
-          onClose={() => setIsOpen(false)}
-        />
-      )}
-    </>
+      </span>
+      <span className={styles.short} aria-hidden="true">
+        Stats
+      </span>
+    </button>
   );
 }

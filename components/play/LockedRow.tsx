@@ -9,7 +9,8 @@ import { PredictionSummary } from "./PredictionSummary";
 import { BetBlock } from "./BetBlock";
 import { MatchAffiche } from "./MatchAffiche";
 import { MatchBetZone } from "./MatchBetZone";
-import { BoxScoreButton } from "./BoxScoreButton";
+import { BoxScoreBandButton, useBoxScore } from "./BoxScoreButton";
+import { BoxScoreDialog } from "./BoxScoreDialog";
 import { OthersOnMatch } from "./OthersOnMatch";
 import { CorrectionRequestForm } from "./CorrectionRequestForm";
 import styles from "./LockedRow.module.css";
@@ -65,6 +66,8 @@ export function LockedRow({
   const forceOpenMore = forceOpenPredictionCorrection || forceOpenBetCorrection;
   const [isOpen, setIsOpen] = useState(forceOpenMore);
   const [othersView, setOthersView] = useState<"pronos" | "bets" | null>(null);
+  const boxScore = useBoxScore(row.scheduledAt, row.home.abbreviation, row.away.abbreviation);
+  const kickoffLabel = row.daily ? row.daily.shortLabel : formatKickoff(row.scheduledAt);
 
   // Le résumé du pari (énoncé, statut, points) vit dans la zone « Mon pari » ;
   // BetBlock ne reste dans le dépli que pour ce qu'elle n'affiche pas.
@@ -90,7 +93,7 @@ export function LockedRow({
               homeScore: row.homeScore,
               awayScore: row.awayScore,
             }}
-            scheduledAtLabel={row.daily ? row.daily.shortLabel : formatKickoff(row.scheduledAt)}
+            scheduledAtLabel={kickoffLabel}
           />
           <span className={styles.headerRight}>
             <MatchAffiche home={row.home} away={row.away} />
@@ -105,7 +108,16 @@ export function LockedRow({
             cliquable, il ne doit pas la replier/déplier. */}
         <div className={styles.pronoRow}>
           <div className={styles.pronoBand}>
-            <PredictionSummary prediction={row.prediction} betPoints={row.bet?.pointsAwarded ?? null} />
+            <PredictionSummary
+              prediction={row.prediction}
+              betPoints={row.bet?.pointsAwarded ?? null}
+              action={
+                // Feuille de match (box score) des matchs terminés, dans la zone
+                // hachurée de la bande (13/11/2026, demandé par l'utilisateur).
+                // La popup est montée plus bas, hors de la carte cliquable.
+                row.liveState === "FINISHED" ? <BoxScoreBandButton onOpen={boxScore.open} /> : undefined
+              }
+            />
           </div>
           <button
             type="button"
@@ -132,19 +144,6 @@ export function LockedRow({
         maxPoints={maxBetPoints}
         onViewOthers={() => setOthersView("bets")}
       />
-
-      {/* Feuille de match (box score) des matchs terminés : JSON statique publié
-          par la VM quelques minutes après le buzzer (BoxScoreButton). */}
-      {row.liveState === "FINISHED" && (
-        <div className={styles.boxScoreRow}>
-          <BoxScoreButton
-            scheduledAt={row.scheduledAt}
-            homeAbbr={row.home.abbreviation}
-            awayAbbr={row.away.abbreviation}
-            subtitle={`${row.home.abbreviation} – ${row.away.abbreviation} · ${row.daily ? row.daily.shortLabel : formatKickoff(row.scheduledAt)}`}
-          />
-        </div>
-      )}
 
       {/* Repliés sous la carte cliquable ci-dessus (22/08/2026, remplace le
           texte "Plus d'options" -- demandé par l'utilisateur, qui a aussi
@@ -178,6 +177,16 @@ export function LockedRow({
             error={predictionCorrectionError}
           />
         </div>
+      )}
+
+      {boxScore.isOpen && (
+        <BoxScoreDialog
+          subtitle={`${row.home.abbreviation} – ${row.away.abbreviation} · ${kickoffLabel}`}
+          firstTricode={row.home.abbreviation}
+          state={boxScore.state}
+          onRetry={boxScore.retry}
+          onClose={boxScore.close}
+        />
       )}
 
       <OthersOnMatch

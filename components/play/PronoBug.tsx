@@ -25,9 +25,12 @@ type PronoBugProps = {
   /** Total à droite du sous-bandeau. Sans `detail` ni `points`, pas de
    *  sous-bandeau. */
   points?: ReactNode;
+  /** Action calée à droite de la bande, dans la zone hachurée (bouton
+   *  « Feuille de match » des matchs terminés, 13/11/2026). */
+  action?: ReactNode;
 };
 
-export function PronoBug({ pick, neutralLabel, detail, points }: PronoBugProps) {
+export function PronoBug({ pick, neutralLabel, detail, points, action }: PronoBugProps) {
   const bandColor = pick ? broadcastBandColor(pick.abbreviation) : null;
   const hasSub = detail !== undefined || points !== undefined;
   return (
@@ -52,12 +55,14 @@ export function PronoBug({ pick, neutralLabel, detail, points }: PronoBugProps) 
             <span className={styles.title}>
               {pick.abbreviation} +{pick.margin}
             </span>
+            {action && <span className={styles.action}>{action}</span>}
           </span>
         ) : (
           // Pas de rouge (T7/R-COL) : un prono manquant/incomplet n'est pas
           // un résultat négatif, juste un rappel neutre.
           <span className={`${styles.band} ${styles.neutral}`}>
             <span className={styles.title}>{neutralLabel}</span>
+            {action && <span className={styles.action}>{action}</span>}
           </span>
         )}
       </div>

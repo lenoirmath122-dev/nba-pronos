@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import type { MyPrediction } from "@/lib/queries/play";
 import { PronoBug } from "./PronoBug";
 import styles from "./PredictionSummary.module.css";
@@ -19,9 +20,11 @@ type PredictionSummaryProps = {
    *  null tant que non résolu (pas de pari, ou pari pas encore
    *  WON/LOST) -- même convention que prediction.points, jamais 0. */
   betPoints: number | null;
+  /** Action dans la bande du prono (bouton « Feuille de match »). */
+  action?: ReactNode;
 };
 
-export function PredictionSummary({ prediction, betPoints }: PredictionSummaryProps) {
+export function PredictionSummary({ prediction, betPoints, action }: PredictionSummaryProps) {
   // Total combiné prono + pari (22/08/2026) : le pari peut se résoudre
   // PLUS TARD que le prono (résolution manuelle admin, pas encore
   // automatique -- voir GAPS_OUVERTS.md) -- betPoints ?? 0 pour ne pas
@@ -64,6 +67,7 @@ export function PredictionSummary({ prediction, betPoints }: PredictionSummaryPr
             : null
         }
         neutralLabel={STATE_LABEL[prediction.state]}
+        action={action}
         detail={detail}
         points={
           // "—" tant que non scoré, jamais "0"

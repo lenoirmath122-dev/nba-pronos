@@ -98,8 +98,3 @@
   outline: none;
   box-shadow: var(--focus-ring);
 }
-
-.boxScoreRow {
-  display: flex;
-  justify-content: flex-end;
-}
