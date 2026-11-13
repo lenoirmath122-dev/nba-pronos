@@ -254,6 +254,52 @@ le premier match passé `FINISHED` et ses paris résolus. Retour en arrière : r
 Pas de limite de débit connue côté stats.nba.com : ~1 000 requêtes par jour en plus de l'import.
 Si des timeouts apparaissent en série, espacer la plage rapide du timer (3 à 5 min).
 
+## Feuilles de match statiques (`box_scores.py`)
+
+Dès qu'un match passe à « terminé » dans le scoreboard, le poller fait **un** appel
+BoxScoreTraditionalV3 (stats.nba.com, même couche HTTP légère) et dépose un JSON d'environ 5 Ko
+dans le bucket Supabase Storage public `box-scores`, chemin `{jour NY}/{TRI}-{TRI}.json` (tricodes
+triés). L'appli le lit directement sur le CDN de Supabase : ni base ni CPU Vercel. Le fichier est
+en ligne 2 à 5 min après le buzzer.
+
+- **Après** l'envoi des résultats, jamais d'effet sur le code de sortie ni sur les paris. Au plus
+  4 matchs et 45 s par passage. Publié seulement si les points d'équipe du box score égalent le
+  score du scoreboard (sinon nouvel essai au passage suivant, 15 fois au plus).
+- **Passages de 12h/16h** : `refresh_job.py` republie une fois chaque match d'un jour NY passé
+  (corrections de stats de la NBA le lendemain) et rattrape ceux que le poller a manqués.
+- **Clé** : la clé `service_role` est lue dans Secret Manager (`nba-pronos-supabase-key`, même
+  secret et même compte de service que `run.sh`) via le serveur de métadonnées, en mémoire seulement.
+- **État** : `/var/lib/nba-refresh/box-scores-state.json` (matchs publiés et nombre d'essais, 10 jours).
+- **Journal** : lignes `[box-scores]` dans `sudo journalctl -u nba-results-poll`.
+- **Interrupteur** `BOX_SCORES_PUBLISH` dans `/etc/nba-refresh/env` (relu à chaque passage) :
+  absent ou `0` = rien ; `dry` = box score récupéré et vérifié, rien d'envoyé ; `1` = envoi réel.
+
+### Mise en service
+
+1. Migration du bucket (`supabase/migrations/20261113140000_box_scores_bucket.sql`) :
+   `npx supabase db push --remote`.
+2. Code sur la VM + premier soir en `dry` (la capture de test est synthétique, ce soir-là
+   valide le format contre de vraies réponses) :
+   ```bash
+   gcloud compute ssh nba-refresh --zone=us-central1-a --tunnel-through-iap --command '
+     sudo -u nbarefresh git -C /opt/nba-pronos pull &&
+     (grep -q "^BOX_SCORES_PUBLISH=" /etc/nba-refresh/env || echo "BOX_SCORES_PUBLISH=dry" | sudo tee -a /etc/nba-refresh/env)'
+   ```
+   Le lendemain : `sudo journalctl -u nba-results-poll --since -14h | grep box-scores` doit
+   montrer un « vérifié (dry) » par match, et aucun « échoué » répété au-delà de quelques minutes.
+3. Passage en réel : `sudo sed -i 's/^BOX_SCORES_PUBLISH=.*/BOX_SCORES_PUBLISH=1/' /etc/nba-refresh/env`.
+4. Rattrapage des matchs déjà joués (une fois, hors créneaux 12h/16h) :
+   ```bash
+   sudo -u nbarefresh bash -c 'cd /opt/nba-pronos/Cadrage/Stats/service &&
+     SUPABASE_URL=$(grep ^SUPABASE_URL= /etc/nba-refresh/env | cut -d= -f2-) \
+     SUPABASE_SERVICE_ROLE_KEY=$(gcloud secrets versions access latest --secret=nba-pronos-supabase-key) \
+     /var/lib/nba-refresh/venv/bin/python box_scores.py --backfill --since 2026-10-21'
+   ```
+   (`--dry` pour vérifier sans envoyer ; ~0,6 s de pause entre deux matchs.)
+5. Contrôle : `curl -s https://<projet>.supabase.co/storage/v1/object/public/box-scores/<jour>/<TRI>-<TRI>.json | head -c 300`.
+
+Retour en arrière : `BOX_SCORES_PUBLISH=0` ; les fichiers déjà publiés restent lisibles.
+
 ## Observation de la première semaine (à partir du 07/10/2026)
 
 À faire une fois par jour pendant ~7 jours, jusqu'au premier vrai import de box

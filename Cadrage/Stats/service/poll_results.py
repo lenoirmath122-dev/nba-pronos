@@ -34,6 +34,10 @@ les cas.
 
 Repli : en écriture réelle, un fetch NBA en échec déclenche /api/sync/results
 (Highlightly), au plus une fois par heure (voir highlightly_fallback).
+
+Feuilles de match : APRÈS l'envoi des résultats, les matchs terminés du scoreboard
+passent à box_scores.publish (interrupteur BOX_SCORES_PUBLISH, désactivé par défaut).
+Ne change jamais le code de sortie : les résultats et les paris passent avant.
 """
 
 import argparse
@@ -48,6 +52,8 @@ from zoneinfo import ZoneInfo
 
 import requests
 from nba_api.stats.library.http import NBAStatsHTTP
+
+import box_scores as bs
 
 DEFAULT_APP_URL = "https://nba-pronos.vercel.app"
 SOURCE = "NBA_STATS_SCOREBOARDV3"
@@ -241,10 +247,12 @@ def _worst(current: str, new: str) -> str:
     return new if order.index(new) > order.index(current) else current
 
 
-def run_status(dates: list[str], dry_run: bool) -> tuple[str, bool]:
+def run_status(dates: list[str], dry_run: bool, finished_sink: list | None = None) -> tuple[str, bool]:
     """Un fetch + un POST par date (aucun POST sans match valide).
     Renvoie (OK | TRANSIENT | FATAL, dates dont le fetch NBA a échoué). Le pire statut l'emporte.
-    Jamais d'exception vers l'appelant (le secours de refresh_job ne doit pas échouer)."""
+    Jamais d'exception vers l'appelant (le secours de refresh_job ne doit pas échouer).
+    `finished_sink` : reçoit les matchs terminés (box_scores.finished_candidates), même
+    si le POST échoue -- la feuille de match ne dépend pas de la route."""
     mode = "dryRun" if dry_run else "réel"
     app_url = os.environ.get("APP_URL", DEFAULT_APP_URL).rstrip("/")
     status, failed_dates = OK, []
@@ -257,6 +265,11 @@ def run_status(dates: list[str], dry_run: bool) -> tuple[str, bool]:
             status = _worst(status, TRANSIENT)
             failed_dates.append(date)
             continue
+        if finished_sink is not None:
+            try:
+                finished_sink.extend(bs.finished_candidates(date, raw_games))
+            except Exception as exc:  # noqa: BLE001 -- confort, jamais bloquant
+                print(f"[poll] {date} matchs terminés non relevés ({type(exc).__name__})")
         games = [g for g in (reduce_game(r) for r in raw_games) if g is not None]
         invalid = len(raw_games) - len(games)
         if not games:
@@ -289,9 +302,9 @@ def run_status(dates: list[str], dry_run: bool) -> tuple[str, bool]:
     return status, failed_dates
 
 
-def run(dates: list[str], dry_run: bool) -> bool:
+def run(dates: list[str], dry_run: bool, finished_sink: list | None = None) -> bool:
     """True si tout a répondu (voir run_status)."""
-    return run_status(dates, dry_run)[0] == OK
+    return run_status(dates, dry_run, finished_sink)[0] == OK
 
 
 def highlightly_fallback(now: float | None = None) -> bool:
@@ -340,12 +353,16 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     dry_run = resolve_dry_run(os.environ.get("RESULTS_POLL_DRYRUN"), args.dry_run, args.live)
     dates = args.dates or ny_dates(dt.datetime.now(dt.timezone.utc))
-    status, failed_dates = run_status(dates, dry_run)
+    finished: list[dict] = []
+    status, failed_dates = run_status(dates, dry_run, finished)
     # Repli seulement si le fetch du jour NY (dernière date) a échoué : un timeout isolé sur
     # la veille ne brûle ni quota ni créneau. Écriture réelle uniquement et hors essai à la
     # main : en dryRun le poller n'écrit rien, Highlightly reste la seule source.
     if dates[-1] in failed_dates and not dry_run and args.dates is None:
         highlightly_fallback()
+    # Hors essai à la main (--dates) : un essai ne doit pas publier de feuille de match.
+    if args.dates is None:
+        bs.publish(finished, bs.publish_mode(os.environ.get("BOX_SCORES_PUBLISH")))
     return EXIT_CODES[status]
 
 

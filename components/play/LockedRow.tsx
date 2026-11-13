@@ -9,6 +9,7 @@ import { PredictionSummary } from "./PredictionSummary";
 import { BetBlock } from "./BetBlock";
 import { MatchAffiche } from "./MatchAffiche";
 import { MatchBetZone } from "./MatchBetZone";
+import { BoxScoreButton } from "./BoxScoreButton";
 import { OthersOnMatch } from "./OthersOnMatch";
 import { CorrectionRequestForm } from "./CorrectionRequestForm";
 import styles from "./LockedRow.module.css";
@@ -131,6 +132,19 @@ export function LockedRow({
         maxPoints={maxBetPoints}
         onViewOthers={() => setOthersView("bets")}
       />
+
+      {/* Feuille de match (box score) des matchs terminés : JSON statique publié
+          par la VM quelques minutes après le buzzer (BoxScoreButton). */}
+      {row.liveState === "FINISHED" && (
+        <div className={styles.boxScoreRow}>
+          <BoxScoreButton
+            scheduledAt={row.scheduledAt}
+            homeAbbr={row.home.abbreviation}
+            awayAbbr={row.away.abbreviation}
+            subtitle={`${row.home.abbreviation} – ${row.away.abbreviation} · ${row.daily ? row.daily.shortLabel : formatKickoff(row.scheduledAt)}`}
+          />
+        </div>
+      )}
 
       {/* Repliés sous la carte cliquable ci-dessus (22/08/2026, remplace le
           texte "Plus d'options" -- demandé par l'utilisateur, qui a aussi
