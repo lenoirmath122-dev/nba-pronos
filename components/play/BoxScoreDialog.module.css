@@ -1,0 +1,300 @@
+/* Popup « Feuille de match » : même cadre que TeamDetailsDialog (en-tête et onglets
+   fixes, contenu qui défile), plus le tableau du box score. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 30;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 12px;
+  overscroll-behavior: contain;
+}
+
+.dialog {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 30rem;
+  max-height: 85vh;
+  min-height: 0;
+  background: var(--color-surface-raised);
+  border: 1px solid var(--color-border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elevation-arena);
+  overflow: hidden;
+  color: var(--color-text-primary);
+  font-family: var(--font-ui);
+}
+
+@media (max-width: 480px) {
+  .dialog {
+    max-height: calc(100dvh - 64px);
+  }
+}
+
+.header {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-4) var(--space-3);
+}
+
+.headings {
+  min-width: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+}
+
+.subtitle {
+  margin: 2px 0 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.close {
+  flex-shrink: 0;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border-subtle);
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+}
+
+.close:focus-visible,
+.tab:focus-visible,
+.retry:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.tabs {
+  flex-shrink: 0;
+  display: flex;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 0 var(--space-2);
+}
+
+.tab {
+  flex: 1 1 auto;
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-2);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  font-family: inherit;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.tabActive {
+  color: var(--color-text-primary);
+  border-bottom-color: var(--color-accent);
+}
+
+.panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  font-size: var(--font-size-sm);
+}
+
+.panel p {
+  margin: 0;
+}
+
+.message {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.retry {
+  min-height: var(--tap-target-min);
+  padding: 0 var(--space-4);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-inset);
+  color: var(--color-text-primary);
+  font-family: inherit;
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+}
+
+.tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+}
+
+.tabScore {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-primary);
+}
+
+/* flex-shrink: 0 : élément d'une colonne flex qui défile, sans ça il rétrécit et
+   coupe le tableau (overflow non visible = min-height 0). */
+.tableScroll {
+  flex-shrink: 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.tableScroll:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.table {
+  border-collapse: separate;
+  border-spacing: 0;
+  min-width: 100%;
+  font-size: var(--font-size-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.table th,
+.table td {
+  padding: 6px 7px;
+  text-align: right;
+  border-bottom: 1px solid var(--color-border-hair);
+}
+
+.table thead th {
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.table td {
+  font-family: var(--font-numeric);
+}
+
+/* Colonne des joueurs figée pendant le défilement horizontal. */
+.table .playerCell {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+  text-align: left;
+  background: var(--color-surface-raised);
+  max-width: 9.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: var(--font-weight-medium);
+  box-shadow: 1px 0 0 var(--color-border-hair);
+}
+
+.playerName {
+  color: var(--color-text-primary);
+}
+
+.position {
+  margin-left: 4px;
+  color: var(--color-text-muted);
+  font-size: 10px;
+}
+
+.points {
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.groupRow .groupCell {
+  padding-top: var(--space-2);
+  text-align: left;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  background: transparent;
+}
+
+.groupLabel {
+  position: sticky;
+  left: 0;
+}
+
+.table tfoot th,
+.table tfoot td {
+  border-bottom: 0;
+  border-top: 1px solid var(--color-border-strong);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.percentages,
+.dnp,
+.source {
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+}
+
+.dnpLabel {
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.source {
+  color: var(--color-text-muted);
+}
+
+.legend {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.legend summary {
+  padding: var(--space-2) 0;
+  cursor: pointer;
+  color: var(--color-text-primary);
+  font-weight: var(--font-weight-semibold);
+}
+
+.legend dl {
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.legendItem {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.legendItem dt {
+  min-width: 3rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+}
+
+.legendItem dd {
+  margin: 0;
+}
+
+/* Plus large que TeamDetailsDialog : sur ordinateur, tout le tableau tient sans défiler. */
+.dialog {
+  max-width: 46rem;
+}

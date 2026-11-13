@@ -3,7 +3,7 @@ import { z } from "zod";
 import { getServerClient } from "@/lib/supabase/server";
 import { getTeamInsights } from "@/lib/queries/teamInsights";
 
-// Détail des équipes de l'aide aux débutants (popup « Détail des équipes »).
+// Détail des équipes de l'aide aux débutants (popup « Stats des équipes »).
 // Session obligatoire. Pas de rate limit en v1 : stats NBA publiques, lecture
 // seule, résultat en cache (étiquette team-insights, 1 h max).
 export const runtime = "nodejs";

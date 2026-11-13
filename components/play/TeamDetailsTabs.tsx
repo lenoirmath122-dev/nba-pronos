@@ -17,7 +17,7 @@ import type { PlayerSeasonLine, TeamInsights } from "@/lib/teamInsights/types";
 import { FormStrokes } from "./FormStrokes";
 import styles from "./TeamDetailsTabs.module.css";
 
-// Les trois onglets de la popup « Détail des équipes » (cadrage refonte prono).
+// Les trois onglets de la popup « Stats des équipes » (cadrage refonte prono).
 
 const EARLY_NOTE = "Début de saison : peu de matchs joués, ces chiffres bougent vite. Classement indicatif.";
 
