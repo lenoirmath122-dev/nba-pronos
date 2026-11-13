@@ -8,18 +8,28 @@
 }
 
 .chip {
+  /* Pastille fine (32 px) à bords droits comme les cartes (13/11/2026,
+     retour utilisateur) ; la zone tactile reste à 44 px via ::after. */
+  position: relative;
   display: inline-flex;
   align-items: center;
   gap: var(--space-1);
-  min-height: var(--tap-target-min);
+  height: 32px;
+  margin: 6px 0;
   padding: 0 var(--space-3);
   border: 1px solid var(--color-border-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--color-text-primary);
   font: inherit;
   font-size: var(--font-size-home-sm, var(--font-size-sm));
   cursor: pointer;
+}
+
+.chip::after {
+  content: "";
+  position: absolute;
+  inset: -6px 0;
 }
 
 .chip:focus-visible,

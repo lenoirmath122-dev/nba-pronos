@@ -1,4 +1,4 @@
-import { ExternalLink, Flame, Target } from "lucide-react";
+import { ExternalLink } from "lucide-react";
 import type { NightBundle } from "@/lib/queries/home";
 import type { RecapBet } from "@/lib/recaps/build";
 import { emptyReactionSummary, reactionKey } from "@/lib/recaps/reactions";
@@ -100,9 +100,6 @@ export function NightCard({ night, competitionId, anchorId }: NightCardProps) {
           {view.topScorers.length > 0 && (
             <li className={styles.highlight}>
               <div className={styles.highlightBody}>
-                <span className={styles.highlightIcon} aria-hidden="true">
-                  <Flame size={16} />
-                </span>
                 <div className={styles.highlightText}>
                   <p className={styles.highlightTitle}>Meilleure nuit</p>
                   <p className={styles.highlightMain}>{joinPseudos(view.topScorers)}</p>
@@ -122,9 +119,6 @@ export function NightCard({ night, competitionId, anchorId }: NightCardProps) {
           {view.bestBet && (
             <li className={styles.highlight}>
               <div className={styles.highlightBody}>
-                <span className={styles.highlightIcon} aria-hidden="true">
-                  <Target size={16} />
-                </span>
                 <div className={styles.highlightText}>
                   <p className={styles.highlightTitle}>Plus gros pari réussi</p>
                   <p className={styles.highlightMain}>« {view.bestBet.description} »</p>

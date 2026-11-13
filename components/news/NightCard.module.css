@@ -168,17 +168,6 @@
   gap: var(--space-3);
 }
 
-.highlightIcon {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border-radius: var(--radius-full);
-  background: var(--color-accent-soft);
-  color: var(--color-accent-rest);
-}
-
 .highlightText {
   flex: 1;
   min-width: 0;
