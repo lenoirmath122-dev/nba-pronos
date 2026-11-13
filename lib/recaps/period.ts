@@ -90,3 +90,16 @@ export function visibleWeeklyPeriod(nowMs: number): RecapPeriod | null {
   const lastSent = nowMs >= Date.parse(recapBoundaryIso(today)) ? today : addDays(today, -1);
   return isoWeekday(lastSent) === 1 ? weeklyPeriod(lastSent) : null;
 }
+
+/** Nuit passée du fil Actualité (13/11/2026) : fenêtre complète, de la veille
+ *  10h au jour `recapDate` 10h, jamais « en cours ». */
+export function pastDailyPeriod(recapDate: string): RecapPeriod {
+  return {
+    kind: "DAILY",
+    recapDate,
+    startIso: recapBoundaryIso(addDays(recapDate, -1)),
+    endIso: recapBoundaryIso(recapDate),
+    inProgress: false,
+    baselineBefore: recapDate,
+  };
+}

@@ -34,6 +34,8 @@ type ChatSubscriberProps = {
   scope: ChatScope;
   currentUserId: string;
   isCurrentUserAdmin: boolean;
+  /** Texte pré-rempli du champ de saisie (`/chat?citer=`). */
+  initialText?: string;
 };
 
 /** Remplace (ou retire si `emoji` est null) la réaction d'un joueur. */
@@ -42,7 +44,7 @@ function withReaction(reactions: ChatReaction[], userId: string, emoji: string |
   return emoji === null ? others : [...others, { userId, emoji }];
 }
 
-export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUserAdmin }: ChatSubscriberProps) {
+export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUserAdmin, initialText }: ChatSubscriberProps) {
   const [messages, setMessages] = useState<ChatMessage[]>(seed);
   const scopeKey = scope.type === "LEAGUE" ? scope.leagueId : "GLOBAL";
 
@@ -194,7 +196,7 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
           ))
         )}
       </div>
-      <ChatComposer scope={scope} roster={roster} currentUserId={currentUserId} />
+      <ChatComposer scope={scope} roster={roster} currentUserId={currentUserId} initialText={initialText} />
     </div>
   );
 }

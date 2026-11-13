@@ -104,3 +104,15 @@ export function ChatIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+/** Actualité — journal plié (13/11/2026, l'onglet Accueil devient Actualité :
+ *  le fil de la ligue, l'app s'ouvre désormais sur Jouer). */
+export function NewsIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3.6" y="4.6" width="13" height="15" />
+      <path d="M16.6 8.6H20.4V19.6H16.6" />
+      <path d="M6.8 8.6H13.4M6.8 12.2H13.4M6.8 15.8H11" />
+    </IconBase>
+  );
+}

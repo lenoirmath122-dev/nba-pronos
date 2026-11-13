@@ -88,6 +88,9 @@ export type BuildInput = {
   predictions: ScoredPredictionRow[];
   bets: ScoredBetRow[];
   nightMatches: NightMatch[];
+  /** Nuit passée (fil Actualité) : rangs figés de fin de nuit (snapshot du
+   *  jour), à la place des rangs recalculés sur les scores en direct. */
+  endRanks?: Map<string, number>;
 };
 
 /** Tous les joueurs au maximum (ex-aequo crédités, même règle que les
@@ -129,8 +132,8 @@ function rankByValue(values: Map<string, number>): Map<string, number> {
 }
 
 export function buildCompetitionRecap(input: BuildInput): CompetitionRecap {
-  const { period, scores, baseline, pseudoById, predictions, bets, nightMatches } = input;
-  const liveRanks = assignRanks(scores);
+  const { period, scores, baseline, pseudoById, predictions, bets, nightMatches, endRanks } = input;
+  const liveRanks = endRanks ?? assignRanks(scores);
   const baselineById = new Map(baseline.map((row) => [row.user_id, row]));
 
   const players = new Map<string, PlayerLine>();

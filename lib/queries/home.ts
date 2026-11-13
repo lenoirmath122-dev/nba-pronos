@@ -5,12 +5,20 @@ import { getAllTeams } from "@/lib/queries/teams";
 import { getRemainingSeriesBets } from "@/lib/queries/series-bets";
 import { getRemainingMatchBets } from "@/lib/queries/match-bets";
 import { getUserSeenState } from "@/lib/queries/seen";
-import { getChatReadStatus, getRecentChatActivity, type ChatActivity, type ChatReadStatus } from "@/lib/queries/chat";
-import { ROUND_LABELS } from "@/lib/labels/rounds";
+import {
+  getChatPreview,
+  getChatReadStatus,
+  getRecentChatActivity,
+  type ChatActivity,
+  type ChatPreviewMessage,
+  type ChatReadStatus,
+} from "@/lib/queries/chat";
 import { parisDateKey } from "@/lib/dates/paris";
 import { computeBetDeadlines } from "@/lib/scoring/bet-deadline";
 import { assignRanks } from "@/lib/scoring/ranking";
-import { getHomeRecap, type HomeRecap } from "@/lib/recaps/home";
+import { getHomeRecap, getPastNightView, type HomeRecap, type RecapView } from "@/lib/recaps/home";
+import { addDays, dailyPeriod, pastDailyPeriod } from "@/lib/recaps/period";
+import { reactionKey, summarizeReactions, type ReactionRow, type ReactionSummary } from "@/lib/recaps/reactions";
 import { readWeeklyRankingFlag } from "@/lib/weekly/flag";
 import { getWeeklyLeaderboard, type WeeklyLeaderboardData } from "@/lib/queries/weeklyLeaderboard";
 import type { CompetitionType } from "@/lib/competitions/types";
@@ -72,25 +80,31 @@ export type FeedItem = {
   href: string | null;
 };
 
-/** Un item de la section « Paris » (demandée par l'utilisateur 28/07/2026
- *  pour les séries, généralisée aux matchs le 15/08/2026) — LISTE chaque
- *  série/match individuellement (contrairement à TodoItem, qui agrège), donc
- *  un type dédié plutôt qu'un TodoItem détourné. Scope-agnostique : rien en
- *  dehors de ce fichier/components/home/BetsAccordionList.tsx ne dépend d'un
- *  nom de champ spécifique à une série. */
-export type BetTodoItem = { id: string; title: string; href: string };
+
+/** Une nuit du fil Actualité (13/11/2026) : le récap (null si rien ne s'est
+ *  passé cette nuit-là), les paris tranchés du joueur sur la MÊME fenêtre, et
+ *  les réactions aux highlights (clé reactionKey). */
+export type NightBundle = {
+  recapDate: string;
+  view: RecapView | null;
+  items: FeedItem[];
+  reactions: Record<string, ReactionSummary>;
+};
+
+/** Nombre de nuits que le fil peut afficher (bouton « Nuit précédente »). */
+export const MAX_NEWS_NIGHTS = 14;
 
 export type HomeData = {
   competitionId: string | null;
   header: HomeHeader | null;
-  todo: TodoItem[];
-  adminTodo: TodoItem[];
-  seriesBets: BetTodoItem[];
-  matchBets: BetTodoItem[];
-  feed: FeedItem[];
-  /** Récaps « Ta nuit » / « Ta semaine » (p3-10), en tête de « Ça vient de
-   *  tomber ». Null sans compétition active. */
-  recap: HomeRecap | null;
+  /** Récap « Ta semaine » (lundi 10h → mardi 10h, hors classement hebdo). */
+  weeklyRecap: RecapView | null;
+  /** Nuit en cours (ou dernière nuit après 10h), puis les précédentes. */
+  nights: NightBundle[];
+  canLoadMoreNights: boolean;
+  /** Plus récent résultat du joueur (48 h) : repère « vu » de la pastille. */
+  latestFeedAt: string | null;
+  chatPreview: ChatPreviewMessage[];
   /** Préférence de notification du COMPTE (p3-13) — lue même sans
    *  compétition active, la carte d'activation des notifications
    *  (components/home/PushPrompt.tsx) doit apparaître aussi pendant une
@@ -107,12 +121,11 @@ export const FEED_MAX_ITEMS = 5;
 const EMPTY_HOME_DATA: HomeData = {
   competitionId: null,
   header: null,
-  todo: [],
-  adminTodo: [],
-  seriesBets: [],
-  matchBets: [],
-  feed: [],
-  recap: null,
+  weeklyRecap: null,
+  nights: [],
+  canLoadMoreNights: false,
+  latestFeedAt: null,
+  chatPreview: [],
   notificationPreference: "NONE",
 };
 
@@ -123,7 +136,11 @@ type CompetitionRow = {
   bracket_deadline: string | null;
 };
 
-export async function getHomeData(): Promise<HomeData> {
+/** Écran Actualité (ex-Accueil, 13/11/2026). `nights` = nombre de nuits à
+ *  afficher (1 = la nuit en cours seule), borné à MAX_NEWS_NIGHTS. Ce qui se
+ *  joue (prochain prono, à faire, paris à proposer) vit sur Jouer. */
+export async function getHomeData(options: { nights?: number } = {}): Promise<HomeData> {
+  const nightCount = Math.min(MAX_NEWS_NIGHTS, Math.max(1, Math.floor(options.nights ?? 1)));
   const supabase = await getServerClient();
 
   const {
@@ -147,7 +164,7 @@ export async function getHomeData(): Promise<HomeData> {
   const notificationPreference = prefRow?.notification_preference ?? "NONE";
 
   if (!competition) {
-    return { ...EMPTY_HOME_DATA, notificationPreference };
+    return { ...EMPTY_HOME_DATA, notificationPreference, chatPreview: await getChatPreview() };
   }
 
   // Classement hebdo actif : rang et points de l'en-tête, rang du récap de la
@@ -159,69 +176,62 @@ export async function getHomeData(): Promise<HomeData> {
       : null,
   }));
 
-  const [header, todo, adminTodo, seriesBets, matchBets, feed, recap] = await Promise.all([
+  const nowMs = Date.now();
+  const current = dailyPeriod(nowMs);
+  const pastDates = Array.from({ length: nightCount - 1 }, (_, index) => addDays(current.recapDate, -(index + 1)));
+
+  const [header, recap, currentItems, pastNights, latestFeed, reactionRows, chatPreview] = await Promise.all([
     weeklyPromise.then(({ board }) => getHeader(supabase, competition, user.id, board)),
-    getTodo(supabase, competition, user.id),
-    getAdminTodo(supabase, competition.id),
-    getSeriesBetsTodo(supabase, user.id, competition),
-    getMatchBetsTodo(supabase, user.id, competition),
-    getFeed(supabase, competition.id, user.id),
     weeklyPromise.then(async ({ weeklyRanking, board }) =>
-      withWeeklyRank(await getHomeRecap(supabase, competition.id, user.id, Date.now(), { weeklyRanking }), board),
+      withWeeklyRank(await getHomeRecap(supabase, competition.id, user.id, nowMs, { weeklyRanking }), board),
     ),
+    getFeed(supabase, competition.id, user.id, { night: current }),
+    weeklyPromise.then(({ weeklyRanking }) =>
+      Promise.all(
+        pastDates.map(async (recapDate) => {
+          const [view, items] = await Promise.all([
+            getPastNightView(supabase, competition.id, user.id, recapDate, { weeklyRanking }),
+            getFeed(supabase, competition.id, user.id, { night: pastDailyPeriod(recapDate) }),
+          ]);
+          return { recapDate, view, items };
+        })
+      )
+    ),
+    getFeed(supabase, competition.id, user.id, { maxItems: 1 }),
+    supabase
+      .from("recap_reactions")
+      .select("recap_date, target, user_id, kind")
+      .eq("competition_id", competition.id)
+      .in("recap_date", [current.recapDate, ...pastDates])
+      .then(({ data }) => (data ?? []) as ReactionRow[]),
+    getChatPreview(),
   ]);
+
+  const summaries = summarizeReactions(reactionRows, user.id);
+  const withReactions = (night: Omit<NightBundle, "reactions">): NightBundle => ({
+    ...night,
+    reactions: Object.fromEntries(
+      (["TOP_SCORERS", "BEST_BET"] as const).flatMap((target) => {
+        const key = reactionKey(night.recapDate, target);
+        const summary = summaries.get(key);
+        return summary ? [[key, summary]] : [];
+      })
+    ),
+  });
 
   return {
     competitionId: competition.id,
     header,
-    todo,
-    adminTodo,
-    seriesBets,
-    matchBets,
-    feed,
-    recap,
+    weeklyRecap: recap.weekly,
+    nights: [
+      withReactions({ recapDate: current.recapDate, view: recap.daily, items: currentItems }),
+      ...pastNights.map(withReactions),
+    ],
+    canLoadMoreNights: nightCount < MAX_NEWS_NIGHTS,
+    latestFeedAt: latestFeed[0]?.occurredAt ?? null,
+    chatPreview,
     notificationPreference,
   };
-}
-
-// ============================================================================
-// « Paris » (demandé par l'utilisateur 28/07/2026 pour les séries, généralisé
-// aux matchs le 15/08/2026) — liste chaque série/match où un pari reste
-// possible et pas encore posé ; groupe RETIRÉ dès qu'il est vide (jamais un
-// état vide affiché, contrairement à « À traiter »/« Ça vient de tomber »).
-// Réutilise getRemainingSeriesBets()/getRemainingMatchBets() — même logique
-// que la carte Bracket du hub Jouer pour les séries, jamais recalculée deux
-// fois. supabase/user.id/competition déjà résolus par getHomeData() leur
-// sont passés directement (p1-32, feuille de route Phase 1) — sans ça,
-// chacune des 2 fonctions refaisait sa propre auth.getUser() + son propre
-// SELECT competitions ACTIVE, 3 fois la même paire de requêtes sur un seul
-// chargement de l'Accueil.
-// ============================================================================
-
-async function getSeriesBetsTodo(
-  supabase: SupabaseServerClient,
-  userId: string,
-  competition: CompetitionRow
-): Promise<BetTodoItem[]> {
-  const remaining = await getRemainingSeriesBets({ supabase, userId, competition });
-  return remaining.map((series) => ({
-    id: series.seriesId,
-    title: `${ROUND_LABELS[series.round] ?? series.round} — ${series.teamA.abbreviation} vs ${series.teamB.abbreviation}`,
-    href: `/play/bracket#series-${series.seriesId}`,
-  }));
-}
-
-async function getMatchBetsTodo(
-  supabase: SupabaseServerClient,
-  userId: string,
-  competition: CompetitionRow
-): Promise<BetTodoItem[]> {
-  const remaining = await getRemainingMatchBets({ supabase, userId, competition });
-  return remaining.map((match) => ({
-    id: match.matchId,
-    title: match.label,
-    href: `/play#match-${match.matchId}`,
-  }));
 }
 
 // ============================================================================
@@ -313,44 +323,10 @@ function withWeeklyRank(recap: HomeRecap, weekly: WeeklyLeaderboardData | null):
 }
 
 // ============================================================================
-// « À traiter » (§4) — tri par deadline la plus proche, égalité départagée
-// par urgence bracket > matchs > paris.
+// « À faire » : éléments comptés par la pastille de l'onglet Jouer
+// (getCompetitionNavBadges). Plus affichés sur l'Actualité depuis le
+// 13/11/2026 : Jouer porte déjà ces actions.
 // ============================================================================
-
-const TODO_URGENCY: Record<TodoItem["kind"], number> = {
-  bracket: 0,
-  matches: 1,
-  bets: 2,
-  admin_bet_review: 3,
-};
-
-function sortTodoItems(items: TodoItem[]): TodoItem[] {
-  return [...items].sort((a, b) => {
-    const timeA = a.deadline ? Date.parse(a.deadline) : Number.POSITIVE_INFINITY;
-    const timeB = b.deadline ? Date.parse(b.deadline) : Number.POSITIVE_INFINITY;
-    if (timeA !== timeB) return timeA - timeB;
-    return TODO_URGENCY[a.kind] - TODO_URGENCY[b.kind];
-  });
-}
-
-async function getTodo(
-  supabase: SupabaseServerClient,
-  competition: CompetitionRow,
-  userId: string
-): Promise<TodoItem[]> {
-  const items: TodoItem[] = [];
-
-  const bracketItem = await getBracketTodo(supabase, competition, userId);
-  if (bracketItem) items.push(bracketItem);
-
-  const matchesItem = await getMatchesTodo(supabase, competition.id, userId);
-  if (matchesItem) items.push(matchesItem);
-
-  const betsItem = await getBetsTodo(supabase, competition.id, userId);
-  if (betsItem) items.push(betsItem);
-
-  return sortTodoItems(items);
-}
 
 async function getBracketTodo(
   supabase: SupabaseServerClient,
@@ -547,39 +523,6 @@ async function getBetsTodo(
 }
 
 // ============================================================================
-// « À traiter (admin) » (§5) — jamais mélangé au tri joueur.
-// ============================================================================
-
-async function getAdminTodo(
-  supabase: SupabaseServerClient,
-  competitionId: string
-): Promise<TodoItem[]> {
-  // Vérification serveur du rôle (jamais un état client, P1).
-  const { data: isAdmin } = await supabase.rpc("is_admin");
-  if (!isAdmin) return [];
-
-  const { count } = await supabase
-    .from("bets")
-    .select("id", { count: "exact", head: true })
-    .eq("competition_id", competitionId)
-    .eq("status", "SUBMITTED");
-
-  if (!count) return [];
-
-  return [
-    {
-      kind: "admin_bet_review",
-      title: `${count} pari${count > 1 ? "s" : ""} à valider`,
-      subtitle: null,
-      matchup: null,
-      deadline: null,
-      count,
-      href: "/admin/validation",
-    },
-  ];
-}
-
-// ============================================================================
 // « Ça vient de tomber » (§6)
 // ============================================================================
 
@@ -593,32 +536,62 @@ type MatchScoreRow = {
   away_score: number | null;
 };
 
-async function getFeed(
+/** Paris tranchés d'une nuit (carte « Ta nuit » de l'Actualité, 13/11/2026) :
+ *  MÊMES règles que le récap (lib/recaps/load.ts) — pronos des matchs
+ *  programmés dans la fenêtre (leur scored_at est réécrit à chaque recalcul,
+ *  il ne dit pas de quelle nuit ils sont), paris par scored_at dans la
+ *  fenêtre. Avant, la liste prenait les 48 dernières heures et mélangeait
+ *  deux nuits sous le titre « Résultats de la nuit ». */
+export type NightWindow = { startIso: string; endIso: string };
+
+const NIGHT_MAX_ITEMS = 50;
+
+async function nightMatchIds(supabase: SupabaseServerClient, competitionId: string, window: NightWindow): Promise<string[]> {
+  const { data } = await supabase
+    .from("matches")
+    .select("id")
+    .eq("competition_id", competitionId)
+    .eq("status", "FINISHED")
+    .gte("scheduled_at", window.startIso)
+    .lt("scheduled_at", window.endIso);
+  return ((data ?? []) as { id: string }[]).map((row) => row.id);
+}
+
+export async function getFeed(
   supabase: SupabaseServerClient,
   competitionId: string,
   userId: string,
-  options: { since?: string; maxItems?: number } = {}
+  options: { since?: string; maxItems?: number; night?: NightWindow } = {}
 ): Promise<FeedItem[]> {
-  const since = options.since ?? new Date(Date.now() - FEED_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
-  const maxItems = options.maxItems ?? FEED_MAX_ITEMS;
+  const night = options.night;
+  const since = night?.startIso ?? options.since ?? new Date(Date.now() - FEED_WINDOW_HOURS * 60 * 60 * 1000).toISOString();
+  const until = night?.endIso ?? null;
+  const maxItems = options.maxItems ?? (night ? NIGHT_MAX_ITEMS : FEED_MAX_ITEMS);
+  const nightMatches = night ? await nightMatchIds(supabase, competitionId, night) : null;
+
+  const predictionsQuery = supabase
+    .from("match_predictions")
+    .select("match_id, points_awarded, is_winner_correct, margin_diff, scored_at")
+    .eq("competition_id", competitionId)
+    .eq("user_id", userId)
+    .not("scored_at", "is", null);
+  const scoredBetsQuery = supabase
+    .from("bets")
+    .select("id, description, points_awarded, status, scored_at, scope, match_id, series_id")
+    .eq("competition_id", competitionId)
+    .eq("user_id", userId)
+    .in("status", ["WON", "LOST"])
+    .not("scored_at", "is", null)
+    .gte("scored_at", since);
 
   const [{ data: scoredPredictions }, { data: scoredBets }, { data: resolvedBets }] =
     await Promise.all([
-      supabase
-        .from("match_predictions")
-        .select("match_id, points_awarded, is_winner_correct, margin_diff, scored_at")
-        .eq("competition_id", competitionId)
-        .eq("user_id", userId)
-        .not("scored_at", "is", null)
-        .gte("scored_at", since),
-      supabase
-        .from("bets")
-        .select("id, description, points_awarded, status, scored_at, scope, match_id, series_id")
-        .eq("competition_id", competitionId)
-        .eq("user_id", userId)
-        .in("status", ["WON", "LOST"])
-        .not("scored_at", "is", null)
-        .gte("scored_at", since),
+      nightMatches === null
+        ? predictionsQuery.gte("scored_at", since)
+        : nightMatches.length > 0
+          ? predictionsQuery.neq("status", "DRAFT").in("match_id", nightMatches)
+          : Promise.resolve({ data: [] as { match_id: string; points_awarded: number | null; is_winner_correct: boolean | null; margin_diff: number | null; scored_at: string }[] }),
+      until ? scoredBetsQuery.lt("scored_at", until) : scoredBetsQuery,
       // « Pari statué par l'admin » = pari ANNULÉ/neutralisé (resolved_at) —
       // WON/LOST sont déjà couverts ci-dessus comme résultat (§6, décision
       // de session : lecture littérale de la colonne resolved_at + cohérence
@@ -630,7 +603,8 @@ async function getFeed(
         .eq("user_id", userId)
         .eq("status", "CANCELLED")
         .not("resolved_at", "is", null)
-        .gte("resolved_at", since),
+        .gte("resolved_at", since)
+        .lt("resolved_at", until ?? "9999-12-31T00:00:00.000Z"),
     ]);
 
   // Lien d'un match/pari MATCH vers Résultats (18/08/2026) : `?date=` en plus

@@ -257,9 +257,21 @@ Safari (seul contexte où Apple autorise le push web). « Plus tard » la
 masque 7 jours sur l'appareil (localStorage). Le réglage complet reste
 dans le Profil.
 
+**Actualité (ex-Accueil, 13/11/2026)** : l'onglet `/home` s'appelle
+« Actualité » (barre : Jouer · Actualité · Classement · Chat · Profil) et
+l'app s'ouvre sur `/play` (manifest, proxy, connexion). Prochain prono, « À
+faire aussi », « À traiter (admin) » et « Proposer un pari » en sont retirés
+(Jouer les porte). Contenu : en-tête rang/points, « Ta semaine » le lundi,
+carte de la nuit (`components/news/NightCard.tsx` : points + rang, X réussis
+sur N, highlights avec réactions rapides Respect/Chambrer — table
+`recap_reactions` — et « Répondre » qui ouvre le chat Général pré-rempli via
+`/chat?citer=`, scores + TrashTalk, paris de la nuit au tap), aperçu des 2
+derniers messages du chat, nuits précédentes à la demande (`?nuits=N`, 14 max,
+totaux et rangs lus dans le snapshot du jour). La liste des paris de la nuit
+suit la fenêtre du récap (avant : 48 h, deux nuits mélangées).
+
 **Récaps du matin** (`lib/recaps/`) : bloc « Ta nuit » (et « Ta semaine »
-du lundi 10h au mardi 10h) en tête de la carte « Ça vient de tomber » de
-l'Accueil : points gagnés et détail (bons vainqueurs, écarts exacts, paris),
+du lundi 10h au mardi 10h) sur l'Actualité : points gagnés et détail (bons vainqueurs, écarts exacts, paris),
 rang et évolution, joueurs dépassés ; meilleure nuit et plus gros pari
 réussi ; en hebdo classement de la semaine (top 3 + ta place), plus grosse
 remontée, sniper, pari de la semaine et « plus loufoque perdu » ; scores de

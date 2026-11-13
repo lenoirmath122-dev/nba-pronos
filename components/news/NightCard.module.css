@@ -1,0 +1,262 @@
+/* Carte d'une nuit du fil Actualité (13/11/2026). Géométrie seulement : le
+   fond verre vient de .glass-card (app/globals.css). */
+
+.card {
+  margin: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  scroll-margin-top: var(--space-4);
+}
+
+.heading {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-4) var(--space-4) 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--font-size-home-sm);
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-accent-rest);
+}
+
+.pill {
+  font-size: var(--font-size-home-sm);
+  color: var(--color-text-muted);
+  background: var(--color-surface-inset);
+  border-radius: var(--radius-pill);
+  padding: 0 var(--space-2);
+}
+
+.me {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4) var(--space-4);
+}
+
+.headline {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.points {
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+}
+
+.pointsValue {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-3xl);
+  font-weight: var(--font-weight-bold);
+  line-height: 1;
+  color: var(--color-accent-rest);
+}
+
+.pointsUnit {
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.rank {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.rankValue {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-2xl);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1;
+  color: var(--color-text-primary);
+}
+
+.rankLabel {
+  font-size: var(--font-size-home-sm);
+  color: var(--color-text-muted);
+}
+
+/* Évolution de rang : vert/rouge, c'est un résultat (R-COL). */
+.deltaUp {
+  color: var(--color-win);
+  font-weight: var(--font-weight-semibold);
+}
+
+.deltaDown {
+  color: var(--color-loss);
+  font-weight: var(--font-weight-semibold);
+}
+
+.tally {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.segments {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.segment {
+  flex: 1;
+  height: 6px;
+  border-radius: var(--radius-sm);
+  background: var(--color-border-strong);
+}
+
+.segmentWin {
+  composes: segment;
+  background: var(--color-win);
+}
+
+.tallyText {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.muted {
+  margin: 0;
+  font-size: var(--font-size-home-sm);
+  color: var(--color-text-muted);
+}
+
+.empty {
+  margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-4);
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+.highlights {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.highlight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border-hair);
+}
+
+.highlightBody {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.highlightIcon {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-full);
+  background: var(--color-accent-soft);
+  color: var(--color-accent-rest);
+}
+
+.highlightText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.highlightTitle {
+  margin: 0;
+  font-size: var(--font-size-home-sm);
+  color: var(--color-text-muted);
+}
+
+.highlightMain {
+  margin: 0;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+  overflow-wrap: anywhere;
+}
+
+.highlightValue {
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-lg);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-primary);
+}
+
+.scores {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  border-top: 1px solid var(--color-border-hair);
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: var(--font-size-home-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.scoreList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-2);
+}
+
+.score {
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-inset);
+  font-family: var(--font-numeric);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+}
+
+.debrief {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: var(--tap-target-min);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-rest);
+  text-decoration: none;
+}
+
+.debrief:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

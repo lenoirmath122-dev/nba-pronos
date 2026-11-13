@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useRef, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import { postChatMessageFormAction } from "@/lib/actions/chat";
 import type { ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
 import { activeMentionQuery } from "@/lib/chat/mentions";
@@ -14,14 +14,35 @@ import styles from "./ChatComposer.module.css";
 // après une action réussie (comportement natif des form actions React 19),
 // donc pas de reset manuel nécessaire ici.
 
-type ChatComposerProps = { scope: ChatScope; roster: ChatRosterEntry[]; currentUserId: string };
+type ChatComposerProps = {
+  scope: ChatScope;
+  roster: ChatRosterEntry[];
+  currentUserId: string;
+  /** Texte pré-rempli (bouton « Répondre » de l'Actualité, `/chat?citer=`). */
+  initialText?: string;
+};
 
 const MAX_SUGGESTIONS = 5;
 
-export function ChatComposer({ scope, roster, currentUserId }: ChatComposerProps) {
+export function ChatComposer({ scope, roster, currentUserId, initialText }: ChatComposerProps) {
   const [state, formAction, pending] = useActionState(postChatMessageFormAction, undefined);
   const formRef = useRef<HTMLFormElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Pré-remplissage posé une seule fois à l'arrivée, PAS en defaultValue : la
+  // remise à zéro native du formulaire après envoi (React 19) remettrait la
+  // citation dans le champ à chaque message. Le paramètre `citer` est retiré
+  // de l'URL pour qu'un rechargement ne la réinsère pas.
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || !initialText) return;
+    el.value = initialText;
+    el.focus();
+    el.setSelectionRange(initialText.length, initialText.length);
+    const url = new URL(window.location.href);
+    url.searchParams.delete("citer");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+  }, [initialText]);
   // Mention en cours de saisie (`@abc` avant le curseur) et choix surligné.
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   const [highlighted, setHighlighted] = useState(0);
