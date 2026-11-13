@@ -110,7 +110,9 @@ function input(overrides: Partial<BuildInput> = {}): BuildInput {
       { user_id: "B", is_winner_correct: false, margin_diff: 9 },
     ],
     bets: [bet("A", "WON", 2, 0.4), bet("C", "WON", 4, 0.12), bet("B", "LOST", 3, 0.2)],
-    nightMatches: [{ id: "m1", label: "BOS 112 - 104 NYK", articleUrl: null }],
+    nightMatches: [
+      { id: "m1", label: "BOS 112 - 104 NYK", articleUrl: null, scheduledAt: "2026-10-06T00:00:00.000Z", homeAbbr: "BOS", awayAbbr: "NYK" },
+    ],
     ...overrides,
   };
 }
