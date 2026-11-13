@@ -39,6 +39,10 @@ export type NightMatch = {
   id: string;
   label: string; // "BOS 112 - 104 NYK"
   articleUrl: string | null;
+  /** Pour ouvrir la feuille de match depuis l'Actualité (lib/boxScores). */
+  scheduledAt: string;
+  homeAbbr: string;
+  awayAbbr: string;
 };
 
 export type RecapPlayer = { userId: string; pseudo: string; value: number };

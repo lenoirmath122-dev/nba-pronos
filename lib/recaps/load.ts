@@ -21,6 +21,7 @@ import type { RecapPeriod } from "./period";
 
 type MatchRow = {
   id: string;
+  scheduled_at: string;
   home_team_id: string | null;
   away_team_id: string | null;
   home_score: number | null;
@@ -127,6 +128,9 @@ export async function loadCompetitionRecap(
       id: match.id,
       label: `${home?.abbreviation ?? "?"} ${match.home_score ?? "-"} - ${match.away_score ?? "-"} ${away?.abbreviation ?? "?"}`,
       articleUrl: article?.url ?? null,
+      scheduledAt: match.scheduled_at,
+      homeAbbr: home?.abbreviation ?? "?",
+      awayAbbr: away?.abbreviation ?? "?",
     };
   });
 

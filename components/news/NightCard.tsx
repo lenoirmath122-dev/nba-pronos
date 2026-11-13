@@ -13,6 +13,7 @@ import {
 } from "@/lib/news/night";
 import { Feed } from "@/components/home/Feed";
 import { Disclosure } from "./Disclosure";
+import { NightScore } from "./NightScore";
 import { ReactionBar } from "./ReactionBar";
 import styles from "./NightCard.module.css";
 
@@ -143,8 +144,8 @@ export function NightCard({ night, competitionId, anchorId }: NightCardProps) {
           <p className={styles.sectionTitle}>Scores de la nuit</p>
           <ul className={styles.scoreList}>
             {view.nightMatches.map((match) => (
-              <li key={match.id} className={styles.score}>
-                {match.label}
+              <li key={match.id}>
+                <NightScore match={match} />
               </li>
             ))}
           </ul>
