@@ -4,7 +4,7 @@
 
 import { describe, expect, it } from "vitest";
 import { buildCompetitionRecap, personalRecap, type BuildInput, type ScoredBetRow } from "./build";
-import { addDays, dailyPeriod, isoWeekday, recapBoundaryIso, recapKindFor, visibleWeeklyPeriod, weeklyPeriod } from "./period";
+import { addDays, dailyPeriod, isoWeekday, pastDailyPeriod, recapBoundaryIso, recapKindFor, visibleWeeklyPeriod, weeklyPeriod } from "./period";
 import { dailyPushText, kickoffHour, personalDetail, weeklyChampionPushText, weeklyPushText } from "./text";
 import { articleForMatch, parseRssArticles, teamKeywords } from "./trashtalk";
 
@@ -25,6 +25,17 @@ describe("fenêtres des récaps", () => {
     expect(recapKindFor("2026-10-05", { weeklyAutoSend: false })).toBe("DAILY");
     expect(recapKindFor("2026-10-05", { weeklyAutoSend: true })).toBe("WEEKLY");
     expect(recapKindFor("2026-10-06", { weeklyAutoSend: false })).toBe("DAILY");
+  });
+
+  it("une nuit passée couvre toute la fenêtre de la veille 10h au jour 10h", () => {
+    expect(pastDailyPeriod("2026-10-06")).toMatchObject({
+      kind: "DAILY",
+      recapDate: "2026-10-06",
+      startIso: "2026-10-05T08:00:00.000Z",
+      endIso: "2026-10-06T08:00:00.000Z",
+      inProgress: false,
+      baselineBefore: "2026-10-06",
+    });
   });
 
   it("avant 10h, le journalier couvre la nuit en cours jusqu'à maintenant", () => {
@@ -116,6 +127,13 @@ describe("contenu du récap", () => {
   it("un prono perdu compte comme « avoir joué », sans point", () => {
     const recap = buildCompetitionRecap(input());
     expect(personalRecap(recap, "B")).toMatchObject({ pointsGained: 0, played: true, periodRank: null });
+  });
+
+  it("nuit passée (fil Actualité) : rangs figés du snapshot de fin de nuit, pas recalculés", () => {
+    const recap = buildCompetitionRecap(
+      input({ period: pastDailyPeriod("2026-10-06"), endRanks: new Map([["A", 3], ["B", 2], ["C", 1]]) })
+    );
+    expect(personalRecap(recap, "A")).toMatchObject({ rank: 3, rankDelta: -2 });
   });
 
   it("un joueur absent du snapshot de référence part de 0 et n'a pas d'évolution de rang", () => {

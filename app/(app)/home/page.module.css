@@ -42,3 +42,36 @@
   border-radius: var(--radius-md);
   overflow: hidden;
 }
+
+/* Titre de page pour les lecteurs d'écran : l'en-tête visible (HomeHeader)
+   salue le joueur, l'onglet porte déjà le nom « Actualité ». */
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* « Nuit précédente » (fil Actualité, 13/11/2026) : charge une nuit de plus. */
+.moreNights {
+  margin: 0 var(--space-4);
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: var(--tap-target-min);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent-rest);
+  text-decoration: none;
+}
+
+.moreNights:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

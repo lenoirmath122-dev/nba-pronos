@@ -17,6 +17,6 @@ setup("authenticate as playerA", async ({ page }) => {
   await page.getByLabel("Mot de passe").fill(seed.playerA.password);
   await page.getByRole("button", { name: "Se connecter" }).click();
 
-  await expect(page).toHaveURL(/\/home$/);
+  await expect(page).toHaveURL(/\/play$/);
   await page.context().storageState({ path: STORAGE_STATE_PATH });
 });

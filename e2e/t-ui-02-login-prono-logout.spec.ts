@@ -27,7 +27,7 @@ test("connexion -> soumission d'un pronostic -> déconnexion", async ({ page }, 
   await page.getByLabel("Email").fill(seed.playerB.email);
   await page.getByLabel("Mot de passe").fill(seed.playerB.password);
   await page.getByRole("button", { name: "Se connecter" }).click();
-  await expect(page).toHaveURL(/\/home$/);
+  await expect(page).toHaveURL(/\/play$/);
 
   await gotoAndWaitReady(page, "/play");
 
