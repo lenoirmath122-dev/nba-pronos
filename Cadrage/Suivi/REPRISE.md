@@ -1,5 +1,5 @@
 # Reprise — NBA Pronos (13/11/2026, passation 34)
-- **Feuilles de match statiques (PR à merger, branche `feat/feuilles-de-match`)** : la VM publie un JSON par match
+- **Feuilles de match statiques (PR #298 à merger)** : la VM publie un JSON par match
   terminé (box score seul) dans le bucket public `box-scores`, 2 à 5 min après le buzzer (poller), réécrit le
   lendemain (refresh_job) ; bouton « Feuille de match » sur les cartes Résultats, lu sur le CDN Supabase (0 CPU
   Vercel). **Mise en service** (DEPLOIEMENT_VM.md, « Feuilles de match ») : `supabase db push --remote`, puis

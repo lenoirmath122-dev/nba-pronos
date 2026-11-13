@@ -70,7 +70,7 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   total d'octobre 0,00 € (coût 2,18 € couvert par des remises 1,37 € + crédits promo 0,81 €).
   Le crédit « Free Trial » (261,62 € restants) **expire le 20/11/2026** : revérifier la
   facture début décembre (ce qu'il couvrait, ~0,8 €/mois, pourrait devenir payant).
-- **Feuilles de match statiques** (13/11/2026, branche `feat/feuilles-de-match`) : à mettre en
+- **Feuilles de match statiques** (13/11/2026, PR #298) : à mettre en
   service après merge (migration du bucket `box-scores`, `BOX_SCORES_PUBLISH=dry` un soir puis `1`,
   rattrapage `--backfill --since 2026-10-21`, voir DEPLOIEMENT_VM.md). Testé seulement sur une
   capture synthétique de BoxScoreTraditionalV3 (stats.nba.com injoignable hors VM) : le soir en
