@@ -1,5 +1,5 @@
 # Reprise — NBA Pronos (13/11/2026, passation 35)
-- **Actualité (PR à merger, branche `feat/actualite`)** : l'onglet Accueil devient « Actualité » (même URL `/home`),
+- **Actualité (PR #299 à merger)** : l'onglet Accueil devient « Actualité » (même URL `/home`),
   l'app s'ouvre sur Jouer, barre Jouer · Actualité · Classement · Chat · Profil. Retirés de l'Actualité : Prochain prono,
   À faire aussi, À traiter (admin), Proposer un pari (déjà sur Jouer). Nouvelle carte de nuit, réactions rapides,
   « Répondre » vers le chat pré-rempli, aperçu chat, nuits précédentes (`?nuits=N`). Voir ETAT_ACTUEL §4.6.
