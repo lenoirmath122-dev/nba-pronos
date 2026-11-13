@@ -1,45 +1,6 @@
-/* Bouton « Feuille de match » posé dans la zone hachurée de la bande du prono
-   (PronoBug) : style incrustation télé, sombre et translucide sur la couleur
-   d'équipe, lisible sur les deux thèmes (texte --color-broadcast-text). */
-.button {
-  min-height: 26px;
-  padding: 0 10px;
-  border: 1px solid rgba(255, 255, 255, 0.35);
-  border-radius: 2px;
-  background: rgba(0, 0, 0, 0.45);
-  color: var(--color-broadcast-text);
-  font-family: var(--font-display);
-  font-size: 10px;
-  font-weight: var(--font-weight-semibold);
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  white-space: nowrap;
-  cursor: pointer;
-}
-
-.button:hover {
-  background: rgba(0, 0, 0, 0.6);
-}
-
-.button:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
-}
-
-/* Cible tactile élargie sans grossir le bouton dans la bande de 38 px. */
-@media (pointer: coarse) {
-  .button {
-    position: relative;
-  }
-
-  .button::after {
-    content: "";
-    position: absolute;
-    inset: -8px -4px;
-  }
-}
-
-/* Libellé court quand la bande est étroite (petits écrans, prono long). */
+/* Le style du bouton vient de BroadcastButton.module.css ; ici seulement le
+   libellé court quand la bande du prono est étroite (petits écrans, prono
+   long) -- la bande est un conteneur de requêtes (PronoBug.module.css). */
 .short {
   display: none;
 }

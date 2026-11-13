@@ -8,7 +8,7 @@ import type { TeamInsights, TeamInsightsResponse } from "@/lib/teamInsights/type
 import { FaceToFaceTab, KeyPlayersTab, RosterTab, TeamSwitch } from "./TeamDetailsTabs";
 import styles from "./TeamDetailsDialog.module.css";
 
-// Popup « Détail des équipes » : en-tête et onglets fixes, contenu qui défile.
+// Popup « Stats des équipes » : en-tête et onglets fixes, contenu qui défile.
 // Montée seulement pendant l'ouverture → rouvre toujours sur « Face à face ».
 
 type LoadState =
@@ -74,7 +74,7 @@ export function TeamDetailsDialog({ subtitle, teamIds, state, onRetry, onClose }
         <div className={styles.header}>
           <div className={styles.headings}>
             <p id={`${uid}-title`} className={styles.title}>
-              Détail des équipes
+              Stats des équipes
             </p>
             <p className={styles.subtitle}>{subtitle}</p>
           </div>

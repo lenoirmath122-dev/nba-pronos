@@ -4,6 +4,7 @@ import { useState } from "react";
 import { track } from "@vercel/analytics";
 import { boxScorePath, boxScoreSheetSchema, boxScoreUrl } from "@/lib/boxScores/schema";
 import type { BoxScoreLoadState } from "./BoxScoreDialog";
+import broadcast from "./BroadcastButton.module.css";
 import styles from "./BoxScoreButton.module.css";
 
 // Feuille de match d'un match terminé (onglet Résultats). Le JSON est lu
@@ -67,7 +68,7 @@ export function BoxScoreBandButton({ onOpen }: { onOpen: () => void }) {
   return (
     <button
       type="button"
-      className={styles.button}
+      className={broadcast.button}
       onClick={(e) => {
         e.stopPropagation();
         onOpen();
@@ -78,8 +79,9 @@ export function BoxScoreBandButton({ onOpen }: { onOpen: () => void }) {
       <span className={styles.full} aria-hidden="true">
         Feuille de match
       </span>
+      {/* Pas « Stats » : se confondrait avec « Stats des équipes ». */}
       <span className={styles.short} aria-hidden="true">
-        Stats
+        Feuille
       </span>
     </button>
   );

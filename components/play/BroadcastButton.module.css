@@ -1,0 +1,43 @@
+/* Bouton façon incrustation télé, partagé par « Feuille de match » (dans la
+   bande du prono, PronoBug) et « Stats des équipes » (en-tête des cartes à
+   venir) : sombre et translucide, coins vifs, Oswald en capitales, lisible sur
+   une couleur d'équipe comme sur le fond des cartes, dans les deux thèmes. */
+.button {
+  min-height: 26px;
+  padding: 0 10px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 2px;
+  /* Encre des bandeaux (sombre dans les deux thèmes), légèrement translucide
+     pour laisser deviner la couleur d'équipe dans la bande du prono. */
+  background: color-mix(in srgb, var(--color-broadcast-ink) 82%, transparent);
+  color: var(--color-broadcast-text);
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: var(--font-weight-semibold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.button:hover {
+  background: var(--color-broadcast-ink);
+}
+
+.button:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* Cible tactile élargie sans grossir le bouton dans la bande de 38 px. */
+@media (pointer: coarse) {
+  .button {
+    position: relative;
+  }
+
+  .button::after {
+    content: "";
+    position: absolute;
+    inset: -8px -4px;
+  }
+}
