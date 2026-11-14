@@ -290,12 +290,21 @@ en ligne 2 à 5 min après le buzzer.
 3. Passage en réel : `sudo sed -i 's/^BOX_SCORES_PUBLISH=.*/BOX_SCORES_PUBLISH=1/' /etc/nba-refresh/env`.
 4. Rattrapage des matchs déjà joués (une fois, hors créneaux 12h/16h) :
    ```bash
-   sudo -u nbarefresh bash -c 'cd /opt/nba-pronos/Cadrage/Stats/service &&
+   sudo -u nbarefresh bash -c 'export CLOUDSDK_CONFIG=/var/lib/nba-refresh/gcloud &&
+     cd /opt/nba-pronos/Cadrage/Stats/service &&
      SUPABASE_URL=$(grep ^SUPABASE_URL= /etc/nba-refresh/env | cut -d= -f2-) \
-     SUPABASE_SERVICE_ROLE_KEY=$(gcloud secrets versions access latest --secret=nba-pronos-supabase-key) \
+     SUPABASE_SERVICE_ROLE_KEY=$(gcloud secrets versions access latest --secret=nba-pronos-supabase-key | tr -cd A-Za-z0-9_.-) \
      /var/lib/nba-refresh/venv/bin/python box_scores.py --backfill --since 2026-10-21'
    ```
-   (`--dry` pour vérifier sans envoyer ; ~0,6 s de pause entre deux matchs.)
+   (`--dry` pour vérifier sans envoyer, `--until AAAA-MM-JJ` pour borner ; ~0,6 s de pause entre
+   deux matchs ; la sortie n'apparaît qu'à la fin quand la commande passe par `gcloud compute ssh`.)
+   `CLOUDSDK_CONFIG` : `nbarefresh` ne peut pas écrire dans son dossier personnel, gcloud échoue
+   sans. `tr -cd` : le secret contient un retour à la ligne final (corrigé aussi dans
+   `load_supabase_key`). Depuis un téléphone, la même commande passe par Cloud Shell
+   (shell.cloud.google.com) dans un `gcloud compute ssh nba-refresh --project nba-pronos-stats-2026
+   --zone us-central1-a --tunnel-through-iap --quiet --command '...'` (guillemets intérieurs
+   doublés et `$` échappés). Un `--backfill --dry` sur un seul jour remplace le soir en `dry`
+   de l'étape 2 (fait ainsi le 14/11/2026).
 5. Contrôle : `curl -s https://<projet>.supabase.co/storage/v1/object/public/box-scores/<jour>/<TRI>-<TRI>.json | head -c 300`.
 
 Retour en arrière : `BOX_SCORES_PUBLISH=0` ; les fichiers déjà publiés restent lisibles.
