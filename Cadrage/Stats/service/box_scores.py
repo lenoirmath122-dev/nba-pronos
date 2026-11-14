@@ -252,7 +252,10 @@ def load_supabase_key() -> str:
     """SUPABASE_SERVICE_ROLE_KEY de l'environnement (refresh_job : run.sh l'exporte),
     sinon Secret Manager via le serveur de métadonnées (poller), en mémoire seulement.
     Même secret que run.sh, même compte de service de la VM."""
-    key = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
+    # strip() : le secret a été enregistré avec un retour à la ligne final (constaté le
+    # 14/11/2026), que `$(gcloud secrets ...)` ne retire pas s'il s'agit d'un \r ;
+    # requests refuse alors l'en-tête Authorization (InvalidHeader).
+    key = (os.environ.get("SUPABASE_SERVICE_ROLE_KEY") or "").strip()
     if key:
         return key
     headers = {"Metadata-Flavor": "Google"}
@@ -385,7 +388,11 @@ def publish(candidates: list[dict], mode: str, *, rewrite: bool = False, source:
                     upload(path, sheet, key)
             except Exception as exc:  # noqa: BLE001 -- réseau, box score pas encore final, Storage
                 counts["failed"] += 1
-                detail = str(exc)[:120] if isinstance(exc, ValueError) else type(exc).__name__
+                # Texte seulement pour nos ValueError (box score incohérent) : les erreurs de
+                # requests héritent parfois de ValueError (InvalidHeader) et leur message
+                # recopie l'en-tête, donc le début de la clé service_role.
+                own_error = isinstance(exc, ValueError) and not isinstance(exc, requests.RequestException)
+                detail = str(exc)[:120] if own_error else type(exc).__name__
                 print(f"[box-scores] {gid} {path} essai {entry['attempts']} échoué ({detail})")
                 continue
             counts["published"] += 1
