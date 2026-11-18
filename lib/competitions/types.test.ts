@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { allowsSeriesBets, hasBracket, isCompetitionType, isSingleMatchSeries } from "./types";
+import { allowedBetScopes, allowsSeriesBets, betSlotMode, hasBracket, isCompetitionType, isSingleMatchSeries } from "./types";
 
 describe("prédicats de type de compétition", () => {
   it("hasBracket : tout sauf DAILY_MATCH", () => {
@@ -11,6 +11,14 @@ describe("prédicats de type de compétition", () => {
     expect(allowsSeriesBets("PLAYOFFS")).toBe(true);
     expect(allowsSeriesBets("NBA_CUP")).toBe(false);
     expect(allowsSeriesBets("DAILY_MATCH")).toBe(false);
+  });
+  it("NBA_CUP et DAILY_MATCH : aucun pari SÉRIE proposé, quota binaire", () => {
+    for (const t of ["NBA_CUP", "DAILY_MATCH"] as const) {
+      expect(allowedBetScopes(t)).toEqual(["MATCH"]);
+      expect(betSlotMode(t)).toBe("BINARY");
+    }
+    expect(allowedBetScopes("PLAYOFFS")).toEqual(["MATCH", "SERIES"]);
+    expect(betSlotMode("PLAYOFFS")).toBe("SERIES_QUOTA");
   });
   it("isSingleMatchSeries : tout sauf PLAYOFFS", () => {
     expect(isSingleMatchSeries("PLAYOFFS")).toBe(false);

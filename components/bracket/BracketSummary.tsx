@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { allowsSeriesBets } from "@/lib/competitions/types";
 import type { BracketData, SeriesLiveSeed } from "@/lib/queries/bracket";
 import type { MyLeague } from "@/lib/queries/leagues";
 import { Countdown } from "@/components/ui/Countdown";
@@ -33,7 +34,7 @@ type BracketSummaryProps = {
 export function BracketSummary({ data, competitionName, liveSeed, myLeagues, canBet }: BracketSummaryProps) {
   // Paris SÉRIE : PLAYOFFS uniquement (NBA Cup les refuse déjà côté
   // save_bet/migration #10).
-  const showBetLink = canBet && data.competitionType === "PLAYOFFS";
+  const showBetLink = canBet && allowsSeriesBets(data.competitionType);
   return (
     <LiveSeriesSubscriber seed={liveSeed}>
       <div className={styles.overlay}>

@@ -14,7 +14,7 @@ import { toAdminCorrection, type AdminCorrection } from "@/lib/queries/adminCorr
 import { resolveLeagueScope } from "@/lib/queries/leagues";
 import { RELEASED_BET_STATUSES, MATCH_SLOT_CAP } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
-import type { CompetitionType } from "@/lib/competitions/types";
+import { allowsSeriesBets, type CompetitionType } from "@/lib/competitions/types";
 import { loadBetStatLines, type ComboForStatLines } from "@/lib/queries/betStatLines";
 
 // Lecture des 2 onglets de "Jouer" (SPEC_REFONTE_ONGLET_JOUER_V0_1) — fusionne
@@ -555,7 +555,7 @@ async function fetchUpcomingWindow(
     const ownBet = ownBetByMatch.get(match.id);
     const hasBetOnThisMatch = Boolean(ownBet && !RELEASED_BET_STATUSES.has(ownBet.status));
     const betSlot: BetSlotIndicator =
-      competition.type === "PLAYOFFS"
+      allowsSeriesBets(competition.type)
         ? {
             mode: "SERIES_QUOTA",
             hasBetOnThisMatch,

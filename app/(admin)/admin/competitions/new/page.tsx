@@ -22,10 +22,10 @@ const ROUND1_SLOTS = [
 // 4 affiches de quarts, équipes choisies librement (pas de conférence pour
 // la Cup, voir lib/actions/admin-competitions.ts).
 const CUP_QUARTER_SLOTS = [
-  { key: "q1", label: "Quart 1" },
-  { key: "q2", label: "Quart 2" },
-  { key: "q3", label: "Quart 3" },
-  { key: "q4", label: "Quart 4" },
+  { key: "q1", label: "Est — Quart 1" },
+  { key: "q2", label: "Est — Quart 2" },
+  { key: "q3", label: "Ouest — Quart 1" },
+  { key: "q4", label: "Ouest — Quart 2" },
 ] as const;
 
 type SearchParams = { competitionError?: string };
@@ -113,7 +113,8 @@ export default async function NewCompetitionPage({
         <div className={styles.playoffsSection}>
           <p className={styles.sectionNote}>
             Affiches des quarts de finale — utilisées uniquement si « NBA Cup » est sélectionné ci-dessus. Les 8
-            équipes qualifiées peuvent être choisies librement (pas de contrainte Est/Ouest).
+            équipes qualifiées peuvent être choisies librement (pas de contrainte Est/Ouest). Les demies associent les deux quarts
+            Est entre eux, puis les deux quarts Ouest : « Est — Quart 1 » et « Est — Quart 2 » jouent la même demie (idem Ouest).
           </p>
           {CUP_QUARTER_SLOTS.map((slot) => (
             <div key={slot.key} className={styles.matchup}>

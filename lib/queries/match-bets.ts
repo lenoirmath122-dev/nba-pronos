@@ -3,7 +3,7 @@ import { hiddenSeriesFilter } from "@/lib/queries/dailyVisibility";
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import { MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { PrefetchedCompetitionContext } from "@/lib/queries/series-bets";
-import type { CompetitionType } from "@/lib/competitions/types";
+import { allowsSeriesBets, type CompetitionType } from "@/lib/competitions/types";
 
 // Lecture DÉDIÉE aux paris MATCH pour l'Accueil — miroir de
 // lib/queries/series-bets.ts::getRemainingSeriesBets() pour le scope MATCH.
@@ -111,7 +111,7 @@ export async function getRemainingMatchBets(prefetched?: PrefetchedCompetitionCo
 
   // Cap MATCH_SLOT_CAP par série — Playoffs uniquement (lib/labels/bets.ts).
   const matchSlotsUsedBySeries = new Map<string, number>();
-  if (competition.type === "PLAYOFFS") {
+  if (allowsSeriesBets(competition.type)) {
     for (const bet of ownBets) {
       if (!RELEASED_BET_STATUSES.has(bet.status)) {
         matchSlotsUsedBySeries.set(bet.series_id, (matchSlotsUsedBySeries.get(bet.series_id) ?? 0) + 1);
