@@ -9,7 +9,7 @@ import { recomputeMatch } from "@/lib/scoring/recompute";
 import { advanceWinnerIfDecided } from "@/lib/scoring/advancement";
 import { parisLocalToUtcIso } from "@/lib/dates/paris";
 import { toClientError } from "@/lib/actions/errors";
-import { hasBracket, type CompetitionType } from "@/lib/competitions/types";
+import { recomputeBracketDeadline } from "@/lib/competitions/bracketDeadline";
 
 // Écriture de l'écran Saisie des résultats (SPEC_ECRAN_ADMIN_RESULTATS_V0_1
 // §3). AUCUNE policy RLS d'INSERT n'existe sur `matches` (même trouvaille
@@ -103,45 +103,6 @@ export async function createMatch(input: {
 
   revalidateAffectedScreens();
   return { success: true };
-}
-
-// Deadline de remplissage du bracket (BACKLOG_V1.md — trouvé en creusant
-// pourquoi le bracket ne se comparait jamais entre joueurs, 30/07/2026) :
-// « le début du premier match qui commence dans la compétition » (définition
-// de l'utilisateur, plus simple que "1er tour uniquement" et strictement
-// équivalente en pratique — un match d'un tour ultérieur ne peut de toute
-// façon pas être créé avant que le tour précédent y ait avancé les 2
-// équipes, cf. la garde plus haut dans createMatch).
-//
-// Recalculée en ENTIER (jamais "si plus tôt que l'actuel") à chaque création
-// de match : un admin peut saisir les matchs dans n'importe quel ordre, donc
-// seul un recalcul complet du minimum reste exact à coup sûr.
-async function recomputeBracketDeadline(
-  service: ReturnType<typeof getServiceClient>,
-  competitionId: string
-): Promise<void> {
-  // Match du jour : pas de bracket, la deadline doit rester NULL (sinon le
-  // rappel de bracket notifierait tout le monde pour un bracket inexistant).
-  const { data: competition } = await service
-    .from("competitions")
-    .select("type")
-    .eq("id", competitionId)
-    .maybeSingle<{ type: CompetitionType }>();
-  if (competition && !hasBracket(competition.type)) return;
-
-  const { data: earliest } = await service
-    .from("matches")
-    .select("scheduled_at")
-    .eq("competition_id", competitionId)
-    .not("scheduled_at", "is", null)
-    .order("scheduled_at", { ascending: true })
-    .limit(1)
-    .maybeSingle<{ scheduled_at: string }>();
-
-  await service
-    .from("competitions")
-    .update({ bracket_deadline: earliest?.scheduled_at ?? null })
-    .eq("id", competitionId);
 }
 
 export async function saveMatchResult(input: {

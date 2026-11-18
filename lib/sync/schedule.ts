@@ -3,6 +3,7 @@ import { getMatchesByDate, normalizeMatchStatus, type RawMatch } from "@/lib/nba
 import { nyDateString } from "@/lib/dates/newyork";
 import { nyDayToSlot } from "@/lib/dates/paris";
 import type { CompetitionType } from "@/lib/competitions/types";
+import { recomputeBracketDeadline } from "@/lib/competitions/bracketDeadline";
 
 // Writer de /api/sync/schedule (SPEC_TECHNIQUE_SYNCHRO_V0.1 §5/§6, correctif
 // post-validation §5.2/§12 — voir la discussion tenue avec l'utilisateur le
@@ -225,6 +226,12 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
     matchInternalIdBySourceRef.set(sourceRef, inserted.id); // évite un doublon si le même match reparaît sur 2 dates de l'horizon
     matchCountBySeries.set(series.id, gameNumber);
     result.created++;
+  }
+
+  // Le bracket a besoin de son échéance (verrouillage + rappel) : posée ici dès
+  // que la synchro crée des matchs, sans passer par la saisie admin.
+  if (!isDaily && result.created > 0) {
+    await recomputeBracketDeadline(supabase, activeCompetition.id);
   }
 
   return result;

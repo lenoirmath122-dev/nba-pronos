@@ -27,7 +27,13 @@ vi.mock("@/lib/supabase/service", () => ({
           return chain;
         },
         in: () => Promise.resolve({ data: fx.matchRows }),
-        maybeSingle: () => Promise.resolve({ data: { id: "c1", type: fx.competitionType } }),
+        not: () => chain,
+        order: () => chain,
+        limit: () => chain,
+        maybeSingle: () =>
+          Promise.resolve({
+            data: table === "matches" ? { scheduled_at: "2026-12-04T23:00:00.000Z" } : { id: "c1", type: fx.competitionType },
+          }),
         update: (payload: unknown) => {
           updates.push({ table, payload });
           return { eq: () => Promise.resolve({ error: null }) };
@@ -92,6 +98,31 @@ describe("syncSchedule", () => {
     expect(r.created).toBe(1);
     expect(r.ignoredNotDrawn).toBe(0);
     expect(inserts.some((i) => i.table === "matches")).toBe(true);
+  });
+
+  it("NBA_CUP : la synchro pose bracket_deadline après avoir créé des matchs", async () => {
+    fx = {
+      competitionType: "NBA_CUP",
+      series: [{ id: "s1", competition_id: "c1", team1_id: "t-bos", team2_id: "t-nyk", official_status: "SCHEDULED", slot_index: 0 }],
+      matchRows: [],
+      matchMappings: [],
+    };
+    getMatchesByDate.mockResolvedValueOnce({ data: [raw(10)], requestsRemaining: 9 }).mockResolvedValue({ data: [], requestsRemaining: 9 });
+    const r = await syncSchedule(NOW);
+    expect(r.created).toBe(1);
+    expect(updates).toContainEqual({ table: "competitions", payload: { bracket_deadline: "2026-12-04T23:00:00.000Z" } });
+  });
+
+  it("DAILY_MATCH : aucune bracket_deadline posée (pas de bracket)", async () => {
+    fx = {
+      competitionType: "DAILY_MATCH",
+      series: [{ id: "s1", competition_id: "c1", team1_id: "t-bos", team2_id: "t-nyk", official_status: "IN_PROGRESS", slot_index: 20261020 }],
+      matchRows: [{ id: "m1", series_id: "s1" }],
+      matchMappings: [{ internal_id: "m1", source_ref: "99" }],
+    };
+    getMatchesByDate.mockResolvedValueOnce({ data: [raw(99)], requestsRemaining: 9 }).mockResolvedValue({ data: [], requestsRemaining: 9 });
+    await syncSchedule(NOW);
+    expect(updates.some((u) => u.table === "competitions")).toBe(false);
   });
 
   it("DAILY_MATCH : un match non tiré n'est jamais créé ni listé dans skipped", async () => {
