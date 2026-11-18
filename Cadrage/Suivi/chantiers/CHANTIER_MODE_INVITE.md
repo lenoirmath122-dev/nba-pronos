@@ -1,6 +1,6 @@
 # Chantier — mode invité intégral (visiteurs Instagram)
 
-> **Nature** : vivant, cadrage validé le 17/11/2026, **lots A à G codés, recette manuelle à faire**. À ne lire que quand
+> **Nature** : **ABANDONNÉ le 18/11/2026 (code A-G à supprimer, voir REPRISE)** ; cadrage 17/11/2026, lots A à G codés. À ne lire que quand
 > la session porte sur ce chantier. Quand un lot est livré, le retirer ici ET dans `GAPS_OUVERTS.md`.
 > Prolonge `CHANTIER_ACCUEIL_INVITES.md` (accueil jouable, comptes `PENDING`, lien magique : déjà sur `main`).
 
