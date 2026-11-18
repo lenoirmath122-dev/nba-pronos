@@ -1,6 +1,6 @@
 # Chantier — Bêta NBA Cup réelle (décembre 2026)
 
-> **Statut 18/11/2026 (exécution) : L1, L2, L3, L5, L6 codés (branche `feat/beta-nba-cup`, PR à merger). L4 (sonde Highlightly) NON faite : attend l'accord de l'utilisateur pour 1-2 appels ; le discriminant de L6 est donc le repli « 4 matchs / 8 équipes / 2 par conférence » (voir `lib/sync/cupQuarters.ts`).**
+> **Statut 18/11/2026 (exécution) : L1, L2, L3, L5, L6 codés (branche `claude/beta-nba-cup-430d34`, PR à merger). L4 (sonde Highlightly) NON faite : attend l'accord de l'utilisateur pour 1-2 appels ; le discriminant de L6 est donc le repli « 4 matchs / 8 équipes / 2 par conférence » (voir `lib/sync/cupQuarters.ts`).**
 
 Cadrage du 18/11/2026. Statut : **décisions prises le 18/11** (voir en bas), prêt pour l'exécution.
 
@@ -42,7 +42,7 @@ Cadrage du 18/11/2026. Statut : **décisions prises le 18/11** (voir en bas), pr
    (appel `create_bet` SERIES avec un compte admin → refus attendu, rien d'écrit ; affichage d'un quart
    `SCHEDULED` sur `/play`). Avant, on peut les couvrir par tests unitaires purs.
 
-## Lots proposés (exécution Sonnet, une branche `feat/beta-nba-cup`)
+## Lots proposés (exécution Sonnet, une branche `claude/beta-nba-cup-430d34`)
 - **L1 — Échéance du bracket** : après création de matchs dans `syncSchedule`, recalculer `bracket_deadline`
   (extraire `recomputeBracketDeadline` dans un module partagé). Test unitaire dans `lib/sync/schedule.test.ts`.
 - **L2 — Formulaire** : libellés Est/Ouest des quarts + aide « Quart 1 et 2 = même demie ».
