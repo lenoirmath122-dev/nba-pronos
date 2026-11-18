@@ -7,6 +7,8 @@ import { setChatReaction } from "@/lib/actions/chat";
 import type { ChatMessage, ChatReaction, ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
 import { ChatMessageRow } from "./ChatMessageRow";
 import { ChatComposer } from "./ChatComposer";
+import { GuestChatComposer } from "./GuestChatComposer";
+import { useRequireAuth } from "@/components/auth/AuthGateProvider";
 import styles from "./ChatSubscriber.module.css";
 
 // Provider + rendu de la liste (SPEC_CHAT_V0_1.md §4/§5) : même patron que
@@ -32,7 +34,8 @@ type ChatSubscriberProps = {
   seed: ChatMessage[];
   roster: ChatRosterEntry[];
   scope: ChatScope;
-  currentUserId: string;
+  /** null = invité : lecture seule, pas de temps réel, écriture via la modale de compte. */
+  currentUserId: string | null;
   isCurrentUserAdmin: boolean;
   /** Texte pré-rempli du champ de saisie (`/chat?citer=`). */
   initialText?: string;
@@ -45,6 +48,8 @@ function withReaction(reactions: ChatReaction[], userId: string, emoji: string |
 }
 
 export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUserAdmin, initialText }: ChatSubscriberProps) {
+  const isGuest = currentUserId === null;
+  const requireAuth = useRequireAuth();
   const [messages, setMessages] = useState<ChatMessage[]>(seed);
   const scopeKey = scope.type === "LEAGUE" ? scope.leagueId : "GLOBAL";
 
@@ -67,6 +72,8 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
   }, [roster]);
 
   useEffect(() => {
+    // Invité : pas de canal Realtime (une connexion par visiteur anonyme).
+    if (isGuest) return;
     const supabase = getBrowserClient();
     const filter = scope.type === "GLOBAL" ? "scope_type=eq.GLOBAL" : `league_id=eq.${scope.leagueId}`;
     const channelName = `chat-${scopeKey}`;
@@ -132,8 +139,8 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
   // ceux reçus en direct pendant qu'elle reste à l'écran (pastilles p3-7).
   const latestAt = messages.at(-1)?.createdAt;
   useEffect(() => {
-    if (latestAt) markChatChannelSeen(scope.type === "LEAGUE" ? scope.leagueId : "general", latestAt);
-  }, [scope, latestAt]);
+    if (!isGuest && latestAt) markChatChannelSeen(scope.type === "LEAGUE" ? scope.leagueId : "general", latestAt);
+  }, [scope, latestAt, isGuest]);
 
   // Ouverture au dernier message (page-scroll, cf. ChatSubscriber.module.css) :
   // saut instantané en bas au montage, puis défilement doux à chaque nouveau
@@ -152,10 +159,10 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
     }
     if (messageCount <= prev) return;
     const nearBottom = el.scrollHeight - window.scrollY - window.innerHeight < 300;
-    if (nearBottom || lastUserId === currentUserId) {
+    if (nearBottom || (!isGuest && lastUserId === currentUserId)) {
       window.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
     }
-  }, [messageCount, lastUserId, currentUserId]);
+  }, [messageCount, lastUserId, currentUserId, isGuest]);
 
   function handleDeleted(messageId: string) {
     setMessages((prev) => prev.filter((m) => m.id !== messageId));
@@ -164,6 +171,10 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
   // Mise à jour optimiste ; si l'action échoue on rétablit l'état précédent
   // de la réaction du joueur.
   function handleReact(messageId: string, emoji: string | null) {
+    if (currentUserId === null) {
+      requireAuth({ type: "react", returnUrl: "/chat?canal=general" });
+      return;
+    }
     const previous =
       messages.find((m) => m.id === messageId)?.reactions.find((r) => r.userId === currentUserId)?.emoji ?? null;
     const apply = (value: string | null) =>
@@ -186,17 +197,22 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
             <ChatMessageRow
               key={message.id}
               message={message}
-              isOwn={message.userId === currentUserId}
+              isOwn={!isGuest && message.userId === currentUserId}
               canDelete={isCurrentUserAdmin}
               onDeleted={handleDeleted}
               onReact={handleReact}
-              currentUserId={currentUserId}
+              currentUserId={currentUserId ?? ""}
               roster={roster}
+              readOnly={isGuest}
             />
           ))
         )}
       </div>
-      <ChatComposer scope={scope} roster={roster} currentUserId={currentUserId} initialText={initialText} />
+      {currentUserId === null ? (
+        <GuestChatComposer />
+      ) : (
+        <ChatComposer scope={scope} roster={roster} currentUserId={currentUserId} initialText={initialText} />
+      )}
     </div>
   );
 }

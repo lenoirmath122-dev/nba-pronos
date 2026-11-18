@@ -31,7 +31,33 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) redirect("/login");
+
+  // Invité (18/11/2026) : lecture du seul canal Général, sans ligues ni
+  // sourdines ; écrire passe par la modale de compte (GuestChatComposer).
+  if (!user) {
+    if (canal !== "general") redirect("/chat?canal=general");
+    const [guestRoster, guestMessages] = await Promise.all([getChatRoster(), getChatMessages({ type: "GLOBAL" })]);
+    const guestShowcases = Object.fromEntries(
+      await getRowShowcases([...new Set(guestMessages.map((m) => m.userId))], 1).catch(() => new Map())
+    );
+    return (
+      <div className={`${styles.page} photo-page`}>
+        <div className={`${styles.header} glass-card`}>
+          <h1 className={styles.title}>Général</h1>
+        </div>
+        <ShowcaseProvider showcases={guestShowcases}>
+          <ChatSubscriber
+            key="GLOBAL"
+            seed={guestMessages}
+            roster={guestRoster}
+            scope={{ type: "GLOBAL" }}
+            currentUserId={null}
+            isCurrentUserAdmin={false}
+          />
+        </ShowcaseProvider>
+      </div>
+    );
+  }
 
   const [myLeagues, roster, muted] = await Promise.all([getMyLeagues(), getChatRoster(), getMutedChannels()]);
 

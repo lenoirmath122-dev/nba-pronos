@@ -70,7 +70,7 @@ export default async function PlayerProfilePage({
   ]);
 
   return (
-    <ScreenShell authenticated={user !== null}>
+    <ScreenShell authenticated={user !== null} guestTabs>
       <div className={`${styles.page} photo-page`}>
         <ProfileHeader
           userId={profile.userId}

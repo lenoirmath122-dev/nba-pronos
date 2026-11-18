@@ -10,18 +10,12 @@ import { createServerClient } from "@supabase/ssr";
 // `proxy.ts`, export nommé `proxy` — comportement identique, cf. T6a §4.1
 // correctif post-validation).
 
-const APP_ZONE_PREFIXES = ["/home", "/play", "/profile"];
+// /play et /chat sont ouverts aux invités (lecture, 18/11/2026) : le compte n'est
+// demandé qu'au moment d'agir. /home et /profile restent derrière le compte.
+const APP_ZONE_PREFIXES = ["/home", "/profile"];
 const ADMIN_ZONE_PREFIX = "/admin";
-// Pages réservées aux visiteurs : un connecté est renvoyé vers /home. "/" est
-// la page d'accueil publique (socle SEO, 05/10/2026).
-const AUTH_PAGES = ["/", "/login", "/signup"];
-// Mode invité (lot A) : pages de lecture publiques, sans zone (app). Un connecté
-// y est renvoyé vers /play (son équivalent complet).
-const GUEST_ONLY_PREFIXES = ["/matchs", "/match"];
-// Un invité qui ouvre /chat lit le canal Général en lecture seule : réécriture
-// (l'URL ne change pas, aucune redirection) vers une page publique.
-const GUEST_CHAT_PATH = "/chat";
-const GUEST_CHAT_REWRITE = "/chat-invite";
+// Pages réservées aux visiteurs : un connecté est renvoyé vers /play.
+const AUTH_PAGES = ["/login", "/signup"];
 
 // Cookie de session posé par @supabase/ssr : `sb-<ref>-auth-token`, éventuellement
 // découpé en `.0`, `.1`… (le cookie PKCE `…-auth-token-code-verifier` matche aussi,
@@ -113,15 +107,9 @@ function routeGuard(
     return NextResponse.redirect(new URL("/play", request.url));
   }
 
-  const isGuestOnly = GUEST_ONLY_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
-  if (isGuestOnly && user) {
-    return NextResponse.redirect(new URL("/play", request.url));
-  }
-
-  if (pathname === GUEST_CHAT_PATH && !user) {
-    return NextResponse.rewrite(new URL(GUEST_CHAT_REWRITE, request.url));
+  // Accueil : l'invité ouvre la vraie appli (/play), le connecté son Actualité.
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL(user ? "/home" : "/play", request.url));
   }
 
   return response;

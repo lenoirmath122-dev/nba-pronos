@@ -3,6 +3,7 @@
 import { useEffect, useId, useState, useTransition } from "react";
 import type { PlayAssociatedBet } from "@/lib/queries/play";
 import { submitBet } from "@/lib/actions/bets";
+import { useIsAuthenticated, useRequireAuth } from "@/components/auth/AuthGateProvider";
 import { useUnsavedGuard } from "@/lib/hooks/useUnsavedGuard";
 import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 import { Spinner } from "@/components/ui/Spinner";
@@ -95,6 +96,8 @@ export function MatchBetZone({
   const [local, setLocal] = useState<LocalSubmission | null>(null);
   const [isPending, startTransition] = useTransition();
   const showToast = useToast();
+  const requireAuth = useRequireAuth();
+  const authenticated = useIsAuthenticated();
   const showValidated = useValidatedDialog();
   const { markDirty, clearDirty } = useUnsavedGuard(`bet:${matchId}`);
   const fieldId = useId();
@@ -103,13 +106,17 @@ export function MatchBetZone({
   const empty = description.trim().length === 0;
 
   useEffect(() => {
-    if (isOpen && description !== (draft?.description ?? "")) markDirty();
+    if (authenticated && isOpen && description !== (draft?.description ?? "")) markDirty();
     else clearDirty();
-  }, [isOpen, description, draft?.description, markDirty, clearDirty]);
+  }, [authenticated, isOpen, description, draft?.description, markDirty, clearDirty]);
 
   useEffect(() => () => clearDirty(), [clearDirty]);
 
   function handleSubmit(confirmPlayerNotInMatch = false, confirmVagueBet = false) {
+    if (!authenticated) {
+      requireAuth({ type: "bet", payload: { matchId } });
+      return;
+    }
     setError(null);
     startTransition(async () => {
       const payload = {

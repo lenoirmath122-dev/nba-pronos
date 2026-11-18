@@ -88,7 +88,11 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev -- --port 3100",
-    url: "http://localhost:3100",
+    // Sonde de démarrage sur /login, page sans donnée de compétition : depuis
+    // que `/` redirige l'invité vers /play (18/11/2026), sonder `/` rendait /play
+    // AVANT le seed (globalSetup) et gardait « aucune compétition » 10 min en
+    // cache (unstable_cache de getActiveCompetition) pour toute la suite.
+    url: "http://localhost:3100/login",
     reuseExistingServer: false,
     timeout: 120_000,
     env: {

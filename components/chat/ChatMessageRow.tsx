@@ -50,9 +50,11 @@ type ChatMessageRowProps = {
   onReact: (messageId: string, emoji: string | null) => void;
   currentUserId: string;
   roster: ChatRosterEntry[];
+  /** Invité : lecture seule (pas de signalement). */
+  readOnly?: boolean;
 };
 
-export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, currentUserId, roster }: ChatMessageRowProps) {
+export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, currentUserId, roster, readOnly = false }: ChatMessageRowProps) {
   const [state, formAction, pending] = useActionState(deleteChatMessageFormAction, undefined);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -236,7 +238,7 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
                   <button type="button" role="menuitem" className={styles.menuItem} onClick={copyBody}>
                     {copied ? "Copié ✓" : "Copier"}
                   </button>
-                  {!isOwn && (
+                  {!isOwn && !readOnly && (
                     <button
                       type="button"
                       role="menuitem"
@@ -322,7 +324,7 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
           </div>
         )}
       </div>
-      {!isOwn && (
+      {!isOwn && !readOnly && (
         <ReportMessageDialog messageId={message.id} isOpen={reportOpen} onClose={() => setReportOpen(false)} />
       )}
       {state?.error && (

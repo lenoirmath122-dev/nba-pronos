@@ -42,7 +42,7 @@ export default async function BracketPage({ searchParams }: BracketPageProps) {
   const liveSeed = data.isStructureKnown && data.competitionId ? await getSeriesLiveSeed(data.competitionId) : [];
 
   return (
-    <ScreenShell authenticated={user !== null}>
+    <ScreenShell authenticated={user !== null} guestTabs>
       {data.competitionId === null ? (
         <>
           <div className={`${styles.header} hero-banner`}>

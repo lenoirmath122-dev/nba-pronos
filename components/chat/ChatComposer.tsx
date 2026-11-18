@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { postChatMessageFormAction } from "@/lib/actions/chat";
 import type { ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
 import { activeMentionQuery } from "@/lib/chat/mentions";
+import { CHAT_DRAFT_KEY } from "@/lib/auth/pendingAction";
 import styles from "./ChatComposer.module.css";
 
 // Formulaire d'envoi (SPEC_CHAT_V0_1.md §5) : useActionState plutôt que le
@@ -43,6 +44,26 @@ export function ChatComposer({ scope, roster, currentUserId, initialText }: Chat
     url.searchParams.delete("citer");
     window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
   }, [initialText]);
+  // Reprise après création de compte (`?reprise=chat`) : remet le brouillon de
+  // l'invité (GuestChatComposer) dans le champ, sans rien envoyer à sa place.
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("reprise") !== "chat") return;
+    url.searchParams.delete("reprise");
+    window.history.replaceState(window.history.state, "", url.pathname + url.search + url.hash);
+    try {
+      const draft = window.localStorage.getItem(CHAT_DRAFT_KEY);
+      window.localStorage.removeItem(CHAT_DRAFT_KEY);
+      const el = textareaRef.current;
+      if (draft && el && !el.value) {
+        el.value = draft;
+        el.focus();
+        el.setSelectionRange(draft.length, draft.length);
+      }
+    } catch {
+      // Stockage indisponible : pas de brouillon à restaurer.
+    }
+  }, []);
   // Mention en cours de saisie (`@abc` avant le curseur) et choix surligné.
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   const [highlighted, setHighlighted] = useState(0);

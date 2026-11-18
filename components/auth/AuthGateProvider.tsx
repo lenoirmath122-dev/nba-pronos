@@ -7,7 +7,6 @@ import {
   type PendingActionType,
 } from "@/lib/auth/pendingAction";
 import { trackFunnel } from "@/lib/funnel/track";
-import { GuestBanner } from "@/components/guest/GuestBanner";
 
 // Porte d'authentification (mode invité, lot B). `requireAuth(action)` : un
 // connecté exécute `run` tout de suite ; un invité voit la modale, et l'action
@@ -28,7 +27,7 @@ export type RequireAuthInput = {
   run?: () => void;
 };
 
-type Gate = { requireAuth: (input: RequireAuthInput) => void };
+type Gate = { requireAuth: (input: RequireAuthInput) => void; authenticated: boolean };
 
 const GateContext = createContext<Gate | null>(null);
 
@@ -36,6 +35,11 @@ export function useRequireAuth(): Gate["requireAuth"] {
   const gate = useContext(GateContext);
   if (!gate) throw new Error("useRequireAuth doit être utilisé sous <AuthGateProvider>.");
   return gate.requireAuth;
+}
+
+/** Vrai si le visiteur a une session (permet de masquer les états « mon prono » côté invité). */
+export function useIsAuthenticated(): boolean {
+  return useContext(GateContext)?.authenticated ?? false;
 }
 
 export function AuthGateProvider({ authenticated, children }: { authenticated: boolean; children: ReactNode }) {
@@ -73,17 +77,11 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
     [authenticated, openModal],
   );
 
-  const value = useMemo(() => ({ requireAuth }), [requireAuth]);
+  const value = useMemo(() => ({ requireAuth, authenticated }), [requireAuth, authenticated]);
 
   return (
     <GateContext.Provider value={value}>
       {children}
-      {authenticated ? null : <GuestBanner
-          onCreate={() => {
-            trackFunnel("auth_modal_opened");
-            openModal();
-          }}
-        />}
       {open && Modal ? <Modal onClose={() => setOpen(false)} /> : null}
     </GateContext.Provider>
   );

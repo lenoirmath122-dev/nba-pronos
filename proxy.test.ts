@@ -30,17 +30,22 @@ describe("proxy — visiteur sans cookie de session", () => {
   });
 
   it("renvoie toujours les zones protégées vers /login", async () => {
-    for (const path of ["/home", "/play/bets/new", "/profile", "/admin/logs"]) {
+    for (const path of ["/home", "/profile", "/admin/logs"]) {
       const res = await proxy(req(path));
       expect(res.headers.get("location")).toBe("https://panierballon.fr/login");
     }
   });
 
-  it("laisse passer les pages publiques et la page d'accueil", async () => {
-    for (const path of ["/", "/login", "/leaderboard", "/regles"]) {
+  it("laisse passer les pages publiques et la lecture de l'appli (/play, /chat)", async () => {
+    for (const path of ["/login", "/leaderboard", "/regles", "/play", "/play/results", "/chat"]) {
       const res = await proxy(req(path));
       expect(res.headers.get("location")).toBeNull();
     }
+  });
+
+  it("envoie l'invité de / vers /play (la vraie appli)", async () => {
+    const res = await proxy(req("/"));
+    expect(res.headers.get("location")).toBe("https://panierballon.fr/play");
   });
 
   it("laisse passer une Server Action sans rediriger", async () => {
@@ -52,9 +57,14 @@ describe("proxy — visiteur sans cookie de session", () => {
 });
 
 describe("proxy — avec cookie de session", () => {
-  it("vérifie la session et renvoie un connecté de / vers /play (page d’arrivée)", async () => {
+  it("vérifie la session et renvoie un connecté de / vers /home", async () => {
     const res = await proxy(req("/", SESSION_COOKIE));
     expect(getUser).toHaveBeenCalledOnce();
+    expect(res.headers.get("location")).toBe("https://panierballon.fr/home");
+  });
+
+  it("renvoie un connecté de /login vers /play", async () => {
+    const res = await proxy(req("/login", SESSION_COOKIE));
     expect(res.headers.get("location")).toBe("https://panierballon.fr/play");
   });
 

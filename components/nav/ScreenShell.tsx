@@ -1,5 +1,8 @@
 import { TabBar } from "./TabBar";
 import { PublicNav } from "./PublicNav";
+import { GuestTabBar } from "./GuestTabBar";
+import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
+import { GuestPhotoTheme } from "@/components/theme/GuestPhotoTheme";
 import { getNavBadgeData } from "@/lib/queries/home";
 import styles from "./ScreenShell.module.css";
 
@@ -11,10 +14,12 @@ import styles from "./ScreenShell.module.css";
 // tranché par la page appelante (une seule lecture de session par requête).
 type ScreenShellProps = {
   authenticated: boolean;
+  /** Écran de l'appli (Classement, joueurs, bracket) : l'invité garde la barre d'onglets de /play au lieu de la nav publique. */
+  guestTabs?: boolean;
   children: React.ReactNode;
 };
 
-export async function ScreenShell({ authenticated, children }: ScreenShellProps) {
+export async function ScreenShell({ authenticated, guestTabs = false, children }: ScreenShellProps) {
   if (authenticated) {
     // Pastilles TabBar (18/09/2026) : même donnée que app/(app)/layout.tsx,
     // ici recalculée par écran plutôt que par layout puisque ces routes n'en
@@ -24,6 +29,18 @@ export async function ScreenShell({ authenticated, children }: ScreenShellProps)
       <div className={styles.shell}>
         <main className={styles.content}>{children}</main>
         <TabBar navBadges={navBadges} />
+      </div>
+    );
+  }
+
+  if (guestTabs) {
+    return (
+      <div className={styles.shell}>
+        <GuestPhotoTheme />
+        <AuthGateProvider authenticated={false}>
+          <main className={styles.content}>{children}</main>
+          <GuestTabBar />
+        </AuthGateProvider>
       </div>
     );
   }
