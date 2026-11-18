@@ -1,7 +1,8 @@
-# Reprise — NBA Pronos (18/11/2026, passation 43)
-- **Invité dans la vraie appli : codé, PR `feat/invite-play` à merger** (3 commits : suppression A-G, ouverture `/play` + `/chat` en lecture,
-  compte exigé à l'action). Plan : `chantiers/CHANTIER_INVITE_PLAY.md`. `/` : invité -> `/play`, connecté -> `/home`. Vérifié en navigateur
-  sans session (`/play`, Résultats, Chat Général, modale au clic) ; reste la recette de la PR (mobile, webview Instagram, connecté).
+# Reprise — NBA Pronos (18/11/2026, passation 44)
+- **Invité dans la vraie appli : PR #309 (`feat/invite-play`) à merger** : suppression A-G, `/play` + `/chat` en lecture, compte exigé
+  à l'action, `/` -> `/play` (invité) ou `/home`. Ajouts 18/11 : barre d'onglets invité sur Classement, joueurs, bracket (`ScreenShell guestTabs`) ;
+  fond photo par défaut pour l'invité sans cookie `pb-theme` (`components/theme/GuestPhotoTheme.tsx`). Barre validée par l'utilisateur.
+  Reste : recette sur la preview (mobile, webview Instagram, compte connecté inchangé). Plan : `chantiers/CHANTIER_INVITE_PLAY.md`.
 - **Après merge** : mesurer le quota CPU Vercel (rendu dynamique de `/play` par les invités). **À trancher** : SEO de `/` (redirection,
   `/play` en Disallow dans `robots.ts`, `sitemap.ts` liste `/`) et sort de la page d'accueil jouable `app/(public)/page.tsx` (voir GAPS).
 - **Migrations en prod** : `20261118090000` (anon limité aux colonnes publiques de `users`, à GARDER) ; `20261118120000` (événements funnel
