@@ -5,6 +5,7 @@ import { registerPronos, requestLoginLink } from "@/lib/auth/guest";
 import { BASKET_KEY, parseBasket, type BasketItem } from "@/lib/publicHome/basket";
 import { PSEUDO_MAX_LENGTH } from "@/lib/pseudo/rules";
 import { GoogleButton } from "@/components/auth/GoogleButton";
+import { OpenInBrowserNotice } from "@/components/auth/OpenInBrowserNotice";
 import styles from "@/components/auth/AuthScreen.module.css";
 import gate from "./AuthGateModal.module.css";
 
@@ -127,6 +128,7 @@ export function AuthGateModal({ onClose }: { onClose: () => void }) {
               <>
                 <p className={styles.separator}>ou</p>
                 <GoogleButton />
+                <OpenInBrowserNotice />
               </>
             ) : null}
             <p className={styles.linkLine}>

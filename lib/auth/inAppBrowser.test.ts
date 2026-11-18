@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { detectInAppBrowser, isInAppBrowser } from "./inAppBrowser";
+import { androidChromeIntentUrl, detectInAppBrowser, isAndroid, isInAppBrowser } from "./inAppBrowser";
 
 describe("isInAppBrowser", () => {
   it("reconnaît les navigateurs intégrés d'Instagram et de Facebook", () => {
@@ -25,5 +25,24 @@ describe("detectInAppBrowser", () => {
   it("renvoie null pour un navigateur ordinaire ou un User-Agent absent", () => {
     expect(detectInAppBrowser("Mozilla/5.0 (Windows NT 10.0) Chrome/120.0 Safari/537.36")).toBeNull();
     expect(detectInAppBrowser(null)).toBeNull();
+  });
+});
+
+describe("androidChromeIntentUrl", () => {
+  it("construit un intent Chrome pour une page https", () => {
+    expect(androidChromeIntentUrl("https://panierballon.fr/match/1?src=ig")).toBe(
+      "intent://panierballon.fr/match/1?src=ig#Intent;scheme=https;package=com.android.chrome;end",
+    );
+  });
+  it("refuse http et les URL invalides", () => {
+    expect(androidChromeIntentUrl("http://localhost:3000/")).toBeNull();
+    expect(androidChromeIntentUrl("pas une url")).toBeNull();
+  });
+});
+
+describe("isAndroid", () => {
+  it("détecte Android", () => {
+    expect(isAndroid("Mozilla/5.0 (Linux; Android 14) [FB_IAB/FB4A]")).toBe(true);
+    expect(isAndroid("Mozilla/5.0 (iPhone) Instagram")).toBe(false);
   });
 });
