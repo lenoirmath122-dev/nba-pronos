@@ -1,33 +1,42 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import styles from "./guest.module.css";
 
 // Bandeau invité (mode invité, lot E) : en bas de page, dans le flux (il ne
 // recouvre rien), fermable, et la fermeture est mémorisée sur ce navigateur.
 export const GUEST_BANNER_KEY = "pb.guestBannerClosed.v1";
 
+const listeners = new Set<() => void>();
+let closedInMemory = false;
+
+function subscribe(cb: () => void) {
+  listeners.add(cb);
+  return () => listeners.delete(cb);
+}
+
+function isClosed(): boolean {
+  if (closedInMemory) return true;
+  try {
+    return window.localStorage.getItem(GUEST_BANNER_KEY) === "1";
+  } catch {
+    return false;
+  }
+}
+
 export function GuestBanner({ onCreate }: { onCreate: () => void }) {
-  // Caché tant que le stockage n'est pas lu : pas de flash pour qui l'a déjà fermé.
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    try {
-      setVisible(window.localStorage.getItem(GUEST_BANNER_KEY) !== "1");
-    } catch {
-      setVisible(true);
-    }
-  }, []);
-
-  if (!visible) return null;
+  // Côté serveur le bandeau est caché (snapshot « fermé ») : pas de flash pour qui l'a déjà fermé.
+  const closed = useSyncExternalStore(subscribe, isClosed, () => true);
+  if (closed) return null;
 
   function close() {
-    setVisible(false);
+    closedInMemory = true;
     try {
       window.localStorage.setItem(GUEST_BANNER_KEY, "1");
     } catch {
-      // Navigation privée : fermé pour cette page seulement.
+      // Navigation privée : fermé pour cette session de page seulement.
     }
+    listeners.forEach((cb) => cb());
   }
 
   return (
