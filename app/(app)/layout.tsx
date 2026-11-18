@@ -5,6 +5,7 @@ import { getNavBadgeData } from "@/lib/queries/home";
 import { getRecentAdminValidatedBets } from "@/lib/queries/bets";
 import { TabBar } from "@/components/nav/TabBar";
 import { GuestTabBar } from "@/components/nav/GuestTabBar";
+import { GuestPhotoTheme } from "@/components/theme/GuestPhotoTheme";
 import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
 import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
 import { ToastProvider } from "@/components/ui/Toast";
@@ -37,6 +38,7 @@ export default async function AppLayout({
   if (!user) {
     return (
       <div className={styles.shell}>
+        <GuestPhotoTheme />
         <AuthGateProvider authenticated={false}>
           <UnsavedGuardProvider>
             <ToastProvider>

@@ -2,6 +2,7 @@ import { TabBar } from "./TabBar";
 import { PublicNav } from "./PublicNav";
 import { GuestTabBar } from "./GuestTabBar";
 import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
+import { GuestPhotoTheme } from "@/components/theme/GuestPhotoTheme";
 import { getNavBadgeData } from "@/lib/queries/home";
 import styles from "./ScreenShell.module.css";
 
@@ -35,6 +36,7 @@ export async function ScreenShell({ authenticated, guestTabs = false, children }
   if (guestTabs) {
     return (
       <div className={styles.shell}>
+        <GuestPhotoTheme />
         <AuthGateProvider authenticated={false}>
           <main className={styles.content}>{children}</main>
           <GuestTabBar />
