@@ -1,6 +1,8 @@
 # Chantier — Bêta NBA Cup réelle (décembre 2026)
 
-> **Statut 18/11/2026 (exécution) : L1, L2, L3, L5, L6 codés (branche `claude/beta-nba-cup-430d34`, PR à merger). L4 (sonde Highlightly) NON faite : attend l'accord de l'utilisateur pour 1-2 appels ; le discriminant de L6 est donc le repli « 4 matchs / 8 équipes / 2 par conférence » (voir `lib/sync/cupQuarters.ts`).**
+> **Statut 18/11/2026 (exécution) : L1 à L6 faits (branche `claude/beta-nba-cup-430d34`, PR #311).**
+>
+> **L4 (sonde faite le 18/11, 1 appel `/matches?date=2026-11-17`, 91 requêtes restantes) :** les matchs NBA (dont Cup, mardi) portent `league: "NBA"`, statut `Finished`. Un match ne porte que `id, league, season, date, state, homeTeam, awayTeam` : **aucun champ de phase/tour**, donc impossible de distinguer un match de Cup d'un match de saison régulière côté API. Filtre `lib/nba/client.ts` inchangé (aucun besoin de l'élargir). Conséquence pour L6 : discriminant = « exactement 4 matchs, 8 équipes, 2 par conférence » ; si des matchs de saison régulière tombent les 04-05/12, la détection refuse et l'admin saisit à la main. À re-vérifier sur les vrais quarts le 28/11.
 
 Cadrage du 18/11/2026. Statut : **décisions prises le 18/11** (voir en bas), prêt pour l'exécution.
 
