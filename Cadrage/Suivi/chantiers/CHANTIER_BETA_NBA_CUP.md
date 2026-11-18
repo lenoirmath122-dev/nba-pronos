@@ -1,5 +1,7 @@
 # Chantier — Bêta NBA Cup réelle (décembre 2026)
 
+> **Statut 18/11/2026 (exécution) : L1, L2, L3, L5, L6 codés (branche `feat/beta-nba-cup`, PR à merger). L4 (sonde Highlightly) NON faite : attend l'accord de l'utilisateur pour 1-2 appels ; le discriminant de L6 est donc le repli « 4 matchs / 8 équipes / 2 par conférence » (voir `lib/sync/cupQuarters.ts`).**
+
 Cadrage du 18/11/2026. Statut : **décisions prises le 18/11** (voir en bas), prêt pour l'exécution.
 
 ## Calendrier officiel 2026 (source nba.com, vérifié le 18/11)
@@ -59,12 +61,41 @@ Cadrage du 18/11/2026. Statut : **décisions prises le 18/11** (voir en bas), pr
 - **L5 — Runbook admin** (dans ce fichier) : J-0 28/11, contrôles J+2 (quarts créés, échéance posée),
   recette réelle garde SERIES + rendu `/play`, clôture après la finale.
 
-## Runbook (à compléter en L5)
-- 28/11 matin : relever les 8 qualifiés → clôturer le Match du jour → « Détecter les quarts » (ou saisie) → créer la Cup.
-- 30/11-01/12 : vérifier que la synchro a créé les 4 quarts et posé `bracket_deadline` (sinon repli manuel).
-- Dès les quarts créés : recette garde SERIES (compte admin) et rendu d'un quart à pronostiquer.
-- 05-06/12 : vérifier l'avancement des vainqueurs et la création des demies ; 09-10/12 : la finale.
-- 12/12 : clôturer la Cup, relancer le Match du jour.
+## Runbook admin (L5, complété le 18/11)
+
+### Ce que coupe la clôture du Match du jour (vérifié dans le code)
+- **Tirage quotidien** (`/api/daily-match/draw`, crons Vercel 5h/7h UTC + workflow de secours) : borné par des
+  constantes (`DAILY_MATCH_FIRST_DAY/LAST_DAY/CRON_START`, `lib/dailyMatch/draw.ts`, dernier jour 27/11). Après le
+  27/11 le cron répond « hors période » en 2xx : **aucune alerte**. Sans compétition ACTIVE ou avec une Cup active,
+  un lancement manuel lève une erreur (500) — ne pas le lancer.
+- **Récaps / push** (`lib/recaps/sendRecaps.ts`) : lisent la compétition ACTIVE. Entre la clôture et la création de
+  la Cup : « aucune compétition active », rien n'est envoyé. Avec la Cup (non DAILY) : récap sans annonce « match du jour ».
+- **Synchro calendrier/résultats** : travaille sur la compétition ACTIVE ; sans compétition, no-op. La synchro n'a
+  jamais créé de matchs en DAILY_MATCH.
+- Données conservées : la clôture archive le classement (`competition_archives`), rien n'est supprimé.
+
+### Relancer le Match du jour le 12/12
+1. Clôturer la Cup (admin, après la finale du 11/12 soldée).
+2. Créer la nouvelle compétition « Match du jour » (type DAILY_MATCH).
+3. Les bornes du tirage sont des **constantes de code** : prévoir une petite PR (nouvelles dates dans
+   `lib/dailyMatch/draw.ts` : premier jour, dernier jour, début du cron) AVANT le 12/12, sinon le cron reste en « hors période ».
+4. Lancer un tirage manuel (workflow `daily-match-draw.yml`, `from`/`to`) pour les 7 premiers jours ; vérifier le premier push de 10h.
+
+### Un inscrit voit la compétition active sans rien rejoindre (vérifié)
+Il n'existe pas de table d'adhésion à une compétition : `/play`, bracket, classement lisent « la » compétition
+`status = 'ACTIVE'`. `join_code` ne sert qu'à l'inscription (`verify_join_code`). Les inscrits existants voient donc la
+Cup dès sa création ; les invités restent en lecture seule. À confirmer visuellement le 28/11 avec un compte de test.
+
+### Chronologie
+- **28/11 matin** : relever les 8 qualifiés ; clôturer le Match du jour ; sur `/admin/competitions/new` cliquer
+  « Détecter les quarts » (appelle Highlightly 2 fois, rien n'est créé), **vérifier chaque affiche** (Est — Quart 1 et 2 =
+  même demie, idem Ouest), saisir le nom, créer la Cup. Si la détection refuse (≠ 4 matchs, conférences…), saisie manuelle.
+- **28/11-01/12** : vérifier que la synchro (cron 8h UTC) rattache les matchs dès qu'ils entrent dans l'horizon de 4 jours
+  (~30/11 pour le 04/12) et que `competitions.bracket_deadline` est posée au premier quart (sinon repli : saisie admin d'un match).
+- **Dès les quarts créés** : recette garde SERIES (compte admin, appel `create_bet` SERIES → refus attendu, rien d'écrit)
+  et rendu d'un quart `SCHEDULED` sur `/play`.
+- **05-06/12** : vérifier l'avancement des vainqueurs et la création des demies ; **09-10/12** : la finale.
+- **12/12** : clôturer la Cup, relancer le Match du jour (voir ci-dessus).
 
 ## Risques
 - Affiches connues tard le 27/11 (heure US) : création le 28/11 seulement.
