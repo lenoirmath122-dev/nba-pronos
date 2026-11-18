@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { getServerClient } from "@/lib/supabase/server";
 import { checkAnonRateLimit } from "@/lib/auth/anonRateLimit";
 import { passwordPolicyError } from "@/lib/auth/passwordPolicy";
+import { pseudoLengthError } from "@/lib/pseudo/rules";
 import { trackAccountCreated } from "@/lib/funnel/record";
 import { consumePendingLeague } from "@/lib/auth/pendingLeague";
 import { clearThemeCookie } from "@/lib/theme/server";
@@ -59,6 +60,10 @@ export async function signup(
 
   if (!pseudo || !email || !password) {
     return { error: "Tous les champs sont obligatoires." };
+  }
+  const pseudoError = pseudoLengthError(pseudo);
+  if (pseudoError) {
+    return { error: pseudoError };
   }
   const passwordError = passwordPolicyError(password);
   if (passwordError) {

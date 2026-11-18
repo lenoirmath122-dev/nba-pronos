@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { redirect } from "next/navigation";
+import { PendingActionReplay } from "@/components/auth/PendingActionReplay";
 import { WelcomePanel } from "@/components/publicHome/WelcomePanel";
 import styles from "@/components/auth/AuthScreen.module.css";
 import { getServerClient } from "@/lib/supabase/server";
@@ -58,6 +59,7 @@ export default async function WelcomePage() {
 
   return (
     <main className={`${styles.page} photo-page force-photo`}>
+      <PendingActionReplay />
       <div className={styles.brand}>
         <Image src="/brand/logo-horizontal.svg" alt="Panier Ballon" width={256} height={48} unoptimized className={styles.brandLogo} />
       </div>

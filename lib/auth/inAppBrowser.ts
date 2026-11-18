@@ -19,3 +19,23 @@ export function detectInAppBrowser(userAgent: string | null | undefined): InAppB
   if (/Snapchat/i.test(userAgent)) return "snapchat";
   return "autre";
 }
+
+export function isAndroid(userAgent: string): boolean {
+  return /Android/i.test(userAgent);
+}
+
+/**
+ * Lien « intent » Android qui rouvre la page dans Chrome depuis un navigateur
+ * intégré. Null si l'URL n'est pas en https. iOS n'a pas d'équivalent : on
+ * affiche une consigne (menu ··· > Ouvrir dans Safari).
+ */
+export function androidChromeIntentUrl(href: string): string | null {
+  let url: URL;
+  try {
+    url = new URL(href);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:") return null;
+  return `intent://${url.host}${url.pathname}${url.search}#Intent;scheme=https;package=com.android.chrome;end`;
+}

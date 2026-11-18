@@ -12,7 +12,13 @@ export const FUNNEL_EVENTS = [
   "account_created",
   "account_validated",
   "password_created",
+  // Mode invité (lots B/E/F) : tentative d'action, ouverture de la modale, action reprise après connexion.
+  "guest_action_attempted",
+  "auth_modal_opened",
+  "action_completed",
 ] as const;
+
+import { PENDING_ACTION_TYPES } from "@/lib/auth/pendingAction";
 
 export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
 
@@ -39,6 +45,8 @@ export type FunnelPayload = {
   matchId: string | null;
   referrer: string | null;
   utm: Utm;
+  /** Type d'action invité (chat, predict…), seulement pour les événements du mode invité. */
+  actionType: string | null;
 };
 
 // Robots, aperçus de liens et navigateurs sans tête : leurs « visites » ne sont pas des visiteurs.
@@ -133,7 +141,11 @@ export function parseFunnelPayload(raw: unknown): FunnelPayload | null {
       referrer = null;
     }
   }
-  return { visitorId: r.visitorId, event: r.event as FunnelEvent, matchId, referrer, utm: cleanUtm(r.utm) };
+  const actionType =
+    typeof r.actionType === "string" && (PENDING_ACTION_TYPES as readonly string[]).includes(r.actionType)
+      ? r.actionType
+      : null;
+  return { visitorId: r.visitorId, event: r.event as FunnelEvent, matchId, referrer, utm: cleanUtm(r.utm), actionType };
 }
 
 /** Jour calendaire à Paris, au format AAAA-MM-JJ. */

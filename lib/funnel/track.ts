@@ -62,7 +62,7 @@ export function captureUtm(): void {
   }
 }
 
-export function trackFunnel(event: FunnelEvent, matchId?: string): void {
+export function trackFunnel(event: FunnelEvent, matchId?: string, actionType?: string): void {
   try {
     if (isInternalVisitor()) return;
     captureUtm();
@@ -75,6 +75,7 @@ export function trackFunnel(event: FunnelEvent, matchId?: string): void {
         visitorId: id,
         event,
         matchId: matchId ?? null,
+        actionType: actionType ?? null,
         referrer: document.referrer || null,
         utm: parseUtmCookie(readCookie(UTM_COOKIE)),
       }),

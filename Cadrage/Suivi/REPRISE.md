@@ -1,20 +1,17 @@
-# Reprise — NBA Pronos (18/11/2026, passation 36)
-- **Actualité (PR #299 à merger)** : l'onglet Accueil devient « Actualité » (même URL `/home`),
-  l'app s'ouvre sur Jouer, barre Jouer · Actualité · Classement · Chat · Profil. Retirés de l'Actualité : Prochain prono,
-  À faire aussi, À traiter (admin), Proposer un pari (déjà sur Jouer). Nouvelle carte de nuit, réactions rapides,
-  « Répondre » vers le chat pré-rempli, aperçu chat, nuits précédentes (`?nuits=N`). Voir ETAT_ACTUEL §4.6.
-- **Mise en service Actualité** : `supabase db push --remote` (migration `20261113150000_recap_reactions.sql`) AVANT
-  le déploiement, sinon les réactions échouent (l'écran s'affiche quand même, compteurs à 0). Tester à la main :
-  réagir/retirer, « Répondre » (texte pré-rempli puis champ vide après envoi), « Nuit précédente », lien push `/home#recap`.
-- **Incident VM 18/11** : disque ext4 abîmé (lecture seule le 16/11, kernel panic le 17/11) -> VM figée, pas de score live.
-  Instantané `nba-refresh-avant-reset-20261118` puis reset ; à faire : fsck forcé, alerte « match sans score ». Feuilles de match : clé `.strip()` (#302), se republient au prochain import.
-- **PR #296 à merger** : paliers de difficulté 66/53/35/20 %. **Fin novembre** : revoir le palier 2 et re-mesurer les probas des stars.
-- **PROCHAIN CHANTIER : étape 5** des probas = paris par période (points/écart à la MT, suites de QT).
-- **#295 déployé** : à confirmer sur un vrai pari (« Zion 20+ » doit remonter).
-- **En attente** : avatars dans le Chat (`ChatRosterEntry.avatarUrl`) — l'aperçu chat de l'Actualité affiche une initiale en attendant.
-- **À tester à la main** : upload avatar/logo, `/rejoindre` en visiteur. **Sécurité** : politique `tmp_upload_instagram_recaps` à vérifier.
-- **Bouton admin import box scores** (#284) : jeton `GITHUB_DISPATCH_TOKEN` à poser dans Vercel Prod, redéployer.
-- **Quota Vercel Fluid Active CPU** : noter la valeur, décider d'allonger les caches. **Aide débutants** : #274 à merger.
-- **Pièges** : une branche par PR ; pas d'import pendant le timer VM 12h/16h Paris ; migrations via `supabase db push --remote` ;
-  le service stats ne se redéploie pas seul ; le poller VM ne fait pas de `git pull`. **Hérité** : 983 lignes de présaison
-  dans `stats_box_scores` ; pari Memphis à rejouer (demander). **Échéances** : crédit GCP Free Trial 20/11 ; bêta Cup 04/12.
+# Reprise — NBA Pronos (18/11/2026, passation 41)
+- **Chantier mode invité** (`Cadrage/Suivi/chantiers/CHANTIER_MODE_INVITE.md`) : lots A à G CODÉS sur la branche locale
+  `feat/mode-invite` (rien de poussé, branchée sur `docs/passation-33`). Une seule branche + PR globale.
+  **Premier pas** : dérouler la checklist de recette (bas du chantier) en local/preview, puis pousser la branche et ouvrir la PR.
+- **Au moment de pousser** : (1) vérifier `/leaderboard`, `/players`, `/match/[id]`, `/chat` en invité ; (2) `supabase db push --remote`
+  (2 migrations : `20261118090000` grant `anon` par colonne, `20261118120000` événements invité) ; chercher toute lecture de `users`
+  en anon hors colonnes accordées ; (3) renommer le compte à pseudo e-mail (id `5b39327a…`) ; (4) aucun test navigateur fait sur les pages invité.
+- **Build local** : échoue sur `Cadrage/docs/reel-v2-pack` (gitignoré, remotion absent) ; le déplacer le temps du build.
+- **Probas** : #295 déployé, à confirmer sur un vrai pari. **Fin novembre** : mesurer les paliers 66/53/35/20 % (paris après le 12/11).
+- **Autres chantiers en attente** : avatars dans le Chat (`ChatRosterEntry.avatarUrl`) ; préparation bêta Cup (04/12).
+- **À tester à la main** : upload avatar/logo, `/rejoindre` en visiteur. **Sécurité** : politique `tmp_upload_instagram_recaps`
+  (upload anonyme) à vérifier/supprimer, voir GAPS_OUVERTS.
+- **Bouton admin import box scores** (#284) : jeton `GITHUB_DISPATCH_TOKEN` à poser dans Vercel Prod. **Aide débutants** : #274 à merger.
+- **Pièges** : fichiers en CRLF (éditer via script Python en UTF-8) ; pas d'import pendant le timer VM 12h/16h Paris ; migrations via
+  `supabase db push --remote` ; le service stats ne se redéploie pas seul. **Hérité** : 983 lignes de présaison dans
+  `stats_box_scores` ; pari Memphis à rejouer (demander) ; poller VM dryRun -> réel. **Échéance** : bêta Cup 04/12.
+- **Repris de main (13-18/11)** : PR #299 Actualité (migration `20261113150000_recap_reactions` à pousser AVANT déploiement), PR #298 feuilles de match (BOX_SCORES_PUBLISH), PR #296 paliers 66/53/35/20, PR #303 incident VM 18/11 (fsck forcé + alerte « match sans score » à faire). GCP Free Trial expire 20/11.

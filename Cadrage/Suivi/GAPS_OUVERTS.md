@@ -80,6 +80,9 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   `SCHEDULED` (à archiver).
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 
+### Mode invité intégral (Instagram) — [`chantiers/CHANTIER_MODE_INVITE.md`](chantiers/CHANTIER_MODE_INVITE.md)
+- Cadré le 17/11/2026. Lots A à G tous codés sur la branche `feat/mode-invite` (18/11, non poussé). Reste : recette manuelle (checklist en bas du chantier), migrations à pousser, brancher `bet`/`follow`/`react` quand ils existeront côté invité.
+
 ### Accueil jouable et pronos invités — [`chantiers/CHANTIER_ACCUEIL_INVITES.md`](chantiers/CHANTIER_ACCUEIL_INVITES.md)
 - Phase 1A livrée (PR #184 et #188 mergées le 19/10) : accueil jouable, pronos
   invités `PENDING`, mesure de l'entonnoir.
@@ -259,15 +262,6 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   repris depuis.
 - **"LF suite à des fautes personnelles"** — probablement quasi équivalent à
   la stat FT équipe déjà gérée, jamais vérifié.
-- **Écart orienté sur une période** — ex. « Les Jazz se prennent 10 points à
-  la mi-temps » (pari `62bd0e71…`, constaté le 23/10/2026, `SUBMITTED`,
-  `UNKNOWN_TYPE`, match du 24/10 01:30 UTC pas encore joué). `MARGIN`
-  (`structurePeriodBet.ts`) n'existe qu'en version **symétrique**
-  (`team=null`, « l'écart est de 5 points ou moins ») : un écart *d'une
-  équipe donnée* (« X mène/perd de N à la mi-temps ») n'est pas modélisé.
-  Vrai trou de couverture, pas du hors-champ : à trancher (étendre `MARGIN`
-  avec `team` signé, ou le laisser manuel). En attendant, résolution
-  manuelle : vérifier le score à la mi-temps après le match.
 - **Paris hors-terrain (public, célébrités)** — ex. « Il y a au moins 1
   acteur dans les spectateurs des rangs 1 à 5 » (pari `cec837fa…`, match
   terminé le 23/10/2026, `VALIDATED`, `is_calculable=false`, diagnostic

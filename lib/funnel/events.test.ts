@@ -13,9 +13,16 @@ import {
 const base = { visitorId: "a1b2c3d4-e5f6-4789-a012-3456789abcde", event: "home_view" };
 
 describe("parseFunnelPayload", () => {
+  it("garde le type d'action invité s'il est connu, sinon null", () => {
+    expect(parseFunnelPayload({ ...base, event: "guest_action_attempted", actionType: "chat" })?.actionType).toBe("chat");
+    expect(parseFunnelPayload({ ...base, event: "action_completed", actionType: "<script>" })?.actionType).toBeNull();
+    expect(parseFunnelPayload(base)?.actionType).toBeNull();
+  });
+
   it("accepte un événement valide et réduit le référent à son hôte", () => {
     const p = parseFunnelPayload({ ...base, referrer: "https://l.instagram.com/?u=secret&x=1" });
     expect(p).toEqual({ visitorId: base.visitorId, event: "home_view", matchId: null,
+      actionType: null,
       referrer: "l.instagram.com",
       utm: { source: null, medium: null, campaign: null, content: null },
     });
