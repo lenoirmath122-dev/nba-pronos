@@ -15,13 +15,6 @@ const ADMIN_ZONE_PREFIX = "/admin";
 // Pages réservées aux visiteurs : un connecté est renvoyé vers /home. "/" est
 // la page d'accueil publique (socle SEO, 05/10/2026).
 const AUTH_PAGES = ["/", "/login", "/signup"];
-// Mode invité (lot A) : pages de lecture publiques, sans zone (app). Un connecté
-// y est renvoyé vers /play (son équivalent complet).
-const GUEST_ONLY_PREFIXES = ["/matchs", "/match"];
-// Un invité qui ouvre /chat lit le canal Général en lecture seule : réécriture
-// (l'URL ne change pas, aucune redirection) vers une page publique.
-const GUEST_CHAT_PATH = "/chat";
-const GUEST_CHAT_REWRITE = "/chat-invite";
 
 // Cookie de session posé par @supabase/ssr : `sb-<ref>-auth-token`, éventuellement
 // découpé en `.0`, `.1`… (le cookie PKCE `…-auth-token-code-verifier` matche aussi,
@@ -111,17 +104,6 @@ function routeGuard(
 
   if (isAuthPage && user) {
     return NextResponse.redirect(new URL("/play", request.url));
-  }
-
-  const isGuestOnly = GUEST_ONLY_PREFIXES.some(
-    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
-  );
-  if (isGuestOnly && user) {
-    return NextResponse.redirect(new URL("/play", request.url));
-  }
-
-  if (pathname === GUEST_CHAT_PATH && !user) {
-    return NextResponse.rewrite(new URL(GUEST_CHAT_REWRITE, request.url));
   }
 
   return response;

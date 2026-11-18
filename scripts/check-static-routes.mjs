@@ -28,8 +28,6 @@ const ALLOWED_STATIC_ROUTES = new Set([
   "/_not-found", // 404 : plus de lecture de session dans le layout racine (#277).
   "/", // accueil public : client anonyme sans cookie, revalidate = 60 (#277).
   "/login", // formulaires publics : aucune donnée de session au rendu (#277).
-  "/matchs", // mode invité (#305) : client anonyme sans cookie, revalidate = 60, colonnes ouvertes à anon.
-  "/chat-invite", // idem : chat Général en lecture, revalidate = 30, aucune donnée de session.
   "/signup",
   "/enregistrer",
   "/email-confirmed",

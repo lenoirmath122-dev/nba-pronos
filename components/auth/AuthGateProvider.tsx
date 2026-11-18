@@ -7,7 +7,6 @@ import {
   type PendingActionType,
 } from "@/lib/auth/pendingAction";
 import { trackFunnel } from "@/lib/funnel/track";
-import { GuestBanner } from "@/components/guest/GuestBanner";
 
 // Porte d'authentification (mode invité, lot B). `requireAuth(action)` : un
 // connecté exécute `run` tout de suite ; un invité voit la modale, et l'action
@@ -78,12 +77,6 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
   return (
     <GateContext.Provider value={value}>
       {children}
-      {authenticated ? null : <GuestBanner
-          onCreate={() => {
-            trackFunnel("auth_modal_opened");
-            openModal();
-          }}
-        />}
       {open && Modal ? <Modal onClose={() => setOpen(false)} /> : null}
     </GateContext.Provider>
   );
