@@ -14,6 +14,17 @@ export function allowsSeriesBets(type: CompetitionType): boolean {
   return type === "PLAYOFFS";
 }
 
+/** Type de quota de paris par match : quota partagé par série (Playoffs) ou
+ *  un seul pari par match (NBA Cup, Match du jour). Dérivé de allowsSeriesBets. */
+export function betSlotMode(type: CompetitionType): "SERIES_QUOTA" | "BINARY" {
+  return allowsSeriesBets(type) ? "SERIES_QUOTA" : "BINARY";
+}
+
+/** Portées de pari proposées au joueur : jamais SERIES hors Playoffs. */
+export function allowedBetScopes(type: CompetitionType): ("MATCH" | "SERIES")[] {
+  return allowsSeriesBets(type) ? ["MATCH", "SERIES"] : ["MATCH"];
+}
+
 /** Une « série » = un seul match (NBA Cup, Match du jour). */
 export function isSingleMatchSeries(type: CompetitionType): boolean {
   return type !== "PLAYOFFS";

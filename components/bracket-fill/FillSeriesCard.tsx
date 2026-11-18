@@ -8,7 +8,7 @@ import { InlineBetForm } from "@/components/bets/InlineBetForm";
 import { useSuccessFlash } from "@/lib/hooks/useSuccessFlash";
 import flashStyles from "@/components/ui/SuccessFlash.module.css";
 import styles from "./FillSeriesCard.module.css";
-import type { CompetitionType } from "@/lib/competitions/types";
+import { allowsSeriesBets, type CompetitionType } from "@/lib/competitions/types";
 
 // Carte de remplissage adaptée à une colonne de poster (16/08/2026,
 // chantier « remplissage en poster interactif ») — extraite de
@@ -181,7 +181,7 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError, sid
           « tout centraliser dans Matchs et Bracket »), même règle que
           SeriesPickCard : porte sur la VRAIE série, jamais sur le
           pronostic du joueur ci-dessus. */}
-      {competitionType === "PLAYOFFS" &&
+      {allowsSeriesBets(competitionType) &&
         (canOfferSeriesBet(series) ? (
           <div className={styles.seriesBet}>
             {series.round !== "ROUND_1" && series.realTeamA && series.realTeamB && (

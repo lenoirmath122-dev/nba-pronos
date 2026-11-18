@@ -3,6 +3,8 @@ import { getMatchesByDate, normalizeMatchStatus, type RawMatch } from "@/lib/nba
 import { nyDateString } from "@/lib/dates/newyork";
 import { nyDayToSlot } from "@/lib/dates/paris";
 import type { CompetitionType } from "@/lib/competitions/types";
+import { cupRoundAllowsDay } from "@/lib/competitions/cupWindows";
+import { recomputeBracketDeadline } from "@/lib/competitions/bracketDeadline";
 
 // Writer de /api/sync/schedule (SPEC_TECHNIQUE_SYNCHRO_V0.1 §5/§6, correctif
 // post-validation §5.2/§12 — voir la discussion tenue avec l'utilisateur le
@@ -36,6 +38,7 @@ type SeriesRow = {
   team2_id: string | null;
   official_status: string;
   slot_index: number | null;
+  round?: string | null;
 };
 
 export type SkippedMatch = { highlightlyMatchId: number; reason: string };
@@ -116,7 +119,7 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
   const [{ data: teamMapData }, { data: matchMapData }, { data: seriesData }] = await Promise.all([
     supabase.from("entity_mappings").select("internal_id, source_ref").eq("entity_type", "TEAM").eq("source_type", "HIGHLIGHTLY"),
     supabase.from("entity_mappings").select("internal_id, source_ref").eq("entity_type", "MATCH").eq("source_type", "HIGHLIGHTLY"),
-    supabase.from("series").select("id, competition_id, team1_id, team2_id, official_status, slot_index").eq("competition_id", activeCompetition.id),
+    supabase.from("series").select("id, competition_id, team1_id, team2_id, official_status, slot_index, round").eq("competition_id", activeCompetition.id),
   ]);
 
   const teamInternalIdBySourceRef = new Map<string, string>(
@@ -186,6 +189,15 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
     }
 
     const series = candidates[0];
+    // NBA Cup : un match hors des jours officiels du tour n'est pas celui de
+    // la série (ex. rencontre de saison régulière entre les deux mêmes équipes).
+    if (
+      activeCompetition.type === "NBA_CUP" &&
+      !cupRoundAllowsDay(series.round, nyDateString(new Date(match.date)))
+    ) {
+      result.skipped.push({ highlightlyMatchId: match.id, reason: `hors fenêtre officielle du tour (${series.round})` });
+      continue;
+    }
     const gameNumber = (matchCountBySeries.get(series.id) ?? 0) + 1;
     if (gameNumber > 7) {
       result.skipped.push({ highlightlyMatchId: match.id, reason: "série déjà à 7 matchs" });
@@ -225,6 +237,12 @@ export async function syncSchedule(referenceDate: Date = new Date()): Promise<Sy
     matchInternalIdBySourceRef.set(sourceRef, inserted.id); // évite un doublon si le même match reparaît sur 2 dates de l'horizon
     matchCountBySeries.set(series.id, gameNumber);
     result.created++;
+  }
+
+  // Le bracket a besoin de son échéance (verrouillage + rappel) : posée ici dès
+  // que la synchro crée des matchs, sans passer par la saisie admin.
+  if (!isDaily && result.created > 0) {
+    await recomputeBracketDeadline(supabase, activeCompetition.id);
   }
 
   return result;

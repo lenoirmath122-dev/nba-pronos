@@ -4,7 +4,7 @@ import { BET_CATEGORY_OPTIONS, MATCH_SLOT_CAP, RELEASED_BET_STATUSES } from "@/l
 import { parisDateTimeLabel } from "@/lib/dates/paris";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { TeamRef } from "@/lib/queries/matches";
-import type { CompetitionType } from "@/lib/competitions/types";
+import { allowsSeriesBets, type CompetitionType } from "@/lib/competitions/types";
 
 // Lecture de l'écran "Nouveau pari" (composants serveur uniquement),
 // SPEC_ECRAN_NOUVEAU_PARI_V0_1 §10. Un seul module, appelé avec
@@ -159,7 +159,12 @@ export async function getNewBetFormData(
     // (isSeriesSelectable, BetForm.tsx) : ouverte ET pas déjà prise.
     const targetSeries = bootstrap.seriesOptions.find((series) => series.seriesId === seriesIdParam);
 
-    if (!targetSeries || !targetSeries.seriesBetOpen || targetSeries.seriesSlotTaken) {
+    if (
+      !allowsSeriesBets(competition.type) ||
+      !targetSeries ||
+      !targetSeries.seriesBetOpen ||
+      targetSeries.seriesSlotTaken
+    ) {
       return { competitionId: competition.id, bootstrap, context: { mode: "FREE" }, shortcutClosed: "SERIES" };
     }
 

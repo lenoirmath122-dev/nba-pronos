@@ -1,5 +1,6 @@
 import { getTeamOptions } from "@/lib/queries/admin-competitions";
 import { createCompetitionFormAction } from "@/lib/actions/admin-competitions";
+import { detectCupQuarters, type CupQuartersProposal } from "@/lib/sync/cupQuarters";
 import styles from "./page.module.css";
 
 // Création d'une compétition (SPEC_ECRAN_ADMIN_COMPETITIONS_V0_1 §3) —
@@ -22,13 +23,13 @@ const ROUND1_SLOTS = [
 // 4 affiches de quarts, équipes choisies librement (pas de conférence pour
 // la Cup, voir lib/actions/admin-competitions.ts).
 const CUP_QUARTER_SLOTS = [
-  { key: "q1", label: "Quart 1" },
-  { key: "q2", label: "Quart 2" },
-  { key: "q3", label: "Quart 3" },
-  { key: "q4", label: "Quart 4" },
+  { key: "q1", label: "Est — Quart 1" },
+  { key: "q2", label: "Est — Quart 2" },
+  { key: "q3", label: "Ouest — Quart 1" },
+  { key: "q4", label: "Ouest — Quart 2" },
 ] as const;
 
-type SearchParams = { competitionError?: string };
+type SearchParams = { competitionError?: string; detect?: string };
 
 export default async function NewCompetitionPage({
   searchParams,
@@ -37,6 +38,9 @@ export default async function NewCompetitionPage({
 }) {
   const sp = await searchParams;
   const teams = await getTeamOptions();
+  // Détection des quarts : seulement sur clic (2 appels Highlightly), jamais de création automatique.
+  const detection: CupQuartersProposal | null = sp.detect === "1" ? await detectCupQuarters() : null;
+  const proposed = detection?.ok ? detection.quarters : null;
   const eastTeams = teams.filter((t) => t.conference === "EAST");
   const westTeams = teams.filter((t) => t.conference === "WEST");
 
@@ -50,6 +54,16 @@ export default async function NewCompetitionPage({
         </p>
       )}
 
+      <form method="get" className={styles.form}>
+        <p className={styles.sectionNote}>
+          NBA Cup : pré-remplit les 4 quarts (04-05/12) depuis le calendrier Highlightly. Rien n&apos;est créé tant
+          que tu ne valides pas le formulaire ci-dessous (le nom est à saisir après détection).
+        </p>
+        <button type="submit" name="detect" value="1" className={styles.submit}>
+          Détecter les quarts
+        </button>
+      </form>
+
       <form action={createCompetitionFormAction} className={styles.form}>
         <label className={styles.field}>
           Nom
@@ -59,10 +73,10 @@ export default async function NewCompetitionPage({
         <fieldset className={styles.fieldset}>
           <legend className={styles.legend}>Type</legend>
           <label className={styles.radioLabel}>
-            <input type="radio" name="type" value="PLAYOFFS" defaultChecked /> Playoffs
+            <input type="radio" name="type" value="PLAYOFFS" defaultChecked={!detection} /> Playoffs
           </label>
           <label className={styles.radioLabel}>
-            <input type="radio" name="type" value="NBA_CUP" /> NBA Cup
+            <input type="radio" name="type" value="NBA_CUP" defaultChecked={Boolean(detection)} /> NBA Cup
           </label>
           <label className={styles.radioLabel}>
             <input type="radio" name="type" value="DAILY_MATCH" /> Match du jour
@@ -113,12 +127,20 @@ export default async function NewCompetitionPage({
         <div className={styles.playoffsSection}>
           <p className={styles.sectionNote}>
             Affiches des quarts de finale — utilisées uniquement si « NBA Cup » est sélectionné ci-dessus. Les 8
-            équipes qualifiées peuvent être choisies librement (pas de contrainte Est/Ouest).
+            équipes qualifiées peuvent être choisies librement (pas de contrainte Est/Ouest). Les demies associent les deux quarts
+            Est entre eux, puis les deux quarts Ouest : « Est — Quart 1 » et « Est — Quart 2 » jouent la même demie (idem Ouest).
           </p>
-          {CUP_QUARTER_SLOTS.map((slot) => (
+          {detection && (
+            <p className={detection.ok ? styles.sectionNote : styles.error} role={detection.ok ? "status" : "alert"}>
+              {detection.ok
+                ? "Proposition détectée depuis le calendrier : vérifie chaque affiche avant de créer la compétition."
+                : detection.reason}
+            </p>
+          )}
+          {CUP_QUARTER_SLOTS.map((slot, index) => (
             <div key={slot.key} className={styles.matchup}>
               <span className={styles.matchupLabel}>{slot.label}</span>
-              <select name={`cup_${slot.key}_a`} className={styles.select} defaultValue="">
+              <select name={`cup_${slot.key}_a`} className={styles.select} defaultValue={proposed?.[index]?.[0] ?? ""}>
                 <option value="" disabled>
                   Équipe A…
                 </option>
@@ -128,7 +150,7 @@ export default async function NewCompetitionPage({
                   </option>
                 ))}
               </select>
-              <select name={`cup_${slot.key}_b`} className={styles.select} defaultValue="">
+              <select name={`cup_${slot.key}_b`} className={styles.select} defaultValue={proposed?.[index]?.[1] ?? ""}>
                 <option value="" disabled>
                   Équipe B…
                 </option>
