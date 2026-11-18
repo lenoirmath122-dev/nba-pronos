@@ -6,8 +6,8 @@
 - **Mise en service Actualité** : `supabase db push --remote` (migration `20261113150000_recap_reactions.sql`) AVANT
   le déploiement, sinon les réactions échouent (l'écran s'affiche quand même, compteurs à 0). Tester à la main :
   réagir/retirer, « Répondre » (texte pré-rempli puis champ vide après envoi), « Nuit précédente », lien push `/home#recap`.
-- **Incident VM 18/11** : disque ext4 abîmé (lecture seule le 16/11, kernel panic le 17/11) -> VM figée, pas de score live.
-  Instantané `nba-refresh-avant-reset-20261118` puis reset ; à faire : fsck forcé, alerte « match sans score ». Feuilles de match : clé `.strip()` (#302), se republient au prochain import.
+- **Incident VM 18/11** : noyau Debian `6.1.0-55` (installé seul le 16/11) -> kernel panic ext4 en boucle, VM figée, pas de score live.
+  Réparé : e2fsck hors ligne, retour au noyau `6.1.0-54`, méta-paquet `linux-image-cloud-amd64` retiré (plus de noyau auto). Garde « match sans score » : PR #304.
 - **PR #296 à merger** : paliers de difficulté 66/53/35/20 %. **Fin novembre** : revoir le palier 2 et re-mesurer les probas des stars.
 - **PROCHAIN CHANTIER : étape 5** des probas = paris par période (points/écart à la MT, suites de QT).
 - **#295 déployé** : à confirmer sur un vrai pari (« Zion 20+ » doit remonter).
