@@ -55,6 +55,12 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   (Android Chrome, iPhone Safari, iPhone installé).
 
 ### Données NBA (crons, résultats, box scores) — [`chantiers/CHANTIER_DONNEES_NBA.md`](chantiers/CHANTIER_DONNEES_NBA.md)
+- **VM `nba-refresh` figée sur le noyau Debian 6.1.0-55 (18/11/2026)** : kernel panic `ext4_mb_load_buddy_gfp` en boucle
+  dès le 17/11 (installé par unattended-upgrades le 16/11). Réparé : e2fsck hors ligne (2 compteurs faux), retour au 6.1.0-54,
+  `linux-image-cloud-amd64` purgé : **plus aucun noyau ne s'installe seul**. À faire : réinstaller ce méta-paquet quand un
+  noyau corrigé (> 6.1.0-56) sera publié, en le testant sur une VM jetable. Instantané `nba-refresh-avant-reset-20261118`
+  à supprimer une fois la VM stable (quelques jours). `apt-listchanges` en erreur sur la VM (contourné par
+  `APT_LISTCHANGES_FRONTEND=none`), à vérifier. Garde « match sans score » en place (#304, cron Vercel 5 h-13 h Paris).
 - Crons passés sur Vercel : récap, tirage du match du jour, rappel du match
   du soir, `heartbeat`, `snapshot-leaderboard`, `reminder-bracket` (20/10/2026,
   workflows GitHub supprimés ; plus d'issue `cron-failure` automatique pour
