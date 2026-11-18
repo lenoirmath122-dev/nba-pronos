@@ -15,5 +15,7 @@
 - **Autres chantiers en attente** : avatars dans le Chat (`ChatRosterEntry.avatarUrl`) ; préparation bêta Cup (04/12).
 - **À tester à la main** : upload avatar/logo, `/rejoindre` en visiteur. **Sécurité** : politique `tmp_upload_instagram_recaps` à vérifier/supprimer.
 - **Bouton admin import box scores** (#284) : jeton `GITHUB_DISPATCH_TOKEN` à poser dans Vercel Prod. **Aide débutants** : #274 à merger.
+- **VM nba-refresh (18/11)** : panne = noyau Debian `6.1.0-55` (panic ext4), pas le disque. Revenue au `6.1.0-54`, méta-paquet
+  `linux-image-cloud-amd64` purgé (plus de noyau auto, à remettre quand un noyau corrigé sort). Voir GAPS_OUVERTS.
 - **Pièges** : fichiers en CRLF (éditer via script Python en UTF-8) ; pas d'import pendant le timer VM 12h/16h Paris ; migrations via
   `supabase db push --remote --yes` (à lancer par l'utilisateur) ; le service stats ne se redéploie pas seul. **Échéances** : GCP Free Trial 20/11 ; bêta Cup 04/12.
