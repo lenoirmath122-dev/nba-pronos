@@ -367,12 +367,14 @@ type OwnPredictionRow = {
   status: "DRAFT" | "VALIDATED" | "LOCKED";
 };
 
+// Invité (sans session) : mêmes matchs, aucune donnée personnelle (pronos, paris,
+// quotas) ; la RLS laisse lire programme, équipes et paris publics à anon.
 export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   const supabase = await getServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  const userId = user?.id ?? null;
 
   const competition = await getActiveCompetition(supabase);
   if (!competition) return null;
@@ -388,9 +390,9 @@ export async function getPlayUpcoming(): Promise<PlayUpcomingData | null> {
   // (réglé ou non) vit dans Résultats ; seul le ticker garde un oeil sur les
   // matchs EN DIRECT, via une requête légère.
   const [{ days, daysBeyondWindow, readyCount }, liveScores, quotas] = await Promise.all([
-    fetchUpcomingWindow(supabase, user.id, competition, windowEndMs, nowMs),
+    fetchUpcomingWindow(supabase, userId, competition, windowEndMs, nowMs),
     fetchLiveScores(supabase, competition.id),
-    getQuotas(supabase, user.id, competition),
+    userId ? getQuotas(supabase, userId, competition) : Promise.resolve([] as QuotaSummary[]),
   ]);
 
   return {
@@ -420,7 +422,7 @@ async function fetchLiveScores(supabase: SupabaseServerClient, competitionId: st
 
 async function fetchUpcomingWindow(
   supabase: SupabaseServerClient,
-  userId: string,
+  userId: string | null,
   competition: CompetitionRow,
   windowEndMs: number,
   nowMs: number
@@ -455,20 +457,24 @@ async function fetchUpcomingWindow(
     { data: isAdminData },
   ] = await Promise.all([
     getAllTeams(),
-    supabase
-      .from("match_predictions")
-      .select("match_id, predicted_winner_team_id, predicted_margin, status")
-      .eq("user_id", userId)
-      .in("match_id", matchIds),
-    supabase
-      .from("bets")
-      .select(
-        "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, is_calculable, calculated_proba, suggested_difficulty"
-      )
-      .eq("user_id", userId)
-      .eq("competition_id", competition.id)
-      .eq("scope", "MATCH")
-      .in("match_id", matchIds),
+    userId
+      ? supabase
+          .from("match_predictions")
+          .select("match_id, predicted_winner_team_id, predicted_margin, status")
+          .eq("user_id", userId)
+          .in("match_id", matchIds)
+      : Promise.resolve({ data: [] as OwnPredictionRow[] }),
+    userId
+      ? supabase
+          .from("bets")
+          .select(
+            "id, user_id, match_id, series_id, scope, status, description, proposed_category, validated_category, proposed_difficulty, validated_difficulty, is_admin_corrected, refusal_reason, resolution_reason, points_awarded, is_calculable, calculated_proba, suggested_difficulty"
+          )
+          .eq("user_id", userId)
+          .eq("competition_id", competition.id)
+          .eq("scope", "MATCH")
+          .in("match_id", matchIds)
+      : Promise.resolve({ data: [] as BetSourceRow[] }),
     supabase.from("users").select("id, pseudo").eq("status", "ACTIVE"),
     supabase.rpc("is_admin"),
   ]);
@@ -497,7 +503,7 @@ async function fetchUpcomingWindow(
           .select("user_id, match_id, description")
           .eq("scope", "MATCH")
           .in("match_id", submittedBetMatchIds)
-          .neq("user_id", userId)
+          .neq("user_id", userId ?? "")
           .in("status", ["VALIDATED", "WON", "LOST"])
       : { data: [] as { user_id: string; match_id: string; description: string }[] };
   const otherBetsByMatch = new Map<string, { user_id: string; description: string }[]>();
@@ -539,7 +545,7 @@ async function fetchUpcomingWindow(
     // others/absentees ne sont même pas demandés tant que isRevealed est faux.
     const betByUser = new Map((otherBetsByMatch.get(match.id) ?? []).map((b) => [b.user_id, b.description]));
     const { others, absentees } = isRevealed
-      ? await getRevealedContent(supabase, match.id, userId, activeUsers, teams, betByUser)
+      ? await getRevealedContent(supabase, match.id, userId ?? "", activeUsers, teams, betByUser)
       : { others: [] as OtherPrediction[], absentees: [] as string[] };
 
     const homeTeam = match.home_team_id ? teams.get(match.home_team_id) : undefined;
@@ -846,7 +852,7 @@ type LeagueScope = { id: string; name: string; memberUserIds: Set<string> };
  *  partage avec "Mes pronos" se fait sur l'heure, jamais sur matches.status. */
 async function fetchLockedRows(
   supabase: SupabaseServerClient,
-  userId: string,
+  userId: string | null,
   competition: CompetitionRow,
   criteria: { dateRange?: { gte: string; lt?: string }; seriesId?: string },
   scope: LeagueScope | null,
@@ -942,7 +948,7 @@ async function fetchLockedRows(
       ? await supabase
           .from("correction_requests")
           .select("target_bet_id, status, admin_reason, created_at")
-          .eq("requester_user_id", userId)
+          .eq("requester_user_id", userId ?? "")
           .in("target_bet_id", ownBetIds)
           .order("created_at", { ascending: false })
       : { data: [] as BetCorrectionRequestRow[] };
@@ -1056,7 +1062,7 @@ export async function getPlayResults(params: {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return null;
+  // Invité : résultats publics sans données personnelles (user = null).
 
   const competition = await getActiveCompetition(supabase);
   if (!competition) return null;
@@ -1077,7 +1083,7 @@ export async function getPlayResults(params: {
 
   const { rows, hasMore } = await fetchLockedRowsFiltered(
     supabase,
-    user.id,
+    user?.id ?? null,
     competition,
     dateRange,
     params.seriesId ?? null,
@@ -1100,7 +1106,7 @@ export async function getPlayResults(params: {
 /** fetchLockedRows + filtre optionnel par série. */
 async function fetchLockedRowsFiltered(
   supabase: SupabaseServerClient,
-  userId: string,
+  userId: string | null,
   competition: CompetitionRow,
   dateRange: { gte: string; lt?: string } | undefined,
   seriesId: string | null,

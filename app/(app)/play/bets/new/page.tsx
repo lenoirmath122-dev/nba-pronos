@@ -1,4 +1,5 @@
 import { getNewBetFormData } from "@/lib/queries/bets";
+import { redirectGuestToPlay } from "@/lib/auth/guestRedirect";
 import { EmptyState } from "@/components/home/EmptyState";
 import { BetForm } from "@/components/bets/BetForm";
 import { BetFormModal } from "@/components/bets/BetFormModal";
@@ -19,6 +20,7 @@ import { BetFormModal } from "@/components/bets/BetFormModal";
 type SearchParams = { matchId?: string; seriesId?: string };
 
 export default async function NewBetPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
+  await redirectGuestToPlay();
   const sp = await searchParams;
   const data = await getNewBetFormData(sp.matchId ?? null, sp.seriesId ?? null);
 

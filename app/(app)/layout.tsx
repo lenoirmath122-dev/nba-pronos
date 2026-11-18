@@ -4,6 +4,8 @@ import { getServiceClient } from "@/lib/supabase/service";
 import { getNavBadgeData } from "@/lib/queries/home";
 import { getRecentAdminValidatedBets } from "@/lib/queries/bets";
 import { TabBar } from "@/components/nav/TabBar";
+import { GuestTabBar } from "@/components/nav/GuestTabBar";
+import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
 import { UnsavedGuardProvider } from "@/lib/hooks/useUnsavedGuard";
 import { ToastProvider } from "@/components/ui/Toast";
 import { ValidatedDialogProvider } from "@/components/ui/ValidatedDialog";
@@ -17,10 +19,13 @@ import { ThemeSync } from "@/components/theme/ThemeSync";
 import type { BackgroundTheme, ThemePreference } from "@/lib/theme/cookie";
 import styles from "./layout.module.css";
 
-// Zone joueur connecté (T6a §3.1) : garde de session + nav 4 onglets.
-// Le proxy (racine du repo) garde déjà l'authentification en amont ; cette
-// garde est la défense en profondeur côté composant serveur (même patron
-// que la garde is_admin() du layout admin, T6a §4.2).
+// Zone joueur (T6a §3.1) : nav 5 onglets. Depuis le 18/11/2026 un INVITÉ
+// (sans session) ouvre la même appli en lecture : coquille sans profil,
+// pastilles ni popups, le compte n'étant demandé qu'au moment d'agir
+// (AuthGateProvider). L'écriture reste refusée en base (RLS + auth.getUser()
+// dans chaque Server Action). /home et /profile gardent leur propre garde
+// (layouts dédiés) : le proxy les protège déjà en amont, ceci est la défense
+// en profondeur côté composant serveur.
 export default async function AppLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
@@ -30,7 +35,20 @@ export default async function AppLayout({
   } = await supabase.auth.getUser();
 
   if (!user) {
-    redirect("/login");
+    return (
+      <div className={styles.shell}>
+        <AuthGateProvider authenticated={false}>
+          <UnsavedGuardProvider>
+            <ToastProvider>
+              <ValidatedDialogProvider>
+                <main className={styles.content}>{children}</main>
+                <GuestTabBar />
+              </ValidatedDialogProvider>
+            </ToastProvider>
+          </UnsavedGuardProvider>
+        </AuthGateProvider>
+      </div>
+    );
   }
 
   // Compte en attente (arrivé par Google sans pseudo, ou lien pas encore cliqué) :
@@ -62,6 +80,7 @@ export default async function AppLayout({
 
   return (
     <div className={styles.shell}>
+      <AuthGateProvider authenticated>
       <UnsavedGuardProvider>
         <ToastProvider>
           <ValidatedDialogProvider>
@@ -89,6 +108,7 @@ export default async function AppLayout({
           </ValidatedDialogProvider>
         </ToastProvider>
       </UnsavedGuardProvider>
+      </AuthGateProvider>
     </div>
   );
 }

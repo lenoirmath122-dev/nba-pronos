@@ -10,11 +10,12 @@ import { createServerClient } from "@supabase/ssr";
 // `proxy.ts`, export nommé `proxy` — comportement identique, cf. T6a §4.1
 // correctif post-validation).
 
-const APP_ZONE_PREFIXES = ["/home", "/play", "/profile"];
+// /play et /chat sont ouverts aux invités (lecture, 18/11/2026) : le compte n'est
+// demandé qu'au moment d'agir. /home et /profile restent derrière le compte.
+const APP_ZONE_PREFIXES = ["/home", "/profile"];
 const ADMIN_ZONE_PREFIX = "/admin";
-// Pages réservées aux visiteurs : un connecté est renvoyé vers /home. "/" est
-// la page d'accueil publique (socle SEO, 05/10/2026).
-const AUTH_PAGES = ["/", "/login", "/signup"];
+// Pages réservées aux visiteurs : un connecté est renvoyé vers /play.
+const AUTH_PAGES = ["/login", "/signup"];
 
 // Cookie de session posé par @supabase/ssr : `sb-<ref>-auth-token`, éventuellement
 // découpé en `.0`, `.1`… (le cookie PKCE `…-auth-token-code-verifier` matche aussi,
@@ -104,6 +105,11 @@ function routeGuard(
 
   if (isAuthPage && user) {
     return NextResponse.redirect(new URL("/play", request.url));
+  }
+
+  // Accueil : l'invité ouvre la vraie appli (/play), le connecté son Actualité.
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL(user ? "/home" : "/play", request.url));
   }
 
   return response;

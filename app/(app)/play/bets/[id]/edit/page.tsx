@@ -1,4 +1,5 @@
 import { getEditBetFormData } from "@/lib/queries/bets";
+import { redirectGuestToPlay } from "@/lib/auth/guestRedirect";
 import { EmptyState } from "@/components/home/EmptyState";
 import { BetForm } from "@/components/bets/BetForm";
 import { BetFormModal } from "@/components/bets/BetFormModal";
@@ -15,6 +16,7 @@ import { BetFormModal } from "@/components/bets/BetFormModal";
 type PageParams = { id: string };
 
 export default async function EditBetPage({ params }: { params: Promise<PageParams> }) {
+  await redirectGuestToPlay();
   const { id } = await params;
   const data = await getEditBetFormData(id);
 

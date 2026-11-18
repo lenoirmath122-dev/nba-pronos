@@ -27,7 +27,7 @@ export type RequireAuthInput = {
   run?: () => void;
 };
 
-type Gate = { requireAuth: (input: RequireAuthInput) => void };
+type Gate = { requireAuth: (input: RequireAuthInput) => void; authenticated: boolean };
 
 const GateContext = createContext<Gate | null>(null);
 
@@ -35,6 +35,11 @@ export function useRequireAuth(): Gate["requireAuth"] {
   const gate = useContext(GateContext);
   if (!gate) throw new Error("useRequireAuth doit être utilisé sous <AuthGateProvider>.");
   return gate.requireAuth;
+}
+
+/** Vrai si le visiteur a une session (permet de masquer les états « mon prono » côté invité). */
+export function useIsAuthenticated(): boolean {
+  return useContext(GateContext)?.authenticated ?? false;
 }
 
 export function AuthGateProvider({ authenticated, children }: { authenticated: boolean; children: ReactNode }) {
@@ -72,7 +77,7 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
     [authenticated, openModal],
   );
 
-  const value = useMemo(() => ({ requireAuth }), [requireAuth]);
+  const value = useMemo(() => ({ requireAuth, authenticated }), [requireAuth, authenticated]);
 
   return (
     <GateContext.Provider value={value}>

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { redirectGuestToPlay } from "@/lib/auth/guestRedirect";
 import { hasBracket } from "@/lib/competitions/types";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { EmptyState } from "@/components/home/EmptyState";
@@ -12,6 +13,7 @@ import styles from "./page.module.css";
 // 04/10/2026, p3-4).
 
 export default async function BracketFillPage() {
+  await redirectGuestToPlay();
   const data = await getBracketFillData();
 
   if (data.competitionId === null) {

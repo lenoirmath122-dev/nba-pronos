@@ -6,6 +6,7 @@ import { saveMatchPredictionDraft, validateMatchPrediction, type ActionResult } 
 import type { UpcomingMatchRow } from "@/lib/queries/play";
 import { useToast } from "@/components/ui/Toast";
 import { requestBadgeCheck } from "@/lib/badges/checkRequest";
+import { useIsAuthenticated, useRequireAuth } from "@/components/auth/AuthGateProvider";
 
 // État + actions du formulaire de prono d'un match à venir (vainqueur, écart,
 // brouillon, validation), extraits d'UpcomingRow le 22/10/2026 pour que
@@ -39,6 +40,8 @@ export function useMatchPronoForm(match: UpcomingMatchRow, onValidated: (pick: V
   // seul (p3-5) — `isPending` ne dit pas lequel a été touché.
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const showToast = useToast();
+  const requireAuth = useRequireAuth();
+  const authenticated = useIsAuthenticated();
 
   const [winner, setWinner] = useState<string | null>(match.myWinnerTeamId);
   const [margin, setMargin] = useState<number | null>(match.myMargin);
@@ -49,9 +52,10 @@ export function useMatchPronoForm(match: UpcomingMatchRow, onValidated: (pick: V
 
   useEffect(() => {
     const dirty = winner !== match.myWinnerTeamId || margin !== match.myMargin;
-    if (dirty) markDirty();
+    // Invité : rien à protéger (rien ne sera enregistré), pas d'alerte de sortie.
+    if (dirty && authenticated) markDirty();
     else clearDirty();
-  }, [winner, margin, match.myWinnerTeamId, match.myMargin, markDirty, clearDirty]);
+  }, [winner, margin, match.myWinnerTeamId, match.myMargin, markDirty, clearDirty, authenticated]);
 
   function selectTeam(teamId: string) {
     if (isReadOnly) return;
@@ -65,6 +69,10 @@ export function useMatchPronoForm(match: UpcomingMatchRow, onValidated: (pick: V
   }
 
   function saveDraft() {
+    if (!authenticated) {
+      requireAuth({ type: "predict", payload: { matchId: match.matchId } });
+      return;
+    }
     setError(null);
     setPendingAction("draft");
     startTransition(async () => {
@@ -83,6 +91,10 @@ export function useMatchPronoForm(match: UpcomingMatchRow, onValidated: (pick: V
   }
 
   function validate() {
+    if (!authenticated) {
+      requireAuth({ type: "predict", payload: { matchId: match.matchId } });
+      return;
+    }
     setError(null);
     setPendingAction("validate");
     startTransition(async () => {
@@ -97,6 +109,10 @@ export function useMatchPronoForm(match: UpcomingMatchRow, onValidated: (pick: V
   }
 
   function validateDefinitively() {
+    if (!authenticated) {
+      requireAuth({ type: "predict", payload: { matchId: match.matchId } });
+      return;
+    }
     setError(null);
     setPendingAction("validate");
     startTransition(async () => {
