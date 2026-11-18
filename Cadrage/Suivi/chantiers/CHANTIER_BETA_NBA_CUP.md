@@ -2,7 +2,7 @@
 
 > **Statut 18/11/2026 (exécution) : L1 à L6 faits (branche `claude/beta-nba-cup-430d34`, PR #311).**
 >
-> **L4 (sonde faite le 18/11, 1 appel `/matches?date=2026-11-17`, 91 requêtes restantes) :** les matchs NBA (dont Cup, mardi) portent `league: "NBA"`, statut `Finished`. Un match ne porte que `id, league, season, date, state, homeTeam, awayTeam` : **aucun champ de phase/tour**, donc impossible de distinguer un match de Cup d'un match de saison régulière côté API. Filtre `lib/nba/client.ts` inchangé (aucun besoin de l'élargir). Conséquence pour L6 : discriminant = « exactement 4 matchs, 8 équipes, 2 par conférence » ; si des matchs de saison régulière tombent les 04-05/12, la détection refuse et l'admin saisit à la main. À re-vérifier sur les vrais quarts le 28/11.
+> **L4 (sonde faite le 18/11, 2 appels `/matches` (17/11 puis 14/11), 90 requêtes restantes) :** les matchs NBA (dont Cup, mardi) portent `league: "NBA"`, statut `Finished`. Un match ne porte que `id, league, season, date, state, homeTeam, awayTeam` : **aucun champ de phase/tour** (idem le 14/11 : 5 matchs NBA, tous `league: "NBA"`, `Finished`, mêmes champs), donc impossible de distinguer un match de Cup d'un match de saison régulière côté API. Filtre `lib/nba/client.ts` inchangé (aucun besoin de l'élargir). Conséquence pour L6 : discriminant = « exactement 4 matchs, 8 équipes, 2 par conférence » ; si des matchs de saison régulière tombent les 04-05/12, la détection refuse et l'admin saisit à la main. À re-vérifier sur les vrais quarts le 28/11.
 
 Cadrage du 18/11/2026. Statut : **décisions prises le 18/11** (voir en bas), prêt pour l'exécution.
 
