@@ -13,7 +13,7 @@ en invité, lit tout, et ne crée un compte qu'au moment d'agir. Les connectés 
   Valeur par défaut du drapeau `GUEST_APP_MODE` = `on` ; `off` rend l'accueil jouable actuel (comparaison A/B).
   Les connectés restent renvoyés vers `/home` depuis `/`.
 - **Chat invité** : lecture du canal **Général seulement** ; ligues privées masquées.
-- **Ordre des lots** : A → B → D → C → E → F → G. Une seule branche `feat/mode-invite` + une PR globale (décision 18/11/2026), un commit par lot, jamais sur `main` directement.
+- **Ordre des lots** : A → B → D → C → E → F → G (A, B, D, C livrés). Une seule branche `feat/mode-invite` + une PR globale (décision 18/11/2026), un commit par lot, jamais sur `main` directement.
 
 ## Déjà sur `main` (à réutiliser, ne pas refaire)
 - `/` jouable sans compte, panier localStorage (`lib/publicHome/basket.ts`), `registerPronos` / `requestLoginLink` (`lib/auth/guest.ts`), comptes `PENDING`.
@@ -35,14 +35,17 @@ Pas de `/match/[id]`, pas de `/ce-soir`, pas de `requireAuth`, pas de bandeau, U
   colonnes publiques de `users` ; **à pousser** (`supabase db push --remote`) avant la mise en prod, sinon `/chat-invite` marche mais
   `users` reste lisible en entier. Pseudo sans `@` (signup + changement). Acté : le Général est lisible par anon.
   **Reste** : renommer le compte dont le pseudo est un e-mail (id `5b39327a…`, via `request_pseudo_change` ou à la main).
-- **B — `requireAuth`** : `AuthGateProvider` + `useRequireAuth(action)`, modale légère en `dynamic()`. Action en attente
-  sérialisée (type, payload, URL de retour), rejouée/préremplie après connexion via `/auth/callback`. Brouillon du chat
-  écrit en localStorage à chaque frappe (jamais perdu). Réutilise `registerPronos` / `requestLoginLink` (un seul chemin
-  d'inscription). Actions : écrire dans le chat, pronostiquer, parier, suivre, réagir. Blocage réel côté serveur.
-- **D — Liens profonds / UTM** : `/match/[id]` avec `generateMetadata` + image OG ; `/ce-soir` vers le match mis en avant
-  (`lib/publicHome/focus.ts`) ; `src` / `utm_*` conservés dans les liens internes et à l'inscription.
-- **C — Webview Instagram** : message « Ouvrir dans le navigateur » (consigne iOS, intent Android) à la place du bouton Google ;
-  cookies de session valides en webview ; lien magique ouvert ensuite dans Safari/Chrome.
+- **B — `requireAuth`** : LIVRÉ sur `feat/mode-invite` (18/11/2026). `components/auth/AuthGateProvider` (+ `useRequireAuth`), modale
+  `AuthGateModal` en `dynamic()` (réutilise `registerPronos` / `requestLoginLink`), `lib/auth/pendingAction.ts` (action en attente en
+  localStorage, 7 jours, URL de retour interne seulement), `PendingActionReplay` sur `/bienvenue` (ramène à l'URL + `?reprise=<type>`),
+  brouillon du chat `pb.chatDraft.v1` à chaque frappe. Branché sur `/chat-invite` (composeur) et `/match/[id]` (bouton « Pronostiquer »).
+  **Reste** : brancher `bet`, `follow`, `react` quand ces actions existeront côté invité ; l'action rejouée n'est pas exécutée,
+  seulement retrouvée (le connecté tombe sur `/play` depuis `/match/*`). Lien ouvert dans un autre navigateur : pas de reprise.
+- **D — Liens profonds / UTM** : LIVRÉ en partie. `/match/[id]/opengraph-image` (texte seul), `/ce-soir` (redirige vers le prochain match,
+  garde `src`/`focus`/`utm_*`). **Non fait, volontairement** : propagation des UTM dans les liens internes ; le cookie `pb_utm`
+  (capté à l'arrivée) et le visiteur gardé dans les métadonnées du compte couvrent déjà l'inscription.
+- **C — Webview Instagram** : LIVRÉ (modale seulement) : `OpenInBrowserNotice` (intent Chrome Android, consigne Safari iOS) à la place
+  de Google. **Reste** : vérifier les cookies de session en vrai webview (recette manuelle, lot G).
 - **E — Bandeau invité** : fermable, mémorisé, non masquant (bas de page), bouton « Créer un compte » -> modale du lot B.
 - **F — Mesure** : événements `guest_action_attempted` (type), `auth_modal_opened`, `action_completed` ;
   migration `funnel_events` à **pousser à la main** après merge (`supabase db push --remote`).

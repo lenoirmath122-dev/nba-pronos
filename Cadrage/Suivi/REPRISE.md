@@ -1,8 +1,8 @@
-# Reprise — NBA Pronos (18/11/2026, passation 36)
-- **Chantier mode invité** (`Cadrage/Suivi/chantiers/CHANTIER_MODE_INVITE.md`) : lot A CODÉ sur la branche locale
-  `feat/mode-invite` (3 commits, rien de poussé, branchée sur `docs/passation-33`). Décision : une seule branche + PR globale.
-  Lot A = `/matchs`, `/match/[id]`, `/chat` invité (réécriture proxy vers `/chat-invite`), migration `anon` limité aux colonnes
-  publiques de `users`, pseudo sans `@`. **Premier pas** : lot B (`requireAuth`, modale, action en attente), ordre B → D → C → E → F → G.
+# Reprise — NBA Pronos (18/11/2026, passation 37)
+- **Chantier mode invité** (`Cadrage/Suivi/chantiers/CHANTIER_MODE_INVITE.md`) : lots A, B, D, C CODÉS sur la branche locale
+  `feat/mode-invite` (5 commits, rien de poussé, branchée sur `docs/passation-33`). Une seule branche + PR globale.
+  B = `AuthGateProvider`/modale/action en attente/brouillon chat ; D = OG match + `/ce-soir` ; C = consigne hors webview.
+  **Premier pas** : lot E (bandeau invité), puis F (mesure + migration `funnel_events`), G (perf mobile + recette).
 - **Au moment de pousser** : (1) vérifier `/leaderboard`, `/players`, `/match/[id]`, `/chat` en invité ; (2) `supabase db push --remote`
   (migration `20261118090000`, grant `anon` par colonne, chercher toute lecture de `users` en anon hors colonnes accordées) ;
   (3) renommer le compte à pseudo e-mail (id `5b39327a…`) ; (4) pas de test navigateur fait sur les pages du lot A.
