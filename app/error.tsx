@@ -25,7 +25,7 @@ export default function ErrorBoundary({
       <button type="button" onClick={() => unstable_retry()} className={styles.action}>
         Réessayer
       </button>
-      <a href="/home" className={styles.actionSecondary}>
+      <a href="/play" className={styles.actionSecondary}>
         Retour à l&apos;accueil
       </a>
     </StatusScreen>

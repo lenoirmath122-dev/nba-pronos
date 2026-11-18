@@ -2,7 +2,7 @@ import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { personalRecap, type NightMatch, type PersonalRecap, type RecapBet, type RecapPlayer } from "./build";
 import { loadCompetitionRecap } from "./load";
-import { dailyPeriod, visibleWeeklyPeriod, type RecapKind, type RecapPeriod } from "./period";
+import { dailyPeriod, pastDailyPeriod, visibleWeeklyPeriod, type RecapKind, type RecapPeriod } from "./period";
 import { TRASHTALK_HOME_URL } from "./trashtalk";
 import { getTrashTalkArticles } from "./trashtalkFeed";
 
@@ -12,6 +12,11 @@ import { getTrashTalkArticles } from "./trashtalkFeed";
 
 export type RecapView = {
   kind: RecapKind;
+  /** Jour du récap ("YYYY-MM-DD", Paris) : clé des réactions et des nuits du fil. */
+  recapDate: string;
+  /** Début et fin de la fenêtre : la liste « Mes paris » de la nuit lit la même. */
+  startIso: string;
+  endIso: string;
   /** Avant 10h : la nuit n'est pas finie, le récap se remplit encore. */
   inProgress: boolean;
   me: PersonalRecap | null;
@@ -31,12 +36,16 @@ async function viewFor(
   supabase: SupabaseClient,
   competitionId: string,
   userId: string,
-  period: RecapPeriod
+  period: RecapPeriod,
+  options: { endSnapshotDate?: string } = {}
 ): Promise<RecapView | null> {
-  const recap = await loadCompetitionRecap(supabase, competitionId, period, getTrashTalkArticles);
+  const recap = await loadCompetitionRecap(supabase, competitionId, period, getTrashTalkArticles, options);
   if (!recap.hasActivity) return null;
   return {
     kind: period.kind,
+    recapDate: period.recapDate,
+    startIso: period.startIso,
+    endIso: period.endIso,
     inProgress: period.inProgress,
     me: personalRecap(recap, userId),
     topScorers: recap.topScorers,
@@ -71,4 +80,20 @@ export async function getHomeRecap(
     viewFor(supabase, competitionId, userId, dailyPeriod(nowMs)),
   ]);
   return { weekly, daily };
+}
+
+/** Nuit passée du fil Actualité (13/11/2026) : totaux et rangs de fin de nuit
+ *  lus dans le snapshot du jour. Classement hebdo actif : le rang du snapshot
+ *  est celui du général, on le retire plutôt que de mélanger les deux (même
+ *  règle que withWeeklyRank pour la nuit en cours). */
+export async function getPastNightView(
+  supabase: SupabaseClient,
+  competitionId: string,
+  userId: string,
+  recapDate: string,
+  options: { weeklyRanking?: boolean } = {}
+): Promise<RecapView | null> {
+  const view = await viewFor(supabase, competitionId, userId, pastDailyPeriod(recapDate), { endSnapshotDate: recapDate });
+  if (!view || !options.weeklyRanking || !view.me) return view;
+  return { ...view, me: { ...view.me, rank: null, rankDelta: null, passed: [] } };
 }

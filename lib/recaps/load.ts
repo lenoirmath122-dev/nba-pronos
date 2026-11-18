@@ -21,6 +21,7 @@ import type { RecapPeriod } from "./period";
 
 type MatchRow = {
   id: string;
+  scheduled_at: string;
   home_team_id: string | null;
   away_team_id: string | null;
   home_score: number | null;
@@ -53,13 +54,24 @@ export async function loadCompetitionRecap(
   competitionId: string,
   period: RecapPeriod,
   /** Flux TrashTalk, lu seulement s'il y a des matchs dans la fenêtre. */
-  getArticles: () => Promise<FeedArticle[]>
+  getArticles: () => Promise<FeedArticle[]>,
+  /** Nuit passée (fil Actualité, 13/11/2026) : les totaux et rangs de fin de
+   *  nuit sont ceux du snapshot de ce jour (figé à 10h), pas les scores en
+   *  direct, sinon « points gagnés » compterait tout depuis cette nuit-là. */
+  options: { endSnapshotDate?: string } = {}
 ): Promise<CompetitionRecap> {
+  const scoresQuery = options.endSnapshotDate
+    ? supabase
+        .from("leaderboard_snapshots")
+        .select("user_id, rank, total_points, correct_match_winners, exact_margins")
+        .eq("competition_id", competitionId)
+        .eq("snapshot_date", options.endSnapshotDate)
+    : supabase
+        .from("user_scores")
+        .select("user_id, total_points, correct_match_winners, exact_margins, bracket_points")
+        .eq("competition_id", competitionId);
   const [{ data: scoresData }, baseline, { data: matchesData }, { data: betsData }] = await Promise.all([
-    supabase
-      .from("user_scores")
-      .select("user_id, total_points, correct_match_winners, exact_margins, bracket_points")
-      .eq("competition_id", competitionId),
+    scoresQuery,
     loadBaseline(supabase, competitionId, period.baselineBefore),
     supabase
       .from("matches")
@@ -80,7 +92,11 @@ export async function loadCompetitionRecap(
       .lt("scored_at", period.endIso),
   ]);
 
-  const scores = (scoresData ?? []) as RankableScore[];
+  const scoreRows = (scoresData ?? []) as (RankableScore & { rank?: number })[];
+  const scores: RankableScore[] = scoreRows.map((row) => ({ ...row, bracket_points: row.bracket_points ?? 0 }));
+  const endRanks = options.endSnapshotDate
+    ? new Map(scoreRows.map((row) => [row.user_id, row.rank ?? 0]))
+    : undefined;
   const matches = (matchesData ?? []) as MatchRow[];
   const bets = (betsData ?? []) as ScoredBetRow[];
 
@@ -112,6 +128,9 @@ export async function loadCompetitionRecap(
       id: match.id,
       label: `${home?.abbreviation ?? "?"} ${match.home_score ?? "-"} - ${match.away_score ?? "-"} ${away?.abbreviation ?? "?"}`,
       articleUrl: article?.url ?? null,
+      scheduledAt: match.scheduled_at,
+      homeAbbr: home?.abbreviation ?? "?",
+      awayAbbr: away?.abbreviation ?? "?",
     };
   });
 
@@ -123,6 +142,7 @@ export async function loadCompetitionRecap(
     predictions: (predictionsData ?? []) as ScoredPredictionRow[],
     bets,
     nightMatches,
+    endRanks,
   });
 }
 

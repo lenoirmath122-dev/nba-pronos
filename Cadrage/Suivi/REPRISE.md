@@ -1,4 +1,4 @@
-# Reprise — NBA Pronos (18/11/2026, passation 38)
+# Reprise — NBA Pronos (18/11/2026, passation 41)
 - **Chantier mode invité** (`Cadrage/Suivi/chantiers/CHANTIER_MODE_INVITE.md`) : lots A à G CODÉS sur la branche locale
   `feat/mode-invite` (rien de poussé, branchée sur `docs/passation-33`). Une seule branche + PR globale.
   **Premier pas** : dérouler la checklist de recette (bas du chantier) en local/preview, puis pousser la branche et ouvrir la PR.
@@ -14,3 +14,4 @@
 - **Pièges** : fichiers en CRLF (éditer via script Python en UTF-8) ; pas d'import pendant le timer VM 12h/16h Paris ; migrations via
   `supabase db push --remote` ; le service stats ne se redéploie pas seul. **Hérité** : 983 lignes de présaison dans
   `stats_box_scores` ; pari Memphis à rejouer (demander) ; poller VM dryRun -> réel. **Échéance** : bêta Cup 04/12.
+- **Repris de main (13-18/11)** : PR #299 Actualité (migration `20261113150000_recap_reactions` à pousser AVANT déploiement), PR #298 feuilles de match (BOX_SCORES_PUBLISH), PR #296 paliers 66/53/35/20, PR #303 incident VM 18/11 (fsck forcé + alerte « match sans score » à faire). GCP Free Trial expire 20/11.

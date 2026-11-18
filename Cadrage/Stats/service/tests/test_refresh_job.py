@@ -47,9 +47,10 @@ def wiring(monkeypatch):
 
     # Le secours ne doit JAMAIS faire de réseau dans ces tests (le fetch nba_api ne
     # passe pas par le mock de requests.post) : pr.run est remplacé.
-    def fake_backup(dates, dry_run):
+    def fake_backup(dates, dry_run, finished_sink=None):
         calls["order"].append("backup")
         calls["backup"].append((dates, dry_run))
+        calls["sink"] = finished_sink
         if isinstance(calls.get("backup_error"), BaseException):
             raise calls["backup_error"]
         return True
@@ -184,3 +185,25 @@ def test_echec_de_la_revalidation_est_ignore(wiring, monkeypatch):
     monkeypatch.setattr(job.requests, "post", post)
     assert job.main(["--season", "2026-27"]) == 0
     assert wiring["logs"] == []
+
+
+def test_feuilles_de_match_réécrites_avec_les_scoreboards_du_secours(wiring, monkeypatch):
+    import box_scores as bs
+
+    seen = []
+    monkeypatch.setenv("BOX_SCORES_PUBLISH", "1")
+    monkeypatch.setattr(rd, "run", lambda *a, **k: None)
+    monkeypatch.setattr(job.bs, "publish", lambda found, mode, **kw: seen.append((found, mode, kw)) or {})
+    assert job.main(["--season", "2026-27"]) == 0
+    found, mode, kw = seen[0]
+    assert found is wiring["sink"]  # la liste remplie par pr.run du secours
+    assert mode == bs.ON and kw["rewrite"] is True and kw["source"] == "import" and kw["budget_seconds"] is None
+
+
+def test_feuilles_de_match_désactivées_par_défaut(wiring, monkeypatch):
+    import box_scores as bs
+
+    monkeypatch.delenv("BOX_SCORES_PUBLISH", raising=False)
+    monkeypatch.setattr(rd, "run", lambda *a, **k: None)
+    monkeypatch.setattr(bs, "fetch_box_score", lambda *a, **k: pytest.fail("aucun appel NBA attendu"))
+    assert job.main(["--season", "2026-27"]) == 0

@@ -70,6 +70,12 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
   total d'octobre 0,00 € (coût 2,18 € couvert par des remises 1,37 € + crédits promo 0,81 €).
   Le crédit « Free Trial » (261,62 € restants) **expire le 20/11/2026** : revérifier la
   facture début décembre (ce qu'il couvrait, ~0,8 €/mois, pourrait devenir payant).
+- **Feuilles de match statiques** (13/11/2026, PR #298) : à mettre en
+  service après merge (migration du bucket `box-scores`, `BOX_SCORES_PUBLISH=dry` un soir puis `1`,
+  rattrapage `--backfill --since 2026-10-21`, voir DEPLOIEMENT_VM.md). Testé seulement sur une
+  capture synthétique de BoxScoreTraditionalV3 (stats.nba.com injoignable hors VM) : le soir en
+  `dry` est la vraie vérification. Non vérifié non plus : droit d'accès du compte de service de
+  la VM au secret `nba-pronos-supabase-key` depuis le poller (même compte que `run.sh`, attendu OK).
 - Reste : 983 `stats_box_scores.pf` vides ; 38 matchs de compétitions de test bloqués en
   `SCHEDULED` (à archiver).
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.

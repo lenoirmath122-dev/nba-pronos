@@ -15,7 +15,7 @@ export default async function MfaSetupPage() {
   if (!user) redirect("/login");
 
   const { data: isAdmin } = await supabase.rpc("is_admin");
-  if (!isAdmin) redirect("/home");
+  if (!isAdmin) redirect("/play");
 
   const { data: factors } = await supabase.auth.mfa.listFactors();
   const hasVerifiedTotp = factors?.all.some((f) => f.factor_type === "totp" && f.status === "verified");

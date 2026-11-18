@@ -45,7 +45,7 @@ export default async function AdminLayout({
   if (!isAdmin) {
     // Pas de fuite d'existence d'écran (T6a §4.2) : même redirection que
     // pour un visiteur non connecté sur une route joueur.
-    redirect("/home");
+    redirect("/play");
   }
 
   // 2FA obligatoire pour l'admin (p2-8, feuille de route Phase 2) — un mot
@@ -85,7 +85,7 @@ export default async function AdminLayout({
         {/* Remonté par l'utilisateur en testant (30/07/2026) : aucun moyen de
             sortir du panneau admin vers l'app joueur depuis sa création
             (§2.20). Lien partagé, présent sur TOUTES les pages admin. */}
-        <Link href="/home" className={styles.exitLink}>
+        <Link href="/play" className={styles.exitLink}>
           ← Retour à l&apos;app
         </Link>
       </header>

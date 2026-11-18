@@ -28,6 +28,7 @@ vi.mock("@/lib/supabase/server", () => ({
 }));
 
 const { getHomeData } = await import("@/lib/queries/home");
+const { dailyPeriod } = await import("@/lib/recaps/period");
 
 let userA: { id: string; client: SupabaseClient };
 let userB: { id: string; client: SupabaseClient };
@@ -72,7 +73,7 @@ describe("getHomeData -- garde de session", () => {
     state.client = anon;
     const data = await getHomeData();
     expect(data.header).toBeNull();
-    expect(data.todo).toHaveLength(0);
+    expect(data.nights).toHaveLength(0);
   });
 });
 
@@ -137,155 +138,15 @@ describe("getHomeData -- en-tête (rang, pointsBehindLeader)", () => {
   });
 });
 
-describe("getHomeData -- « À traiter » (tri par deadline la plus proche)", () => {
-  let seriesId: string;
-  let matchToPredictId: string;
-  let matchForBetId: string;
-  let betId: string;
+// « À traiter » et « À traiter (admin) » ne sont plus sur l'Actualité depuis
+// le 13/11/2026 (Jouer les porte) : leurs tests sont partis avec eux.
 
-  beforeAll(async () => {
-    const { data: series, error: seriesError } = await serviceClient
-      .from("series")
-      .insert({ competition_id: competitionId, round: "ROUND_1", conference: "EAST", slot_index: 1, official_status: "SCHEDULED" })
-      .select("id")
-      .single();
-    if (seriesError || !series) throw new Error(seriesError?.message);
-    seriesId = series.id;
-
-    // 2 matchs de CETTE série : celui à pronostiquer (deadline la plus
-    // lointaine des 3 items, status SCHEDULED -- seul statut lu par
-    // getMatchesTodo) et celui visé par le pari MATCH ci-dessous (deadline la
-    // plus proche -- doit sortir en tête du tri). Ce 2e match est marqué
-    // IN_PROGRESS pour ne PAS être lui-même compté comme "à pronostiquer"
-    // (computeBetDeadlines ne lit que scheduled_at, jamais status -- seul
-    // getMatchesTodo filtre sur SCHEDULED).
-    const { data: matches, error: matchesError } = await serviceClient
-      .from("matches")
-      .insert([
-        { competition_id: competitionId, series_id: seriesId, game_number: 1, scheduled_at: inHours(24), home_team_id: teamA.id, away_team_id: teamB.id, status: "SCHEDULED" },
-        { competition_id: competitionId, series_id: seriesId, game_number: 2, scheduled_at: inHours(3), status: "IN_PROGRESS" },
-      ])
-      .select("id");
-    if (matchesError || !matches || matches.length !== 2) throw new Error(matchesError?.message);
-    [{ id: matchToPredictId }, { id: matchForBetId }] = matches as { id: string }[];
-
-    const { data: bet, error: betError } = await userA.client
-      .from("bets")
-      .insert({
-        competition_id: competitionId,
-        user_id: userA.id,
-        scope: "MATCH",
-        series_id: seriesId,
-        match_id: matchForBetId,
-        description: "Test home -- pari brouillon de A",
-        status: "DRAFT",
-        proposed_category: "SCORE_TOTAL",
-        proposed_difficulty: 1,
-      })
-      .select("id")
-      .single();
-    if (betError || !bet) throw new Error(`Insertion du pari brouillon échouée: ${betError?.message}`);
-    betId = bet.id;
-  });
-
-  afterAll(async () => {
-    await serviceClient.from("bets").delete().eq("id", betId);
-    await serviceClient.from("matches").delete().eq("series_id", seriesId);
-    await serviceClient.from("series").delete().eq("id", seriesId);
-  });
-
-  it("liste bracket + matchs + paris, triés par deadline croissante (le pari MATCH à +3h en premier)", async () => {
-    state.client = userA.client;
-    const data = await getHomeData();
-    const kinds = data.todo.map((item) => item.kind);
-    expect(kinds).toEqual(["bets", "matches", "bracket"]);
-
-    const betsItem = data.todo.find((item) => item.kind === "bets")!;
-    expect(betsItem.count).toBe(1);
-    expect(betsItem.href).toBe("/play"); // DRAFT -> édité sur /play, pas /play/bets/new
-
-    const matchesItem = data.todo.find((item) => item.kind === "matches")!;
-    expect(matchesItem.matchup).toEqual({
-      home: { abbreviation: teamA.abbreviation, name: expect.any(String) },
-      away: { abbreviation: teamB.abbreviation, name: expect.any(String) },
-      gameNumber: 1,
-    });
-    // Confirme que c'est bien matchToPredictId (+24h) qui pilote la deadline
-    // de l'item "matches", pas matchForBetId (+3h, IN_PROGRESS -- exclu de
-    // getMatchesTodo, seulement visé par le pari MATCH ci-dessus).
-    const { data: match } = await serviceClient.from("matches").select("scheduled_at").eq("id", matchToPredictId).single();
-    expect(matchesItem.deadline).toBe(match?.scheduled_at);
-  });
-
-  it("le pari brouillon disparaît de « À traiter » une fois SUBMITTED (pas DRAFT/REJECTED)", async () => {
-    const { error } = await serviceClient.from("bets").update({ status: "SUBMITTED" }).eq("id", betId);
-    if (error) throw new Error(error.message);
-    try {
-      state.client = userA.client;
-      const data = await getHomeData();
-      expect(data.todo.some((item) => item.kind === "bets")).toBe(false);
-    } finally {
-      await serviceClient.from("bets").update({ status: "DRAFT" }).eq("id", betId);
-    }
-  });
-});
-
-describe("getHomeData -- « À traiter (admin) »", () => {
-  let seriesId: string;
-  let betId: string;
-
-  beforeAll(async () => {
-    const { data: series, error: seriesError } = await serviceClient
-      .from("series")
-      .insert({ competition_id: competitionId, round: "ROUND_1", conference: "WEST", slot_index: 2, official_status: "SCHEDULED" })
-      .select("id")
-      .single();
-    if (seriesError || !series) throw new Error(seriesError?.message);
-    seriesId = series.id;
-
-    const { data: bet, error: betError } = await userA.client
-      .from("bets")
-      .insert({
-        competition_id: competitionId,
-        user_id: userA.id,
-        scope: "SERIES",
-        series_id: seriesId,
-        description: "Test home -- pari à valider",
-        status: "DRAFT",
-        proposed_category: "TEAM_PROP",
-        proposed_difficulty: 1,
-      })
-      .select("id")
-      .single();
-    if (betError || !bet) throw new Error(betError?.message);
-    betId = bet.id;
-    const { error: submitError } = await serviceClient.from("bets").update({ status: "SUBMITTED" }).eq("id", betId);
-    if (submitError) throw new Error(submitError.message);
-  });
-
-  afterAll(async () => {
-    await serviceClient.from("bets").delete().eq("id", betId);
-    await serviceClient.from("series").delete().eq("id", seriesId);
-  });
-
-  it("vide pour un joueur non-admin", async () => {
-    state.client = userA.client;
-    const data = await getHomeData();
-    expect(data.adminTodo).toHaveLength(0);
-  });
-
-  it("compte les paris SUBMITTED pour un admin", async () => {
-    state.client = userAdmin.client;
-    const data = await getHomeData();
-    expect(data.adminTodo).toHaveLength(1);
-    expect(data.adminTodo[0].count).toBe(1);
-    expect(data.adminTodo[0].href).toBe("/admin/validation");
-  });
-});
-
-describe("getHomeData -- « Ça vient de tomber » (fenêtre de 48h)", () => {
+describe("getHomeData -- carte « Ta nuit » (même fenêtre que le récap)", () => {
   let seriesId: string;
   let matchId: string;
+  const night = dailyPeriod(Date.now());
+  const inNight = new Date(Date.parse(night.startIso) + 60 * 60 * 1000).toISOString();
+  const beforeNight = new Date(Date.parse(night.startIso) - 60 * 60 * 1000).toISOString();
 
   beforeAll(async () => {
     const { data: series, error: seriesError } = await serviceClient
@@ -302,7 +163,7 @@ describe("getHomeData -- « Ça vient de tomber » (fenêtre de 48h)", () => {
         competition_id: competitionId,
         series_id: seriesId,
         game_number: 1,
-        scheduled_at: inHours(-72),
+        scheduled_at: inNight,
         status: "FINISHED",
         home_team_id: teamA.id,
         away_team_id: teamB.id,
@@ -324,7 +185,7 @@ describe("getHomeData -- « Ça vient de tomber » (fenêtre de 48h)", () => {
         margin_diff: 3,
         winner_points: 10,
         margin_bonus_points: 0,
-        scored_at: inHours(-1), // récent -- dans la fenêtre de 48h
+        scored_at: inHours(-1),
       },
     ]);
     if (predictionsError) throw new Error(predictionsError.message);
@@ -336,29 +197,41 @@ describe("getHomeData -- « Ça vient de tomber » (fenêtre de 48h)", () => {
     await serviceClient.from("series").delete().eq("id", seriesId);
   });
 
-  it("affiche le match scoré récent, avec le bon libellé et lien vers Résultats", async () => {
+  it("liste le match de la nuit, avec le bon libellé et lien vers Résultats", async () => {
     state.client = userA.client;
     const data = await getHomeData();
-    const item = data.feed.find((entry) => entry.kind === "match_scored");
+    expect(data.nights[0].recapDate).toBe(night.recapDate);
+    const item = data.nights[0].items.find((entry) => entry.kind === "match_scored");
     expect(item).toBeDefined();
     expect(item!.outcome).toBe("win");
     expect(item!.points).toBe(10);
     expect(item!.label).toContain(`${teamA.abbreviation} 110 - 100 ${teamB.abbreviation}`);
     expect(item!.href).toContain(`#match-${matchId}`);
+    expect(data.latestFeedAt).not.toBeNull();
   });
 
-  it("un score vieux de plus de 48h n'apparaît plus dans le feed", async () => {
-    const { error } = await serviceClient
-      .from("match_predictions")
-      .update({ scored_at: inHours(-72) })
-      .eq("match_id", matchId);
+  it("un match de la nuit d'avant n'apparaît pas, même scoré récemment (scored_at réécrit au recalcul)", async () => {
+    const { error } = await serviceClient.from("matches").update({ scheduled_at: beforeNight }).eq("id", matchId);
     if (error) throw new Error(error.message);
     try {
       state.client = userA.client;
       const data = await getHomeData();
-      expect(data.feed.some((entry) => entry.kind === "match_scored")).toBe(false);
+      expect(data.nights[0].items.some((entry) => entry.kind === "match_scored")).toBe(false);
     } finally {
-      await serviceClient.from("match_predictions").update({ scored_at: inHours(-1) }).eq("match_id", matchId);
+      await serviceClient.from("matches").update({ scheduled_at: inNight }).eq("id", matchId);
+    }
+  });
+
+  it("?nuits=2 ajoute la nuit précédente, qui reprend ce match", async () => {
+    const { error } = await serviceClient.from("matches").update({ scheduled_at: beforeNight }).eq("id", matchId);
+    if (error) throw new Error(error.message);
+    try {
+      state.client = userA.client;
+      const data = await getHomeData({ nights: 2 });
+      expect(data.nights).toHaveLength(2);
+      expect(data.nights[1].items.some((entry) => entry.kind === "match_scored")).toBe(true);
+    } finally {
+      await serviceClient.from("matches").update({ scheduled_at: inNight }).eq("id", matchId);
     }
   });
 });

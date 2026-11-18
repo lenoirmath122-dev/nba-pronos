@@ -52,10 +52,10 @@ describe("proxy — visiteur sans cookie de session", () => {
 });
 
 describe("proxy — avec cookie de session", () => {
-  it("vérifie la session et renvoie un connecté de / vers /home", async () => {
+  it("vérifie la session et renvoie un connecté de / vers /play (page d’arrivée)", async () => {
     const res = await proxy(req("/", SESSION_COOKIE));
     expect(getUser).toHaveBeenCalledOnce();
-    expect(res.headers.get("location")).toBe("https://panierballon.fr/home");
+    expect(res.headers.get("location")).toBe("https://panierballon.fr/play");
   });
 
   it("reconnaît un cookie découpé en morceaux", async () => {

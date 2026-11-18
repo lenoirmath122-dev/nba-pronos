@@ -4,9 +4,10 @@ import { useState } from "react";
 import { track } from "@vercel/analytics";
 import type { TeamInsightsResponse } from "@/lib/teamInsights/types";
 import { TeamDetailsDialog } from "./TeamDetailsDialog";
-import styles from "./TeamDetailsButton.module.css";
+import styles from "./BroadcastButton.module.css";
 
-// Bouton « Détail des équipes » d'une carte de match : popup à onglets (Face à
+// Bouton « Stats des équipes » (ex-« Détail des équipes », renommé le
+// 13/11/2026, même visuel que « Feuille de match ») d'une carte de match : popup à onglets (Face à
 // face, Effectif, Joueurs à surveiller). Le dialogue n'est monté que pendant
 // l'ouverture (FocusTrap : focus piégé, rendu au bouton à la fermeture), donc
 // il rouvre toujours sur Face à face. Un seul appel réseau, au premier clic :
@@ -48,7 +49,7 @@ export function TeamDetailsButton({ teamIds, subtitle }: Props) {
   return (
     <>
       <button type="button" className={styles.button} onClick={open}>
-        Détail des équipes
+        Stats des équipes
       </button>
       {isOpen && (
         <TeamDetailsDialog

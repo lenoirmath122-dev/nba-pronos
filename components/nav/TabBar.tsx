@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-  HomeIcon,
+  NewsIcon,
   PlayIcon,
   RankingIcon,
   ChatIcon,
@@ -23,15 +23,18 @@ import {
 } from "@/lib/nav/profileMenu";
 import styles from "./TabBar.module.css";
 
-// Barre 5 onglets (Accueil · Jouer · Classement · Chat · Profil) — Chat
+// Barre 5 onglets (Jouer · Actualité · Classement · Chat · Profil) — 13/11/2026 :
+// « Accueil » devient « Actualité » (même URL /home, le fil de la ligue) et
+// passe après Jouer, sur lequel l'app s'ouvre désormais (manifest, proxy,
+// connexion). Historique : Chat
 // ajouté le 27/08/2026 (SPEC_CHAT_V0_1.md, confirmé avec l'utilisateur :
 // 5e onglet plutôt qu'un lien depuis Accueil, malgré la densité mobile
 // supplémentaire). Ex-barre à 4 onglets, T6a §3.1 / SPEC_ECRAN_ACCUEIL §1.
 // Seule l'état "onglet actif" (chemin courant) exige un composant client ;
 // le reste de l'écran reste serveur.
 const TABS = [
-  { href: "/home", label: "Accueil", Icon: HomeIcon },
   { href: "/play", label: "Jouer", Icon: PlayIcon },
+  { href: "/home", label: "Actualité", Icon: NewsIcon },
   { href: "/leaderboard", label: "Classement", Icon: RankingIcon },
   { href: "/chat", label: "Chat", Icon: ChatIcon },
   { href: "/profile", label: "Profil", Icon: ProfileIcon },

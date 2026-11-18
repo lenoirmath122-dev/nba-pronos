@@ -39,6 +39,7 @@ import sys
 
 import requests
 
+import box_scores as bs
 import poll_results as pr
 import refresh_daily as rd
 
@@ -123,12 +124,22 @@ def scoreboard_backup():
     derniers jours vers /api/sync/results-nba, qui remet les matchs en FINISHED et
     déclenche la résolution des paris. Idempotent. Lancé AVANT l'import des box scores
     (qui peut durer des heures ou planter) ; ne modifie JAMAIS le code de sortie et
-    n'écrit rien dans sync_logs. Même variable RESULTS_POLL_DRYRUN que le poller."""
+    n'écrit rien dans sync_logs. Même variable RESULTS_POLL_DRYRUN que le poller.
+
+    Les mêmes scoreboards servent aux feuilles de match (box_scores.publish, mode
+    réécriture) : chaque match d'un jour NY passé est republié une fois, pour prendre
+    les corrections de stats de la NBA, et ceux que le poller a manqués sont rattrapés.
+    Même interrupteur BOX_SCORES_PUBLISH que le poller."""
+    finished: list[dict] = []
     try:
         dry_run = pr.resolve_dry_run(os.environ.get("RESULTS_POLL_DRYRUN"))
-        pr.run(pr.backup_dates(dt.datetime.now(dt.timezone.utc)), dry_run)
+        pr.run(pr.backup_dates(dt.datetime.now(dt.timezone.utc)), dry_run, finished)
     except Exception as exc:  # noqa: BLE001 -- le secours ne doit rien casser
         print(f"[secours résultats] échec ignoré ({type(exc).__name__})")
+    # Pas de budget de temps ici (pas de timer de 2 min derrière), mais un plafond
+    # d'appels : 3 jours NY, ~45 matchs au plus.
+    bs.publish(finished, bs.publish_mode(os.environ.get("BOX_SCORES_PUBLISH")),
+               rewrite=True, source="import", budget_seconds=None, max_games=60)
 
 
 def main(argv=None) -> int:

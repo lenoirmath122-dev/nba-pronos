@@ -257,9 +257,21 @@ Safari (seul contexte où Apple autorise le push web). « Plus tard » la
 masque 7 jours sur l'appareil (localStorage). Le réglage complet reste
 dans le Profil.
 
+**Actualité (ex-Accueil, 13/11/2026)** : l'onglet `/home` s'appelle
+« Actualité » (barre : Jouer · Actualité · Classement · Chat · Profil) et
+l'app s'ouvre sur `/play` (manifest, proxy, connexion). Prochain prono, « À
+faire aussi », « À traiter (admin) » et « Proposer un pari » en sont retirés
+(Jouer les porte). Contenu : en-tête rang/points, « Ta semaine » le lundi,
+carte de la nuit (`components/news/NightCard.tsx` : points + rang, X réussis
+sur N, highlights avec réactions rapides Respect/Chambrer — table
+`recap_reactions` — et « Répondre » qui ouvre le chat Général pré-rempli via
+`/chat?citer=`, scores + TrashTalk, paris de la nuit au tap), aperçu des 2
+derniers messages du chat, nuits précédentes à la demande (`?nuits=N`, 14 max,
+totaux et rangs lus dans le snapshot du jour). La liste des paris de la nuit
+suit la fenêtre du récap (avant : 48 h, deux nuits mélangées).
+
 **Récaps du matin** (`lib/recaps/`) : bloc « Ta nuit » (et « Ta semaine »
-du lundi 10h au mardi 10h) en tête de la carte « Ça vient de tomber » de
-l'Accueil : points gagnés et détail (bons vainqueurs, écarts exacts, paris),
+du lundi 10h au mardi 10h) sur l'Actualité : points gagnés et détail (bons vainqueurs, écarts exacts, paris),
 rang et évolution, joueurs dépassés ; meilleure nuit et plus gros pari
 réussi ; en hebdo classement de la semaine (top 3 + ta place), plus grosse
 remontée, sniper, pari de la semaine et « plus loufoque perdu » ; scores de
@@ -405,7 +417,8 @@ automatiquement au retour au vert), cron retiré de `refresh-stats-supabase.yml`
 (désormais plan B manuel), versions Python épinglées. Mise en place du
 déclencheur : `DEPLOIEMENT_VM.md` étape 7 (actions de l'utilisateur après
 merge). Voir `GAPS_OUVERTS.md`.
-**Poller des résultats NBA** (VM, `poll_results.py`, unité `nba-results-poll`, ScoreboardV3 via `nba_api` vers `/api/sync/results-nba`, 2 min la nuit et 15 min le jour) : déployé en dryRun (`RESULTS_POLL_DRYRUN=1`) depuis le 08/10/2026, passage en réel après 2 soirs d'observation. Sur un match suivi par lui (mapping `NBA_LIVE`), Highlightly n'avance que le statut (`highlightlyMayWrite`, `lib/sync/results.ts`). Repli : un fetch NBA en échec appelle `/api/sync/results` depuis la VM (1 fois par heure max). Code de sortie 75 = panne passagère (unité non `failed`). Watchdog `watchdog-results-poll.yml` (R1 muet, R2 match non terminé 5 h après le coup d'envoi, R3 échecs en boucle) : à activer après le passage en réel.
+**Poller des résultats NBA** (VM, `poll_results.py`, unité `nba-results-poll`, ScoreboardV3 via `nba_api` vers `/api/sync/results-nba`, 2 min la nuit et 15 min le jour) : déployé en dryRun (`RESULTS_POLL_DRYRUN=1`) depuis le 08/10/2026, passage en réel après 2 soirs d'observation. Sur un match suivi par lui (mapping `NBA_LIVE`), Highlightly n'avance que le statut (`highlightlyMayWrite`, `lib/sync/results.ts`). Repli : un fetch NBA en échec appelle `/api/sync/results` depuis la VM (1 fois par heure max). Code de sortie 75 = panne passagère (unité non `failed`). Watchdog `watchdog-results-poll.yml` (R1 muet, R2 match non terminé 5 h après le coup d'envoi, R3 échecs en boucle) : à activer après le passage en réel. **Garde « match sans score »** (18/11/2026, cron Vercel `/api/cron/results-guard` à HH:15 de 4 h à 12 h UTC, `lib/sync/resultsGuard.ts`) : match d'une compétition ACTIVE encore ouvert 3 h 30 à 36 h après le coup d'envoi -> repli Highlightly sur son jour NY, puis push aux admins (« score rattrapé » = poller VM à regarder ; « match sans score » jusqu'à 7 h après le coup d'envoi). Aucun appel Highlightly sans match en retard ; `?dry_run=1` pour compter seulement.
+**Feuilles de match statiques** (`box_scores.py`, 13/11/2026) : à chaque match terminé du scoreboard, le poller fait un appel BoxScoreTraditionalV3 et dépose `{jour NY}/{TRI}-{TRI}.json` (tricodes triés, ~5 Ko) dans le bucket Supabase Storage public `box-scores` (clé service_role lue dans Secret Manager) ; `refresh_job.py` réécrit une fois les matchs des jours NY passés (corrections NBA). Après les résultats, jamais bloquant, interrupteur `BOX_SCORES_PUBLISH` (absent/0, dry, 1). L'appli recalcule le chemin depuis `scheduled_at` + abréviations (`lib/boxScores/schema.ts`) et lit le JSON sur le CDN : bouton « Feuille de match » des cartes Résultats terminées (`BoxScoreButton`/`BoxScoreDialog`), sans route Next ni requête en base.
 
 ---
 

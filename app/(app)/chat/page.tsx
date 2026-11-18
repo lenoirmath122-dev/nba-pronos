@@ -7,6 +7,7 @@ import { getChatMessages, getChatRoster, getMutedChannels, getRecentChatActivity
 import { getMyLeagues, resolveLeagueScope } from "@/lib/queries/leagues";
 import { ChatChannelList } from "@/components/chat/ChatChannelList";
 import { ChatSubscriber } from "@/components/chat/ChatSubscriber";
+import { CHAT_PREFILL_MAX_LENGTH } from "@/lib/news/night";
 import styles from "./page.module.css";
 
 // Écran Chat (SPEC_CHAT_V0_1.md, addendum 27/08/2026 -- liste de canaux
@@ -19,10 +20,12 @@ import styles from "./page.module.css";
 // navigation entre canaux distincts, pas un filtre. L'auth est déjà gardée
 // par app/(app)/layout.tsx.
 
-type ChatPageProps = { searchParams: Promise<{ canal?: string }> };
+type ChatPageProps = { searchParams: Promise<{ canal?: string; citer?: string }> };
 
 export default async function ChatPage({ searchParams }: ChatPageProps) {
-  const { canal } = await searchParams;
+  const { canal, citer } = await searchParams;
+  // « Répondre » depuis l'Actualité (13/11/2026) : texte pré-rempli, borné.
+  const initialText = typeof citer === "string" ? citer.slice(0, CHAT_PREFILL_MAX_LENGTH) : undefined;
 
   const supabase = await getServerClient();
   const {
@@ -82,6 +85,7 @@ export default async function ChatPage({ searchParams }: ChatPageProps) {
         scope={scope}
         currentUserId={user!.id}
         isCurrentUserAdmin={isCurrentUserAdmin}
+        initialText={initialText}
       />
       </ShowcaseProvider>
     </div>

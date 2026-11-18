@@ -110,7 +110,7 @@ function routeGuard(
   }
 
   if (isAuthPage && user) {
-    return NextResponse.redirect(new URL("/home", request.url));
+    return NextResponse.redirect(new URL("/play", request.url));
   }
 
   const isGuestOnly = GUEST_ONLY_PREFIXES.some(

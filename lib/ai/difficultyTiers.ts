@@ -10,11 +10,18 @@ import type { BetDifficulty } from "@/lib/labels/bets";
 // plutôt que d'attendre un vrai volume de paris joueurs (3 seulement à cette
 // date). Palier bas = pari facile à gagner = peu de points
 // (BET_DIFFICULTY_POINTS) ; palier haut = pari improbable = plus de points.
+//
+// Recalage du 12/11/2026 sur les vrais paris (120 résolus) : les paliers 3
+// et 4 avaient presque le même taux de réussite réel (38 % et 33 %), un pari
+// à ~39 % rapportait donc 20 points pour un risque de palier 3. Seuils des
+// paliers 3/4 abaissés à 35 % et 20 % (39 % -> 15 points) ; paliers 1/2
+// inchangés. Effet sur les paris de la saison 2026-27 : -5 % de points
+// distribués. À revoir fin novembre : le palier 2 gagne ~80 % du temps.
 const CALIBRATED_THRESHOLDS: { minProba: number; difficulty: BetDifficulty }[] = [
   { minProba: 0.664, difficulty: 1 },
   { minProba: 0.529, difficulty: 2 },
-  { minProba: 0.394, difficulty: 3 },
-  { minProba: 0.249, difficulty: 4 },
+  { minProba: 0.35, difficulty: 3 },
+  { minProba: 0.2, difficulty: 4 },
   { minProba: 0, difficulty: 5 },
 ];
 

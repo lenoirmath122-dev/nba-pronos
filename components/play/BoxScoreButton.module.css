@@ -1,0 +1,16 @@
+/* Le style du bouton vient de BroadcastButton.module.css ; ici seulement le
+   libellé court quand la bande du prono est étroite (petits écrans, prono
+   long) -- la bande est un conteneur de requêtes (PronoBug.module.css). */
+.short {
+  display: none;
+}
+
+@container (max-width: 229px) {
+  .full {
+    display: none;
+  }
+
+  .short {
+    display: inline;
+  }
+}

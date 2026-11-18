@@ -172,3 +172,62 @@ export async function getChatMessages(scope: ChatScope): Promise<ChatMessage[]> 
       };
     });
 }
+
+/** Dernier message visible (aperçu du chat sur l'Actualité, 13/11/2026). */
+export type ChatPreviewMessage = {
+  id: string;
+  pseudo: string;
+  avatarUrl: string | null;
+  body: string;
+  createdAt: string;
+  /** Valeur de `?canal=` : "general" ou l'id de la ligue. */
+  channel: string;
+  channelName: string;
+};
+
+/** Les `limit` derniers messages, tous canaux visibles confondus (RLS
+ *  chat_messages_select : Général + les ligues du joueur), du plus récent au
+ *  plus ancien. Deux petites requêtes de plus seulement s'il y a des messages. */
+export async function getChatPreview(limit = 2): Promise<ChatPreviewMessage[]> {
+  const supabase = await getServerClient();
+  const { data } = await supabase
+    .from("chat_messages")
+    .select("id, user_id, body, created_at, scope_type, league_id")
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  const rows = (data ?? []) as {
+    id: string;
+    user_id: string;
+    body: string;
+    created_at: string;
+    scope_type: string;
+    league_id: string | null;
+  }[];
+  if (rows.length === 0) return [];
+
+  const leagueIds = [...new Set(rows.map((row) => row.league_id).filter((id): id is string => id !== null))];
+  const [{ data: userRows }, { data: leagueRows }] = await Promise.all([
+    supabase.from("users").select("id, pseudo, avatar_url").in("id", [...new Set(rows.map((row) => row.user_id))]),
+    leagueIds.length > 0
+      ? supabase.from("leagues").select("id, name").in("id", leagueIds)
+      : Promise.resolve({ data: [] as { id: string; name: string }[] }),
+  ]);
+  const userById = new Map(
+    ((userRows ?? []) as { id: string; pseudo: string; avatar_url: string | null }[]).map((row) => [row.id, row])
+  );
+  const leagueName = new Map(((leagueRows ?? []) as { id: string; name: string }[]).map((row) => [row.id, row.name]));
+
+  return rows.map((row) => {
+    const author = userById.get(row.user_id);
+    const isLeague = row.scope_type === "LEAGUE" && row.league_id !== null;
+    return {
+      id: row.id,
+      pseudo: author?.pseudo ?? "Joueur",
+      avatarUrl: author?.avatar_url ?? null,
+      body: row.body,
+      createdAt: row.created_at,
+      channel: isLeague ? (row.league_id as string) : "general",
+      channelName: isLeague ? (leagueName.get(row.league_id as string) ?? "Ligue") : "Général",
+    };
+  });
+}

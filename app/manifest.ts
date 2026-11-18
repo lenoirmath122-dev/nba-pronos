@@ -12,7 +12,7 @@ export default function manifest(): MetadataRoute.Manifest {
     name: "Panier Ballon",
     short_name: "Panier Ballon",
     description: DEFAULT_DESCRIPTION,
-    start_url: "/home",
+    start_url: "/play",
     display: "standalone",
     background_color: "#0B0E14",
     theme_color: "#0B0E14",

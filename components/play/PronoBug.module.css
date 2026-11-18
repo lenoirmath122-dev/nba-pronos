@@ -57,6 +57,8 @@
 
 .title {
   display: inline-block;
+  /* Le prono ne rétrécit jamais : c'est l'action à droite qui s'adapte. */
+  flex: none;
   transform: skewX(-9deg);
   font-family: var(--font-display);
   font-size: 22px;
@@ -107,4 +109,20 @@
   font-size: 11px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
+}
+
+/* Action à droite de la bande (zone hachurée), sans couvrir le titre. La
+   bande est un conteneur de requêtes : l'action choisit un libellé court
+   quand la place manque (BoxScoreButton.module.css). */
+.band:has(.action) {
+  container-type: inline-size;
+}
+
+.action {
+  flex: none;
+  margin-left: auto;
+  padding-left: var(--space-2);
+  padding-right: 6px;
+  display: flex;
+  align-items: center;
 }
