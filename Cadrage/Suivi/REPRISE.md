@@ -1,10 +1,7 @@
 # Reprise — NBA Pronos (18/11/2026, passation 44)
-- **Invité dans la vraie appli : PR #309 (`feat/invite-play`) à merger** : suppression A-G, `/play` + `/chat` en lecture, compte exigé
-  à l'action, `/` -> `/play` (invité) ou `/home`. Ajouts 18/11 : barre d'onglets invité sur Classement, joueurs, bracket (`ScreenShell guestTabs`) ;
-  fond photo par défaut pour l'invité sans cookie `pb-theme` (`components/theme/GuestPhotoTheme.tsx`). Barre validée par l'utilisateur.
-  Reste : recette sur la preview (mobile, webview Instagram, compte connecté inchangé). Plan : `chantiers/CHANTIER_INVITE_PLAY.md`.
-- **Après merge** : mesurer le quota CPU Vercel (rendu dynamique de `/play` par les invités). **À trancher** : SEO de `/` (redirection,
-  `/play` en Disallow dans `robots.ts`, `sitemap.ts` liste `/`) et sort de la page d'accueil jouable `app/(public)/page.tsx` (voir GAPS).
+- **Invité dans la vraie appli : PR #309 mergée et recettée (18/11)**. SEO : `/play` ouvert aux robots (titre d'accueil, canonique,
+  sitemap ; sous-pages `/play/` toujours exclues), PR `fix/seo-play` à merger. Reste : mesurer le quota CPU Vercel (rendu dynamique de
+  `/play` par les invités) d'ici quelques jours ; décider de supprimer l'ancienne accueil jouable `app/(public)/page.tsx` + `lib/publicHome/*`.
 - **Migrations en prod** : `20261118090000` (anon limité aux colonnes publiques de `users`, à GARDER) ; `20261118120000` (événements funnel
   invité, gardée). Renommer le compte à pseudo e-mail (id `5b39327a…`).
 - **Build local** : échoue sur `Cadrage/docs/reel-v2-pack` (gitignoré, remotion absent) ; le déplacer le temps du build. tsc/lint remontent
