@@ -23,7 +23,7 @@ export default async function PlayersDirectoryPage() {
   const players = await getPlayersDirectory();
 
   return (
-    <ScreenShell authenticated={user !== null}>
+    <ScreenShell authenticated={user !== null} guestTabs>
       <div className={`${styles.page} photo-page`}>
         <div className={`${styles.header} glass-card`}>
           <p className={styles.title}>Joueurs</p>

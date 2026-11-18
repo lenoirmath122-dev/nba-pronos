@@ -120,7 +120,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
     ]);
 
     return (
-      <ScreenShell authenticated={user !== null}>
+      <ScreenShell authenticated={user !== null} guestTabs>
         <div className={`${styles.page} photo-page photo-page-dim`}>
           <div className={`${styles.header} glass-card`}>
             <div className={styles.titleRow}>
@@ -203,7 +203,7 @@ export default async function LeaderboardPage({ searchParams }: LeaderboardPageP
   const showcases = await getRowShowcases(data.rows.map((row) => row.userId), 3);
 
   return (
-    <ScreenShell authenticated={user !== null}>
+    <ScreenShell authenticated={user !== null} guestTabs>
       <div className={`${styles.page} photo-page photo-page-dim`}>
         {data.competitionId === null ? (
           <>
