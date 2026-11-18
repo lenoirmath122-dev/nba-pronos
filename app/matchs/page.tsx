@@ -1,4 +1,4 @@
-import { ScreenShell } from "@/components/nav/ScreenShell";
+import { PublicShell } from "@/components/nav/PublicShell";
 import { GuestMatchCard } from "@/components/guest/GuestMatchCard";
 import { getGuestMatchList } from "@/lib/guest/query";
 import { pageMetadata } from "@/lib/seo";
@@ -18,7 +18,7 @@ export const metadata = pageMetadata({
 export default async function MatchsPage() {
   const { upcoming, recent, nowMs } = await getGuestMatchList();
   return (
-    <ScreenShell authenticated={false}>
+    <PublicShell>
       <div className={`${styles.page} photo-page`}>
         <div className={`${styles.header} glass-card`}>
           <h1 className={styles.title}>Matchs</h1>
@@ -44,6 +44,6 @@ export default async function MatchsPage() {
           </>
         ) : null}
       </div>
-    </ScreenShell>
+    </PublicShell>
   );
 }

@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
 import { GuestGateButton } from "@/components/guest/GuestGateButton";
-import { ScreenShell } from "@/components/nav/ScreenShell";
+import { PublicShell } from "@/components/nav/PublicShell";
 import { getGuestMatch } from "@/lib/guest/query";
 import { dayTimeLabel } from "@/lib/publicHome/labels";
 import { pageMetadata } from "@/lib/seo";
@@ -45,7 +45,7 @@ export default async function MatchPage({ params }: Props) {
     match.awayScore !== null;
 
   return (
-    <ScreenShell authenticated={false}>
+    <PublicShell>
       <AuthGateProvider authenticated={false}>
         <div className={`${styles.page} photo-page`}>
           <div className={`${styles.header} glass-card`}>
@@ -90,6 +90,6 @@ export default async function MatchPage({ params }: Props) {
           />
         </div>
       </AuthGateProvider>
-    </ScreenShell>
+    </PublicShell>
   );
 }

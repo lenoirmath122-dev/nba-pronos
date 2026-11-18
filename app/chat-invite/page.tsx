@@ -1,6 +1,6 @@
 import { AuthGateProvider } from "@/components/auth/AuthGateProvider";
 import { GuestChatComposer } from "@/components/guest/GuestChatComposer";
-import { ScreenShell } from "@/components/nav/ScreenShell";
+import { PublicShell } from "@/components/nav/PublicShell";
 import { getGuestChatMessages } from "@/lib/guest/query";
 import { pageMetadata } from "@/lib/seo";
 import styles from "@/components/guest/guest.module.css";
@@ -20,7 +20,7 @@ export const metadata = pageMetadata({
 export default async function GuestChatPage() {
   const messages = await getGuestChatMessages();
   return (
-    <ScreenShell authenticated={false}>
+    <PublicShell>
       <AuthGateProvider authenticated={false}>
         <div className={`${styles.page} photo-page`}>
           <div className={`${styles.header} glass-card`}>
@@ -41,6 +41,6 @@ export default async function GuestChatPage() {
           <GuestChatComposer />
         </div>
       </AuthGateProvider>
-    </ScreenShell>
+    </PublicShell>
   );
 }

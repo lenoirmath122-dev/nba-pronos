@@ -1,7 +1,6 @@
 "use client";
 
-import dynamic from "next/dynamic";
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import {
   PENDING_ACTION_KEY,
   serializePendingAction,
@@ -15,7 +14,10 @@ import { GuestBanner } from "@/components/guest/GuestBanner";
 // est gardée en localStorage pour être reprise après la connexion. Le blocage
 // réel reste côté serveur (RLS + auth.getUser()) : ceci n'est que l'accueil.
 
-const AuthGateModal = dynamic(() => import("./AuthGateModal").then((m) => m.AuthGateModal), { ssr: false });
+// La modale (et le client Supabase de GoogleButton, ~225 Ko) n'est importée qu'à
+// la première ouverture : next/dynamic la préchargeait dans le HTML de chaque
+// page invité (mesuré au build, lot G).
+type ModalComponent = ComponentType<{ onClose: () => void }>;
 
 export type RequireAuthInput = {
   type: PendingActionType;
@@ -38,6 +40,12 @@ export function useRequireAuth(): Gate["requireAuth"] {
 
 export function AuthGateProvider({ authenticated, children }: { authenticated: boolean; children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  const [Modal, setModal] = useState<ModalComponent | null>(null);
+
+  const openModal = useCallback(() => {
+    setOpen(true);
+    void import("./AuthGateModal").then((m) => setModal(() => m.AuthGateModal));
+  }, []);
 
   const requireAuth = useCallback(
     (input: RequireAuthInput) => {
@@ -60,9 +68,9 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
       }
       trackFunnel("guest_action_attempted", undefined, input.type);
       trackFunnel("auth_modal_opened", undefined, input.type);
-      setOpen(true);
+      openModal();
     },
-    [authenticated],
+    [authenticated, openModal],
   );
 
   const value = useMemo(() => ({ requireAuth }), [requireAuth]);
@@ -73,10 +81,10 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
       {authenticated ? null : <GuestBanner
           onCreate={() => {
             trackFunnel("auth_modal_opened");
-            setOpen(true);
+            openModal();
           }}
         />}
-      {open ? <AuthGateModal onClose={() => setOpen(false)} /> : null}
+      {open && Modal ? <Modal onClose={() => setOpen(false)} /> : null}
     </GateContext.Provider>
   );
 }
