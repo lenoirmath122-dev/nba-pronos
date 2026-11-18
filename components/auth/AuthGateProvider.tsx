@@ -7,6 +7,8 @@ import {
   serializePendingAction,
   type PendingActionType,
 } from "@/lib/auth/pendingAction";
+import { trackFunnel } from "@/lib/funnel/track";
+import { GuestBanner } from "@/components/guest/GuestBanner";
 
 // Porte d'authentification (mode invité, lot B). `requireAuth(action)` : un
 // connecté exécute `run` tout de suite ; un invité voit la modale, et l'action
@@ -56,6 +58,8 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
       } catch {
         // Stockage indisponible (navigation privée) : la modale marche, sans reprise.
       }
+      trackFunnel("guest_action_attempted", undefined, input.type);
+      trackFunnel("auth_modal_opened", undefined, input.type);
       setOpen(true);
     },
     [authenticated],
@@ -66,6 +70,12 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
   return (
     <GateContext.Provider value={value}>
       {children}
+      {authenticated ? null : <GuestBanner
+          onCreate={() => {
+            trackFunnel("auth_modal_opened");
+            setOpen(true);
+          }}
+        />}
       {open ? <AuthGateModal onClose={() => setOpen(false)} /> : null}
     </GateContext.Provider>
   );

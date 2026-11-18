@@ -21,6 +21,7 @@ export type FunnelRow = {
   matchId?: string | null;
   referrer?: string | null;
   utm: Utm;
+  actionType?: string | null;
   inAppBrowser: string | null;
 };
 
@@ -50,6 +51,7 @@ export async function insertFunnelEvent(row: FunnelRow): Promise<void> {
     utm_campaign: row.utm.campaign,
     utm_content: row.utm.content,
     in_app_browser: row.inAppBrowser,
+    action_type: row.actionType ?? null,
   });
   if (!error) return;
   if (isMissingColumn(error)) {

@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { trackFunnel } from "@/lib/funnel/track";
 import { PENDING_ACTION_KEY, parsePendingAction, resumeUrl } from "@/lib/auth/pendingAction";
 
 // Sur /bienvenue (compte validé) : si le visiteur avait une action en attente
@@ -12,7 +13,10 @@ export function PendingActionReplay() {
     try {
       const action = parsePendingAction(window.localStorage.getItem(PENDING_ACTION_KEY), Date.now());
       window.localStorage.removeItem(PENDING_ACTION_KEY);
-      if (action) router.replace(resumeUrl(action));
+      if (action) {
+        trackFunnel("action_completed", undefined, action.type);
+        router.replace(resumeUrl(action));
+      }
     } catch {
       // Stockage indisponible : on reste sur /bienvenue.
     }
