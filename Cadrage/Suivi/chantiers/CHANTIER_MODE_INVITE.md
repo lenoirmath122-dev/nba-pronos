@@ -1,6 +1,6 @@
 # Chantier — mode invité intégral (visiteurs Instagram)
 
-> **Nature** : vivant, cadrage validé le 17/11/2026, **aucun code écrit**. À ne lire que quand
+> **Nature** : vivant, cadrage validé le 17/11/2026, **lots A à G codés, recette manuelle à faire**. À ne lire que quand
 > la session porte sur ce chantier. Quand un lot est livré, le retirer ici ET dans `GAPS_OUVERTS.md`.
 > Prolonge `CHANTIER_ACCUEIL_INVITES.md` (accueil jouable, comptes `PENDING`, lien magique : déjà sur `main`).
 
@@ -13,7 +13,7 @@ en invité, lit tout, et ne crée un compte qu'au moment d'agir. Les connectés 
   Valeur par défaut du drapeau `GUEST_APP_MODE` = `on` ; `off` rend l'accueil jouable actuel (comparaison A/B).
   Les connectés restent renvoyés vers `/home` depuis `/`.
 - **Chat invité** : lecture du canal **Général seulement** ; ligues privées masquées.
-- **Ordre des lots** : A → B → D → C → E → F → G (A, B, D, C livrés). Une seule branche `feat/mode-invite` + une PR globale (décision 18/11/2026), un commit par lot, jamais sur `main` directement.
+- **Ordre des lots** : A → B → D → C → E → F → G (tous livrés). Une seule branche `feat/mode-invite` + une PR globale (décision 18/11/2026), un commit par lot, jamais sur `main` directement.
 
 ## Déjà sur `main` (à réutiliser, ne pas refaire)
 - `/` jouable sans compte, panier localStorage (`lib/publicHome/basket.ts`), `registerPronos` / `requestLoginLink` (`lib/auth/guest.ts`), comptes `PENDING`.
@@ -46,11 +46,17 @@ Pas de `/match/[id]`, pas de `/ce-soir`, pas de `requireAuth`, pas de bandeau, U
   (capté à l'arrivée) et le visiteur gardé dans les métadonnées du compte couvrent déjà l'inscription.
 - **C — Webview Instagram** : LIVRÉ (modale seulement) : `OpenInBrowserNotice` (intent Chrome Android, consigne Safari iOS) à la place
   de Google. **Reste** : vérifier les cookies de session en vrai webview (recette manuelle, lot G).
-- **E — Bandeau invité** : fermable, mémorisé, non masquant (bas de page), bouton « Créer un compte » -> modale du lot B.
-- **F — Mesure** : événements `guest_action_attempted` (type), `auth_modal_opened`, `action_completed` ;
-  migration `funnel_events` à **pousser à la main** après merge (`supabase db push --remote`).
-- **G — Performance mobile** : mesurer d'abord (`next build`, JS initial de `/`, `/match/[id]`, `/chat`, Lighthouse mobile) ;
-  `dynamic()` pour modale et `ChatSubscriber` ; zéro redirection ni flash pour un invité.
+- **E — Bandeau invité** : LIVRÉ. `GuestBanner` (dans `AuthGateProvider`, donc seulement sur les pages invité), dans le flux en bas de page,
+  fermeture mémorisée (`pb.guestBannerClosed.v1`, `useSyncExternalStore`), « Créer un compte » ouvre la modale du lot B.
+- **F — Mesure** : LIVRÉ. `guest_action_attempted` + `auth_modal_opened` (au `requireAuth` d'un invité, avec `actionType`), `auth_modal_opened`
+  seul (bandeau), `action_completed` (`PendingActionReplay`, même navigateur seulement). Colonne `funnel_events.action_type`.
+  Migration `20261118120000_funnel_guest_events.sql` à **pousser à la main** après merge (`supabase db push --remote`) ; sans elle, l'insertion
+  retombe sur le repli « colonne absente » (événements invité perdus, `funnel_events_event_check` les refuserait).
+- **G — Performance mobile** : LIVRÉ. Mesure `next build` (`.next/diagnostics/route-bundle-stats.json`) : `/matchs`, `/match/[id]`, `/chat-invite`
+  1,08 Mo -> 0,81 Mo de JS initial non compressé (`/` : 0,82 Mo). Cause : `ScreenShell` importait `TabBar` (client Supabase + tiroir de réglages),
+  préchargé sans être affiché -> nouvelle coque `PublicShell`. Modale chargée par `import()` à l'ouverture (`next/dynamic` la préchargeait).
+  Pas de `ChatSubscriber` sur le chat invité. **Non mesuré** : Lighthouse mobile, flash/redirection en vrai navigateur. Le build local échoue sur
+  `Cadrage/docs/reel-v2-pack` (ignoré par git, absent de Vercel) : déplacer ce dossier pour builder en local.
 
 ## Drapeau
 `GUEST_APP_MODE` (variable d'environnement, lue dans `proxy.ts`). Pas d'Edge Config à ce stade.

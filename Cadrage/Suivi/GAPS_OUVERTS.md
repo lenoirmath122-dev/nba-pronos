@@ -75,7 +75,7 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 
 ### Mode invité intégral (Instagram) — [`chantiers/CHANTIER_MODE_INVITE.md`](chantiers/CHANTIER_MODE_INVITE.md)
-- Cadré le 17/11/2026. Lot A codé sur la branche `feat/mode-invite` (18/11, non poussé). Reste B→D→C→E→F→G ; premier pas : lot B (`requireAuth`).
+- Cadré le 17/11/2026. Lots A à G tous codés sur la branche `feat/mode-invite` (18/11, non poussé). Reste : recette manuelle (checklist en bas du chantier), migrations à pousser, brancher `bet`/`follow`/`react` quand ils existeront côté invité.
 
 ### Accueil jouable et pronos invités — [`chantiers/CHANTIER_ACCUEIL_INVITES.md`](chantiers/CHANTIER_ACCUEIL_INVITES.md)
 - Phase 1A livrée (PR #184 et #188 mergées le 19/10) : accueil jouable, pronos
