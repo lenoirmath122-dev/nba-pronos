@@ -10,6 +10,10 @@ describe("pseudoLengthError", () => {
     expect(pseudoLengthError("ab")).not.toBeNull();
     expect(pseudoLengthError("a".repeat(21))).not.toBeNull();
   });
+  it("refuse le caractère @ (pseudo public, pas d'e-mail)", () => {
+    expect(pseudoLengthError("jean@mail.fr")).not.toBeNull();
+    expect(pseudoLengthError("@jean")).not.toBeNull();
+  });
   it("compte les caractères, pas les unités UTF-16", () => {
     expect(pseudoLengthError("🏀".repeat(3))).toBeNull();
   });

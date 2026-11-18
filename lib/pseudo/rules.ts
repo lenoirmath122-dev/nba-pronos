@@ -15,6 +15,11 @@ export function pseudoLengthError(pseudo: string): string | null {
   if (length < PSEUDO_MIN_LENGTH || length > PSEUDO_MAX_LENGTH) {
     return `Le pseudo doit faire entre ${PSEUDO_MIN_LENGTH} et ${PSEUDO_MAX_LENGTH} caractères.`;
   }
+  // Le pseudo est public (lisible par un visiteur) : une adresse e-mail y
+  // serait exposée.
+  if (pseudo.includes("@")) {
+    return "Le pseudo ne peut pas contenir « @ » (il est visible par tous, ne mets pas ton e-mail).";
+  }
   return null;
 }
 
