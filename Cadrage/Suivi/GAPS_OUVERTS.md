@@ -87,11 +87,10 @@ Cadrage : `Cadrage/Fonctionnel/nba_pronos_cadrage_enrichissement_modeles_paris.m
 - Idée non décidée : remplacer Highlightly par la VM + l'API NBA.
 
 ### Invité dans la vraie appli (`/play` ouvert) — [`chantiers/CHANTIER_INVITE_PLAY.md`](chantiers/CHANTIER_INVITE_PLAY.md)
-- Lots 1 à 3 codés sur `feat/invite-play` (PR à merger, 18/11/2026). Reste : recette manuelle de la PR (navigation privée desktop + mobile,
-  webview Instagram), puis **mesurer** le quota CPU Vercel (chaque visite invitée rend `/play` en dynamique ; sinon cache des lectures publiques).
-- **À décider** : `/` redirige maintenant (invité -> `/play`, connecté -> `/home`) ; la page d'accueil jouable (`app/(public)/page.tsx`,
-  `lib/publicHome/*`) n'est plus servie, NON supprimée. `/play` est en `Disallow` dans `robots.ts` et `sitemap.ts` liste encore `/` : le SEO
-  de l'accueil est perdu tant que ce n'est pas tranché (ouvrir `/play` aux robots avec titre/description, ou garder `/` pour les robots).
+- Lots 1 à 3 mergés (#309) et recettés le 18/11/2026. Reste : **mesurer** le quota CPU Vercel (chaque visite invitée rend `/play`
+  en dynamique ; sinon cache des lectures publiques).
+- **SEO tranché (18/11/2026)** : `/play` ouvert aux robots (titre d'accueil, canonique `/play`, remplace `/` dans le sitemap ; `/play/` reste
+  en `Disallow`). Reste à décider : supprimer la page d'accueil jouable (`app/(public)/page.tsx`, `lib/publicHome/*`), plus servie.
 - Migration `20261118120000` (événements funnel invité) gardée : sert à mesurer `guest_action_attempted` / `auth_modal_opened` / `action_completed`.
 
 ### Accueil jouable et pronos invités — [`chantiers/CHANTIER_ACCUEIL_INVITES.md`](chantiers/CHANTIER_ACCUEIL_INVITES.md)

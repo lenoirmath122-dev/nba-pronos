@@ -1,6 +1,8 @@
 import { ShowcaseProvider } from "@/components/badges/ShowcaseProvider";
 import { getRowShowcases } from "@/lib/queries/badges";
 import Link from "next/link";
+import type { Metadata } from "next";
+import { HOME_TITLE, pageMetadata } from "@/lib/seo";
 import { getPlayUpcoming } from "@/lib/queries/play";
 import { EmptyState } from "@/components/home/EmptyState";
 import { PlayTabs } from "@/components/play/PlayTabs";
@@ -22,6 +24,16 @@ import styles from "./page.module.css";
 // lib/queries/play.ts::getPlayUpcoming ; cette page ne fait que composer.
 //
 // Les matchs commencés (réglés ou non) vivent dans l'onglet Résultats.
+
+// Page d'accueil des invités (`/` y redirige) : indexée, titre et canonique
+// repris de l'ancienne page d'accueil publique.
+const base = pageMetadata({ title: "Jouer", path: "/play" });
+export const metadata: Metadata = {
+  ...base,
+  title: { absolute: HOME_TITLE },
+  openGraph: { ...base.openGraph, title: HOME_TITLE },
+  twitter: { ...base.twitter, title: HOME_TITLE },
+};
 
 export default async function PlayUpcomingPage() {
   const data = await getPlayUpcoming();

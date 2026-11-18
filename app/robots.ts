@@ -11,7 +11,9 @@ export default function robots(): MetadataRoute.Robots {
       allow: "/",
       disallow: [
         "/home",
-        "/play",
+        // "/play/" (et non "/play") : la page Jouer est ouverte aux invités et sert
+        // d'accueil (`/` y redirige), ses sous-pages restent hors index.
+        "/play/",
         "/profile",
         "/admin",
         "/chat",

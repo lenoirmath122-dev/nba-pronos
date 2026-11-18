@@ -14,8 +14,8 @@ const PAGES: {
   priority: number;
 }[] = [
   {
-    path: "/",
-    lastModified: "2026-10-06",
+    path: "/play",
+    lastModified: "2026-11-18",
     changeFrequency: "weekly",
     priority: 1,
   },
