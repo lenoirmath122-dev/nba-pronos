@@ -260,3 +260,19 @@ def test_run_status_relève_les_matchs_terminés_même_si_le_post_échoue(monkey
     status, _ = poll.run_status(["2026-10-07"], dry_run=False, finished_sink=sink)
     assert status == poll.TRANSIENT
     assert [g["gameId"] for g in sink] == ["0012600029"]
+
+
+def test_clé_avec_retour_à_la_ligne_nettoyée(storage, monkeypatch):
+    monkeypatch.setenv("SUPABASE_SERVICE_ROLE_KEY", "cle-de-test\r\n")
+    assert bs.publish(candidates(), bs.ON, today=TODAY)["published"] == 1
+    assert storage["upload"][0][1]["headers"]["Authorization"] == "Bearer cle-de-test"
+
+
+def test_erreur_requests_n_affiche_pas_la_clé(storage, monkeypatch, capsys):
+    def post(url, **kw):
+        raise bs.requests.exceptions.InvalidHeader(f"Invalid header value: {kw['headers']['Authorization']!r}")
+
+    monkeypatch.setattr(bs.requests, "post", post)
+    assert bs.publish(candidates(), bs.ON, today=TODAY)["failed"] == 1
+    out = capsys.readouterr().out
+    assert "InvalidHeader" in out and "cle-de-test" not in out
