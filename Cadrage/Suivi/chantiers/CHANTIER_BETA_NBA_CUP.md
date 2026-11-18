@@ -96,6 +96,10 @@ Cup dès sa création ; les invités restent en lecture seule. À confirmer visu
   (~30/11 pour le 04/12) et que `competitions.bracket_deadline` est posée au premier quart (sinon repli : saisie admin d'un match).
 - **Dès les quarts créés** : recette garde SERIES (compte admin, appel `create_bet` SERIES → refus attendu, rien d'écrit)
   et rendu d'un quart `SCHEDULED` sur `/play`.
+- **Garde par date (code, `lib/competitions/cupWindows.ts`)** : la synchro ne rattache un match à une série de Cup que
+  s'il tombe dans les jours NY officiels du tour : quarts 04-05/12, demies 08-09/12, finale 11/12. Un match hors fenêtre
+  (ex. saison régulière entre les mêmes équipes) est ignoré et journalisé « hors fenêtre officielle du tour ». Si la NBA
+  décale un tour, corriger les dates dans ce fichier. Contrôle visuel quand même : comparer avec le tableau nba.com.
 - **05-06/12** : vérifier l'avancement des vainqueurs et la création des demies ; **09-10/12** : la finale.
 - **12/12** : clôturer la Cup, relancer le Match du jour (voir ci-dessus).
 

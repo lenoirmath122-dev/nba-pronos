@@ -8,7 +8,7 @@ vi.mock("@/lib/nba/client", async (importActual) => ({
 
 type Fixture = {
   competitionType: string;
-  series: { id: string; competition_id: string; team1_id: string | null; team2_id: string | null; official_status: string; slot_index: number | null }[];
+  series: { id: string; competition_id: string; team1_id: string | null; team2_id: string | null; official_status: string; slot_index: number | null; round?: string }[];
   matchRows: { id: string; series_id: string }[];
   matchMappings: { internal_id: string; source_ref: string }[];
 };
@@ -111,6 +111,18 @@ describe("syncSchedule", () => {
     const r = await syncSchedule(NOW);
     expect(r.created).toBe(1);
     expect(updates).toContainEqual({ table: "competitions", payload: { bracket_deadline: "2026-12-04T23:00:00.000Z" } });
+  });
+
+  it("NBA_CUP : un match de demie hors du 08-09/12 est ignoré, dans la fenêtre il est rattaché", async () => {
+    const series = [{ id: "s1", competition_id: "c1", team1_id: "t-bos", team2_id: "t-nyk", official_status: "SCHEDULED", slot_index: 0, round: "CUP_SEMIS" }];
+    fx = { competitionType: "NBA_CUP", series, matchRows: [], matchMappings: [] };
+    getMatchesByDate.mockResolvedValueOnce({ data: [raw(10, "2026-12-02T01:00:00.000Z")], requestsRemaining: 9 }).mockResolvedValue({ data: [], requestsRemaining: 9 });
+    const out = await syncSchedule(NOW);
+    expect(out.created).toBe(0);
+    expect(out.skipped[0].reason).toContain("hors fenêtre");
+    getMatchesByDate.mockReset();
+    getMatchesByDate.mockResolvedValueOnce({ data: [raw(11, "2026-12-09T01:00:00.000Z")], requestsRemaining: 9 }).mockResolvedValue({ data: [], requestsRemaining: 9 });
+    expect((await syncSchedule(NOW)).created).toBe(1);
   });
 
   it("DAILY_MATCH : aucune bracket_deadline posée (pas de bracket)", async () => {
