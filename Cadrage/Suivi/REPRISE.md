@@ -1,4 +1,4 @@
-# Reprise — NBA Pronos (13/11/2026, passation 35)
+# Reprise — NBA Pronos (18/11/2026, passation 36)
 - **Actualité (PR #299 à merger)** : l'onglet Accueil devient « Actualité » (même URL `/home`),
   l'app s'ouvre sur Jouer, barre Jouer · Actualité · Classement · Chat · Profil. Retirés de l'Actualité : Prochain prono,
   À faire aussi, À traiter (admin), Proposer un pari (déjà sur Jouer). Nouvelle carte de nuit, réactions rapides,
@@ -6,8 +6,8 @@
 - **Mise en service Actualité** : `supabase db push --remote` (migration `20261113150000_recap_reactions.sql`) AVANT
   le déploiement, sinon les réactions échouent (l'écran s'affiche quand même, compteurs à 0). Tester à la main :
   réagir/retirer, « Répondre » (texte pré-rempli puis champ vide après envoi), « Nuit précédente », lien push `/home#recap`.
-- **Feuilles de match statiques (PR #298 à merger)** : mise en service décrite dans DEPLOIEMENT_VM.md (« Feuilles de match »),
-  désactivé par défaut tant que `BOX_SCORES_PUBLISH` manque.
+- **Incident VM 18/11** : disque ext4 abîmé (lecture seule le 16/11, kernel panic le 17/11) -> VM figée, pas de score live.
+  Instantané `nba-refresh-avant-reset-20261118` puis reset ; à faire : fsck forcé, alerte « match sans score ». Feuilles de match : clé `.strip()` (#302), se republient au prochain import.
 - **PR #296 à merger** : paliers de difficulté 66/53/35/20 %. **Fin novembre** : revoir le palier 2 et re-mesurer les probas des stars.
 - **PROCHAIN CHANTIER : étape 5** des probas = paris par période (points/écart à la MT, suites de QT).
 - **#295 déployé** : à confirmer sur un vrai pari (« Zion 20+ » doit remonter).
