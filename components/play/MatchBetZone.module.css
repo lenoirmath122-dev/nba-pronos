@@ -79,6 +79,41 @@
   border-radius: var(--radius-sm);
 }
 
+.statementRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.statementRow .statement {
+  flex: 1;
+  min-width: 0;
+}
+
+/* « Modifier » : petit bouton carré à droite de l'énoncé du pari. */
+.editSquare {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--color-accent-rest);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: var(--font-weight-semibold);
+  cursor: pointer;
+}
+
+.editSquare:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
 .statement {
   margin: 0;
   font-size: 15px;

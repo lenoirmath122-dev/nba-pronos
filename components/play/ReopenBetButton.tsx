@@ -7,41 +7,41 @@ import { Backdrop } from "@/components/ui/Backdrop";
 import dialog from "@/components/bets/DeleteBetButton.module.css";
 import zone from "./MatchBetZone.module.css";
 
-// « Modifier mon pari » : un pari validé repasse en brouillon, une seule fois
+// « Modifier » (petit bouton carré à côté du pari) : un pari validé repasse en brouillon, une seule fois
 // par match (SQL : reopen_bet, table bet_reopenings). Dialogue de confirmation
 // calqué sur DeleteBetButton : l'action consomme la modification unique.
 
 type Props = {
   betId: string;
   onReopened: (betId: string) => void;
+  /** Erreur affichée par le parent (le bouton est placé dans la ligne du pari). */
+  onError: (error: string | null) => void;
 };
 
-export function ReopenBetButton({ betId, onReopened }: Props) {
+export function ReopenBetButton({ betId, onReopened, onError }: Props) {
   const [showConfirm, setShowConfirm] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleConfirm() {
-    setError(null);
+    onError(null);
     startTransition(async () => {
       const result = await reopenBet(betId);
       setShowConfirm(false);
       if (result.success) onReopened(betId);
-      else setError(result.error);
+      else onError(result.error);
     });
   }
 
   return (
     <>
-      <button type="button" className={zone.outline} onClick={() => setShowConfirm(true)}>
-        Modifier mon pari
+      <button
+        type="button"
+        className={zone.editSquare}
+        onClick={() => setShowConfirm(true)}
+        aria-label="Modifier mon pari"
+      >
+        Modifier
       </button>
-
-      {error && (
-        <p className={zone.error} role="alert">
-          {error}
-        </p>
-      )}
 
       {showConfirm && (
         <Backdrop className={dialog.backdrop} onClose={() => setShowConfirm(false)}>
