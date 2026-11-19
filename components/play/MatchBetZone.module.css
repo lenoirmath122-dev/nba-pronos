@@ -19,6 +19,8 @@
   text-transform: uppercase;
   letter-spacing: 0.12em;
   color: var(--color-accent-rest);
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .labelClosed {
@@ -51,12 +53,6 @@
   box-shadow: var(--focus-ring);
 }
 
-.textareaClosed {
-  border-style: dashed;
-  background: transparent;
-  color: var(--color-text-muted);
-}
-
 .hint {
   margin: 0;
   font-size: 12px;
@@ -69,56 +65,65 @@
   color: var(--color-loss);
 }
 
-.submitted {
+/* Méta du pari soumis (statut · niveau · points), même registre que les
+   libellés « incrustation télé ». */
+.metaCaps {
+  font-family: var(--font-display);
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--color-text-secondary);
+  text-align: right;
+}
+
+.statusWin {
+  color: var(--color-win);
+}
+
+.statusLoss {
+  color: var(--color-loss);
+}
+
+.statusPending {
+  color: var(--color-text-muted);
+}
+
+/* Énoncé en « ticket » : filet à gauche de la couleur du statut. */
+.ticket {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding: 12px;
+  gap: 4px;
+  padding: 8px 12px;
+  border-left: 3px solid var(--color-border-strong);
   background: var(--color-surface-inset);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-sm);
 }
 
-.statementRow {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-3);
+.ticketWin {
+  border-left-color: var(--color-win);
 }
 
-.statementRow .statement {
-  flex: 1;
-  min-width: 0;
+.ticketLoss {
+  border-left-color: var(--color-loss);
 }
 
-/* « Modifier » : petit bouton rectangulaire (plus large que haut) à droite de l'énoncé du pari. */
-.editSquare {
-  flex-shrink: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  height: 32px;
-  padding: 0 var(--space-3);
-  border: 1px solid var(--color-accent);
-  border-radius: var(--radius-sm);
-  background: transparent;
-  color: var(--color-accent-rest);
-  font-family: var(--font-ui);
-  font-size: 12px;
-  font-weight: var(--font-weight-semibold);
-  cursor: pointer;
-}
-
-.editSquare:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+.ticketPending {
+  border-left-style: dashed;
+  border-left-color: var(--color-text-muted);
 }
 
 .statement {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
+  line-height: 1.35;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
   overflow-wrap: anywhere;
+}
+
+.closedText {
+  margin: 0;
+  font-size: 13px;
+  color: var(--color-text-muted);
 }
 
 .reason {
@@ -128,37 +133,22 @@
   overflow-wrap: anywhere;
 }
 
-.tags {
+/* « Paris des autres » et « Modifier » : boutons télé à parts égales. */
+.actions {
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
-.tag {
-  padding: 2px var(--space-2);
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border-subtle);
-  font-size: 11px;
-  color: var(--color-text-secondary);
+.action {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 34px;
 }
 
-.tagWin {
-  border-color: var(--color-win);
-  color: var(--color-win);
-}
-
-.tagLoss {
-  border-color: var(--color-loss);
-  color: var(--color-loss);
-}
-
-.tagDashed {
-  border-style: dashed;
-  color: var(--color-text-muted);
-}
-
-.primary,
-.outline {
+.primary {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -171,27 +161,18 @@
   font-size: var(--font-size-sm);
   font-weight: var(--font-weight-semibold);
   cursor: pointer;
-}
-
-.primary {
   border: none;
   background: var(--color-accent);
   color: var(--color-text-on-accent);
 }
 
-.outline {
-  border: 1px solid var(--color-accent);
-  background: transparent;
-  color: var(--color-accent-rest);
-}
 
 .primary:disabled {
   opacity: var(--opacity-disabled-ctrl);
   cursor: default;
 }
 
-.primary:focus-visible,
-.outline:focus-visible {
+.primary:focus-visible {
   outline: none;
   box-shadow: var(--focus-ring);
 }
