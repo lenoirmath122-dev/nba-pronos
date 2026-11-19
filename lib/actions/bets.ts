@@ -210,3 +210,23 @@ export async function deleteBet(betId: string): Promise<SimpleActionResult> {
   revalidatePath("/home");
   return { success: true };
 }
+
+/** Modifier un pari validé : une seule fois par match, jusqu'au coup d'envoi.
+ *  Le pari repasse en brouillon (migration 20261119100000_bet_reopen.sql) ;
+ *  le joueur doit le resoumettre avant le coup d'envoi. */
+export async function reopenBet(betId: string): Promise<SimpleActionResult> {
+  const supabase = await getServerClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: "Tu dois être connecté." };
+
+  const { error } = await supabase.rpc("reopen_bet", { p_bet_id: betId });
+  if (error) return { success: false, error: error.message };
+
+  revalidatePath("/play");
+  revalidatePath("/play/results");
+  revalidatePath("/home");
+  return { success: true };
+}
