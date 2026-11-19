@@ -100,6 +100,7 @@ export function MatchBetZone({
   // serveur : force l'état ouvert en attendant le rafraîchissement.
   const [reopened, setReopened] = useState(false);
   const [reopenUsed, setReopenUsed] = useState(false);
+  const [reopenError, setReopenError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const showToast = useToast();
   const requireAuth = useRequireAuth();
@@ -283,7 +284,12 @@ export function MatchBetZone({
           <span className={styles.meta}>{locked ? "verrouillé" : "verrouillé au coup d’envoi"}</span>
         </div>
         <div className={styles.submitted}>
-          <p className={styles.statement}>{statement}</p>
+          <div className={styles.statementRow}>
+            <p className={styles.statement}>{statement}</p>
+            {reopenBetId && closedMessage === null && (
+              <ReopenBetButton betId={reopenBetId} onReopened={handleReopened} onError={setReopenError} />
+            )}
+          </div>
           {reason && <p className={styles.reason}>{reason}</p>}
           <div className={styles.tags}>
             {levelTag && <span className={styles.tag}>{levelTag}</span>}
@@ -291,7 +297,11 @@ export function MatchBetZone({
             <span className={`${styles.tag} ${statusClass}`}>{status.label}</span>
           </div>
         </div>
-        {reopenBetId && closedMessage === null && <ReopenBetButton betId={reopenBetId} onReopened={handleReopened} />}
+        {reopenError && (
+          <p className={styles.error} role="alert">
+            {reopenError}
+          </p>
+        )}
         {othersButton}
       </div>
     );
