@@ -213,7 +213,8 @@ describe("getBracket -- myBetAction / myBet (pari SÉRIE)", () => {
   });
 
   it("EDIT quand A a un pari DRAFT, puis null+myBet en lecture seule une fois VALIDATED", async () => {
-    const { data: bet, error } = await userA.client
+    // service_role : un joueur n'insère plus en direct (migration 20261119120000).
+    const { data: bet, error } = await serviceClient
       .from("bets")
       .insert({
         competition_id: competitionId,
