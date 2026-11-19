@@ -7,7 +7,7 @@ import { Backdrop } from "@/components/ui/Backdrop";
 import dialog from "@/components/bets/DeleteBetButton.module.css";
 import zone from "./MatchBetZone.module.css";
 
-// « Modifier » (petit bouton carré à côté du pari) : un pari validé repasse en brouillon, une seule fois
+// « Modifier » (petit bouton à côté du pari) : un pari validé repasse en brouillon, une seule fois
 // par match (SQL : reopen_bet, table bet_reopenings). Dialogue de confirmation
 // calqué sur DeleteBetButton : l'action consomme la modification unique.
 
