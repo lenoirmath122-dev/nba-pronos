@@ -125,7 +125,9 @@ describe("RLS -- propriété des paris (T-SEC-02)", () => {
   let betId: string;
 
   beforeAll(async () => {
-    const { data: bet, error } = await userA.client
+    // Création par service_role : un joueur n'insère plus en direct (migration
+    // 20261119120000), toutes ses écritures passent par save_bet & co.
+    const { data: bet, error } = await serviceClient
       .from("bets")
       .insert({
         competition_id: competitionId,
@@ -143,7 +145,7 @@ describe("RLS -- propriété des paris (T-SEC-02)", () => {
     betId = bet.id;
   });
 
-  it("le propriétaire (A) voit et peut éditer son propre pari", async () => {
+  it("le propriétaire (A) voit son pari mais ne peut plus l'écrire en direct (REST)", async () => {
     const { data: seen } = await userA.client.from("bets").select("id, description").eq("id", betId).maybeSingle();
     expect(seen?.id).toBe(betId);
 
@@ -152,7 +154,33 @@ describe("RLS -- propriété des paris (T-SEC-02)", () => {
       .update({ description: "Description modifiée par A" })
       .eq("id", betId)
       .select("id");
-    expect(updated).toHaveLength(1);
+    expect(updated ?? []).toHaveLength(0);
+
+    // Auto-validation en direct (faille du 19/11/2026) : refusée.
+    const { data: selfValidated } = await userA.client
+      .from("bets")
+      .update({ status: "SUBMITTED" })
+      .eq("id", betId)
+      .select("id");
+    expect(selfValidated ?? []).toHaveLength(0);
+
+    const { error: insertError } = await userA.client.from("bets").insert({
+      competition_id: competitionId,
+      user_id: userA.id,
+      scope: "MATCH",
+      series_id: seriesId,
+      match_id: matchId,
+      description: "Pari injecté en direct",
+      proposed_category: "SCORE_TOTAL",
+      proposed_difficulty: 1,
+      status: "VALIDATED",
+      validated_difficulty: 5,
+    });
+    expect(insertError?.code).toBe("42501"); // refus RLS, pas une autre contrainte
+
+    const { data: still } = await serviceClient.from("bets").select("description, status").eq("id", betId).single();
+    expect(still?.description).toBe("Test IDOR -- pari de A");
+    expect(still?.status).toBe("DRAFT");
   });
 
   it("un autre joueur (B) ne peut PAS lire le pari privé de A (IDOR)", async () => {
