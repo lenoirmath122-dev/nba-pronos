@@ -5,6 +5,7 @@ import { reopenBet } from "@/lib/actions/bets";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { Backdrop } from "@/components/ui/Backdrop";
 import dialog from "@/components/bets/DeleteBetButton.module.css";
+import broadcast from "./BroadcastButton.module.css";
 import zone from "./MatchBetZone.module.css";
 
 // « Modifier » (petit bouton à côté du pari) : un pari validé repasse en brouillon, une seule fois
@@ -36,7 +37,7 @@ export function ReopenBetButton({ betId, onReopened, onError }: Props) {
     <>
       <button
         type="button"
-        className={zone.editSquare}
+        className={`${broadcast.button} ${zone.action}`}
         onClick={() => setShowConfirm(true)}
         aria-label="Modifier mon pari"
       >

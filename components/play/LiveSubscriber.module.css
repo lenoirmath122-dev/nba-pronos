@@ -27,6 +27,8 @@
 
 .score {
   font-variant-numeric: tabular-nums;
+  /* Un score ne se coupe jamais sur deux lignes (« 105- / 101 »). */
+  white-space: nowrap;
   font-weight: var(--font-weight-semibold);
   color: var(--color-text-primary);
 }

@@ -16,6 +16,7 @@ import { VagueBetConfirm } from "@/components/bets/VagueBetConfirm";
 import { validatedBetDialog, PENDING_ADMIN_TOAST } from "@/components/bets/validatedBetDialog";
 import { possiblePointsLabel } from "./BetBlock";
 import styles from "./MatchBetZone.module.css";
+import broadcast from "./BroadcastButton.module.css";
 
 // Zone « Mon pari » en bas des cartes de match (Mes pronos : UpcomingRow ;
 // Résultats : LockedRow en lecture seule). Remplace le déclencheur « Proposer
@@ -176,10 +177,17 @@ export function MatchBetZone({
     setReopenUsed(true);
   }
 
+  // Bouton « incrustation télé » (comme « Stats des équipes ») ; le nom
+  // accessible garde la formulation complète.
   const othersButton = (
-    <button type="button" className={styles.outline} onClick={onViewOthers}>
-      <EyeIcon size={18} />
-      Voir les paris des autres
+    <button
+      type="button"
+      className={`${broadcast.button} ${styles.action}`}
+      onClick={onViewOthers}
+      aria-label="Voir les paris des autres"
+    >
+      <EyeIcon size={13} />
+      Paris des autres
     </button>
   );
 
@@ -258,12 +266,12 @@ export function MatchBetZone({
       serverSubmitted === null
         ? local?.validated
           ? null
-          : "Niveau en calcul…"
+          : "Niv. en calcul…"
         : serverSubmitted.status === "REJECTED" || serverSubmitted.status === "CANCELLED"
           ? null
           : serverSubmitted.isDifficultyValidated
-            ? `Niveau ${serverSubmitted.difficulty}`
-            : "Niveau en calcul…";
+            ? `Niv. ${serverSubmitted.difficulty}`
+            : "Niv. en calcul…";
     const points = serverSubmitted
       ? pointsTag(serverSubmitted)
       : local?.points != null
@@ -275,53 +283,62 @@ export function MatchBetZone({
         : null;
     const reopenBetId = reopenUsed ? null : serverSubmitted?.canReopen ? serverSubmitted.betId : local?.validated && !locked ? local.betId : null;
     const statusClass =
-      status.kind === "win" ? styles.tagWin : status.kind === "loss" ? styles.tagLoss : styles.tagDashed;
+      status.kind === "win" ? styles.statusWin : status.kind === "loss" ? styles.statusLoss : styles.statusPending;
+    const ticketClass =
+      status.kind === "win" ? styles.ticketWin : status.kind === "loss" ? styles.ticketLoss : styles.ticketPending;
+    // Niveau pas encore fixé : les points dépendent du niveau, on ne les
+    // annonce pas encore (et la ligne tient sur une seule ligne en mobile).
+    const levelPending = levelTag === "Niv. en calcul…";
+    const metaParts = [levelPending ? "niveau en calcul" : levelTag, levelPending ? null : points].filter(Boolean);
 
+    // Variante « ticket » (19/11/2026) : statut, niveau et points sur une ligne
+    // en Oswald dans l'en-tête ; énoncé seul avec un filet de la couleur du
+    // statut ; actions en boutons « incrustation télé » (comme « Stats des
+    // équipes ») côte à côte, à parts égales.
     return (
       <div className={styles.zone}>
         <div className={styles.head}>
           <span className={styles.label}>Mon pari</span>
-          <span className={styles.meta}>{locked ? "verrouillé" : "verrouillé au coup d’envoi"}</span>
+          <span className={styles.metaCaps}>
+            <span className={statusClass}>{status.label}</span>
+            {metaParts.length > 0 && <> · {metaParts.join(" · ")}</>}
+          </span>
         </div>
-        <div className={styles.submitted}>
-          <div className={styles.statementRow}>
-            <p className={styles.statement}>{statement}</p>
-            {reopenBetId && closedMessage === null && (
-              <ReopenBetButton betId={reopenBetId} onReopened={handleReopened} onError={setReopenError} />
-            )}
-          </div>
+        <div className={`${styles.ticket} ${ticketClass}`}>
+          <p className={styles.statement}>{statement}</p>
           {reason && <p className={styles.reason}>{reason}</p>}
-          <div className={styles.tags}>
-            {levelTag && <span className={styles.tag}>{levelTag}</span>}
-            {points && <span className={styles.tag}>{points}</span>}
-            <span className={`${styles.tag} ${statusClass}`}>{status.label}</span>
-          </div>
         </div>
         {reopenError && (
           <p className={styles.error} role="alert">
             {reopenError}
           </p>
         )}
-        {othersButton}
+        <div className={styles.actions}>
+          {othersButton}
+          {reopenBetId && closedMessage === null && (
+            <ReopenBetButton betId={reopenBetId} onReopened={handleReopened} onError={setReopenError} />
+          )}
+        </div>
       </div>
     );
   }
 
+  // Fermé sans pari (Résultats, ou quota atteint) : même grammaire « ticket »
+  // que le pari soumis, en neutre (filet pointillé), au lieu d'un champ grisé.
   return (
     <div className={styles.zone}>
       <div className={styles.head}>
         <span className={`${styles.label} ${styles.labelClosed}`}>Mon pari</span>
-        <span className={styles.meta}>paris fermés</span>
+        <span className={styles.metaCaps}>paris fermés</span>
       </div>
-      <textarea
-        className={`${styles.textarea} ${styles.textareaClosed}`}
-        placeholder={closedMessage ?? ""}
-        rows={3}
-        disabled
-        aria-label="Mon pari"
-      />
-      <p className={styles.hint}>Tu n&rsquo;as pas posé de pari sur ce match.</p>
-      {othersButton}
+      <div className={`${styles.ticket} ${styles.ticketPending}`}>
+        <p className={styles.closedText}>
+          {locked || closedMessage === null ? "Tu n’as pas posé de pari sur ce match." : closedMessage}
+        </p>
+      </div>
+      <div className={styles.actions}>
+        {othersButton}
+      </div>
     </div>
   );
 }
