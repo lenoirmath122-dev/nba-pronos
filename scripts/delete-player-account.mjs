@@ -71,6 +71,7 @@ function ok(label, { data, error, count }) {
 // cascade sur les données d'un autre joueur.
 const OWNED_TABLES = [
   { table: "correction_requests", column: "requester_user_id" }, // migration T1 §13
+  { table: "bet_reopenings", column: "user_id" },                // migration 20261119100000 (cascade aussi)
   { table: "bets", column: "user_id" },                          // migration T1 §12
   { table: "match_predictions", column: "user_id" },             // migration T1 §11
   { table: "bracket_picks", column: null },                      // via bracket_id, cf. ci-dessous

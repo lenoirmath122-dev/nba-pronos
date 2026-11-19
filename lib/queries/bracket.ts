@@ -437,6 +437,8 @@ export async function getBracket(leagueId?: string | null): Promise<BracketData>
             // "Pari oublié" (même principe que lib/queries/play.ts) : VALIDATED
             // + série déjà décidée pour de vrai (official_status FINISHED) =
             // aurait dû être résolu (WON/LOST) mais ne l'est pas encore.
+            // Modification d'un pari série : hors périmètre tant que les Playoffs n'ont pas commencé.
+            canReopen: false,
             isForgottenResolution: activeBet.status === "VALIDATED" && row.official_status === "FINISHED",
             correctionRequest: cr ? { status: cr.status, adminReason: cr.admin_reason, createdAt: cr.created_at } : null,
             reproposeHref: null, // REJECTED déjà exclu de activeBetBySeriesId (toujours libéré, 0.2.4 §6) -- jamais ce cas ici

@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { useValidatedDialog } from "@/components/ui/ValidatedDialog";
 import { EyeIcon } from "@/components/icons/play-icons";
+import { ReopenBetButton } from "./ReopenBetButton";
 import { PlayerNotInMatchConfirm } from "@/components/bets/PlayerNotInMatchConfirm";
 import { VagueBetConfirm } from "@/components/bets/VagueBetConfirm";
 import { validatedBetDialog, PENDING_ADMIN_TOAST } from "@/components/bets/validatedBetDialog";
@@ -40,6 +41,7 @@ type Props = {
 };
 
 type LocalSubmission = {
+  betId: string;
   description: string;
   validated: boolean;
   points: number | null;
@@ -94,6 +96,10 @@ export function MatchBetZone({
   // Soumission réussie pas encore reflétée par les données serveur : la carte
   // passe tout de suite à l'état « soumis » sans attendre le rafraîchissement.
   const [local, setLocal] = useState<LocalSubmission | null>(null);
+  // Pari rouvert (« Modifier mon pari ») pas encore reflété par les données
+  // serveur : force l'état ouvert en attendant le rafraîchissement.
+  const [reopened, setReopened] = useState(false);
+  const [reopenUsed, setReopenUsed] = useState(false);
   const [isPending, startTransition] = useTransition();
   const showToast = useToast();
   const requireAuth = useRequireAuth();
@@ -102,7 +108,7 @@ export function MatchBetZone({
   const { markDirty, clearDirty } = useUnsavedGuard(`bet:${matchId}`);
   const fieldId = useId();
 
-  const isOpen = closedMessage === null && !serverSubmitted && !local;
+  const isOpen = closedMessage === null && (reopened || (!serverSubmitted && !local));
   const empty = description.trim().length === 0;
 
   useEffect(() => {
@@ -150,12 +156,23 @@ export function MatchBetZone({
       const validated = result.outcome === "VALIDATED";
       if (validated) showValidated(validatedBetDialog(payload.description, result.probaPct, result.points));
       else showToast(PENDING_ADMIN_TOAST);
+      setReopened(false);
       setLocal({
+        betId: result.betId,
         description: payload.description,
         validated,
         points: validated ? result.points : null,
       });
     });
+  }
+
+  function handleReopened(betId: string) {
+    const previous = serverSubmitted?.description ?? local?.description ?? "";
+    setLocal(null);
+    setDescription(previous);
+    setDraftBetId(betId);
+    setReopened(true);
+    setReopenUsed(true);
   }
 
   const othersButton = (
@@ -255,6 +272,7 @@ export function MatchBetZone({
       serverSubmitted && ["WON", "LOST", "CANCELLED"].includes(serverSubmitted.status)
         ? serverSubmitted.resolutionReason
         : null;
+    const reopenBetId = reopenUsed ? null : serverSubmitted?.canReopen ? serverSubmitted.betId : local?.validated && !locked ? local.betId : null;
     const statusClass =
       status.kind === "win" ? styles.tagWin : status.kind === "loss" ? styles.tagLoss : styles.tagDashed;
 
@@ -273,6 +291,7 @@ export function MatchBetZone({
             <span className={`${styles.tag} ${statusClass}`}>{status.label}</span>
           </div>
         </div>
+        {reopenBetId && closedMessage === null && <ReopenBetButton betId={reopenBetId} onReopened={handleReopened} />}
         {othersButton}
       </div>
     );

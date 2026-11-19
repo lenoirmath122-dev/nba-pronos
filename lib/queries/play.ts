@@ -7,6 +7,7 @@ import { DAILY_WINDOW_DAYS, parisDayBoundsUtc, parisDateKey } from "@/lib/dates/
 import { nyDateString } from "@/lib/dates/newyork";
 import { dailyKickoffLabel, type DailyKickoffLabel } from "@/lib/labels/dailyMatch";
 import { betDifficultyPoints } from "@/lib/scoring/engine";
+import { canReopenBet } from "@/lib/queries/canReopenBet";
 import type { TeamRef } from "@/lib/queries/matches";
 import { getTeamFormBySeason } from "@/lib/queries/teamInsights";
 import type { TeamFormSummary } from "@/lib/teamInsights/types";
@@ -155,6 +156,10 @@ export type PlayAssociatedBet = {
   suggestedDifficulty: BetDifficulty | null;
   /** Points en jeu selon le barème de la compétition (Match du jour : ×0,6). */
   pointsAtStake: number | null;
+  /** VALIDATED, deadline ouverte et aucune modification déjà consommée sur
+   *  ce match (table bet_reopenings) : le bouton « Modifier mon pari »
+   *  s'affiche. Toujours faux sur une ligne verrouillée. */
+  canReopen: boolean;
 };
 
 /** Match PAS ENCORE verrouillé (scheduled_at > now()) — saisie possible. */
@@ -321,7 +326,8 @@ function toPlayAssociatedBet(
   targetFinished: boolean,
   deadlineOpen: boolean,
   correctionRequestByBetId: Map<string, BetCorrectionRequestRow>,
-  competitionType: CompetitionType
+  competitionType: CompetitionType,
+  alreadyReopened = false
 ): PlayAssociatedBet {
   const cr = correctionRequestByBetId.get(b.id);
   const difficulty = b.validated_difficulty ?? b.proposed_difficulty;
@@ -345,6 +351,7 @@ function toPlayAssociatedBet(
     // Difficulté validée seulement : la valeur proposée n'est plus choisie par
     // le joueur (valeur neutre), l'afficher promettrait des points faux.
     pointsAtStake: b.validated_difficulty !== null ? (betDifficultyPoints(competitionType)[b.validated_difficulty] ?? null) : null,
+    canReopen: canReopenBet(b.status, deadlineOpen, alreadyReopened),
   };
 }
 
@@ -485,6 +492,17 @@ async function fetchUpcomingWindow(
   );
   const ownBets = (ownBetsData ?? []) as BetSourceRow[];
   const ownBetByMatch = new Map(ownBets.map((b) => [b.match_id as string, b]));
+  // Matchs où le joueur a déjà consommé sa modification unique (une requête
+  // pour toute la page, seulement s'il a au moins un pari validé).
+  const reopenedMatchIds = new Set<string>();
+  if (userId && ownBets.some((b) => b.status === "VALIDATED")) {
+    const { data: reopenedData } = await supabase
+      .from("bet_reopenings")
+      .select("target_id")
+      .eq("user_id", userId)
+      .in("target_id", matchIds);
+    for (const r of (reopenedData ?? []) as { target_id: string }[]) reopenedMatchIds.add(r.target_id);
+  }
   const activeUsers = (activeUsersData ?? []) as ActiveUserRow[];
   const eligibleCount = activeUsers.length;
   const isAdmin = Boolean(isAdminData);
@@ -601,7 +619,7 @@ async function fetchUpcomingWindow(
       // que BetBlock en lecture seule sur l'ancien pari. Sans effet sur les
       // lignes VERROUILLÉES (ci-dessous, l.837) : la fenêtre de pari y est
       // de toute façon fermée, l'historique reste affiché tel quel.
-      bet: ownBet && !RELEASED_BET_STATUSES.has(ownBet.status) ? toPlayAssociatedBet(ownBet, false, true, new Map(), competition.type) : null,
+      bet: ownBet && !RELEASED_BET_STATUSES.has(ownBet.status) ? toPlayAssociatedBet(ownBet, false, true, new Map(), competition.type, reopenedMatchIds.has(match.id)) : null,
     });
   }
 
