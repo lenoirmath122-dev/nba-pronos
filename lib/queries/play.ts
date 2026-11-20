@@ -7,7 +7,7 @@ import { DAILY_WINDOW_DAYS, parisDayBoundsUtc, parisDateKey } from "@/lib/dates/
 import { nyDateString } from "@/lib/dates/newyork";
 import { dailyKickoffLabel, type DailyKickoffLabel } from "@/lib/labels/dailyMatch";
 import { betDifficultyPoints } from "@/lib/scoring/engine";
-import { canReopenBet } from "@/lib/queries/canReopenBet";
+import { canReopenBet, isBetStillModifiable } from "@/lib/queries/canReopenBet";
 import type { TeamRef } from "@/lib/queries/matches";
 import { getTeamFormBySeason } from "@/lib/queries/teamInsights";
 import type { TeamFormSummary } from "@/lib/teamInsights/types";
@@ -160,6 +160,10 @@ export type PlayAssociatedBet = {
    *  ce match (table bet_reopenings) : le bouton « Modifier mon pari »
    *  s'affiche. Toujours faux sur une ligne verrouillée. */
   canReopen: boolean;
+  /** Pari encore modifiable (SUBMITTED/VALIDATED, deadline ouverte, aucune
+   *  modification consommée) : les paris des autres restent cachés, sinon on
+   *  pourrait les lire puis réécrire le sien (bet_is_public, même règle). */
+  othersBetsHidden: boolean;
 };
 
 /** Match PAS ENCORE verrouillé (scheduled_at > now()) — saisie possible. */
@@ -352,6 +356,7 @@ function toPlayAssociatedBet(
     // le joueur (valeur neutre), l'afficher promettrait des points faux.
     pointsAtStake: b.validated_difficulty !== null ? (betDifficultyPoints(competitionType)[b.validated_difficulty] ?? null) : null,
     canReopen: canReopenBet(b.status, deadlineOpen, alreadyReopened),
+    othersBetsHidden: isBetStillModifiable(b.status, deadlineOpen, alreadyReopened),
   };
 }
 
@@ -495,7 +500,7 @@ async function fetchUpcomingWindow(
   // Matchs où le joueur a déjà consommé sa modification unique (une requête
   // pour toute la page, seulement s'il a au moins un pari validé).
   const reopenedMatchIds = new Set<string>();
-  if (userId && ownBets.some((b) => b.status === "VALIDATED")) {
+  if (userId && ownBets.some((b) => b.status === "VALIDATED" || b.status === "SUBMITTED")) {
     const { data: reopenedData } = await supabase
       .from("bet_reopenings")
       .select("target_id")
@@ -509,10 +514,16 @@ async function fetchUpcomingWindow(
   const pseudoByActiveId = new Map(activeUsers.map((u) => [u.id, u.pseudo]));
 
   // Paris des autres : la RLS (bet_is_public) ne les expose avant le coup
-  // d'envoi que si MON pari sur ce match est soumis ; statuts publics
-  // seulement (un admin voit tout via la RLS, on filtre donc aussi ici).
+  // d'envoi que si MON pari sur ce match est soumis ET plus modifiable
+  // (modification unique déjà consommée) ; statuts publics seulement (un
+  // admin voit tout via la RLS, on filtre donc aussi ici).
   const submittedBetMatchIds = ownBets
-    .filter((b) => b.match_id && ["SUBMITTED", "VALIDATED", "WON", "LOST"].includes(b.status))
+    .filter(
+      (b) =>
+        b.match_id &&
+        ["SUBMITTED", "VALIDATED", "WON", "LOST"].includes(b.status) &&
+        !isBetStillModifiable(b.status, true, reopenedMatchIds.has(b.match_id))
+    )
     .map((b) => b.match_id as string);
   const { data: otherBetsData } =
     submittedBetMatchIds.length > 0

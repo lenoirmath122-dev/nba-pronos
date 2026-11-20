@@ -39,10 +39,10 @@ test("soumission d'un pari personnalisé -> statut SOUMIS", async ({ page }, tes
   await row.getByRole("button", { name: "Soumettre", exact: true }).click();
 
   // Succès -> la zone passe en lecture : énoncé affiché, plus de champ de
-  // saisie, accès aux paris des autres.
+  // saisie, et PAS d'accès aux paris des autres (pari encore modifiable).
   await expect(row.getByText(description, { exact: true })).toBeVisible();
   await expect(row.getByLabel("Mon pari")).toHaveCount(0);
-  await expect(row.getByRole("button", { name: "Voir les paris des autres" })).toBeVisible();
+  await expect(row.getByRole("button", { name: "Voir les paris des autres" })).toHaveCount(0);
 
   // Statut réel : "En attente" (SUBMITTED, en attente d'un admin), jamais
   // "Validé" -- sans ANTHROPIC_API_KEY le pari n'est pas auto-validé.

@@ -211,7 +211,7 @@ export function MatchBetZone({
           disabled={isPending}
         />
         <p className={styles.hint}>
-          Un joueur, une stat, un seuil. Soumets ton pari pour voir ceux des autres.
+          Un joueur, une stat, un seuil. Les paris des autres restent cachés tant que le tien est modifiable.
         </p>
         {error && (
           <p className={styles.error} role="alert">
@@ -281,6 +281,14 @@ export function MatchBetZone({
       serverSubmitted && ["WON", "LOST", "CANCELLED"].includes(serverSubmitted.status)
         ? serverSubmitted.resolutionReason
         : null;
+    // Pari encore modifiable (modification unique pas consommée, coup d'envoi
+    // pas passé) : pas de bouton « Paris des autres », sinon on pourrait les
+    // lire puis réécrire le sien. Même règle côté SQL (bet_is_public).
+    const stillModifiable =
+      !locked &&
+      closedMessage === null &&
+      !reopenUsed &&
+      (serverSubmitted ? serverSubmitted.othersBetsHidden : local !== null);
     const reopenBetId = reopenUsed ? null : serverSubmitted?.canReopen ? serverSubmitted.betId : local?.validated && !locked ? local.betId : null;
     const statusClass =
       status.kind === "win" ? styles.statusWin : status.kind === "loss" ? styles.statusLoss : styles.statusPending;
@@ -313,12 +321,19 @@ export function MatchBetZone({
             {reopenError}
           </p>
         )}
-        <div className={styles.actions}>
-          {othersButton}
-          {reopenBetId && closedMessage === null && (
-            <ReopenBetButton betId={reopenBetId} onReopened={handleReopened} onError={setReopenError} />
-          )}
-        </div>
+        {stillModifiable && (
+          <p className={styles.hint}>
+            Les paris des autres se dévoilent au coup d&rsquo;envoi, ou dès que tu as utilisé ta modification.
+          </p>
+        )}
+        {(!stillModifiable || (reopenBetId && closedMessage === null)) && (
+          <div className={styles.actions}>
+            {!stillModifiable && othersButton}
+            {reopenBetId && closedMessage === null && (
+              <ReopenBetButton betId={reopenBetId} onReopened={handleReopened} onError={setReopenError} />
+            )}
+          </div>
+        )}
       </div>
     );
   }
