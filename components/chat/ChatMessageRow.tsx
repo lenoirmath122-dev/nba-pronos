@@ -286,7 +286,11 @@ export function ChatMessageRow({ message, isOwn, canDelete, onDeleted, onReact, 
         )}
         <p className={styles.body}>
           {bodySegments.map((segment, index) =>
-            segment.type === "mention" ? (
+            segment.type === "everyone" ? (
+              <strong key={index} className={styles.mentionEveryone}>
+                {segment.text}
+              </strong>
+            ) : segment.type === "mention" ? (
               <PlayerLink
                 key={index}
                 userId={segment.userId}

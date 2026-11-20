@@ -260,6 +260,15 @@
   background: var(--color-accent-soft);
 }
 
+/* « @tout le monde » : concerne chaque lecteur, même surlignage que « me cite ». */
+.mentionEveryone {
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm, var(--radius-md));
+  background: var(--color-accent-soft);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-semibold);
+}
+
 .mention:hover,
 .mentionMe:hover {
   text-decoration: underline;
