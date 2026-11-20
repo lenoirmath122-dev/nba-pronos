@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import { postChatMessageFormAction } from "@/lib/actions/chat";
 import type { ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
-import { activeMentionQuery } from "@/lib/chat/mentions";
+import { activeMentionQuery, EVERYONE_PSEUDO, matchesEveryone } from "@/lib/chat/mentions";
 import { CHAT_DRAFT_KEY } from "@/lib/auth/pendingAction";
 import styles from "./ChatComposer.module.css";
 
@@ -68,7 +68,7 @@ export function ChatComposer({ scope, roster, currentUserId, initialText }: Chat
   const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
   const [highlighted, setHighlighted] = useState(0);
 
-  const suggestions = mention
+  const playerSuggestions = mention
     ? roster
         .filter((u) => u.id !== currentUserId && u.pseudo.toLowerCase().includes(mention.query.toLowerCase()))
         .sort((a, b) => {
@@ -78,6 +78,11 @@ export function ChatComposer({ scope, roster, currentUserId, initialText }: Chat
         })
         .slice(0, MAX_SUGGESTIONS)
     : [];
+  // « @tout le monde » proposé en premier dès qu'il correspond à la saisie.
+  const suggestions =
+    mention && matchesEveryone(mention.query)
+      ? [{ id: "__everyone__", pseudo: EVERYONE_PSEUDO }, ...playerSuggestions.slice(0, MAX_SUGGESTIONS - 1)]
+      : playerSuggestions;
 
   function refreshMention() {
     const el = textareaRef.current;

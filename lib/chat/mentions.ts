@@ -5,14 +5,27 @@
 
 export type MentionTarget = { id: string; pseudo: string };
 
-export type BodySegment = { type: "text"; text: string } | { type: "mention"; text: string; userId: string };
+export type BodySegment =
+  | { type: "text"; text: string }
+  | { type: "mention"; text: string; userId: string }
+  | { type: "everyone"; text: string };
+
+/** Mention collective « @tout le monde » : s'adresse à tous les lecteurs du fil. */
+export const EVERYONE_PSEUDO = "tout le monde";
+const EVERYONE_ID = "__everyone__";
+
+/** Vrai si la saisie `@requête` peut viser « @tout le monde ». */
+export function matchesEveryone(query: string): boolean {
+  return EVERYONE_PSEUDO.startsWith(query.toLowerCase());
+}
 
 function isBoundary(char: string | undefined): boolean {
   return char === undefined || !/[\p{L}\p{N}_]/u.test(char);
 }
 
 export function splitMentions(body: string, targets: MentionTarget[]): BodySegment[] {
-  const sorted = [...targets].sort((a, b) => b.pseudo.length - a.pseudo.length);
+  // « tout le monde » en tête : il l'emporte sur un pseudo identique.
+  const sorted = [{ id: EVERYONE_ID, pseudo: EVERYONE_PSEUDO }, ...targets].sort((a, b) => b.pseudo.length - a.pseudo.length);
   const lowerBody = body.toLowerCase();
   const segments: BodySegment[] = [];
   let buffer = "";
@@ -28,7 +41,8 @@ export function splitMentions(body: string, targets: MentionTarget[]): BodySegme
         if (buffer) segments.push({ type: "text", text: buffer });
         buffer = "";
         const end = i + 1 + match.pseudo.length;
-        segments.push({ type: "mention", text: body.slice(i, end), userId: match.id });
+        const text = body.slice(i, end);
+        segments.push(match.id === EVERYONE_ID ? { type: "everyone", text } : { type: "mention", text, userId: match.id });
         i = end;
         continue;
       }
