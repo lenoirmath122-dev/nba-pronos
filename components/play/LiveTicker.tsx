@@ -14,7 +14,34 @@ import styles from "./LiveTicker.module.css";
 
 type TickerItem =
   | { kind: "score"; key: string; live: boolean; home: string; away: string; score: string }
-  | { kind: "deadline"; key: string; matchup: string; when: string };
+  | { kind: "deadline"; key: string; matchup: string; when: string }
+  | { kind: "promo"; key: string; tag: string; text: string };
+
+// Compte à rebours NBA Cup (demande du 21/11/2026) : tant que la date n'est
+// pas passée, le bandeau n'affiche QUE ce message ; ensuite il revient seul
+// aux scores en direct + prochain match. Date donnée « de mémoire » par
+// l'utilisateur (phases finales) : à corriger ici si elle bouge.
+const NBA_CUP_CHALLENGE_DATE = "2026-12-04"; // jour calendaire, heure de Paris
+
+const PARIS_DAY_FORMATTER = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Paris",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+/** Jours calendaires (heure de Paris) avant le challenge ; négatif une fois passé. */
+function daysUntilCupChallenge(now: Date): number {
+  const today = Date.parse(`${PARIS_DAY_FORMATTER.format(now)}T00:00:00Z`);
+  const target = Date.parse(`${NBA_CUP_CHALLENGE_DATE}T00:00:00Z`);
+  return Math.round((target - today) / 86_400_000);
+}
+
+function cupCountdownText(days: number): string {
+  if (days === 0) return "NBA Cup challenge aujourd'hui, prépare-toi à gagner";
+  if (days === 1) return "NBA Cup challenge demain, prépare-toi à gagner";
+  return `NBA Cup challenge dans ${days} jours, prépare-toi à gagner`;
+}
 
 const TIME_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   timeZone: "Europe/Paris",
@@ -30,6 +57,11 @@ type LiveTickerProps = {
 };
 
 export function LiveTicker({ liveScores, days }: LiveTickerProps) {
+  const daysToCup = daysUntilCupChallenge(new Date());
+  if (daysToCup >= 0) {
+    return renderTicker([{ kind: "promo", key: "nba-cup", tag: "NBA Cup", text: cupCountdownText(daysToCup) }]);
+  }
+
   const scoreItems: TickerItem[] = liveScores.map((row) => ({
     kind: "score",
     key: row.matchId,
@@ -64,10 +96,18 @@ export function LiveTicker({ liveScores, days }: LiveTickerProps) {
 
   const items = [...scoreItems, ...deadlineItem];
   if (items.length === 0) return null;
+  return renderTicker(items);
+}
 
+function renderTicker(items: TickerItem[]) {
   function renderItems(groupKey: string) {
     return items.map((item) =>
-      item.kind === "score" ? (
+      item.kind === "promo" ? (
+        <span key={`${groupKey}-${item.key}`} className={styles.item}>
+          <span className={styles.deadlineTag}>{item.tag}</span>
+          <span className={styles.deadlineMeta}>{item.text}</span>
+        </span>
+      ) : item.kind === "score" ? (
         <span key={`${groupKey}-${item.key}`} className={styles.item}>
           {item.live && <span className={styles.liveTag}>En direct</span>}
           <span className={styles.score}>
