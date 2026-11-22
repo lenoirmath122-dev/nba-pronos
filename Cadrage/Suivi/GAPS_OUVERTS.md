@@ -11,6 +11,23 @@
 > `audit/PLAN_ACTION.md` — vérifier les deux pour une vue complète.
 
 
+## Bugs ouverts
+
+### Récap « points de la nuit » : deux nuits additionnées (signalé le 22/11/2026)
+- **Constat** : le 21/11, deux matchs le même jour calendaire. L'un très tôt le matin (nuit du 20 au 21), l'autre le
+  soir avec un horaire avancé (nuit du 21 au 22). Le récap du 22/11 affiche le total des deux : coksino est à
+  **22 pts** alors qu'il a pris 10 pts sur un match et 12 sur l'autre.
+- **Attendu** : le récap de la nuit du 21 au 22 ne compte que le match du soir du 21.
+- **Code concerné** : fenêtre de récap = veille 10h → jour 10h, heure de Paris (`lib/recaps/period.ts`). Les points
+  gagnés valent le total actuel moins le dernier snapshot quotidien d'avant le jour du récap (`lib/recaps/build.ts`,
+  `leaderboard_snapshots`), pas une somme par match.
+- **Pistes, à vérifier, rien n'est confirmé** : (1) les points du match du matin sont tombés après le snapshot de 10h
+  du 21/11 (box scores importés par la VM à 12h/16h Paris, ou résolution tardive), donc ils sont comptés le 22 ;
+  (2) le snapshot du 21/11 manque, et le calcul repart de celui du 20. Requête de contrôle : les lignes de
+  `leaderboard_snapshots` des 20, 21 et 22/11 pour coksino, et l'heure de scoring de ses pronos sur les deux matchs.
+- **Correctif possible** : rattacher les points à la nuit du match (`scheduled_at`) plutôt qu'au moment où ils
+  tombent, ou repousser le figeage du snapshot après la résolution des matchs. À décider avec l'utilisateur.
+
 ## Chantiers en cours — résumé (détail dans `chantiers/`)
 
 > Chaque chantier a son fichier détaillé, à n'ouvrir que si la session porte
