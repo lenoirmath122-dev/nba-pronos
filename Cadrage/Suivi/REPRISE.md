@@ -1,4 +1,6 @@
 # Reprise — NBA Pronos (18/11/2026, passation 44)
+- **BUG signalé le 22/11** : le récap des points de la nuit du 21 au 22 additionne deux nuits (match tôt le matin
+  du 21 + match avancé le soir du 21 ; coksino 22 pts au lieu de 12 ou 10). Détail et pistes : `GAPS_OUVERTS.md` › Bugs ouverts.
 - **Invité dans la vraie appli : PR #309 mergée et recettée (18/11)**. SEO : `/play` ouvert aux robots (titre d'accueil, canonique,
   sitemap ; sous-pages `/play/` toujours exclues), PR `fix/seo-play` à merger. Reste : mesurer le quota CPU Vercel (rendu dynamique de
   `/play` par les invités) d'ici quelques jours ; décider de supprimer l'ancienne accueil jouable `app/(public)/page.tsx` + `lib/publicHome/*`.
