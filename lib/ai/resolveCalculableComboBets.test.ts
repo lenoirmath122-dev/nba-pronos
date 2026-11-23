@@ -538,3 +538,36 @@ describe("resolveCalculableComboBets — titulaire ou remplaçant (S8)", () => {
     expect((await resolveCalculableComboBets()).resolved).toEqual([{ betId: "bS4", outcome: "LOST" }]);
   });
 });
+
+describe("resolveCalculableComboBets — justification avec la vraie valeur (23/11/2026)", () => {
+  it("LOST : cite la vraie valeur du joueur, pas « (N groupes) »", async () => {
+    seed("stats_joueurs", [{ player_id: 201, first_name: "LeBron", family_name: "James" }]);
+    seed("bets", [betRow({ id: "bJ1", structured_combo: combo(
+      [{ kind: "PLAYER", player_ids: [201], stats: ["reb"], threshold: 5, comparison: "OVER" }],
+      [{ kind: "PLAYER", player_ids: [201], stats: ["pts"], threshold: 30, comparison: "OVER" }],
+    ) })]);
+    await resolveCalculableComboBets();
+    expect(readRow("bets", "bJ1")?.status).toBe("LOST");
+    expect(readRow("bets", "bJ1")?.resolution_reason).toBe("LeBron James a terminé avec 6 rebonds. LeBron James a marqué 28 points.");
+  });
+
+  it("WON : vainqueur + somme de stats, avec l'abréviation de l'équipe", async () => {
+    seed("teams", [{ id: "TEAM_A", abbreviation: "LAL", name: "Lakers" }]);
+    fake.db.matches[0].home_score = 110;
+    fake.db.matches[0].away_score = 101;
+    seed("bets", [betRow({ id: "bJ2", structured_combo: combo(
+      [{ kind: "TEAM", team_id: "TEAM_A", stats: ["win"], threshold: 0, comparison: "OVER" }],
+      [{ kind: "PLAYER", player_ids: [201], stats: ["pts", "ast"], threshold: 30, comparison: "OVER" }],
+    ) })]);
+    await resolveCalculableComboBets();
+    expect(readRow("bets", "bJ2")?.status).toBe("WON");
+    expect(readRow("bets", "bJ2")?.resolution_reason).toBe("LAL a gagné 110-101. Le joueur a terminé avec 36 points + passes décisives.");
+  });
+
+  it("joueur absent de la feuille : le dit en clair", async () => {
+    seed("stats_joueurs", [{ player_id: 999, first_name: "Bronny", family_name: "James" }]);
+    seed("bets", [betRow({ id: "bJ3", structured_combo: combo([{ kind: "PLAYER", player_ids: [999], stats: ["pts"], threshold: 5, comparison: "OVER" }]) })]);
+    await resolveCalculableComboBets();
+    expect(readRow("bets", "bJ3")?.resolution_reason).toBe("Bronny James n'a pas joué.");
+  });
+});

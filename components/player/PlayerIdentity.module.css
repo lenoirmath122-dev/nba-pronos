@@ -47,7 +47,10 @@
 }
 
 .identity[data-size="header"] .pseudo {
-  font-size: var(--font-size-xl);
+  /* 20 px sur un téléphone de 375 px : un pseudo de 12 caractères
+     (« Rillettes-31 ») tient sur une ligne au lieu de se couper au tiret,
+     à côté de la roue et de l'écusson (23/11/2026). */
+  font-size: clamp(var(--font-size-lg), 5.4vw, var(--font-size-xl));
   white-space: normal;
 }
 

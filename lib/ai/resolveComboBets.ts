@@ -1,10 +1,10 @@
 import "server-only";
 import { getServiceClient } from "@/lib/supabase/service";
 import { recomputeBet } from "@/lib/scoring/recompute";
-import type { StatCode } from "./statCodes";
+import { STAT_LABELS_FR, type StatCode } from "./statCodes";
 import { COMBO_WIN_STAT, COMBO_MARGIN_STAT, COMBO_STARTER_STAT, COMBO_QUARTERS_WON_STAT, periodOfComboWinStat } from "./teamStatCodes";
 import { computePeriodTeamOutcome, type MatchPeriodRow } from "./resolvePeriodBets";
-import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, rowStatValue, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced } from "./resolveBetsShared";
+import { type ResolveBetsSummary, type BoxScoreRow, type SupabaseServiceClient, rowStatValue, computeOutcome, resolveNbaGameId, resolveNbaTeamId, isBoxScoreSynced, formatActualStatReason } from "./resolveBetsShared";
 
 type ComboConditionRow = {
   kind: "PLAYER" | "TEAM";
@@ -18,6 +18,44 @@ type ComboConditionRow = {
 type ComboConditionGroup = { or: ComboConditionRow[] };
 
 type StructuredCombo = { conditions: ComboConditionGroup[] };
+
+/** Issue d'une condition + la vraie valeur, en clair, pour la justification
+ *  affichée au joueur (« Perdu » + ce texte, 23/11/2026, retour de
+ *  Leopoldinho) -- même esprit que formatActualStatReason() des paris
+ *  simples : la valeur réelle, sans répéter le seuil. */
+type ConditionResult = { satisfied: boolean | null; note?: string };
+
+const GENERIC_COMBO_REASON = (groups: number) =>
+  `Résolu automatiquement via les statistiques officielles du match (${groups} groupes).`;
+
+async function playerDisplayName(supabase: SupabaseServiceClient, playerId: number): Promise<string> {
+  const { data } = await supabase
+    .from("stats_joueurs")
+    .select("first_name, family_name")
+    .eq("player_id", playerId)
+    .limit(1)
+    .maybeSingle<{ first_name: string | null; family_name: string | null }>();
+  const name = [data?.first_name, data?.family_name].filter(Boolean).join(" ").trim();
+  return name || "Le joueur";
+}
+
+async function teamDisplayName(supabase: SupabaseServiceClient, teamId: string | null): Promise<string> {
+  if (!teamId) return "L'équipe";
+  const { data } = await supabase
+    .from("teams")
+    .select("abbreviation, name")
+    .eq("id", teamId)
+    .maybeSingle<{ abbreviation: string | null; name: string | null }>();
+  return data?.abbreviation || data?.name || "L'équipe";
+}
+
+function statsLabel(stats: string[]): string {
+  return stats.map((s) => STAT_LABELS_FR[s as StatCode] ?? s).join(" + ");
+}
+
+function didNotPlayNote(names: string[]): string {
+  return `${names.join(" et ")} n'${names.length > 1 ? "ont" : "a"} pas joué.`;
+}
 
 type EligibleComboBetRow = {
   id: string;
@@ -39,7 +77,7 @@ type EligibleComboBetRow = {
  *  cf. isBoxScoreSynced()). */
 async function resolveComboConditionSatisfied(
   supabase: SupabaseServiceClient, condition: ComboConditionRow, gameId: string, matchId: string
-): Promise<boolean | null> {
+): Promise<ConditionResult> {
   // Vainqueur du match (S4) : lit le score final de matches, pas le box score.
   const isMargin = condition.kind === "TEAM" && condition.stats.length === 1 && condition.stats[0] === COMBO_MARGIN_STAT;
   if (condition.kind === "TEAM" && condition.stats.length === 1 && (condition.stats[0] === COMBO_WIN_STAT || isMargin)) {
@@ -48,16 +86,23 @@ async function resolveComboConditionSatisfied(
       .select("home_team_id, away_team_id, home_score, away_score")
       .eq("id", matchId)
       .maybeSingle<{ home_team_id: string | null; away_team_id: string | null; home_score: number | null; away_score: number | null }>();
-    if (!match || match.home_score === null || match.away_score === null) return null;
+    if (!match || match.home_score === null || match.away_score === null) return { satisfied: null };
     const isHome = condition.team_id === match.home_team_id;
-    if (!isHome && condition.team_id !== match.away_team_id) return null;
+    if (!isHome && condition.team_id !== match.away_team_id) return { satisfied: null };
+    const own = isHome ? match.home_score : match.away_score;
+    const opp = isHome ? match.away_score : match.home_score;
+    const team = await teamDisplayName(supabase, condition.team_id);
+    const result = `${team} a ${own > opp ? "gagné" : "perdu"} ${own}-${opp}`;
     if (isMargin) {
-      if (condition.threshold === null) return null;
-      const margin = isHome ? match.home_score - match.away_score : match.away_score - match.home_score;
-      return condition.comparison === "UNDER" ? margin < condition.threshold : margin > condition.threshold;
+      if (condition.threshold === null) return { satisfied: null };
+      const margin = own - opp;
+      return {
+        satisfied: condition.comparison === "UNDER" ? margin < condition.threshold : margin > condition.threshold,
+        note: `${result} (écart ${margin > 0 ? "+" : ""}${margin}).`,
+      };
     }
-    const wins = isHome ? match.home_score > match.away_score : match.away_score > match.home_score;
-    return condition.comparison === "UNDER" ? !wins : wins;
+    const wins = own > opp;
+    return { satisfied: condition.comparison === "UNDER" ? !wins : wins, note: `${result}.` };
   }
   // Période d'équipe (S4 fin) : quarts-temps remportés / remporte une période,
   // lus dans matches.quarter_scores comme le pari période.
@@ -70,14 +115,14 @@ async function resolveComboConditionSatisfied(
         .select("id, status, home_team_id, away_team_id, home_score, away_score, quarter_scores")
         .eq("id", matchId)
         .maybeSingle<MatchPeriodRow>();
-      if (!match || !match.quarter_scores) return null;
+      if (!match || !match.quarter_scores) return { satisfied: null };
       const isHome = condition.team_id === match.home_team_id;
-      if (!isHome && condition.team_id !== match.away_team_id) return null;
+      if (!isHome && condition.team_id !== match.away_team_id) return { satisfied: null };
       const outcome = period
         ? computePeriodTeamOutcome(period.startsWith("Q") ? "QUARTER_WINNER" : "HALF_WINNER", period, isHome, null, null, null, match)
         : computePeriodTeamOutcome("QUARTERS_WON_COUNT", null, isHome, false, condition.threshold, condition.comparison, match);
-      if (!outcome) return null;
-      return period && condition.comparison === "UNDER" ? !outcome.won : outcome.won;
+      if (!outcome) return { satisfied: null };
+      return { satisfied: period && condition.comparison === "UNDER" ? !outcome.won : outcome.won };
     }
   }
   const isSimple = condition.kind === "TEAM"
@@ -86,7 +131,10 @@ async function resolveComboConditionSatisfied(
 
   if (condition.kind === "PLAYER" && isSimple) {
     const playerId = condition.player_ids?.[0];
-    if (!playerId) return null;
+    if (!playerId) return { satisfied: null };
+    const who = await playerDisplayName(supabase, playerId);
+    const didNotPlay = async (): Promise<ConditionResult> =>
+      (await isBoxScoreSynced(supabase, gameId)) ? { satisfied: false, note: didNotPlayNote([who]) } : { satisfied: null };
     // Titulaire ou remplaçant (S8) : position non vide = titulaire. Pas de
     // ligne = le joueur n'a pas joué (condition fausse) ou box score pas encore importé.
     if (condition.stats[0] === COMBO_STARTER_STAT) {
@@ -95,51 +143,69 @@ async function resolveComboConditionSatisfied(
         .select("position")
         .eq("game_id", gameId)
         .eq("player_id", playerId);
-      if (!startRows || startRows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
+      if (!startRows || startRows.length === 0) return didNotPlay();
       const started = Boolean((startRows[0] as { position: string | null }).position);
-      return condition.comparison === "UNDER" ? !started : started;
+      return {
+        satisfied: condition.comparison === "UNDER" ? !started : started,
+        note: started ? `${who} était titulaire.` : `${who} est sorti du banc.`,
+      };
     }
     const { data: rows } = await supabase
       .from("stats_box_scores")
       .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, technical_fouls, tov, pf")
       .eq("game_id", gameId)
       .eq("player_id", playerId);
-    if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
-    return computeOutcome(condition.stats[0] as StatCode, condition.threshold, condition.comparison, rows[0] as BoxScoreRow);
+    if (!rows || rows.length === 0) return didNotPlay();
+    const stat = condition.stats[0] as StatCode;
+    const box = rows[0] as BoxScoreRow;
+    return { satisfied: computeOutcome(stat, condition.threshold, condition.comparison, box), note: formatActualStatReason(who, stat, box) };
   }
 
   let total = 0;
+  let subject: string;
   if (condition.kind === "PLAYER") {
-    const playerIds = condition.player_ids ?? [];
-    if (playerIds.length === 0) return null;
+    const playerIds = [...new Set(condition.player_ids ?? [])];
+    if (playerIds.length === 0) return { satisfied: null };
+    const names = await Promise.all(playerIds.map((id) => playerDisplayName(supabase, id)));
+    subject = names.length === 1 ? `${names[0]} a terminé avec` : `${names.join(" et ")} ont cumulé`;
     const { data: rows } = await supabase
       .from("stats_box_scores")
-      .select("minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov, pf")
+      .select("player_id, minutes, pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov, pf")
       .eq("game_id", gameId)
       .in("player_id", playerIds);
-    if (!rows || rows.length === 0) return (await isBoxScoreSynced(supabase, gameId)) ? false : null;
+    if (!rows || rows.length === 0) {
+      return (await isBoxScoreSynced(supabase, gameId)) ? { satisfied: false, note: didNotPlayNote(names) } : { satisfied: null };
+    }
     // Box score importé (au moins un des joueurs a une ligne) mais un
     // joueur nommé manque : il n'a pas joué, la condition est fausse
     // (p3-15) -- avant, sa part comptait silencieusement pour 0.
-    if (rows.length < new Set(playerIds).size) return false;
+    if (rows.length < playerIds.length) {
+      const present = new Set((rows as { player_id?: number }[]).map((r) => r.player_id));
+      const absent = playerIds.flatMap((id, i) => (present.has(id) ? [] : [names[i]]));
+      return { satisfied: false, note: absent.length > 0 ? didNotPlayNote(absent) : "Un des joueurs visés n'a pas joué." };
+    }
     for (const r of rows as Record<string, unknown>[]) {
       for (const s of condition.stats) total += rowStatValue(s, r);
     }
   } else {
     const nbaTeamId = condition.team_id ? await resolveNbaTeamId(supabase, condition.team_id) : null;
-    if (nbaTeamId === null) return null;
+    if (nbaTeamId === null) return { satisfied: null };
+    subject = `${await teamDisplayName(supabase, condition.team_id)} a terminé avec`;
     const { data: rows } = await supabase
       .from("stats_box_scores")
       .select("pts, reb, ast, fg3m, stl, blk, ftm, fta, fgm, fga, fg3a, oreb, plus_minus, tov, pf")
       .eq("game_id", gameId)
       .eq("team_id", nbaTeamId);
-    if (!rows || rows.length === 0) return null;
+    if (!rows || rows.length === 0) return { satisfied: null };
     for (const r of rows as Record<string, unknown>[]) {
       for (const s of condition.stats) total += rowStatValue(s, r);
     }
   }
-  if (condition.threshold === null) return null;
-  return condition.comparison === "UNDER" ? total < condition.threshold : total > condition.threshold;
+  if (condition.threshold === null) return { satisfied: null };
+  return {
+    satisfied: condition.comparison === "UNDER" ? total < condition.threshold : total > condition.threshold,
+    note: `${subject} ${total} ${statsLabel(condition.stats)}.`,
+  };
 }
 
 /** Valeur réelle (true/false/null) d'UN GROUPE combo -- étape 7 du plan de
@@ -155,14 +221,17 @@ async function resolveComboConditionSatisfied(
  *  confirmée vraie). */
 async function resolveComboGroupSatisfied(
   supabase: SupabaseServiceClient, group: ComboConditionGroup, gameId: string, matchId: string
-): Promise<boolean | null> {
+): Promise<{ satisfied: boolean | null; notes: string[] }> {
   let sawIncomplete = false;
+  const notes: string[] = [];
   for (const condition of group.or) {
-    const satisfied = await resolveComboConditionSatisfied(supabase, condition, gameId, matchId);
-    if (satisfied === true) return true;
+    const { satisfied, note } = await resolveComboConditionSatisfied(supabase, condition, gameId, matchId);
+    // Groupe gagné : seule la condition qui l'a fait gagner est citée.
+    if (satisfied === true) return { satisfied: true, notes: note ? [note] : [] };
     if (satisfied === null) sawIncomplete = true;
+    if (note) notes.push(note);
   }
-  return sawIncomplete ? null : false;
+  return { satisfied: sawIncomplete ? null : false, notes };
 }
 
 /** Chantier combo (24/08/2026, GAPS_OUVERTS.md ; étendu étape 7,
@@ -227,8 +296,10 @@ export async function resolveCalculableComboBets(): Promise<ResolveBetsSummary> 
 
     let allSatisfied = true;
     let incomplete = false;
+    const notes: string[] = [];
     for (const group of bet.structured_combo.conditions) {
-      const satisfied = await resolveComboGroupSatisfied(supabase, group, gameId, bet.match_id);
+      const { satisfied, notes: groupNotes } = await resolveComboGroupSatisfied(supabase, group, gameId, bet.match_id);
+      notes.push(...groupNotes);
       if (satisfied === null) {
         incomplete = true;
         break;
@@ -249,7 +320,7 @@ export async function resolveCalculableComboBets(): Promise<ResolveBetsSummary> 
       .from("bets")
       .update({
         status: outcome,
-        resolution_reason: `Résolu automatiquement via les statistiques officielles du match (${bet.structured_combo.conditions.length} groupes).`,
+        resolution_reason: notes.length > 0 ? notes.join(" ") : GENERIC_COMBO_REASON(bet.structured_combo.conditions.length),
         resolved_at: new Date().toISOString(),
         resolved_by_admin_id: null,
       })

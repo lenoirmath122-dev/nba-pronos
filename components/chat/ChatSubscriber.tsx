@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { getBrowserClient } from "@/lib/supabase/browser";
 import { markChatChannelSeen } from "@/lib/nav/chatSeen";
 import { setChatReaction } from "@/lib/actions/chat";
 import type { ChatMessage, ChatReaction, ChatRosterEntry, ChatScope } from "@/lib/queries/chat";
+import { chatDayKey, chatDayLabel } from "@/lib/chat/dayLabel";
 import { ChatMessageRow } from "./ChatMessageRow";
 import { ChatComposer } from "./ChatComposer";
 import { GuestChatComposer } from "./GuestChatComposer";
@@ -193,18 +194,24 @@ export function ChatSubscriber({ seed, roster, scope, currentUserId, isCurrentUs
         {messages.length === 0 ? (
           <p className={styles.empty}>Aucun message pour l&apos;instant. Lance la discussion !</p>
         ) : (
-          messages.map((message) => (
-            <ChatMessageRow
-              key={message.id}
-              message={message}
-              isOwn={!isGuest && message.userId === currentUserId}
-              canDelete={isCurrentUserAdmin}
-              onDeleted={handleDeleted}
-              onReact={handleReact}
-              currentUserId={currentUserId ?? ""}
-              roster={roster}
-              readOnly={isGuest}
-            />
+          messages.map((message, index) => (
+            <Fragment key={message.id}>
+              {(index === 0 || chatDayKey(messages[index - 1].createdAt) !== chatDayKey(message.createdAt)) && (
+                <p className={styles.daySeparator} suppressHydrationWarning>
+                  {chatDayLabel(message.createdAt)}
+                </p>
+              )}
+              <ChatMessageRow
+                message={message}
+                isOwn={!isGuest && message.userId === currentUserId}
+                canDelete={isCurrentUserAdmin}
+                onDeleted={handleDeleted}
+                onReact={handleReact}
+                currentUserId={currentUserId ?? ""}
+                roster={roster}
+                readOnly={isGuest}
+              />
+            </Fragment>
           ))
         )}
       </div>
