@@ -1,5 +1,6 @@
 import Link from "next/link";
 import styles from "./PublicNav.module.css";
+import { isNbaCupPrizeVisible } from "@/lib/competitions/nbaCupPrize";
 
 // Rangée secondaire distincte de la nav réduite (0.2.9 §3, T6a §3.1,
 // volontairement Classement/Bracket/Règles/Se connecter uniquement) -- seul
@@ -17,6 +18,11 @@ export function PublicLegalBar() {
       <Link href="/cgu" prefetch={false} className={styles.legalLink}>
         CGU
       </Link>
+      {isNbaCupPrizeVisible() && (
+        <Link href="/reglement-nba-cup" prefetch={false} className={styles.legalLink}>
+          Règlement NBA Cup
+        </Link>
+      )}
     </div>
   );
 }

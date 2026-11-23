@@ -27,6 +27,7 @@ export default async function ConfidentialitePage() {
         <div className={`${styles.header} glass-card`}>
           <p className={styles.title}>Politique de confidentialité</p>
           <p className={styles.intro}>Ce que Panier Ballon fait de vos données, et comment les contrôler.</p>
+          <p className={styles.intro}>Mise à jour le 24/11/2026.</p>
         </div>
 
         <section className={`${styles.section} glass-card`} aria-label="Qui est responsable de vos données">
@@ -37,8 +38,7 @@ export default async function ConfidentialitePage() {
             données au sens du RGPD.
           </p>
           <p className={styles.body}>
-            Panier Ballon est aujourd&apos;hui un service <strong>gratuit, réservé à un cercle fermé
-            d&apos;utilisateurs invités</strong> (bêta privée, France). <strong>Une déclaration d&apos;âge est
+            Panier Ballon est un service <strong>gratuit</strong>. <strong>Une déclaration d&apos;âge est
             demandée à l&apos;inscription</strong> (certifier avoir 15 ans ou plus) : le service n&apos;est pas
             accessible en dessous de ce seuil, mais reste, au-delà, ouvert aux mineurs de 15 à 17 ans comme aux
             majeurs (voir §7 &quot;Mineurs&quot; ci-dessous).
@@ -97,6 +97,17 @@ export default async function ConfidentialitePage() {
             </li>
             <li className={styles.listItem}>
               <span>
+                <strong>Participation à une opération avec lots</strong> (par exemple le tirage au sort de la NBA
+                Cup) — votre pseudo et votre bracket servent à vérifier que vous remplissez les conditions et à
+                désigner le gagnant (exécution du règlement de l&apos;opération). Si vous gagnez, on vous demande en
+                plus votre nom, votre adresse postale et votre choix de lot, uniquement pour vous l&apos;envoyer ; ces
+                données sont supprimées 6 mois après la remise du lot. Votre pseudo de gagnant peut être annoncé sur
+                Instagram et dans l&apos;appli ; vous pouvez le refuser sans perdre votre lot. Le détail figure dans
+                le règlement de chaque opération.
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
                 <strong>Vos signalements de bug</strong> — pour le support technique (intérêt légitime),
                 conservés tant que votre compte est actif.
               </span>
@@ -123,8 +134,8 @@ export default async function ConfidentialitePage() {
           </ul>
           <p className={styles.note}>
             Ce qu&apos;on ne collecte pas : date de naissance précise (nous ne demandons qu&apos;une confirmation
-            du seuil de 15 ans, jamais votre date de naissance), adresse postale, données professionnelles,
-            adresse IP.
+            du seuil de 15 ans, jamais votre date de naissance), adresse postale (sauf celle du gagnant d&apos;une
+            opération avec lots, pour lui envoyer son lot), données professionnelles, adresse IP.
           </p>
           <p className={styles.body}>
             Panier Ballon ne supprime aujourd&apos;hui aucune donnée automatiquement — vos données restent tant
@@ -165,6 +176,12 @@ export default async function ConfidentialitePage() {
               <span>
                 <strong>Service de notification push de votre navigateur</strong> (Google, Mozilla ou Apple
                 selon le cas) — relais technique des notifications, si vous les activez.
+              </span>
+            </li>
+            <li className={styles.listItem}>
+              <span>
+                <strong>Transporteur</strong> (par exemple La Poste) — uniquement si vous gagnez un lot à envoyer :
+                votre nom et votre adresse postale, pour la livraison du colis.
               </span>
             </li>
           </ul>

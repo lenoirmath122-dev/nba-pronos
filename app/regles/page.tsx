@@ -6,6 +6,8 @@ import { BetDifficulteGrid } from "@/components/regles/BetDifficulteGrid";
 import { RankingTiebreakList } from "@/components/regles/RankingTiebreakList";
 import styles from "./page.module.css";
 import { pageMetadata } from "@/lib/seo";
+import Link from "next/link";
+import { isNbaCupPrizeVisible } from "@/lib/competitions/nbaCupPrize";
 
 // Règles — route physique UNIQUE, hors des route groups (public)/(app),
 // même patron que /leaderboard et /bracket (T6a §3.2/§8.1) : visiteur ou
@@ -45,6 +47,21 @@ export default async function ReglesPage() {
             Playoffs NBA entre amis : 3 façons de marquer des points, réunies dans un seul classement.
           </p>
         </div>
+
+        {isNbaCupPrizeVisible() && (
+          <section id="nba-cup-maillot" className={`${styles.section} glass-card`} aria-label="NBA Cup : un maillot à gagner">
+            <h2 className={styles.sectionTitle}>NBA Cup : un maillot à gagner</h2>
+            <p className={styles.body}>
+              Remplis ton bracket de la NBA Cup en entier (les 7 matchs, de quarts à la finale) avant le coup
+              d&apos;envoi du premier quart de finale, le 4 décembre. Tu participes alors au tirage au sort d&apos;un
+              maillot NBA Swingman, équipe et taille au choix. Gratuit, sans achat, dès 15 ans, en France, Belgique ou
+              Suisse.
+            </p>
+            <Link href="/reglement-nba-cup" className={styles.prizeLink}>
+              Lire le règlement du jeu
+            </Link>
+          </section>
+        )}
 
         {isDailyMatch && (
           <section id="match-du-jour" className={`${styles.section} glass-card`} aria-label="Match du jour">

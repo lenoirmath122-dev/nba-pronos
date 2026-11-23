@@ -26,6 +26,7 @@ export default async function CguPage() {
         <div className={`${styles.header} glass-card`}>
           <p className={styles.title}>Conditions générales d&apos;utilisation</p>
           <p className={styles.intro}>Les règles du jeu, au sens juridique cette fois.</p>
+          <p className={styles.intro}>Version 2, en vigueur le 24/11/2026.</p>
         </div>
 
         <section className={`${styles.section} glass-card`} aria-label="Objet">
@@ -40,17 +41,20 @@ export default async function CguPage() {
         <section className={`${styles.section} glass-card`} aria-label="Nature du service">
           <h2 className={styles.sectionTitle}>2. Nature du service</h2>
           <p className={styles.body}>
-            Panier Ballon est un <strong>jeu gratuit de pronostics NBA à points fictifs</strong>, entre membres
-            d&apos;un cercle fermé (bêta privée, sur invitation).{" "}
+            Panier Ballon est un <strong>jeu gratuit de pronostics NBA à points fictifs</strong>.{" "}
             <strong>
-              Il n&apos;y a aucune mise financière, aucun droit d&apos;entrée, aucun gain à valeur monétaire
-              réelle
+              L&apos;utilisation de l&apos;appli est gratuite : on n&apos;y mise jamais d&apos;argent et on n&apos;y
+              gagne jamais d&apos;argent.
             </strong>{" "}
-            — le classement se joue en points sans valeur économique.
+            Les points et le classement n&apos;ont aucune valeur économique.
           </p>
           <p className={styles.body}>
-            Si ce modèle venait à changer (introduction de mises réelles, de récompenses à valeur, ou d&apos;un
-            modèle payant), ces CGU seraient intégralement revues.
+            Panier Ballon peut organiser ponctuellement des opérations permettant de gagner des lots (par exemple
+            un tirage au sort pendant une compétition). Chacune est régie par son propre règlement, consultable
+            gratuitement dans l&apos;appli. Pour cette opération, son règlement prime sur les présentes CGU.
+          </p>
+          <p className={styles.body}>
+            Si ce modèle venait à changer (introduction d&apos;un modèle payant), ces CGU seraient revues.
           </p>
         </section>
 
@@ -58,7 +62,7 @@ export default async function CguPage() {
           <h2 className={styles.sectionTitle}>3. Accès au service et création de compte</h2>
           <ul className={styles.list}>
             <li className={styles.listItem}>
-              <span>L&apos;accès à Panier Ballon se fait sur invitation, dans le cadre de la bêta actuelle.</span>
+              <span>L&apos;accès à Panier Ballon est libre et gratuit : il suffit de créer un compte.</span>
             </li>
             <li className={styles.listItem}>
               <span>Vous devez fournir un pseudo et une adresse e-mail valides pour créer un compte.</span>
@@ -97,10 +101,7 @@ export default async function CguPage() {
               </span>
             </li>
             <li className={styles.listItem}>
-              <span>
-                utiliser le service dans un esprit de jeu entre amis, cohérent avec le cadre fermé et non
-                commercial de la bêta.
-              </span>
+              <span>utiliser le service dans un esprit de jeu entre amis, non commercial.</span>
             </li>
           </ul>
         </section>
@@ -151,7 +152,7 @@ export default async function CguPage() {
         <section className={`${styles.section} glass-card`} aria-label="Disponibilité du service">
           <h2 className={styles.sectionTitle}>8. Disponibilité du service</h2>
           <p className={styles.body}>
-            Panier Ballon est un service en développement actif (bêta). Sa disponibilité n&apos;est pas garantie
+            Panier Ballon est un service en développement actif. Sa disponibilité n&apos;est pas garantie
             de façon continue : des interruptions, évolutions ou changements de fonctionnalités peuvent survenir
             sans préavis.
           </p>
@@ -186,7 +187,7 @@ export default async function CguPage() {
           <h2 className={styles.sectionTitle}>10. Droit applicable et litiges</h2>
           <p className={styles.body}>
             Les présentes CGU sont soumises au droit français. En cas de différend, une solution amiable sera
-            recherchée en priorité, compte tenu du cadre informel du service (cercle d&apos;amis).
+            recherchée en priorité.
           </p>
         </section>
 

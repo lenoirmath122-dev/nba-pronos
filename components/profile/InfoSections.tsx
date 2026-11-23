@@ -1,5 +1,6 @@
 import Link from "next/link";
 import styles from "./profileShared.module.css";
+import { isNbaCupPrizeVisible } from "@/lib/competitions/nbaCupPrize";
 
 export function DataSection() {
   return (
@@ -37,6 +38,11 @@ export function LegalSection() {
       <Link href="/cgu" className={styles.helpLink}>
         Conditions générales d&apos;utilisation
       </Link>
+      {isNbaCupPrizeVisible() && (
+        <Link href="/reglement-nba-cup" className={styles.helpLink}>
+          Règlement NBA Cup
+        </Link>
+      )}
     </section>
   );
 }
