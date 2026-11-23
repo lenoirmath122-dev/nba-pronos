@@ -83,6 +83,14 @@
   letter-spacing: 0.02em;
 }
 
+.prizeLink {
+  align-self: flex-start;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
 .note {
   margin: 0;
   padding: var(--space-2) var(--space-3);

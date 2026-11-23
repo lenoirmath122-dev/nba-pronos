@@ -51,7 +51,13 @@ const PAGES: {
   },
   {
     path: "/cgu",
-    lastModified: "2026-10-06",
+    lastModified: "2026-11-24",
+    changeFrequency: "yearly",
+    priority: 0.2,
+  },
+  {
+    path: "/reglement-nba-cup",
+    lastModified: "2026-11-24",
     changeFrequency: "yearly",
     priority: 0.2,
   },
@@ -63,7 +69,7 @@ const PAGES: {
   },
   {
     path: "/confidentialite",
-    lastModified: "2026-10-06",
+    lastModified: "2026-11-24",
     changeFrequency: "yearly",
     priority: 0.2,
   },
