@@ -97,13 +97,14 @@ export default async function ConfidentialitePage() {
             </li>
             <li className={styles.listItem}>
               <span>
-                <strong>Participation à une opération avec lots</strong> (par exemple le tirage au sort de la NBA
-                Cup) — votre pseudo et votre bracket servent à vérifier que vous remplissez les conditions et à
-                désigner le gagnant (exécution du règlement de l&apos;opération). Si vous gagnez, on vous demande en
-                plus votre nom, votre adresse postale et votre choix de lot, uniquement pour vous l&apos;envoyer ; ces
-                données sont supprimées 6 mois après la remise du lot. Votre pseudo de gagnant peut être annoncé sur
-                Instagram et dans l&apos;appli ; vous pouvez le refuser sans perdre votre lot. Le détail figure dans
-                le règlement de chaque opération.
+                <strong>Participation à une opération avec lots</strong> (par exemple les cartes cadeaux de la NBA
+                Cup) — votre pseudo, votre bracket et vos pronos servent à établir les classements et à désigner
+                les gagnants, uniquement au classement (exécution du règlement de l&apos;opération). Si vous
+                gagnez, on vous contacte et on vous envoie votre carte cadeau par l&apos;e-mail de votre compte ; aucune
+                adresse postale n&apos;est obligatoire. Les échanges avec les gagnants et la preuve d&apos;envoi sont
+                supprimés 6 mois après la remise du lot. Votre pseudo de gagnant peut être annoncé sur Instagram et
+                dans l&apos;appli ; vous pouvez le refuser sans perdre votre lot. Le détail figure dans le règlement de
+                chaque opération.
               </span>
             </li>
             <li className={styles.listItem}>
@@ -134,8 +135,8 @@ export default async function ConfidentialitePage() {
           </ul>
           <p className={styles.note}>
             Ce qu&apos;on ne collecte pas : date de naissance précise (nous ne demandons qu&apos;une confirmation
-            du seuil de 15 ans, jamais votre date de naissance), adresse postale (sauf celle du gagnant d&apos;une
-            opération avec lots, pour lui envoyer son lot), données professionnelles, adresse IP.
+            du seuil de 15 ans, jamais votre date de naissance), adresse postale, données professionnelles,
+            adresse IP.
           </p>
           <p className={styles.body}>
             Panier Ballon ne supprime aujourd&apos;hui aucune donnée automatiquement — vos données restent tant
@@ -176,12 +177,6 @@ export default async function ConfidentialitePage() {
               <span>
                 <strong>Service de notification push de votre navigateur</strong> (Google, Mozilla ou Apple
                 selon le cas) — relais technique des notifications, si vous les activez.
-              </span>
-            </li>
-            <li className={styles.listItem}>
-              <span>
-                <strong>Transporteur</strong> (par exemple La Poste) — uniquement si vous gagnez un lot à envoyer :
-                votre nom et votre adresse postale, pour la livraison du colis.
               </span>
             </li>
           </ul>

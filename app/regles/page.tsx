@@ -49,14 +49,17 @@ export default async function ReglesPage() {
         </div>
 
         {isNbaCupPrizeVisible() && (
-          <section id="nba-cup-maillot" className={`${styles.section} glass-card`} aria-label="NBA Cup : un maillot à gagner">
-            <h2 className={styles.sectionTitle}>NBA Cup : un maillot à gagner</h2>
+          <section id="nba-cup-lots" className={`${styles.section} glass-card`} aria-label="NBA Cup : deux cartes cadeaux à gagner">
+            <h2 className={styles.sectionTitle}>NBA Cup : deux cartes cadeaux à gagner</h2>
             <p className={styles.body}>
-              Remplis ton bracket de la NBA Cup en entier (les 7 matchs, de quarts à la finale) avant le coup
-              d&apos;envoi du premier quart de finale, le 4 décembre. Tu participes alors au tirage au sort d&apos;un
-              maillot NBA Swingman, équipe et taille au choix. Gratuit, sans achat, dès 15 ans, en France, Belgique ou
-              Suisse.
+              Meilleur bracket : une carte cadeau Decathlon de 50 € pour le bracket qui marque le plus de points,
+              à remplir avant le coup d&apos;envoi du premier quart de finale, le 04/12/2026 (heure de Paris).
             </p>
+            <p className={styles.body}>
+              Meilleur pronostiqueur des matchs de la Cup : une carte cadeau Decathlon de 50 € pour le plus de
+              points sur les pronos de matchs, du premier quart de finale à la finale.
+            </p>
+            <p className={styles.body}>Gratuit, sans achat, dès 15 ans, en France, Belgique ou Suisse.</p>
             <Link href="/reglement-nba-cup" className={styles.prizeLink}>
               Lire le règlement du jeu
             </Link>
