@@ -5,79 +5,81 @@ Les passages entre crochets `[À CONFIRMER : …]` attendent ta décision.
 
 ---
 
-## A. Règlement du jeu — page `/reglement-nba-cup`
+## A. Règlement du jeu — page `/reglement-nba-cup` (version 2 du 24/11/2026, texte en ligne)
 
 ### Règlement du jeu « NBA Cup 2026 » de Panier Ballon
 
-**En bref** : remplis ton bracket de la NBA Cup avant le coup d'envoi du premier quart de finale, le 4 décembre 2026, et tu participes au tirage au sort d'un maillot NBA. C'est gratuit, sans achat, et on n'y joue jamais d'argent.
+**En bref** : deux cartes cadeaux numériques Decathlon de 50 € sont à gagner au classement. Une pour le meilleur bracket de la NBA Cup, une pour le meilleur pronostiqueur des matchs de la Cup, du premier quart de finale à la finale. C'est gratuit, sans achat, et on n'y joue jamais d'argent.
 
 **Article 1 — Organisateur**
 Le jeu est organisé par Mathieu Lenoir, particulier, éditeur du service Panier Ballon (https://panierballon.fr), ci-après « l'organisateur ». Contact : panier.ballon.pronos@gmail.com. L'adresse postale de l'organisateur est communicable sur demande à l'autorité compétente (voir les mentions légales).
 
 **Article 2 — Dates**
 - Ouverture du bracket NBA Cup : 28 novembre 2026.
-- Date limite : coup d'envoi du premier quart de finale de la NBA Cup, prévu le 4 décembre 2026. L'heure exacte (heure de Paris) est affichée dans l'appli, sur l'écran du bracket. Si la NBA déplace ce match, la date limite suit le nouveau coup d'envoi.
-- Tirage au sort : le 4 décembre 2026, après la date limite.
-- Annonce du gagnant : au plus tard le 6 décembre 2026.
+- Date limite du bracket : coup d'envoi du premier quart de finale de la NBA Cup, prévu le 4 décembre 2026. L'heure exacte (heure de Paris) est affichée dans l'appli, sur l'écran du bracket. Si la NBA déplace ce match, la date limite suit le nouveau coup d'envoi.
+- Fin du jeu : à l'issue de la finale de la NBA Cup, prévue le 11 décembre 2026.
+- Annonce des gagnants : au plus tard le 14 décembre 2026.
 
 **Article 3 — Qui peut participer**
-- Toute personne physique de 15 ans ou plus, résidant en France, en Belgique ou en Suisse, titulaire d'un compte Panier Ballon validé (adresse e-mail confirmée) à la date limite.
-- Un participant mineur doit avoir l'accord de son représentant légal pour participer et pour recevoir le lot. L'organisateur peut demander ce justificatif avant d'envoyer le lot ; sans lui, le lot est remis en jeu.
+- Toute personne physique de 15 ans ou plus, résidant en France, en Belgique ou en Suisse, titulaire d'un compte Panier Ballon validé (adresse e-mail confirmée) à la date limite du bracket.
+- Un participant mineur doit avoir l'accord de son représentant légal pour participer et pour recevoir le lot. L'organisateur peut demander ce justificatif avant d'envoyer le lot ; sans lui, le lot passe au suivant du classement.
 - Une seule participation par personne. Utiliser plusieurs comptes est interdit : dans ce cas, tous les comptes de la personne sont exclus du jeu.
 - Sont exclus : les comptes d'administration de Panier Ballon (dont celui de l'organisateur) et les comptes de test.
 
 **Article 4 — Gratuité**
-Le jeu est gratuit et sans obligation d'achat. Créer un compte et remplir un bracket ne coûte rien. Panier Ballon est un jeu de pronos à points : on n'y engage jamais d'argent et on ne peut pas y en recevoir. Les points n'ont aucune valeur marchande.
+Le jeu est gratuit et sans obligation d'achat. Créer un compte, remplir un bracket et faire des pronos ne coûte rien. Panier Ballon est un jeu de pronos à points : on n'y engage jamais d'argent et on ne peut pas y en recevoir. Les points n'ont aucune valeur marchande.
 
 **Article 5 — Comment participer**
-Pour participer au tirage au sort, il faut avoir rempli un bracket complet dans la compétition « NBA Cup » de l'appli avant la date limite.
-Un bracket est complet quand un vainqueur est choisi pour les 7 matchs du tableau final : les 4 quarts de finale, les 2 demi-finales et la finale. Un bracket rempli compte, même si le bouton « Valider » n'a pas été utilisé. Après la date limite, le bracket ne peut plus être modifié.
-Les points marqués avec le bracket et les pronos (décrits sur la page Règles) n'ont aucune influence sur le tirage au sort : chaque bracket complet a la même chance d'être tiré.
+Le jeu se joue dans la compétition « NBA Cup » de l'appli. Il y a deux lots, chacun avec son propre classement (article 6).
+Lot 1 — bracket : il faut remplir son bracket avant la date limite. Le bracket compte un vainqueur à choisir pour chacun des 7 matchs du tableau final : les 4 quarts de finale, les 2 demi-finales et la finale. Un bracket rempli compte, même si le bouton « Valider » n'a pas été utilisé. Après la date limite, le bracket ne peut plus être modifié.
+Lot 2 — pronos de matchs : il faut faire ses pronos sur les matchs de la compétition NBA Cup, du premier quart de finale à la finale, avant le coup d'envoi de chaque match.
+Les points du bracket et des pronos sont calculés selon le barème décrit sur la page Règles.
 
-**Article 6 — Désignation du gagnant**
-Le gagnant est tiré au sort parmi tous les participants remplissant les conditions des articles 3 et 5, avec un outil de tirage aléatoire. Le tirage est filmé et la vidéo est conservée jusqu'à la fin de la période de réclamation (article 10). Un seul gagnant est désigné.
-
-**Article 6 bis — Lot du meilleur pronostiqueur** `[ARTICLE DÉSACTIVÉ : à supprimer, ou à activer avant l'ouverture du 28/11]`
-Le participant classé premier du classement de la compétition « NBA Cup » à l'issue de la finale (11 décembre 2026) remporte le lot décrit à l'article 7. Ce classement additionne les points des pronos de matchs, du bracket et des pronos personnalisés, selon le barème de la page Règles. En cas d'égalité, les participants sont départagés dans cet ordre : nombre de bons vainqueurs de match, nombre d'écarts exacts, points de bracket. Si l'égalité persiste, un tirage au sort filmé désigne le gagnant parmi les ex aequo. Les conditions de l'article 3 s'appliquent. Annonce le 12 décembre 2026.
+**Article 6 — Désignation des gagnants**
+Les gagnants sont désignés uniquement au classement, à l'issue de la finale, parmi les participants remplissant les conditions de l'article 3.
+- Lot 1 — meilleur bracket : le compte dont le bracket, rempli avant la date limite, totalise le plus de points de bracket à l'issue de la finale. En cas d'égalité, les participants sont départagés dans cet ordre : 1) le plus de bons vainqueurs dans le bracket ; 2) le bon champion ; 3) le bracket créé le plus tôt.
+- Lot 2 — meilleur pronostiqueur des matchs de la Cup : le compte qui totalise le plus de points sur les pronos de matchs de la compétition NBA Cup, du premier quart de finale à la finale. Ne comptent ni le bracket, ni les pronos personnalisés, ni la saison régulière. En cas d'égalité, les participants sont départagés dans cet ordre : 1) le plus de bons vainqueurs ; 2) le plus d'écarts exacts ; 3) le premier prono de la Cup posé le plus tôt.
+- Pas de cumul : si le gagnant du lot 1 est aussi premier du classement du lot 2, le lot 2 passe au suivant de ce classement.
 
 **Article 7 — Lots**
-- Tirage au sort : un maillot NBA Nike Swingman, équipe et taille au choix du gagnant parmi les modèles disponibles, d'une valeur indicative de 104,99 € TTC (prix public constaté sur nike.com France en novembre 2026).
-- `[Si l'article 6 bis est activé]` Meilleur pronostiqueur : une carte cadeau numérique de 50 € `[À CONFIRMER : enseigne, Decathlon ?]`.
+- Lot 1 — meilleur bracket : une carte cadeau numérique Decathlon de 50 €.
+- Lot 2 — meilleur pronostiqueur des matchs de la Cup : une carte cadeau numérique Decathlon de 50 €.
 
-Les lots ne peuvent être ni échangés, ni remboursés en argent, ni cédés. Si un lot n'est plus disponible, l'organisateur peut le remplacer par un lot de valeur égale ou supérieure.
+Les cartes cadeaux ne peuvent être ni échangées, ni remboursées en argent, ni cédées. Si l'enseigne n'est plus disponible, l'organisateur peut remplacer la carte par une carte cadeau de valeur équivalente.
+Decathlon n'organise pas ce jeu et ne le parraine pas.
 
 **Article 8 — Remise des lots**
-- Le gagnant est prévenu par e-mail, à l'adresse de son compte Panier Ballon, et par un message dans l'appli (chat et notification, s'il les a activées). Son pseudo peut aussi être annoncé sur le compte Instagram de Panier Ballon.
-- Il a 7 jours à partir de l'envoi de l'e-mail pour répondre et donner son nom, son adresse postale et, pour le maillot, l'équipe et la taille choisies. Sans réponse dans ce délai, il perd son lot et un nouveau tirage au sort est fait parmi les autres participants, selon les mêmes règles.
-- Le maillot est envoyé en colis suivi, aux frais de l'organisateur, dans les 30 jours qui suivent la réception de ces informations. Une carte cadeau numérique est envoyée par e-mail.
-- L'organisateur n'est pas responsable d'une perte ou d'un retard dû au transporteur, ni d'une adresse incomplète ou erronée donnée par le gagnant.
+- Chaque gagnant est contacté par e-mail, à l'adresse de son compte Panier Ballon. Il peut aussi être prévenu par un message dans l'appli (chat et notification, s'il les a activées). Son pseudo peut être annoncé sur le compte Instagram de Panier Ballon.
+- Il a 7 jours à partir de l'envoi de l'e-mail pour répondre. Sans réponse dans ce délai, il perd son lot, qui passe au suivant du classement, selon les mêmes règles.
+- La carte cadeau est envoyée par e-mail, à l'adresse du compte, dans les 15 jours qui suivent la réponse du gagnant. Aucune adresse postale n'est demandée.
+- L'organisateur n'est pas responsable d'une adresse e-mail erronée ou qui n'est plus utilisée sur le compte du gagnant.
 
 **Article 9 — Fraude**
 L'organisateur peut annuler la participation de toute personne qui triche : comptes multiples, fausse déclaration d'âge ou de résidence, exploitation d'un bug, contournement de la date limite ou tout autre moyen contraire au présent règlement ou aux conditions générales d'utilisation. Un lot obtenu de cette façon n'est pas remis, ou doit être restitué.
 
 **Article 10 — Données personnelles**
 - Responsable du traitement : Mathieu Lenoir (contact : panier.ballon.pronos@gmail.com).
-- Données utilisées : les données du compte déjà présentes dans l'appli (pseudo, e-mail, bracket) et, pour le seul gagnant, son nom, son adresse postale et son choix de maillot.
-- Finalités : organiser le jeu, désigner le gagnant, le contacter, lui remettre son lot et annoncer son pseudo.
+- Données utilisées : les données du compte déjà présentes dans l'appli (pseudo, e-mail, bracket, pronos de matchs) et, pour les seuls gagnants, leur réponse à l'e-mail de contact.
+- Finalités : organiser le jeu, établir les classements, désigner les gagnants, les contacter, leur envoyer leur carte cadeau et annoncer leur pseudo.
 - Base légale : l'exécution du présent règlement, que le participant accepte en participant.
-- Destinataires : l'organisateur ; le transporteur chargé du colis (nom et adresse du gagnant) ; le commerçant auprès duquel le lot est commandé, si le lot lui est envoyé directement.
-- Publication : seul le pseudo du gagnant peut être publié (stories Instagram, mur des champions dans l'appli), jamais son nom. Le gagnant peut refuser cette publication en le disant par e-mail, sans perdre son lot.
-- Durée de conservation : les données du compte restent soumises à la politique de confidentialité de Panier Ballon. Le nom, l'adresse et le choix de lot du gagnant sont supprimés 6 mois après la remise du lot (période de réclamation). La liste des participants tirés au sort et la vidéo du tirage sont conservées pendant la même période.
-- Droits : accès, rectification, effacement, opposition et limitation, en écrivant à panier.ballon.pronos@gmail.com. Effacer ses données avant le tirage revient à renoncer à participer. Le participant peut aussi faire une réclamation auprès de la CNIL (www.cnil.fr).
+- Destinataires : l'organisateur ; l'enseigne qui émet la carte cadeau, uniquement si elle l'envoie elle-même au gagnant (son adresse e-mail, pour cet envoi).
+- Publication : seul le pseudo d'un gagnant peut être publié (stories Instagram, mur des champions dans l'appli), jamais son nom. Le gagnant peut refuser cette publication en le disant par e-mail, sans perdre son lot.
+- Durée de conservation : les données du compte restent soumises à la politique de confidentialité de Panier Ballon. Les échanges avec les gagnants et la preuve d'envoi des cartes sont supprimés 6 mois après la remise des lots (période de réclamation). Les classements établis pour désigner les gagnants sont conservés pendant la même période.
+- Droits : accès, rectification, effacement, opposition et limitation, en écrivant à panier.ballon.pronos@gmail.com. Effacer ses données avant la désignation des gagnants revient à renoncer à participer. Le participant peut aussi faire une réclamation auprès de la CNIL (www.cnil.fr).
 - Participer au jeu n'oblige à accepter aucune prospection commerciale.
 
 **Article 11 — Plateformes**
 Ce jeu n'est ni organisé, ni parrainé, ni géré par Instagram ou Meta, ni associé à ces plateformes. Chaque participant dégage Instagram et Meta de toute responsabilité.
 
 **Article 12 — Responsabilité, modification, annulation, droit applicable**
-- L'organisateur peut modifier, reporter, écourter ou annuler le jeu si des circonstances indépendantes de sa volonté l'imposent : panne ou bug de l'appli, report ou annulation de matchs par la NBA, fraude massive. Les participants en sont informés sur cette page et dans l'appli. Le cas échéant, le tirage au sort est maintenu parmi les brackets complets enregistrés.
-- L'organisateur n'est pas responsable d'une impossibilité de se connecter ou de remplir son bracket due au réseau, à l'appareil du participant ou à une interruption ponctuelle du service.
+- L'organisateur peut modifier, reporter, écourter ou annuler le jeu si des circonstances indépendantes de sa volonté l'imposent : panne ou bug de l'appli, report ou annulation de matchs par la NBA, fraude massive. Les participants en sont informés sur cette page et dans l'appli. Le cas échéant, les lots sont attribués selon les classements établis avec les matchs joués.
+- L'organisateur n'est pas responsable d'une impossibilité de se connecter, de remplir son bracket ou de faire ses pronos due au réseau, à l'appareil du participant ou à une interruption ponctuelle du service.
 - Participer implique d'accepter le présent règlement. Le règlement est soumis au droit français. En cas de désaccord, une solution amiable est recherchée en priorité, en écrivant à panier.ballon.pronos@gmail.com ; à défaut, les tribunaux compétents sont ceux désignés par la loi.
 
 **Article 13 — Consultation du règlement**
 Ce règlement est consultable gratuitement pendant toute la durée du jeu à l'adresse https://panierballon.fr/reglement-nba-cup. Il n'est pas déposé chez un commissaire de justice : ce dépôt n'est plus obligatoire depuis la loi n° 2014-1545 du 20 décembre 2014.
 
-*Version du 24/11/2026.*
+*Version 2 du 24/11/2026.*
 
 ---
 

@@ -42,3 +42,32 @@ Annonce des lots sur Instagram le 24/11. Pas un avis juridique.
 3. Intégration (session Sonnet) : page `/reglement-nba-cup`, lien pied de page + profil, encadré Règles,
   `scripts/tirage-nba-cup-eligibles.sql` (lecture seule, non exécuté). Branche + PR, pas de déploiement.
 4. À la main : annonce Instagram avec la mention Meta, lien du règlement dans la story « Les lots ».
+
+## Version 2 (24/11/2026) — deux cartes cadeaux au classement
+
+Remplace le maillot tiré au sort de la v1 (#322). À mettre en production avant le 25/11 à 12h30.
+
+- **Lots** : deux cartes cadeaux numériques Decathlon de 50 € (constante `GIFT_CARD_EUR` dans
+  `app/reglement-nba-cup/page.tsx`) ; ni échangeables, ni remboursables en argent ; remplaçables par une carte
+  de valeur équivalente si l'enseigne n'est plus disponible. Mention « Decathlon n'organise pas ce jeu et ne le
+  parraine pas ».
+- **Lot 1 — meilleur bracket** : le plus de points de bracket à l'issue de la finale (choix enregistrés avant
+  la date limite). Départage : bons vainqueurs, puis bon champion, puis bracket créé le plus tôt.
+- **Lot 2 — meilleur pronostiqueur des matchs de la Cup** : le plus de points sur les pronos de matchs, du
+  1er quart à la finale (ni bracket, ni pronos personnalisés, ni saison régulière). Départage : bons
+  vainqueurs, puis écarts exacts, puis premier prono Cup posé le plus tôt.
+- **Aucun tirage au sort**, même pour départager. **Pas de cumul** : si le gagnant du lot 1 est aussi 1er du
+  lot 2, le lot 2 passe au suivant.
+- **Remise** : contact par l'e-mail du compte ; sans réponse sous 7 jours, le lot passe au suivant ; carte
+  envoyée par e-mail sous 15 jours ; aucune adresse postale. Annonce au plus tard le 14/12/2026.
+- **Pages** : règlement v2 (« Version 2 du 24/11/2026 »), encadré Règles `#nba-cup-lots` (remplace
+  `#nba-cup-maillot`), paragraphe « opération avec lots » de la confidentialité. CGU inchangées.
+- **Script** : `scripts/classements-nba-cup-lots.sql` (deux requêtes en lecture seule, colonne
+  `gagnant_lot_1` pour le non-cumul) remplace `scripts/tirage-nba-cup-eligibles.sql`. Testé le 24/11 sur
+  « Alpha NBA Cup ».
+- **Données des départages** : `bracket_picks.is_winner_correct` et `points_awarded`, manche `CUP_FINAL`
+  pour le champion, `brackets.created_at` (posé au premier choix enregistré) ; `match_predictions`
+  `points_awarded`, `is_winner_correct`, `margin_diff = 0`, `created_at` (aucune suppression de prono dans
+  le code, donc stable).
+- **Reste à la main** : vérifier e-mail confirmé, âge et résidence des gagnants avant l'envoi (non vérifiable
+  en SQL).
