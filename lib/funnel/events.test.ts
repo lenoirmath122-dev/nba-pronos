@@ -17,6 +17,8 @@ describe("parseFunnelPayload", () => {
     expect(parseFunnelPayload({ ...base, event: "guest_action_attempted", actionType: "chat" })?.actionType).toBe("chat");
     expect(parseFunnelPayload({ ...base, event: "action_completed", actionType: "<script>" })?.actionType).toBeNull();
     expect(parseFunnelPayload(base)?.actionType).toBeNull();
+    // « bracket » n'est pas dans la contrainte CHECK de la base : refusé ici, envoyé comme « predict ».
+    expect(parseFunnelPayload({ ...base, event: "action_completed", actionType: "bracket" })?.actionType).toBeNull();
   });
 
   it("accepte un événement valide et réduit le référent à son hôte", () => {

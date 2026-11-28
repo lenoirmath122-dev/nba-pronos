@@ -9,8 +9,17 @@ export const PENDING_ACTION_KEY = "pb.pendingAction.v1";
 export const CHAT_DRAFT_KEY = "pb.chatDraft.v1";
 export const PENDING_ACTION_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
-export const PENDING_ACTION_TYPES = ["chat", "predict", "bet", "follow", "react"] as const;
+export const PENDING_ACTION_TYPES = ["chat", "predict", "bet", "follow", "react", "bracket"] as const;
 export type PendingActionType = (typeof PENDING_ACTION_TYPES)[number];
+
+/** Types acceptés par la colonne funnel_events.action_type (contrainte CHECK,
+ *  migration 20261118120000). « bracket » (bracket NBA Cup en invité,
+ *  28/11/2026) n'y est pas : il est compté comme un « predict », sans migration. */
+export const FUNNEL_ACTION_TYPES = ["chat", "predict", "bet", "follow", "react"] as const;
+
+export function funnelActionType(type: PendingActionType): (typeof FUNNEL_ACTION_TYPES)[number] {
+  return type === "bracket" ? "predict" : type;
+}
 
 export type PendingAction = {
   type: PendingActionType;

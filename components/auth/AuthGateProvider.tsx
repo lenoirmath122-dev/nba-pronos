@@ -4,6 +4,7 @@ import { createContext, useCallback, useContext, useMemo, useState, type Compone
 import {
   PENDING_ACTION_KEY,
   serializePendingAction,
+  funnelActionType,
   type PendingActionType,
 } from "@/lib/auth/pendingAction";
 import { trackFunnel } from "@/lib/funnel/track";
@@ -70,8 +71,8 @@ export function AuthGateProvider({ authenticated, children }: { authenticated: b
       } catch {
         // Stockage indisponible (navigation privée) : la modale marche, sans reprise.
       }
-      trackFunnel("guest_action_attempted", undefined, input.type);
-      trackFunnel("auth_modal_opened", undefined, input.type);
+      trackFunnel("guest_action_attempted", undefined, funnelActionType(input.type));
+      trackFunnel("auth_modal_opened", undefined, funnelActionType(input.type));
       openModal();
     },
     [authenticated, openModal],

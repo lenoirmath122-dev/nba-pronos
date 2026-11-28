@@ -4,6 +4,7 @@ import { ROUND_LABELS } from "@/lib/labels/rounds";
 import { RELEASED_BET_STATUSES } from "@/lib/labels/bets";
 import type { BetCategory, BetDifficulty } from "@/lib/labels/bets";
 import type { CompetitionType } from "@/lib/competitions/types";
+import { computeCandidateTeamIds, type CascadeSeriesRow } from "@/lib/bracketFill/cascade";
 
 // Lecture de l'écran Bracket personnel (remplissage), composants serveur
 // uniquement — SPEC_ECRAN_BRACKET_PERSONNEL_V0_1 §7. Module DISTINCT de
@@ -84,9 +85,20 @@ export type BracketFillData = {
   rounds: BracketFillRound[];
   filledCount: number;
   totalCount: number; // 15 (Playoffs) ou 7 (NBA Cup)
+  /** Visiteur sans session (chantier bracket invité, 28/11/2026). */
+  isGuest: boolean;
+  /** Mode invité (NBA Cup seulement) : structure brute pour recalculer la
+   *  cascade côté client à partir des choix gardés dans le navigateur
+   *  (lib/bracketFill/guestDraft.ts). null pour un connecté. */
+  guest: GuestBracketStructure | null;
 };
 
-function emptyData(): BracketFillData {
+export type GuestBracketStructure = {
+  series: CascadeSeriesRow[];
+  teams: Record<string, { abbreviation: string; name: string }>;
+};
+
+function emptyData(isGuest = false): BracketFillData {
   return {
     competitionId: null,
     competitionType: "PLAYOFFS", // valeur inerte, jamais lue (competitionId testé en premier)
@@ -98,6 +110,8 @@ function emptyData(): BracketFillData {
     rounds: [],
     filledCount: 0,
     totalCount: 0,
+    isGuest,
+    guest: null,
   };
 }
 
@@ -105,55 +119,9 @@ const PLAYOFFS_ROUNDS = ["ROUND_1", "CONF_SEMIS", "CONF_FINALS", "NBA_FINALS"] a
 const CUP_ROUNDS = ["CUP_QUARTERS", "CUP_SEMIS", "CUP_FINAL"] as const;
 const CONFERENCE_RANK: Record<string, number> = { EAST: 0, WEST: 1 };
 
-// Tour "racine" : ses 2 équipes sont OFFICIELLES (team1_id/team2_id), pas
-// dérivées d'un pick. Tous les tours suivants dérivent de la cascade (§3).
-function isRootRound(round: string, competitionType: CompetitionType): boolean {
-  return competitionType === "PLAYOFFS" ? round === "ROUND_1" : round === "CUP_QUARTERS";
-}
-
-export type CascadeSeriesRow = {
-  id: string;
-  round: string;
-  next_series_id: string | null;
-  next_series_slot: number | null;
-  team1_id: string | null;
-  team2_id: string | null;
-};
-
-/** Calcule les 2 équipes CANDIDATES de chaque série, PURE — voir avertissement
- *  en tête de fichier. `myWinnerBySeriesId` = pick du joueur (vainqueur
- *  choisi), PAS le résultat officiel. */
-export function computeCandidateTeamIds(
-  series: CascadeSeriesRow[],
-  myWinnerBySeriesId: Map<string, string | null>,
-  competitionType: CompetitionType
-): Map<string, { teamAId: string | null; teamBId: string | null }> {
-  const feedersByNextSeriesId = new Map<string, CascadeSeriesRow[]>();
-  for (const s of series) {
-    if (s.next_series_id) {
-      const list = feedersByNextSeriesId.get(s.next_series_id) ?? [];
-      list.push(s);
-      feedersByNextSeriesId.set(s.next_series_id, list);
-    }
-  }
-  for (const list of feedersByNextSeriesId.values()) {
-    list.sort((a, b) => (a.next_series_slot ?? 0) - (b.next_series_slot ?? 0));
-  }
-
-  const result = new Map<string, { teamAId: string | null; teamBId: string | null }>();
-  for (const s of series) {
-    if (isRootRound(s.round, competitionType)) {
-      result.set(s.id, { teamAId: s.team1_id, teamBId: s.team2_id });
-      continue;
-    }
-    const feeders = feedersByNextSeriesId.get(s.id) ?? [];
-    const teamAId = feeders[0] ? (myWinnerBySeriesId.get(feeders[0].id) ?? null) : null;
-    const teamBId = feeders[1] ? (myWinnerBySeriesId.get(feeders[1].id) ?? null) : null;
-    result.set(s.id, { teamAId, teamBId });
-  }
-  return result;
-}
-
+// Cascade des candidats : module PUR lib/bracketFill/cascade.ts (réutilisé
+// côté client par le mode invité, qui ne peut pas importer ce module serveur).
+export { computeCandidateTeamIds, type CascadeSeriesRow } from "@/lib/bracketFill/cascade";
 
 type SeriesRow = CascadeSeriesRow & { conference: "EAST" | "WEST" | null; slot_index: number };
 
@@ -182,10 +150,13 @@ export async function getBracketFillData(): Promise<BracketFillData> {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return emptyData();
+  const isGuest = !user;
 
   const competition = await getActiveCompetition(supabase);
-  if (!competition) return emptyData();
+  if (!competition) return emptyData(isGuest);
+  // Invité : seulement le bracket NBA Cup (choix gardés dans le navigateur,
+  // compte demandé à la validation). Playoffs : inchangé, page réservée.
+  if (isGuest && competition.type !== "NBA_CUP") return emptyData(true);
 
   const deadline = competition.bracket_deadline;
   const isDeadlinePassed = deadline !== null && Date.parse(deadline) <= Date.now();
@@ -211,17 +182,21 @@ export async function getBracketFillData(): Promise<BracketFillData> {
       rounds: [],
       filledCount: 0,
       totalCount: 0,
+      isGuest,
+      guest: null,
     };
   }
 
   const [{ data: teamsData }, { data: bracketData }] = await Promise.all([
     supabase.from("teams").select("id, name, abbreviation"),
-    supabase
-      .from("brackets")
-      .select("id, is_validated, is_auto_validated")
-      .eq("user_id", user.id)
-      .eq("competition_id", competition.id)
-      .maybeSingle<BracketRow>(),
+    user
+      ? supabase
+          .from("brackets")
+          .select("id, is_validated, is_auto_validated")
+          .eq("user_id", user.id)
+          .eq("competition_id", competition.id)
+          .maybeSingle<BracketRow>()
+      : Promise.resolve({ data: null as BracketRow | null }),
   ]);
 
   const teams = new Map(
@@ -245,16 +220,18 @@ export async function getBracketFillData(): Promise<BracketFillData> {
 
   // Paris SÉRIE actifs (0 ou 1 par série, uniq_active_series_bet) — pour
   // centraliser la saisie inline directement sur la carte de série.
-  const { data: seriesBetsData } = await supabase
-    .from("bets")
-    .select("id, series_id, status, description, proposed_category, proposed_difficulty")
-    .eq("user_id", user.id)
-    .eq("competition_id", competition.id)
-    .eq("scope", "SERIES")
-    .in(
-      "series_id",
-      series.map((s) => s.id)
-    );
+  const { data: seriesBetsData } = user
+    ? await supabase
+        .from("bets")
+        .select("id, series_id, status, description, proposed_category, proposed_difficulty")
+        .eq("user_id", user.id)
+        .eq("competition_id", competition.id)
+        .eq("scope", "SERIES")
+        .in(
+          "series_id",
+          series.map((s) => s.id)
+        )
+    : { data: [] as SeriesBetRow[] };
   const seriesBetBySeriesId = new Map(
     ((seriesBetsData ?? []) as SeriesBetRow[])
       .filter((row) => !RELEASED_BET_STATUSES.has(row.status))
@@ -350,6 +327,22 @@ export async function getBracketFillData(): Promise<BracketFillData> {
     rounds,
     filledCount,
     totalCount: series.length,
+    isGuest,
+    guest: isGuest
+      ? {
+          series: series.map(({ id, round, next_series_id, next_series_slot, team1_id, team2_id }) => ({
+            id,
+            round,
+            next_series_id,
+            next_series_slot,
+            team1_id,
+            team2_id,
+          })),
+          teams: Object.fromEntries(
+            ((teamsData ?? []) as TeamRow[]).map((t) => [t.id, { abbreviation: t.abbreviation, name: t.name }])
+          ),
+        }
+      : null,
   };
 }
 

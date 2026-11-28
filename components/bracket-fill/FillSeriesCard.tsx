@@ -52,9 +52,20 @@ type FillSeriesCardProps = {
   /** Ref de mesure pour TreeConnectors.tsx (traits de connexion) — posée
    *  sur `.card`, la SEULE boîte bordée de ce composant. */
   cardRef: (el: HTMLElement | null) => void;
+  /** Visiteur sans compte (bracket NBA Cup en invité, 28/11/2026) : le choix
+   *  reste dans le navigateur, aucun appel serveur ni coche « Enregistré ». */
+  onGuestPick?: (seriesId: string, winnerTeamId: string) => void;
 };
 
-export function FillSeriesCard({ series, competitionType, isTarget, onError, side, cardRef }: FillSeriesCardProps) {
+export function FillSeriesCard({
+  series,
+  competitionType,
+  isTarget,
+  onError,
+  side,
+  cardRef,
+  onGuestPick,
+}: FillSeriesCardProps) {
   // Resynchronise l'état local sur la valeur serveur pendant le rendu, PAS
   // dans un effet (17/08/2026, bug réel corrigé : useState(initialValue) ne
   // se réinitialise qu'au 1er montage — sans ça, une remise à zéro du
@@ -97,6 +108,10 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError, sid
     setWinnerTeamId(nextWinnerTeamId);
     setScoreFormat(nextScoreFormat);
     onError(null);
+    if (onGuestPick) {
+      onGuestPick(series.seriesId, nextWinnerTeamId);
+      return;
+    }
     saveChainRef.current = saveChainRef.current.catch(() => {}).then(async () => {
       const result = await saveBracketPick({
         seriesId: series.seriesId,
@@ -181,7 +196,8 @@ export function FillSeriesCard({ series, competitionType, isTarget, onError, sid
           « tout centraliser dans Matchs et Bracket »), même règle que
           SeriesPickCard : porte sur la VRAIE série, jamais sur le
           pronostic du joueur ci-dessus. */}
-      {allowsSeriesBets(competitionType) &&
+      {!onGuestPick &&
+        allowsSeriesBets(competitionType) &&
         (canOfferSeriesBet(series) ? (
           <div className={styles.seriesBet}>
             {series.round !== "ROUND_1" && series.realTeamA && series.realTeamB && (
