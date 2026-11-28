@@ -22,6 +22,8 @@ export const test = base.extend({
         // Guide d'onboarding (notifications + raccourci écran d'accueil) :
         // visible seulement sur mobile, son fond avale les clics.
         window.localStorage.setItem("onboarding-guide:disabled", "1");
+        // Popup « Remplis ton bracket NBA Cup » : même raison.
+        window.localStorage.setItem("nba-cup-popup:disabled", "1");
       } catch {
         // about:blank et autres origines opaques : pas de stockage, rien à couper.
       }

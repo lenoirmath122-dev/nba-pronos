@@ -15,6 +15,7 @@ import { NewBadgesWatcher } from "@/components/badges/NewBadgesWatcher";
 import { OnboardingGuide } from "@/components/onboarding/OnboardingGuide";
 import { WeeklyPopupProvider } from "@/components/weeklyPopup/WeeklyPopupProvider";
 import { WeeklyPopupWatcher } from "@/components/weeklyPopup/WeeklyPopupWatcher";
+import { NbaCupPopupWatcher } from "@/components/nbaCupPopup/NbaCupPopupWatcher";
 import { ActivityRecapWatcher } from "@/components/recap/ActivityRecapWatcher";
 import { ThemeSync } from "@/components/theme/ThemeSync";
 import type { BackgroundTheme, ThemePreference } from "@/lib/theme/cookie";
@@ -45,6 +46,8 @@ export default async function AppLayout({
               <ValidatedDialogProvider>
                 <main className={styles.content}>{children}</main>
                 <GuestTabBar />
+                {/* Seule popup de l'invité : « Remplis ton bracket NBA Cup ». */}
+                <NbaCupPopupWatcher />
               </ValidatedDialogProvider>
             </ToastProvider>
           </UnsavedGuardProvider>
@@ -95,10 +98,13 @@ export default async function AppLayout({
               background={profile?.background_theme ?? "MURAL"}
             />
             <ValidatedBetsWatcher bets={adminValidatedBets} />
-            {/* Ordre des popups : « Pari validé », popup hebdo (lot 5), puis
-                badges. Chaque watcher charge ses données lui-même après
-                l'affichage, pour ne pas ralentir la coquille. */}
+            {/* Ordre des popups : « Pari validé », guide d'arrivée, NBA Cup,
+                popup hebdo (lot 5), récap, puis badges. Chaque watcher charge
+                ses données lui-même après l'affichage, pour ne pas ralentir
+                la coquille. */}
             <WeeklyPopupProvider>
+              {/* « Remplis ton bracket NBA Cup » (chantier du 28/11/2026). */}
+              <NbaCupPopupWatcher />
               <WeeklyPopupWatcher />
               {/* Récap des résultats tombés depuis la dernière visite. */}
               <ActivityRecapWatcher />

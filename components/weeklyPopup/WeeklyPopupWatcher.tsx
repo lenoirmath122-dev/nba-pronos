@@ -6,7 +6,7 @@ import { ModalDialog } from "@/components/ui/ModalDialog";
 import { useIsValidatedDialogOpen } from "@/components/ui/ValidatedDialog";
 import { getMyWeeklyPopup, markWeeklyPopupSeen, type MyWeeklyPopup } from "@/lib/actions/weekly-popup";
 import { WeeklyPopupCard } from "./WeeklyPopupCard";
-import { useSetWeeklyPopupOpen } from "./WeeklyPopupProvider";
+import { useIsNbaCupPopupOpen, useSetWeeklyPopupOpen } from "./WeeklyPopupProvider";
 import styles from "./WeeklyPopupCard.module.css";
 
 // Popup hebdomadaire du classement (lot 5, PR 5) : texte humoristique publié le
@@ -55,6 +55,8 @@ export function WeeklyPopupWatcher() {
   const [pending, setPending] = useState<MyWeeklyPopup | null>(null);
   const validatedDialogOpen = useIsValidatedDialogOpen();
   const setProviderOpen = useSetWeeklyPopupOpen();
+  // Passe après la popup NBA Cup (chantier du 28/11/2026).
+  const nbaCupOpen = useIsNbaCupPopupOpen();
   const openRef = useRef(false);
   const lastCheckRef = useRef(0);
   const inFlightRef = useRef(false);
@@ -111,7 +113,7 @@ export function WeeklyPopupWatcher() {
     setProviderOpen(false);
   }, [pending, setProviderOpen]);
 
-  if (!pending || validatedDialogOpen) return null;
+  if (!pending || validatedDialogOpen || nbaCupOpen) return null;
 
   return (
     <ModalDialog title={pending.popup.titre} onClose={finish}>

@@ -2,9 +2,7 @@ import { getServerClient } from "@/lib/supabase/server";
 import { ScreenShell } from "@/components/nav/ScreenShell";
 import styles from "./page.module.css";
 import { pageMetadata } from "@/lib/seo";
-
-// Montant de chaque carte cadeau numérique Decathlon (lots 1 et 2), en euros.
-const GIFT_CARD_EUR = 50;
+import { NBA_CUP_GIFT_CARD_EUR as GIFT_CARD_EUR } from "@/lib/competitions/nbaCupPrize";
 
 // Règlement du jeu « NBA Cup 2026 », version 2 — texte validé, source :
 // Cadrage/Juridique/brouillon_reglement_nba_cup_2026.md (section A).

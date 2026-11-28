@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nyResultDates } from "./newyork";
+import { nyDayStartUtcIso, nyResultDates } from "./newyork";
 
 describe("nyResultDates — veille NY pendant les premières heures", () => {
   it("00h30 NY (EDT) -> veille + jour", () => {
@@ -38,5 +38,12 @@ describe("nyResultDates — frontières", () => {
 
   it("06h00 NY un jour de bascule DST (01/11/2026, EST) -> jour seul", () => {
     expect(nyResultDates(new Date("2026-11-01T11:00:00Z"))).toEqual(["2026-11-01"]);
+  });
+});
+
+describe("nyDayStartUtcIso", () => {
+  it("hiver (UTC-5) et été (UTC-4)", () => {
+    expect(nyDayStartUtcIso("2026-12-04")).toBe("2026-12-04T05:00:00.000Z");
+    expect(nyDayStartUtcIso("2026-07-10")).toBe("2026-07-10T04:00:00.000Z");
   });
 });

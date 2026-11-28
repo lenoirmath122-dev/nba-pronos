@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { Backdrop } from "@/components/ui/Backdrop";
 import { FocusTrap } from "@/components/ui/FocusTrap";
 import { useIsValidatedDialogOpen } from "@/components/ui/ValidatedDialog";
+import { useSetOnboardingGuideOpen } from "@/components/weeklyPopup/WeeklyPopupProvider";
 import { detectInstallPlatform, ensurePushSubscribed, isStandalone, pushSupported } from "@/lib/push/client";
 import { resolveOnboarding, type InstallPlatform, type OnboardingState } from "@/lib/push/onboarding";
 import styles from "./OnboardingGuide.module.css";
@@ -89,17 +90,29 @@ export function OnboardingGuide() {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closed, setClosed] = useState(false);
+  const [settled, setSettled] = useState(false);
   const validatedDialogOpen = useIsValidatedDialogOpen();
+  // La popup NBA Cup passe après le guide (choix de l'utilisateur, 28/11/2026) :
+  // « occupé » tant que le guide n'est pas résolu, puis tant qu'il est affiché.
+  const setGuideOpen = useSetOnboardingGuideOpen();
+  const guideOpen = !settled || (resolved !== null && !closed);
+  useEffect(() => {
+    setGuideOpen(guideOpen);
+  }, [guideOpen, setGuideOpen]);
 
   useEffect(() => {
     // setState uniquement dans les callbacks (règle react-hooks/set-state-in-effect).
     let cancelled = false;
     resolve()
       .then((next) => {
-        if (!cancelled) setResolved(next);
+        if (cancelled) return;
+        setResolved(next);
+        setSettled(true);
       })
       .catch(() => {
-        if (!cancelled) setResolved(null);
+        if (cancelled) return;
+        setResolved(null);
+        setSettled(true);
       });
 
     function onBeforeInstall(event: Event) {
