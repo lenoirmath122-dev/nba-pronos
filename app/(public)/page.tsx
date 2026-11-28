@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { HOME_TITLE, pageMetadata } from "@/lib/seo";
 import { HomePlay } from "@/components/publicHome/HomePlay";
+import { NbaCupPopupWatcher } from "@/components/nbaCupPopup/NbaCupPopupWatcher";
 import { getPublicHomeData, type LastResult } from "@/lib/publicHome/query";
 import styles from "./home.module.css";
 
@@ -122,6 +123,9 @@ export default async function LandingPage() {
         <Link href="/leaderboard">Voir le classement</Link>
         <Link href="/regles">Lire les règles</Link>
       </nav>
+      {/* Popup NBA Cup (visiteur) : montée côté client après délai, le
+          contenu SEO est rendu sans elle. */}
+      <NbaCupPopupWatcher />
     </main>
   );
 }
