@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  funnelActionType,
   isSafeReturnUrl,
   parseChatDraft,
   parsePendingAction,
@@ -54,5 +55,15 @@ describe("parseChatDraft", () => {
   it("tronque et tolère l'absence", () => {
     expect(parseChatDraft(null)).toBe("");
     expect(parseChatDraft("x".repeat(5000))).toHaveLength(2000);
+  });
+});
+
+describe("bracket invité", () => {
+  it("reprise vers le bracket, comptée comme un prono dans le funnel", () => {
+    const action: PendingAction = { type: "bracket", returnUrl: "/play/bracket", createdAt: NOW };
+    expect(parsePendingAction(serializePendingAction(action), NOW)?.type).toBe("bracket");
+    expect(resumeUrl(action)).toBe("/play/bracket?reprise=bracket");
+    expect(funnelActionType("bracket")).toBe("predict");
+    expect(funnelActionType("chat")).toBe("chat");
   });
 });

@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { redirectGuestToPlay } from "@/lib/auth/guestRedirect";
 import { hasBracket } from "@/lib/competitions/types";
 import { getBracketFillData } from "@/lib/queries/bracket-fill";
 import { EmptyState } from "@/components/home/EmptyState";
@@ -12,9 +11,17 @@ import styles from "./page.module.css";
 // BracketFillView.tsx (enveloppe client de l'arbre — seul rendu depuis le
 // 04/10/2026, p3-4).
 
-export default async function BracketFillPage() {
-  await redirectGuestToPlay();
-  const data = await getBracketFillData();
+// Visiteur sans compte (28/11/2026, CHANTIER_BRACKET_INVITE.md) : seul le
+// bracket NBA Cup se remplit en invité (choix dans le navigateur, compte
+// demandé à la validation) ; ailleurs, retour sur /play comme avant.
+
+export default async function BracketFillPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const [data, params] = await Promise.all([getBracketFillData(), searchParams]);
+  if (data.isGuest && (data.competitionType !== "NBA_CUP" || !data.guest)) redirect("/play");
 
   if (data.competitionId === null) {
     return (
@@ -57,5 +64,5 @@ export default async function BracketFillPage() {
     redirect("/bracket");
   }
 
-  return <BracketFillView data={data} />;
+  return <BracketFillView data={data} reprise={params.reprise === "bracket"} />;
 }

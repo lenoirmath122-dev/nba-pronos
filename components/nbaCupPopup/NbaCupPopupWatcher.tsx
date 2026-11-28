@@ -179,7 +179,7 @@ export function NbaCupPopupWatcher() {
           <p className={styles.text}>
             {isUser
               ? `Pronostique les ${pending.total} matchs de la phase finale, des quarts à la finale, avant le premier coup d'envoi.`
-              : `Crée ton compte gratuit et pronostique les ${pending.total} matchs de la phase finale, des quarts à la finale.`}
+              : `Pronostique les ${pending.total} matchs de la phase finale, des quarts à la finale. Tu crées ton compte gratuit à la validation.`}
           </p>
         )}
 
@@ -196,8 +196,10 @@ export function NbaCupPopupWatcher() {
         </div>
 
         <div className={styles.actions}>
-          <Link href={isUser ? BRACKET_HREF : "/signup"} className={styles.primary} onClick={() => close("session")}>
-            {isUser ? (started ? "Terminer mon bracket" : "Remplir mon bracket") : "Créer mon compte"}
+          {/* Invité aussi vers le bracket (28/11/2026, CHANTIER_BRACKET_INVITE.md) : il le remplit
+              sans compte, la création de compte vient à la validation. */}
+          <Link href={BRACKET_HREF} className={styles.primary} onClick={() => close("session")}>
+            {started ? "Terminer mon bracket" : "Remplir mon bracket"}
           </Link>
           <button type="button" className={styles.secondary} onClick={() => close("tomorrow")}>
             Me rappeler plus tard

@@ -144,6 +144,49 @@
   color: var(--color-text-secondary);
 }
 
+/* Bracket invité (28/11/2026) : la phrase passe au-dessus du bouton. */
+.validateRow:has(.guestHint) {
+  flex-wrap: wrap;
+}
+
+.guestHint {
+  flex-basis: 100%;
+  margin: 0;
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Bandeau de reprise après inscription (GuestBracketReplay.tsx). */
+.notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2) var(--space-3);
+  margin: 0;
+  padding: var(--space-2) var(--space-4);
+  text-align: center;
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.noticeButton {
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full, 999px);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.noticeButton:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 .backdrop {
   position: fixed;
   inset: 0;

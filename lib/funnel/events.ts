@@ -18,7 +18,7 @@ export const FUNNEL_EVENTS = [
   "action_completed",
 ] as const;
 
-import { PENDING_ACTION_TYPES } from "@/lib/auth/pendingAction";
+import { FUNNEL_ACTION_TYPES } from "@/lib/auth/pendingAction";
 
 export type FunnelEvent = (typeof FUNNEL_EVENTS)[number];
 
@@ -142,7 +142,7 @@ export function parseFunnelPayload(raw: unknown): FunnelPayload | null {
     }
   }
   const actionType =
-    typeof r.actionType === "string" && (PENDING_ACTION_TYPES as readonly string[]).includes(r.actionType)
+    typeof r.actionType === "string" && (FUNNEL_ACTION_TYPES as readonly string[]).includes(r.actionType)
       ? r.actionType
       : null;
   return { visitorId: r.visitorId, event: r.event as FunnelEvent, matchId, referrer, utm: cleanUtm(r.utm), actionType };

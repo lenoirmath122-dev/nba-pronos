@@ -1,6 +1,6 @@
 "use client";
 
-import { useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { validateBracket } from "@/lib/actions/bracket-fill";
 import type { BracketFillData, BracketFillSeries } from "@/lib/queries/bracket-fill";
@@ -38,6 +38,15 @@ import { requestBadgeCheck } from "@/lib/badges/checkRequest";
 type FillPosterViewProps = {
   data: BracketFillData;
   onExit: () => void;
+  /** Visiteur sans compte (bracket NBA Cup en invité, 28/11/2026,
+   *  CHANTIER_BRACKET_INVITE.md) : choix gardés dans le navigateur ; « Valider »
+   *  ouvre la modale de compte au lieu de valider, pas de remise à zéro. */
+  guest?: {
+    onPick: (seriesId: string, winnerTeamId: string) => void;
+    onValidate: () => void;
+  };
+  /** Bandeau au-dessus du bouton Valider (reprise après inscription). */
+  notice?: ReactNode;
 };
 
 // Ordre de rendu du poster (Ouest haut→bas colonne par colonne, puis
@@ -55,7 +64,7 @@ function findNextIncomplete(columns: PosterColumn<BracketFillSeries>[]): string 
   return null;
 }
 
-export function FillPosterView({ data, onExit }: FillPosterViewProps) {
+export function FillPosterView({ data, onExit, guest, notice }: FillPosterViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -146,6 +155,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
                   onError={setError}
                   side={column.side}
                   cardRef={(el) => registerCard(series.seriesId, el)}
+                  onGuestPick={guest?.onPick}
                 />
               ))}
             </div>
@@ -167,8 +177,19 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
         </p>
       )}
 
+      {notice}
+
       <div className={styles.validateRow}>
-        {data.isValidated ? (
+        {guest ? (
+          <>
+            <p className={styles.guestHint}>
+              Tes choix restent sur cet appareil. Crée ton compte gratuit en validant pour les enregistrer.
+            </p>
+            <button type="button" className={styles.validateButton} onClick={guest.onValidate}>
+              Valider mon bracket
+            </button>
+          </>
+        ) : data.isValidated ? (
           <p className={styles.validatedNote}>
             Bracket validé{data.isAutoValidated ? " automatiquement" : ""} — reste modifiable jusqu&rsquo;à la deadline.
           </p>
@@ -177,7 +198,7 @@ export function FillPosterView({ data, onExit }: FillPosterViewProps) {
             Valider mon bracket
           </button>
         )}
-        <ResetBracketButton onError={setError} />
+        {!guest && <ResetBracketButton onError={setError} />}
       </div>
 
       {showConfirm &&
