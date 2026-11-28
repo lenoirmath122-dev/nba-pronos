@@ -10,7 +10,6 @@ import {
   useSetNbaCupPopupOpen,
 } from "@/components/weeklyPopup/WeeklyPopupProvider";
 import { getMyNbaCupPopup } from "@/lib/actions/nba-cup-popup";
-import { NBA_CUP_GIFT_CARD_EUR } from "@/lib/competitions/nbaCupPrize";
 import type { NbaCupPopupAudience, NbaCupPopupState } from "@/lib/nbaCupPopup/eligibility";
 import {
   NBA_CUP_POPUP_DISABLED_KEY,
@@ -185,9 +184,8 @@ export function NbaCupPopupWatcher() {
         )}
 
         <div className={styles.prize}>
-          <p className={styles.prizeTitle}>
-            À gagner : deux cartes cadeaux de {NBA_CUP_GIFT_CARD_EUR} €
-          </p>
+          {/* Pas de montant sur la popup (demande de l'utilisateur, 28/11/2026) : il est dans le règlement. */}
+          <p className={styles.prizeTitle}>À gagner : deux cartes cadeaux</p>
           <p className={styles.prizeText}>
             Une pour le meilleur bracket, une pour le meilleur pronostiqueur des matchs de la Cup. Gratuit, sans
             achat.

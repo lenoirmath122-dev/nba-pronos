@@ -25,8 +25,8 @@ le bracket. Fin automatique à la date limite (coup d'envoi du 1er quart, 04/12)
 
 - Visuel NBA Cup en tête (trophée ou mini-bracket ; SVG/CSS maison, pas de logo officiel NBA).
 - Titre + compte à rebours jusqu'à la date limite (réutiliser `components/ui/Countdown.tsx` si adapté).
-- Lots : deux cartes cadeaux au classement + lien `/reglement-nba-cup`
-  (source des montants : `lib/competitions/nbaCupPrize.ts`, ne rien dupliquer en dur).
+- Lots : « deux cartes cadeaux » au classement, **sans montant** (décision de l'utilisateur,
+  28/11/2026) + lien `/reglement-nba-cup`, qui seul donne le montant.
 - Avancement si bracket commencé : « 3/7 séries remplies, termine-le ».
 - Boutons : connecté → « Remplir mon bracket » (`/bracket`) ; visiteur → « Créer mon compte » (`/signup`).
   Second bouton : « Me rappeler plus tard ».
@@ -77,7 +77,7 @@ mergée par l'utilisateur avant le 04/12.
   montée sur l'accueil public n'y est donc jamais vue aujourd'hui ; le visiteur la voit
   dans l'appli invité.
 - Montant des cartes cadeaux déplacé dans `lib/competitions/nbaCupPrize.ts`
-  (`NBA_CUP_GIFT_CARD_EUR`), lu par le règlement et la popup.
+  (`NBA_CUP_GIFT_CARD_EUR`), lu par le règlement seulement (la popup n'affiche pas de montant).
 - Vérifié en local avec état simulé (base de prod en lecture, aucun compte connecté) :
   visiteur, bracket vide, partiel, complet, « plus tard », croix/Échap, ordre guide → NBA Cup.
   Non vérifié dans le navigateur : la coquille connectée réelle (pas de compte de test
