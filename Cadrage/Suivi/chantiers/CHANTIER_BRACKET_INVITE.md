@@ -4,9 +4,11 @@ Suite de la popup NBA Cup (PR #324, `CHANTIER_POPUP_NBA_CUP.md`). Cadré avec l'
 **2e PR séparée** : #324 se merge telle quelle (bouton visiteur « Créer mon compte ») ; cette PR remplace
 le bouton par « Remplir mon bracket ». Échéance : avant le 04/12 (date limite du bracket).
 
-**État (28/11/2026)** : implémenté sur `claude/bracket-invite`. Choix faits en attendant l'avis de la
-session mère : funnel = « bracket » compté comme « predict » (pas de migration) ; compte qui a déjà des
-choix en base = on les garde, avec « Remplacer par mes choix d'avant » / « Garder celui-ci ».
+**État (28/11/2026)** : implémenté sur `claude/bracket-invite` (PR #325). Décisions de l'utilisateur :
+- Funnel : `bracket` est enregistré comme `predict` dans `funnel_events`, donc pas de migration
+  (`funnelActionType`, `lib/auth/pendingAction.ts`). La reprise reste typée `bracket`.
+- Compte qui a déjà des choix en base : on garde ce bracket et on efface le brouillon du navigateur.
+  Un message le dit au joueur. Pas de bouton « Remplacer ».
 
 ## Parcours voulu
 
