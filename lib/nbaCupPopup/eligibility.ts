@@ -1,4 +1,6 @@
 import type { CompetitionType } from "@/lib/competitions/types";
+import { CUP_ROUND_NY_WINDOWS } from "@/lib/competitions/cupWindows";
+import { nyDayStartUtcIso } from "@/lib/dates/newyork";
 
 // Popup « Remplis ton bracket NBA Cup » (chantier du 28/11/2026,
 // Cadrage/Suivi/chantiers/CHANTIER_POPUP_NBA_CUP.md) : règle d'affichage PURE,
@@ -8,6 +10,11 @@ import type { CompetitionType } from "@/lib/competitions/types";
 // Période : compétition NBA_CUP active, quarts connus (2 équipes par série),
 // date limite du bracket dans le futur. Aucun interrupteur admin : la popup
 // s'arrête seule à `bracket_deadline` (coup d'envoi du 1er quart).
+//
+// `bracket_deadline` reste NULL tant qu'aucun match n'est rattaché (la synchro
+// ne les crée qu'à J-4) ; getBracket considère alors le bracket OUVERT. On
+// prend dans ce cas une date de repli : début (heure NY) du premier jour de la
+// fenêtre officielle des quarts (lib/competitions/cupWindows.ts).
 
 export type NbaCupPopupAudience = "user" | "guest";
 
@@ -37,11 +44,18 @@ export type NbaCupPopupInput = {
 
 export const CUP_QUARTERS_ROUND = "CUP_QUARTERS";
 
+/** Date limite à afficher : la vraie si connue, sinon le repli NY. */
+export function effectiveNbaCupDeadline(bracketDeadline: string | null): string | null {
+  if (bracketDeadline) return bracketDeadline;
+  const firstQuarterDay = CUP_ROUND_NY_WINDOWS[CUP_QUARTERS_ROUND]?.[0];
+  return firstQuarterDay ? nyDayStartUtcIso(firstQuarterDay) : null;
+}
+
 export function resolveNbaCupPopup(input: NbaCupPopupInput): NbaCupPopupState | null {
   const { competition, series, filled, nowMs } = input;
   if (!competition || competition.type !== "NBA_CUP") return null;
-  if (!competition.bracket_deadline) return null;
-  if (Date.parse(competition.bracket_deadline) <= nowMs) return null;
+  const deadline = effectiveNbaCupDeadline(competition.bracket_deadline);
+  if (!deadline || Date.parse(deadline) <= nowMs) return null;
 
   const quarters = series.filter((s) => s.round === CUP_QUARTERS_ROUND);
   if (quarters.length === 0) return null;
@@ -50,8 +64,8 @@ export function resolveNbaCupPopup(input: NbaCupPopupInput): NbaCupPopupState | 
 
   const total = series.length;
   if (filled === null) {
-    return { audience: "guest", deadline: competition.bracket_deadline, filled: 0, total };
+    return { audience: "guest", deadline, filled: 0, total };
   }
   if (filled >= total) return null; // bracket complet : plus rien à demander
-  return { audience: "user", deadline: competition.bracket_deadline, filled, total };
+  return { audience: "user", deadline, filled, total };
 }

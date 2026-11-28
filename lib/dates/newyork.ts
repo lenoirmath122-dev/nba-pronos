@@ -32,3 +32,19 @@ export function nyResultDates(instant: Date): string[] {
   // y compris les jours de bascule DST (décalage d'1h max).
   return [nyDateString(new Date(instant.getTime() - 24 * 3600 * 1000)), today];
 }
+
+/** Début (00:00, heure de New York) du jour NY `day` (YYYY-MM-DD), en ISO UTC.
+ *  Offset lu à midi UTC de ce jour (aucune bascule DST à minuit NY), jamais
+ *  -4/-5 codé en dur. */
+export function nyDayStartUtcIso(day: string): string {
+  const noonUtcMs = Date.parse(`${day}T12:00:00.000Z`);
+  const tzName =
+    new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", timeZoneName: "shortOffset" })
+      .formatToParts(new Date(noonUtcMs))
+      .find((p) => p.type === "timeZoneName")?.value ?? "GMT-5";
+  const match = /GMT([+-]\d+)(?::(\d+))?/.exec(tzName);
+  const hours = match ? parseInt(match[1], 10) : -5;
+  const minutes = match?.[2] ? parseInt(match[2], 10) : 0;
+  const offsetMinutes = hours * 60 + (hours < 0 ? -minutes : minutes);
+  return new Date(Date.parse(`${day}T00:00:00.000Z`) - offsetMinutes * 60_000).toISOString();
+}

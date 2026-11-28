@@ -1,6 +1,6 @@
 import { getServerClient } from "@/lib/supabase/server";
 import { getActiveCompetition } from "@/lib/cache/commonData";
-import { resolveNbaCupPopup, type NbaCupPopupState, type NbaCupSeriesRow } from "@/lib/nbaCupPopup/eligibility";
+import { effectiveNbaCupDeadline, resolveNbaCupPopup, type NbaCupPopupState, type NbaCupSeriesRow } from "@/lib/nbaCupPopup/eligibility";
 
 // État de la popup NBA Cup pour la session courante (connecté ou visiteur).
 // Lecture légère (pas getBracket complet) : séries de la compétition, puis,
@@ -11,8 +11,10 @@ export async function getNbaCupPopupState(): Promise<NbaCupPopupState | null> {
   const supabase = await getServerClient();
   const competition = await getActiveCompetition(supabase);
   // Court-circuit avant toute autre lecture : hors NBA Cup, rien à faire.
-  if (!competition || competition.type !== "NBA_CUP" || !competition.bracket_deadline) return null;
-  if (Date.parse(competition.bracket_deadline) <= Date.now()) return null;
+  if (!competition || competition.type !== "NBA_CUP") return null;
+  // Date limite NULL (aucun match rattaché) : repli sur la fenêtre des quarts.
+  const deadline = effectiveNbaCupDeadline(competition.bracket_deadline);
+  if (!deadline || Date.parse(deadline) <= Date.now()) return null;
 
   const [{ data: seriesData }, { data: userData }] = await Promise.all([
     supabase.from("series").select("round, team1_id, team2_id").eq("competition_id", competition.id),

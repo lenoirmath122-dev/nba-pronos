@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveNbaCupPopup, type NbaCupSeriesRow } from "./eligibility";
+import { effectiveNbaCupDeadline, resolveNbaCupPopup, type NbaCupSeriesRow } from "./eligibility";
 
 const NOW = Date.parse("2026-11-28T12:00:00Z");
 const DEADLINE = "2026-12-04T00:30:00Z";
@@ -48,10 +48,7 @@ describe("resolveNbaCupPopup", () => {
     ).toBeNull();
   });
 
-  it("pas de date limite, autre compétition ou pas de compétition : rien", () => {
-    expect(
-      resolveNbaCupPopup({ competition: { ...CUP, bracket_deadline: null }, series: FULL, filled: 0, nowMs: NOW })
-    ).toBeNull();
+  it("autre compétition ou pas de compétition : rien", () => {
     expect(
       resolveNbaCupPopup({ competition: { ...CUP, type: "PLAYOFFS" }, series: FULL, filled: 0, nowMs: NOW })
     ).toBeNull();
@@ -62,5 +59,32 @@ describe("resolveNbaCupPopup", () => {
     const series = [quarter(), quarter(), quarter(), quarter(false), ...SEMIS];
     expect(resolveNbaCupPopup({ competition: CUP, series, filled: null, nowMs: NOW })).toBeNull();
     expect(resolveNbaCupPopup({ competition: CUP, series: [], filled: null, nowMs: NOW })).toBeNull();
+  });
+
+  it("date limite NULL (aucun match rattaché) : affichée, avec le repli = 04/12 00:00 heure de New York", () => {
+    const state = resolveNbaCupPopup({
+      competition: { ...CUP, bracket_deadline: null },
+      series: FULL,
+      filled: 0,
+      nowMs: NOW,
+    });
+    expect(state?.deadline).toBe("2026-12-04T05:00:00.000Z");
+    expect(state?.audience).toBe("user");
+  });
+
+  it("date limite NULL et repli passé : rien", () => {
+    expect(
+      resolveNbaCupPopup({
+        competition: { ...CUP, bracket_deadline: null },
+        series: FULL,
+        filled: null,
+        nowMs: Date.parse("2026-12-04T05:00:00Z"),
+      })
+    ).toBeNull();
+  });
+
+  it("date limite réelle : prioritaire sur le repli", () => {
+    expect(effectiveNbaCupDeadline(DEADLINE)).toBe(DEADLINE);
+    expect(resolveNbaCupPopup({ competition: CUP, series: FULL, filled: 0, nowMs: NOW })?.deadline).toBe(DEADLINE);
   });
 });

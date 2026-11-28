@@ -82,3 +82,6 @@ mergée par l'utilisateur avant le 04/12.
   visiteur, bracket vide, partiel, complet, « plus tard », croix/Échap, ordre guide → NBA Cup.
   Non vérifié dans le navigateur : la coquille connectée réelle (pas de compte de test
   sans Supabase local).
+- `bracket_deadline` est NULL tant qu'aucun match n'est rattaché (synchro à J-4) : la popup
+  prend alors comme date limite de repli le début, heure de New York, du 1er jour de la
+  fenêtre des quarts (`CUP_ROUND_NY_WINDOWS`, `lib/competitions/cupWindows.ts`).
